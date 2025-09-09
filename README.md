@@ -24,6 +24,24 @@ Docs & Tutorials
 
 Project status: Beta — stable core, evolving APIs and docs.
 
+Repository status (automated note)
+- CI status: The GitHub Actions CI (workflow: `ci.yml`) is currently failing on the remote; some checks report errors or warnings. See the Actions tab for full logs and failing jobs.
+- Warnings: The repository has a number of linter/type warnings and other non-blocking issues reported by CI. These should be reviewed and fixed before a public release.
+- Tags: No release tags (v*) were found on the remote. Release tags are required to trigger image publishing to GHCR in the current workflows.
+- Branch: The working branch `numerics/hardening` is pushed to the remote but not merged into the default branch. Consider opening a PR with the prepared draft (`PR_DRAFT_NUMERICS.md`).
+
+Suggested action items
+- Re-run the full test suite locally to reproduce CI failures:
+  - `python -m pytest -q`
+- Run linters and static checks locally and fix warnings:
+  - `ruff check .` and `mypy .` (or `pre-commit run --all-files` if configured)
+- Address the highest-severity CI failures first, re-run CI, and iterate until green.
+- Open a PR for `numerics/hardening` using `PR_DRAFT_NUMERICS.md` as the description, then re-run CI on the PR.
+- When ready to publish, create a semver tag (example):
+  - `git tag -a v0.2.0 -m "Release v0.2.0" && git push origin v0.2.0`
+
+If you'd like, I can run the linters/tests here and open the PR for you once CI is green — tell me to proceed and I'll run them and push any fixes.
+
 Overview
 - The `somafractalmemory` library is a dependency (installed via pip), not part of this repo.
 - A minimal example is available at `examples/soma_quickstart.py:1` that stores and recalls a memory using the in‑memory vector backend.
