@@ -4,6 +4,7 @@ Provides a small utility to convert arbitrary seeds (int/str/bytes/None)
 into a stable uint64 and a NumPy Generator. Uses blake2b for text -> int
 hashing to produce reproducible uint64 seeds.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -42,7 +43,9 @@ def rng_from_seed(seed: Optional[Union[int, str, bytes]] = None) -> np.random.Ge
     return np.random.default_rng(s64)
 
 
-def random_unit_vector(dim: int, seed: Optional[Union[int, str, bytes]] = None, dtype=np.float32) -> np.ndarray:
+def random_unit_vector(
+    dim: int, seed: Optional[Union[int, str, bytes]] = None, dtype=np.float32
+) -> np.ndarray:
     """Return a random unit-length vector (L2-normalized) of shape (dim,)."""
     rng = rng_from_seed(seed)
     v = rng.standard_normal(size=(dim,)).astype(dtype)

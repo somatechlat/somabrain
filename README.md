@@ -107,7 +107,7 @@ curl -s -X POST http://localhost:8000/remember   -H 'Content-Type: application/j
 curl -s -X POST http://localhost:8000/recall   -H 'Content-Type: application/json'   -H 'X-Tenant-ID: demo'   -d '{"query":"invoice ACME"}'
 ```
 
-**3) (Optional) Link facts:**  
+**3) (Optional) Link facts:**
 Connect items with a typed relation (example shape):
 ```bash
 curl -s -X POST http://localhost:8000/link   -H 'Content-Type: application/json'   -H 'X-Tenant-ID: demo'   -d '{

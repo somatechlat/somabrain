@@ -4,16 +4,20 @@ Creates unitary (energy-preserving) role vectors whose spectrum has unit
 magnitude, ensuring exact invertibility via conjugate-multiply in frequency
 domain. Deterministic when a seed is provided.
 """
+
 from __future__ import annotations
 
 from typing import Optional, Tuple
+
 import numpy as np
 
-from . import seed as _seed
 from . import numerics as _num
+from . import seed as _seed
 
 
-def make_unitary_role(dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32) -> Tuple[np.ndarray, np.ndarray]:
+def make_unitary_role(
+    dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32
+) -> Tuple[np.ndarray, np.ndarray]:
     """Return (time_domain_vector, rfft_spectrum) for a unitary role.
 
     The returned `time_domain_vector` has shape (dim,) and dtype `dtype`.
@@ -40,8 +44,9 @@ def make_unitary_role(dim: int, seed: Optional[int | str | bytes] = None, dtype=
     return u_time, U_canon
 
 
-def role_spectrum_from_seed(dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32) -> np.ndarray:
-    """Convenience: return only the rfft spectrum for a role.
-    """
+def role_spectrum_from_seed(
+    dim: int, seed: Optional[int | str | bytes] = None, dtype=np.float32
+) -> np.ndarray:
+    """Convenience: return only the rfft spectrum for a role."""
     _, spec = make_unitary_role(dim, seed=seed, dtype=dtype)
     return spec

@@ -13,4 +13,3 @@
       iter_events
       journal_path
       rotate_journal
-

@@ -9,4 +9,3 @@
    .. autosummary::
 
       MultiTenantHRRContext
-

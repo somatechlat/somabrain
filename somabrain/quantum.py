@@ -83,8 +83,11 @@ class HRRConfig:
             # Allow any positive integer dimensionality. For very small dims
             # warn the user (tests and examples commonly use 128/256 for speed).
             import warnings
+
             if self.dim < 8:
-                warnings.warn("HRRConfig.dim is unusually small (<8); numerical results may be degenerate.")
+                warnings.warn(
+                    "HRRConfig.dim is unusually small (<8); numerical results may be degenerate."
+                )
         if self.dtype not in ("float32", "float64"):
             raise ValueError("HRRConfig.dtype must be 'float32' or 'float64'")
         # Allow None to mean "use global HRR_FFT_EPSILON"; otherwise ensure positive
@@ -335,7 +338,9 @@ class QuantumLayer:
         # Use a minimal epsilon derived from dtype floor to avoid accidental div/0
         from somabrain.numerics import compute_tiny_floor
 
-        eps = compute_tiny_floor(self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy)
+        eps = compute_tiny_floor(
+            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+        )
         denom = fb.copy()
         # If any bin is effectively zero, nudge by eps on the diagonal (rare for unitary roles)
         zero_mask = np.isclose(denom, 0 + 0j, atol=eps)
@@ -393,13 +398,13 @@ class QuantumLayer:
         try:
             import os as _os
 
-            _snr = (_os.getenv("SOMABRAIN_WIENER_SNR_DB", "").strip() or None)
+            _snr = _os.getenv("SOMABRAIN_WIENER_SNR_DB", "").strip() or None
             if _snr is not None:
                 snr_db = float(_snr)
-            _alpha = (_os.getenv("SOMABRAIN_WIENER_ALPHA", "").strip() or None)
+            _alpha = _os.getenv("SOMABRAIN_WIENER_ALPHA", "").strip() or None
             if _alpha is not None:
                 alpha = float(_alpha)
-            _wh = (_os.getenv("SOMABRAIN_WIENER_WHITEN", "").strip().lower() or "")
+            _wh = _os.getenv("SOMABRAIN_WIENER_WHITEN", "").strip().lower() or ""
             if _wh in ("1", "true", "yes", "on"):
                 whiten = True
             if _wh in ("0", "false", "no", "off"):
@@ -415,7 +420,7 @@ class QuantumLayer:
         adapt = float(alpha) * k_term * S_mean
         floor = max(floor_snr, adapt)
         if not whiten:
-            denom = (S + floor)
+            denom = S + floor
             fa_est = (fc * np.conjugate(fb).astype(np.complex128)) / denom
         else:
             # Spectral whitening: normalize role magnitude to ~1 per bin.
@@ -423,7 +428,7 @@ class QuantumLayer:
             fb_u = fb / np.sqrt(S + eps)
             # Map constant floor into the whitened domain by average power.
             floor_u = floor / (S_mean + eps)
-            denom_u = (1.0 + floor_u)
+            denom_u = 1.0 + floor_u
             fa_est = (fc * np.conjugate(fb_u).astype(np.complex128)) / denom_u
         a_est = np.fft.irfft(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
         try:

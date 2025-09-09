@@ -1,8 +1,8 @@
 import numpy as np
 
-from somabrain import seed as s
 from somabrain import numerics as num
 from somabrain import roles as roles
+from somabrain import seed as s
 from somabrain import wiener as wiener
 
 

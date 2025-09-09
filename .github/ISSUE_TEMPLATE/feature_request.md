@@ -13,4 +13,3 @@ Describe the solution you'd like.
 ## Alternatives considered
 
 ## Additional context
-

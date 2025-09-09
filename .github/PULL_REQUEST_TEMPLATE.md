@@ -16,4 +16,3 @@ Steps, commands, or tests added/updated. Include expected results.
 - [ ] Lint passes (`ruff check .`)
 - [ ] Docs updated (if applicable)
 - [ ] Changelog updated (if user‑facing)
-

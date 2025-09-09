@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 
 from somabrain.numerics import compute_tiny_floor

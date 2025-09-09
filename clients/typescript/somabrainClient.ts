@@ -71,4 +71,3 @@ export class SomaBrainClient {
     return await res.json();
   }
 }
-

@@ -1,4 +1,5 @@
 import math
+
 import numpy as np
 
 from somabrain.numerics import compute_tiny_floor, normalize_array
@@ -62,7 +63,9 @@ def test_normalize_array_subtiny_behavior():
 def test_unbind_sanity_small_dim():
     # small-dim sanity check: QuantumLayer.unbind should not raise and
     # should produce a vector; compare roughly to PureQuantumLayer behavior
-    cfg = HRRConfig(dim=32, seed=42, dtype="float32", renorm=True, fft_eps=1e-8, beta=1e-6)
+    cfg = HRRConfig(
+        dim=32, seed=42, dtype="float32", renorm=True, fft_eps=1e-8, beta=1e-6
+    )
     q = QuantumLayer(cfg)
     p = PureQuantumLayer(cfg)  # noqa: F841
 

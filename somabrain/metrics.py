@@ -38,14 +38,8 @@ import time
 from typing import Awaitable, Callable
 
 from fastapi import Request, Response
-from prometheus_client import (
-    CONTENT_TYPE_LATEST,
-    CollectorRegistry,
-    Counter,
-    Gauge,
-    Histogram,
-    generate_latest,
-)
+from prometheus_client import (CONTENT_TYPE_LATEST, CollectorRegistry, Counter,
+                               Gauge, Histogram, generate_latest)
 
 # Aliases used later (avoid interleaved imports)
 _Hist = Histogram

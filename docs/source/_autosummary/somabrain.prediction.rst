@@ -15,4 +15,3 @@
       PredictionResult
       SlowPredictor
       StubPredictor
-

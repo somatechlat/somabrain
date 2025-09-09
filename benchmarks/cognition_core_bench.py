@@ -40,7 +40,9 @@ def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:
     return out
 
 
-def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str, object]]:
+def run_quality_bench(
+    dim: int = 8192, dtype: str = "float32"
+) -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
     ks = [1, 4, 16]
 
@@ -58,7 +60,10 @@ def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
             s = np.sum(binds, axis=0)
             s = s / max(np.linalg.norm(s), 1e-12)
             a_rec = q_u.unbind_exact_unitary(s, role_token)
-            cos = float(np.dot(a_rec, a_list[0]) / (np.linalg.norm(a_rec) * np.linalg.norm(a_list[0]) + 1e-12))
+            cos = float(
+                np.dot(a_rec, a_list[0])
+                / (np.linalg.norm(a_rec) * np.linalg.norm(a_list[0]) + 1e-12)
+            )
             cosines.append(cos)
         rows.append(
             {
@@ -89,29 +94,39 @@ def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
             s = s / max(np.linalg.norm(s), 1e-12)
             # Wiener (adaptive; whiten only when k>1)
             if k == 1:
-                a_w = q_g.unbind_wiener(s, b_list[0], snr_db=50.0, k_est=1, alpha=0.0, whiten=False)
+                a_w = q_g.unbind_wiener(
+                    s, b_list[0], snr_db=50.0, k_est=1, alpha=0.0, whiten=False
+                )
             else:
                 a_w = q_g.unbind_wiener(
                     s, b_list[0], snr_db=35.0, k_est=k, alpha=1e-3, whiten=True
                 )
+
             # Naive Tikhonov (ridge) with fixed lambda for baseline comparison
-            def _tikhonov_naive(sig: np.ndarray, role: np.ndarray, lam: float = 5e-2) -> np.ndarray:
+            def _tikhonov_naive(
+                sig: np.ndarray, role: np.ndarray, lam: float = 5e-2
+            ) -> np.ndarray:
                 fc = np.fft.rfft(sig).astype(np.complex128)
                 fb = np.fft.rfft(role).astype(np.complex128)
                 S = (fb * np.conjugate(fb)).real.astype(np.float64)
-                denom = (S + lam)
+                denom = S + lam
                 fa_est = (fc * np.conjugate(fb)) / denom
                 out = np.fft.irfft(fa_est, n=sig.shape[0]).astype(sig.dtype)
                 n = float(np.linalg.norm(out))
                 if n > 0:
                     out = out / n
                 return out
+
             # Slightly larger lam for k=1 reflects a naive ridge default often used in practice
             lam = 1e-1 if k == 1 else 5e-2
             a_t = _tikhonov_naive(s, b_list[0], lam=lam)
+
             # cosines against original a0
             def _cos(u, v):
-                return float(np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12))
+                return float(
+                    np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
+                )
+
             w_raw = _cos(a_w, a_list[0])
             t_raw = _cos(a_t, a_list[0])
             # Optional cleanup snap to anchors (best match among k)
@@ -155,7 +170,9 @@ def run_quality_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
     return rows
 
 
-def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str, object]]:
+def run_latency_bench(
+    dim: int = 8192, dtype: str = "float32"
+) -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
     n = 200
     # Unitary exact
@@ -170,10 +187,19 @@ def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
         t1 = time.perf_counter()
         lat.append((t1 - t0) * 1000.0)
     p = percentiles(lat, [0.5, 0.95, 0.99])
-    rows.append({"mode": "unitary_exact", "p50_ms": p[0.5], "p95_ms": p[0.95], "p99_ms": p[0.99]})
+    rows.append(
+        {
+            "mode": "unitary_exact",
+            "p50_ms": p[0.5],
+            "p95_ms": p[0.95],
+            "p99_ms": p[0.99],
+        }
+    )
 
     # Gaussian + Wiener
-    q_g = QuantumLayer(HRRConfig(dim=dim, dtype=dtype, renorm=True, roles_unitary=False))
+    q_g = QuantumLayer(
+        HRRConfig(dim=dim, dtype=dtype, renorm=True, roles_unitary=False)
+    )
     a = q_g.random_vector()
     b = q_g.random_vector()
     c = q_g.bind(a, b)
@@ -184,7 +210,14 @@ def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
         t1 = time.perf_counter()
         lat.append((t1 - t0) * 1000.0)
     p = percentiles(lat, [0.5, 0.95, 0.99])
-    rows.append({"mode": "gaussian_wiener", "p50_ms": p[0.5], "p95_ms": p[0.95], "p99_ms": p[0.99]})
+    rows.append(
+        {
+            "mode": "gaussian_wiener",
+            "p50_ms": p[0.5],
+            "p95_ms": p[0.95],
+            "p99_ms": p[0.99],
+        }
+    )
 
     # Gaussian + Tikhonov (robust)
     lat = []
@@ -194,7 +227,14 @@ def run_latency_bench(dim: int = 8192, dtype: str = "float32") -> List[Dict[str,
         t1 = time.perf_counter()
         lat.append((t1 - t0) * 1000.0)
     p = percentiles(lat, [0.5, 0.95, 0.99])
-    rows.append({"mode": "gaussian_tikhonov", "p50_ms": p[0.5], "p95_ms": p[0.95], "p99_ms": p[0.99]})
+    rows.append(
+        {
+            "mode": "gaussian_tikhonov",
+            "p50_ms": p[0.5],
+            "p95_ms": p[0.95],
+            "p99_ms": p[0.99],
+        }
+    )
 
     return rows
 
@@ -217,9 +257,12 @@ def write_csv(rows: List[Dict[str, object]], path: Path) -> None:
             w.writerow(r)
 
 
-def try_plots(quality: List[Dict[str, object]], latency: List[Dict[str, object]], out_dir: Path) -> None:
+def try_plots(
+    quality: List[Dict[str, object]], latency: List[Dict[str, object]], out_dir: Path
+) -> None:
     try:
         import os
+
         os.environ.setdefault("MPLBACKEND", "Agg")
         # ensure Matplotlib config/cache are writable within repo
         cfg_dir = out_dir / ".mplconfig"
@@ -229,9 +272,20 @@ def try_plots(quality: List[Dict[str, object]], latency: List[Dict[str, object]]
         import matplotlib.pyplot as plt  # type: ignore
 
         # Cosine vs k for three modes
-        ks = sorted({int(r["k"]) for r in quality if r["mode"] in ("unitary_exact", "gaussian_wiener", "gaussian_tikhonov")})
+        ks = sorted(
+            {
+                int(r["k"])
+                for r in quality
+                if r["mode"]
+                in ("unitary_exact", "gaussian_wiener", "gaussian_tikhonov")
+            }
+        )
         modes = ["unitary_exact", "gaussian_wiener", "gaussian_tikhonov"]
-        mode_labels = {"unitary_exact": "Unitary+Exact", "gaussian_wiener": "Gaussian+Wiener", "gaussian_tikhonov": "Gaussian+Tikhonov"}
+        mode_labels = {
+            "unitary_exact": "Unitary+Exact",
+            "gaussian_wiener": "Gaussian+Wiener",
+            "gaussian_tikhonov": "Gaussian+Tikhonov",
+        }
         plt.figure(figsize=(7, 4))
         for m in modes:
             ys = []
@@ -261,7 +315,7 @@ def try_plots(quality: List[Dict[str, object]], latency: List[Dict[str, object]]
         plt.figure(figsize=(6, 3.5))
         vals = [r["p99_ms"] for r in latency]
         labels = ["Unitary+Exact", "Gaussian+Wiener", "Gaussian+Tikhonov"]
-        plt.bar(labels, vals, color=["#4CAF50", "#2196F3", "#9C27B0"]) 
+        plt.bar(labels, vals, color=["#4CAF50", "#2196F3", "#9C27B0"])
         plt.ylabel("p99 unbind latency (ms)")
         plt.title("Unbind latency p99 (D=8192, float32)")
         for i, v in enumerate(vals):
@@ -285,21 +339,37 @@ def main() -> None:
     # Gate 1: Unitary+Exact cosine@k=1 >= 0.70
     ue1 = [r for r in quality if r["mode"] == "unitary_exact" and int(r["k"]) == 1][0]
     gate1 = float(ue1["cos_mean"]) >= 0.70
-    print("Gate1 (unitary+exact k=1 >=0.70):", "PASS" if gate1 else "FAIL", f"(mean={ue1['cos_mean']:.3f})")
+    print(
+        "Gate1 (unitary+exact k=1 >=0.70):",
+        "PASS" if gate1 else "FAIL",
+        f"(mean={ue1['cos_mean']:.3f})",
+    )
 
     # Gate 2: Gaussian+Wiener better than Tikhonov by >= 0.03 at k in {1,4,16} (raw cosine)
     gate2 = True
     for k in (1, 4, 16):
-        w = [r for r in quality if r["mode"] == "gaussian_wiener" and int(r["k"]) == k][0]["cos_mean_raw"]
-        t = [r for r in quality if r["mode"] == "gaussian_tikhonov" and int(r["k"]) == k][0]["cos_mean_raw"]
+        w = [r for r in quality if r["mode"] == "gaussian_wiener" and int(r["k"]) == k][
+            0
+        ]["cos_mean_raw"]
+        t = [
+            r for r in quality if r["mode"] == "gaussian_tikhonov" and int(r["k"]) == k
+        ][0]["cos_mean_raw"]
         ok = float(w) - float(t) >= 0.03
-        print(f"Gate2 (Wiener-Tikhonov @k={k} >= 0.03):", "PASS" if ok else "FAIL", f"(Δ={float(w)-float(t):.3f})")
+        print(
+            f"Gate2 (Wiener-Tikhonov @k={k} >= 0.03):",
+            "PASS" if ok else "FAIL",
+            f"(Δ={float(w)-float(t):.3f})",
+        )
         gate2 = gate2 and ok
 
     # Gate 3: p99 unbind <= 1 ms for unitary exact
     ue_lat = [r for r in latency if r["mode"] == "unitary_exact"][0]
     gate3 = float(ue_lat["p99_ms"]) <= 1.0
-    print("Gate3 (unitary exact p99 <= 1ms):", "PASS" if gate3 else "WARN", f"(p99={ue_lat['p99_ms']:.3f} ms)")
+    print(
+        "Gate3 (unitary exact p99 <= 1ms):",
+        "PASS" if gate3 else "WARN",
+        f"(p99={ue_lat['p99_ms']:.3f} ms)",
+    )
 
     try_plots(quality, latency, out_dir)
 

@@ -62,7 +62,9 @@ def run_paired(dims, dtypes, eps_values, trials=200):
                             "fail_rate": fail_rate,
                         }
                     )
-                    print(f"dim={dim} dtype={dtype} eps={eps:.1e} mode={mode} med={med:.4f} fail_rate={fail_rate:.3f}")
+                    print(
+                        f"dim={dim} dtype={dtype} eps={eps:.1e} mode={mode} med={med:.4f} fail_rate={fail_rate:.3f}"
+                    )
 
     # write CSV
     with open(OUT, "w", newline="") as f:

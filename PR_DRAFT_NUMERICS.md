@@ -45,4 +45,3 @@ Run locally
 . .venv/bin/activate
 python -m pytest -q
 python benchmarks/numerics_bench.py
-

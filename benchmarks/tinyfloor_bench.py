@@ -6,6 +6,7 @@ Compares current compute_tiny_floor (linear) vs sqrt(D) strategy by:
 
 Writes results to docs/benchmarks/results_tinyfloor.json and .md
 """
+
 import json
 import math
 import time
@@ -51,7 +52,14 @@ def simulate_zeroed_fraction(dim, dtype, n=1000, kind="gaussian", strategy="line
 
 
 def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
-    cfg = HRRConfig(dim=dim, seed=42, dtype=np.dtype(dtype).name, renorm=True, fft_eps=1e-8, beta=1e-6)
+    cfg = HRRConfig(
+        dim=dim,
+        seed=42,
+        dtype=np.dtype(dtype).name,
+        renorm=True,
+        fft_eps=1e-8,
+        beta=1e-6,
+    )
     q = QuantumLayer(cfg)
     p = PureQuantumLayer(cfg)
 
@@ -99,19 +107,40 @@ def run_all():
     for D in dims:
         for dtype in [np.float32, np.float64]:
             # zeroed fraction tests
-            gf = simulate_zeroed_fraction(D, dtype, n=800 if D==2048 else 200, kind="gaussian", strategy="linear")
-            gs = simulate_zeroed_fraction(D, dtype, n=800 if D==2048 else 200, kind="gaussian", strategy="sqrt")
-            sf = simulate_zeroed_fraction(D, dtype, n=800 if D==2048 else 200, kind="sparse", strategy="linear")
-            ss = simulate_zeroed_fraction(D, dtype, n=800 if D==2048 else 200, kind="sparse", strategy="sqrt")
+            gf = simulate_zeroed_fraction(
+                D,
+                dtype,
+                n=800 if D == 2048 else 200,
+                kind="gaussian",
+                strategy="linear",
+            )
+            gs = simulate_zeroed_fraction(
+                D, dtype, n=800 if D == 2048 else 200, kind="gaussian", strategy="sqrt"
+            )
+            sf = simulate_zeroed_fraction(
+                D, dtype, n=800 if D == 2048 else 200, kind="sparse", strategy="linear"
+            )
+            ss = simulate_zeroed_fraction(
+                D, dtype, n=800 if D == 2048 else 200, kind="sparse", strategy="sqrt"
+            )
 
             # unbind fidelity
-            u_linear = unbind_fidelity(D, dtype, n_pairs=200 if D==2048 else 40, strategy="linear")
-            u_sqrt = unbind_fidelity(D, dtype, n_pairs=200 if D==2048 else 40, strategy="sqrt")
+            u_linear = unbind_fidelity(
+                D, dtype, n_pairs=200 if D == 2048 else 40, strategy="linear"
+            )
+            u_sqrt = unbind_fidelity(
+                D, dtype, n_pairs=200 if D == 2048 else 40, strategy="sqrt"
+            )
 
             entry = {
                 "dim": D,
                 "dtype": str(dtype),
-                "zeroed_fraction": {"gaussian_linear": gf, "gaussian_sqrt": gs, "sparse_linear": sf, "sparse_sqrt": ss},
+                "zeroed_fraction": {
+                    "gaussian_linear": gf,
+                    "gaussian_sqrt": gs,
+                    "sparse_linear": sf,
+                    "sparse_sqrt": ss,
+                },
                 "unbind": {"linear": u_linear, "sqrt": u_sqrt},
             }
             out["runs"].append(entry)
@@ -131,14 +160,22 @@ def run_all():
         for r in out["runs"]:
             f.write(f"## D={r['dim']} dtype={r['dtype']}\n")
             z = r["zeroed_fraction"]
-            f.write(f"- Zeroed fraction (gaussian): linear={z['gaussian_linear']:.4f}, sqrt={z['gaussian_sqrt']:.4f}\n")
-            f.write(f"- Zeroed fraction (sparse): linear={z['sparse_linear']:.4f}, sqrt={z['sparse_sqrt']:.4f}\n")
+            f.write(
+                f"- Zeroed fraction (gaussian): linear={z['gaussian_linear']:.4f}, sqrt={z['gaussian_sqrt']:.4f}\n"
+            )
+            f.write(
+                f"- Zeroed fraction (sparse): linear={z['sparse_linear']:.4f}, sqrt={z['sparse_sqrt']:.4f}\n"
+            )
             f.write("- Unbind (linear):\n")
             ul = r["unbind"]["linear"]
-            f.write(f"  - mse_mean: {ul['mse_mean']:.6e}, cos_mean: {ul['cos_mean']:.6f}, time_s: {ul['elapsed_s']:.3f}\n")
+            f.write(
+                f"  - mse_mean: {ul['mse_mean']:.6e}, cos_mean: {ul['cos_mean']:.6f}, time_s: {ul['elapsed_s']:.3f}\n"
+            )
             us = r["unbind"]["sqrt"]
             f.write("- Unbind (sqrt):\n")
-            f.write(f"  - mse_mean: {us['mse_mean']:.6e}, cos_mean: {us['cos_mean']:.6f}, time_s: {us['elapsed_s']:.3f}\n\n")
+            f.write(
+                f"  - mse_mean: {us['mse_mean']:.6e}, cos_mean: {us['cos_mean']:.6f}, time_s: {us['elapsed_s']:.3f}\n\n"
+            )
 
     print(f"Wrote results to {json_path} and {md_path}")
 

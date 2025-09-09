@@ -15,4 +15,3 @@
    .. autosummary::
 
       SalienceWeights
-

@@ -6,6 +6,7 @@ Scores inputs with neuromod modulation and emits store/act gates (hard/soft).
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from .neuromodulators import NeuromodState
 
 

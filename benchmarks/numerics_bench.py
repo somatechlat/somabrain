@@ -2,10 +2,13 @@
 
 Run inside the project's .venv.
 """
+
 import time
+
 import numpy as np
-from somabrain import numerics as num
+
 from somabrain import batch as batch
+from somabrain import numerics as num
 
 
 def bench_normalize(D=2048, N=1000):
@@ -38,6 +41,6 @@ def bench_rfft(D=2048, N=1000):
     print(f"rfft D={D} N={N}: per-call {t_per:.4f}s, batched {t_batch:.4f}s")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     bench_normalize(D=2048, N=500)
     bench_rfft(D=2048, N=500)

@@ -13,4 +13,3 @@ def test_no_nan_inf_across_ops():
     for x in (a, b, c, d):
         assert np.isfinite(x).all()
         assert np.linalg.norm(x) > 0.0
-

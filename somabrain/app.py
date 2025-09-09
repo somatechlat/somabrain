@@ -2252,15 +2252,19 @@ async def recall(req: S.RecallRequest, request: Request):
                             txt = _extract_text_from_candidate(cand)
                             if not txt:
                                 continue
-                            embs.append(_np.array(embedder.embed(txt), dtype=_np.float32))
+                            embs.append(
+                                _np.array(embedder.embed(txt), dtype=_np.float32)
+                            )
                         if len(embs) >= 2:
-                            embs = [e / (float(_np.linalg.norm(e)) + 1e-8) for e in embs]
+                            embs = [
+                                e / (float(_np.linalg.norm(e)) + 1e-8) for e in embs
+                            ]
                             dsum = 0.0
                             cnt = 0
                             for i in range(len(embs)):
                                 for j in range(i + 1, len(embs)):
                                     cos = float(_np.dot(embs[i], embs[j]))
-                                    dsum += (1.0 - cos)
+                                    dsum += 1.0 - cos
                                     cnt += 1
                             if cnt > 0:
                                 M.DIVERSITY_PAIRWISE_MEAN.observe(dsum / float(cnt))
@@ -2350,6 +2354,7 @@ async def remember(req: S.RememberRequest, request: Request):
         )
     memsvc = MemoryService(mt_memory, ctx.namespace)
     import time as _t
+
     _s0 = _t.perf_counter()
     await memsvc.aremember(key, payload)
     try:
@@ -2734,7 +2739,9 @@ if not _MINIMAL_API:
                         M.HRR_RERANK_APPLIED.inc()
                         try:
                             if _contrib_cnt > 0:
-                                M.RERANK_CONTRIB.observe(_contrib_sum / float(_contrib_cnt))
+                                M.RERANK_CONTRIB.observe(
+                                    _contrib_sum / float(_contrib_cnt)
+                                )
                         except Exception:
                             pass
                 except Exception:

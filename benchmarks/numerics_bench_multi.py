@@ -1,6 +1,9 @@
 """Extended benchmarks for multiple dims and batch sizes."""
+
 import time
+
 import numpy as np
+
 from somabrain import numerics as num
 
 
@@ -17,7 +20,7 @@ def run(D, N):
     return t_norm, t_rfft
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     dims = [128, 1024, 2048, 8192]
     Ns = [64, 256, 1024]
     for D in dims:

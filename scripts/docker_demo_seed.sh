@@ -23,4 +23,3 @@ echo "[seed] Done. Try these commands:"
 echo "curl -s $BASE/health"
 echo "curl -s -X POST $BASE/recall -H 'Content-Type: application/json' -d '{\"query\":\"write docs\",\"top_k\":3}'"
 echo "curl -s -X POST $BASE/plan/suggest -H 'Content-Type: application/json' -d '{\"task_key\":\"write docs\"}'"
-

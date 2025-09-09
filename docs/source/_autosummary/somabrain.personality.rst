@@ -10,4 +10,3 @@
 
       PersonalityStateInMem
       PersonalityStore
-

@@ -24,8 +24,8 @@ from typing import Dict, Tuple
 
 import numpy as np
 
-from somabrain.quantum import HRRConfig, _seed64
 from somabrain.numerics import normalize_array
+from somabrain.quantum import HRRConfig, _seed64
 
 
 class PureQuantumLayer:
@@ -112,7 +112,9 @@ class PureQuantumLayer:
         if np.any(zero_mask):
             # Provide diagnostic detail: indices of zeros
             idxs = np.nonzero(zero_mask)[0].tolist()
-            raise ZeroDivisionError(f"Pure unbind: zero frequency components at indices {idxs}")
+            raise ZeroDivisionError(
+                f"Pure unbind: zero frequency components at indices {idxs}"
+            )
 
         fa_est = fc / fb
         a_est = np.fft.irfft(fa_est, n=self.cfg.dim)
@@ -138,7 +140,9 @@ class PureQuantumLayer:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-    def cleanup(self, q: np.ndarray, anchors: Dict[str, np.ndarray]) -> Tuple[str, float]:
+    def cleanup(
+        self, q: np.ndarray, anchors: Dict[str, np.ndarray]
+    ) -> Tuple[str, float]:
         q = self._ensure_vector(q, name="cleanup.query")
         best_id = ""
         best = -1.0

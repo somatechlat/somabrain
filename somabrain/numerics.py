@@ -5,10 +5,12 @@ Canonical numeric primitives for SomaBrain.
 - rfft_norm / irfft_norm: unitary real-FFT wrappers (norm='ortho')
 - normalize_array: safe L2 normalization; deterministic fallback for subtiny slices
 """
+
 from __future__ import annotations
 
-from typing import Optional, Union, Sequence, Any
 from functools import lru_cache
+from typing import Any, Optional, Sequence, Union
+
 import numpy as np
 
 _ArrayLike = Union[np.ndarray, Sequence]
@@ -20,10 +22,12 @@ TINY_MIN = {
 
 
 @lru_cache(maxsize=256)
-def compute_tiny_floor(dim_or_array: Union[int, np.ndarray],
-                       dtype: Any = np.float32,
-                       strategy: str = "sqrt",
-                       scale: float = 1.0) -> float:
+def compute_tiny_floor(
+    dim_or_array: Union[int, np.ndarray],
+    dtype: Any = np.float32,
+    strategy: str = "sqrt",
+    scale: float = 1.0,
+) -> float:
     """Compute machine-eps * sqrt(D) (default) or alternative strategies.
 
     Returns a dtype-aware tiny-floor clamped to a small dtype-specific min.
@@ -82,7 +86,9 @@ def irfft_norm(X: _ArrayLike, n: int, axis: int = -1) -> np.ndarray:
     return np.fft.irfft(np.asarray(X), n=n, axis=axis, norm="ortho")
 
 
-def _baseline_unit(shape: Sequence[int], axis: int = -1, dtype: Any = np.float32) -> np.ndarray:
+def _baseline_unit(
+    shape: Sequence[int], axis: int = -1, dtype: Any = np.float32
+) -> np.ndarray:
     """Deterministic baseline unit-vector (ones / sqrt(D)) broadcastable to `shape`."""
     axis_norm = axis if axis >= 0 else len(shape) + axis
     D = shape[axis_norm]
@@ -92,14 +98,16 @@ def _baseline_unit(shape: Sequence[int], axis: int = -1, dtype: Any = np.float32
     return baseline_1d.reshape(tuple(bshape))
 
 
-def normalize_array(x: _ArrayLike,
-                    axis: int = -1,
-                    keepdims: bool = False,
-                    tiny_floor_strategy: str = "sqrt",
-                    dtype: Any = np.float32,
-                    strict: bool = False,
-                    mode: str = "legacy_zero",
-                    **kwargs) -> np.ndarray:
+def normalize_array(
+    x: _ArrayLike,
+    axis: int = -1,
+    keepdims: bool = False,
+    tiny_floor_strategy: str = "sqrt",
+    dtype: Any = np.float32,
+    strict: bool = False,
+    mode: str = "legacy_zero",
+    **kwargs,
+) -> np.ndarray:
     """
     L2-normalize `x` along axis in a numerically safe way.
 
@@ -194,7 +202,7 @@ def normalize_array(x: _ArrayLike,
                 if bool(mask_subtiny):
                     result = zero_full
             else:
-                it = np.nditer(mask_subtiny, flags=['multi_index'])
+                it = np.nditer(mask_subtiny, flags=["multi_index"])
                 while not it.finished:
                     if bool(it[0]):
                         sel = list(it.multi_index)
@@ -217,7 +225,7 @@ def normalize_array(x: _ArrayLike,
                 if bool(mask_subtiny):
                     result = baseline_full.astype(result.dtype)
             else:
-                it = np.nditer(mask_subtiny, flags=['multi_index'])
+                it = np.nditer(mask_subtiny, flags=["multi_index"])
                 while not it.finished:
                     if bool(it[0]):
                         sel = list(it.multi_index)
@@ -247,7 +255,9 @@ def normalize_array(x: _ArrayLike,
 
     # Replace any non-finite entries with the deterministic baseline
     if not np.all(np.isfinite(result)):
-        baseline_full = np.broadcast_to(_baseline_unit(arr.shape, axis=axis, dtype=arr.dtype), arr.shape)
+        baseline_full = np.broadcast_to(
+            _baseline_unit(arr.shape, axis=axis, dtype=arr.dtype), arr.shape
+        )
         result = np.where(np.isfinite(result), result, baseline_full)
 
     return result

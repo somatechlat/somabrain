@@ -3,15 +3,19 @@
 Provides robust spectral deconvolution helpers used by unbind algorithms
 to avoid amplification of small spectral components.
 """
+
 from __future__ import annotations
 
 from typing import Optional
+
 import numpy as np
 
 from . import numerics as _num
 
 
-def tikhonov_lambda_from_snr(snr_db: Optional[float], signal_power: float = 1.0) -> float:
+def tikhonov_lambda_from_snr(
+    snr_db: Optional[float], signal_power: float = 1.0
+) -> float:
     """Convert an SNR in dB to a Tikhonov regularization lambda.
 
     Basic heuristic: lambda = signal_power / (10**(snr_db/10)) if snr_db provided,
@@ -20,7 +24,9 @@ def tikhonov_lambda_from_snr(snr_db: Optional[float], signal_power: float = 1.0)
     if snr_db is None:
         return _num.compute_tiny_floor(1, dtype=np.float64, strategy="absolute")
     snr_lin = 10.0 ** (snr_db / 10.0)
-    return float(max(_num.compute_tiny_floor(1, dtype=np.float64), signal_power / snr_lin))
+    return float(
+        max(_num.compute_tiny_floor(1, dtype=np.float64), signal_power / snr_lin)
+    )
 
 
 def wiener_deconvolve(C_spec: np.ndarray, H_spec: np.ndarray, lam: float) -> np.ndarray:

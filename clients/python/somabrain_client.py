@@ -7,6 +7,7 @@ Usage:
     api.remember({"task":"hello","importance":1,"memory_type":"episodic"})
     print(api.recall("hello", top_k=3))
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -15,22 +16,30 @@ import httpx
 
 
 class SomaBrainClient:
-    def __init__(self, base_url: str, token: Optional[str] = None, tenant: Optional[str] = None):
+    def __init__(
+        self, base_url: str, token: Optional[str] = None, tenant: Optional[str] = None
+    ):
         self.base = base_url.rstrip("/")
         self.headers: Dict[str, str] = {"Content-Type": "application/json"}
         if token:
             self.headers["Authorization"] = f"Bearer {token}"
         if tenant:
             self.headers["X-Tenant-ID"] = str(tenant)
-        self._http = httpx.Client(base_url=self.base, headers=self.headers, timeout=10.0)
+        self._http = httpx.Client(
+            base_url=self.base, headers=self.headers, timeout=10.0
+        )
 
-    def remember(self, payload: Dict[str, Any], coord: Optional[str] = None) -> Dict[str, Any]:
+    def remember(
+        self, payload: Dict[str, Any], coord: Optional[str] = None
+    ) -> Dict[str, Any]:
         body = {"coord": coord, "payload": payload}
         r = self._http.post("/remember", json=body)
         r.raise_for_status()
         return r.json()
 
-    def recall(self, query: str, top_k: int = 3, universe: Optional[str] = None) -> Dict[str, Any]:
+    def recall(
+        self, query: str, top_k: int = 3, universe: Optional[str] = None
+    ) -> Dict[str, Any]:
         body: Dict[str, Any] = {"query": query, "top_k": int(top_k)}
         if universe:
             body["universe"] = universe
@@ -80,4 +89,3 @@ class SomaBrainClient:
         r = self._http.post("/plan/suggest", json=body)
         r.raise_for_status()
         return r.json()
-

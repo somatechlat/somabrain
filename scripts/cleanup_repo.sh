@@ -34,7 +34,7 @@ declare -a CANDIDATES=(
   "venv"
 )
 
-echo "The script will inspect and (optionally) archive/remove the following candidates:" 
+echo "The script will inspect and (optionally) archive/remove the following candidates:"
 for p in "${CANDIDATES[@]}"; do echo "  - $p"; done
 
 ARCHIVE_DIR="$ROOT/artifacts/cleanup_$(date +%Y%m%d_%H%M%S)"

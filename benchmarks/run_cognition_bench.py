@@ -3,6 +3,7 @@
 This script runs the existing `benchmarks/cognition_core_bench.py` and
 exposes an exit code and artifact locations for CI.
 """
+
 import subprocess
 import sys
 from pathlib import Path

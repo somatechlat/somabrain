@@ -10,4 +10,3 @@
 
       journal_cli
       run_api
-

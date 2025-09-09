@@ -9,4 +9,3 @@
    .. autosummary::
 
       extract_event_fields
-

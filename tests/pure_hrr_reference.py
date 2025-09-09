@@ -6,6 +6,7 @@ This module provides a minimal PureLayer implementing the canonical HRR algebra:
 
 It is intentionally small and avoids any heuristics. Use for tests/benchmarks only.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -60,7 +61,7 @@ class PureLayer:
         fa = np.fft.rfft(a)
         fb = np.fft.rfft(b)
         # compute in complex128 for accuracy
-        fc = (fa.astype(np.complex128) * fb.astype(np.complex128))
+        fc = fa.astype(np.complex128) * fb.astype(np.complex128)
         c = np.fft.irfft(fc, n=self.dim)
         return normalize(c, self.dtype)
 
@@ -70,7 +71,7 @@ class PureLayer:
         fc = np.fft.rfft(c).astype(np.complex128)
         fb = np.fft.rfft(b).astype(np.complex128)
         # exact division: raise if any frequency is exactly zero
-        zero_mask = (fb == 0)
+        zero_mask = fb == 0
         if np.any(zero_mask):
             raise ZeroDivisionError("zero frequency in divisor in pure unbind")
         fa_est = fc / fb
@@ -85,7 +86,9 @@ class PureLayer:
         s = np.sum(np.stack(arrs, axis=0).astype(np.float64), axis=0)
         return normalize(s, self.dtype)
 
-    def cleanup(self, query: np.ndarray, anchors: Dict[str, np.ndarray], top_k: int = 1):
+    def cleanup(
+        self, query: np.ndarray, anchors: Dict[str, np.ndarray], top_k: int = 1
+    ):
         q = np.asarray(query, dtype=self.dtype)
         best = []
         for k, v in anchors.items():
