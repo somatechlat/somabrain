@@ -56,6 +56,43 @@ Now open:
 - API docs (Swagger): **http://localhost:8000/docs**
 - Prometheus metrics: **http://localhost:8000/metrics**
 
+ # SomaBrain — Observable Memory & Planning for AI Agents
+
+[![CI](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml/badge.svg)](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://somatechlat.github.io/somabrain/)
+[![Tag](https://img.shields.io/github/v/tag/somatechlat/somabrain?sort=semver)](https://github.com/somatechlat/somabrain/tags)
+[![Container](https://img.shields.io/badge/container-ghcr.io%2Fsomatechlat%2Fsomabrain-0A66C2?logo=docker)](https://github.com/somatechlat/somabrain/pkgs/container/somabrain)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Make agents *remember, connect, and explain* their work. SomaBrain gives you:
+- **Stable, inspectable memory** (HRR-based numerics; exact & Wiener unbinding)
+- **Typed links/graphs** between notes, tasks, entities
+- **Multi-tenant isolation**
+- **FastAPI** HTTP gateway with **OpenAPI docs** and **Prometheus** metrics
+
+> You can see what was saved, how it was found, and why it’s suggested.
+
+---
+
+## 🚀 TL;DR — Run in ~10 seconds (Docker)
+
+**Option A — Pull prebuilt image (if available):**
+```bash
+docker run --rm -p 8000:8000 ghcr.io/somatechlat/somabrain:latest
+```
+
+**Option B — Build locally (works anywhere Docker runs):**
+```bash
+git clone https://github.com/somatechlat/somabrain.git
+cd somabrain
+docker build -t somabrain:local .
+docker run --rm -p 8000:8000 somabrain:local
+```
+
+Now open:
+- API docs (Swagger): **http://localhost:8000/docs**
+- Prometheus metrics: **http://localhost:8000/metrics**
+
 ---
 
 ## 🔎 60-second Smoke Test
@@ -254,20 +291,3 @@ MIT — see `LICENSE`.
 - If the **GHCR image** isn’t published yet, keep **Option B** as the primary quickstart and publish tags when ready.
 - Keep `/remember`, `/recall`, `/link` examples aligned with current schemas.
 - Update this README when env vars or routes change.
-
-```
-Performance (CPU, D=8192, float32)
-- Quality (mean cosine):
-  - Unitary+Exact k=1: ≈ 1.000 (PASS gate ≥ 0.70)
-  - Gaussian+Wiener − Tikhonov Δcos (raw): k=1 ≈ 0.030 (borderline), k=4 ≈ 0.087, k=16 ≈ 0.052 (PASS ≥ 0.03)
-- Unbind latency p99 (ms):
-  - Unitary+Exact: ≈ 0.80 ms (PASS ≤ 1.0 ms)
-  - Gaussian+Wiener: ≈ 0.72 ms
-  - Gaussian+Tikhonov: ≈ 0.80 ms
-- Reproduce locally:
-  - `PYTHONPATH=. MPLBACKEND=Agg python benchmarks/cognition_core_bench.py`
-  - Outputs: `benchmarks/cognition_quality.csv`, `benchmarks/cognition_latency.csv` (and PNGs if matplotlib is available)
-
-Charts
-- Recovery vs k: `benchmarks/cognition_cosine.png`
-- Unbind latency p99: `benchmarks/cognition_unbind_p99.png`
