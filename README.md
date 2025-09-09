@@ -56,30 +56,6 @@ Now open:
 - API docs (Swagger): **http://localhost:8000/docs**
 - Prometheus metrics: **http://localhost:8000/metrics**
 
- # SomaBrain — Observable Memory & Planning for AI Agents
-
-[![CI](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml/badge.svg)](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml)
-[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://somatechlat.github.io/somabrain/)
-[![Tag](https://img.shields.io/github/v/tag/somatechlat/somabrain?sort=semver)](https://github.com/somatechlat/somabrain/tags)
-[![Container](https://img.shields.io/badge/container-ghcr.io%2Fsomatechlat%2Fsomabrain-0A66C2?logo=docker)](https://github.com/somatechlat/somabrain/pkgs/container/somabrain)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-
-Make agents *remember, connect, and explain* their work. SomaBrain gives you:
-- **Stable, inspectable memory** (HRR-based numerics; exact & Wiener unbinding)
-- **Typed links/graphs** between notes, tasks, entities
-- **Multi-tenant isolation**
-- **FastAPI** HTTP gateway with **OpenAPI docs** and **Prometheus** metrics
-
-> You can see what was saved, how it was found, and why it’s suggested.
-
----
-
-## 🚀 TL;DR — Run in ~10 seconds (Docker)
-
-**Option A — Pull prebuilt image (if available):**
-```bash
-docker run --rm -p 8000:8000 ghcr.io/somatechlat/somabrain:latest
-```
 
 **Option B — Build locally (works anywhere Docker runs):**
 ```bash
