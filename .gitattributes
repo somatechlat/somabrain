@@ -7,3 +7,8 @@
 *.jpeg binary
 *.gif binary
 *.ico binary
+
+# Treat docs and scripts as text with LF endings
+docs/** text eol=lf
+*.py text eol=lf
+benchmarks/** text
