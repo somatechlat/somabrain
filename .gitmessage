@@ -1,0 +1,10 @@
+# Commit message template (Conventional Commits style)
+# Example: feat(api): add /remember endpoint
+
+<type>(<scope>): <short summary>
+
+<body — optional, use to explain motivation and technical details>
+
+Footer: Fixes #<issue-number> | Co-authored-by: Name <email>
+
+# Types: feat, fix, docs, style, refactor, perf, test, chore, ci, revert

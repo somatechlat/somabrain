@@ -1,0 +1,29 @@
+version: 1
+disable_existing_loggers: false
+formatters:
+  default:
+    # Use uvicorn's default formatter if available, otherwise fallback to generic
+    '()': uvicorn.logging.DefaultFormatter
+    fmt: '%(levelprefix)s %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+handlers:
+  default:
+    class: logging.StreamHandler
+    formatter: default
+    stream: ext://sys.stdout
+root:
+  level: INFO
+  handlers: [default]
+loggers:
+  uvicorn:
+    level: INFO
+    handlers: [default]
+    propagate: false
+  uvicorn.error:
+    level: INFO
+    handlers: [default]
+    propagate: false
+  uvicorn.access:
+    level: INFO
+    handlers: [default]
+    propagate: false

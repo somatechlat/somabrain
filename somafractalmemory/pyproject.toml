@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "somafractalmemory"
+version = "0.2.0"
+description = "Lightweight local package used as an optional dependency by SomaBrain for fractal memory"
+requires-python = ">=3.10"
+authors = [ { name = "SomaBrain Contributors" } ]
+
+dependencies = []

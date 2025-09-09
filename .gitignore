@@ -1,0 +1,65 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Virtualenvs
+.venv/
+venv/
+.runvenv/
+.env
+*.env
+
+# IDEs
+.vscode/
+.idea/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+
+# Sphinx / docs
+docs/_build/
+docs/build/
+docs/build/html/
+docs/generated/
+
+# Runtime / database / logs
+*.log
+*.out
+*.pid
+*.sqlite3
+*.db
+audit_log.jsonl
+somabrain.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+*~
+.#*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test outputs
+*.coverage
+htmlcov/
+
+# Backup / temp
+*.bak
+*.swp
+*.tmp
+
+# Benchmarks / artifacts
+hrr_*.csv
+benchmarks/*.csv
+benchmarks/*.png
+benchmarks/.mplconfig/
+api_benchmark_results.csv
+pytest_output.txt
+
+# Exclude local package builds
+somabrain.egg-info/

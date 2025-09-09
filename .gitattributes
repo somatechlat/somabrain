@@ -1,0 +1,9 @@
+# Ensure consistent line endings
+* text=auto eol=lf
+
+# Force certain files to be treated as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary

@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  somabrain:
+    build: .
+    environment:
+      - SOMABRAIN_MEMORY_MODE=local
+      - SOMABRAIN_HOST=0.0.0.0
+      - SOMABRAIN_PORT=9696
+      - SOMABRAIN_WORKERS=1
+    ports:
+      - "9696:9696"
+    depends_on:
+      redis:
+        condition: service_started
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1g
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
