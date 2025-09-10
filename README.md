@@ -136,30 +136,102 @@ curl -s -X POST http://localhost:8000/link   -H 'Content-Type: application/json'
 POST /remember     # Store text/facts/tasks with optional tags/metadata
 POST /recall       # Retrieve by keyword/semantic cue; ranked results
 POST /link         # Create typed relations between stored items
+SomaBrain — Observable Memory & Planning for AI Agents
+
+[![CI](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml/badge.svg)](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://somatechlat.github.io/somabrain/)
+[![Tag](https://img.shields.io/github/v/tag/somatechlat/somabrain?sort=semver)](https://github.com/somatechlat/somabrain/tags)
+[![Container](https://img.shields.io/badge/container-ghcr.io%2Fsomatechlat%2Fsomabrain-0A66C2?logo=docker)](https://github.com/somatechlat/somabrain/pkgs/container/somabrain)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Make agents *remember, connect, and explain* their work. SomaBrain gives you:
+- **Stable, inspectable memory** (HRR-based numerics; exact & Wiener unbinding)
+- **Typed links/graphs** between notes, tasks, entities
+- **Multi-tenant isolation**
+- **FastAPI** HTTP gateway with **OpenAPI docs** and **Prometheus** metrics
+
+> You can see what was saved, how it was found, and why it’s suggested.
+
+---
+
+## 🚀 TL;DR — Run in ~10 seconds (Docker)
+
+**Option A — Pull prebuilt image (if available):**
+```bash
+docker run --rm -p 8000:8000 ghcr.io/somatechlat/somabrain:latest
+```
+
+**Option B — Build locally (works anywhere Docker runs):**
+```bash
+git clone https://github.com/somatechlat/somabrain.git
+cd somabrain
+docker build -t somabrain:local .
+docker run --rm -p 8000:8000 somabrain:local
+```
+
+Now open:
+- API docs (Swagger): **http://localhost:8000/docs**
+- Prometheus metrics: **http://localhost:8000/metrics**
+
+---
+
+## 🔎 60-second Smoke Test
+
+1) Store a memory (multi-tenant via header):
+```bash
+curl -s -X POST http://localhost:8000/remember \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{"text":"Pay ACME invoice on Friday","tags":["todo","ops"]}'
+```
+
+2) Recall it by cue:
+```bash
+curl -s -X POST http://localhost:8000/recall \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{"query":"invoice ACME"}'
+```
+
+3) (Optional) Link facts:
+```bash
+curl -s -X POST http://localhost:8000/link \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{
+    "source_id":"note:acme-invoice",
+    "target_id":"entity:acme",
+    "type":"about"
+  }'
+```
+
+---
+
+## 🧠 What makes SomaBrain different
+
+- **HRR numerics done right**: unitary role vectors, deterministic seeding, float64 ops, exact & Wiener unbinding for robust recall.
+- **Typed graph links**: turn scattered notes into a navigable knowledge mesh.
+- **Observable by default**: Prometheus metrics to watch recall stages and latency.
+- **Multi-tenant**: isolate projects or users via headers and (optional) auth.
+
+---
+
+## 🧩 API Overview
+
+```
+POST /remember     # Store text/facts/tasks with optional tags/metadata
+POST /recall       # Retrieve by keyword/semantic cue; ranked results
+POST /link         # Create typed relations between stored items
 GET  /metrics      # Prometheus exposition format
 GET  /docs         # OpenAPI/Swagger UI
 ```
 
 Minimal request shapes (subject to evolution):
 ```json
-// /remember
 {
   "text": "Research HRR unitary roles",
   "tags": ["research","hrr"],
   "metadata": {"source":"paper-notes"}
-}
-
-// /recall
-{
-  "query": "unitary roles hrr",
-  "k": 10
-}
-
-// /link
-{
-  "source_id": "note:123",
-  "target_id": "entity:hrr",
-  "type": "about"
 }
 ```
 
@@ -167,7 +239,7 @@ Minimal request shapes (subject to evolution):
 
 ## 👩‍💻 Quick Client Examples
 
-**Python**
+Python example:
 ```python
 import requests
 
@@ -179,7 +251,7 @@ r = requests.post(f"{BASE}/recall", json={"query":"graphite lab"}, headers=HEAD)
 print(r.json())
 ```
 
-**JavaScript**
+JavaScript example:
 ```js
 const BASE = "http://localhost:8000";
 const HEAD = {"X-Tenant-ID": "demo","Content-Type":"application/json"};
@@ -235,7 +307,6 @@ Run:
 ```bash
 docker compose up -d
 ```
-Open Grafana at `http://localhost:3000` and add Prometheus at `http://prometheus:9090`.
 
 ---
 
@@ -250,7 +321,7 @@ Environment variables (all optional; sensible defaults):
 
 Example:
 ```bash
-docker run --rm -p 8000:8000   -e LOG_LEVEL=info -e SOMABRAIN_MODE=local   ghcr.io/somatechlat/somabrain:latest
+docker run --rm -p 8000:8000 -e LOG_LEVEL=info -e SOMABRAIN_MODE=local ghcr.io/somatechlat/somabrain:latest
 ```
 
 ---
