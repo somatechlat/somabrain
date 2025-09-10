@@ -46,6 +46,11 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip setuptools wheel
+          # If the somafractalmemory package exists locally in the workspace,
+          # install it first so pip can satisfy the somafractalmemory>=... requirement
+          if [ -d somafractalmemory ]; then
+            python -m pip install -e ./somafractalmemory || python -m pip install ./somafractalmemory
+          fi
           pip install -e .[dev]
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Run cognition benchmark
