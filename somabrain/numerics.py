@@ -21,20 +21,28 @@ TINY_MIN = {
 }
 
 
-@lru_cache(maxsize=256)
+# Internal cache keyed by canonical primitives to avoid unhashable args
+_TINY_CACHE: dict = {}
+
+
 def compute_tiny_floor(
     dim_or_array: Union[int, np.ndarray],
     dtype: Any = np.float32,
     strategy: str = "sqrt",
     scale: float = 1.0,
 ) -> float:
-    """Compute machine-eps * sqrt(D) (default) or alternative strategies.
+    """Compute a dtype-aware *amplitude* tiny-floor (L2-norm units).
 
-    Returns a dtype-aware tiny-floor clamped to a small dtype-specific min.
+    This function returns a small positive scalar in units of the L2 norm
+    (i.e., the same units as ||x||_2). Callers that need power-domain
+    floors for FFT bins should square this and divide by D
+    (power_per_bin = tiny_amp**2 / D).
+
+    Accepts the legacy flexible calling convention (dtype or dim first).
+    The returned value is cached on canonical primitive keys to avoid
+    lru_cache errors with unhashable args.
     """
-    # Backwards-compatible: allow callers to pass (dtype, D) or (D, dtype)
-    # If first arg looks like a dtype and second is an int, swap. Accept
-    # dtype strings (e.g. 'float32') as well as numpy dtypes.
+    # Canonicalize input into (D:int, dt:np.dtype)
     try:
         dt_try = np.dtype(dim_or_array)
         is_dtype_like = True
@@ -45,11 +53,9 @@ def compute_tiny_floor(
         dt = dt_try
         D = int(dtype)
     else:
-        # Handle integer inputs quickly, otherwise infer dimension from shape or len
         if isinstance(dim_or_array, (int, np.integer)):
             D = int(dim_or_array)
         else:
-            # Try shape[-1], then len(), then product of shape, finally fallback to 1
             shape = getattr(dim_or_array, "shape", None)
             if shape is not None:
                 try:
@@ -61,8 +67,12 @@ def compute_tiny_floor(
                     D = int(len(dim_or_array))
                 except Exception:
                     D = 1
-
         dt = np.dtype(dtype)
+
+    key = (int(D), np.dtype(dt).name, strategy, float(scale))
+    if key in _TINY_CACHE:
+        return _TINY_CACHE[key]
+
     eps = np.finfo(dt).eps
     if strategy == "sqrt":
         base = float(eps * np.sqrt(max(1, D)) * float(scale))
@@ -72,7 +82,10 @@ def compute_tiny_floor(
         base = float(eps * float(scale))
     else:
         raise ValueError(f"unknown tiny-floor strategy: {strategy}")
-    return max(base, TINY_MIN.get(dt, base))
+
+    tiny_amp = max(base, TINY_MIN.get(dt, base))
+    _TINY_CACHE[key] = tiny_amp
+    return tiny_amp
 
 
 def rfft_norm(x: _ArrayLike, n: Optional[int] = None, axis: int = -1) -> np.ndarray:
@@ -180,8 +193,12 @@ def normalize_array(
     # Use float64 intermediates for accumulation to reduce round-off, then
     # cast result back to the array dtype at the end.
     arr_f64 = arr.astype(np.float64)
+    # sum-of-squares (energy) per slice
     sq = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=keepdims_bool)
-    denom = np.sqrt(sq + float(tiny))
+    # tiny is an amplitude threshold (||x||_2 units). Use tiny**2 when
+    # combining with squared norms (sq), which are energy units.
+    tiny_sq = float(tiny) ** 2
+    denom = np.sqrt(sq + tiny_sq)
     # Broadcast denom to arr for division when keepdims=False
     if not keepdims_bool:
         denom_b = np.expand_dims(denom, axis=axis)
@@ -190,7 +207,8 @@ def normalize_array(
     result = (arr_f64 / denom_b).astype(arr.dtype)
 
     sq_nokeep = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=False)
-    mask_subtiny = sq_nokeep < tiny
+    # compare squared-norm to tiny squared for consistency
+    mask_subtiny = sq_nokeep < tiny_sq
 
     if np.any(mask_subtiny):
         if strict or mode == "strict":

@@ -58,9 +58,8 @@ For more details, see the API documentation and guides in this site.
   :maxdepth: 2
   :caption: Contents
 
+  math
+  benchmarks
+  REPORT_NUMERICS_HARDENING
+  api
   architecture
-  api.md
-  agent_integration
-
-  AUTOGEN_POLICY.md
-  api_modules.rst

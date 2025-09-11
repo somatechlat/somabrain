@@ -66,7 +66,41 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
     # Optionally monkeypatch numerics.compute_tiny_floor for strategy
     original = numerics.compute_tiny_floor
     if strategy == "sqrt":
-        numerics.compute_tiny_floor = lambda dt, D: tiny_floor_sqrt(dt, D)
+        # Patch only for the duration of this benchmark: accept any
+        # positional/keyword form and forward to the local tiny_floor_sqrt.
+        def _patched_compute_tiny_floor(*args, **kwargs):
+            # Determine dim and dtype regardless of positional ordering
+            dim = None
+            dtype = kwargs.get("dtype", None)
+            if len(args) >= 2:
+                a0, a1 = args[0], args[1]
+                try:
+                    # if first arg looks like a dtype and second an int, swap
+                    np.dtype(a0)
+                    is_dtype_like = True
+                except Exception:
+                    is_dtype_like = False
+                if is_dtype_like and isinstance(a1, (int, np.integer)):
+                    dtype = a0
+                    dim = a1
+                else:
+                    dim = a0
+                    if dtype is None:
+                        dtype = a1
+            elif len(args) == 1:
+                dim = args[0]
+            # fallback to kwargs
+            if dim is None:
+                dim = kwargs.get("dim", kwargs.get("D", 1))
+            if dtype is None:
+                dtype = kwargs.get("dtype", np.float32)
+            try:
+                return tiny_floor_sqrt(dtype, int(dim))
+            except Exception:
+                # As a last resort, coerce and retry
+                return tiny_floor_sqrt(np.dtype(dtype), int(dim))
+
+        numerics.compute_tiny_floor = _patched_compute_tiny_floor
 
     mses = []
     cosines = []

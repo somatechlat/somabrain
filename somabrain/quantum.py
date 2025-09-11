@@ -285,6 +285,9 @@ class QuantumLayer:
         dtype_floor = compute_tiny_floor(
             self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
         )
+        # dtype_floor is an amplitude (||x||_2) threshold. Convert to a power
+        # per-frequency-bin floor to match S = |FB|^2 units.
+        power_floor_per_bin = float(dtype_floor) ** 2 / float(self.cfg.dim)
 
         # base_eps comes from config or global fallback
         base_eps = (
@@ -292,12 +295,15 @@ class QuantumLayer:
             if (self.cfg.fft_eps is not None)
             else float(HRR_FFT_EPSILON)
         )
-        dtype_floor = max(dtype_floor, base_eps)
+        # Interpret base_eps as a power-floor if it looks like a small number
+        # intended for spectra; ensure we compare power-to-power.
+        base_eps_power = float(base_eps)
+        power_floor_per_bin = max(power_floor_per_bin, base_eps_power)
 
         # spectral floor scales with mean spectral energy
         if self.cfg.strict_math:
-            # Pure algebraic division with tiny-floor eps = compute_tiny_floor
-            eps_used = dtype_floor
+            # Pure algebraic division: use power_floor_per_bin in power units
+            eps_used = power_floor_per_bin
             denom = (S + eps_used).astype(np.float64)
             prod = (fa * np.conjugate(fb)).astype(np.complex128) / denom
             corr = np.fft.irfft(prod, n=self.cfg.dim).astype(self.cfg.dtype)
@@ -307,7 +313,7 @@ class QuantumLayer:
         beta = self.cfg.beta if (self.cfg.beta is not None) else 1e-6
         spectral_floor = float(beta) * float(np.mean(S))
 
-        eps_used = max(dtype_floor, spectral_floor)
+        eps_used = max(power_floor_per_bin, spectral_floor)
 
         # Optionally compute denom in float64 for better stability then cast back
         denom = (S + eps_used).astype(np.float64)

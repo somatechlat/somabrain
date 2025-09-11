@@ -3,9 +3,10 @@
 
 .. automodule:: somabrain.memory_pool
 
-
+   
    .. rubric:: Classes
 
    .. autosummary::
-
+   
       MultiTenantMemory
+   

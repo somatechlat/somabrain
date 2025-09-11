@@ -3,15 +3,15 @@
 
 .. automodule:: somabrain.services
 
-
+   
    .. rubric:: Classes
 
    .. autosummary::
-
+   
       MemoryService
       PlanningService
       RecallService
-
+   
 .. rubric:: Modules
 
 .. autosummary::
