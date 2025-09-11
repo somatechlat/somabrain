@@ -38,7 +38,6 @@ autodoc_mock_imports = [
     # Mock internal modules that execute runtime-only code on import
     "somabrain.app",
     "somabrain.metrics",
-    "somabrain.schemas",
 ]
 
 templates_path = ["_templates"]

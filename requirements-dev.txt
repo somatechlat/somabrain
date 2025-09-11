@@ -1,0 +1,12 @@
+black==25.1.0
+ruff==0.13.0
+isort==6.0.1
+pre-commit==4.3.0
+pytest==8.4.2
+sphinx==8.2.3
+myst-parser==4.0.1
+sphinx-rtd-theme==3.0.2
+pydantic==2.11.7
+numpy==2.3.3
+uvicorn==0.35.0
+httpx==0.28.1
