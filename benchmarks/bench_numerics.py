@@ -20,7 +20,7 @@ import importlib
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -68,7 +68,13 @@ def cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (na * nb))
 
 
-def call_unbind(spec, qinst: QuantumLayer, cvec: np.ndarray, bvec: np.ndarray, role_token: Optional[str] = None):
+def call_unbind(
+    spec,
+    qinst: QuantumLayer,
+    cvec: np.ndarray,
+    bvec: np.ndarray,
+    role_token: Optional[str] = None,
+):
     """Call either a module function or a QuantumLayer method for unbinding.
 
     - If spec is ('method', name), call qinst.name(cvec, bvec) or qinst.name(cvec, role_token)
@@ -122,8 +128,12 @@ def run_unbind_trial(
     else:
         c = q.bind(a, b)
 
-    rec_cur = call_unbind(unbind_cur, q, c, b, role_token if role_mode == "unitary" else None)
-    rec_prop = call_unbind(unbind_prop, q, c, b, role_token if role_mode == "unitary" else None)
+    rec_cur = call_unbind(
+        unbind_cur, q, c, b, role_token if role_mode == "unitary" else None
+    )
+    rec_prop = call_unbind(
+        unbind_prop, q, c, b, role_token if role_mode == "unitary" else None
+    )
 
     if postnorm and norm_fn is not None:
         rec_cur = call_normalize(norm_fn, rec_cur, D, dtype)
@@ -133,10 +143,17 @@ def run_unbind_trial(
     mse_prop = float(np.mean((a - rec_prop) ** 2))
     cos_cur = cosine(a, rec_cur)
     cos_prop = cosine(a, rec_prop)
-    return {"mse_cur": mse_cur, "mse_prop": mse_prop, "cos_cur": cos_cur, "cos_prop": cos_prop}
+    return {
+        "mse_cur": mse_cur,
+        "mse_prop": mse_prop,
+        "cos_cur": cos_cur,
+        "cos_prop": cos_prop,
+    }
 
 
-def run_normalize_trial(rng: np.random.Generator, D: int, dtype: Any, norm_cur, norm_prop) -> Dict[str, Any]:
+def run_normalize_trial(
+    rng: np.random.Generator, D: int, dtype: Any, norm_cur, norm_prop
+) -> Dict[str, Any]:
     x = rng.normal(0.0, 1.0, size=D).astype(dtype)
     out_cur = call_normalize(norm_cur, x, D, dtype)
     out_prop = call_normalize(norm_prop, x, D, dtype)
@@ -171,14 +188,34 @@ def main(argv: List[str] | None = None) -> int:
     for dtype_tag in args.dtype:
         dtype = dmap.get(dtype_tag, np.float32)
         for D in args.D:
-            cfg = HRRConfig(dim=int(D), seed=42, dtype=("float32" if dtype == np.float32 else "float64"))
+            cfg = HRRConfig(
+                dim=int(D),
+                seed=42,
+                dtype=("float32" if dtype == np.float32 else "float64"),
+            )
             q = QuantumLayer(cfg)
             for role_mode in args.roles:
-                run_summary = {"dtype": str(dtype), "D": D, "role": role_mode, "trials": args.trials, "results": []}
+                run_summary = {
+                    "dtype": str(dtype),
+                    "D": D,
+                    "role": role_mode,
+                    "trials": args.trials,
+                    "results": [],
+                }
                 for t in range(args.trials):
                     res = {}
                     if unbind_cur and unbind_prop:
-                        res = run_unbind_trial(q, rng, D, dtype, unbind_cur, unbind_prop, role_mode, args.postnorm, norm_prop)
+                        res = run_unbind_trial(
+                            q,
+                            rng,
+                            D,
+                            dtype,
+                            unbind_cur,
+                            unbind_prop,
+                            role_mode,
+                            args.postnorm,
+                            norm_prop,
+                        )
                     if norm_cur and norm_prop:
                         nres = run_normalize_trial(rng, D, dtype, norm_cur, norm_prop)
                         res["norm"] = nres

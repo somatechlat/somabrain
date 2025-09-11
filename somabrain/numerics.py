@@ -8,7 +8,6 @@ Canonical numeric primitives for SomaBrain.
 
 from __future__ import annotations
 
-from functools import lru_cache
 from typing import Any, Optional, Sequence, Union
 
 import numpy as np

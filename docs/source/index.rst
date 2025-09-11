@@ -62,4 +62,12 @@ For more details, see the API documentation and guides in this site.
   benchmarks
   REPORT_NUMERICS_HARDENING
   api
+  api_quickstart
+  api_reference
+  AUTOGEN_POLICY
   architecture
+  agent_integration
+  api_modules
+  memory_management
+  modules
+  tutorials

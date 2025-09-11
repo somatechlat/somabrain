@@ -159,7 +159,12 @@ class QuantumLayer:
         from somabrain.numerics import normalize_array
 
         return normalize_array(
-            v, self.cfg.dim, self.cfg.dtype, raise_on_subtiny=bool(self.cfg.strict_math)
+            v,
+            axis=-1,
+            keepdims=False,
+            tiny_floor_strategy=self.cfg.tiny_floor_strategy,
+            dtype=self.cfg.dtype,
+            strict=bool(self.cfg.strict_math),
         )
 
     def random_vector(self) -> np.ndarray:
@@ -283,7 +288,7 @@ class QuantumLayer:
         from somabrain.numerics import compute_tiny_floor
 
         dtype_floor = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+            self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         # dtype_floor is an amplitude (||x||_2) threshold. Convert to a power
         # per-frequency-bin floor to match S = |FB|^2 units.
@@ -345,7 +350,7 @@ class QuantumLayer:
         from somabrain.numerics import compute_tiny_floor
 
         eps = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+            self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         denom = fb.copy()
         # If any bin is effectively zero, nudge by eps on the diagonal (rare for unitary roles)
@@ -395,10 +400,14 @@ class QuantumLayer:
         Implements conj(B) / (|B|^2 + 1/SNR) filter with float64 intermediates,
         mapping SNR(dB) to linear SNR for the additive spectral floor.
         """
+        # Import numerics helpers here to avoid top-level circular imports
+        from somabrain.numerics import irfft_norm, rfft_norm
+
         c = self._ensure_vector(c, name="unbind_wiener.c")
         b = self._ensure_vector(b, name="unbind_wiener.b")
-        fc = np.fft.rfft(c).astype(np.complex128)
-        fb = np.fft.rfft(b).astype(np.complex128)
+        # Use unitary FFT wrappers for consistent normalization across the codebase
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        fb = rfft_norm(b, n=self.cfg.dim).astype(np.complex128)
 
         # Optional env overrides
         try:
@@ -417,6 +426,7 @@ class QuantumLayer:
                 whiten = False
         except Exception:
             pass
+
         S = (fb * np.conjugate(fb)).real.astype(np.float64)
         snr = float(10.0 ** (snr_db / 10.0))
         floor_snr = 1.0 / max(snr, 1e-12)
@@ -425,9 +435,12 @@ class QuantumLayer:
         S_mean = float(np.mean(S)) if S.size else 1.0
         adapt = float(alpha) * k_term * S_mean
         floor = max(floor_snr, adapt)
+
         if not whiten:
             denom = S + floor
-            fa_est = (fc * np.conjugate(fb).astype(np.complex128)) / denom
+            fb_c = fb.astype(np.complex128)
+            conj_fb = np.conjugate(fb_c)
+            fa_est = (fc * conj_fb) / denom
         else:
             # Spectral whitening: normalize role magnitude to ~1 per bin.
             eps = 1e-12
@@ -435,8 +448,11 @@ class QuantumLayer:
             # Map constant floor into the whitened domain by average power.
             floor_u = floor / (S_mean + eps)
             denom_u = 1.0 + floor_u
-            fa_est = (fc * np.conjugate(fb_u).astype(np.complex128)) / denom_u
-        a_est = np.fft.irfft(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
+            fb_u_c = fb_u.astype(np.complex128)
+            conj_fb_u = np.conjugate(fb_u_c)
+            fa_est = (fc * conj_fb_u) / denom_u
+
+        a_est = irfft_norm(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 
@@ -449,6 +465,7 @@ class QuantumLayer:
         return self._renorm(a_est)
 
     def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+        """Apply the fixed permutation `times` times (negative for inverse)."""
         a = self._ensure_vector(a, name="permute.a")
         if times >= 0:
             idx = self._perm
@@ -484,7 +501,7 @@ class QuantumLayer:
         from somabrain.numerics import compute_tiny_floor
 
         tiny = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+            self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         for k, v in anchors.items():
             try:
