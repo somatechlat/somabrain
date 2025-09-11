@@ -28,6 +28,13 @@ Functions:
     _seed64: Deterministic seeding function for reproducibility
 """
 
+# Math contract (short):
+# - Use unitary FFT wrappers (rfft_norm / irfft_norm with norm='ortho').
+# - Tiny floors are amplitude (L2) units; convert to spectral power via
+#   power_per_bin = tiny_amp**2 / D when used in frequency-domain denominators.
+# - Use normalize_array(..., mode='robust') for deterministic low-energy fallback
+#   (baseline ones/sqrt(D)). See somabrain/numerics.py for full rationale.
+
 from __future__ import annotations
 
 import hashlib
@@ -222,12 +229,63 @@ class QuantumLayer:
         """
         a = self._ensure_vector(a, name="bind.a")
         b = self._ensure_vector(b, name="bind.b")
-        # FFT-based circular convolution for binding
-        fa = np.fft.rfft(a)
-        fb = np.fft.rfft(b)
+
+        # FFT-based circular convolution for binding (use unitary wrappers)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        fb = rfft_norm(b, n=self.cfg.dim)
         prod = fa * fb
-        conv = np.fft.irfft(prod, n=self.cfg.dim)
+        conv = irfft_norm(prod, n=self.cfg.dim)
         return self._renorm(conv)
+
+
+# Small convenience wrappers following the new canonical numerics contract
+def bind_unitary(a: np.ndarray, r: np.ndarray) -> np.ndarray:
+    from somabrain.numerics import irfft_norm, rfft_norm
+
+    A = rfft_norm(a)
+    R = rfft_norm(r)
+    return irfft_norm(A * R, n=a.size)
+
+
+def unbind_exact_or_tikhonov_or_wiener(
+    c: np.ndarray,
+    r: np.ndarray,
+    *,
+    snr_db: float | None = None,
+    beta: float = 1.0,
+) -> np.ndarray:
+    from somabrain.numerics import compute_tiny_floor, irfft_norm, rfft_norm
+
+    D = c.size
+    dtype = c.dtype
+    tiny_amp = compute_tiny_floor(D, dtype=dtype)
+    tiny_power_per_bin = (tiny_amp * tiny_amp) / D
+
+    C = rfft_norm(c)
+    R = rfft_norm(r)
+    denom_amp = np.abs(R)
+
+    # 1) Exact if safe
+    if np.all(denom_amp > tiny_amp):
+        return irfft_norm(C / R, n=D).astype(dtype)
+
+    # 2) Tikhonov
+    lam = beta * (tiny_amp * tiny_amp)
+    den = (np.abs(R) ** 2) + lam
+    tikh = irfft_norm(np.conj(R) * C / den, n=D)
+
+    # 3) Wiener/MAP (if SNR provided)
+    if snr_db is not None:
+        snr_lin = 10.0 ** (snr_db / 10.0)
+        obs_power = float(np.mean(np.abs(C) ** 2))
+        lam_w = max(tiny_power_per_bin, obs_power / max(snr_lin, 1e-12))
+        den_w = (np.abs(R) ** 2) + lam_w
+        wnr = irfft_norm(np.conj(R) * C / den_w, n=D)
+        return wnr.astype(dtype)
+
+    return tikh.astype(dtype)
 
     # --- Unitary Roles Helpers -------------------------------------------------
     def make_unitary_role(self, token: str) -> np.ndarray:
@@ -252,7 +310,10 @@ class QuantumLayer:
         H[0] = 1.0 + 0.0j
         if D % 2 == 0:
             H[-1] = 1.0 + 0.0j
-        role_time = np.fft.irfft(H, n=D).astype(self.cfg.dtype)
+        # Use unitary inverse FFT to produce the time-domain role (isometric)
+        from somabrain.numerics import irfft_norm
+
+        role_time = irfft_norm(H, n=D).astype(self.cfg.dtype)
         self._role_cache[token] = role_time
         self._role_fft_cache[token] = H.astype(np.complex128)
         return role_time
@@ -264,8 +325,10 @@ class QuantumLayer:
         if H is None:
             _ = self.make_unitary_role(role_token)
             H = self._role_fft_cache[role_token]
-        fa = np.fft.rfft(a)
-        conv = np.fft.irfft(fa * H, n=self.cfg.dim)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        conv = irfft_norm(fa * H, n=self.cfg.dim)
         return self._renorm(conv)
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -277,8 +340,10 @@ class QuantumLayer:
         b = self._ensure_vector(b, name="unbind.b")
 
         # FFT-based circular correlation (deconvolution) with Tikhonov-like regularization
-        fa = np.fft.rfft(a)
-        fb = np.fft.rfft(b)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        fb = rfft_norm(b, n=self.cfg.dim)
 
         # Spectral-adaptive regularization
         # compute power spectrum S = |FB|^2 (elementwise)
@@ -311,7 +376,7 @@ class QuantumLayer:
             eps_used = power_floor_per_bin
             denom = (S + eps_used).astype(np.float64)
             prod = (fa * np.conjugate(fb)).astype(np.complex128) / denom
-            corr = np.fft.irfft(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+            corr = irfft_norm(prod, n=self.cfg.dim).astype(self.cfg.dtype)
             return self._renorm(corr)
 
         # spectral floor scales with mean spectral energy (robust fallback)
@@ -324,7 +389,7 @@ class QuantumLayer:
         denom = (S + eps_used).astype(np.float64)
         prod = (fa * np.conjugate(fb)).astype(np.complex128) / denom
         # Cast result back to runtime dtype before renormalization
-        corr = np.fft.irfft(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+        corr = irfft_norm(prod, n=self.cfg.dim).astype(self.cfg.dtype)
         # metrics: robust/tikhonov-like path
         try:
             from somabrain import metrics as M
@@ -344,21 +409,22 @@ class QuantumLayer:
         """
         c = self._ensure_vector(c, name="unbind_exact.c")
         b = self._ensure_vector(b, name="unbind_exact.b")
-        fc = np.fft.rfft(c).astype(np.complex128)
-        fb = np.fft.rfft(b).astype(np.complex128)
-        # Use a minimal epsilon derived from dtype floor to avoid accidental div/0
-        from somabrain.numerics import compute_tiny_floor
+        from somabrain.numerics import (compute_tiny_floor, irfft_norm,
+                                        rfft_norm)
 
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        fb = rfft_norm(b, n=self.cfg.dim).astype(np.complex128)
+        # Use a minimal epsilon derived from dtype floor to avoid accidental div/0
         eps = compute_tiny_floor(
             self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         denom = fb.copy()
         # If any bin is effectively zero, nudge by eps on the diagonal (rare for unitary roles)
-        zero_mask = np.isclose(denom, 0 + 0j, atol=eps)
+        zero_mask = np.abs(denom) < eps
         if np.any(zero_mask):
             denom[zero_mask] = denom[zero_mask] + eps
         fa_est = fc / denom
-        a_est = np.fft.irfft(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
+        a_est = irfft_norm(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 
@@ -374,8 +440,10 @@ class QuantumLayer:
         if H is None:
             _ = self.make_unitary_role(role_token)
             H = self._role_fft_cache[role_token]
-        fc = np.fft.rfft(c).astype(np.complex128)
-        a_est = np.fft.irfft(fc / H, n=self.cfg.dim).astype(self.cfg.dtype)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        a_est = irfft_norm(fc / H, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 

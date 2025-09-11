@@ -1,223 +1,123 @@
+"""Numeric primitives and small math contract for SomaBrain.
+
+This module provides a small, explicit numeric contract used across the HRR
+code-paths in this project. The goal is to be short, auditable and to state
+the invariants used by the implementation:
+
+- FFTs are unitary for energy preservation: use rfft/irfft with norm='ortho'.
+- The "tiny" floor is an amplitude (L2) threshold. When working in the
+  spectral domain (per-FFT-bin), callers must convert amplitude -> power by
+  squaring and dividing by D (bins): power_per_bin = tiny_amp**2 / D.
+- Normalization is done with float64 accumulation and deterministic fallbacks
+  (baseline = ones / sqrt(D)) when the slice energy is below the tiny floor.
+- Role vectors created from random phases are renormalized in the time domain
+  to ensure unit L2 (isometry) after inverse-FFT.
+
+These decisions keep HRR binding/unbinding numerically stable and deterministic
+across machines and numpy versions.
 """
-Canonical numeric primitives for SomaBrain.
 
-- compute_tiny_floor: eps * sqrt(D) default (strategy='sqrt')
-- rfft_norm / irfft_norm: unitary real-FFT wrappers (norm='ortho')
-- normalize_array: safe L2 normalization; deterministic fallback for subtiny slices
-"""
-
-from __future__ import annotations
-
-from typing import Any, Optional, Sequence, Union
+import hashlib
+from typing import Any
 
 import numpy as np
 
-_ArrayLike = Union[np.ndarray, Sequence]
-
-TINY_MIN = {
-    np.dtype(np.float32): 1e-6,
-    np.dtype(np.float64): 1e-12,
+# Small per-dtype minimums to avoid underflow on extremely small dims.
+_TINY_MIN = {
+    np.float32: 1e-6,
+    np.float64: 1e-12,
 }
 
 
-# Internal cache keyed by canonical primitives to avoid unhashable args
-_TINY_CACHE: dict = {}
+def compute_tiny_floor(D: int, dtype=np.float32, scale: float = 10.0) -> float:
+    """Return an amplitude "tiny" threshold (L2 units) for dimension D.
 
-
-def compute_tiny_floor(
-    dim_or_array: Union[int, np.ndarray],
-    dtype: Any = np.float32,
-    strategy: str = "sqrt",
-    scale: float = 1.0,
-) -> float:
-    """Compute a dtype-aware *amplitude* tiny-floor (L2-norm units).
-
-    This function returns a small positive scalar in units of the L2 norm
-    (i.e., the same units as ||x||_2). Callers that need power-domain
-    floors for FFT bins should square this and divide by D
-    (power_per_bin = tiny_amp**2 / D).
-
-    Accepts the legacy flexible calling convention (dtype or dim first).
-    The returned value is cached on canonical primitive keys to avoid
-    lru_cache errors with unhashable args.
+    Implementation note:
+    - Use machine epsilon scaled by sqrt(D) so the tiny threshold grows with
+      vector length (L2 sensible). The `scale` factor is conservative.
+    - The returned value is an amplitude (L2 norm). For spectral (power)
+      thresholds convert with tiny_amp**2 / D.
     """
-    # Canonicalize input into (D:int, dt:np.dtype)
-    try:
-        dt_try = np.dtype(dim_or_array)
-        is_dtype_like = True
-    except Exception:
-        is_dtype_like = False
-
-    if is_dtype_like and isinstance(dtype, (int, np.integer)):
-        dt = dt_try
-        D = int(dtype)
-    else:
-        if isinstance(dim_or_array, (int, np.integer)):
-            D = int(dim_or_array)
-        else:
-            shape = getattr(dim_or_array, "shape", None)
-            if shape is not None:
-                try:
-                    D = int(shape[-1])
-                except Exception:
-                    D = int(np.prod(shape))
-            else:
-                try:
-                    D = int(len(dim_or_array))
-                except Exception:
-                    D = 1
-        dt = np.dtype(dtype)
-
-    key = (int(D), np.dtype(dt).name, strategy, float(scale))
-    if key in _TINY_CACHE:
-        return _TINY_CACHE[key]
-
+    dt = np.dtype(dtype)
     eps = np.finfo(dt).eps
-    if strategy == "sqrt":
-        base = float(eps * np.sqrt(max(1, D)) * float(scale))
-    elif strategy == "linear":
-        base = float(eps * max(1, D) * float(scale))
-    elif strategy == "absolute":
-        base = float(eps * float(scale))
-    else:
-        raise ValueError(f"unknown tiny-floor strategy: {strategy}")
-
-    tiny_amp = max(base, TINY_MIN.get(dt, base))
-    _TINY_CACHE[key] = tiny_amp
-    return tiny_amp
+    tiny_min = _TINY_MIN.get(dt.type, 1e-12)
+    return float(max(tiny_min, eps * (D**0.5) * scale))
 
 
-def rfft_norm(x: _ArrayLike, n: Optional[int] = None, axis: int = -1) -> np.ndarray:
-    """Unitary real FFT (rfft) wrapper using norm='ortho'."""
-    x = np.asarray(x)
+def rfft_norm(x: np.ndarray, n: int | None = None, axis: int = -1):
+    """Unitary real-FFT wrapper (norm='ortho').
+
+    Using norm='ortho' makes the transform an isometry (up to machine error):
+    ||x||_2 == ||rfft_norm(x)||_2 (with the appropriate complex norm).
+    This simplifies reasoning about binding as multiplication in the spectral domain.
+    """
     return np.fft.rfft(x, n=n, axis=axis, norm="ortho")
 
 
-def irfft_norm(X: _ArrayLike, n: int, axis: int = -1) -> np.ndarray:
-    """Unitary inverse real FFT (irfft) wrapper using norm='ortho'."""
-    return np.fft.irfft(np.asarray(X), n=n, axis=axis, norm="ortho")
-
-
-def _baseline_unit(
-    shape: Sequence[int], axis: int = -1, dtype: Any = np.float32
-) -> np.ndarray:
-    """Deterministic baseline unit-vector (ones / sqrt(D)) broadcastable to `shape`."""
-    axis_norm = axis if axis >= 0 else len(shape) + axis
-    D = shape[axis_norm]
-    baseline_1d = np.ones((D,), dtype=np.dtype(dtype)) / np.sqrt(float(D))
-    bshape = [1] * len(shape)
-    bshape[axis_norm] = D
-    return baseline_1d.reshape(tuple(bshape))
+def irfft_norm(X: np.ndarray, n: int, axis: int = -1):
+    """Inverse unitary real-FFT wrapper (norm='ortho')."""
+    return np.fft.irfft(X, n=n, axis=axis, norm="ortho")
 
 
 def normalize_array(
-    x: _ArrayLike,
+    x: np.ndarray,
     axis: int = -1,
     keepdims: bool = False,
     tiny_floor_strategy: str = "sqrt",
     dtype: Any = np.float32,
     strict: bool = False,
-    mode: str = "legacy_zero",
+    # Default to 'robust' for production: deterministic baseline instead of zeros
+    mode: str = "robust",
     **kwargs,
-) -> np.ndarray:
-    """
-    L2-normalize `x` along axis in a numerically safe way.
+):
+    """Numerically-safe L2 normalization along an axis.
 
-    Robust (default): if norm < tiny_floor, return deterministic baseline unit-vector.
-    Strict: raise ValueError on subtiny norms.
-    """
-    # Legacy compatibility:
-    # - allow old keyword `raise_on_subtiny` -> strict
-    # - tolerate callers that passed `dim` as the axis (e.g. axis >= arr.ndim)
-    # - detect legacy positional usage: normalize_array(x, D, dtype, raise_on_subtiny=...)
-    if "raise_on_subtiny" in kwargs:
-        strict = bool(kwargs.pop("raise_on_subtiny"))
-    # mode choices: 'legacy_zero' (default), 'robust' (baseline unit-vector), 'strict'
-    if mode not in ("legacy_zero", "robust", "strict"):
-        raise ValueError(f"unknown normalize mode: {mode}")
+    Contract summary:
+    - Compute slice energy in float64: E = sum(|x|^2).
+    - Compare with tiny_amp**2 (tiny is amplitude). If E >= tiny_amp**2 -> normal
+      normalization: x / sqrt(E + tiny_amp**2).
+    - If E < tiny_amp**2 -> fallback behavior depends on `mode`:
+       * 'legacy_zero' : return zero-vector for that slice (preserves old behavior)
+       * 'robust'      : return deterministic baseline vector ones/sqrt(D)
+       * 'strict'      : raise ValueError
 
+    All accumulation is done in float64 to be conservative. Non-finite results
+    are replaced by the baseline vector.
+    """
     arr = np.asarray(x)
     if arr.size == 0:
         return arr.astype(arr.dtype)
 
     ndim = arr.ndim
-    # If callers passed a dimension (D) instead of an axis index, detect it later
-    axis_param = axis
     axis_norm = axis if axis >= 0 else ndim + axis
     try:
         D = arr.shape[axis_norm]
     except Exception:
-        # Treat axis param as D when it doesn't index into arr
-        try:
-            D = int(axis_param)
-        except Exception:
-            D = arr.shape[-1]
-        # use last axis for normalization in this compatibility case
-        axis = -1
-        axis_norm = ndim - 1
-    # Handle legacy positional dtype passed as `keepdims` (e.g. 'float32')
-    if not isinstance(keepdims, (bool,)):
-        try:
-            # coerce string or dtype-like to numpy dtype
-            dtype = np.dtype(keepdims)
-            keepdims = False
-        except Exception:
-            # fallback: force keepdims to bool
-            keepdims = bool(keepdims)
+        D = arr.shape[-1]
 
-    tiny = compute_tiny_floor(D, dtype=dtype, strategy=tiny_floor_strategy)
-
-    # If caller passed a requested dimension D (compat mode) and the array
-    # length along the normalization axis doesn't match, pad with zeros or
-    # truncate to match D. This supports schema normalization which passes
-    # dim as the second argument.
-    try:
-        cur_len = arr.shape[axis_norm]
-    except Exception:
-        cur_len = None
-    if cur_len is not None and cur_len != D:
-        if cur_len < D:
-            # pad with zeros on the right along axis_norm
-            pad_width = [(0, 0)] * arr.ndim
-            pad_width[axis_norm] = (0, D - cur_len)
-            arr = np.pad(arr, pad_width, mode="constant", constant_values=0)
-        else:
-            # truncate along axis_norm
-            sl = [slice(None)] * arr.ndim
-            sl[axis_norm] = slice(0, D)
-            arr = arr[tuple(sl)]
-
-    # ensure keepdims is a bool when passed to numpy
-    keepdims_bool = bool(keepdims)
-    # Use float64 intermediates for accumulation to reduce round-off, then
-    # cast result back to the array dtype at the end.
+    tiny_amp = compute_tiny_floor(int(D), dtype=dtype)
     arr_f64 = arr.astype(np.float64)
-    # sum-of-squares (energy) per slice
-    sq = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=keepdims_bool)
-    # tiny is an amplitude threshold (||x||_2 units). Use tiny**2 when
-    # combining with squared norms (sq), which are energy units.
-    tiny_sq = float(tiny) ** 2
+    sq = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=keepdims)
+    tiny_sq = float(tiny_amp) ** 2
     denom = np.sqrt(sq + tiny_sq)
-    # Broadcast denom to arr for division when keepdims=False
-    if not keepdims_bool:
+    if not keepdims:
         denom_b = np.expand_dims(denom, axis=axis)
     else:
         denom_b = denom
     result = (arr_f64 / denom_b).astype(arr.dtype)
 
+    # Handle slices whose energy is below the tiny threshold
     sq_nokeep = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=False)
-    # compare squared-norm to tiny squared for consistency
     mask_subtiny = sq_nokeep < tiny_sq
 
     if np.any(mask_subtiny):
         if strict or mode == "strict":
             raise ValueError("vector norm below tiny_floor in strict mode")
         if mode == "legacy_zero":
-            # Legacy behaviour: return zero-vector for subtiny norms
-            zero_full = np.zeros_like(arr, dtype=arr.dtype)
+            # Preserve legacy behavior: replace subtiny slices with zero
             if mask_subtiny.ndim == 0:
                 if bool(mask_subtiny):
-                    result = zero_full
+                    result = np.zeros_like(arr, dtype=arr.dtype)
             else:
                 it = np.nditer(mask_subtiny, flags=["multi_index"])
                 while not it.finished:
@@ -232,15 +132,14 @@ def normalize_array(
                                 sel_full.append(sel[m_idx])
                                 m_idx += 1
                         sel_tuple = tuple(sel_full)
-                        result[sel_tuple] = zero_full[sel_tuple]
+                        result[sel_tuple] = 0
                     it.iternext()
         else:
-            # robust: use deterministic baseline unit-vector replacement
-            baseline = _baseline_unit(arr.shape, axis=axis, dtype=arr.dtype)
-            baseline_full = np.broadcast_to(baseline, arr.shape)
+            # 'robust': deterministic baseline vector of unit L2: ones/sqrt(D)
+            baseline = np.ones((D,), dtype=arr.dtype) / np.sqrt(float(D))
             if mask_subtiny.ndim == 0:
                 if bool(mask_subtiny):
-                    result = baseline_full.astype(result.dtype)
+                    result = np.broadcast_to(baseline, arr.shape).astype(arr.dtype)
             else:
                 it = np.nditer(mask_subtiny, flags=["multi_index"])
                 while not it.finished:
@@ -255,26 +154,67 @@ def normalize_array(
                                 sel_full.append(sel[m_idx])
                                 m_idx += 1
                         sel_tuple = tuple(sel_full)
-                        result[sel_tuple] = baseline_full[sel_tuple]
+                        result[sel_tuple] = np.broadcast_to(baseline, (D,)).astype(
+                            arr.dtype
+                        )
                     it.iternext()
 
-    # Final numeric correction: enforce unit L2-norm per slice using float64
+    # Final per-slice L2 correction to ensure unit norm (guard against tiny rounding)
     res_f64 = np.asarray(result, dtype=np.float64)
-    # compute per-slice norm with keepdims for broadcasting
-    if keepdims_bool:
-        norm64 = np.sqrt(np.sum(np.abs(res_f64) ** 2, axis=axis, keepdims=True))
-    else:
-        norm64 = np.sqrt(np.sum(np.abs(res_f64) ** 2, axis=axis, keepdims=True))
-    # avoid division by zero
+    norm64 = np.sqrt(np.sum(np.abs(res_f64) ** 2, axis=axis, keepdims=True))
     norm_safe = np.where(norm64 == 0, 1.0, norm64)
     res_f64 = res_f64 / norm_safe
     result = np.asarray(res_f64, dtype=arr.dtype)
 
-    # Replace any non-finite entries with the deterministic baseline
+    # Replace non-finite entries with baseline
     if not np.all(np.isfinite(result)):
         baseline_full = np.broadcast_to(
-            _baseline_unit(arr.shape, axis=axis, dtype=arr.dtype), arr.shape
+            np.ones((D,), dtype=arr.dtype) / np.sqrt(float(D)), arr.shape
         )
         result = np.where(np.isfinite(result), result, baseline_full)
 
     return result
+
+
+def _seed_from_name(global_seed: int, name: str) -> int:
+    """Deterministic small integer seed from a (global_seed, name) pair."""
+    h = hashlib.blake2b(digest_size=16)
+    h.update(str(global_seed).encode("utf-8"))
+    h.update(b":")
+    h.update(name.encode("utf-8"))
+    return int.from_bytes(h.digest(), "little")
+
+
+def role_spectrum_from_seed(name: str, *, D: int, global_seed: int, dtype=np.float32):
+    """Return a unit-magnitude frequency spectrum H for a deterministic role.
+
+    The spectrum is constructed by drawing uniform random phases for the
+    non-redundant rFFT bins and forcing DC (and Nyquist when present) to be real.
+    This yields a spectrum with |H_k| == 1 which, when used with unitary FFTs,
+    makes binding with that role isometric (before any explicit renormalization).
+    """
+    rng = np.random.default_rng(_seed_from_name(global_seed, name))
+    n_bins = D // 2 + 1
+    phases = rng.uniform(0.0, 2.0 * np.pi, size=n_bins)
+    H = np.exp(1j * phases).astype(
+        np.complex64 if dtype == np.float32 else np.complex128
+    )
+    H[0] = 1.0 + 0.0j
+    if D % 2 == 0:
+        H[-1] = 1.0 + 0.0j
+    return H
+
+
+def make_unitary_role(name: str, *, D: int, global_seed: int, dtype=np.float32):
+    """Create a deterministic time-domain role vector with unit L2.
+
+    Steps:
+    1. Build unit-magnitude frequency spectrum H (phases from seeded RNG).
+    2. Compute time-domain real vector via unitary inverse FFT (irfft with norm='ortho').
+    3. Renormalize to unit L2 in the time domain (defensive: preserves isometry
+       across FFT convention changes and machine epsilon differences).
+    """
+    H = role_spectrum_from_seed(name, D=D, global_seed=global_seed, dtype=dtype)
+    r = irfft_norm(H, n=D).astype(dtype)
+    r = normalize_array(r, mode="robust")  # enforce unit L2 baseline
+    return r

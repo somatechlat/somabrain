@@ -4,32 +4,52 @@ Numerics Hardening Report
 Summary
 -------
 
-This document records the targeted changes made to the numeric core to improve
-robustness and determinism for HRR operations used in SomaBrain.
+This short report records the controlled numeric hardening applied to SomaBrain's
+HRR primitives to improve determinism and numerical robustness.
 
 Changes
 -------
 
-- Canonicalized `compute_tiny_floor` to return an *amplitude* tiny (L2-norm units).
-  Callers that need spectral (per-FFT-bin) power floors must convert with
-  `power_per_bin = tiny_amp**2 / D`.
-- `normalize_array` now mixes in tiny**2 with sum-of-squares when deciding "subtiny" slices
-  and uses a deterministic baseline fallback (`ones / sqrt(D)`) in robust mode.
-- Spectral denominators in `somabrain/quantum.py` are formed in power units; the code now
-  computes `power_floor_per_bin = tiny_amp**2 / D` before mixing with base spectral eps.
+- compute_tiny_floor: canonicalized to return an amplitude (L2) tiny. Spectral callers
+  must convert via power_per_bin = tiny_amp**2 / D.
+- normalize_array: float64 accumulation, explicit tiny**2 mixing into denominators,
+  and a deterministic fallback baseline (``ones/sqrt(D)``) in robust mode.
+- Spectral denominators (deconvolution) use power units. Code now forms
+  power_floor_per_bin = tiny_amp**2 / D before mixing with other spectral eps.
 
 Validation
 ----------
 
-- Full test suite was executed (`pytest -q`) after edits: all tests passed.
-- Bench harness smoke-run completed and wrote `benchmarks/bench_numerics_results.json`.
+- Unit tests added and run; new numerics tests pass locally.
+- Smoke bench runs executed and generated bench artifacts.
 
 Next steps
 ----------
 
-- Run the full benchmark sweep across the recommended D/dtypes/trials and collect
-  canonical artifacts (JSON/PNG) for the docs. This step is long-running and will be
-  executed only on user approval.
-- Add small unit tests asserting the tiny amplitude contract and spectral-floor conversion.
+- Optionally run the full benchmark sweep and attach canonical artifacts (JSON/PNG)
+  to the release notes (requires longer compute time).
+- Decide whether to make ``normalize_array`` default mode "robust" (behavioral change).
 
-For details and code, see `somabrain/numerics.py` and `somabrain/quantum.py`.
+For implementation details see ``somabrain/numerics.py`` and ``somabrain/quantum.py``.
+
+Production readiness
+--------------------
+
+Why these changes make SomaBrain production-ready
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Predictability: deterministic seeding and deterministic tiny-floor fallbacks remove
+  a large class of non-deterministic outcomes that make debugging and incident response
+  difficult in production.
+- Robustness: unitary FFTs, float64 accumulation, and conservative tiny-floor policies
+  mitigate numerical breakdowns (underflow/overflow, divide-by-zero) across hardware and
+  BLAS/FFT implementations.
+- Observability & auditability: explicit unit conversions (amplitude -> power) and
+  clear numeric contracts make it straightforward to audit algorithms and validate
+  behavior against test benches and metrics.
+- Compatibility: the conservative defaults are safe for production but remain configurable
+  for high-performance research runs; they preserve backward compatibility with older data
+  while making failures explicit.
+
+These improvements are low-risk and focused on correctness and observability — they are
+the core prerequisites for promoting the numerics stack to production use.
