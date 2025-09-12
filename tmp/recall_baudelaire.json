@@ -1,0 +1,357 @@
+{
+  "wm": [
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757677462.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757677527.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678487.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678551.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678615.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678679.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678743.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678807.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678872.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    },
+    {
+      "score": -0.010354247875511646,
+      "payload": {
+        "task": "system.error",
+        "importance": 5,
+        "memory_type": "episodic",
+        "timestamp": 1757678936.0,
+        "universe": null,
+        "who": "system",
+        "did": "helpers.job_loop.pause",
+        "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+        "where": "Exception",
+        "when": null,
+        "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File"
+      }
+    }
+  ],
+  "memory": [
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757681814.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757681878.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757681941.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757682005.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757682068.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757682132.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757682540.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757683526.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757683591.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    },
+    {
+      "task": "system.error",
+      "importance": 5,
+      "memory_type": "episodic",
+      "timestamp": 1757683655.0,
+      "universe": null,
+      "who": "system",
+      "did": "helpers.job_loop.pause",
+      "what": "An unexpected error occurred while processing the request. (detail: RFC call to http://localhost:55080/rfc failed: Cannot connect to RFC server at http://localhost:55080/rfc after 3 attempts: Cannot connect to host localhost:55080 ssl:default [Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0)])",
+      "where": "Exception",
+      "when": null,
+      "why": "Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1268, in <REDACTED> sock = await aiohappyeyeballs.start_connection( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohappyeyeballs/impl.py\", line 141, in start_connection raise OSError(first_errno, msg) <REDACTED>: [Errno 61] Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 55080), [Errno 61] Connect call failed ('::1', 55080, 0, 0) The above exception was the direct cause of the following exception: Traceback (most recent call last): File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/python/helpers/rfc.py\", line 89, in _send_json_data async with session.post(url, json=data) as response: File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 1488, in __aenter__ self._resp: _RetType = await self._coro ^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 770, in _request resp = await handler(req) ^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/client.py\", line 725, in <REDACTED> conn = await self._connector.connect( ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 642, in connect proto = await self._create_connection(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File \"/Users/<REDACTED>/Documents/GitHub/agent-zero/agent-zero/.venv/lib/python3.11/site-packages/aiohttp/connector.py\", line 1209, in _create_connection _, proto = await self.<REDACTED>(req, traces, timeout) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ File",
+      "coordinate": [
+        -0.9967883937060833,
+        0.70854413183406,
+        0.22713070549070835
+      ]
+    }
+  ],
+  "namespace": "somabrain_ns:public",
+  "trace_id": "4390509840",
+  "deadline_ms": null,
+  "idempotency_key": null,
+  "reality": {
+    "ok": true,
+    "sources": 10,
+    "confidence": 1.0
+  },
+  "drift": null,
+  "hrr_cleanup": null
+}

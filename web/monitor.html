@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SomaBrain Live Metrics</title>
+  <style>
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial;margin:16px;background:#f7fafc;color:#0f172a}
+    header{display:flex;align-items:center;gap:12px}
+    .tiles{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px}
+    .tile{background:white;padding:12px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.06);min-width:160px}
+    .tile h3{margin:0;font-size:12px;color:#334155}
+    .tile .value{font-size:20px;font-weight:600;margin-top:6px}
+    canvas{width:100%!important;height:160px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:12px}
+    footer{margin-top:18px;font-size:12px;color:#64748b}
+    pre{white-space:pre-wrap;background:#0b1220;color:#cbd5e1;padding:8px;border-radius:6px}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>SomaBrain — Live Metrics</h1>
+    <div style="margin-left:auto;color:#64748b">poll interval: <span id="interval">5s</span></div>
+  </header>
+
+  <div class="tiles" id="tiles">
+    <div class="tile"><h3>Total HTTP requests</h3><div class="value" id="req_total">—</div></div>
+    <div class="tile"><h3>Avg request latency (ms)</h3><div class="value" id="req_lat_ms">—</div></div>
+    <div class="tile"><h3>WM utilization</h3><div class="value" id="wm_util">—</div></div>
+    <div class="tile"><h3>WM admits / min (est)</h3><div class="value" id="wm_admit_rate">—</div></div>
+    <div class="tile"><h3>Quota denied (total)</h3><div class="value" id="quota_denied">—</div></div>
+    <div class="tile"><h3>Journal appends (total)</h3><div class="value" id="journal_appends">—</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="tile">
+      <h3>HTTP requests (spark)</h3>
+      <canvas id="c_req_spark"></canvas>
+    </div>
+
+    <div class="tile">
+      <h3>Request latency (avg ms)</h3>
+      <canvas id="c_lat_spark"></canvas>
+    </div>
+
+    <div class="tile">
+      <h3>WM admits (spark)</h3>
+      <canvas id="c_wm_spark"></canvas>
+    </div>
+
+    <div class="tile">
+      <h3>Journal activity</h3>
+      <canvas id="c_journal"></canvas>
+    </div>
+  </div>
+
+  <section style="margin-top:14px">
+    <h3>Raw metrics (latest)</h3>
+    <pre id="raw">loading...</pre>
+  </section>
+
+  <footer>
+    <div>Notes: This page fetches <code>/metrics</code> from the running SomaBrain server and extracts key Prometheus metrics for quick visualization. If a metric is not available the panel shows "—". For production use replace this lightweight dashboard with Prometheus + Grafana and import a Grafana dashboard JSON.</div>
+  </footer>
+
+<script>
+const METRICS_URL = 'http://127.0.0.1:9696/metrics';
+const POLL_INTERVAL = 5000; // ms
+let history = {req_total:[], req_lat:[], wm_admit:[], journal_appends:[]};
+let lastValues = {};
+
+function parsePromText(txt){
+  const lines = txt.split('\n');
+  const metrics = {};
+  for(const l of lines){
+    if(!l || l.startsWith('#')) continue;
+    // simple parser: metric{labels} value
+    const m = l.match(/^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+(\S+)/);
+    if(!m) continue;
+    const name = m[1];
+    const value = parseFloat(m[2]);
+    metrics[name] = value;
+  }
+  return metrics;
+}
+
+async function fetchAndUpdate(){
+  try{
+    const r = await fetch(METRICS_URL);
+    const txt = await r.text();
+    document.getElementById('raw').textContent = txt.slice(0,4000);
+    const m = parsePromText(txt);
+
+    // candidate metric names (tolerant)
+    const req_total = m['somabrain_http_requests_total'] || m['http_requests_total'] || m['requests_total'] || null;
+    const lat_count = m['somabrain_http_latency_seconds_count'] || m['http_request_latency_seconds_count'] || m['http_server_requests_seconds_count'] || null;
+    const lat_sum = m['somabrain_http_latency_seconds_sum'] || m['http_request_latency_seconds_sum'] || m['http_server_requests_seconds_sum'] || null;
+    const wm_util = m['somabrain_wm_utilization'] || m['wm_utilization'] || m['somabrain_wm_util'] || null;
+
+    const wm_admit = m['somabrain_wm_admit_total'] || m['somabrain_wm_admit'] || m['wm_admit_total'] || m['wm_admit'] || null;
+    const quota_denied = m['somabrain_quota_denied_total'] || m['quota_denied_total'] || m['somabrain_quota_denied'] || null;
+    const journal_appends = m['somabrain_journal_append_total'] || m['journal_append_total'] || m['somabrain_journal_append'] || m['JOURNAL_APPEND_total'] || m['JOURNAL_APPEND'] || null;
+
+    // HTTP request total
+    if(req_total!=null){
+      document.getElementById('req_total').textContent = Math.round(req_total).toString();
+      pushHistory('req_total', req_total);
+    } else { document.getElementById('req_total').textContent = '—'; }
+
+    // avg latency
+    if(lat_count!=null && lat_sum!=null && lat_count>0){
+      const avg = (lat_sum/lat_count)*1000;
+      document.getElementById('req_lat_ms').textContent = avg.toFixed(1);
+      pushHistory('req_lat', avg);
+    } else { document.getElementById('req_lat_ms').textContent = '—'; }
+
+    // WM utilization
+    if(wm_util!=null){
+      document.getElementById('wm_util').textContent = (wm_util*100).toFixed(1)+'%';
+    } else { document.getElementById('wm_util').textContent = '—'; }
+
+    // WM admits: show per-minute estimate by delta
+    if(wm_admit!=null){
+      const est = rateEstimate('wm_admit', wm_admit, POLL_INTERVAL);
+      document.getElementById('wm_admit_rate').textContent = est>0?est.toFixed(1):'0.0';
+      pushHistory('wm_admit', est);
+    } else { document.getElementById('wm_admit_rate').textContent = '—'; }
+
+    if(quota_denied!=null){ document.getElementById('quota_denied').textContent = Math.round(quota_denied); } else { document.getElementById('quota_denied').textContent = '—'; }
+    if(journal_appends!=null){ document.getElementById('journal_appends').textContent = Math.round(journal_appends); pushHistory('journal_appends', journal_appends);} else { document.getElementById('journal_appends').textContent = '—'; }
+
+    updateCharts();
+  }catch(e){
+    document.getElementById('raw').textContent = 'error fetching metrics: '+e;
+  }
+}
+
+function pushHistory(key, v){
+  const a = history[key];
+  if(!a) history[key]=[];
+  history[key].push(v);
+  if(history[key].length>60) history[key].shift();
+}
+
+function rateEstimate(key, current, intervalMs){
+  const last = lastValues[key];
+  lastValues[key]=current;
+  if(last==null) return 0.0;
+  const delta = current - last;
+  const perMin = (delta) * (60000/intervalMs);
+  return perMin;
+}
+
+// charts
+const ctxReq = document.getElementById('c_req_spark').getContext('2d');
+const chartReq = new Chart(ctxReq, {type:'line',data:{labels:[],datasets:[{label:'requests',data:[],borderColor:'#ef4444',pointRadius:0,borderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});
+const ctxLat = document.getElementById('c_lat_spark').getContext('2d');
+const chartLat = new Chart(ctxLat, {type:'line',data:{labels:[],datasets:[{label:'latency',data:[],borderColor:'#0ea5a4',pointRadius:0,borderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});
+const ctxWm = document.getElementById('c_wm_spark').getContext('2d');
+const chartWm = new Chart(ctxWm, {type:'line',data:{labels:[],datasets:[{label:'wm',data:[],borderColor:'#60a5fa',pointRadius:0,borderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});
+const ctxJ = document.getElementById('c_journal').getContext('2d');
+const chartJ = new Chart(ctxJ, {type:'line',data:{labels:[],datasets:[{label:'journal',data:[],borderColor:'#f59e0b',pointRadius:0,borderWidth:2}]},options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});
+
+function updateCharts(){
+  const maxLen = 60;
+  ['req_total','req_lat','wm_admit','journal_appends'].forEach((k,i)=>{
+    const arr = history[k]||[];
+    const ch = [chartReq, chartLat, chartWm, chartJ][i];
+    ch.data.labels = arr.map((_,idx)=>idx);
+    ch.data.datasets[0].data = arr;
+    ch.update('none');
+  });
+}
+
+// start polling
+fetchAndUpdate();
+setInterval(fetchAndUpdate, POLL_INTERVAL);
+</script>
+</body>
+</html>

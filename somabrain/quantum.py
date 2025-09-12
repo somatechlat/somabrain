@@ -239,53 +239,7 @@ class QuantumLayer:
         conv = irfft_norm(prod, n=self.cfg.dim)
         return self._renorm(conv)
 
-
-# Small convenience wrappers following the new canonical numerics contract
-def bind_unitary(a: np.ndarray, r: np.ndarray) -> np.ndarray:
-    from somabrain.numerics import irfft_norm, rfft_norm
-
-    A = rfft_norm(a)
-    R = rfft_norm(r)
-    return irfft_norm(A * R, n=a.size)
-
-
-def unbind_exact_or_tikhonov_or_wiener(
-    c: np.ndarray,
-    r: np.ndarray,
-    *,
-    snr_db: float | None = None,
-    beta: float = 1.0,
-) -> np.ndarray:
-    from somabrain.numerics import compute_tiny_floor, irfft_norm, rfft_norm
-
-    D = c.size
-    dtype = c.dtype
-    tiny_amp = compute_tiny_floor(D, dtype=dtype)
-    tiny_power_per_bin = (tiny_amp * tiny_amp) / D
-
-    C = rfft_norm(c)
-    R = rfft_norm(r)
-    denom_amp = np.abs(R)
-
-    # 1) Exact if safe
-    if np.all(denom_amp > tiny_amp):
-        return irfft_norm(C / R, n=D).astype(dtype)
-
-    # 2) Tikhonov
-    lam = beta * (tiny_amp * tiny_amp)
-    den = (np.abs(R) ** 2) + lam
-    tikh = irfft_norm(np.conj(R) * C / den, n=D)
-
-    # 3) Wiener/MAP (if SNR provided)
-    if snr_db is not None:
-        snr_lin = 10.0 ** (snr_db / 10.0)
-        obs_power = float(np.mean(np.abs(C) ** 2))
-        lam_w = max(tiny_power_per_bin, obs_power / max(snr_lin, 1e-12))
-        den_w = (np.abs(R) ** 2) + lam_w
-        wnr = irfft_norm(np.conj(R) * C / den_w, n=D)
-        return wnr.astype(dtype)
-
-    return tikh.astype(dtype)
+    # (All helper functionality implemented as methods on QuantumLayer)
 
     # --- Unitary Roles Helpers -------------------------------------------------
     def make_unitary_role(self, token: str) -> np.ndarray:

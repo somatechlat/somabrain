@@ -18,6 +18,7 @@ across machines and numpy versions.
 """
 
 import hashlib
+import math
 from typing import Any
 
 import numpy as np
@@ -29,7 +30,9 @@ _TINY_MIN = {
 }
 
 
-def compute_tiny_floor(D: int, dtype=np.float32, scale: float = 10.0) -> float:
+def compute_tiny_floor(
+    D: int, dtype=np.float32, scale: float = 1.0, strategy: str = "sqrt"
+) -> float:
     """Return an amplitude "tiny" threshold (L2 units) for dimension D.
 
     Implementation note:
@@ -38,10 +41,33 @@ def compute_tiny_floor(D: int, dtype=np.float32, scale: float = 10.0) -> float:
     - The returned value is an amplitude (L2 norm). For spectral (power)
       thresholds convert with tiny_amp**2 / D.
     """
-    dt = np.dtype(dtype)
-    eps = np.finfo(dt).eps
+    # Backwards-compatible argument handling: callers may pass (dtype, D)
+    # or (D, dtype). Accept both orders gracefully.
+    # If `dtype` is actually an integer, swap.
+    if isinstance(D, (np.dtype, type)) and not isinstance(dtype, (np.dtype, type)):
+        # signature called as compute_tiny_floor(dtype, D)
+        dtype_val = D
+        D_val = dtype
+    else:
+        dtype_val = dtype
+        D_val = D
+
+    try:
+        dt = np.dtype(dtype_val)
+    except Exception:
+        # fallback: if dtype_val looks like a string
+        dt = np.dtype(str(dtype_val))
+
+    if not isinstance(D_val, (int, np.integer)):
+        D_val = int(D_val)
+
+    eps = float(np.finfo(dt).eps)
     tiny_min = _TINY_MIN.get(dt.type, 1e-12)
-    return float(max(tiny_min, eps * (D**0.5) * scale))
+    if strategy == "linear":
+        val = eps * float(D_val) * scale
+    else:
+        val = eps * math.sqrt(float(D_val)) * scale
+    return float(max(tiny_min, val))
 
 
 def rfft_norm(x: np.ndarray, n: int | None = None, axis: int = -1):
@@ -88,26 +114,47 @@ def normalize_array(
     if arr.size == 0:
         return arr.astype(arr.dtype)
 
+    # Backwards-compatibility: callers sometimes pass (arr, D, dtype, ...)
+    # Detect if `axis` was actually used to pass D (e.g. axis >= arr.shape[-1])
     ndim = arr.ndim
-    axis_norm = axis if axis >= 0 else ndim + axis
-    try:
-        D = arr.shape[axis_norm]
-    except Exception:
-        D = arr.shape[-1]
+    # Handle legacy raise_on_subtiny kw: False -> legacy_zero, True -> strict
+    if "raise_on_subtiny" in kwargs:
+        val = kwargs.pop("raise_on_subtiny")
+        if bool(val):
+            strict = True
+        else:
+            mode = "legacy_zero"
 
-    tiny_amp = compute_tiny_floor(int(D), dtype=dtype)
+    axis_norm = axis if axis >= 0 else ndim + axis
+    # If axis looks like a dimension count (>= arr.shape[-1]) and keepdims is a dtype
+    if isinstance(axis, (int, np.integer)) and axis >= arr.shape[-1]:
+        # Legacy signature normalize_array(x, D, dtype, ...)
+        D = int(axis)
+        # interpret keepdims param as dtype when it appears to be one
+        if isinstance(keepdims, (type, np.dtype)):
+            dtype = keepdims
+            keepdims = False
+        axis_norm = ndim - 1
+    else:
+        try:
+            D = arr.shape[axis_norm]
+        except Exception:
+            D = arr.shape[-1]
+
+    tiny_amp = compute_tiny_floor(int(D), dtype=dtype, strategy=tiny_floor_strategy)
     arr_f64 = arr.astype(np.float64)
-    sq = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=keepdims)
+    # Use the computed axis_norm for all reductions to support legacy D-as-arg
+    sq = np.sum(np.abs(arr_f64) ** 2, axis=axis_norm, keepdims=keepdims)
     tiny_sq = float(tiny_amp) ** 2
     denom = np.sqrt(sq + tiny_sq)
     if not keepdims:
-        denom_b = np.expand_dims(denom, axis=axis)
+        denom_b = np.expand_dims(denom, axis=axis_norm)
     else:
         denom_b = denom
     result = (arr_f64 / denom_b).astype(arr.dtype)
 
     # Handle slices whose energy is below the tiny threshold
-    sq_nokeep = np.sum(np.abs(arr_f64) ** 2, axis=axis, keepdims=False)
+    sq_nokeep = np.sum(np.abs(arr_f64) ** 2, axis=axis_norm, keepdims=False)
     mask_subtiny = sq_nokeep < tiny_sq
 
     if np.any(mask_subtiny):
@@ -161,7 +208,7 @@ def normalize_array(
 
     # Final per-slice L2 correction to ensure unit norm (guard against tiny rounding)
     res_f64 = np.asarray(result, dtype=np.float64)
-    norm64 = np.sqrt(np.sum(np.abs(res_f64) ** 2, axis=axis, keepdims=True))
+    norm64 = np.sqrt(np.sum(np.abs(res_f64) ** 2, axis=axis_norm, keepdims=True))
     norm_safe = np.where(norm64 == 0, 1.0, norm64)
     res_f64 = res_f64 / norm_safe
     result = np.asarray(res_f64, dtype=arr.dtype)
