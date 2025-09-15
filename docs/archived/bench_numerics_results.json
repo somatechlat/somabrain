@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "timestamp": 1757510722.9800398,
+    "args": {
+      "unbind_current": "somabrain.quantum.unbind_exact",
+      "unbind_proposed": "somabrain.quantum.unbind_exact_unitary",
+      "normalize_current": "somabrain.numerics.normalize_array",
+      "normalize_proposed": "somabrain.numerics.normalize_array",
+      "dtype": [
+        "f32"
+      ],
+      "D": [
+        256
+      ],
+      "trials": 5,
+      "roles": [
+        "unitary"
+      ],
+      "postnorm": true
+    }
+  },
+  "runs": [
+    {
+      "dtype": "<class 'numpy.float32'>",
+      "D": 256,
+      "role": "unitary",
+      "trials": 5,
+      "results": [
+        {
+          "mse_cur": 0.0068136692679157925,
+          "mse_prop": 1.0276500751951422e-17,
+          "cos_cur": 0.12785033433822807,
+          "cos_prop": 0.9999999991654087,
+          "norm": {
+            "ncur": 1.0,
+            "nprop": 1.0,
+            "diff_mse": 0.0
+          }
+        }
+      ]
+    }
+  ]
+}

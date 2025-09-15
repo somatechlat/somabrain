@@ -19,7 +19,7 @@ extensions = [
     "sphinx.ext.autosummary",
     "myst_parser",
 ]
-autosummary_generate = True
+autosummary_generate = False
 
 # Prevent Sphinx autodoc from failing on optional or runtime-only third-party
 # imports used by the application. Internal somabrain modules are provided
@@ -35,10 +35,10 @@ autodoc_mock_imports = [
     "sklearn",
     "faiss",
     "pydantic_core",
+    "pydantic",
     # Mock internal modules that execute runtime-only code on import
     "somabrain.app",
     "somabrain.metrics",
-    "somabrain.schemas",
 ]
 
 templates_path = ["_templates"]

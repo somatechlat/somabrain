@@ -7,13 +7,9 @@ SOMABRAIN Modules
    want detailed generated pages for them.
 
 .. autosummary::
-   :toctree: generated
-   :recursive:
 
-   somabrain.app
-   somabrain.schemas
-   somabrain.version
-   somabrain.memory_pool
-   somabrain.metrics
-   somabrain.controls
-   somabrain.services
+   somabrain.numerics
+   somabrain.quantum
+   somabrain.sdr
+   somabrain.wm
+   somabrain.embeddings

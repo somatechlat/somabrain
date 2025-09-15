@@ -219,6 +219,64 @@ UNBIND_K_EST = Gauge(
     registry=registry,
 )
 
+# --- RAG/RAF metrics (PR-3) ---
+RAG_REQUESTS = Counter(
+    "somabrain_rag_requests_total",
+    "RAG requests",
+    ["namespace", "retrievers"],
+    registry=registry,
+)
+RAG_RETRIEVE_LAT = Histogram(
+    "somabrain_rag_retrieve_latency_seconds",
+    "RAG retrieve pipeline latency",
+    registry=registry,
+)
+RAG_CANDIDATES = Histogram(
+    "somabrain_rag_candidates_total",
+    "RAG candidate count after dedupe/rerank",
+    buckets=[1, 3, 5, 10, 20, 50],
+    registry=registry,
+)
+RAG_PERSIST = Counter(
+    "somabrain_rag_persist_total",
+    "RAG session persistence outcomes",
+    ["status"],
+    registry=registry,
+)
+
+# Fusion metrics (RAG enhancements)
+RAG_FUSION_APPLIED = Counter(
+    "somabrain_rag_fusion_applied_total",
+    "Times rank fusion was applied",
+    ["method"],
+    registry=registry,
+)
+RAG_FUSION_SOURCES = Histogram(
+    "somabrain_rag_fusion_sources",
+    "Number of retriever sources fused",
+    buckets=[1, 2, 3, 4, 5, 6],
+    registry=registry,
+)
+
+# Additional unbind observability
+UNBIND_SPECTRAL_BINS_CLAMPED = Counter(
+    "somabrain_spectral_bins_clamped_total",
+    "Number of spectral bins clamped/nudged to avoid division by near-zero",
+    registry=registry,
+)
+
+UNBIND_EPS_USED = Gauge(
+    "somabrain_unbind_eps_used",
+    "Effective epsilon (power units) used in spectral denominator",
+    registry=registry,
+)
+
+RECONSTRUCTION_COSINE = Histogram(
+    "somabrain_reconstruction_cosine",
+    "Cosine similarity between original and reconstructed vector after unbind",
+    registry=registry,
+)
+
 # Predictor metrics
 PREDICTOR_LATENCY = Histogram(
     "somabrain_predictor_latency_seconds",

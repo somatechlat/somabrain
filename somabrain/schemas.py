@@ -45,8 +45,21 @@ def normalize_vector(vec_like, dim: int = HRR_DIM):
     # Delegate to the canonical numeric helper for consistent behavior
     from somabrain.numerics import normalize_array
 
-    arr = normalize_array(np.asarray(vec_like), dim, HRR_DTYPE)
-    return arr.tolist()
+    # Ensure we have a 1-D numpy array, pad or truncate to `dim` as needed
+    arr = np.asarray(vec_like, dtype=HRR_DTYPE)
+    if arr.ndim != 1:
+        arr = arr.reshape(-1)
+    if arr.size < dim:
+        # pad with zeros
+        padded = np.zeros((dim,), dtype=HRR_DTYPE)
+        padded[: arr.size] = arr
+        arr = padded
+    elif arr.size > dim:
+        arr = arr[:dim]
+
+    # normalize_array expects the data array and keyword args
+    normed = normalize_array(arr, axis=-1, keepdims=False, dtype=HRR_DTYPE)
+    return normed.tolist()
 
 
 # === Canonical Agent Brain Contracts (Nano Profile) ===
@@ -295,6 +308,34 @@ class RecallResponse(BaseModel):
     reality: Optional[Dict[str, Any]] = None
     drift: Optional[Dict[str, Any]] = None
     hrr_cleanup: Optional[Dict[str, Any]] = None
+
+
+# ----- RAG/RAF request and response models -----
+class RAGRequest(BaseModel):
+    query: str
+    top_k: int = 10
+    retrievers: List[str] = ["vector", "wm", "graph"]
+    rerank: str = (
+        "cosine"  # "cosine"|"mmr"|"hrr" (validated loosely in pipeline for PR‑1)
+    )
+    persist: bool = False
+    universe: Optional[str] = None
+
+
+class RAGCandidate(BaseModel):
+    coord: Optional[str] = None
+    key: Optional[str] = None
+    score: float
+    retriever: str
+    payload: Dict[str, Any]
+
+
+class RAGResponse(BaseModel):
+    candidates: List[RAGCandidate]
+    session_coord: Optional[str] = None
+    namespace: str
+    trace_id: str
+    metrics: Optional[Dict[str, Any]] = None
 
 
 class RememberResponse(BaseModel):

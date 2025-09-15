@@ -50,22 +50,29 @@ class MemoryService:
     def client(self):
         return self.mt_memory.for_namespace(self.namespace)
 
-    def remember(self, key: str, payload: dict, universe: Optional[str] = None) -> None:
+    def remember(self, key: str, payload: dict, universe: Optional[str] = None):
         if universe and not payload.get("universe"):
             payload = dict(payload)
             payload["universe"] = universe
-        self.client().remember(key, payload)
+        # Perform store, then return deterministic coordinate
+        res = self.client().remember(key, payload)
+        try:
+            return self.coord_for_key(key, universe=universe)
+        except Exception:
+            return res
 
-    async def aremember(
-        self, key: str, payload: dict, universe: Optional[str] = None
-    ) -> None:
+    async def aremember(self, key: str, payload: dict, universe: Optional[str] = None):
         if universe and not payload.get("universe"):
             payload = dict(payload)
             payload["universe"] = universe
         if hasattr(self.client(), "aremember"):
-            await self.client().aremember(key, payload)
+            _ = await self.client().aremember(key, payload)
         else:
-            self.client().remember(key, payload)
+            _ = self.client().remember(key, payload)
+        try:
+            return self.coord_for_key(key, universe=universe)
+        except Exception:
+            return None
 
     def link(
         self,

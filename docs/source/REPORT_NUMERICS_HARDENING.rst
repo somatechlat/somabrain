@@ -4,32 +4,43 @@ Numerics Hardening Report
 Summary
 -------
 
-This document records the targeted changes made to the numeric core to improve
-robustness and determinism for HRR operations used in SomaBrain.
+This short report documents the numeric hardening applied to SomaBrain's HRR
+primitives and records the math choices made in code.
 
 Changes
 -------
 
-- Canonicalized `compute_tiny_floor` to return an *amplitude* tiny (L2-norm units).
-  Callers that need spectral (per-FFT-bin) power floors must convert with
-  `power_per_bin = tiny_amp**2 / D`.
-- `normalize_array` now mixes in tiny**2 with sum-of-squares when deciding "subtiny" slices
-  and uses a deterministic baseline fallback (`ones / sqrt(D)`) in robust mode.
-- Spectral denominators in `somabrain/quantum.py` are formed in power units; the code now
-  computes `power_floor_per_bin = tiny_amp**2 / D` before mixing with base spectral eps.
+- compute_tiny_floor: canonicalized to return an amplitude tiny (L2 units). The
+  canonical strategy is ``strategy='sqrt'`` which scales tiny as eps * sqrt(D).
+  When used in spectral code callers convert via
+
+    power_per_bin = tiny_amp**2 / D
+
+- normalize_array: uses float64 accumulation, mixes tiny_amp**2 into denominators,
+  and offers three fallbacks for low-energy slices: ``legacy_zero``, ``robust``
+  (default), and ``strict``. The robust fallback returns the deterministic unit
+  baseline vector ones/sqrt(D).
+
+- Spectral denominators (deconvolution) use power units and derive their minimal
+  per-bin floor from the amplitude tiny as shown above.
 
 Validation
 ----------
 
-- Full test suite was executed (`pytest -q`) after edits: all tests passed.
-- Bench harness smoke-run completed and wrote `benchmarks/bench_numerics_results.json`.
+- Unit tests covering the numerics changes were added and executed locally.
+- Microbench and smoke bench runs were executed and artifacts generated.
 
 Next steps
 ----------
 
-- Run the full benchmark sweep across the recommended D/dtypes/trials and collect
-  canonical artifacts (JSON/PNG) for the docs. This step is long-running and will be
-  executed only on user approval.
-- Add small unit tests asserting the tiny amplitude contract and spectral-floor conversion.
+- Optionally run the full benchmark sweep and attach canonical artifacts (JSON/PNG)
+  to release notes. This requires more compute time.
+- Decide whether to change the project default behavior to ``mode='robust'``
+  (the current code default is robust; the PR can preserve legacy_zero during a
+  migration window if desired).
 
-For details and code, see `somabrain/numerics.py` and `somabrain/quantum.py`.
+Reference
+---------
+
+See ``somabrain/numerics.py`` and ``somabrain/quantum.py`` for the precise
+implementation.

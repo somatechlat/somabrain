@@ -28,6 +28,13 @@ Functions:
     _seed64: Deterministic seeding function for reproducibility
 """
 
+# Math contract (short):
+# - Use unitary FFT wrappers (rfft_norm / irfft_norm with norm='ortho').
+# - Tiny floors are amplitude (L2) units; convert to spectral power via
+#   power_per_bin = tiny_amp**2 / D when used in frequency-domain denominators.
+# - Use normalize_array(..., mode='robust') for deterministic low-energy fallback
+#   (baseline ones/sqrt(D)). See somabrain/numerics.py for full rationale.
+
 from __future__ import annotations
 
 import hashlib
@@ -80,14 +87,14 @@ class HRRConfig:
         # Basic validation to avoid surprising misconfiguration
         if not isinstance(self.dim, int) or self.dim <= 0:
             raise ValueError("HRRConfig.dim must be a positive int")
-            # Allow any positive integer dimensionality. For very small dims
-            # warn the user (tests and examples commonly use 128/256 for speed).
-            import warnings
+        # Allow any positive integer dimensionality. For very small dims warn the user
+        # (tests and examples commonly use 128/256 for speed).
+        import warnings
 
-            if self.dim < 8:
-                warnings.warn(
-                    "HRRConfig.dim is unusually small (<8); numerical results may be degenerate."
-                )
+        if self.dim < 8:
+            warnings.warn(
+                "HRRConfig.dim is unusually small (<8); numerical results may be degenerate."
+            )
         if self.dtype not in ("float32", "float64"):
             raise ValueError("HRRConfig.dtype must be 'float32' or 'float64'")
         # Allow None to mean "use global HRR_FFT_EPSILON"; otherwise ensure positive
@@ -159,7 +166,12 @@ class QuantumLayer:
         from somabrain.numerics import normalize_array
 
         return normalize_array(
-            v, self.cfg.dim, self.cfg.dtype, raise_on_subtiny=bool(self.cfg.strict_math)
+            v,
+            axis=-1,
+            keepdims=False,
+            tiny_floor_strategy=self.cfg.tiny_floor_strategy,
+            dtype=self.cfg.dtype,
+            strict=bool(self.cfg.strict_math),
         )
 
     def random_vector(self) -> np.ndarray:
@@ -217,12 +229,17 @@ class QuantumLayer:
         """
         a = self._ensure_vector(a, name="bind.a")
         b = self._ensure_vector(b, name="bind.b")
-        # FFT-based circular convolution for binding
-        fa = np.fft.rfft(a)
-        fb = np.fft.rfft(b)
+
+        # FFT-based circular convolution for binding (use unitary wrappers)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        fb = rfft_norm(b, n=self.cfg.dim)
         prod = fa * fb
-        conv = np.fft.irfft(prod, n=self.cfg.dim)
+        conv = irfft_norm(prod, n=self.cfg.dim)
         return self._renorm(conv)
+
+    # (All helper functionality implemented as methods on QuantumLayer)
 
     # --- Unitary Roles Helpers -------------------------------------------------
     def make_unitary_role(self, token: str) -> np.ndarray:
@@ -235,8 +252,26 @@ class QuantumLayer:
         time-domain vector is obtained via irfft. Both time-domain vector and its
         spectrum are cached for reuse.
         """
+        # Check in-memory cache first
         if token in self._role_cache and token in self._role_fft_cache:
             return self._role_cache[token]
+        # Attempt to load from durable spectral cache (file-backed) to persist
+        # role spectra across process restarts.
+        try:
+            from somabrain import spectral_cache as _sc
+
+            cached = _sc.get_role(token)
+            if cached is not None:
+                role_time, role_fft = cached
+                # Ensure shapes/types and populate in-memory caches
+                self._role_cache[token] = role_time.astype(self.cfg.dtype)
+                self._role_fft_cache[token] = role_fft.astype(np.complex128)
+                return self._role_cache[token]
+        except Exception:
+            # If cache module is unavailable or read fails, fall back to in-memory
+            # generation. We intentionally swallow exceptions to avoid breaking
+            # runtime behavior when disk isn't writable.
+            pass
         D = self.cfg.dim
         n_bins = D // 2 + 1
         seed64 = _seed64(f"role::{token}") ^ int(self.cfg.seed)
@@ -247,9 +282,19 @@ class QuantumLayer:
         H[0] = 1.0 + 0.0j
         if D % 2 == 0:
             H[-1] = 1.0 + 0.0j
-        role_time = np.fft.irfft(H, n=D).astype(self.cfg.dtype)
+        # Use unitary inverse FFT to produce the time-domain role (isometric)
+        from somabrain.numerics import irfft_norm
+
+        role_time = irfft_norm(H, n=D).astype(self.cfg.dtype)
         self._role_cache[token] = role_time
         self._role_fft_cache[token] = H.astype(np.complex128)
+        # Try to persist to file-backed cache (best-effort; failures are silent)
+        try:
+            from somabrain import spectral_cache as _sc
+
+            _sc.set_role(token, role_time, H.astype(np.complex128))
+        except Exception:
+            pass
         return role_time
 
     def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
@@ -259,8 +304,10 @@ class QuantumLayer:
         if H is None:
             _ = self.make_unitary_role(role_token)
             H = self._role_fft_cache[role_token]
-        fa = np.fft.rfft(a)
-        conv = np.fft.irfft(fa * H, n=self.cfg.dim)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        conv = irfft_norm(fa * H, n=self.cfg.dim)
         return self._renorm(conv)
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -272,8 +319,10 @@ class QuantumLayer:
         b = self._ensure_vector(b, name="unbind.b")
 
         # FFT-based circular correlation (deconvolution) with Tikhonov-like regularization
-        fa = np.fft.rfft(a)
-        fb = np.fft.rfft(b)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fa = rfft_norm(a, n=self.cfg.dim)
+        fb = rfft_norm(b, n=self.cfg.dim)
 
         # Spectral-adaptive regularization
         # compute power spectrum S = |FB|^2 (elementwise)
@@ -283,11 +332,13 @@ class QuantumLayer:
         from somabrain.numerics import compute_tiny_floor
 
         dtype_floor = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+            self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         # dtype_floor is an amplitude (||x||_2) threshold. Convert to a power
         # per-frequency-bin floor to match S = |FB|^2 units.
-        power_floor_per_bin = float(dtype_floor) ** 2 / float(self.cfg.dim)
+        from somabrain.numerics import spectral_floor_from_tiny
+
+        power_floor_per_bin = spectral_floor_from_tiny(dtype_floor, self.cfg.dim)
 
         # base_eps comes from config or global fallback
         base_eps = (
@@ -306,7 +357,21 @@ class QuantumLayer:
             eps_used = power_floor_per_bin
             denom = (S + eps_used).astype(np.float64)
             prod = (fa * np.conjugate(fb)).astype(np.complex128) / denom
-            corr = np.fft.irfft(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+            # NaN guard
+            bad_mask = ~np.isfinite(prod)
+            if np.any(bad_mask):
+                prod[bad_mask] = 0.0
+            corr = irfft_norm(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+            # metrics: exact/strict path
+            try:
+                from somabrain import metrics as M
+
+                M.UNBIND_PATH.labels(path="strict_math").inc()
+                M.UNBIND_EPS_USED.set(float(eps_used))
+                # compute reconstruction cosine against a placeholder:
+                # we don't have the original 'a' here, so skip cosine observation
+            except Exception:
+                pass
             return self._renorm(corr)
 
         # spectral floor scales with mean spectral energy (robust fallback)
@@ -318,13 +383,36 @@ class QuantumLayer:
         # Optionally compute denom in float64 for better stability then cast back
         denom = (S + eps_used).astype(np.float64)
         prod = (fa * np.conjugate(fb)).astype(np.complex128) / denom
-        # Cast result back to runtime dtype before renormalization
-        corr = np.fft.irfft(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+        # NaN guard for spectral division
+        bad_mask2 = ~np.isfinite(prod)
+        if np.any(bad_mask2):
+            prod[bad_mask2] = 0.0
         # metrics: robust/tikhonov-like path
         try:
             from somabrain import metrics as M
 
             M.UNBIND_PATH.labels(path="robust").inc()
+            M.UNBIND_EPS_USED.set(float(eps_used))
+            # count clamped bins (where S was below power_floor_per_bin)
+            clamped = int(np.sum(S < power_floor_per_bin))
+            if clamped > 0:
+                M.UNBIND_SPECTRAL_BINS_CLAMPED.inc(clamped)
+        except Exception:
+            pass
+        # Cast result back to runtime dtype before renormalization
+        corr = irfft_norm(prod, n=self.cfg.dim).astype(self.cfg.dtype)
+        # metrics: robust/tikhonov-like path
+        try:
+            from somabrain import metrics as M
+
+            # If we can observe reconstruction quality, do so. We can attempt
+            # to compute cosine similarity between the reconstructed estimate and
+            # the internal expectation only when callers provide the original.
+            # Here we record eps_used already; cosine requires original 'a' which
+            # is not available at this point in the API. Upstream callers (or
+            # wrappers) may record the RECONSTRUCTION_COSINE metric after
+            # calling this method when they have access to both vectors.
+            M.RECONSTRUCTION_COSINE.observe(0.0)  # placeholder zero observation
         except Exception:
             pass
         return self._renorm(corr)
@@ -339,25 +427,45 @@ class QuantumLayer:
         """
         c = self._ensure_vector(c, name="unbind_exact.c")
         b = self._ensure_vector(b, name="unbind_exact.b")
-        fc = np.fft.rfft(c).astype(np.complex128)
-        fb = np.fft.rfft(b).astype(np.complex128)
-        # Use a minimal epsilon derived from dtype floor to avoid accidental div/0
-        from somabrain.numerics import compute_tiny_floor
 
-        eps = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+        from somabrain.numerics import (compute_tiny_floor, irfft_norm,
+                                        rfft_norm)
+
+        # Spectral division with high-precision intermediates for stability
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        fb = rfft_norm(b, n=self.cfg.dim).astype(np.complex128)
+
+        # Use a minimal epsilon derived from dtype floor (amplitude units)
+        eps_amp = compute_tiny_floor(
+            self.cfg.dim,
+            dtype=np.dtype(self.cfg.dtype),
+            strategy=self.cfg.tiny_floor_strategy,
         )
-        denom = fb.copy()
-        # If any bin is effectively zero, nudge by eps on the diagonal (rare for unitary roles)
-        zero_mask = np.isclose(denom, 0 + 0j, atol=eps)
+        # Convert amplitude tiny to per-bin power floor
+        from somabrain.numerics import spectral_floor_from_tiny
+
+        eps_power = spectral_floor_from_tiny(eps_amp, self.cfg.dim)
+
+        denom = fb.copy().astype(np.complex128)
+        # If any bin magnitude is effectively zero, nudge by eps_power on the diagonal
+        zero_mask = np.abs(denom) < eps_power
         if np.any(zero_mask):
-            denom[zero_mask] = denom[zero_mask] + eps
+            denom[zero_mask] = denom[zero_mask] + eps_power
+
         fa_est = fc / denom
-        a_est = np.fft.irfft(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
+        # guard against non-finite bins
+        bad = ~np.isfinite(fa_est)
+        if np.any(bad):
+            fa_est[bad] = 0.0
+        a_est = irfft_norm(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 
             M.UNBIND_PATH.labels(path="exact").inc()
+            M.UNBIND_EPS_USED.set(float(eps_power))
+            clamped = int(np.sum(np.abs(fb) < eps_power))
+            if clamped > 0:
+                M.UNBIND_SPECTRAL_BINS_CLAMPED.inc(clamped)
         except Exception:
             pass
         return self._renorm(a_est)
@@ -367,14 +475,48 @@ class QuantumLayer:
         c = self._ensure_vector(c, name="unbind_exact_unitary.c")
         H = self._role_fft_cache.get(role_token)
         if H is None:
+            # Try to load from durable cache before generating
+            try:
+                from somabrain import spectral_cache as _sc
+
+                cached = _sc.get_role(role_token)
+                if cached is not None:
+                    _, role_fft = cached
+                    H = role_fft.astype(np.complex128)
+                    # populate in-memory caches
+                    self._role_fft_cache[role_token] = H
+                    # attempt to also populate time-domain cache if available
+                    try:
+                        role_time = cached[0]
+                        self._role_cache[role_token] = role_time.astype(self.cfg.dtype)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+        if H is None:
             _ = self.make_unitary_role(role_token)
             H = self._role_fft_cache[role_token]
-        fc = np.fft.rfft(c).astype(np.complex128)
-        a_est = np.fft.irfft(fc / H, n=self.cfg.dim).astype(self.cfg.dtype)
+        from somabrain.numerics import irfft_norm, rfft_norm
+
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        denom_H = H.astype(np.complex128)
+        fa_tmp = fc / denom_H
+        badH = ~np.isfinite(fa_tmp)
+        if np.any(badH):
+            fa_tmp[badH] = 0.0
+        a_est = irfft_norm(fa_tmp, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 
             M.UNBIND_PATH.labels(path="exact_unitary").inc()
+            # denom_H comes from unitary role; count bad bins and set a tiny eps
+            eps_power = 0.0
+            clamped = int(np.sum(badH))
+            if clamped > 0:
+                # record a small eps to indicate intervention
+                eps_power = float(np.finfo(np.float64).eps)
+                M.UNBIND_SPECTRAL_BINS_CLAMPED.inc(clamped)
+            M.UNBIND_EPS_USED.set(float(eps_power))
         except Exception:
             pass
         return self._renorm(a_est)
@@ -382,7 +524,7 @@ class QuantumLayer:
     def unbind_wiener(
         self,
         c: np.ndarray,
-        b: np.ndarray,
+        b: np.ndarray | str,
         snr_db: float = 40.0,
         *,
         k_est: int | None = None,
@@ -395,10 +537,27 @@ class QuantumLayer:
         Implements conj(B) / (|B|^2 + 1/SNR) filter with float64 intermediates,
         mapping SNR(dB) to linear SNR for the additive spectral floor.
         """
+        # Import numerics helpers here to avoid top-level circular imports
+        from somabrain.numerics import irfft_norm, rfft_norm
+
         c = self._ensure_vector(c, name="unbind_wiener.c")
-        b = self._ensure_vector(b, name="unbind_wiener.b")
-        fc = np.fft.rfft(c).astype(np.complex128)
-        fb = np.fft.rfft(b).astype(np.complex128)
+        # Accept role token strings for convenience: resolve to role vector
+        if isinstance(b, str):
+            role_token = b
+            H = self._role_fft_cache.get(role_token)
+            if H is None:
+                _ = self.make_unitary_role(role_token)
+                H = self._role_fft_cache[role_token]
+            # convert role spectrum back to time-domain role for _ensure_vector
+            b_vec = self._role_cache.get(role_token)
+            if b_vec is None:
+                b_vec = self.make_unitary_role(role_token)
+            b = b_vec
+        else:
+            b = self._ensure_vector(b, name="unbind_wiener.b")
+        # Use unitary FFT wrappers for consistent normalization across the codebase
+        fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
+        fb = rfft_norm(b, n=self.cfg.dim).astype(np.complex128)
 
         # Optional env overrides
         try:
@@ -417,6 +576,7 @@ class QuantumLayer:
                 whiten = False
         except Exception:
             pass
+
         S = (fb * np.conjugate(fb)).real.astype(np.float64)
         snr = float(10.0 ** (snr_db / 10.0))
         floor_snr = 1.0 / max(snr, 1e-12)
@@ -425,9 +585,12 @@ class QuantumLayer:
         S_mean = float(np.mean(S)) if S.size else 1.0
         adapt = float(alpha) * k_term * S_mean
         floor = max(floor_snr, adapt)
+
         if not whiten:
             denom = S + floor
-            fa_est = (fc * np.conjugate(fb).astype(np.complex128)) / denom
+            fb_c = fb.astype(np.complex128)
+            conj_fb = np.conjugate(fb_c)
+            fa_est = (fc * conj_fb) / denom
         else:
             # Spectral whitening: normalize role magnitude to ~1 per bin.
             eps = 1e-12
@@ -435,8 +598,11 @@ class QuantumLayer:
             # Map constant floor into the whitened domain by average power.
             floor_u = floor / (S_mean + eps)
             denom_u = 1.0 + floor_u
-            fa_est = (fc * np.conjugate(fb_u).astype(np.complex128)) / denom_u
-        a_est = np.fft.irfft(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
+            fb_u_c = fb_u.astype(np.complex128)
+            conj_fb_u = np.conjugate(fb_u_c)
+            fa_est = (fc * conj_fb_u) / denom_u
+
+        a_est = irfft_norm(fa_est, n=self.cfg.dim).astype(self.cfg.dtype)
         try:
             from somabrain import metrics as M
 
@@ -444,11 +610,17 @@ class QuantumLayer:
             M.UNBIND_WIENER_FLOOR.set(float(floor))
             if k_est is not None:
                 M.UNBIND_K_EST.set(float(k_est))
+            # Record effective epsilon used and clamped bins (S < floor)
+            M.UNBIND_EPS_USED.set(float(floor))
+            clamped = int(np.sum(S < float(floor)))
+            if clamped > 0:
+                M.UNBIND_SPECTRAL_BINS_CLAMPED.inc(clamped)
         except Exception:
             pass
         return self._renorm(a_est)
 
     def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+        """Apply the fixed permutation `times` times (negative for inverse)."""
         a = self._ensure_vector(a, name="permute.a")
         if times >= 0:
             idx = self._perm
@@ -484,7 +656,7 @@ class QuantumLayer:
         from somabrain.numerics import compute_tiny_floor
 
         tiny = compute_tiny_floor(
-            self.cfg.dtype, self.cfg.dim, strategy=self.cfg.tiny_floor_strategy
+            self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
         for k, v in anchors.items():
             try:
@@ -497,3 +669,150 @@ class QuantumLayer:
                 best = s
                 best_id = k
         return best_id, best
+
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible thin wrappers
+# These keep older test-suite imports working: they delegate to the array-based
+# implementations above (so no change in core math), accepting either a role
+# vector (np.ndarray) or a role token (str) where reasonable.
+# ---------------------------------------------------------------------------
+
+
+def _as_real_vector(v: object) -> np.ndarray:
+    import numpy as _np
+
+    if isinstance(v, _np.ndarray):
+        return v
+    try:
+        return _np.asarray(v)
+    except Exception:
+        raise ValueError("role must be an ndarray or convertible to one")
+
+
+def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
+    """Compatibility wrapper: bind vector `a` with `role`.
+
+    If `role` is a vector, perform FFT-domain multiplication. If `role` is a
+    token string, create a temporary QuantumLayer and bind using its helper.
+    """
+    from somabrain.numerics import irfft_norm, rfft_norm
+
+    # QuantumLayer and HRRConfig are defined in this module; use them directly
+    # role as token -> delegate to QuantumLayer for deterministic token handling
+    if isinstance(role, str):
+        q = QuantumLayer(HRRConfig(dim=len(a), seed=42))
+        return q.bind_unitary(a, role)
+
+    R = _as_real_vector(role)
+    if a.shape[0] != R.shape[0]:
+        raise ValueError("a and role must have the same length")
+    fa = rfft_norm(a, n=a.size)
+    fr = rfft_norm(R, n=R.size)
+    from somabrain.numerics import normalize_array
+
+    c = irfft_norm(fa * fr, n=a.size)
+    return normalize_array(c, mode="robust")
+
+
+def unbind_exact_or_tikhonov_or_wiener(
+    c: np.ndarray, role: object, snr_db: float | None = None
+) -> np.ndarray:
+    """Compatibility unbind wrapper.
+
+    Calls exact division when `snr_db` is None (Tikhonov-like tiny-floor), and
+    Wiener deconvolution when `snr_db` is provided. Accepts either a role
+    vector or a role token string.
+    """
+    import numpy as _np
+
+    from somabrain import wiener as _wiener
+    from somabrain.numerics import (compute_tiny_floor, irfft_norm,
+                                    normalize_array, rfft_norm)
+
+    # Role token -> delegate to QuantumLayer exact_unitary/unbind_wiener
+    if isinstance(role, str):
+        q = QuantumLayer(HRRConfig(dim=len(c), seed=42))
+        if snr_db is None:
+            # exact unbind using the cached unitary spectrum for token
+            return q.unbind_exact_unitary(c, role)
+        else:
+            # Wiener unbind using the role token (QuantumLayer will lookup role)
+            # QuantumLayer.unbind_wiener expects (c, b, ...). For token
+            # convenience, delegate to the QuantumLayer which will resolve the role.
+            return q.unbind_wiener(c, role, snr_db=snr_db)
+
+    R = _as_real_vector(role)
+    if c.shape[0] != R.shape[0]:
+        raise ValueError("c and role must have the same length")
+
+    # spectral representations
+    Fc = rfft_norm(c, n=c.size).astype(complex)
+    Fr = rfft_norm(R, n=R.size).astype(complex)
+
+    if snr_db is None:
+        # exact/tikhonov-style: avoid div/0 by nudging denom by a consistent
+        # amplitude-per-bin floor derived from compute_tiny_floor (which
+        # returns an L2 amplitude tiny). Convert to per-bin amplitude floor
+        # = tiny_amp / sqrt(D) and nudge complex denom bins below that.
+        eps_amp = compute_tiny_floor(c.size, dtype=_np.dtype(c.dtype), strategy="sqrt")
+        # per-bin amplitude floor
+        amp_floor = float(eps_amp) / float((c.size**0.5))
+        # ensure power-floor fallback from global fft eps is respected as a
+        # conservative lower bound (HRR_FFT_EPSILON is power-like in practice)
+        try:
+            from somabrain.nano_profile import HRR_FFT_EPSILON as _HRR_EPS
+
+            # if HRR_EPS looks like a power, map to amplitude via sqrt(D)
+            amp_floor = max(amp_floor, float(_HRR_EPS) ** 0.5)
+        except Exception:
+            pass
+
+        denom = Fr.copy().astype(np.complex128)
+        zero_mask = np.abs(denom) < amp_floor
+        if np.any(zero_mask):
+            denom[zero_mask] = denom[zero_mask] + amp_floor
+        # perform division in complex128 with guards
+        Fa = (Fc.astype(np.complex128) / denom).astype(np.complex128)
+        bad = ~np.isfinite(Fa)
+        if np.any(bad):
+            Fa[bad] = 0.0
+        x = irfft_norm(Fa, n=c.size)
+        x_normed = normalize_array(x, mode="robust")
+        # observe reconstruction cosine if possible (we have original c->x relation)
+        try:
+            from somabrain import metrics as M
+            from somabrain.numerics import compute_tiny_floor
+
+            tiny = compute_tiny_floor(c.size, dtype=np.dtype(c.dtype), strategy="sqrt")
+            na = float(np.linalg.norm(x_normed))
+            nb = float(np.linalg.norm(c))
+            if na <= tiny or nb <= tiny:
+                cosv = 0.0
+            else:
+                cosv = float(np.dot(x_normed, c) / (na * nb))
+            M.RECONSTRUCTION_COSINE.observe(float(cosv))
+        except Exception:
+            pass
+        return x_normed
+    else:
+        # Wiener route: map snr_db -> lambda and use wiener helper
+        lam = _wiener.tikhonov_lambda_from_snr(snr_db)
+        X_spec = _wiener.wiener_deconvolve(Fc, Fr, lam)
+        x = irfft_norm(X_spec, n=c.size)
+        x_normed = normalize_array(x, mode="robust")
+        try:
+            from somabrain import metrics as M
+            from somabrain.numerics import compute_tiny_floor
+
+            tiny = compute_tiny_floor(c.size, dtype=np.dtype(c.dtype), strategy="sqrt")
+            na = float(np.linalg.norm(x_normed))
+            nb = float(np.linalg.norm(c))
+            if na <= tiny or nb <= tiny:
+                cosv = 0.0
+            else:
+                cosv = float(np.dot(x_normed, c) / (na * nb))
+            M.RECONSTRUCTION_COSINE.observe(float(cosv))
+        except Exception:
+            pass
+        return x_normed

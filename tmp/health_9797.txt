@@ -1,0 +1,1 @@
+{"ok":true,"components":{"memory":{"ok":true},"wm_items":"tenant-scoped","api_version":1}}

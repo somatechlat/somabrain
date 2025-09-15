@@ -1,4 +1,4 @@
-## Quickstart — remember & recall
+# Quickstart — remember & recall
 
 These are minimal, canonical examples for the HTTP API. Adjust host/port as needed (the project commonly runs under uvicorn on port 8000).
 
