@@ -15,17 +15,12 @@ RUN apt-get update \
 # Copy project and install via pyproject dependencies
 COPY pyproject.toml README.md /app/
 COPY somabrain /app/somabrain
-COPY somafractalmemory /app/somafractalmemory
 COPY docs /app/docs
 COPY scripts /app/scripts
 
 COPY requirements.txt ./
 RUN pip install --upgrade pip setuptools wheel \
-    && pip install -r requirements.txt \
-    # Only attempt editable install if somafractalmemory looks like a Python project
-    && if [ -d somafractalmemory ] && { [ -f somafractalmemory/pyproject.toml ] || [ -f somafractalmemory/setup.py ]; }; then \
-        pip install -e somafractalmemory; \
-    fi \
+    && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi \
     && pip install .
 
 # Create non-root user
@@ -37,7 +32,7 @@ USER appuser
 EXPOSE 9696
 
 # Environment defaults
-ENV SOMABRAIN_MEMORY_MODE=local \
+ENV SOMABRAIN_MEMORY_MODE=stub \
     SOMABRAIN_HOST=0.0.0.0 \
     SOMABRAIN_PORT=9696 \
     SOMABRAIN_WORKERS=1

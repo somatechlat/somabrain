@@ -23,7 +23,6 @@ dependencies = [
   "prometheus-client>=0.17",
   "httpx>=0.24",
   "cachetools>=5.3",
-  "somafractalmemory>=0.2.0",
 ]
 
 [project.optional-dependencies]

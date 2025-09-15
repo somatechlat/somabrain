@@ -745,7 +745,38 @@ class MemoryClient:
         type_filter: str | None = None,
         limit: int = 50,
     ) -> List[dict]:
-        """List outgoing edges with metadata from a start node in the in-process graph."""
+        """List outgoing edges with metadata.
+
+        HTTP mode: call SFM /neighbors. Local/stub: use in-process adjacency.
+        """
+        if self._mode == "http" and self._http is not None:
+            try:
+                body = {
+                    "from_coord": [float(start[0]), float(start[1]), float(start[2])],
+                    "type": str(type_filter) if type_filter else None,
+                    "limit": int(limit),
+                }
+                r = self._http.post("/neighbors", json=body)
+                data = r.json() if hasattr(r, "json") else None
+                edges = (data or {}).get("edges", []) if isinstance(data, dict) else []
+                # normalize
+                out: List[dict] = []
+                for e in edges:
+                    try:
+                        out.append(
+                            {
+                                "from": tuple(e.get("from") or start),
+                                "to": tuple(e.get("to")),
+                                "type": e.get("type"),
+                                "weight": float(e.get("weight", 1.0)),
+                            }
+                        )
+                    except Exception:
+                        continue
+                return out[: max(1, int(limit))]
+            except Exception:
+                pass
+        # local/stub fallback
         key = cast(Tuple[float, float, float], (start[0], start[1], start[2]))
         adj = self._graph.get(key, {})
         out: List[dict] = []
