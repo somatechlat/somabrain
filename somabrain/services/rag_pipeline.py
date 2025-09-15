@@ -144,16 +144,6 @@ async def run_rag_pipeline(
     if not cands:
         for rname in retrievers:
             if rname == "wm":
-                cands += retrieve_wm_stub(req.query, top_k)
-            elif rname == "vector":
-                cands += retrieve_vector_stub(req.query, top_k)
-            elif rname == "graph":
-                cands += retrieve_graph_stub(req.query, top_k)
-
-    # If nothing retrieved, backfill with stubs to ensure endpoint responsiveness in empty stores
-    if not cands:
-        for rname in retrievers:
-            if rname == "wm":
                 lst = retrieve_wm_stub(req.query, top_k)
                 lists_by_retriever["wm"] = lst
                 cands += lst
