@@ -64,3 +64,4 @@ pytest_output.txt
 # Exclude local package builds
 somabrain.egg-info/
 artifacts/
+external/somafractalmemory
