@@ -603,6 +603,15 @@ app = FastAPI(
 # Initialize logging
 setup_logging()
 
+# Include optional RAG router (PR‑1 skeleton)
+try:
+    from somabrain.api.routers import rag as _rag_router
+
+    app.include_router(_rag_router.router, prefix="/rag")
+except Exception:
+    # Router inclusion is optional; tests assert presence when files exist
+    pass
+
 
 # Validation error handler to surface 422 details and source context
 @app.exception_handler(RequestValidationError)
@@ -681,7 +690,13 @@ if _MINIMAL_API:
             # method-specific allowlist
             self.allow_map = {
                 "GET": {"/health", "/openapi.json", "/docs", "/redoc", "/favicon.ico"},
-                "POST": {"/remember", "/recall", "/plan/suggest", "/sleep/run"},
+                "POST": {
+                    "/remember",
+                    "/recall",
+                    "/plan/suggest",
+                    "/sleep/run",
+                    "/rag/retrieve",
+                },
             }
 
         def _is_allowed(self, method: str, path: str) -> bool:
@@ -789,6 +804,21 @@ prefrontal = PrefrontalCortex(PrefrontalConfig())
 
 fnom_memory: Any = None  # type: ignore[assignment]
 fractal_memory: Any = None  # type: ignore[assignment]
+
+# Expose singletons for services that avoid importing this module directly
+try:
+    from . import runtime as _rt
+
+    _rt.set_singletons(
+        _embedder=embedder,
+        _quantum=quantum,
+        _mt_wm=mt_wm,
+        _mc_wm=mc_wm,
+        _mt_memory=mt_memory,
+        _cfg=cfg,
+    )
+except Exception:
+    pass
 
 
 # PHASE 2: UNIFIED PROCESSING CORE - SIMPLIFIED ARCHITECTURE

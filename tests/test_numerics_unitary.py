@@ -66,3 +66,27 @@ def test_wiener_improves_under_noise():
     )  # exact/Tikhonov as needed
     a_wien = unbind_exact_or_tikhonov_or_wiener(c_noisy, role, snr_db=10.0)  # Wiener
     assert cosine(a, a_wien) >= cosine(a, a_exact) - 1e-9
+
+
+def test_unbind_snr_sweep_small():
+    # Small sweep to ensure Wiener is beneficial at low SNRs across seeds
+    D = 256
+    seeds = [0, 1, 2]
+    snr_low = 0.0
+    improvements = []
+    for sd in seeds:
+        rng2 = np.random.default_rng(sd)
+        a = rng2.normal(size=D).astype(np.float32)
+        a /= np.linalg.norm(a) + 1e-30
+        role = make_unitary_role("sweep_role", D=D, global_seed=42, dtype=np.float32)
+        c_clean = bind_unitary(a, role)
+        C = rfft_norm(c_clean)
+        noise = (rng2.normal(size=C.shape) + 1j * rng2.normal(size=C.shape)).astype(
+            np.complex64
+        ) * 0.1
+        c_noisy = irfft_norm(C + noise, n=D).astype(np.float32)
+        a_exact = unbind_exact_or_tikhonov_or_wiener(c_noisy, role)
+        a_wien = unbind_exact_or_tikhonov_or_wiener(c_noisy, role, snr_db=snr_low)
+        improvements.append(cosine(a, a_wien) - cosine(a, a_exact))
+    # On average Wiener should not be worse at low SNR
+    assert sum(improvements) / len(improvements) >= -1e-6

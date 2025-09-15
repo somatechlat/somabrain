@@ -31,7 +31,10 @@ _TINY_MIN = {
 
 
 def compute_tiny_floor(
-    D: int, dtype=np.float32, scale: float = 1.0, strategy: str = "sqrt"
+    D: int | np.dtype | type,
+    dtype: Any = np.float32,
+    scale: float = 1.0,
+    strategy: str = "sqrt",
 ) -> float:
     """Return an amplitude "tiny" threshold (L2 units) for dimension D.
 
@@ -68,6 +71,22 @@ def compute_tiny_floor(
     else:
         val = eps * math.sqrt(float(D_val)) * scale
     return float(max(tiny_min, val))
+
+
+def spectral_floor_from_tiny(tiny_amp: float, D: int) -> float:
+    """Return per-FFT-bin power floor (float64) from amplitude tiny_amp.
+
+    The canonical conversion used across the codebase is:
+        power_per_bin = (tiny_amp ** 2) / D
+
+    The function always returns a Python float (float64) suitable for
+    comparing against spectral power arrays.
+    """
+    try:
+        D_val = int(D)
+    except Exception:
+        D_val = int(float(D))
+    return float((float(tiny_amp) ** 2) / float(D_val))
 
 
 def rfft_norm(x: np.ndarray, n: int | None = None, axis: int = -1):

@@ -1,0 +1,69 @@
+version: "3.9"
+
+services:
+  somabrain:
+    build: .
+    environment:
+      - SOMABRAIN_MEMORY_MODE=http
+      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
+      - SOMABRAIN_MINIMAL_PUBLIC_API=0
+      - SOMABRAIN_HOST=0.0.0.0
+      - SOMABRAIN_PORT=9696
+    ports:
+      - "9696:9696"
+    depends_on:
+      - redis
+      - qdrant
+      - prometheus
+    restart: unless-stopped
+
+  somabrain_alt:
+    build: .
+    environment:
+      - SOMABRAIN_MEMORY_MODE=http
+      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
+      - SOMABRAIN_MINIMAL_PUBLIC_API=0
+      - SOMABRAIN_HOST=0.0.0.0
+      - SOMABRAIN_PORT=9797
+    ports:
+      - "9797:9797"
+    depends_on:
+      - redis
+      - qdrant
+      - prometheus
+    restart: unless-stopped
+
+  redis:
+    # Use Redis 7.2-alpine build for small footprint in development
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    # Qdrant vector DB for development (exposed on 6333)
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "9093:9093"
+    restart: unless-stopped

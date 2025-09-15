@@ -4,7 +4,7 @@ Agent Integration Guide
 Overview
 --------
 
-SomaBrain can be integrated with agents, chatbots, and automation scripts to provide persistent, context-aware memory.
+SomaBrain integrates with agents, chatbots, and automation scripts to provide persistent, context-aware memory.
 
 How to use
 ----------

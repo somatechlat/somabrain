@@ -310,6 +310,34 @@ class RecallResponse(BaseModel):
     hrr_cleanup: Optional[Dict[str, Any]] = None
 
 
+# ----- RAG/RAF request and response models -----
+class RAGRequest(BaseModel):
+    query: str
+    top_k: int = 10
+    retrievers: List[str] = ["vector", "wm", "graph"]
+    rerank: str = (
+        "cosine"  # "cosine"|"mmr"|"hrr" (validated loosely in pipeline for PR‑1)
+    )
+    persist: bool = False
+    universe: Optional[str] = None
+
+
+class RAGCandidate(BaseModel):
+    coord: Optional[str] = None
+    key: Optional[str] = None
+    score: float
+    retriever: str
+    payload: Dict[str, Any]
+
+
+class RAGResponse(BaseModel):
+    candidates: List[RAGCandidate]
+    session_coord: Optional[str] = None
+    namespace: str
+    trace_id: str
+    metrics: Optional[Dict[str, Any]] = None
+
+
 class RememberResponse(BaseModel):
     """Canonical response model for the /remember endpoint.
 

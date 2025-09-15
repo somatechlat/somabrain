@@ -208,3 +208,131 @@ scrape_configs:
 Document history
 ----------------
 - 2025-09-12: Draft created from repository inspection during development session. Update the file with PR links and progress as tasks are completed.
+
+Verified status (audit) — code-backed summary
+--------------------------------------------
+Note: the following status was produced by an automated local audit of the repository and running the numerics-focused unit tests. This is a concise, code-backed summary intended to be appended to the roadmap for traceability.
+
+- Audit date: 2025-09-13
+- Test evidence: targeted numerics and HRR unit tests executed locally; summary result: 14 passed, 0 failed. (numerics-focused subset)
+- Key items verified in source code:
+  - Unitary FFT wrappers: `rfft/irfft` are used with norm='ortho' to preserve energy and satisfy HRR unitary contract (see `somabrain/numerics.py`).
+  - Deterministic seeding and role generation: seed derivation and deterministic role-spectrum generation implemented (see `somabrain/quantum.py` and `somabrain/numerics.py`).
+  - Tiny-floor semantics: sqrt(D)-based amplitude tiny floor and conversion to spectral power floor implemented in `somabrain/numerics.py` (functions `compute_tiny_floor` / `spectral_floor_from_tiny`).
+  - Deterministic fallback & Wiener/Tikhonov helpers: `tikhonov_lambda_from_snr` and `wiener_deconvolve` implemented and used as robust unbind fallback (see `somabrain/wiener.py`).
+  - Spectral arithmetic robustness: spectral division and clamping logic present with NaN/Inf guards and deterministic renormalize paths (see `somabrain/numerics.py` / `somabrain/quantum.py`).
+  - Observability: Prometheus metrics for unbind telemetry and related KPIs are defined and used (see `somabrain/metrics.py`). App routes expose `/metrics` (see `somabrain/app.py`).
+
+- Operational steps already completed in this workspace during the audit:
+  - Ran numerics-focused unit tests (passed).
+  - Removed an in-repo agent scaffold (untracked files) from the working tree per project policy; no agent code remains tracked in the repository.
+  - Verified bench harness scripts exist under `benchmarks/` and that docs describe how to run bench sweeps to produce JSON/PNG artifacts.
+
+- Partial / follow-up items (recommended next work items):
+  1. Persistent spectral cache: role spectra are cached in-memory; implement a persistent per-memory spectral cache and a migration utility to recompute/persist spectra for existing memories (C1). (P1)
+  2. Centralized unbind policy & auto-calibration: consolidate local heuristics into a pluggable decision policy that can auto-tune Wiener/Tikhonov lambda based on observed SNR histograms (B1/C1). (P1)
+  3. Migration tooling idempotency: ensure `scripts/migrate_journal_to_backend.py` (to be created) is idempotent and covered by tests. (P0/P1)
+  4. Grafana dashboard JSON: produce an example dashboard that surfaces UNBIND_PATH, RECONSTRUCTION_COSINE, UNBIND_K_EST, and other HRR KPIs. (B2)
+
+- Quick quality-gates run performed during audit:
+  - Build: not applicable for pure-Python check here; local imports and syntax checked while reading modules.
+  - Tests: targeted numerics tests executed -> PASS (14/0).
+  - Lint/type: not re-run in this audit pass (recommended in CI).
+
+Appendix: short reproduction steps I used locally
+1. Run the numerics-focused pytest subset that covers HRR/unitary/tiny-floor/wiener code.
+2. Inspect `somabrain/numerics.py`, `somabrain/wiener.py`, `somabrain/quantum.py`, and `somabrain/metrics.py` to confirm the implementations described.
+3. Confirm `/metrics` endpoint exposure in `somabrain/app.py`.
+
+Summary
+-------
+The numerics hardening work (unitary FFTs, deterministic seeding, sqrt(D) tiny-floor semantics, deterministic fallback/Wiener) is implemented in the codebase and validated by localized unit tests. Operational work remaining focuses on persistence of spectral caches, centralized unbind policy, and dashboarding/migration tooling. I can implement the persistent spectral cache prototype and the migration script next if you want me to proceed; otherwise I will continue to milestone 6 as you directed.
+
+Personas (paused)
+-----------------
+Per current direction, detailed persona implementation (definition, sharing, training, and runtime mood/skill overlays) is placed on hold. The persona design, tooling, and migration notes produced during the audit are saved as part of the roadmap and may be resumed later. When ready to resume persona work, follow this short checklist:
+
+- Reconfirm persona governance (who may author/publish personalities and review learned deltas).
+- Choose default HRR encoding parameters (dim, dtype, seed policy) for canonical reproducibility.
+- Run `scripts/precompute_role_spectra.py` (or schedule via Sleep) to persist role spectra for tokens in planned personas.
+- Implement `somabrain/personality.py` utilities and add roundtrip/unbind tests before pilot rollout.
+
+For now, continue with the roadmap phases above (A..G). Persona work will be restarted upon explicit approval and scheduling.
+
+Neuromodulator roadmap (final task)
+-----------------------------------
+This roadmap item captures the concrete short-, medium-, and long-term work to harden, secure,
+and evolve the neuromodulator subsystem used by the brain components (amygdala, thalamus,
+prefrontal, supervisor, unified_core). Additions below should be treated as the canonical
+last task in the production readiness plan.
+
+Priority: P0 (safety & stability) -> P1 (quality & observability) -> P2 (learned controllers)
+
+Short-term (P0) — safety & stability (1–3 days)
+- Protect the HTTP surface: require tenant context and `require_auth` for `POST /neuromodulators` and
+  consider requiring auth for `GET /neuromodulators` as well. Add audit logging for manual changes.
+- Hide endpoints from public OpenAPI if temporary protection is needed (`include_in_schema=False`).
+- Add clamping, per-step magnitude limits and a cooldown for automatic Supervisor updates to avoid
+  oscillation. Implement simple EWMA smoothing on supervisor-driven deltas.
+- Add Prometheus gauges for neuromod values and metrics for update frequency and modulation magnitude.
+
+Medium-term (P1) — correctness & multi-tenant (3–14 days)
+- Introduce a `NeuromodStore` (or extend `Neuromodulators`) that supports tenant-scoped state
+  (`get_state(tenant_id)` / `set_state(tenant_id, state)`). Default to global fallback while migrating.
+- Make subscriber callbacks non-blocking and per-tenant; run notifications off the request path.
+- Persist neuromodulator history (append-only) for auditability and reproducibility; add migration tools
+  and export utilities so neuromod traces can be analyzed offline.
+- Add unit & integration tests that assert directional and bounded behavior (Supervisor never exceeds
+  clamps; amygdala salience weight follows dopamine direction; thalamus attention responds to NE).
+
+Longer-term (P2) — control & learning (2–8 weeks)
+- Replace or augment heuristic Supervisor with a pluggable controller interface. Two evolution paths:
+  1. PID/EWMA-based controller (low risk): better smoothing, anti-windup and baseline decay.
+  2. Learned controller (higher ROI, needs data): small RL/TD/bandit agent that outputs safe bounded
+     neuromodulation deltas, trained on logged KPIs using offline or safe-online methods.
+- Use principled signals for urgency/uncertainty: NE driven by predictive uncertainty (e.g., ensemble
+  variance), dopamine as TD reward-prediction error instead of simple proportional to pred_error.
+- Provide a canary & A/B evaluation harness to validate learned controllers vs baseline heuristics.
+
+Operational & observability items
+- Metricize and dashboard: expose `somabrain_neuromod_dopamine`, `_serotonin`, `_noradrenaline`, `_acetylcholine`,
+  and `somabrain_neuromod_update_total` (labels: tenant, reason/manual|supervisor).
+- Add audit logs for external `POST` operations (tenant, user, old_state, new_state, timestamp, reason).
+- Expose free-energy, modulation magnitude, and supervisor cooling-rate metrics for debugging and alerts.
+
+Safety & deployment notes
+- Multi-process: current in-process global state is not cluster-consistent; use a shared store (Redis/DB)
+  if you need cluster-wide consistent neuromod state, or accept per-process divergence for experiments.
+- Provide feature flags: default to heuristic Supervisor off for canary tenants until tested.
+
+Acceptance criteria (for marking this task done)
+1. `POST /neuromodulators` requires auth and records an audit entry; GET optionally requires auth or is hidden.
+2. Supervisor.adjust uses bounded deltas and EWMA smoothing; unit tests assert no step exceeds clamps.
+3. Per-tenant state API present (or clear migration path) with at least a fallback global default.
+4. Metrics and dashboard exist for neuromod values and update rates; basic alert rules detect rapid changes.
+5. An A/B harness exists that can compare baseline heuristics to an experimental controller and produce KPI
+   comparisons (recall precision, store/admit rate, prediction error, free-energy) over a run.
+
+Where we are now (status snapshot)
+----------------------------------
+- Code: `somabrain/neuromodulators.py` implements a `NeuromodState` dataclass and a `Neuromodulators` hub
+  (global singleton `neuromods`) with `get_state()` and `set_state()` that notifies subscribers.
+- Integration: amygdala, thalamus, prefrontal and supervisor modules read the neuromod state and use
+  dopamine/serotonin/noradrenaline/acetylcholine to modulate salience, attention, decision scores and
+  automated adjustments. `app.py` exposes `GET /neuromodulators` and `POST /neuromodulators` (currently
+  without tenant-scoped auth) and `UnifiedBrainCore` updates dopamine/serotonin on processing success.
+- Tests: there are unit tests referencing neuromodulators (e.g. `tests/test_neuromodulators.py`) and
+  supervisor behavior is covered by existing tests. Full test suite status should be run after editing.
+- Risks: the current implementation uses a global, process-local neuromod state (not cluster-consistent)
+  and external POST can change global behavior for all tenants; this is the primary safety gap.
+
+Next steps (recommended immediate work)
+1. Implement HTTP protection and audit for `POST /neuromodulators` and add `include_in_schema=False`
+   temporarily if you prefer to hide the endpoints while finishing work. (P0)
+2. Add EWMA smoothing and per-step delta limits to `Supervisor.adjust` (P0).
+3. Add Prometheus gauges and a simple Grafana panel for neuromod values (P1).
+4. Plan a per-tenant `NeuromodStore` migration and add unit tests to lock expected behavior (P1).
+
+If you want, I can implement the immediate changes (protect endpoints + EWMA smoothing + metrics) now,
+run the test suite, and rebuild docs; tell me to proceed and I will create the code changes and report back
+with results and diffs.

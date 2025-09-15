@@ -70,5 +70,91 @@ def run():
     print(f"Wrote workbench results to {OUT}")
 
 
+def extended_snr_capacity_run():
+    """Run SNR sweep and capacity experiments and save to a separate JSON file."""
+    outp = Path(__file__).resolve().parent / "results_numerics.json"
+    D_list = [512, 1024]
+    snr_db_list = [40.0, 20.0, 10.0, 0.0, -10.0]
+    seeds = [0, 1, 2]
+
+    all_rows = []
+    for D in D_list:
+        for sd in seeds:
+            rng = np.random.default_rng(sd)
+            a = rng.normal(size=D).astype(np.float32)
+            a = a / (np.linalg.norm(a) + 1e-30)
+            role_token = f"bench_role_{D}_{sd}"
+            # Use the quantum layer to generate a role and bind
+            from somabrain.quantum import HRRConfig, QuantumLayer
+
+            q = QuantumLayer(HRRConfig(dim=D, dtype="float32", renorm=True))
+            q.make_unitary_role(role_token)
+            c_clean = q.bind_unitary(a, role_token)
+            from somabrain.numerics import irfft_norm, rfft_norm
+
+            C = rfft_norm(c_clean)
+            S = (C * np.conjugate(C)).real
+            mean_power = float(np.mean(S)) if S.size else 1.0
+
+            for snr_db in snr_db_list:
+                snr_lin = 10.0 ** (snr_db / 10.0)
+                noise_power = mean_power / max(snr_lin, 1e-12)
+                noise = (
+                    rng.normal(size=C.shape) + 1j * rng.normal(size=C.shape)
+                ).astype(np.complex128)
+                cur_noise_power = float(np.mean((noise * np.conjugate(noise)).real))
+                if cur_noise_power <= 0:
+                    cur_noise_power = 1.0
+                noise = noise * (noise_power / cur_noise_power) ** 0.5
+
+                C_noisy = C.astype(np.complex128) + noise
+                c_noisy = irfft_norm(C_noisy, n=D).astype(np.float32)
+
+                a_exact = q.unbind_exact_unitary(c_noisy, role_token)
+                a_wien = q.unbind_wiener(c_noisy, role_token, snr_db=snr_db)
+
+                def cosine(a1, b1):
+                    a1 = a1.astype(np.float64)
+                    b1 = b1.astype(np.float64)
+                    na = float(np.linalg.norm(a1))
+                    nb = float(np.linalg.norm(b1))
+                    if na == 0 or nb == 0:
+                        return 0.0
+                    return float(np.dot(a1, b1) / (na * nb))
+
+                all_rows.append(
+                    {
+                        "D": D,
+                        "seed": int(sd),
+                        "snr_db": float(snr_db),
+                        "mean_power": mean_power,
+                        "exact": {
+                            "cosine": cosine(a, a_exact),
+                            "mse": float(np.mean((a - a_exact) ** 2)),
+                        },
+                        "wiener": {
+                            "cosine": cosine(a, a_wien),
+                            "mse": float(np.mean((a - a_wien) ** 2)),
+                        },
+                    }
+                )
+
+    outp.write_text(
+        json.dumps(
+            {
+                "meta": {"D_list": D_list, "snr_db_list": snr_db_list, "seeds": seeds},
+                "results": all_rows,
+            },
+            indent=2,
+        )
+    )
+    print(f"Wrote extended bench results to {outp}")
+
+
+if __name__ == "__main__":
+    run()
+    extended_snr_capacity_run()
+
+
 if __name__ == "__main__":
     run()

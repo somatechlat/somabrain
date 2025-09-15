@@ -59,6 +59,8 @@ For more details, see the API documentation and guides in this site.
   :caption: Contents
 
   math
+  numerics
+  workbench
   benchmarks
   REPORT_NUMERICS_HARDENING
   api

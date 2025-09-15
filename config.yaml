@@ -70,6 +70,10 @@ reflect_similarity_threshold: 0.35
 reflect_min_cluster_size: 2
 reflect_max_summaries: 5
 
+# Graph reasoning defaults (dev)
+graph_hops: 2
+graph_limit: 20
+
 # Memory backend
 memory_mode: local             # local|http|stub
 namespace: somabrain_ns

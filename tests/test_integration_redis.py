@@ -11,8 +11,6 @@ def test_redis_ping_localhost():
     development. It will be skipped if the redis client library is not
     available in the test environment.
     """
-    client = redis.Redis(
-        host="127.0.0.1", port=6379, db=0, socket_connect_timeout=2
-    )
+    client = redis.Redis(host="127.0.0.1", port=6379, db=0, socket_connect_timeout=2)
     # ping() returns True on success; ensure we can connect
     assert client.ping() is True

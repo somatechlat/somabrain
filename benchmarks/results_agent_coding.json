@@ -1,0 +1,320 @@
+{
+  "query": "build a tiny FastAPI app exposing /hello",
+  "truth_docs": [
+    "FastAPI routes and response models",
+    "uvicorn quickstart hosting local server",
+    "virtualenv creation for Python"
+  ],
+  "baseline": {
+    "latency_s": 0.0037170850118855014,
+    "hit_rate": 1.0,
+    "candidates": [
+      {
+        "coord": "(0.8205770459026098, 0.7528492719866335, 0.5287767117843032)",
+        "key": "virtualenv creation for Python",
+        "score": 0.14304302632808685,
+        "retriever": "vector",
+        "payload": {
+          "task": "virtualenv creation for Python",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "virtualenv",
+          "did": "creation",
+          "what": "for",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            0.8205770459026098,
+            0.7528492719866335,
+            0.5287767117843032
+          ]
+        }
+      },
+      {
+        "coord": "(-0.6251635528169572, -0.532671787776053, 0.6013317443430424)",
+        "key": "pip usage and requirements.txt",
+        "score": 0.0739481970667839,
+        "retriever": "vector",
+        "payload": {
+          "task": "pip usage and requirements.txt",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "pip",
+          "did": "usage",
+          "what": "and",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            -0.6251635528169572,
+            -0.532671787776053,
+            0.6013317443430424
+          ]
+        }
+      },
+      {
+        "coord": "(0.5191976861096919, 0.27295895339921117, -0.20310817519202828)",
+        "key": "uvicorn quickstart hosting local server",
+        "score": 0.013103545643389225,
+        "retriever": "vector",
+        "payload": {
+          "task": "uvicorn quickstart hosting local server",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "uvicorn",
+          "did": "quickstart",
+          "what": "hosting",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            0.5191976861096919,
+            0.27295895339921117,
+            -0.20310817519202828
+          ]
+        }
+      },
+      {
+        "coord": "(0.6414653505198658, 0.4534903494641185, 0.6205418999306858)",
+        "key": "FastAPI routes and response models",
+        "score": 0.005535493139177561,
+        "retriever": "vector",
+        "payload": {
+          "task": "FastAPI routes and response models",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "FastAPI",
+          "did": "routes",
+          "what": "and",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            0.6414653505198658,
+            0.4534903494641185,
+            0.6205418999306858
+          ]
+        }
+      },
+      {
+        "coord": "(-0.8483889712952077, 0.9378334549255669, -0.5269131138920784)",
+        "key": "pytest basics for API testing",
+        "score": -0.006364323198795319,
+        "retriever": "vector",
+        "payload": {
+          "task": "pytest basics for API testing",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "pytest",
+          "did": "basics",
+          "what": "for",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            -0.8483889712952077,
+            0.9378334549255669,
+            -0.5269131138920784
+          ]
+        }
+      }
+    ]
+  },
+  "persist": {
+    "latency_s": 0.003775614997721277,
+    "session_coord": "0.4760752748697996,-0.6581289195455611,-0.08161930833011866",
+    "candidates": [
+      {
+        "coord": "(0.8205770459026098, 0.7528492719866335, 0.5287767117843032)",
+        "key": "virtualenv creation for Python",
+        "score": 0.14304302632808685,
+        "retriever": "vector",
+        "payload": {
+          "task": "virtualenv creation for Python",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "virtualenv",
+          "did": "creation",
+          "what": "for",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            0.8205770459026098,
+            0.7528492719866335,
+            0.5287767117843032
+          ]
+        }
+      },
+      {
+        "coord": null,
+        "key": "virtualenv creation for Python",
+        "score": 0.14304302632808685,
+        "retriever": "wm",
+        "payload": {
+          "task": "virtualenv creation for Python",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "virtualenv",
+          "did": "creation",
+          "what": "for",
+          "where": null,
+          "when": null,
+          "why": null
+        }
+      },
+      {
+        "coord": "(-0.6251635528169572, -0.532671787776053, 0.6013317443430424)",
+        "key": "pip usage and requirements.txt",
+        "score": 0.0739481970667839,
+        "retriever": "vector",
+        "payload": {
+          "task": "pip usage and requirements.txt",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "pip",
+          "did": "usage",
+          "what": "and",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            -0.6251635528169572,
+            -0.532671787776053,
+            0.6013317443430424
+          ]
+        }
+      },
+      {
+        "coord": null,
+        "key": "pip usage and requirements.txt",
+        "score": 0.07394818961620331,
+        "retriever": "wm",
+        "payload": {
+          "task": "pip usage and requirements.txt",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "pip",
+          "did": "usage",
+          "what": "and",
+          "where": null,
+          "when": null,
+          "why": null
+        }
+      },
+      {
+        "coord": "(0.5191976861096919, 0.27295895339921117, -0.20310817519202828)",
+        "key": "uvicorn quickstart hosting local server",
+        "score": 0.013103545643389225,
+        "retriever": "vector",
+        "payload": {
+          "task": "uvicorn quickstart hosting local server",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": null,
+          "universe": null,
+          "who": "uvicorn",
+          "did": "quickstart",
+          "what": "hosting",
+          "where": null,
+          "when": null,
+          "why": null,
+          "coordinate": [
+            0.5191976861096919,
+            0.27295895339921117,
+            -0.20310817519202828
+          ]
+        }
+      }
+    ]
+  },
+  "post_persist_graph": {
+    "latency_s": 0.003313103996333666,
+    "hit_rate": 0.0,
+    "candidates": [
+      {
+        "coord": "(0.4760752748697996, -0.6581289195455611, -0.08161930833011866)",
+        "key": "RAG session for 'build a tiny FastAPI app exposing /hello'",
+        "score": 0.021959835663437843,
+        "retriever": "graph",
+        "payload": {
+          "task": "RAG session for 'build a tiny FastAPI app exposing /hello'",
+          "memory_type": "episodic",
+          "rag": {
+            "query": "build a tiny FastAPI app exposing /hello",
+            "retrievers": [
+              "vector",
+              "wm"
+            ],
+            "rerank": "cosine",
+            "top_k": 5,
+            "candidates": [
+              {
+                "key": "virtualenv creation for Python",
+                "retriever": "vector",
+                "score": 0.14304302632808685
+              },
+              {
+                "key": "virtualenv creation for Python",
+                "retriever": "wm",
+                "score": 0.14304302632808685
+              },
+              {
+                "key": "pip usage and requirements.txt",
+                "retriever": "vector",
+                "score": 0.0739481970667839
+              },
+              {
+                "key": "pip usage and requirements.txt",
+                "retriever": "wm",
+                "score": 0.07394818961620331
+              },
+              {
+                "key": "uvicorn quickstart hosting local server",
+                "retriever": "vector",
+                "score": 0.013103545643389225
+              }
+            ]
+          },
+          "universe": null,
+          "timestamp": 1757940043.008364,
+          "coordinate": [
+            0.4760752748697996,
+            -0.6581289195455611,
+            -0.08161930833011866
+          ]
+        }
+      }
+    ]
+  },
+  "plan": {
+    "baseline": [],
+    "baseline_hit_rate": 0.0,
+    "post_persist": [
+      "virtualenv creation for Python",
+      "pip usage and requirements.txt",
+      "uvicorn quickstart hosting local server",
+      "RAG session for 'build a tiny FastAPI app exposing /hello'"
+    ],
+    "post_persist_hit_rate": 0.6666666666666666
+  }
+}

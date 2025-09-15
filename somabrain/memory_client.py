@@ -705,6 +705,28 @@ class MemoryClient:
         """Return stored payloads matching any of the requested coordinates, universe-scoped."""
         if not coords:
             return []
+        # HTTP mode: use SFM batch endpoint when available
+        if self._mode == "http" and self._http is not None:
+            try:
+                body = {
+                    "coords": [[float(x), float(y), float(z)] for x, y, z in coords]
+                }
+                r = self._http.post("/payloads_by_coords", json=body)
+                data = r.json() if hasattr(r, "json") else None
+                payloads = (
+                    (data or {}).get("payloads", []) if isinstance(data, dict) else []
+                )
+                if universe is not None:
+                    payloads = [
+                        p
+                        for p in payloads
+                        if str(p.get("universe") or "real") == str(universe)
+                    ]
+                return payloads
+            except Exception:
+                # fall back to local filtering
+                pass
+        # Local/stub fallback: scan in-process store
         wanted = {tuple(c) for c in coords}
         results: List[dict] = []
         for p in self.all_memories():
