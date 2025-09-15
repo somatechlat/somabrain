@@ -65,10 +65,13 @@ class MemoryService:
         if universe and not payload.get("universe"):
             payload = dict(payload)
             payload["universe"] = universe
-        if hasattr(self.client(), "aremember"):
-            _ = await self.client().aremember(key, payload)
+        client = self.client()
+        mode = getattr(client, "_mode", None)
+        # Only use async aremember for true HTTP mode; for local/stub call sync remember
+        if mode == "http" and hasattr(client, "aremember"):
+            _ = await client.aremember(key, payload)  # type: ignore[attr-defined]
         else:
-            _ = self.client().remember(key, payload)
+            _ = client.remember(key, payload)
         try:
             return self.coord_for_key(key, universe=universe)
         except Exception:
