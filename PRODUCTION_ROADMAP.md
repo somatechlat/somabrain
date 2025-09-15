@@ -83,3 +83,70 @@ Notes:
 4. Add `docs/source/numerics.rst` and a short reproducibility section; rebuild Sphinx.
 
 If you want, I can run option 1 (stress bench) now and commit the canonical artifacts and update the docs with a short how-to.
+
+## RAG Roadmap (hybrid retrieval, graph, rerank)
+
+Scope: strengthen first‑stage recall, improve precision via calibrated fusion and reranking, and make retrieval explainable with graph links — while keeping latency predictable.
+
+- Retrieval backends
+  - Add BM25 lexical retriever (replace naive lexical). Use `rank_bm25` locally; expose as `retriever=lexical`. File: `somabrain/services/retrievers.py`.
+  - Qdrant adapter as optional vector backend (in addition to HTTP SFM). Add `memory_mode: qdrant` with client methods: `remember/recall/payloads_for_coords/link/k_hop`. File: `somabrain/memory_client.py`.
+  - Keep SFM graph strengths and payloads‑by‑coords; allow mixed modes (vectors in Qdrant + graph in SFM) behind config.
+
+- Fusion & calibration
+  - Weighted RRF over retrievers with score normalization (z‑score or min–max per retriever) before fusion. File: `somabrain/services/rag_pipeline.py`.
+  - Observability: per‑retriever latency/hit counts; fusion inputs/outputs; dedupe stats; trace IDs.
+
+- Reranking
+  - Optional cross‑encoder reranker (e.g., `bge-reranker-large`, `msmarco-MiniLM-L-6-v2`) over top‑N (50→10). Config gate `reranker_provider`, latency budget in ms. File: `somabrain/services/rag_pipeline.py`.
+  - Keep HRR‑based rerank for low‑latency path; margin‑aware rerank when enabled.
+
+- Graph RAG
+  - Extract typed entity‑relation links on ingest/reflect; persist via `MemoryService.link` with types/weights. Files: `somabrain/services/memory_service.py`, `somabrain/semgraph.py`.
+  - Retrieval: prefer `rag_session -> retrieved_with` traversal; fallback BFS with type filters and path‑aware scoring (hop penalty, edge weights, path frequency). File: `somabrain/services/retrievers.py`.
+
+- Expansion
+  - Multi‑query expansion: generate 3–5 paraphrases and fuse results (cap budget). File: `somabrain/services/rag_pipeline.py` (pre‑retrieval hook).
+  - Document expansion (doc2query‑style) offline; store synthetic queries in payloads to benefit BM25.
+
+- Evaluation
+  - Add `benchmarks/rag_eval.py`: Recall@k, MRR, NDCG; latency P50/P95/P99 per stage; ablations by retriever/fusion/rerank. Persist JSON + plots under `benchmarks/`.
+
+Latency targets (defaults): first‑stage recall ≤ 80 ms; rerank ≤ 120 ms; graph traversal bounded by `graph_hops`/`graph_limit`.
+
+## HRR/Math Enhancements
+
+- Adaptive Wiener floor
+  - Estimate superposition count k and scale floor by k and mean spectral power; add colored‑noise‑aware whitening. File: `somabrain/quantum.py` (`unbind_wiener`).
+
+- Exact/unitary rigor
+  - Persist role spectra and checksums (disk cache); migration tool to precompute for seeds/tokens. Files: `somabrain/quantum.py`, `somabrain/spectral_cache.py`.
+  - Strict‑math mode tests: epsilon budgets, determinism across machines; fail fast on contract violations.
+
+- Capacity & robustness benches
+  - Capacity curves (cosine vs k) for multiple D and dtypes; adversarial spectral nulls; 1/f exponents. Files: `benchmarks/*` (extend existing harnesses).
+
+- Invariants & guards
+  - Enforce norm‑preservation post‑ops; assert no NaN/Inf; unify tiny‑floor semantics across paths. File: `somabrain/numerics.py`.
+
+## Operational Defaults (runtime)
+
+- Ports and services
+  - SomaBrain dev/prod: `9696` and `9797` (`scripts/start_somabrain_http.sh`).
+  - SFM HTTP memory: `9595` (FastAPI `/health`, `/docs`).
+  - Optional infra commonly used: Redis `6379`, Qdrant `6333`.
+  - Configure SomaBrain → SFM via `SOMABRAIN_MEMORY_MODE=http` and `SOMABRAIN_HTTP__ENDPOINT=http://127.0.0.1:9595` or via `config.yaml`.
+
+## Milestones
+
+- M1 (1–2 weeks)
+  - BM25 retriever; weighted RRF with normalization; per‑retriever metrics; initial RAG eval harness.
+
+- M2 (2–3 weeks)
+  - Cross‑encoder reranker; query/doc expansion; graph typed links + path scoring; publish RAG eval results.
+
+- M3 (2–3 weeks)
+  - Adaptive Wiener floor; capacity curves; spectral cache persistence; strict‑math tests; numerics report.
+
+- Continuous
+  - Qdrant adapter; caching/batching; dashboards (Prometheus/Grafana) with KPIs.

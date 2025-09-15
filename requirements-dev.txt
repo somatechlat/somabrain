@@ -8,6 +8,7 @@ sphinx==7.2.6
 myst-parser==4.0.1
 sphinx-rtd-theme==3.0.2
 pydantic==2.11.7
-numpy==2.3.3
+# Use a widely available NumPy version compatible with CI Python
+numpy==2.2.6
 uvicorn==0.35.0
 httpx==0.28.1

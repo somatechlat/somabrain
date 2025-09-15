@@ -326,6 +326,20 @@ class Config:
     diversity_method: str = "mmr"  # mmr | facility
     diversity_k: int = 10
     diversity_lambda: float = 0.5
+    # RAG fusion weights (per retriever)
+    retriever_weight_vector: float = 1.0
+    retriever_weight_wm: float = 1.0
+    retriever_weight_graph: float = 1.0
+    retriever_weight_lexical: float = 0.8
+    # Reranker configuration
+    reranker_provider: Optional[str] = None  # e.g., 'bge-reranker', 'msmarco-mini'
+    reranker_top_n: int = 50
+    reranker_out_k: int = 10
+    reranker_model: Optional[str] = None  # sentence-transformers cross-encoder model id
+    reranker_batch: int = 32
+    # Query expansion
+    use_query_expansion: bool = False
+    query_expansion_variants: int = 0  # 0 disables; small int enables simple variants
     # Adaptive salience (optional)
     use_adaptive_salience: bool = False
     salience_target_store_rate: float = 0.2
@@ -518,6 +532,33 @@ def _load_config_legacy() -> Config:
         cfg.anisotropic_enabled = bool(
             getattr(dc, "anisotropic_enabled", False) or False
         )
+        # RAG fusion weights and reranker
+        try:
+            cfg.retriever_weight_vector = float(
+                getattr(dc, "retriever_weight_vector", 1.0) or 1.0
+            )
+            cfg.retriever_weight_wm = float(
+                getattr(dc, "retriever_weight_wm", 1.0) or 1.0
+            )
+            cfg.retriever_weight_graph = float(
+                getattr(dc, "retriever_weight_graph", 1.0) or 1.0
+            )
+            cfg.retriever_weight_lexical = float(
+                getattr(dc, "retriever_weight_lexical", 0.8) or 0.8
+            )
+            cfg.reranker_provider = getattr(dc, "reranker_provider", None)
+            cfg.reranker_top_n = int(getattr(dc, "reranker_top_n", 50) or 50)
+            cfg.reranker_out_k = int(getattr(dc, "reranker_out_k", 10) or 10)
+            cfg.reranker_model = getattr(dc, "reranker_model", None)
+            cfg.reranker_batch = int(getattr(dc, "reranker_batch", 32) or 32)
+            cfg.use_query_expansion = bool(
+                getattr(dc, "use_query_expansion", False) or False
+            )
+            cfg.query_expansion_variants = int(
+                getattr(dc, "query_expansion_variants", 0) or 0
+            )
+        except Exception:
+            pass
         cfg.imi_cells = int(getattr(dc, "imi_cells", 2048) or 2048)
         cfg.hnsw_M = int(getattr(dc, "hnsw_M", 16) or 16)
         cfg.hnsw_efc = int(getattr(dc, "hnsw_efc", 100) or 100)

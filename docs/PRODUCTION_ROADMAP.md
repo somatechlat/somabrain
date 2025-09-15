@@ -198,6 +198,137 @@ scrape_configs:
 
 - Example Graph panel list (for Grafana):
   - Requests per minute
+
+RAG Evaluation & Learned Paths (How‑To)
+--------------------------------------
+
+This section shows how to reproduce the large‑scale RAG benchmarks and how to inspect
+an explainable “learned path” created by persisting sessions.
+
+Reproduce large synthetic benchmark
+- Command (20k docs, 10 topics, 5 queries/topic):
+  - `python benchmarks/rag_eval_large.py --docs 20000 --topics 10 --queries 5 --tenant rag20k --out benchmarks/rag_eval_20k.json`
+- Outputs:
+  - Summary JSON: `benchmarks/rag_eval_20k.json`
+  - Plots: `benchmarks/plots/rag_large_recall.png`, `benchmarks/plots/rag_large_latency.png`
+- Strategies: vector, lexical (BM25), hybrid (vector+lexical+wm), hybrid+ce (cross‑encoder rerank), graph_after_persist.
+
+Observed (example run)
+- vector recall@5 ≈ 0.50, avg latency ~ 6.9 ms
+- lexical recall@5 ≈ 1.00, avg latency ~ 131.7 ms (BM25 cached)
+- hybrid recall@5 ≈ 1.00, avg latency ~ 139.1 ms
+- hybrid+ce recall@5 ≈ 0.96, avg latency ~ 154.9 ms
+- graph_after_persist recall@5 ≈ 1.00, avg latency ~ 15.8 ms
+
+Inspect a learned path (session → docs)
+1) Seed a tiny corpus and persist a session for a query; then list `retrieved_with` links.
+
+```
+from fastapi.testclient import TestClient
+from somabrain.app import app
+from somabrain.config import load_config
+from somabrain.services.memory_service import MemoryService
+from somabrain import runtime as rt
+
+client = TestClient(app)
+tenant = "ragshow"
+ns = f"{load_config().namespace}:{tenant}"
+memsvc = MemoryService(rt.mt_memory, ns)
+
+# Seed docs
+docs = [
+  "solar energy optimization with panels and storage",
+  "battery storage planning guide",
+  "photovoltaic inverter diagnostics overview",
+  "intro to renewable energy planning",
+]
+for d in docs:
+  memsvc.remember(d, {"task": d, "memory_type": "episodic", "importance": 1})
+
+# Persist a session
+headers={"X-Tenant-ID": tenant}
+r = client.post('/rag/retrieve', headers=headers, json={
+  "query": "solar energy planning",
+  "top_k": 5,
+  "retrievers": ["vector","lexical","wm"],
+  "persist": True,
+})
+sc = tuple(float(x) for x in r.json()["session_coord"].split(','))
+edges = memsvc.links_from(sc, type_filter='retrieved_with', limit=10)
+
+# Map coords to payloads and pretty print
+corpus = memsvc.client().all_memories()
+coord2payload = {tuple(p["coordinate"]): p for p in corpus if p.get("coordinate")}
+for e in edges:
+  to = tuple(e.get('to'))
+  print({'from': e.get('from'), 'to': to, 'type': e.get('type'),
+         'weight': e.get('weight'), 'task': coord2payload.get(to,{}).get('task')})
+```
+
+Why this works (math intuition)
+- Persisted sessions record which docs were relevant; later, graph‑only retrieval follows
+  `rag_session -> retrieved_with` to surface the same docs with provenance.
+- Ranking uses HRR cosine plus a small learned‑link boost: `score = cosine(hq,hv) + 0.05 I[linked]`,
+  with `cosine = dot(hq,hv)/(||hq||·||hv||)`.
+
+Toggles for experimentation
+- Query expansion: `use_query_expansion`, `query_expansion_variants`
+- Cross‑encoder rerank: `reranker_model`, `reranker_top_n`, `reranker_out_k`, `reranker_batch`
+- Fusion weights: `retriever_weight_vector|wm|graph|lexical`
+
+Tool‑use memory (demo snippet; no new endpoints)
+- Store a tool call payload and link it from a persisted session so future graph retrieval can surface actionable steps with provenance.
+
+```
+from fastapi.testclient import TestClient
+from somabrain.app import app
+from somabrain.config import load_config
+from somabrain.services.memory_service import MemoryService
+from somabrain import runtime as rt
+
+client = TestClient(app)
+tenant = "ragtools"
+ns = f"{load_config().namespace}:{tenant}"
+memsvc = MemoryService(rt.mt_memory, ns)
+
+# Imagine the agent called a web-search or API tool; persist its result as a memory
+tool_payload = {
+  "task": "tool:web_search solar incentives",
+  "memory_type": "episodic",
+  "importance": 1,
+  "tool": {
+    "name": "web_search",
+    "args": {"q": "solar incentives 2025"},
+    "result": {"top_hit": "https://energy.gov/..."}
+  }
+}
+memsvc.remember(tool_payload["task"], tool_payload)
+
+# Persist a RAG session for a related query
+headers={"X-Tenant-ID": tenant}
+r = client.post('/rag/retrieve', headers=headers, json={
+  "query": "solar energy planning",
+  "top_k": 5,
+  "retrievers": ["vector","lexical","wm"],
+  "persist": True,
+})
+sc = tuple(float(x) for x in r.json()["session_coord"].split(','))
+
+# Link session -> tool memory (actionable path)
+coord_tool = memsvc.coord_for_key(tool_payload["task"])
+memsvc.link(sc, coord_tool, link_type="uses_tool", weight=1.0)
+
+# Now graph queries can surface both reading material and tool steps
+edges = memsvc.links_from(sc, type_filter=None, limit=10)
+print(edges)  # includes retrieved_with docs and uses_tool edges
+```
+
+Calibration (suggest fusion weights)
+- Run large benchmark with `--calibrate` to print suggested weights and include them in the JSON:
+  - `python benchmarks/rag_eval_large.py --docs 20000 --topics 10 --queries 5 --tenant rag20k --out benchmarks/rag_eval_20k.json --calibrate`
+- The harness normalizes single‑retriever recalls to produce a simple weight prior, which you can tune in `config.yaml` via `retriever_weight_*`.
+
+
   - Avg latency (ms)
   - Requests by endpoint (stacked)
   - WM utilization %

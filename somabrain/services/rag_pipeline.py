@@ -63,23 +63,42 @@ async def run_rag_pipeline(
             mem_client = memsvc.client()
     except Exception:
         mem_client = None
+    # Simple query expansion (optional)
+    expansions = [req.query]
+    try:
+        if (
+            getattr(_rt.cfg, "use_query_expansion", False)
+            and int(getattr(_rt.cfg, "query_expansion_variants", 0) or 0) > 0
+        ):
+            k = int(getattr(_rt.cfg, "query_expansion_variants", 1) or 1)
+            for i in range(k):
+                if i % 2 == 0:
+                    expansions.append(f"{req.query} guide")
+                else:
+                    expansions.append(f"intro to {req.query}")
+    except Exception:
+        pass
     for rname in retrievers:
         if rname == "wm":
             if _rt.embedder is not None and (
                 _rt.mt_wm is not None or _rt.mc_wm is not None
             ):
                 try:
-                    lst = retrieve_wm(
-                        req.query,
-                        top_k,
-                        tenant_id=ctx.tenant_id,
-                        embedder=_rt.embedder,
-                        mt_wm=_rt.mt_wm,
-                        mc_wm=_rt.mc_wm,
-                        use_microcircuits=bool(
-                            getattr(_rt.cfg, "use_microcircuits", False)
-                        ),
-                    )
+                    lst_all: list[RAGCandidate] = []
+                    for qx in expansions:
+                        lst = retrieve_wm(
+                            qx,
+                            top_k,
+                            tenant_id=ctx.tenant_id,
+                            embedder=_rt.embedder,
+                            mt_wm=_rt.mt_wm,
+                            mc_wm=_rt.mc_wm,
+                            use_microcircuits=bool(
+                                getattr(_rt.cfg, "use_microcircuits", False)
+                            ),
+                        )
+                        lst_all.extend(lst)
+                    lst = lst_all
                     lists_by_retriever["wm"] = lst
                     cands += lst
                     continue
@@ -91,13 +110,17 @@ async def run_rag_pipeline(
         elif rname == "vector":
             if _rt.embedder is not None and mem_client is not None:
                 try:
-                    lst = retrieve_vector(
-                        req.query,
-                        top_k,
-                        mem_client=mem_client,
-                        embedder=_rt.embedder,
-                        universe=universe,
-                    )
+                    lst_all: list[RAGCandidate] = []
+                    for qx in expansions:
+                        lst = retrieve_vector(
+                            qx,
+                            top_k,
+                            mem_client=mem_client,
+                            embedder=_rt.embedder,
+                            universe=universe,
+                        )
+                        lst_all.extend(lst)
+                    lst = lst_all
                     lists_by_retriever["vector"] = lst
                     cands += lst
                     continue
@@ -111,6 +134,7 @@ async def run_rag_pipeline(
                 try:
                     hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
                     limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
+                    # For graph we do not expand queries; use original string
                     lst = retrieve_graph(
                         req.query,
                         top_k,
@@ -130,7 +154,11 @@ async def run_rag_pipeline(
             cands += lst
         elif rname == "lexical" and mem_client is not None:
             try:
-                lst = retrieve_lexical(req.query, top_k, mem_client=mem_client)
+                lst_all: list[RAGCandidate] = []
+                for qx in expansions:
+                    lst = retrieve_lexical(qx, top_k, mem_client=mem_client)
+                    lst_all.extend(lst)
+                lst = lst_all
                 lists_by_retriever["lexical"] = lst
                 cands += lst
                 continue
@@ -156,13 +184,22 @@ async def run_rag_pipeline(
                 lists_by_retriever["graph"] = lst
                 cands += lst
 
-    # Rank fusion (RRF) over available retriever lists
-    fusion_method = "rrf"
+    # Rank fusion (normalized & weighted RRF) over available retriever lists
+    fusion_method = "wrrf"
     rrf_k = 60.0
-    # Build rank maps per retriever
+    # Normalize scores per retriever and build rank maps
     ranks: dict[str, dict[str, int]] = {}
+    norms: dict[str, dict[str, float]] = {}
+    norm_scores: dict[str, dict[str, float]] = {}
     for rname, lst in lists_by_retriever.items():
         rm: dict[str, int] = {}
+        # compute mean/std for z-score normalization; fall back to identity
+        vals = [float(getattr(c, "score", 0.0) or 0.0) for c in lst] or [0.0]
+        mu = float(sum(vals) / len(vals))
+        var = float(sum((v - mu) ** 2 for v in vals) / max(1, len(vals) - 1))
+        std = float(var**0.5) if var > 0 else 1.0
+        norms[rname] = {"mu": mu, "std": std}
+        ns_map: dict[str, float] = {}
         for idx, c in enumerate(lst):
             kid = str(
                 c.coord
@@ -171,7 +208,11 @@ async def run_rag_pipeline(
             )
             if kid and kid not in rm:
                 rm[kid] = idx + 1  # 1-based rank
+            if kid:
+                sc = float(getattr(c, "score", 0.0) or 0.0)
+                ns_map[kid] = (sc - mu) / (std if std != 0.0 else 1.0)
         ranks[rname] = rm
+        norm_scores[rname] = ns_map
     # Aggregate RRF scores
     keys = set()
     for rm in ranks.values():
@@ -186,12 +227,29 @@ async def run_rag_pipeline(
         pass
     # Build representative payload per key (prefer vector>wm>graph>lexical)
     pref = ["vector", "wm", "graph", "lexical"]
+    # Retriever weights from config
+    wmap = {
+        "vector": float(getattr(_rt.cfg, "retriever_weight_vector", 1.0) or 1.0),
+        "wm": float(getattr(_rt.cfg, "retriever_weight_wm", 1.0) or 1.0),
+        "graph": float(getattr(_rt.cfg, "retriever_weight_graph", 1.0) or 1.0),
+        "lexical": float(getattr(_rt.cfg, "retriever_weight_lexical", 0.8) or 0.8),
+    }
+    alpha = 1.0  # weight for RRF
+    beta = 0.5  # weight for normalized scores
     for kid in keys:
         score = 0.0
         for rname, rm in ranks.items():
             r = rm.get(kid)
             if r is not None:
-                score += 1.0 / (rrf_k + float(r))
+                # weighted reciprocal rank
+                score += alpha * wmap.get(rname, 1.0) * (1.0 / (rrf_k + float(r)))
+                # add normalized score term when available
+                try:
+                    s_norm = norm_scores.get(rname, {}).get(kid)
+                    if s_norm is not None:
+                        score += beta * wmap.get(rname, 1.0) * float(s_norm)
+                except Exception:
+                    pass
         # choose a representative candidate
         rep = None
         for rname in pref:
@@ -215,7 +273,7 @@ async def run_rag_pipeline(
         RAGCandidate(
             coord=c.coord,
             key=c.key,
-            score=float(s),  # fused score
+            score=float(s),  # fused score (weighted RRF)
             retriever=c.retriever,
             payload=c.payload,
         )
@@ -263,6 +321,51 @@ async def run_rag_pipeline(
                     new.append((sc, c))
                 new.sort(key=lambda t: t[0], reverse=True)
                 out = [c for _, c in new]
+        except Exception:
+            pass
+    elif method == "ce":
+        # Cross-encoder rerank (optional): tries sentence-transformers, falls back to cosine
+        try:
+            model_id = getattr(_rt.cfg, "reranker_model", None)
+            top_n = int(getattr(_rt.cfg, "reranker_top_n", 50) or 50)
+            out_k = int(
+                getattr(_rt.cfg, "reranker_out_k", max(1, top_k)) or max(1, top_k)
+            )
+            batch = int(getattr(_rt.cfg, "reranker_batch", 32) or 32)
+            if out:
+                payloads = [c.payload for c in out[:top_n]]
+                pairs = [(req.query, _extract_text(p)) for p in payloads]
+                # Try cross-encoder if available
+                used_ce = False
+                try:
+                    from sentence_transformers import \
+                        CrossEncoder  # type: ignore
+
+                    ce = CrossEncoder(
+                        model_id or "cross-encoder/ms-marco-MiniLM-L-6-v2"
+                    )
+                    scores = ce.predict(pairs, batch_size=batch)
+                    rescored = list(zip([float(s) for s in scores], range(len(pairs))))
+                    used_ce = True
+                except Exception:
+                    used_ce = False
+                if not used_ce and _rt.embedder is not None:
+                    import numpy as _np
+
+                    qv = _rt.embedder.embed(req.query)
+                    rescored: list[tuple[float, int]] = []
+                    for i, (_, txt) in enumerate(pairs):
+                        if not txt:
+                            rescored.append((0.0, i))
+                            continue
+                        pv = _rt.embedder.embed(txt)
+                        na = float(_np.linalg.norm(qv)) or 1.0
+                        nb = float(_np.linalg.norm(pv)) or 1.0
+                        s = float(_np.dot(qv, pv) / (na * nb))
+                        rescored.append((s, i))
+                rescored.sort(key=lambda t: t[0], reverse=True)
+                selected = [out[i] for _, i in rescored[:out_k]]
+                out = selected
         except Exception:
             pass
     # Default: fused order is already desc by score

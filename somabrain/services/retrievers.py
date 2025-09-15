@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Tuple
 
 from somabrain.schemas import RAGCandidate
 
@@ -111,6 +111,7 @@ def retrieve_graph(
         start = mem_client.coord_for_key(query, universe=universe)
         # Attempt explicit two-hop traversal
         doc_coords: list[tuple] = []
+        boost_coords: set[tuple] = set()
         try:
             sess_edges = mem_client.links_from(
                 start, type_filter="rag_session", limit=max(1, int(limit))
@@ -125,7 +126,9 @@ def retrieve_graph(
                 for de in doc_edges:
                     d_to = de.get("to")
                     if isinstance(d_to, (list, tuple)) and len(d_to) >= 3:
-                        doc_coords.append(tuple(d_to))
+                        t = tuple(d_to)
+                        doc_coords.append(t)
+                        boost_coords.add(t)
         except Exception:
             doc_coords = []
         coords: list[tuple]
@@ -152,6 +155,14 @@ def retrieve_graph(
                 na = float(np.linalg.norm(qv)) or 1.0
                 nb = float(np.linalg.norm(pv)) or 1.0
                 score = float(np.dot(qv, pv) / (na * nb))
+                # Small boost if this coord came via retrieved_with path (session learning)
+                try:
+                    c = p.get("coordinate")
+                    if isinstance(c, (list, tuple)) and len(c) >= 3:
+                        if tuple(c[:3]) in boost_coords:
+                            score += 0.05
+                except Exception:
+                    pass
             except Exception:
                 score = 0.0
             out.append(
@@ -169,31 +180,91 @@ def retrieve_graph(
         return []
 
 
-def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate]:
-    """Simple lexical retriever over all_memories() when available.
+_BM25_CACHE: dict[str, tuple[object, int, List[dict]]] = {}
 
-    Scoring: token overlap count (case-insensitive) with crude IDF proxy via token length.
-    Falls back to [] if the backend cannot enumerate memories (e.g., HTTP mode).
+
+def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate]:
+    """BM25 lexical retriever over all_memories() when available.
+
+    - Uses rank_bm25 if installed; otherwise falls back to simple token overlap.
+    - Returns [] if the backend cannot enumerate memories (e.g., HTTP mode).
     """
     try:
         corpus = getattr(mem_client, "all_memories")()
-        if not corpus:
-            return []
-        qtokens = {t for t in str(query).lower().split() if t}
+    except Exception:
+        corpus = []
+    if not corpus:
+        return []
+
+    # Extract texts and keep mapping
+    docs: list[Tuple[str, dict]] = []
+    for p in corpus:
+        try:
+            t = _text_of(p)
+            if t:
+                docs.append((t, p))
+        except Exception:
+            continue
+    if not docs:
+        return []
+
+    # Try rank_bm25 with per-namespace cache; else overlap fallback
+    try:
+        import re
+
+        from rank_bm25 import BM25Okapi  # type: ignore
+
+        def _tok(s: str) -> list[str]:
+            return re.findall(r"\w+", s.lower())
+
+        # Namespace key for cache
+        ns = None
+        try:
+            ns = getattr(getattr(mem_client, "cfg", None), "namespace", None)
+        except Exception:
+            ns = None
+        key = str(ns or id(mem_client))
+        cache = _BM25_CACHE.get(key)
+        if cache is None or cache[1] != len(docs):
+            tokenized_corpus = [_tok(t) for t, _ in docs]
+            bm25 = BM25Okapi(tokenized_corpus)
+            _BM25_CACHE[key] = (bm25, len(docs), [p for _, p in docs])
+        else:
+            bm25 = cache[0]
+        scores = bm25.get_scores(_tok(str(query)))  # type: ignore[attr-defined]
+        order = sorted(range(len(docs)), key=lambda i: scores[i], reverse=True)
+        out: list[RAGCandidate] = []
+        for i in order[: max(1, int(top_k))]:
+            text, p = docs[i]
+            s = float(scores[i])
+            out.append(
+                RAGCandidate(
+                    coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                    key=str(p.get("task") or p.get("id") or "") or None,
+                    score=s,
+                    retriever="lexical",
+                    payload=p,
+                )
+            )
+        return out
+    except Exception:
+        # Fallback: token overlap scoring
+        import re
+
+        def _tok(s: str) -> list[str]:
+            return re.findall(r"\w+", s.lower())
+
+        qtokens = set(_tok(str(query)))
         if not qtokens:
             return []
-        scored: list[tuple[float, dict]] = []
-        for p in corpus:
-            text = str(p.get("task") or p.get("fact") or "").lower()
-            if not text:
-                continue
-            ptoks = set(text.split())
+        scored: list[Tuple[float, dict]] = []
+        for text, p in docs:
+            ptoks = set(_tok(text))
             overlap = qtokens & ptoks
             if not overlap:
                 continue
-            # crude weighting: longer tokens contribute slightly more
             score = sum(max(1.0, float(len(t)) / 6.0) for t in overlap)
-            scored.append((score, p))
+            scored.append((float(score), p))
         scored.sort(key=lambda t: t[0], reverse=True)
         out: list[RAGCandidate] = []
         for s, p in scored[: max(1, int(top_k))]:
@@ -207,8 +278,6 @@ def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate
                 )
             )
         return out
-    except Exception:
-        return []
 
 
 def _fake_payload(i: int) -> dict:
