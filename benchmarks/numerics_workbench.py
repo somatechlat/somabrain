@@ -16,8 +16,12 @@ from pathlib import Path
 
 import numpy as np
 
-from somabrain.numerics import (compute_tiny_floor, irfft_norm,
-                                make_unitary_role, rfft_norm)
+from somabrain.numerics import (
+    compute_tiny_floor,
+    irfft_norm,
+    make_unitary_role,
+    rfft_norm,
+)
 
 OUT = Path(__file__).resolve().parent / "workbench_numerics_results.json"
 

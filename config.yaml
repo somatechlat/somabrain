@@ -22,6 +22,21 @@ hrr_rerank_weight: 0.3
 hrr_rerank_only_low_margin: true
 rerank_margin_threshold: 0.05
 
+# RAG fusion weights (calibrated on synthetic large set)
+retriever_weight_vector: 0.35
+retriever_weight_lexical: 0.55
+retriever_weight_wm: 0.10
+retriever_weight_graph: 1.0
+
+# Query expansion (bounded) and reranker knobs (off by default)
+use_query_expansion: false
+query_expansion_variants: 0
+reranker_provider: null
+reranker_model: null
+reranker_top_n: 50
+reranker_out_k: 10
+reranker_batch: 32
+
 # Diversity rerank (MMR)
 use_diversity: true
 diversity_method: mmr          # mmr|facility (facility placeholder)
@@ -50,10 +65,10 @@ hnsw_efc: 100
 hnsw_efs: 64
 
 # Rate limits / quotas
-rate_rps: 50
-rate_burst: 100
-# DOUBLED write_daily_limit for local testing (was 10000)
-write_daily_limit: 20000
+# Uncapped limits for local testing (adjust in production)
+rate_rps: 100000
+rate_burst: 100000
+write_daily_limit: 100000000
 
 # Planner (optional)
 use_planner: false

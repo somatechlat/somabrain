@@ -36,3 +36,15 @@ somabrain-journal = "somabrain.cli:journal_cli"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 88
+combine_as_imports = true
+known_first_party = ["somabrain"]
+default_section = "THIRDPARTY"

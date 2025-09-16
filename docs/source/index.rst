@@ -69,7 +69,6 @@ For more details, see the API documentation and guides in this site.
   AUTOGEN_POLICY
   architecture
   agent_integration
-  api_modules
   memory_management
   modules
   tutorials

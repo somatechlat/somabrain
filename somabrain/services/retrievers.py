@@ -116,10 +116,14 @@ def retrieve_graph(
             sess_edges = mem_client.links_from(
                 start, type_filter="rag_session", limit=max(1, int(limit))
             )
+            # Per-coordinate learned-link bonus (typed weights)
+            boost_map: dict[tuple, float] = {}
+            typed_bonus = {"retrieved_with": 0.05, "uses_tool": 0.05}
             for e in sess_edges:
                 s_to = e.get("to")
                 if not (isinstance(s_to, (list, tuple)) and len(s_to) >= 3):
                     continue
+                # Learned docs from this session
                 doc_edges = mem_client.links_from(
                     tuple(s_to), type_filter="retrieved_with", limit=max(1, int(limit))
                 )
@@ -129,6 +133,25 @@ def retrieve_graph(
                         t = tuple(d_to)
                         doc_coords.append(t)
                         boost_coords.add(t)
+                        boost_map[t] = (
+                            boost_map.get(t, 0.0) + typed_bonus["retrieved_with"]
+                        )
+                # Learned tools from this session (optional)
+                try:
+                    tool_edges = mem_client.links_from(
+                        tuple(s_to), type_filter="uses_tool", limit=max(1, int(limit))
+                    )
+                    for te in tool_edges:
+                        t_to = te.get("to")
+                        if isinstance(t_to, (list, tuple)) and len(t_to) >= 3:
+                            tt = tuple(t_to)
+                            doc_coords.append(tt)
+                            boost_coords.add(tt)
+                            boost_map[tt] = (
+                                boost_map.get(tt, 0.0) + typed_bonus["uses_tool"]
+                            )
+                except Exception:
+                    pass
         except Exception:
             doc_coords = []
         coords: list[tuple]
@@ -155,6 +178,18 @@ def retrieve_graph(
                 na = float(np.linalg.norm(qv)) or 1.0
                 nb = float(np.linalg.norm(pv)) or 1.0
                 score = float(np.dot(qv, pv) / (na * nb))
+                # Apply learned-link bonus if present (typed-link weights)
+                try:
+                    c = p.get("coordinate")
+                    if isinstance(c, (list, tuple)) and len(c) >= 3:
+                        bonus = 0.0
+                        t = (float(c[0]), float(c[1]), float(c[2]))
+                        bonus = (
+                            boost_map.get(t, 0.0) if "boost_map" in locals() else 0.0
+                        )
+                        score += float(bonus)
+                except Exception:
+                    pass
                 # Small boost if this coord came via retrieved_with path (session learning)
                 try:
                     c = p.get("coordinate")

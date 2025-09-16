@@ -1,7 +1,6 @@
 import numpy as np
 
-from somabrain.numerics import (compute_tiny_floor, make_unitary_role,
-                                normalize_array)
+from somabrain.numerics import compute_tiny_floor, make_unitary_role, normalize_array
 
 
 def test_tiny_floor_is_amplitude():

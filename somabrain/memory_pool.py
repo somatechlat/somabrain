@@ -49,6 +49,7 @@ class MultiTenantMemory:
             cfg2.namespace = ns
             try:
                 client = MemoryClient(cfg2)
+                print("DEBUG create client in pool", ns, id(client))
                 # On first creation, replay journal for this namespace (non-HTTP modes)
                 if (
                     bool(getattr(cfg2, "persistent_journal_enabled", False))

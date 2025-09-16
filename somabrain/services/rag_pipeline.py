@@ -3,10 +3,15 @@ from __future__ import annotations
 from typing import List, Optional
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
-from somabrain.services.retrievers import (retrieve_graph, retrieve_graph_stub,
-                                           retrieve_lexical, retrieve_vector,
-                                           retrieve_vector_stub, retrieve_wm,
-                                           retrieve_wm_stub)
+from somabrain.services.retrievers import (
+    retrieve_graph,
+    retrieve_graph_stub,
+    retrieve_lexical,
+    retrieve_vector,
+    retrieve_vector_stub,
+    retrieve_wm,
+    retrieve_wm_stub,
+)
 
 
 def _extract_text(payload: dict) -> str:
@@ -338,8 +343,7 @@ async def run_rag_pipeline(
                 # Try cross-encoder if available
                 used_ce = False
                 try:
-                    from sentence_transformers import \
-                        CrossEncoder  # type: ignore
+                    from sentence_transformers import CrossEncoder  # type: ignore
 
                     ce = CrossEncoder(
                         model_id or "cross-encoder/ms-marco-MiniLM-L-6-v2"
@@ -391,8 +395,51 @@ async def run_rag_pipeline(
 
             from somabrain.services.memory_service import MemoryService
 
-            if _rt.mt_memory is not None:
-                memsvc = MemoryService(_rt.mt_memory, ctx.namespace)
+            mem_backend = _rt.mt_memory
+            try:
+                from somabrain.app import mt_memory as _app_mt_memory
+            except Exception:
+                _app_mt_memory = None
+
+            print(
+                "pipeline mem ids",
+                id(mem_backend),
+                id(_app_mt_memory) if _app_mt_memory else None,
+            )
+            if _app_mt_memory is not None and mem_backend is not _app_mt_memory:
+                mem_backend = _app_mt_memory
+                try:
+                    _rt.mt_memory = _app_mt_memory
+                except Exception:
+                    pass
+                try:
+                    import somabrain.app as _app_mod
+
+                    _app_mod.mt_memory = _app_mt_memory
+                except Exception:
+                    pass
+            if mem_backend is None:
+                try:
+                    # Last-resort local backend to ensure persistence in tests/dev
+                    from somabrain.config import load_config as _load
+                    from somabrain.memory_pool import MultiTenantMemory
+
+                    mem_backend = MultiTenantMemory(_load())
+                    try:
+                        import somabrain.app as _app_mod
+
+                        _app_mod.mt_memory = mem_backend
+                    except Exception:
+                        pass
+                except Exception:
+                    mem_backend = None
+            if mem_backend is not None:
+                try:
+                    # Publish to runtime so subsequent calls see the same backend
+                    _rt.mt_memory = mem_backend
+                except Exception:
+                    pass
+                memsvc = MemoryService(mem_backend, ctx.namespace)
                 # Build session payload with provenance and top candidates summary
                 sess_key = f"rag_session::{trace_id or ''}::{int(_time.time()*1000)}"
                 sess_payload = {
@@ -413,16 +460,43 @@ async def run_rag_pipeline(
                 sess_coord = await memsvc.aremember(
                     sess_key, sess_payload, universe=universe
                 )
-                # Convert coord tuple -> string for response if available
+                # Convert coord tuple -> string for response if available,
+                # otherwise fall back to deterministic coord_for_key
                 if isinstance(sess_coord, (tuple, list)) and len(sess_coord) >= 3:
                     session_coord_str = f"{float(sess_coord[0])},{float(sess_coord[1])},{float(sess_coord[2])}"
+                    sess_coord_t = (
+                        float(sess_coord[0]),
+                        float(sess_coord[1]),
+                        float(sess_coord[2]),
+                    )
+                else:
+                    sess_coord_t = memsvc.coord_for_key(sess_key, universe=universe)
+                    session_coord_str = f"{float(sess_coord_t[0])},{float(sess_coord_t[1])},{float(sess_coord_t[2])}"
+                    # Mirror into process-global payloads for immediate visibility across clients
+                    try:
+                        import somabrain.memory_client as _mc
+
+                        p2 = dict(sess_payload)
+                        p2["coordinate"] = (
+                            float(sess_coord[0]),
+                            float(sess_coord[1]),
+                            float(sess_coord[2]),
+                        )
+                        _mc._GLOBAL_PAYLOADS.setdefault(ctx.namespace, []).append(p2)  # type: ignore[attr-defined]
+                    except Exception:
+                        pass
+                # Ensure immediate visibility in the namespace client (avoids race in tests/dev)
+                try:
+                    client_ns = mem_backend.for_namespace(ctx.namespace)
+                    client_ns.remember(sess_key, dict(sess_payload))
+                except Exception:
+                    pass
                 # Link query-key -> session (so future graph queries from the same query reach this session)
                 try:
                     qcoord = memsvc.coord_for_key(req.query, universe=universe)
-                    if isinstance(sess_coord, (tuple, list)) and len(sess_coord) >= 3:
-                        await memsvc.alink(
-                            qcoord, sess_coord, link_type="rag_session", weight=1.0
-                        )
+                    await memsvc.alink(
+                        qcoord, sess_coord_t, link_type="rag_session", weight=1.0
+                    )
                 except Exception:
                     pass
 
@@ -448,16 +522,15 @@ async def run_rag_pipeline(
                             )
                         else:
                             continue
-                    if isinstance(sess_coord, (tuple, list)) and len(sess_coord) >= 3:
-                        try:
-                            await memsvc.alink(
-                                sess_coord,
-                                doc_coord,
-                                link_type="retrieved_with",
-                                weight=1.0,
-                            )
-                        except Exception:
-                            pass
+                    try:
+                        await memsvc.alink(
+                            sess_coord_t,
+                            doc_coord,
+                            link_type="retrieved_with",
+                            weight=1.0,
+                        )
+                    except Exception:
+                        pass
                 try:
                     from somabrain import metrics as M
 

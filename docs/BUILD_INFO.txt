@@ -1,8 +1,0 @@
-{
-  "built_at": "2025-09-12T23:14:41.920581Z",
-  "build_path": "docs/build/html",
-  "sphinx_warnings_sample": [
-    "autodoc: failed to import module somabrain.schemas (pydantic incompatibility with Python 3.13)",
-    "Inline substitution_reference issues in docs/source/math.rst (see warnings)"
-  ]
-}

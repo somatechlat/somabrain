@@ -34,6 +34,8 @@ docs/generated/
 *.db
 audit_log.jsonl
 somabrain.log
+logs/
+tmp/
 
 # OS junk
 .DS_Store

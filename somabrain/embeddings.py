@@ -244,8 +244,7 @@ def make_embedder(cfg, quantum=None):
         base_fn = base.embed
     elif provider == "transformer":
         try:
-            from .providers.transformer_embed import \
-                TransformerEmbedder  # type: ignore
+            from .providers.transformer_embed import TransformerEmbedder  # type: ignore
 
             t = TransformerEmbedder(model_name=getattr(cfg, "embed_model", None))
             base_dim = t.dim

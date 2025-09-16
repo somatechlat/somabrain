@@ -7,8 +7,7 @@ import time
 
 import numpy as np
 
-from somabrain import batch as batch
-from somabrain import numerics as num
+from somabrain import batch as batch, numerics as num
 
 
 def bench_normalize(D=2048, N=1000):

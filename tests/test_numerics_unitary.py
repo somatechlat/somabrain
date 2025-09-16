@@ -1,7 +1,12 @@
 import numpy as np
 
-from somabrain.numerics import (compute_tiny_floor, irfft_norm,
-                                make_unitary_role, normalize_array, rfft_norm)
+from somabrain.numerics import (
+    compute_tiny_floor,
+    irfft_norm,
+    make_unitary_role,
+    normalize_array,
+    rfft_norm,
+)
 from somabrain.quantum import bind_unitary, unbind_exact_or_tikhonov_or_wiener
 
 

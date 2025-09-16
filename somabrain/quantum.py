@@ -428,8 +428,7 @@ class QuantumLayer:
         c = self._ensure_vector(c, name="unbind_exact.c")
         b = self._ensure_vector(b, name="unbind_exact.b")
 
-        from somabrain.numerics import (compute_tiny_floor, irfft_norm,
-                                        rfft_norm)
+        from somabrain.numerics import compute_tiny_floor, irfft_norm, rfft_norm
 
         # Spectral division with high-precision intermediates for stability
         fc = rfft_norm(c, n=self.cfg.dim).astype(np.complex128)
@@ -727,8 +726,12 @@ def unbind_exact_or_tikhonov_or_wiener(
     import numpy as _np
 
     from somabrain import wiener as _wiener
-    from somabrain.numerics import (compute_tiny_floor, irfft_norm,
-                                    normalize_array, rfft_norm)
+    from somabrain.numerics import (
+        compute_tiny_floor,
+        irfft_norm,
+        normalize_array,
+        rfft_norm,
+    )
 
     # Role token -> delegate to QuantumLayer exact_unitary/unbind_wiener
     if isinstance(role, str):

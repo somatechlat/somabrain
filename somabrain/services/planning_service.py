@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from ..planner import plan_from_graph as _bfs
-from ..planner import plan_from_graph as bfs_plan
+from ..planner import plan_from_graph as _bfs, plan_from_graph as bfs_plan
 from ..planner_rwr import rwr_plan as _rwr
 
 

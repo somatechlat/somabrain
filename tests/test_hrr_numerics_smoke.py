@@ -1,9 +1,6 @@
 import numpy as np
 
-from somabrain import numerics as num
-from somabrain import roles as roles
-from somabrain import seed as s
-from somabrain import wiener as wiener
+from somabrain import numerics as num, roles as roles, seed as s, wiener as wiener
 
 
 def test_seed_rng_reproducible():

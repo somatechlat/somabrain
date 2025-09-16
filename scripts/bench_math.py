@@ -14,8 +14,12 @@ import math
 
 import numpy as np
 
-from somabrain.numerics import (compute_tiny_floor, irfft_norm,
-                                normalize_array, rfft_norm)
+from somabrain.numerics import (
+    compute_tiny_floor,
+    irfft_norm,
+    normalize_array,
+    rfft_norm,
+)
 from somabrain.quantum import HRRConfig, QuantumLayer
 
 # Legacy helpers (emulate old math)

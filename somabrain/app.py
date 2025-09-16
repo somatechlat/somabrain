@@ -33,12 +33,14 @@ import logging
 import math
 import os
 import re
+
 # Threading and time for sleep logic
 import threading as _thr
 import time
 import time as _time
 import traceback
 from contextlib import asynccontextmanager
+
 # Standard library imports
 from typing import Any, Dict, List
 
@@ -47,12 +49,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from somabrain import consolidation as CONS
-from somabrain import metrics as M
-from somabrain import schemas as S
+from somabrain import consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 from somabrain.auth import require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
+
 # SomaBrain internal modules
 from somabrain.config import load_config
 from somabrain.context_hrr import HRRContextConfig
@@ -71,9 +72,13 @@ from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 from somabrain.neuromodulators import NeuromodState, Neuromodulators
 from somabrain.personality import PersonalityStore
 from somabrain.planner import plan_from_graph
-from somabrain.prediction import (BudgetedPredictor, LLMPredictor,
-                                  MahalanobisPredictor, SlowPredictor,
-                                  StubPredictor)
+from somabrain.prediction import (
+    BudgetedPredictor,
+    LLMPredictor,
+    MahalanobisPredictor,
+    SlowPredictor,
+    StubPredictor,
+)
 from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
@@ -86,6 +91,7 @@ from somabrain.services.memory_service import MemoryService
 from somabrain.services.planning_service import make_plan as _make_plan
 from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
+
 # from somabrain.anatomy import CerebellumPredictor  # unused; keep import commented for reference
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.tenant import get_tenant
@@ -409,7 +415,7 @@ class CognitiveInputValidator:
     """
 
     # Brain-safe input patterns
-    SAFE_TEXT_PATTERN = re.compile(r"^[a-zA-Z0-9\s\.,!?\-\'\"()]+$")
+    SAFE_TEXT_PATTERN = re.compile(r"^[a-zA-Z0-9\s\.,!?\'\"()/:_@-]+$")
     MAX_TEXT_LENGTH = 10000
     MAX_EMBEDDING_DIM = 4096
     MIN_EMBEDDING_DIM = 64
@@ -2992,8 +2998,7 @@ if not _MINIMAL_API:
                 else None
             )
             try:
-                from .services.planning_service import \
-                    make_plan_auto as _make_plan_auto
+                from .services.planning_service import make_plan_auto as _make_plan_auto
 
                 plan_list = _make_plan_auto(
                     cfg, req.task, mem_client, rel_types=rels, universe=plan_universe

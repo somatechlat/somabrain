@@ -204,7 +204,9 @@ class MemoryClient:
         try:
             try:
                 from somafractalmemory.factory import (  # type: ignore
-                    MemoryMode, create_memory_system)
+                    MemoryMode,
+                    create_memory_system,
+                )
             except ModuleNotFoundError:
                 import pathlib
                 import sys
@@ -222,7 +224,9 @@ class MemoryClient:
                     if target.exists() and str(candidate) not in sys.path:
                         sys.path.insert(0, str(candidate))
                 from somafractalmemory.factory import (  # type: ignore
-                    MemoryMode, create_memory_system)
+                    MemoryMode,
+                    create_memory_system,
+                )
         except Exception:
             # Cannot import backend; degrade to stub mode
             self._local = None
@@ -747,6 +751,22 @@ class MemoryClient:
         """Return stored payloads matching any of the requested coordinates, universe-scoped."""
         if not coords:
             return []
+        # Process-global mirror (fast path for recently persisted items across clients)
+        try:
+            wanted = {tuple(c) for c in coords}
+            global_hits_map: Dict[Tuple[float, float, float], dict] = {}
+            for p in _GLOBAL_PAYLOADS.get(self.cfg.namespace, [])[:]:
+                c = p.get("coordinate")
+                if isinstance(c, (list, tuple)) and len(c) == 3 and tuple(c) in wanted:
+                    if universe is not None and str(p.get("universe") or "real") != str(
+                        universe
+                    ):
+                        continue
+                    global_hits_map[(float(c[0]), float(c[1]), float(c[2]))] = p
+            if global_hits_map:
+                return list(global_hits_map.values())
+        except Exception:
+            pass
         # HTTP mode: use SFM batch endpoint when available
         if self._mode == "http" and self._http is not None:
             try:

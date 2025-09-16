@@ -1,8 +1,12 @@
 import tempfile
 from pathlib import Path
 
-from somabrain.journal import (append_event, compact_journal, journal_path,
-                               rotate_journal)
+from somabrain.journal import (
+    append_event,
+    compact_journal,
+    journal_path,
+    rotate_journal,
+)
 
 
 def test_journal_rotate_and_compact_smoke():

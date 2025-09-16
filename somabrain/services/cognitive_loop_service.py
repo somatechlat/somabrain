@@ -36,8 +36,7 @@ def eval_step(
     except Exception:
         # degrade: zero error if predictor fails (BudgetedPredictor may timeout)
         try:
-            from .. import \
-                metrics as M  # local import to avoid cycles in tests
+            from .. import metrics as M  # local import to avoid cycles in tests
 
             M.PREDICTOR_FALLBACK.inc()
         except Exception:

@@ -35,8 +35,7 @@ Functions:
 
 from __future__ import annotations
 
-from prometheus_client import Counter
-from prometheus_client import Histogram as _Hist
+from prometheus_client import Counter, Histogram as _Hist
 
 registry = None  # reuse app registry if available
 

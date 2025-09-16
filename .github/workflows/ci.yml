@@ -49,6 +49,8 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install -U pip setuptools wheel
+          # Install dev pins first to align numpy and tool versions for CI
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           python -m pip install -e .[dev]
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: Lint
@@ -60,6 +62,7 @@ jobs:
           PYTHONPATH: .
           SOMABRAIN_MEMORY_MODE: stub
           SOMABRAIN_MINIMAL_PUBLIC_API: '0'
+          MPLBACKEND: Agg
         run: |
           pytest -q
   bench:
