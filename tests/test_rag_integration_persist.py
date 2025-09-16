@@ -13,7 +13,8 @@ def _parse_coord_str(s: str):
     parts = [float(x.strip()) for x in s.split(",")]
     return (parts[0], parts[1], parts[2])
 
-    # This test must run in its own process to guarantee backend state is not reset by other tests
+    # This test must run in its own process to guarantee backend state is not
+    # reset by other tests
     # pytest -p pytest_forked is required for this marker to work
     # If not available, use pytest.mark.isolated or similar
     # See: https://docs.pytest.org/en/stable/how-to/xunit_setup.html#process-isolation

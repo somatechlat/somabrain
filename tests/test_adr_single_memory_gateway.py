@@ -16,6 +16,7 @@ def test_no_direct_somafractalmemory_imports_outside_memory_client():
             continue
         if "somafractalmemory." in text or "from somafractalmemory" in text:
             offenders.append(str(py.relative_to(ROOT)))
-    assert (
-        not offenders
-    ), f"Direct somafractalmemory imports are only allowed in memory_client.py, found in: {offenders}"
+    assert not offenders, (
+        "Direct somafractalmemory imports are only allowed in memory_client.py, "
+        f"found in: {offenders}"
+    )

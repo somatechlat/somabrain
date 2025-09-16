@@ -20,7 +20,8 @@ def main():
     )
     assert r.status_code == 200
 
-    # /act on a different fresh task B; expect salience to be >= baseline due to ACh and lower thresholds
+    # /act on a different fresh task B; expect salience to be >= baseline due to
+    # ACh and lower thresholds
     r = client.post("/act", json={"task": "analyze data B", "top_k": 1})
     assert r.status_code == 200
     sal2 = r.json()["results"][0]["salience"]

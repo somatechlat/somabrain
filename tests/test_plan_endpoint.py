@@ -47,5 +47,6 @@ def test_plan_suggest_stub():
     assert r.status_code == 200
     data = r.json()
     assert isinstance(data.get("plan"), list)
-    # Best-effort: may or may not include the exact task strings depending on stub; just ensure list shape
+    # Best-effort: may or may not include the exact task strings depending on
+    # stub; just ensure list shape
     assert len(data["plan"]) >= 0

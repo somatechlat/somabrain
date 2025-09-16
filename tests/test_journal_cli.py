@@ -21,7 +21,8 @@ def test_journal_rotate_and_compact_smoke():
         assert p.exists()
         # rotate at a tiny max_bytes
         rot = rotate_journal(d, ns, max_bytes=1_000, keep=2)
-        # rotation may or may not happen depending on platform timing; accept None or Path
+        # rotation may or may not happen depending on platform timing; accept
+        # None or Path
         assert rot is None or isinstance(rot, Path)
         # compact should succeed
         ok = compact_journal(d, ns)

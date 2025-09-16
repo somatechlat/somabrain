@@ -74,7 +74,8 @@ def test_unbind_sanity_small_dim():
     # bind and unbind with production layer
     c = q.bind(a, b)
     recovered = q.unbind(c, b)
-    # pure unbind may raise if exact zeros; we only assert production returns finite vector
+    # pure unbind may raise if exact zeros; we only assert production returns
+    # a finite vector
     assert isinstance(recovered, np.ndarray)
     assert recovered.shape[0] == cfg.dim
     assert not np.any(np.isnan(recovered))

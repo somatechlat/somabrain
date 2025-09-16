@@ -5,10 +5,12 @@ import pytest
 
 @pytest.fixture(autouse=True, scope="session")
 def ensure_runtime_backend_and_clear_mirror():
-    """Ensure a consistent in-process memory backend is available and clear global mirrors.
+    """Ensure a consistent in-process memory backend is available and
+    clear global mirrors.
 
-    This avoids cross-test coupling (mirror carry-over) and race conditions where
-    the pipeline persists to a backend not visible to the reader in the same test.
+    This avoids cross-test coupling (mirror carry-over) and race conditions
+    where the pipeline persists to a backend not visible to the reader in
+    the same test.
     """
     # Ensure a runtime memory backend exists for the duration of the test
     try:

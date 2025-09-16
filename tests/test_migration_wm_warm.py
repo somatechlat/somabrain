@@ -23,7 +23,8 @@ def test_migrate_import_wm_warming_counts():
     assert data.get("imported") == 0
     assert data.get("wm_warmed") == len(wm_items)
 
-    # Also ensure /metrics contains the wm admit counter series (at least once from warming)
+    # Also ensure /metrics contains the wm admit counter series (at least once
+    # from warming)
     m = client.get("/metrics")
     assert m.status_code == 200
     assert "somabrain_wm_admit_total" in m.text

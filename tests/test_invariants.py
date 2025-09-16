@@ -36,7 +36,8 @@ def test_superpose_normalized():
 
 
 def test_schema_observation_embeddings_normalized():
-    # Create an observation with a deliberately small embedding and ensure validator normalizes/pads
+    # Create an observation with a deliberately small embedding and ensure
+    # validator normalizes/pads
     small = [0.1] * min(4, HRR_DIM)
     obs = S.Observation(
         who="t",
