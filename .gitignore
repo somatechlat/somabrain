@@ -68,3 +68,8 @@ somabrain.egg-info/
 artifacts/
 external/somafractalmemory
 tmp/RAG_Techniques/
+
+# Ignore generated Sphinx module pages and OpenAPI exports created during docs build
+docs/source/generated/
+docs/source/*openapi*.json
+docs/source/*openapi*.js
