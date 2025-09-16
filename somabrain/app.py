@@ -98,6 +98,11 @@ from somabrain.tenant import get_tenant
 from somabrain.thalamus import ThalamusRouter
 from somabrain.version import API_VERSION
 
+try:
+    from somabrain.api.routers import persona as persona_router
+except Exception:
+    persona_router = None
+
 # Optional demo systems (FNOM/Fractal) removed from core; placeholders kept
 FourierNeuralOscillationMemory = None  # type: ignore
 FractalMemorySystem = None  # type: ignore
@@ -605,6 +610,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Mount persona router (Phase 1) if available
+if persona_router is not None:
+    app.include_router(persona_router.router)
 
 # Initialize logging
 setup_logging()
