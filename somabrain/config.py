@@ -28,8 +28,9 @@ from typing import Optional
 try:
     from dynaconf import Dynaconf  # type: ignore
 except Exception:
-
-    class Dynaconf:  # minimal fallback
+    # Provide a minimal fallback for environments without dynaconf installed.
+    # Mark with type: ignore to avoid mypy redefinition/import ambiguity.
+    class Dynaconf:  # type: ignore
         def __init__(self, *_, **__):
             pass
 

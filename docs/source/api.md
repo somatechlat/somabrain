@@ -192,15 +192,9 @@ Response contains an `edges` array with `{ from, to, type, weight }` and an `uni
 - Request: `MigrateImportRequest`
 - Response: `MigrateImportResponse` { imported: int, wm_warmed: int }
 
-### GET /personality
+### Persona endpoints
 
-- Purpose: Get per-tenant personality traits
-- Response: `PersonalityState` { traits }
-
-### POST /personality
-
-- Purpose: Set per-tenant traits
-- Request/Response: `PersonalityState`
+- Persona CRUD has moved to `/persona` (PUT/GET/DELETE). Use `Persona` schema with `id`, `display_name`, and `properties` to persist tenant traits.
 
 ### GET /metrics and GET /metrics/snapshot
 

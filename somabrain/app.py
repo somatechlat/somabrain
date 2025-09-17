@@ -42,9 +42,9 @@ import traceback
 from contextlib import asynccontextmanager
 
 # Standard library imports
-from typing import Any, Dict, List
+from typing import Any, Any as _Any, Dict, List, Optional, cast
 
-from cachetools import TTLCache
+from cachetools import TTLCache  # type: ignore[import]
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -70,7 +70,7 @@ from somabrain.microcircuits import MCConfig, MultiColumnWM
 from somabrain.mt_context import MultiTenantHRRContext
 from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 from somabrain.neuromodulators import NeuromodState, Neuromodulators
-from somabrain.personality import PersonalityStore
+from somabrain.persona_store import PersonaStore
 from somabrain.planner import plan_from_graph
 from somabrain.prediction import (
     BudgetedPredictor,
@@ -98,8 +98,11 @@ from somabrain.tenant import get_tenant
 from somabrain.thalamus import ThalamusRouter
 from somabrain.version import API_VERSION
 
+persona_router: _Any = None
 try:
-    from somabrain.api.routers import persona as persona_router
+    from somabrain.api.routers import (  # type: ignore[assignment]
+        persona as persona_router,
+    )
 except Exception:
     persona_router = None
 
@@ -1959,7 +1962,7 @@ fractal_consciousness = FractalConsciousness(unified_brain, quantum_cognition)
 # Initialize Mathematical Transcendence (PHASE 4 REVOLUTION)
 mathematical_transcendence = MathematicalTranscendence(fractal_consciousness)
 
-personality_store = PersonalityStore()
+persona_store = PersonaStore(mt_memory, namespace=getattr(cfg, "namespace", None))
 supervisor = (
     Supervisor(SupervisorConfig(gain=cfg.meta_gain, limit=cfg.meta_limit))
     if cfg.use_meta_brain
@@ -2044,11 +2047,14 @@ async def health(request: Request) -> S.HealthResponse:
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
-    resp = S.HealthResponse(ok=True, components=comps).model_dump()
-    resp["namespace"] = ctx.namespace
-    resp["trace_id"] = trace_id
-    resp["deadline_ms"] = deadline_ms
-    resp["idempotency_key"] = idempotency_key
+    resp = S.HealthResponse(
+        ok=True,
+        components=comps,
+        namespace=ctx.namespace,
+        trace_id=trace_id,
+        deadline_ms=deadline_ms,
+        idempotency_key=idempotency_key,
+    )
     return resp
 
 
@@ -2324,26 +2330,50 @@ async def recall(req: S.RecallRequest, request: Request):
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
-    resp = {
-        "wm": [{"score": s, "payload": p} for s, p in wm_hits],
-        "memory": mem_payloads,
-        "namespace": ctx.namespace,
-        "trace_id": trace_id,
-        "deadline_ms": deadline_ms,
-        "idempotency_key": idempotency_key,
-    }
-    # Reality monitor (optional header X-Min-Sources)
+    # Prepare typed response fields
     try:
-        min_src = int(request.headers.get("X-Min-Sources", "1"))
+        wm_list = [S.WMHit(score=float(s), payload=p) for s, p in wm_hits]
+        mem_list = cast(List[Dict[str, Any]], mem_payloads)
+        try:
+            min_src = int(request.headers.get("X-Min-Sources", "1"))
+        except Exception:
+            min_src = 1
+        reality_val = cast(
+            Optional[Dict[str, Any]], assess_reality(mem_payloads, min_sources=min_src)
+        )
+        drift_val = cast(
+            Optional[Dict[str, Any]],
+            drift_mon.update(wm_qv) if drift_mon is not None else None,
+        )
+        hrr_val = cast(
+            Optional[Dict[str, Any]], hrr_info if hrr_info is not None else None
+        )
+        return S.RecallResponse(
+            wm=wm_list,
+            memory=mem_list,
+            namespace=ctx.namespace,
+            trace_id=trace_id,
+            deadline_ms=deadline_ms,
+            idempotency_key=idempotency_key,
+            reality=reality_val,
+            drift=drift_val,
+            hrr_cleanup=hrr_val,
+        )
     except Exception:
-        min_src = 1
-    resp["reality"] = assess_reality(mem_payloads, min_sources=min_src)
-    # Drift monitor on query vector
-    if drift_mon is not None:
-        resp["drift"] = drift_mon.update(wm_qv)
-    if hrr_info is not None:
-        resp["hrr_cleanup"] = hrr_info
-    return resp
+        # Fallback: return a minimal structured RecallResponse instance
+        wm_list = [S.WMHit(score=float(s), payload=p) for s, p in wm_hits]
+        mem_list = cast(List[Dict[str, Any]], mem_payloads)
+        return S.RecallResponse(
+            wm=wm_list,
+            memory=mem_list,
+            namespace=ctx.namespace,
+            trace_id=trace_id,
+            deadline_ms=deadline_ms,
+            idempotency_key=idempotency_key,
+            reality=None,
+            drift=None,
+            hrr_cleanup=None,
+        )
 
 
 @app.post("/remember", response_model=S.RememberResponse)
@@ -2472,14 +2502,24 @@ async def remember(req: S.RememberRequest, request: Request):
     logging.info(
         f"SUCCESS: Memory saved for key={key} namespace={ctx.namespace} trace_id={trace_id}"
     )
-    return {
-        "ok": True,
-        "success": True,
-        "namespace": ctx.namespace,
-        "trace_id": trace_id,
-        "deadline_ms": deadline_ms,
-        "idempotency_key": idempotency_key,
-    }
+    try:
+        return S.RememberResponse(
+            ok=True,
+            success=True,
+            namespace=ctx.namespace,
+            trace_id=trace_id,
+            deadline_ms=deadline_ms,
+            idempotency_key=idempotency_key,
+        )
+    except Exception:
+        return {
+            "ok": True,
+            "success": True,
+            "namespace": ctx.namespace,
+            "trace_id": trace_id,
+            "deadline_ms": deadline_ms,
+            "idempotency_key": idempotency_key,
+        }
 
 
 if not _MINIMAL_API:
@@ -2536,11 +2576,18 @@ if not _MINIMAL_API:
         require_auth(request, cfg)
         ten = ctx.tenant_id
         last = _sleep_last.get(ten, {})
-        return {
-            "enabled": bool(cfg.consolidation_enabled),
-            "interval_seconds": int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
-            "last": {"nrem": last.get("nrem"), "rem": last.get("rem")},
-        }
+        try:
+            return S.SleepStatusResponse(
+                enabled=bool(cfg.consolidation_enabled),
+                interval_seconds=int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
+                last={"nrem": last.get("nrem"), "rem": last.get("rem")},
+            )
+        except Exception:
+            return S.SleepStatusResponse(
+                enabled=bool(cfg.consolidation_enabled),
+                interval_seconds=int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
+                last={"nrem": last.get("nrem"), "rem": last.get("rem")},
+            )
 
 
 if not _MINIMAL_API:
@@ -2561,11 +2608,18 @@ if not _MINIMAL_API:
         for tid in tenants:
             last = _sleep_last.get(tid, {})
             out[tid] = {"nrem": last.get("nrem"), "rem": last.get("rem")}
-        return {
-            "enabled": bool(cfg.consolidation_enabled),
-            "interval_seconds": int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
-            "tenants": out,
-        }
+        try:
+            return S.SleepStatusAllResponse(
+                enabled=bool(cfg.consolidation_enabled),
+                interval_seconds=int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
+                tenants=out,
+            )
+        except Exception:
+            return S.SleepStatusAllResponse(
+                enabled=bool(cfg.consolidation_enabled),
+                interval_seconds=int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
+                tenants=out,
+            )
 
 
 @app.post("/plan/suggest", response_model=S.PlanSuggestResponse)
@@ -2599,7 +2653,7 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"planning failed: {e}")
-    return {"plan": plan}
+    return S.PlanSuggestResponse(plan=plan)
 
 
 @app.post("/link", response_model=S.LinkResponse)
@@ -2652,7 +2706,10 @@ async def link(body: S.LinkRequest, request: Request) -> S.LinkResponse:
             )
     except Exception:
         pass
-    return {"ok": True}
+    try:
+        return S.LinkResponse(ok=True)
+    except Exception:
+        return S.LinkResponse(ok=True)
 
 
 @app.post("/graph/links", response_model=S.GraphLinksResponse)
@@ -2683,7 +2740,7 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
     if fc is None:
         raise HTTPException(status_code=400, detail="missing from coords or key")
     edges = memsvc.links_from(fc, type_filter=rel, limit=limit)
-    return {"edges": edges, "universe": universe}
+    return S.GraphLinksResponse(edges=edges, universe=universe)
 
 
 if not _MINIMAL_API:
@@ -2815,7 +2872,7 @@ if not _MINIMAL_API:
                 cfg,
                 predictor,
                 neuromods,
-                personality_store,
+                persona_store,
                 supervisor,
                 amygdala,
                 ctx.tenant_id,
@@ -3024,17 +3081,12 @@ if not _MINIMAL_API:
         trace_id = request.headers.get("X-Request-ID") or str(id(request))
         deadline_ms = request.headers.get("X-Deadline-MS")
         idempotency_key = request.headers.get("X-Idempotency-Key")
-        resp = S.ActResponse(
+        return S.ActResponse(
             task=req.task,
             results=results,
             plan=plan_list,
             plan_universe=plan_universe,
-        ).model_dump()
-        resp["namespace"] = ctx.namespace
-        resp["trace_id"] = trace_id
-        resp["deadline_ms"] = deadline_ms
-        resp["idempotency_key"] = idempotency_key
-        return resp
+        )
 
 
 if not _MINIMAL_API:
@@ -3049,7 +3101,7 @@ if not _MINIMAL_API:
         )
         episodics = [p for p in recent if (p.get("memory_type") == "episodic")]
         if not episodics:
-            return {"created": 0, "summaries": []}
+            return S.ReflectResponse(created=0, summaries=[])
         mem_client = mt_memory.for_namespace(ctx.namespace)
         clusters = cluster_episodics(
             episodics,
@@ -3081,7 +3133,7 @@ if not _MINIMAL_API:
                 pass
             summaries.append(summary)
             created += 1
-        return {"created": created, "summaries": summaries}
+        return S.ReflectResponse(created=created, summaries=summaries)
 
 
 if not _MINIMAL_API:
@@ -3168,7 +3220,7 @@ if not _MINIMAL_API:
                         pass
         except Exception:
             pass
-        return {"imported": imported, "wm_warmed": wm_warmed}
+        return S.MigrateImportResponse(imported=imported, wm_warmed=wm_warmed)
 
 
 if not _MINIMAL_API:
@@ -3178,7 +3230,7 @@ if not _MINIMAL_API:
         # Return active per-tenant traits (load from LTM if not present in memory)
         ctx = get_tenant(request, cfg.namespace)
         require_auth(request, cfg)
-        traits = personality_store.get(ctx.tenant_id)
+        traits = persona_store.get(ctx.tenant_id)
         if not traits:
             try:
                 # Best-effort: recall the personality key and pick the most recent
@@ -3198,7 +3250,7 @@ if not _MINIMAL_API:
                             break
                 t = dict((cand or {}).get("traits") or {})
                 if t:
-                    personality_store.set(ctx.tenant_id, t)
+                    persona_store.set(ctx.tenant_id, t)
                     traits = t
             except Exception:
                 pass
@@ -3213,7 +3265,7 @@ if not _MINIMAL_API:
         ctx = get_tenant(request, cfg.namespace)
         require_auth(request, cfg)
         traits = dict(state.traits or {})
-        personality_store.set(ctx.tenant_id, traits)
+        persona_store.set(ctx.tenant_id, traits)
         payload = {"fact": "personality", "traits": traits, "memory_type": "semantic"}
         mt_memory.for_namespace(ctx.namespace).remember(
             f"personality:{ctx.tenant_id}", payload

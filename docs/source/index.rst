@@ -58,17 +58,18 @@ For more details, see the API documentation and guides in this site.
   :maxdepth: 2
   :caption: Contents
 
-  math
-  numerics
-  workbench
-  benchmarks
-  REPORT_NUMERICS_HARDENING
-  api
-  api_quickstart
-  api_reference
-  AUTOGEN_POLICY
   architecture
+  api.md
   agent_integration
+
+  api_reference
+  api_quickstart.md
   memory_management
   modules
+  numerics
+  benchmarks
+  workbench
+  math
   tutorials
+
+  AUTOGEN_POLICY.md

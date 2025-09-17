@@ -49,7 +49,7 @@ def random_unit_vector(
     """Return a random unit-length vector (L2-normalized) of shape (dim,)."""
     rng = rng_from_seed(seed)
     v = rng.standard_normal(size=(dim,)).astype(dtype)
-    norm = np.linalg.norm(v)
+    norm = float(np.linalg.norm(v))
     if norm == 0:
         v[0] = 1.0
         norm = 1.0

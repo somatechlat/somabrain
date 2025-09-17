@@ -209,33 +209,9 @@ This page includes the canonical API endpoints table maintained in the Markdown 
 	- Side effects: Data writes; potential replace
 	- Maps to: Data Import
 
-### GET /personality
+### Persona (replacement for personality endpoints)
 
-- Purpose: Get per-tenant traits
-- Request: n/a
-- Response: PersonalityState { traits }
-- Compatibility
-	- Method/Path: GET /personality
-	- Auth: Yes
-	- Minimal mode: Hidden
-	- Tenant scope: Current tenant
-	- Universe: Ignored
-	- Side effects: None
-	- Maps to: Personality/Get
-
-### POST /personality
-
-- Purpose: Set per-tenant traits and persist a semantic record
-- Request: PersonalityState { traits }
-- Response: PersonalityState
-- Compatibility
-	- Method/Path: POST /personality
-	- Auth: Yes
-	- Minimal mode: Hidden
-	- Tenant scope: Writes trait state + memory
-	- Universe: Ignored
-	- Side effects: Writes trait state + semantic record
-	- Maps to: Personality/Set
+- Persona CRUD is available at `/persona/{id}` via PUT/GET/DELETE. Use the `Persona` schema (fields: `id`, `display_name`, `properties`) to persist tenant trait records used by the cognitive system.
 
 ### GET /brain/core/stats
 

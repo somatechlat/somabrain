@@ -45,8 +45,3 @@ def wiener_deconvolve(C_spec: np.ndarray, H_spec: np.ndarray, lam: float) -> np.
     denom = np.where(denom < tiny, tiny, denom)
     X = (H_conj * C) / denom
     return X
-
-
-def delegate_unbind(c_spec: np.ndarray, h_spec: np.ndarray, lam: float) -> np.ndarray:
-    """Compatibility helper: delegates to tikhonov-style deconvolution used by quantum layer."""
-    return wiener_deconvolve(c_spec, h_spec, lam)

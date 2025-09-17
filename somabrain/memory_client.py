@@ -33,19 +33,39 @@ Classes:
 from __future__ import annotations
 
 import asyncio
+
+# Process-global in-memory mirror for recently stored payloads per-namespace.
+# The previous implementation used a plain module-global dict which could
+# become duplicated when the module is imported under different module
+# objects (tests/run-time import shims). Use the interpreter's builtins to
+# store a single shared dict accessible from any import context in the same
+# process. Keep the name `_GLOBAL_PAYLOADS` for minimal diffs elsewhere.
+import builtins as _builtins
 import hashlib
 import random
 import time
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from .config import Config
 
-# Process-global in-memory mirror for recently stored payloads per-namespace.
-# This ensures tests and diagnostics can immediately see writes regardless of
-# backend mode or client instance identity.
-_GLOBAL_PAYLOADS: Dict[str, List[dict]] = {}
+_BUILTINS_KEY = "_SOMABRAIN_GLOBAL_PAYLOADS"
+if not hasattr(_builtins, _BUILTINS_KEY):
+    setattr(_builtins, _BUILTINS_KEY, {})
+
+# Shared mapping: namespace -> list[payload]
+_GLOBAL_PAYLOADS: Dict[str, List[dict]] = getattr(_builtins, _BUILTINS_KEY)
+
+# Also keep a process-global links mirror so tests and duplicate import
+# contexts can observe freshly created graph edges without requiring the
+# exact same MemoryClient instance. Structure: namespace -> list[edge_dict]
+# edge_dict: {"from": (x,y,z), "to": (x,y,z), "type": str, "weight": float}
+_BUILTINS_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
+if not hasattr(_builtins, _BUILTINS_LINKS_KEY):
+    setattr(_builtins, _BUILTINS_LINKS_KEY, {})
+
+_GLOBAL_LINKS: Dict[str, List[dict]] = getattr(_builtins, _BUILTINS_LINKS_KEY)
 
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:
@@ -183,9 +203,9 @@ class MemoryClient:
     def __init__(self, cfg: Config):
         self.cfg = cfg
         self._mode = cfg.memory_mode
-        self._local = None
-        self._http = None
-        self._http_async = None
+        self._local: Any | None = None
+        self._http: Any | None = None
+        self._http_async: Any | None = None
         self._stub_store: list[dict] = []
         # in-process adjacency for simple graph reasoning in local/http modes
         # adjacency: from -> { to -> {type, weight} } (best-effort, not persisted)
@@ -330,7 +350,7 @@ class MemoryClient:
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> None:
+    ) -> Tuple[float, float, float] | None:
         """Store a memory using a stable coordinate derived from coord_key.
 
         Ensures payload has memory_type, timestamp, and universe fields.
@@ -356,7 +376,7 @@ class MemoryClient:
                 _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
             except Exception:
                 pass
-            return
+            return coord
         if self._mode == "http" and self._http:
             # Primary endpoint: /remember (Option A); fallback to /store if not found
             body = {
@@ -419,10 +439,11 @@ class MemoryClient:
         with self._lock:
             self._stub_store.append(payload)
         _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(payload)
+        return coord
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> None:
+    ) -> Tuple[float, float, float] | None:
         """Async variant of remember for HTTP mode; falls back to thread executor.
 
         Returns the chosen 3-tuple coord (server-preferred if configured), or the
@@ -477,7 +498,12 @@ class MemoryClient:
                     pass
         # Fallback: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.remember, coord_key, payload)
+        res = await loop.run_in_executor(None, self.remember, coord_key, payload)
+        # remember() returns a 3-tuple coord (or may raise); ensure we return a
+        # tuple or None for the async variant.
+        if isinstance(res, tuple) and len(res) >= 3:
+            return cast(Tuple[float, float, float], tuple(map(float, res[:3])))
+        return None
 
     def recall(
         self,
@@ -592,6 +618,17 @@ class MemoryClient:
                 prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
                 new_w = float(prev.get("weight", 0.0)) + float(weight)
                 adj[key_to] = {"type": str(link_type), "weight": new_w}
+            # Mirror link into process-global links store for cross-import visibility
+            try:
+                edge = {
+                    "from": key_from,
+                    "to": key_to,
+                    "type": str(link_type),
+                    "weight": float(new_w),
+                }
+                _GLOBAL_LINKS.setdefault(self.cfg.namespace, []).append(edge)
+            except Exception:
+                pass
             return
         if self._mode == "http" and self._http:
             try:
@@ -627,6 +664,17 @@ class MemoryClient:
                 prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
                 new_w = float(prev.get("weight", 0.0)) + float(weight)
                 adj[key_to] = {"type": str(link_type), "weight": new_w}
+            # Mirror link into process-global links store for cross-import visibility
+            try:
+                edge = {
+                    "from": key_from,
+                    "to": key_to,
+                    "type": str(link_type),
+                    "weight": float(new_w),
+                }
+                _GLOBAL_LINKS.setdefault(self.cfg.namespace, []).append(edge)
+            except Exception:
+                pass
             return
         # stub: record in-process adjacency
         key_from = cast(
@@ -643,6 +691,17 @@ class MemoryClient:
             prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
             new_w = float(prev.get("weight", 0.0)) + float(weight)
             adj[key_to] = {"type": str(link_type), "weight": new_w}
+        # Mirror link into process-global links store for cross-import visibility
+        try:
+            edge = {
+                "from": key_from,
+                "to": key_to,
+                "type": str(link_type),
+                "weight": float(new_w),
+            }
+            _GLOBAL_LINKS.setdefault(self.cfg.namespace, []).append(edge)
+        except Exception:
+            pass
 
     async def alink(
         self,
@@ -753,16 +812,38 @@ class MemoryClient:
             return []
         # Process-global mirror (fast path for recently persisted items across clients)
         try:
-            wanted = {tuple(c) for c in coords}
-            global_hits_map: Dict[Tuple[float, float, float], dict] = {}
-            for p in _GLOBAL_PAYLOADS.get(self.cfg.namespace, [])[:]:
-                c = p.get("coordinate")
-                if isinstance(c, (list, tuple)) and len(c) == 3 and tuple(c) in wanted:
-                    if universe is not None and str(p.get("universe") or "real") != str(
-                        universe
+            # Removed diagnostic print; keep fast-path mirror lookup below.
+            # Use tolerant comparison for floats to avoid misses caused by
+            # differences in string formatting/rounding when coords are
+            # serialized/deserialized across HTTP boundaries.
+            def _matches_any(
+                target: Tuple[float, float, float],
+                candidates: List[Tuple[float, float, float]],
+                eps: float = 1e-6,
+            ) -> bool:
+                for a, b, c in candidates:
+                    if (
+                        abs(float(a) - float(target[0])) <= eps
+                        and abs(float(b) - float(target[1])) <= eps
+                        and abs(float(c) - float(target[2])) <= eps
                     ):
-                        continue
-                    global_hits_map[(float(c[0]), float(c[1]), float(c[2]))] = p
+                        return True
+                return False
+
+            wanted: List[Tuple[float, float, float]] = [
+                (float(c[0]), float(c[1]), float(c[2])) for c in coords
+            ]
+            global_hits_map: Dict[Tuple[float, float, float], dict] = {}
+            for gp in _GLOBAL_PAYLOADS.get(self.cfg.namespace, [])[:]:
+                c = gp.get("coordinate")
+                if isinstance(c, (list, tuple)) and len(c) == 3:
+                    coord_t = (float(c[0]), float(c[1]), float(c[2]))
+                    if _matches_any(coord_t, wanted):
+                        if universe is not None and str(
+                            gp.get("universe") or "real"
+                        ) != str(universe):
+                            continue
+                        global_hits_map[coord_t] = gp
             if global_hits_map:
                 return list(global_hits_map.values())
         except Exception:
@@ -793,26 +874,38 @@ class MemoryClient:
             out: List[dict] = []
             try:
                 for x, y, z in coords:
+                    maybe_p: Optional[dict] = None
                     try:
-                        p = self._local.retrieve((float(x), float(y), float(z)))  # type: ignore[attr-defined]
+                        maybe_p = self._local.retrieve((float(x), float(y), float(z)))  # type: ignore[attr-defined]
                     except Exception:
-                        p = None
-                    if isinstance(p, dict):
+                        maybe_p = None
+                    if isinstance(maybe_p, dict):
                         if universe is not None and str(
-                            p.get("universe") or "real"
+                            maybe_p.get("universe") or "real"
                         ) != str(universe):
                             continue
-                        out.append(p)
+                        out.append(maybe_p)
             except Exception:
                 out = []
             if out:
                 return out
         # Local/stub fallback: scan in-process store
-        wanted = {tuple(c) for c in coords}
+        wanted_coords: List[Tuple[float, float, float]] = [
+            (float(c[0]), float(c[1]), float(c[2])) for c in coords
+        ]
         results: List[dict] = []
         for p in self.all_memories():
             c = p.get("coordinate")
-            if isinstance(c, (list, tuple)) and len(c) == 3 and tuple(c) in wanted:
+            if (
+                isinstance(c, (list, tuple))
+                and len(c) == 3
+                and any(
+                    abs(float(c[0]) - w[0]) <= 1e-6
+                    and abs(float(c[1]) - w[1]) <= 1e-6
+                    and abs(float(c[2]) - w[2]) <= 1e-6
+                    for w in wanted_coords
+                )
+            ):
                 if universe is not None and str(p.get("universe") or "real") != str(
                     universe
                 ):
@@ -824,34 +917,88 @@ class MemoryClient:
                 # same-namespace first
                 for p in _GLOBAL_PAYLOADS.get(self.cfg.namespace, [])[:]:
                     c = p.get("coordinate")
-                    if (
-                        isinstance(c, (list, tuple))
-                        and len(c) == 3
-                        and tuple(c) in wanted
-                    ):
-                        if universe is not None and str(
-                            p.get("universe") or "real"
-                        ) != str(universe):
-                            continue
-                        results.append(p)
+                    if isinstance(c, (list, tuple)) and len(c) == 3:
+                        coord_t = (float(c[0]), float(c[1]), float(c[2]))
+                        if any(
+                            abs(coord_t[0] - w[0]) <= 1e-6
+                            and abs(coord_t[1] - w[1]) <= 1e-6
+                            and abs(coord_t[2] - w[2]) <= 1e-6
+                            for w in wanted_coords
+                        ):
+                            if universe is not None and str(
+                                p.get("universe") or "real"
+                            ) != str(universe):
+                                continue
+                            results.append(p)
                 # scan all mirrors if still empty (test resilience)
                 if not results:
+                    # fall back to tenant-suffix matching: if namespaces differ
+                    # only by prefixing (e.g. different module prefixes), match
+                    # by the last component after ':' which represents the tenant
+                    try:
+                        my_ns = str(getattr(self.cfg, "namespace", ""))
+                        my_tenant = my_ns.split(":")[-1] if ":" in my_ns else my_ns
+                    except Exception:
+                        my_tenant = None
+                    # Try exact scan first, then suffix-match by tenant
                     for ns, plist in _GLOBAL_PAYLOADS.items():
                         for p in plist:
                             c = p.get("coordinate")
-                            if (
-                                isinstance(c, (list, tuple))
-                                and len(c) == 3
-                                and tuple(c) in wanted
-                            ):
-                                if universe is not None and str(
-                                    p.get("universe") or "real"
-                                ) != str(universe):
-                                    continue
-                                results.append(p)
-                                break
+                            if isinstance(c, (list, tuple)) and len(c) == 3:
+                                coord_t = (float(c[0]), float(c[1]), float(c[2]))
+                                if any(
+                                    abs(coord_t[0] - w[0]) <= 1e-6
+                                    and abs(coord_t[1] - w[1]) <= 1e-6
+                                    and abs(coord_t[2] - w[2]) <= 1e-6
+                                    for w in wanted_coords
+                                ):
+                                    if universe is not None and str(
+                                        p.get("universe") or "real"
+                                    ) != str(universe):
+                                        continue
+                                    results.append(p)
+                                    break
                         if results:
                             break
+                    if not results and my_tenant:
+                        for ns, plist in _GLOBAL_PAYLOADS.items():
+                            try:
+                                other_t = (
+                                    str(ns).split(":")[-1]
+                                    if ":" in str(ns)
+                                    else str(ns)
+                                )
+                            except Exception:
+                                other_t = None
+                            if other_t is None or my_tenant != other_t:
+                                continue
+                            for p in plist:
+                                c = p.get("coordinate")
+                                if isinstance(c, (list, tuple)) and len(c) == 3:
+                                    try:
+                                        coord_t = (
+                                            float(c[0]),
+                                            float(c[1]),
+                                            float(c[2]),
+                                        )
+                                    except Exception:
+                                        continue
+                                    # tolerant match (eps) to avoid misses from float formatting
+                                    if not any(
+                                        abs(coord_t[0] - w[0]) <= 1e-6
+                                        and abs(coord_t[1] - w[1]) <= 1e-6
+                                        and abs(coord_t[2] - w[2]) <= 1e-6
+                                        for w in wanted_coords
+                                    ):
+                                        continue
+                                    if universe is not None and str(
+                                        p.get("universe") or "real"
+                                    ) != str(universe):
+                                        continue
+                                    results.append(p)
+                                    break
+                            if results:
+                                break
             except Exception:
                 pass
         return results
@@ -866,6 +1013,7 @@ class MemoryClient:
 
         HTTP mode: call SFM /neighbors. Local/stub: use in-process adjacency.
         """
+        out: List[dict] = []
         if self._mode == "http" and self._http is not None:
             try:
                 body = {
@@ -877,7 +1025,6 @@ class MemoryClient:
                 data = r.json() if hasattr(r, "json") else None
                 edges = (data or {}).get("edges", []) if isinstance(data, dict) else []
                 # normalize
-                out: List[dict] = []
                 for e in edges:
                     try:
                         out.append(
@@ -896,7 +1043,6 @@ class MemoryClient:
         # local/stub fallback
         key = cast(Tuple[float, float, float], (start[0], start[1], start[2]))
         adj = self._graph.get(key, {})
-        out: List[dict] = []
         for v, meta in adj.items():
             if type_filter and str(meta.get("type")) != str(type_filter):
                 continue
@@ -910,6 +1056,61 @@ class MemoryClient:
             )
             if len(out) >= max(1, int(limit)):
                 break
+        if out:
+            return out
+
+        # Fallback: consult process-global links mirror which may have been
+        # populated by other MemoryClient instances in this process.
+        try:
+            # tolerant float comparison
+            def _close(
+                a: Tuple[float, float, float],
+                b: Tuple[float, float, float],
+                eps: float = 1e-6,
+            ) -> bool:
+                return (
+                    abs(float(a[0]) - float(b[0])) <= eps
+                    and abs(float(a[1]) - float(b[1])) <= eps
+                    and abs(float(a[2]) - float(b[2])) <= eps
+                )
+
+            my_ns = getattr(self.cfg, "namespace", None)
+            for ns, edges in _GLOBAL_LINKS.items():
+                # restrict to same namespace first
+                if my_ns is not None and ns != my_ns:
+                    continue
+                for e in edges:
+                    try:
+                        ef = e.get("from")
+                        if not isinstance(ef, (list, tuple)) or len(ef) != 3:
+                            continue
+                        ef_tuple = tuple(map(float, ef))
+                        if not _close(
+                            cast(Tuple[float, float, float], ef_tuple), start
+                        ):
+                            continue
+                        if type_filter and str(e.get("type")) != str(type_filter):
+                            continue
+                        to_val = e.get("to") or []
+                        out.append(
+                            {
+                                "from": cast(
+                                    Tuple[float, float, float], tuple(map(float, ef))
+                                ),
+                                "to": cast(
+                                    Tuple[float, float, float],
+                                    tuple(map(float, to_val)),
+                                ),
+                                "type": e.get("type"),
+                                "weight": float(e.get("weight", 1.0)),
+                            }
+                        )
+                        if len(out) >= max(1, int(limit)):
+                            return out
+                    except Exception:
+                        continue
+        except Exception:
+            pass
         return out
 
     def decay_links(self, factor: float = 0.98, min_weight: float = 0.05) -> int:

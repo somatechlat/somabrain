@@ -7,9 +7,12 @@ SOMABRAIN Modules
    want detailed generated pages for them.
 
 .. autosummary::
+   :nosignatures:
 
-   somabrain.numerics
-   somabrain.quantum
-   somabrain.sdr
-   somabrain.wm
-   somabrain.embeddings
+   somabrain.app
+   somabrain.schemas
+   somabrain.version
+   somabrain.memory_pool
+   somabrain.metrics
+   somabrain.controls
+   somabrain.services

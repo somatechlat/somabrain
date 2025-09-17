@@ -301,9 +301,9 @@ def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate
             score = sum(max(1.0, float(len(t)) / 6.0) for t in overlap)
             scored.append((float(score), p))
         scored.sort(key=lambda t: t[0], reverse=True)
-        out: list[RAGCandidate] = []
+        out_scored: list[RAGCandidate] = []
         for s, p in scored[: max(1, int(top_k))]:
-            out.append(
+            out_scored.append(
                 RAGCandidate(
                     coord=str(p.get("coordinate")) if p.get("coordinate") else None,
                     key=str(p.get("task") or p.get("id") or "") or None,
@@ -312,7 +312,7 @@ def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate
                     payload=p,
                 )
             )
-        return out
+        return out_scored
 
 
 def _fake_payload(i: int) -> dict:

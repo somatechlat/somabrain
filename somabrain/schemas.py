@@ -541,6 +541,10 @@ class HealthResponse(BaseModel):
 
     ok: bool
     components: dict
+    namespace: Optional[str] = None
+    trace_id: Optional[str] = None
+    deadline_ms: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 
 class PersonalityState(BaseModel):
@@ -560,6 +564,23 @@ class PersonalityState(BaseModel):
 
     # MVP placeholder
     traits: dict[str, Any] = {}
+
+
+class Persona(BaseModel):
+    """
+    Persona record schema used by the Persona endpoints.
+
+    Attributes:
+        id: identifier for the persona (path param)
+        display_name: optional human-readable name
+        properties: arbitrary dict with persona data
+        fact: metadata field set to 'persona' when persisted
+    """
+
+    id: str
+    display_name: str | None = None
+    properties: dict[str, Any] = {}
+    fact: str = "persona"
 
 
 class MigrateExportRequest(BaseModel):

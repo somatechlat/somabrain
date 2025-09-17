@@ -63,7 +63,13 @@ def eval_step(
     mag = None
     if supervisor is not None:
         try:
-            nm, F, mag = supervisor.adjust(nm, float(novelty), float(pred.error))
+            # supervisor is an optional pluggable object; guard attribute access
+            from typing import Any, cast
+
+            if hasattr(supervisor, "adjust"):
+                nm, F, mag = cast(Any, supervisor).adjust(
+                    nm, float(novelty), float(pred.error)
+                )
         except Exception:
             pass
 

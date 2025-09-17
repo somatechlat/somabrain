@@ -1,5 +1,5 @@
-Benchmarks
-==========
+9797Benchmarks
+=============
 
 .. note::
     Use the `benchmarks/bench_numerics.py` harness to reproduce results. The harness

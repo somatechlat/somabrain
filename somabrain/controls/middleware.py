@@ -83,16 +83,22 @@ class ControlsMiddleware(BaseHTTPMiddleware):
         if (
             self.cfg.require_provenance
             and request.method.upper() == "POST"
-            and (ctx["path"].startswith("/remember") or ctx["path"].startswith("/act"))
+            and (
+                str(ctx.get("path", "")).startswith("/remember")
+                or str(ctx.get("path", "")).startswith("/act")
+            )
         ):
-            header = (
-                ctx["headers"].get("X-Provenance")
-                or ctx["headers"].get("x-provenance")
-                or ""
+            # mypy: headers may contain atypical types; coerce to str safely
+            header_val = (
+                headers.get("X-Provenance") or headers.get("x-provenance") or ""
             )
-            ctx["provenance_valid"] = verify_hmac_sha256(
-                self.cfg.provenance_secret, raw_body, header
-            )
+            header_str = str(header_val)
+            try:
+                ctx["provenance_valid"] = verify_hmac_sha256(
+                    self.cfg.provenance_secret, raw_body, header_str  # type: ignore[arg-type]
+                )
+            except Exception:
+                ctx["provenance_valid"] = None
 
         # Compatibility guard: common mistake where clients send a list of chat turns to /remember
         # Provide a clear error before Pydantic's 422 to reduce log noise and guide integration.

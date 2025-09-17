@@ -27,6 +27,7 @@ Functions:
 
 from __future__ import annotations
 
+import logging
 from typing import Dict
 
 from .config import Config
@@ -49,7 +50,9 @@ class MultiTenantMemory:
             cfg2.namespace = ns
             try:
                 client = MemoryClient(cfg2)
-                print("DEBUG create client in pool", ns, id(client))
+                logging.getLogger(__name__).debug(
+                    "create client in pool %s %s", ns, id(client)
+                )
                 # On first creation, replay journal for this namespace (non-HTTP modes)
                 if (
                     bool(getattr(cfg2, "persistent_journal_enabled", False))

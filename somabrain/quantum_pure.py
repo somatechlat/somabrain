@@ -67,7 +67,7 @@ class PureQuantumLayer:
     def _renorm(self, v: np.ndarray) -> np.ndarray:
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
-        return normalize_array(v, self.cfg.dim, self.cfg.dtype)
+        return normalize_array(v, axis=self.cfg.dim, dtype=self.cfg.dtype)
 
     def random_vector(self) -> np.ndarray:
         v = self._rng.normal(0.0, 1.0, size=self.cfg.dim)

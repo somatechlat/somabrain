@@ -33,55 +33,293 @@ docker run --rm -p 8000:8000 somabrain:local
 
 Now open:
 - API docs (Swagger): **http://localhost:8000/docs**
-# SomaBrain — Cognitive Memory for Agents
+- Prometheus metrics: **http://localhost:8000/metrics**
 
-This repository contains SomaBrain: an HRR-based, observable memory and recall system
-for agents and automation. This repository's documentation has been pared down to a
-concise, authoritative set of pages: the core README, a focused math reference, and
-benchmarking docs that show the empirically measured behavior of the numerics.
+---
 
-The primary goals of the cleaned docs set are:
-- precise, auditable descriptions of numeric choices (tiny-floor semantics, unitary FFTs, deterministic fallbacks)
-- reproducible benchmark instructions and harnesses
-- minimal, honest guides for running and validating the system locally
+## � Docker Hub quickstart & publishing
 
-Quick links
-- Documentation (local build): `docs/_build/html/index.html` (build with Sphinx)
-- Math reference: `docs/source/math.rst`
-- Benchmark harness: `benchmarks/bench_numerics.py`
-- Core numerics code: `somabrain/numerics.py` and `somabrain/quantum.py`
+If you want a Docker Hub image (docker.io/<your-username>/somabrain), you can either build and push locally or use the included GitHub Action.
 
-Local quickstart (dev environment)
-1) Create and activate a venv, install test/dev deps (example):
+Manual local publish (quick):
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements-dev.txt
-```
-2) Run tests:
-```bash
-pytest -q
-```
-3) Build docs (Sphinx):
-```bash
-python -m sphinx -M html docs/source docs/_build
+# set your Docker Hub username
+export DOCKERHUB_USERNAME=your-username
+# build and push (script will prompt for login)
+scripts/dockerhub-publish.sh ${DOCKERHUB_USERNAME}/somabrain latest
 ```
 
-Benchmark example
-Use the included harness to compare unbinding/normalization implementations:
+Automatic publish via CI:
+- Add repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token).
+- The workflow `.github/workflows/dockerhub-publish.yml` will build multi-arch images and push when you push to `main` or create a `v*` tag.
+
+
+---
+
+## �🔎 60-second Smoke Test
+
+**1) Store a memory (multi-tenant via header):**
 ```bash
-source .venv/bin/activate
-python benchmarks/bench_numerics.py \
-  --unbind-current somabrain.quantum.unbind_exact \
-  --unbind-proposed somabrain.quantum.unbind_exact_unitary \
-  --normalize-current somabrain.numerics.normalize_array \
-  --normalize-proposed somabrain.numerics.normalize_array \
-  --dtype f32 f64 --D 256 1024 4096 --trials 200 --roles unitary nonunitary --postnorm
+curl -s -X POST http://localhost:8000/remember   -H 'Content-Type: application/json'   -H 'X-Tenant-ID: demo'   -d '{"text":"Pay ACME invoice on Friday","tags":["todo","ops"]}'
 ```
 
-Repository hygiene
-- This README and the files under `docs/source/` are intended to be the
-  canonical user-facing documentation. Large bench artifacts are stored under
-  `benchmarks/` and selectively copied into `docs/benchmarks/` for publication.
+**2) Recall it by cue:**
+```bash
+curl -s -X POST http://localhost:8000/recall   -H 'Content-Type: application/json'   -H 'X-Tenant-ID: demo'   -d '{"query":"invoice ACME"}'
+```
 
-License: MIT — see `LICENSE` for details.
+**3) (Optional) Link facts:**
+Connect items with a typed relation (example shape):
+```bash
+curl -s -X POST http://localhost:8000/link   -H 'Content-Type: application/json'   -H 'X-Tenant-ID: demo'   -d '{
+        "source_id":"note:acme-invoice",
+        "target_id":"entity:acme",
+        "type":"about"
+      }'
+```
+
+> Don’t want curl? Open **/docs** and try the endpoints interactively.
+
+---
+
+## 🧠 What makes SomaBrain different
+
+- **HRR numerics done right**: unitary role vectors, deterministic seeding, float64 ops, exact & Wiener unbinding for robust recall.
+- **Typed graph links**: turn scattered notes into a navigable knowledge mesh.
+- **Observable by default**: Prometheus metrics to watch recall stages and latency.
+- **Multi-tenant**: isolate projects or users via headers and (optional) auth.
+
+---
+
+## 🧩 API Overview
+
+```
+POST /remember     # Store text/facts/tasks with optional tags/metadata
+POST /recall       # Retrieve by keyword/semantic cue; ranked results
+POST /link         # Create typed relations between stored items
+SomaBrain — Observable Memory & Planning for AI Agents
+
+[![CI](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml/badge.svg)](https://github.com/somatechlat/somabrain/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://somatechlat.github.io/somabrain/)
+[![Tag](https://img.shields.io/github/v/tag/somatechlat/somabrain?sort=semver)](https://github.com/somatechlat/somabrain/tags)
+[![Container](https://img.shields.io/badge/container-ghcr.io%2Fsomatechlat%2Fsomabrain-0A66C2?logo=docker)](https://github.com/somatechlat/somabrain/pkgs/container/somabrain)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+Make agents *remember, connect, and explain* their work. SomaBrain gives you:
+- **Stable, inspectable memory** (HRR-based numerics; exact & Wiener unbinding)
+- **Typed links/graphs** between notes, tasks, entities
+- **Multi-tenant isolation**
+- **FastAPI** HTTP gateway with **OpenAPI docs** and **Prometheus** metrics
+
+> You can see what was saved, how it was found, and why it’s suggested.
+
+---
+
+## 🚀 TL;DR — Run in ~10 seconds (Docker)
+
+**Option A — Pull prebuilt image (if available):**
+```bash
+docker run --rm -p 8000:8000 ghcr.io/somatechlat/somabrain:latest
+```
+
+**Option B — Build locally (works anywhere Docker runs):**
+```bash
+git clone https://github.com/somatechlat/somabrain.git
+cd somabrain
+docker build -t somabrain:local .
+docker run --rm -p 8000:8000 somabrain:local
+```
+
+Now open:
+- API docs (Swagger): **http://localhost:8000/docs**
+- Prometheus metrics: **http://localhost:8000/metrics**
+
+---
+
+## 🔎 60-second Smoke Test
+
+1) Store a memory (multi-tenant via header):
+```bash
+curl -s -X POST http://localhost:8000/remember \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{"text":"Pay ACME invoice on Friday","tags":["todo","ops"]}'
+```
+
+2) Recall it by cue:
+```bash
+curl -s -X POST http://localhost:8000/recall \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{"query":"invoice ACME"}'
+```
+
+3) (Optional) Link facts:
+```bash
+curl -s -X POST http://localhost:8000/link \
+  -H 'Content-Type: application/json' \
+  -H 'X-Tenant-ID: demo' \
+  -d '{
+    "source_id":"note:acme-invoice",
+    "target_id":"entity:acme",
+    "type":"about"
+  }'
+```
+
+---
+
+## 🧠 What makes SomaBrain different
+
+- **HRR numerics done right**: unitary role vectors, deterministic seeding, float64 ops, exact & Wiener unbinding for robust recall.
+- **Typed graph links**: turn scattered notes into a navigable knowledge mesh.
+- **Observable by default**: Prometheus metrics to watch recall stages and latency.
+- **Multi-tenant**: isolate projects or users via headers and (optional) auth.
+
+---
+
+## 🧩 API Overview
+
+```
+POST /remember     # Store text/facts/tasks with optional tags/metadata
+POST /recall       # Retrieve by keyword/semantic cue; ranked results
+POST /link         # Create typed relations between stored items
+GET  /metrics      # Prometheus exposition format
+GET  /docs         # OpenAPI/Swagger UI
+```
+
+Minimal request shapes (subject to evolution):
+```json
+{
+  "text": "Research HRR unitary roles",
+  "tags": ["research","hrr"],
+  "metadata": {"source":"paper-notes"}
+}
+```
+
+---
+
+## 👩‍💻 Quick Client Examples
+
+Python example:
+```python
+import requests
+
+BASE = "http://localhost:8000"
+HEAD = {"X-Tenant-ID": "demo"}
+
+requests.post(f"{BASE}/remember", json={"text":"Buy graphite for lab"}, headers=HEAD)
+r = requests.post(f"{BASE}/recall", json={"query":"graphite lab"}, headers=HEAD)
+print(r.json())
+```
+
+JavaScript example:
+```js
+const BASE = "http://localhost:8000";
+const HEAD = {"X-Tenant-ID": "demo","Content-Type":"application/json"};
+
+await fetch(`${BASE}/remember`, {
+  method: "POST",
+  headers: HEAD,
+  body: JSON.stringify({ text: "Link ACME invoice to vendor ACME", tags:["acct"] })
+});
+
+const res = await fetch(`${BASE}/recall`, {
+  method: "POST",
+  headers: HEAD,
+  body: JSON.stringify({ query: "invoice ACME" })
+});
+console.log(await res.json());
+```
+
+---
+
+## 📦 Docker Compose (optional Prometheus + Grafana)
+
+Create `docker-compose.yml`:
+```yaml
+services:
+  somabrain:
+    image: ghcr.io/somatechlat/somabrain:latest
+    ports: ["8000:8000"]
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+```
+
+Create `prometheus.yml`:
+```yaml
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: "somabrain"
+    static_configs:
+      - targets: ["somabrain:8000"]
+    metrics_path: /metrics
+```
+
+Run:
+```bash
+docker compose up -d
+```
+
+---
+
+## ⚙️ Configuration (common)
+
+Environment variables (all optional; sensible defaults):
+- `PORT` — HTTP port (default `8000`)
+- `LOG_LEVEL` — `info` | `debug` | `warning`
+- `SOMABRAIN_MODE` — memory backend mode: `stub` | `local` | `http`
+- `DISABLE_AUTH` — `true` for local demos (enable auth for prod)
+- `TENANT_HEADER` — name for tenant header (default `X-Tenant-ID`)
+
+Example:
+```bash
+docker run --rm -p 8000:8000 -e LOG_LEVEL=info -e SOMABRAIN_MODE=local ghcr.io/somatechlat/somabrain:latest
+```
+
+---
+
+## ✅ Production Checklist
+
+- Use a **persistent volume** for any on-disk state
+- Put SomaBrain **behind TLS** (reverse proxy) and **enable auth**
+- Set a fixed `TENANT_HEADER` & integrate with your identity provider
+- **Scrape /metrics** and alert on latency/error spikes
+- Constrain resources with container **limits/requests**
+- Run **load tests** before going live
+
+---
+
+## 🗺️ Roadmap (high level)
+
+- Structured schemas for entities & relations
+- More recall strategies (rerankers, hybrids)
+- Built-in dashboards for memory transparency
+- Language-agnostic client SDKs
+
+---
+
+## 🤝 Contributing
+
+PRs welcome! Please discuss big changes in an issue first. Add tests where possible, and keep docs/examples in sync.
+
+---
+
+## 📄 License
+
+MIT — see `LICENSE`.
+
+---
+
+### Maintainer Notes (remove in forks)
+- If the **GHCR image** isn’t published yet, keep **Option B** as the primary quickstart and publish tags when ready.
+- Keep `/remember`, `/recall`, `/link` examples aligned with current schemas.
+- Update this README when env vars or routes change.

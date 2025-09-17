@@ -6,7 +6,7 @@ Implements: unit-norm validation, cosine recall, and weighted merge with simple 
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, cast
 
 import numpy as np
 
@@ -17,12 +17,14 @@ from somabrain.schemas import Memory, Observation, Thought
 MEMORY_STORE: List[Memory] = []
 
 
-def _to_unit(vec: np.ndarray) -> np.ndarray:
+def _to_unit(vec: Any) -> Any:
     """
     Pad/truncate to global HRR_DIM and unit-normalize (HRR_DTYPE).
     Enforces mathematical invariant: all vectors are unit-norm, HRR_DTYPE, and reproducible.
     """
-    v = np.asarray(vec, dtype=HRR_DTYPE).reshape(-1)
+    # mypy's numpy stubs are strict about ndarray shape annotations; cast the
+    # runtime result to a generic ndarray to avoid shape-token complaints.
+    v = cast(np.ndarray, np.asarray(vec, dtype=HRR_DTYPE).reshape(-1))
     if v.size != HRR_DIM:
         if v.size < HRR_DIM:
             v = np.pad(v, (0, HRR_DIM - v.size))
@@ -32,7 +34,8 @@ def _to_unit(vec: np.ndarray) -> np.ndarray:
     dtype = np.dtype(HRR_DTYPE)
     tiny_floor = float(np.finfo(dtype).eps) * max(1.0, float(HRR_DIM))
     if n < tiny_floor:
-        return np.zeros((HRR_DIM,), dtype=HRR_DTYPE)
+        # Return zero vector of expected shape
+        return np.zeros((HRR_DIM,), dtype=HRR_DTYPE)  # type: ignore[return-value]
     return (v / n).astype(HRR_DTYPE)
 
 
@@ -112,9 +115,16 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
     weights = np.asarray(
         [max(1e-6, float(m.strength)) for m in memories], dtype=np.float32
     )
+    # mypy's numpy stubs are strict about array shape typing here; the runtime
+    # behavior is correct and we normalize shapes via _to_unit — silence the
+    # complaint for now and consider a more precise typing later.
+    # np.stack here produces an ndarray with runtime shape (N, HRR_DIM). The
+    # numpy type stubs are strict about tuple shapes; the runtime behavior is
+    # correct and validated by _to_unit. Silence the precise shape typing
+    # complaint for now with a narrow ignore.
     vecs = np.stack(
         [_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0
-    )
+    )  # type: ignore[arg-type]
     w = weights / float(weights.sum())
     avg = (w[:, None] * vecs).sum(axis=0)
     avg = _to_unit(avg)

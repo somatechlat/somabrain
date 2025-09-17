@@ -172,8 +172,11 @@ def compact_journal(base_dir: str, namespace: str) -> bool:
         for ev in iter_events(base_dir, namespace):
             et = str(ev.get("type") or "")
             if et == "mem":
-                k = str(ev.get("key") or ev.get("task") or "payload")
-                mem_latest[k] = dict(ev)
+                # Ensure we use a string key for mem_latest to avoid tuple-vs-str
+                # type mismatches when earlier code used composite keys.
+                k = ev.get("key") or ev.get("task") or "payload"
+                k_str = str(k)
+                mem_latest[k_str] = dict(ev)
             elif et == "link":
                 fc = ev.get("from") or ev.get("from_coord")
                 tc = ev.get("to") or ev.get("to_coord")
@@ -184,14 +187,18 @@ def compact_journal(base_dir: str, namespace: str) -> bool:
                     and len(fc) == 3
                     and len(tc) == 3
                 ):
-                    key = (tuple(fc), tuple(tc), ltype)
-                    cur = link_accum.get(key)
+                    link_key = (tuple(fc), tuple(tc), ltype)
+                    cur = link_accum.get(link_key)
                     if cur is None:
-                        link_accum[key] = dict(ev)
+                        # first-seen: copy event and coerce weight
                         try:
-                            link_accum[key]["weight"] = float(ev.get("weight") or 1.0)
+                            link_accum[link_key] = dict(ev)
+                            link_accum[link_key]["weight"] = float(
+                                ev.get("weight") or 1.0
+                            )
                         except Exception:
-                            link_accum[key]["weight"] = 1.0
+                            link_accum[link_key] = dict(ev)
+                            link_accum[link_key]["weight"] = 1.0
                     else:
                         # accumulate weight, but avoid overwriting by last-write-wins
                         try:
@@ -210,9 +217,9 @@ def compact_journal(base_dir: str, namespace: str) -> bool:
         tmp_path = path.with_suffix(path.suffix + ".tmp")
         with _lock:
             with tmp_path.open("w", encoding="utf-8") as f:
-                for _k, mev in mem_latest.items():
+                for mem_key, mev in mem_latest.items():
                     f.write(json.dumps(mev, ensure_ascii=False) + "\n")
-                for _k, lev in link_accum.items():
+                for link_key, lev in link_accum.items():
                     f.write(json.dumps(lev, ensure_ascii=False) + "\n")
             try:
                 tmp_path.replace(path)

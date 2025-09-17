@@ -14,9 +14,14 @@ def main():
     assert r.status_code == 200
     base = r.json()["results"][0]["salience"]
 
-    # Set personality with high curiosity and risk tolerance
-    r = client.post(
-        "/personality", json={"traits": {"curiosity": 1.0, "risk_tolerance": 1.0}}
+    # Set persona with high curiosity and risk tolerance (public persona)
+    r = client.put(
+        "/persona/public",
+        json={
+            "id": "public",
+            "display_name": "public",
+            "properties": {"curiosity": 1.0, "risk_tolerance": 1.0},
+        },
     )
     assert r.status_code == 200
 

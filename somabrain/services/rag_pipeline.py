@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
 from somabrain.services.retrievers import (
@@ -89,7 +89,7 @@ async def run_rag_pipeline(
                 _rt.mt_wm is not None or _rt.mc_wm is not None
             ):
                 try:
-                    lst_all: list[RAGCandidate] = []
+                    lst_all_wm: list[RAGCandidate] = []
                     for qx in expansions:
                         lst = retrieve_wm(
                             qx,
@@ -102,8 +102,8 @@ async def run_rag_pipeline(
                                 getattr(_rt.cfg, "use_microcircuits", False)
                             ),
                         )
-                        lst_all.extend(lst)
-                    lst = lst_all
+                        lst_all_wm.extend(lst)
+                    lst = lst_all_wm
                     lists_by_retriever["wm"] = lst
                     cands += lst
                     continue
@@ -115,7 +115,7 @@ async def run_rag_pipeline(
         elif rname == "vector":
             if _rt.embedder is not None and mem_client is not None:
                 try:
-                    lst_all: list[RAGCandidate] = []
+                    lst_all_vector: list[RAGCandidate] = []
                     for qx in expansions:
                         lst = retrieve_vector(
                             qx,
@@ -124,8 +124,8 @@ async def run_rag_pipeline(
                             embedder=_rt.embedder,
                             universe=universe,
                         )
-                        lst_all.extend(lst)
-                    lst = lst_all
+                        lst_all_vector.extend(lst)
+                    lst = lst_all_vector
                     lists_by_retriever["vector"] = lst
                     cands += lst
                     continue
@@ -159,11 +159,11 @@ async def run_rag_pipeline(
             cands += lst
         elif rname == "lexical" and mem_client is not None:
             try:
-                lst_all: list[RAGCandidate] = []
+                lst_all_lexical: list[RAGCandidate] = []
                 for qx in expansions:
                     lst = retrieve_lexical(qx, top_k, mem_client=mem_client)
-                    lst_all.extend(lst)
-                lst = lst_all
+                    lst_all_lexical.extend(lst)
+                lst = lst_all_lexical
                 lists_by_retriever["lexical"] = lst
                 cands += lst
                 continue
@@ -219,7 +219,7 @@ async def run_rag_pipeline(
         ranks[rname] = rm
         norm_scores[rname] = ns_map
     # Aggregate RRF scores
-    keys = set()
+    keys: set[str] = set()
     for rm in ranks.values():
         keys.update(rm.keys())
     fused: list[tuple[float, RAGCandidate]] = []
@@ -288,11 +288,18 @@ async def run_rag_pipeline(
     method = (req.rerank or "cosine").strip().lower()
     if method == "mmr":
         try:
+            # require an embedder for MMR; skip if not available
+            if _rt.embedder is None:
+                raise Exception("no embedder available")
             from somabrain.services.recall_service import diversify_payloads
 
             payloads = [c.payload for c in out]
+            # local-capture embedder and cast to Any for mypy
+            from typing import Any, cast as _cast
+
+            _embedder = _rt.embedder
             ordered = diversify_payloads(
-                embed=lambda t: _rt.embedder.embed(t),
+                embed=lambda t: _cast(Any, _embedder).embed(t),
                 query=req.query,
                 payloads=payloads,
                 method="mmr",
@@ -301,7 +308,11 @@ async def run_rag_pipeline(
             )
             # Map back by object id
             id2cand = {id(c.payload): c for c in out}
-            out = [id2cand.get(id(p)) for p in ordered if id2cand.get(id(p))]
+            out = [
+                cast(RAGCandidate, id2cand.get(id(p)))
+                for p in ordered
+                if id2cand.get(id(p))
+            ]
         except Exception:
             pass
     elif method == "hrr":
@@ -342,6 +353,8 @@ async def run_rag_pipeline(
                 pairs = [(req.query, _extract_text(p)) for p in payloads]
                 # Try cross-encoder if available
                 used_ce = False
+                # single typed rescored list used across branches
+                rescored: list[tuple[float, int]] = []
                 try:
                     from sentence_transformers import CrossEncoder  # type: ignore
 
@@ -357,7 +370,6 @@ async def run_rag_pipeline(
                     import numpy as _np
 
                     qv = _rt.embedder.embed(req.query)
-                    rescored: list[tuple[float, int]] = []
                     for i, (_, txt) in enumerate(pairs):
                         if not txt:
                             rescored.append((0.0, i))
@@ -417,10 +429,11 @@ async def run_rag_pipeline(
     if bool(req.persist):
         try:
             import time as _time
+            from typing import Any as _Any, cast as _cast
 
             from somabrain.services.memory_service import MemoryService
 
-            mem_backend = _rt.mt_memory
+            mem_backend: _Any = getattr(_rt, "mt_memory", None)
             try:
                 from somabrain.app import mt_memory as _app_mt_memory
             except Exception:
@@ -464,7 +477,9 @@ async def run_rag_pipeline(
                     _rt.mt_memory = mem_backend
                 except Exception:
                     pass
-                memsvc = MemoryService(mem_backend, ctx.namespace)
+                from typing import Any, cast as _cast
+
+                memsvc = MemoryService(_cast(Any, mem_backend), ctx.namespace)
                 # Build session payload with provenance and top candidates summary
                 sess_key = f"rag_session::{trace_id or ''}::{int(_time.time()*1000)}"
                 sess_payload = {
@@ -478,12 +493,16 @@ async def run_rag_pipeline(
                         "candidates": [
                             {"key": c.key, "retriever": c.retriever, "score": c.score}
                             for c in out
+                            if c is not None
                         ],
                     },
                     "universe": universe or None,
                 }
-                sess_coord = await memsvc.aremember(
-                    sess_key, sess_payload, universe=universe
+                from typing import Any as _Any, cast as _cast
+
+                sess_coord = _cast(
+                    _Any,
+                    await memsvc.aremember(sess_key, sess_payload, universe=universe),
                 )
                 # Convert coord tuple -> string for response if available,
                 # otherwise fall back to deterministic coord_for_key
@@ -506,9 +525,10 @@ async def run_rag_pipeline(
                     # duplicate imports (test runner, different import paths)
                     # still see the freshly persisted payload.
                     import sys
+                    from typing import Any, cast as _cast
 
                     p2 = dict(sess_payload)
-                    p2["coordinate"] = sess_coord_t
+                    p2["coordinate"] = _cast(Any, sess_coord_t)
                     # Primary explicit write to the process-global mirror in this module
                     try:
                         # Import local memory_client module to access its global mirror
@@ -561,11 +581,17 @@ async def run_rag_pipeline(
                     pass
                 # Ensure immediate visibility in the namespace client (avoids race in tests/dev)
                 try:
-                    client_ns = mem_backend.for_namespace(ctx.namespace)
+                    from typing import Any, cast as _cast
+
+                    if not hasattr(mem_backend, "for_namespace"):
+                        raise Exception("mem_backend has no for_namespace")
+                    client_ns = _cast(Any, mem_backend).for_namespace(ctx.namespace)
                     # Ensure the namespace client sees the payload with the
                     # concrete coordinate so payloads_for_coords can find it.
+                    from typing import Any, cast as _cast
+
                     p3 = dict(sess_payload)
-                    p3["coordinate"] = sess_coord_t
+                    p3["coordinate"] = _cast(Any, sess_coord_t)
                     # Defensive: write via the namespace client and also via
                     # the MemoryService client to cover cases where the
                     # in-process instance referenced by the request handler

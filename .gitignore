@@ -10,6 +10,11 @@ venv/
 .runvenv/
 .env
 *.env
+.venv_run/
+
+# Local caches / spectral artifacts
+.cache/
+.cache/spectral/
 
 # IDEs
 .vscode/

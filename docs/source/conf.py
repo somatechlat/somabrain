@@ -19,7 +19,18 @@ extensions = [
     "sphinx.ext.autosummary",
     "myst_parser",
 ]
+# Avoid autosummary creating many generated .rst files on every build. Set to
+# False so generation is explicit (reduces clutter/noise during CI/doc builds).
 autosummary_generate = False
+
+# Suppress some noisy warnings coming from autodoc/autosummary during builds
+# (we still try to fix doc sources where appropriate). This prevents a flood
+# of warnings for optional runtime-only modules and autosummary-generated
+# artifacts.
+suppress_warnings = [
+    "autodoc",
+    "autosummary",
+]
 
 # Prevent Sphinx autodoc from failing on optional or runtime-only third-party
 # imports used by the application. Internal somabrain modules are provided
@@ -35,10 +46,10 @@ autodoc_mock_imports = [
     "sklearn",
     "faiss",
     "pydantic_core",
-    "pydantic",
     # Mock internal modules that execute runtime-only code on import
     "somabrain.app",
     "somabrain.metrics",
+    "somabrain.schemas",
 ]
 
 templates_path = ["_templates"]
