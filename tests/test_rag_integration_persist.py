@@ -1,28 +1,31 @@
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
 
-import somabrain.app as app_module
-from somabrain import runtime as rt_module
-
-app = app_module.app
+# Require pytest-forked plugin for process isolation. If it's not installed in
+# the environment (some CI runners), skip these integration tests rather than
+# running them non-isolated which leads to flaky failures.
+pytest.importorskip(
+    "pytest_forked", reason="requires pytest-forked for process isolation"
+)
 
 
 def _parse_coord_str(s: str):
     parts = [float(x.strip()) for x in s.split(",")]
     return (parts[0], parts[1], parts[2])
 
-    # This test must run in its own process to guarantee backend state is not
-    # reset by other tests
-    # pytest -p pytest_forked is required for this marker to work
-    # If not available, use pytest.mark.isolated or similar
-    # See: https://docs.pytest.org/en/stable/how-to/xunit_setup.html#process-isolation
-
 
 @pytest.mark.forked
 def test_rag_persist_and_links_local_backend():
+    # Import heavy modules inside the test so the importorskip above runs first
+    from fastapi.testclient import TestClient
+
+    import somabrain.app as app_module
+    from somabrain import runtime as rt_module
+
+    app = app_module.app
     client = TestClient(app)
+
     # Use explicit tenant for namespace isolation
     headers = {"X-Tenant-ID": "ragtest"}
     body = {
