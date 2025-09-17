@@ -1,0 +1,24 @@
+name: Build Somabrain Docker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build -t somabrain:${{ github.sha }} .
+          docker save somabrain:${{ github.sha }} -o somabrain_${{ github.sha }}.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: somabrain-image
+          path: somabrain_${{ github.sha }}.tar
