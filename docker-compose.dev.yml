@@ -1,14 +1,14 @@
 version: "3.9"
 
 services:
-  somabrain:
+  somabrain_dev:
     build: .
     environment:
-      - SOMABRAIN_MEMORY_MODE=http
-      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
-      - SOMABRAIN_MINIMAL_PUBLIC_API=0
+      - SOMABRAIN_MEMORY_MODE=local
       - SOMABRAIN_HOST=0.0.0.0
       - SOMABRAIN_PORT=9696
+      - SOMABRAIN_WORKERS=1
+      - SOMABRAIN_MINIMAL_PUBLIC_API=0
     ports:
       - "9696:9696"
     depends_on:
@@ -17,14 +17,14 @@ services:
       - prometheus
     restart: unless-stopped
 
-  somabrain_alt:
+  somabrain_prod:
     build: .
     environment:
-      - SOMABRAIN_MEMORY_MODE=http
-      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
-      - SOMABRAIN_MINIMAL_PUBLIC_API=0
+      - SOMABRAIN_MEMORY_MODE=local
       - SOMABRAIN_HOST=0.0.0.0
       - SOMABRAIN_PORT=9797
+      - SOMABRAIN_WORKERS=1
+      - SOMABRAIN_MINIMAL_PUBLIC_API=1
     ports:
       - "9797:9797"
     depends_on:

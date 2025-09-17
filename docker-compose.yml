@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  somabrain:
+  somabrain_dev:
     build: .
     environment:
       - SOMABRAIN_MEMORY_MODE=local

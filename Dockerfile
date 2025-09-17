@@ -1,4 +1,28 @@
-# Production Dockerfile for SomaBrain API
+## Clean multi-stage Dockerfile: build wheel from pyproject and install in slim runtime
+### Builder stage: build wheel
+FROM python:3.10-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /build
+
+# Install build-time dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml README.md /build/
+COPY somabrain /build/somabrain
+COPY scripts /build/scripts
+COPY arc_cache.py /build/
+
+# Build a wheel reproducibly using build
+RUN python -m pip install --upgrade pip build setuptools wheel \
+    && python -m build --wheel --no-isolation -o /build/dist
+
+### Runtime stage: slim image with only runtime deps and wheel installed
 FROM python:3.10-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -12,16 +36,14 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy project and install via pyproject dependencies
-COPY pyproject.toml README.md /app/
-COPY somabrain /app/somabrain
+# Copy wheel from builder stage and install
+COPY --from=builder /build/dist /dist
+RUN if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install --no-cache-dir /dist/*.whl; else echo "No wheel files found"; exit 1; fi
+
+# Copy docs and scripts (optional, useful for debugging)
 COPY docs /app/docs
 COPY scripts /app/scripts
-
-COPY requirements.txt ./
-RUN pip install --upgrade pip setuptools wheel \
-    && if [ -f requirements.txt ]; then pip install -r requirements.txt; fi \
-    && pip install .
+COPY arc_cache.py /app/
 
 # Create non-root user
 RUN useradd --create-home --shell /sbin/nologin appuser \
@@ -38,7 +60,7 @@ ENV SOMABRAIN_MEMORY_MODE=stub \
     SOMABRAIN_WORKERS=1
 
 # Entrypoint script for flexible startup
-COPY --chmod=0755 docker-entrypoint.sh /usr/local/bin/
+COPY --chown=appuser:appuser --chmod=0755 docker-entrypoint.sh /usr/local/bin/
 
 # Healthcheck against /health endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
