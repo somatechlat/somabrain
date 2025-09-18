@@ -23,7 +23,7 @@ jobs:
             python -m pip install -e ./somafractalmemory || python -m pip install ./somafractalmemory
           fi
           python -m pip install -e .[dev]
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # requirements.txt install removed (file does not exist)
       - name: Verify install
         run: |
           echo "Verifying important packages are installed"
@@ -58,7 +58,7 @@ jobs:
             python -m pip install -e ./somafractalmemory || python -m pip install ./somafractalmemory
           fi
           pip install -e .[dev]
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # requirements.txt install removed (file does not exist)
       - name: Run cognition benchmark
         continue-on-error: true
         env:
