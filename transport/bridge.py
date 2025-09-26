@@ -9,7 +9,7 @@ def heat_kernel_expmv(L, v, beta=1.0, tol=1e-6):
     v: (n,) vector
     Returns: (n,) vector
     """
-    return spla.expm_multiply(-beta * L, v, tol=tol)
+    return spla.expm_multiply(-beta * L, v)
 
 def schrodinger_bridge(L, mu0, mu1, beta=1.0, n_iter=20, tol=1e-6):
     """
@@ -20,7 +20,7 @@ def schrodinger_bridge(L, mu0, mu1, beta=1.0, n_iter=20, tol=1e-6):
     """
     n = L.shape[0]
     def K(x):
-        return heat_kernel_expmv(L, x, beta=beta, tol=tol)
+        return heat_kernel_expmv(L, x, beta=beta)
     u = np.ones(n)
     v = np.ones(n)
     for _ in range(n_iter):

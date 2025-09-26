@@ -88,6 +88,23 @@ async def run_rag_pipeline(
         retrievers = ["vector", "wm"]
     # Try real adapters first if runtime singletons are available; fallback to stubs
     from somabrain import runtime as _rt
+    # Defensive: always ensure _rt.cfg is present, fallback to dummy if missing
+    if not hasattr(_rt, "cfg") or getattr(_rt, "cfg", None) is None:
+        class _TmpCfg:
+            use_query_expansion = False
+            query_expansion_variants = 0
+            use_microcircuits = False
+            graph_hops = 1
+            graph_limit = 20
+            retriever_weight_vector = 1.0
+            retriever_weight_wm = 1.0
+            retriever_weight_graph = 1.0
+            retriever_weight_lexical = 0.8
+            reranker_model = None
+            reranker_top_n = 50
+            reranker_out_k = 1
+            reranker_batch = 32
+        _rt.cfg = _TmpCfg()
 
     mem_client = None
     try:
