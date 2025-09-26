@@ -1,54 +1,129 @@
-# SomaBrain
+# SomaBrain — Math-Powered Memory & Reasoning Engine (GitHub-ready overview)
 
-SomaBrain is a governed cognitive core that intermediates between external SLM-enabled agents and
-defence-in-depth infrastructure. Requests from agents are authenticated, evaluated against a
-cryptographically signed constitution, enriched with persistent memory, orchestrated for
-agent-side SLM execution, and audited end to end. The system is engineered to sustain millions of
-transactions per day while guaranteeing safety, observability, and recoverability.
+**SomaBrain** is a deterministic, float-precision, hyperdimensional memory + transport engine that **learns from use**, **recalls under heavy superposition**, and **routes knowledge like a living network**. It plugs into your apps as a set of small, composable modules.
 
-## Highlights
+---
 
-- **Constitutional governance** – Redis + Postgres backed constitution store with threshold
-  signatures, version history, and immutable cloud snapshots.
-- **Transactional audit trail** – Kafka/KRaft backbone with schema enforcement, idempotent
-  producers, and replay tooling; every decision is attributable and immutable.
-- **Multi-tier memory fabric** – Redis hot cache, vector store (Qdrant/PGVector), and Postgres
-  relational graph with integrity workers and mathematical consistency checks.
-- **LLM/SLM abstraction layer** – SomaBrain synthesises attention-like context bundles, planner
-  recommendations, and governance directives that agents feed into their own SLM stacks. No SLM
-  inference runs inside the brain; it strictly prepares and governs inputs for external models.
-- **Agent orchestration** – Evaluate/Feedback RPCs (`/context/evaluate`, `/context/feedback`) deliver
-  curated context bundles, capture feedback, audit events, and persist usage metrics so agent-side
-  SLM calls stay safe, efficient, and fully audited.
-- **Managed-only persistence** – no file-based state in runtime paths; all durable data flows
-  through managed services (Kafka, Redis, Postgres, object storage).
-- **Secure ingress** – configurable bearer/JWT auth, rate limiting, and tenant allowlists for Evaluate/Feedback APIs.
-- **First-class observability** – OpenTelemetry traces, Prometheus metrics, structured logs, and
-  Grafana dashboards with anomaly detection.
+## 🚀 Headline Features
 
-## Repository Layout
+* **Unit-norm Hyperdimensional Embeddings (HRR)**
 
+  * 8,192-D (configurable), deterministic seeds, FFT binding/unbinding (exact + Wiener).
+  * Safe invariants everywhere: pad/truncate → L2-normalize → guard NaNs/zeros.
+
+* **Superposition that Actually Works**
+
+  * Robust recall under many overlapping memories using **Wiener unbinding** + **density-matrix scoring** (ρ).
+  * Calibrated confidence scores for ranking and cleanup (better Brier/NLL than cosine-only).
+
+* **Self-Optimizing Memory Graph (Mycelial FRGO)**
+
+  * After serving, SomaBrain solves sparse flows and **reinforces high-use edges** while pruning waste.
+  * Outcome: **lean, efficient, robust backbones** (lower effective resistance at lower “material” cost).
+
+* **Sum-Over-Paths Planning (Schrödinger Bridge)**
+
+  * Recs/paths come from **probabilistic fastest routes** (heat-kernel on the graph), not just one shortest path.
+  * Fewer detours, higher Success@T; diversity is tunable via entropy.
+
+* **Online Convex Adaptation (Safe by Design)**
+
+  * Utility = λ·log(p_conf) − μ·cost − ν·latency with **bounded**, rollback-safe updates.
+  * Precision/attention knobs available; all weights clamped to config ranges.
+
+* **Deterministic, Auditable, Test-First**
+
+  * Float64 in critical numerics; property-based tests for invertibility, unit-norm, stability.
+  * Provenance: every edge has conductance $C_e$, flows $Q_e$, and loop rank to explain decisions.
+
+---
+
+## 🧠 What It Does Better (in practice)
+
+* **Recall:** Higher Top-1 under dense superposition; calibrated confidence → fewer wrong high-confidence hits.
+* **Recommendation:** Ranks by path reachability (bridge) + evidence (ρ), not just cosine closeness.
+* **Prediction:** Accurate steps-to-goal via arrival-time marginals; better cache prefetch.
+* **Scale:** Batch updates keep latency low; sparse CG on sharded graphs; clamp + prune for stability.
+
+---
+
+## 🧩 Core Math (clean, production-ready)
+
+* **HRR:** circular convolution/correlation (FFT), exact & Wiener unbinding, unitary roles.
+
+* **Density Matrix ρ:** PSD, trace-normalized memory of co-occurrence:
+
+  $$
+  \rho \leftarrow (1-\lambda)\rho + \lambda \sum w_i f_i f_i^\top,\quad \rho\gets \text{Proj}_{\text{PSD}}(\rho)/\text{tr}(\rho)
+  $$
+
+  Score: $s(q\!\to\!k)=\hat f^\top \rho\, f_k$.
+
+* **Transport (FRGO):**
+
+  $$
+  C_e \leftarrow \mathrm{clip}\!\big(C_e + \eta(|Q_e|^\alpha - \lambda L_e C_e)\big)
+  $$
+
+  (flows $Q$ from Laplacian solves; cost edge weight $L_e/C_e$).
+
+* **Planning (Bridge):** heat-kernel $K=\exp(-\beta \mathcal{L})$ with Sinkhorn scaling for start/goal distributions → time-marginals and controls.
+
+---
+
+## 🛠️ Minimal Integration
+
+```python
+# 1) HRR recall (Wiener first), then ρ-scoring
+f_hat = wiener_unbind(H_superposed, role, lam=1e-3)  # float64 FFT
+s_k   = f_hat @ (rho @ candidate_k)                   # density-matrix score
+topK  = argsort_desc(s_k)
+
+# 2) After N requests: update graph transport (FRGO)
+Q = solve_flows_sparse(C, demands_batch)              # CG on Laplacian
+C = clip(C + eta*(abs(Q)**alpha - lam*L*C), Cmin, Cmax)
+
+# 3) Optional: bridge planning for ranking/ETA
+P = schrodinger_bridge(Laplacian, mu0, mu1, beta)     # heat-kernel Sinkhorn
+eta_pred = expected_arrival_time(P)
 ```
-README.md                         – project overview & quick start
-Dockerfile                        – multi-stage build for the SomaBrain API + workers
-Docker_Canonical.yml              – canonical compose stack for local/stage environments
-scripts/                          – tooling (dev_up, replay, Kafka smoke, etc.)
-somabrain/                        – application modules (API, constitution, memory, metrics, learning)
-brain/                            – legacy adapters and scaffolding kept for backwards-compat agent tests
-benchmarks/                       – load/latency benchmarks (to be expanded in S9)
-clients/                          – SDKs and CLIs for agent integrations
-proto/                            – protobuf definitions for context/agent contracts
-ops/                              – observability dashboards, alert rules (populated in S6)
-docs/                             – canonical roadmap, architecture reference, configuration
-```
 
-See `docs/architecture/DETAILED_ARCHITECTURE.md` for a deep dive into component design and
-`docs/CONFIGURATION.md` / `docs/SETTINGS.md` for environment variables and runtime tuning knobs.
+---
 
-## Quick Start
+## 📈 What to Measure (A/B checklist)
 
-```bash
-# 1. Prepare environment
+* **Recall Top-1 vs. superposition K** ↑
+* **Calibration:** Brier / ECE ↓
+* **Mean effective resistance (graph)** ↓
+* **Material cost (edges above threshold)** ↓ with **robustness** ≥ baseline
+* **Success@T / detour rate** (bridge) ↑
+* **Latency & p50/p95** stable under batching
+
+---
+
+## 🔒 Reliability & Safety
+
+* Deterministic seeds; float64 critical ops; bounded learning rates.
+* Clamps: $C_{\min}$, $C_{\max}$; PSD projection for ρ; pruning thresholds.
+* Unit tests: invertibility (bind→unbind), unit-norm, no NaNs, stability under load.
+
+---
+
+## 📦 Modules (drop-in)
+
+* `embeddings.py` – TinyDeterministicEmbedder (unit-norm)
+* `quantum.py` – HRR/QuantumLayer (FFT bind/unbind, Wiener)
+* `memory/density.py` – ρ update + scoring (PSD/trace)
+* `transport/flow_opt.py` – sparse CG + FRGO updater
+* `transport/bridge.py` – heat-kernel Sinkhorn (Krylov expm-v)
+* `adaptation.py` – bounded OCO (λ, μ, ν, …)
+* `tests/` – property tests + benchmarks
+
+---
+
+## 📚 Why it’s different
+
+SomaBrain doesn’t just **store vectors**—it **shapes the space** they move through. Usage induces flows; flows re-shape routes; second-order evidence calibrates memory; planning sums over paths. The result is a brain that **learns from its own traffic**, stays **lean** as it grows, and **explains** the choices it makes.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt

@@ -77,21 +77,43 @@ class ConstitutionEngine:
         self._sig_key = self._storage._redis_sig_key
 
     def _load_pubkey_map(self) -> Dict[str, str]:
+        """
+        Load public key map for signature verification.
+        If Vault integration is enabled (VAULT_ADDR, VAULT_TOKEN, SOMABRAIN_VAULT_PUBKEY_PATH),
+        fetch keys from Vault. Otherwise, use env/PATH as before.
+        """
         mapping: Dict[str, str] = {}
-        env_value = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
-        single = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
-        if env_value:
+        vault_addr = os.getenv("VAULT_ADDR")
+        vault_token = os.getenv("VAULT_TOKEN")
+        vault_path = os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH")
+        if vault_addr and vault_token and vault_path:
             try:
-                data = json.loads(env_value)
-                if isinstance(data, dict):
-                    mapping = {str(k): str(v) for k, v in data.items()}
-            except Exception:
-                parts = [p for p in env_value.split(",") if ":" in p]
-                for part in parts:
-                    signer, path = part.split(":", 1)
-                    mapping[signer.strip()] = path.strip()
-        if single and "default" not in mapping:
-            mapping["default"] = single
+                import hvac
+                client = hvac.Client(url=vault_addr, token=vault_token)
+                secret = client.secrets.kv.v2.read_secret_version(path=vault_path)
+                data = secret["data"]["data"]
+                # Expecting {"signer_id": "PEM_CONTENT"}
+                for k, v in data.items():
+                    mapping[str(k)] = v
+                LOGGER.info("Loaded public keys from Vault path %s", vault_path)
+            except Exception as exc:
+                LOGGER.warning("Vault public key fetch failed: %s", exc)
+        # Fallback to env/PATH
+        if not mapping:
+            env_value = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
+            single = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
+            if env_value:
+                try:
+                    data = json.loads(env_value)
+                    if isinstance(data, dict):
+                        mapping = {str(k): str(v) for k, v in data.items()}
+                except Exception:
+                    parts = [p for p in env_value.split(",") if ":" in p]
+                    for part in parts:
+                        signer, path = part.split(":", 1)
+                        mapping[signer.strip()] = path.strip()
+            if single and "default" not in mapping:
+                mapping["default"] = single
         return mapping
 
     def load(self) -> Dict[str, Any]:
@@ -139,10 +161,8 @@ class ConstitutionEngine:
         return list(self._signatures)
 
     def verify_signature(self, pubkey_path: Optional[str] = None) -> bool:
-        """Attempt to verify the stored signature using a PEM public key at `pubkey_path`.
-
-        This is optional: if the 'cryptography' package or pubkey is not available,
-        the method logs and returns False.
+        """Attempt to verify the stored signature using a PEM public key at `pubkey_path`,
+        or a PEM string from Vault if configured.
         """
         if not self._checksum:
             return False
@@ -169,15 +189,19 @@ class ConstitutionEngine:
         for sig in signatures:
             signer_id = sig.get("signer_id") or "default"
             signature = sig.get("signature")
-            key_path = key_map.get(signer_id) or key_map.get("default")
-            if not key_path or not signature:
+            key_val = key_map.get(signer_id) or key_map.get("default")
+            if not key_val or not signature:
                 errors.append(f"missing key/signature for signer {signer_id}")
                 continue
             try:
-                with open(key_path, "rb") as fh:
-                    from cryptography.hazmat.primitives.serialization import load_pem_public_key
-
-                    pub = load_pem_public_key(fh.read())
+                from cryptography.hazmat.primitives.serialization import load_pem_public_key
+                if key_val.startswith("-----BEGIN "):
+                    # PEM string (from Vault or env)
+                    pub = load_pem_public_key(key_val.encode("utf-8"))
+                else:
+                    # Assume file path
+                    with open(key_val, "rb") as fh:
+                        pub = load_pem_public_key(fh.read())
                 sig_bytes = _decode_signature(signature)
                 pub.verify(sig_bytes, self._checksum.encode("utf-8"))
                 valid += 1

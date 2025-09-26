@@ -4,6 +4,35 @@ All runtime state is controlled via environment variables or configuration files
 managed secret stores. This document details every configuration surface, expected defaults, and the
 relevant code paths.
 
+
+## 0. OIDC/JWT Authentication (Keycloak, Cognito, Auth0)
+
+SomaBrain supports OIDC-compliant JWT authentication for all API endpoints. To enable:
+
+- Set `auth_required: true` in config or `SOMABRAIN_AUTH_REQUIRED=1` in env.
+- For HS256 (dev/test): set `jwt_secret` or `SOMABRAIN_JWT_SECRET`.
+- For RS256 (production): set `jwt_public_key_path` or `SOMABRAIN_JWT_PUBLIC_KEY_PATH` to a PEM file (downloaded from your OIDC provider's JWKS endpoint).
+- Set `jwt_issuer` and `jwt_audience` to match your OIDC provider (Keycloak, Cognito, etc).
+
+**Keycloak Example:**
+```
+auth_required: true
+jwt_public_key_path: /secrets/keycloak_public.pem
+jwt_issuer: https://keycloak.example.com/realms/somabrain
+jwt_audience: somabrain-agents
+```
+
+**Cognito Example:**
+```
+auth_required: true
+jwt_public_key_path: /secrets/cognito_public.pem
+jwt_issuer: https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
+jwt_audience: <app-client-id>
+```
+
+Tokens must be sent as `Authorization: Bearer <JWT>` in all API requests. The backend will validate signature, issuer, and audience.
+
+---
 ## 1. Environment Variables
 
 | Variable | Default | Description | Referenced In |
@@ -97,3 +126,70 @@ Kubernetes manifests (to be added in `infra/`):
 - PodDisruptionBudgets for stateful services.
 
 Update this document whenever new configuration knobs are introduced or existing ones change.
+
+## 8. mTLS Ingress with Envoy
+
+All inbound API traffic is routed through Envoy, which enforces mutual TLS (mTLS).
+
+- Envoy listens on port 8443 and proxies to the internal API service.
+- Only clients with valid certificates signed by the trusted CA can connect.
+- The `somabrain` service is no longer exposed directly; ingress is via Envoy on port 8443.
+
+### Setup Steps
+
+1. **Generate Certificates**
+   Run the provided script to generate a CA, server, and client certificates:
+   ```sh
+   cd ops/envoy
+   ./generate_certs.sh
+   ```
+   This creates `ca.crt`, `server.crt`, `server.key`, `client.crt`, `client.key` in `ops/envoy/certs/`.
+
+2. **Build and Start the Stack**
+   ```sh
+   docker compose -f Docker_Canonical.yml build envoy
+   # Or build all services:
+   docker compose -f Docker_Canonical.yml build
+   docker compose -f Docker_Canonical.yml up
+   ```
+   Envoy listens on `8443` (mTLS). All API requests must use this port and present a valid client certificate.
+
+3. **Test mTLS Ingress**
+   Example curl command (from project root):
+   ```sh
+   curl --cert ops/envoy/certs/client.crt --key ops/envoy/certs/client.key --cacert ops/envoy/certs/ca.crt \
+     https://localhost:8443/health
+   ```
+   You should see the health response from the API. Requests without a valid client cert will be rejected.
+
+4. **Configuration Details**
+   - Envoy config: `ops/envoy/envoy.yaml`
+   - Certs: `ops/envoy/certs/`
+   - Dockerfile: `ops/envoy/Dockerfile`
+   - Compose: `Docker_Canonical.yml` (service: `envoy`)
+
+5. **Security Notes**
+   - Never share private keys (`server.key`, `client.key`).
+   - For production, use a real CA and rotate certs regularly.
+   - Adjust `match_subject_alt_names` in `envoy.yaml` as needed for your client CN/SAN.
+
+For more details, see the [Envoy mTLS docs](https://www.envoyproxy.io/docs/envoy/latest/configuration/listeners/ssl).
+
+## 9. Advanced Math Modules (2025)
+
+### Density Matrix Cleanup
+- Enable with `DENSITY_MATRIX_ENABLED=1` (default: off).
+- Controls: `DENSITY_MATRIX_LAMBDA`, `DENSITY_MATRIX_ALPHA` (mixing weights).
+- See `memory/density.py` for details.
+
+### FRGO Transport Learning
+- Enable with `FRGO_ENABLED=1` (default: off).
+- Controls: `FRGO_ETA`, `FRGO_ALPHA`, `FRGO_LAMBDA`, `FRGO_CMIN`, `FRGO_CMAX`.
+- See `transport/flow_opt.py` for details.
+
+### Bridge Planning (Heat Kernel/Sinkhorn)
+- Enable with `BRIDGE_PLANNING_ENABLED=1` (default: off).
+- Controls: `BRIDGE_BETA`, `BRIDGE_NITER`, `BRIDGE_TOL`.
+- See `transport/bridge.py` for details.
+
+All modules are float64, batched, and monitored for stability. See `docs/architecture/DETAILED_ARCHITECTURE.md` for math details.

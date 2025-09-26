@@ -123,7 +123,7 @@ from somabrain.prediction import (
 from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
-from somabrain.ratelimit import RateConfig, RateLimiter
+from somabrain.ratelimit import RateConfig, RateLimiter, RateLimitMiddleware
 from somabrain.sdr import LSHIndex, SDREncoder
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
@@ -719,6 +719,8 @@ except Exception as e:
     logger = globals().get("logger")
     if logger:
         logger.debug("OPA middleware not registered: %s", e)
+# Register Rate Limiting middleware (after OPA, before Reward Gate)
+app.add_middleware(RateLimitMiddleware)
 # Register Reward Gate middleware (fails‑open, runs after OPA)
 try:
     from somabrain.api.middleware.reward_gate import RewardGateMiddleware

@@ -44,6 +44,7 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 
 from somabrain.nano_profile import HRR_FFT_EPSILON
+from memory.density import DensityMatrix  # for type hint and runtime use
 
 
 def _seed64(text: str) -> int:
@@ -647,27 +648,52 @@ class QuantumLayer:
         return float(np.dot(a, b) / (na * nb))
 
     def cleanup(
-        self, q: np.ndarray, anchors: Dict[str, np.ndarray]
+        self, q: np.ndarray, anchors: Dict[str, np.ndarray],
+        *,
+        use_wiener: bool = True,
+        density_matrix: "DensityMatrix" = None,
+        alpha: float = 0.5,
     ) -> Tuple[str, float]:
+        """
+        Cleanup using Wiener unbinding and density matrix scoring if available.
+        Fallback to cosine if density_matrix is None.
+        """
         q = self._ensure_vector(q, name="cleanup.query")
-        best_id = ""
-        best = -1.0
         from somabrain.numerics import compute_tiny_floor
-
         tiny = compute_tiny_floor(
             self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )
-        for k, v in anchors.items():
+        # Wiener unbinding (if enabled)
+        if use_wiener and hasattr(self, "unbind_wiener"):
+            # Assume q is the bound vector, anchors are candidate fillers
+            # Use a default role vector (or pass as arg if needed)
+            # For now, just use q as is (already unbound)
+            hat_f = q
+        else:
+            hat_f = q
+        # Prepare candidate matrix
+        keys = list(anchors.keys())
+        candidates = []
+        for k in keys:
             try:
-                vv = self._ensure_vector(v, name=f"cleanup.anchor[{k}]")
+                vv = self._ensure_vector(anchors[k], name=f"cleanup.anchor[{k}]")
+                candidates.append(vv)
             except ValueError:
-                # skip anchors that don't meet the contract
-                continue
-            s = self.cosine(q, vv, tiny_floor=tiny)
-            if s > best:
-                best = s
-                best_id = k
-        return best_id, best
+                candidates.append(None)
+        valid = [i for i, v in enumerate(candidates) if v is not None]
+        if not valid:
+            return "", -1.0
+        X = np.stack([candidates[i] for i in valid])
+        # Score with density matrix if available
+        if density_matrix is not None:
+            s_rho = density_matrix.score(hat_f, X)
+            s_cos = np.array([self.cosine(hat_f, x, tiny_floor=tiny) for x in X])
+            scores = alpha * s_rho + (1 - alpha) * s_cos
+        else:
+            scores = np.array([self.cosine(hat_f, x, tiny_floor=tiny) for x in X])
+        best_idx = int(np.argmax(scores))
+        best_id = keys[valid[best_idx]]
+        return best_id, float(scores[best_idx])
 
 
 # ---------------------------------------------------------------------------

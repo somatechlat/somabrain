@@ -55,7 +55,21 @@ rate_rps: 50
 rate_burst: 100
 write_daily_limit: 10000
 
+
 # Auth
+# For OIDC/JWT integration (Keycloak, Cognito, Auth0):
+# Uncomment and set the following for production:
+# auth_required: true
+# jwt_public_key_path: /secrets/keycloak_public.pem
+# jwt_issuer: https://keycloak.example.com/realms/somabrain
+# jwt_audience: somabrain-agents
+#
+# For Cognito:
+# jwt_public_key_path: /secrets/cognito_public.pem
+# jwt_issuer: https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
+# jwt_audience: <app-client-id>
+#
+# For dev/test (HS256):
 auth_required: true
 api_token: "dev-token"
 jwt_secret: "dev-secret"

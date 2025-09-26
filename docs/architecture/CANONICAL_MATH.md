@@ -134,6 +134,23 @@ Planned algorithms (S3+):
 - Reward gating modelled in Coq or another proof assistant to enforce the reward invariant.
 - Integration with CI ensures proofs run before merge.
 
+## 10. Advanced Memory & Transport Math (2025)
+
+### 10.1 Density Matrix (ρ) Cleanup
+- Maintains a PSD density matrix ρ as an EMA over filler outer products.
+- Scoring:  \( s_k = \hat f^\top \rho f_k \), optionally mixed with cosine.
+- Ensures better recall/calibration under superposition. See `memory/density.py`.
+
+### 10.2 FRGO Transport Learning
+- Updates edge conductances in the memory graph using batch flows:  \( C_e \leftarrow \mathrm{clip}(C_e + \eta(|Q_e|^{\alpha} - \lambda L_e C_e), C_{min}, C_{max}) \).
+- Reduces global resistance, prunes unused edges, and adapts to usage. See `transport/flow_opt.py`.
+
+### 10.3 Bridge Planning (Heat Kernel/Sinkhorn)
+- Computes heat kernel  \( K=\exp(-\beta\mathcal{L}) \) and uses Sinkhorn scaling for probabilistic planning.
+- Ranks candidates by bridge reach probability, supporting robust, short-time recommendations. See `transport/bridge.py`.
+
+All new math is float64, clamped, and batched. Property-based tests and benchmarks validate invariants and performance.
+
 ## References
 - Code references: `somabrain/constitution/`, `somabrain/api/dependencies/`,
   `somabrain/memory_client.py`, `somabrain/audit.py`.

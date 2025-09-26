@@ -3,6 +3,23 @@ networks:
     driver: bridge
 
 services:
+  envoy:
+    build:
+      context: ./ops/envoy
+      dockerfile: Dockerfile
+    image: somabrain-envoy:latest
+    container_name: sb_envoy
+    depends_on:
+      - somabrain
+    networks: [somabrain_net]
+    ports:
+      - "8443:8443"  # mTLS ingress
+    volumes:
+      - ./ops/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+      - ./ops/envoy/certs:/etc/envoy/certs:ro
+    restart: unless-stopped
+
+services:
   # Core supporting services
   redis:
     image: redis:7.2-alpine
@@ -63,8 +80,7 @@ services:
       - kafka
       - opa
     networks: [somabrain_net]
-    ports:
-      - "${SOMABRAIN_HOST_PORT:-9797}:9696"  # host -> container
+    # No direct host port; ingress is via Envoy mTLS
     environment:
       # Use the external memory service HTTP API. Do NOT build or run a local instance from compose.
       # On macOS Docker Desktop, containers reach the host at host.docker.internal
@@ -100,6 +116,22 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  memory_integrity_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_memory_integrity_worker
+    depends_on:
+      - redis
+      - postgres
+    networks: [somabrain_net]
+    environment:
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+      # Add other environment variables as needed
+    command: ["python", "-m", "somabrain.services.memory_integrity_worker"]
+    restart: unless-stopped
 
 volumes:
   kafka_data:

@@ -1,8 +1,71 @@
+## 11. Math Brain: Core Mathematical Functions
+
+SomaBrain's cognitive core is built on rigorous, reproducible mathematical contracts. All memory, context, and adaptation logic is grounded in these functions:
+
+### 11.1 Vector Embedding & Normalization
+- **Embedding Generation:** All text and memory payloads are embedded as high-dimensional, unit-norm vectors (HRR, typically 8192D, float32). Embeddings are deterministic, Gaussian, and reproducible.
+- **Normalization:** Every vector is padded/truncated to the canonical dimension and L2-normalized. See `normalize_vector`, `normalize_array`, `_to_unit`.
+
+### 11.2 Similarity & Retrieval
+- **Cosine Similarity:** Used for memory recall, nearest neighbor search, and cleanup. Robust to zero-norm edge cases. See `_cosine`, `QuantumLayer.cosine`.
+- **Recall Probability:** Probability of recall is a function of cosine similarity and retrieval weights.
+
+### 11.3 Hyperdimensional Computing (HRR/Quantum Layer)
+- **Superposition:** Normalized sum of vectors.
+- **Binding:** Circular convolution (FFT-based) for variable binding.
+- **Unbinding:** Circular correlation (inverse binding) with robust division and Tikhonov regularization.
+- **Permutation:** Fixed random permutation for role/filler separation.
+- **Cleanup:** Nearest neighbor search in HRR space using cosine similarity.
+- **All operations are invertible and preserve unit-norm invariants.**
+
+### 11.4 Utility, Reward, and Adaptation
+- **Utility Function:** $U(r) = \lambda \cdot \log(p_{conf}) - \mu \cdot cost - \nu \cdot latency$
+  - $(\lambda, \mu, \nu)$ are learned, bounded weights (see `AdaptationEngine`).
+- **Online Convex Optimization:** Adaptation engine updates weights $(\lambda, \mu, \nu, \alpha, \beta, \gamma, \tau)$ using feedback/reward, with explicit constraints and rollback.
+- **Penalty & Constraint Enforcement:** All weights are clamped to configured bounds after each update.
+
+### 11.5 Mathematical Invariants & Consistency
+- **Unit-Norm Guarantee:** All vectors are always unit-norm, enforced at every operation.
+- **Dimension Consistency:** All vectors are always the canonical HRR_DIM (8192), padded or truncated as needed.
+- **Robustness:** All math functions handle edge cases (zero norm, NaN, overflow) and fallback to safe defaults.
+
+### 11.6 Testing & Validation
+- **Property-Based Tests:** Ensure all vectors are unit-norm, binding/unbinding is invertible, and similarity is in $[0, 1]$.
+- **Benchmarks:** Compare legacy and new math for normalization, binding, and unbinding.
+
+#### Example: Core Math Functions (Pseudocode)
+
+```python
+def normalize_vector(vec, dim=8192):
+  arr = np.asarray(vec, dtype=np.float32)
+  arr = arr[:dim] if arr.size > dim else np.pad(arr, (0, dim - arr.size))
+  norm = np.linalg.norm(arr)
+  return arr / (norm + 1e-8)
+
+def cosine(a, b):
+  na, nb = np.linalg.norm(a), np.linalg.norm(b)
+  if na == 0 or nb == 0: return 0.0
+  return float(np.dot(a, b) / (na * nb))
+
+def bind(a, b):
+  fa, fb = np.fft.rfft(a), np.fft.rfft(b)
+  return np.fft.irfft(fa * fb, n=a.size)
+
+def unbind(ab, b):
+  fa, fb = np.fft.rfft(ab), np.fft.rfft(b)
+  return np.fft.irfft(fa * np.conj(fb) / (np.abs(fb)**2 + 1e-6), n=ab.size)
+```
+
+All math is reproducible, deterministic, and tested for invariants. Benchmarks and property-based tests ensure no drift or regression in math brain functions.
+
 # SomaBrain Detailed Architecture
+
 
 This document captures the fine-grained architecture required to deliver a
 production-grade SomaBrain capable of handling millions of agent transactions per day. It expands on
 module responsibilities, service dependencies, scaling strategies, and data flows.
+
+**Note:** As of September 2025, the multi-tier memory fabric and context builder are implemented and tested. The background integrity worker for cross-store consistency is pending and will be implemented as part of S3 completion.
 
 ## 1. Service Topology
 
@@ -148,5 +211,50 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 - Multi-region active/active deployments with global load balancing.
 - Differential privacy and k-anonymity layers for sensitive memory payloads.
 - Formal verification for end-to-end pipelines (beyond constitution & reward gate).
+
+## 11. Upgrades & Enhancements
+
+### 11.1 Core Math Enhancements (2023)
+- **Robust Division:** Improved handling of zero and near-zero norms in `unbind` via additive
+  smoothing.
+- **Tikhonov Regularization:** Added to unbinding for improved noise robustness.
+- **Inverse Binding Cleanup:** Enhanced with iterative refinement and outlier rejection.
+
+### 11.2 Memory & Transport Upgrades (2024)
+- **Sparse Memory Support:** Efficient handling of sparse vectors in HRR operations.
+- **Transport Layer Security:** End-to-end encryption and authentication for memory transport.
+- **Dynamic Memory Allocation:** On-the-fly adjustment of memory resources based on load.
+
+### 11.3 Density Matrix (ρ) Cleanup & Scoring (2025)
+- **Purpose:** Improves recall and calibration under high superposition by maintaining a second-order memory (density matrix) over filler vectors.
+- **Update:**
+  - ρ is updated as an EMA over outer products of fillers:  \( \rho \leftarrow (1-\lambda)\,\rho + \lambda\sum_j w_j f_j f_j^\top \), then projected to PSD and normalized to trace 1.
+  - Candidates are scored by \( s_k = \hat f^\top \rho f_k \), optionally mixed with cosine.
+- **Implementation:** See `memory/density.py` and `QuantumLayer.cleanup`.
+- **Testing:** Property-based tests ensure PSD, trace=1, and recall improvement.
+
+### 11.4 FRGO Transport Learning (2025)
+- **Purpose:** Learns efficient, robust memory graph transport by updating edge conductances based on batch flows.
+- **Update:**
+  - After each batch, solve Kirchhoff flows and update conductances:  \( C_e \leftarrow \mathrm{clip}(C_e + \eta(|Q_e|^{\alpha} - \lambda L_e C_e), C_{min}, C_{max}) \).
+- **Implementation:** See `transport/flow_opt.py` and adaptation engine batch step.
+- **Testing:** Tests check effective resistance, cost, and robustness.
+
+### 11.5 Bridge Planning (Heat Kernel/Sinkhorn) (2025)
+- **Purpose:** Probabilistic planning and recommendation using sum-over-paths (heat kernel) and Sinkhorn scaling.
+- **Update:**
+  - Compute heat kernel \( K=\exp(-\beta\mathcal{L}) \) and use Sinkhorn scaling to get node marginals and reach probabilities.
+- **Implementation:** See `transport/bridge.py`.
+- **Testing:** Tests validate reachability, calibration, and detour rates.
+
+### 11.6 Invariants & Monitoring
+- All new math is float64, clamped, and batched for stability.
+- Monitored metrics: effective resistance, ρ trace, recall, calibration (Brier/ECE).
+
+---
+
+**See also:**
+- `docs/CONFIGURATION.md` for runtime toggles and integration notes.
+- `tests/test_density.py`, `test_flow_opt.py`, `test_bridge.py` for property-based and regression tests.
 
 This document is living; update it whenever architecture decisions are made or components change.

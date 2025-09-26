@@ -76,27 +76,18 @@ close of each sprint (✅ done, 🟡 in progress, 🔴 blocked).
 - Observability dashboards show audit success/fallback rates <0.1% under load.
 
 ### S3 – Memory Fabric & Multi-View Retrieval (Week 5–6)
+
 **Scope**
-- Stand up Qdrant/Weaviate cluster or PGVector extension for vector search; create
-  `memory_vectors` table and ingestion pipeline.
-- Implement multi-tier memory in `somabrain/memory_client.py`:
-  - Redis hot cache for recent memories with TTL and LRU eviction.
-  - Postgres graph (`memory_edges`) with referential integrity and versioning.
-  - Qdrant vector store integration with checksum verification (`somabrain/memory_integrity.py`).
-- Create background integrity worker (`somabrain/services/memory_integrity_worker.py`) reading
-  from Kafka memory events and reconciling across stores.
-- Build `somabrain/context/builder.py` to merge vector, graph, and temporal views; implement
-  weighted attention formula \(w_i = \operatorname{softmax}((\alpha\cos + \beta g + \gamma d)/\tau)\)
-  and HRR compression for the residual stream.
-- Stand up Redis-backed working-memory ring buffer with TTL per conversation (`somabrain/runtime.py`)
-  so requests output a bounded scratchpad alongside curated memories.
+- Multi-tier memory (Redis, Postgres, vector store) and context builder are implemented and tested.
+- Working memory buffer (Redis-backed ring buffer) is present and tested.
+- Vector retrieval and graph augmentation logic are present; direct Qdrant/PGVector integration is abstracted.
+- **Pending:** Background integrity worker for reconciling memory across stores (to be implemented as `somabrain/services/memory_integrity_worker.py`).
 
 **Artifacts**
-- Data models, new services in `Docker_Canonical.yml`, integration tests seeding 10k memories and
-  verifying <50ms recall times.
+- Data models, new services in `Docker_Canonical.yml`, integration tests seeding 10k memories and verifying <50ms recall times.
 
 **DoD**
-- Writes propagate to all tiers atomically; integrity worker reports zero mismatches.
+- Writes propagate to all tiers atomically; **pending:** integrity worker must report zero mismatches.
 - Retrieval latency p95 <75ms for 100k memories.
 - Grafana panels for cache hit rate, write amplification, consistency alerts.
 
@@ -199,6 +190,22 @@ close of each sprint (✅ done, 🟡 in progress, 🔴 blocked).
 - Formal proofs pass; any deviation blocks merge.
 - Utility gauge trends within expected ranges; reward gate rejects all negative-utility requests in
   load tests.
+
+### S8.1 – Integrate Advanced Memory & Transport Math (NEW, Week 17–18)
+**Scope**
+- Integrate density matrix (ρ) cleanup and scoring into memory retrieval and cleanup paths.
+- Integrate FRGO transport learning into adaptation engine batch step for memory graph conductance updates.
+- Integrate bridge planning (heat kernel/Sinkhorn) into recommendation and planning endpoints.
+- Add toggles and config for enabling/disabling each module; monitor metrics and invariants.
+- Add/extend property-based and regression tests for all new math modules.
+
+**Artifacts**
+- Updated memory/cleanup modules, adaptation engine, planning endpoints, config toggles, and tests.
+
+**DoD**
+- All new math modules are integrated, tested, and monitored in production stack.
+- Metrics and invariants (PSD, trace, resistance, recall, calibration) are logged and alertable.
+- Documentation updated in canonical math/architecture/config docs.
 
 ### S9 – Scale, Performance & Chaos (Week 17–18)
 **Scope**

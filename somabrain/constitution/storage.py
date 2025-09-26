@@ -198,22 +198,50 @@ class ConstitutionStorage:
         checksum: str,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
-        target = os.getenv("SOMABRAIN_CONSTITUTION_SNAPSHOT_DIR")
-        if not target:
-            return None
-        path = pathlib.Path(target)
-        path.mkdir(parents=True, exist_ok=True)
+        """
+        Write a constitution snapshot to local dir (if set) and/or S3 (if configured).
+        Returns the local file path or S3 URI, whichever is used/preferred.
+        """
+        import json
+        import pathlib
+        import os
+        import dt
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        outfile = path / f"constitution_{timestamp}_{checksum[:12]}.json"
         payload = {
             "checksum": checksum,
             "document": document,
             "metadata": metadata or {},
             "created_at": timestamp,
         }
-        outfile.write_text(json.dumps(payload, indent=2, sort_keys=True))
-        LOGGER.info("wrote constitution snapshot to %s", outfile)
-        return str(outfile)
+        # Local snapshot
+        local_path = None
+        target = os.getenv("SOMABRAIN_CONSTITUTION_SNAPSHOT_DIR")
+        if target:
+            path = pathlib.Path(target)
+            path.mkdir(parents=True, exist_ok=True)
+            outfile = path / f"constitution_{timestamp}_{checksum[:12]}.json"
+            outfile.write_text(json.dumps(payload, indent=2, sort_keys=True))
+            LOGGER.info("wrote constitution snapshot to %s", outfile)
+            local_path = str(outfile)
+        # S3 snapshot
+        s3_bucket = os.getenv("SOMABRAIN_CONSTITUTION_S3_BUCKET")
+        s3_uri = None
+        if s3_bucket:
+            try:
+                import boto3
+                s3 = boto3.client("s3")
+                s3_key = f"constitution/constitution_{timestamp}_{checksum[:12]}.json"
+                s3.put_object(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    Body=json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
+                    ContentType="application/json",
+                )
+                s3_uri = f"s3://{s3_bucket}/{s3_key}"
+                LOGGER.info("uploaded constitution snapshot to %s", s3_uri)
+            except Exception as exc:
+                LOGGER.warning("S3 snapshot upload failed: %s", exc)
+        return s3_uri or local_path
 
     # ------------------------------------------------------------------
     @contextmanager

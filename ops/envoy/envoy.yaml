@@ -1,0 +1,62 @@
+# Envoy mTLS Example Configuration for SomaBrain
+
+# Place this file at ops/envoy/envoy.yaml and mount it in your deployment.
+# This config enforces mTLS for all inbound traffic to the API service.
+
+static_resources:
+  listeners:
+    - name: listener_0
+      address:
+        socket_address:
+          address: 0.0.0.0
+          port_value: 8443
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: ingress_http
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: somabrain
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: somabrain }
+                http_filters:
+                  - name: envoy.filters.http.router
+        transport_socket:
+          name: envoy.transport_sockets.tls
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext
+            common_tls_context:
+              tls_certificates:
+                - certificate_chain: { filename: "/etc/envoy/certs/server.crt" }
+                  private_key: { filename: "/etc/envoy/certs/server.key" }
+              validation_context:
+                trusted_ca: { filename: "/etc/envoy/certs/ca.crt" }
+                match_subject_alt_names:
+                  - exact: "client.somabrain"
+
+  clusters:
+    - name: somabrain
+      connect_timeout: 0.25s
+      type: logical_dns
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: somabrain
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 9696
+      transport_socket:
+        name: envoy.transport_sockets.tls
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext
+          common_tls_context:
+            validation_context:
+              trusted_ca: { filename: "/etc/envoy/certs/ca.crt" }
