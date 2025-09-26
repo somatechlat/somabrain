@@ -1,0 +1,38 @@
+groups:
+  - name: somabrain_alerts
+    rules:
+      - alert: HighAvgRequestLatency
+        expr: (rate(somabrain_http_latency_seconds_sum[5m]) / rate(somabrain_http_latency_seconds_count[5m])) * 1000 > 500
+        for: 3m
+        labels:
+          severity: page
+        annotations:
+          summary: "High average request latency"
+          description: "Average request latency > 500 ms for 3m"
+
+      - alert: WMUtilizationHigh
+        expr: somabrain_wm_utilization > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Working memory utilization high"
+          description: "WM utilization exceeds 85% for 5 minutes"
+
+      - alert: JournalVsAdmits
+        expr: (sum(rate(somabrain_journal_append_total[1m])) == 0) and (sum(rate(somabrain_wm_admit_total[1m])) > 10)
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Journal appends stopped while WM admits high"
+          description: "No journal appends but WM admits > 10/min for 2 minutes"
+
+      - alert: QuotaDenies
+        expr: sum(rate(somabrain_quota_denied_total[1m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Quota denies detected"
+          description: "Quota denied requests occurring"

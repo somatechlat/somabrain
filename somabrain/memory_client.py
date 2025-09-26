@@ -1,0 +1,1121 @@
+"""Memory Client Module for SomaBrain.
+
+The client speaks to the external HTTP memory service used by SomaBrain. When
+the service is unavailable it mirrors writes locally and records them in an
+outbox for replay. This module is the single gateway for storing, retrieving,
+and linking memories; other packages must call into it rather than integrating
+with the memory service directly.
+"""
+
+from __future__ import annotations
+
+import asyncio
+
+# Process-global in-memory mirror for recently stored payloads per-namespace.
+# The previous implementation used a plain module-global dict which could
+# become duplicated when the module is imported under different module
+# objects (tests/run-time import shims). Use the interpreter's builtins to
+# store a single shared dict accessible from any import context in the same
+# process. Keep the name `_GLOBAL_PAYLOADS` for minimal diffs elsewhere.
+import builtins as _builtins
+import hashlib
+import json
+import logging
+import os  # added for environment handling
+import random
+import time
+from dataclasses import dataclass
+from threading import RLock
+from typing import Any, Dict, List, Tuple, cast
+
+from .config import Config
+
+_BUILTINS_KEY = "_SOMABRAIN_GLOBAL_PAYLOADS"
+if not hasattr(_builtins, _BUILTINS_KEY):
+    setattr(_builtins, _BUILTINS_KEY, {})
+
+# Shared mapping: namespace -> list[payload]
+_GLOBAL_PAYLOADS: Dict[str, List[dict]] = getattr(_builtins, _BUILTINS_KEY)
+
+# Also keep a process-global links mirror so tests and duplicate import
+# contexts can observe freshly created graph edges without requiring the
+# exact same MemoryClient instance. Structure: namespace -> list[edge_dict]
+# edge_dict: {"from": (x,y,z), "to": (x,y,z), "type": str, "weight": float}
+_BUILTINS_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
+if not hasattr(_builtins, _BUILTINS_LINKS_KEY):
+    setattr(_builtins, _BUILTINS_LINKS_KEY, {})
+
+_GLOBAL_LINKS: Dict[str, List[dict]] = getattr(_builtins, _BUILTINS_LINKS_KEY)
+
+# logger for diagnostic output during tests
+logger = logging.getLogger(__name__)
+if os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1":
+    # ensure a stderr handler exists for quick interactive debugging
+    if not logger.handlers:
+        h = logging.StreamHandler()
+        h.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+        )
+        logger.addHandler(h)
+    logger.setLevel(logging.DEBUG)
+
+
+def _stable_coord(key: str) -> Tuple[float, float, float]:
+    """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key."""
+    h = hashlib.blake2b(key.encode("utf-8"), digest_size=12).digest()
+    a = int.from_bytes(h[0:4], "big") / 2**32
+    b = int.from_bytes(h[4:8], "big") / 2**32
+    c = int.from_bytes(h[8:12], "big") / 2**32
+    # spread over [-1, 1]
+    return (2 * a - 1, 2 * b - 1, 2 * c - 1)
+
+
+def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
+    try:
+        parts = [float(x.strip()) for x in str(s).split(",")]
+        if len(parts) >= 3:
+            return (parts[0], parts[1], parts[2])
+    except Exception:
+        return None
+    return None
+
+
+def _refresh_builtins_globals() -> None:
+    """Refresh module-level references to the builtins-backed global mirrors.
+
+    Tests sometimes replace the builtins dict objects by assigning a new
+    dict to the builtins key. That leaves module-level variables pointing to
+    the old dict. Call this helper at method entry points to rebind the
+    module-level names to the current builtins objects.
+    """
+    global _GLOBAL_PAYLOADS, _GLOBAL_LINKS
+    try:
+        _GLOBAL_PAYLOADS = getattr(_builtins, _BUILTINS_KEY)
+    except Exception:
+        _GLOBAL_PAYLOADS = getattr(_builtins, _BUILTINS_KEY, {})
+    try:
+        _GLOBAL_LINKS = getattr(_builtins, _BUILTINS_LINKS_KEY)
+    except Exception:
+        _GLOBAL_LINKS = getattr(_builtins, _BUILTINS_LINKS_KEY, {})
+
+
+def _extract_memory_coord(
+    resp: Any,
+    idempotency_key: str | None = None,
+) -> Tuple[float, float, float] | None:
+    """Try common shapes to extract a 3‑tuple coord from a remember response.
+
+    Known attempts (in order):
+    - top‑level 'coord' or 'coordinate' as comma string or list
+    - nested 'memory' object with 'coordinate' or 'id'
+    - top‑level 'id' (opaque) -> map via stable hash
+    - fallback: use idempotency_key (if provided) -> stable hash of 'idempotency:{key}'
+    Returns a 3‑tuple floats or None.
+    """
+    try:
+        if not resp:
+            return None
+        # if resp is a requests/HTTPX Response-like with .json(), prefer that
+        try:
+            if hasattr(resp, "json") and callable(resp.json):
+                data = resp.json()
+            else:
+                data = resp
+        except Exception:
+            data = resp
+        # top‑level coord/coordinate
+        for k in ("coord", "coordinate"):
+            v = data.get(k) if isinstance(data, dict) else None
+            if isinstance(v, str):
+                parsed = _parse_coord_string(v)
+                if parsed:
+                    return parsed
+            if isinstance(v, (list, tuple)) and len(v) >= 3:
+                try:
+                    return (float(v[0]), float(v[1]), float(v[2]))
+                except Exception:
+                    pass
+        # nested memory
+        if (
+            isinstance(data, dict)
+            and "memory" in data
+            and isinstance(data["memory"], dict)
+        ):
+            mem = data["memory"]
+            for k in ("coordinate", "coord", "location"):
+                v = mem.get(k)
+                if isinstance(v, str):
+                    parsed = _parse_coord_string(v)
+                    if parsed:
+                        return parsed
+                if isinstance(v, (list, tuple)) and len(v) >= 3:
+                    try:
+                        return (float(v[0]), float(v[1]), float(v[2]))
+                    except Exception:
+                        pass
+            # try id field
+            mid = mem.get("id") or mem.get("memory_id")
+            if mid:
+                try:
+                    return _stable_coord(str(mid))
+                except Exception:
+                    pass
+        # top‑level id
+        if isinstance(data, dict) and (data.get("id") or data.get("memory_id")):
+            mid = data.get("id") or data.get("memory_id")
+            try:
+                return _stable_coord(str(mid))
+            except Exception:
+                pass
+        # fallback to idempotency
+        if idempotency_key:
+            try:
+                return _stable_coord(f"idempotency:{idempotency_key}")
+            except Exception:
+                pass
+    except Exception:
+        return None
+    return None
+
+
+@dataclass
+class RecallHit:
+    """
+    Represents a memory recall hit.
+
+    Attributes
+    ----------
+    payload : Dict[str, Any]
+        The recalled memory payload.
+    """
+
+    payload: Dict[str, Any]
+
+
+class MemoryClient:
+    """Single gateway to the external memory service.
+
+    Contract
+    --------
+    - remember(), aremember(), recall()/arecall(), link()/alink(), k_hop(), payloads_for_coords()
+
+    Guarantees
+    ----------
+    - tenancy scoping via namespace
+    - legacy vendor-specific memory client imports stay isolated to this module (ADR‑0002)
+    """
+
+    def __init__(self, cfg: Config):
+        self.cfg = cfg
+        # Always operate as an HTTP-first Memory client. Local/redis modes
+        # and in-process memory service imports are disabled by default to
+        # avoid heavy top-level imports and environment coupling.
+        # Keep a _mode attribute for compatibility but it is informational only.
+        self._mode = "http"
+        self._local = None
+        self._http = None
+        self._http_async = None
+        self._stub_store: list[dict] = []
+        self._graph: Dict[Any, Any] = {}
+        self._lock = RLock()
+        # New: path for outbox persistence (default within data dir)
+        self._outbox_path = getattr(cfg, "outbox_path", "./data/somabrain/outbox.jsonl")
+        # Ensure outbox file exists
+        try:
+            open(self._outbox_path, "a").close()
+        except Exception:
+            pass
+        # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
+        # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
+        db_path = os.getenv("MEMORY_DB_PATH", "./data/memory.db")
+        try:
+            os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        except Exception:
+            pass
+        # Store for potential future use (e.g., passing to the local backend)
+        self._memory_db_path = db_path
+        # Initialize HTTP client (primary runtime path). Local/redis
+        # initialization is intentionally not attempted here.
+        self._init_http()
+        # Ensure outbox file exists (redundant safety)
+        try:
+            open(self._outbox_path, "a").close()
+        except Exception:
+            pass
+
+    def _init_local(self) -> None:
+        # Local in-process backend initialization has been removed. Running a
+        # memory service must be done as a separate HTTP process.
+        # If a developer needs an opt-in local backend, use an explicit
+        # environment flag (e.g., `SOMABRAIN_ALLOW_LOCAL_MEMORY=1`) and implement that
+        # code separately in a developer-only helper.
+        return
+
+    def _init_http(self) -> None:
+        import httpx  # type: ignore
+
+        # Default headers applied to all requests; per-request we add X-Request-ID
+        headers = {}
+        if self.cfg.http and self.cfg.http.token:
+            headers["Authorization"] = f"Bearer {self.cfg.http.token}"
+        # Propagate tenancy via standardized headers
+        ns = str(getattr(self.cfg, "namespace", ""))
+        if ns:
+            headers["X-Soma-Namespace"] = ns
+            # best-effort tenant extraction from namespace suffix
+            try:
+                tenant_guess = ns.split(":")[-1] if ":" in ns else ns
+                headers["X-Soma-Tenant"] = tenant_guess
+            except Exception:
+                pass
+        limits = None
+        try:
+            limits = httpx.Limits(max_connections=64, max_keepalive_connections=32)
+        except Exception:
+            limits = None
+        if limits is not None:
+            self._http = httpx.Client(
+                base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
+                headers=headers,
+                timeout=10.0,
+                limits=limits,
+            )
+        else:
+            self._http = httpx.Client(
+                base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
+                headers=headers,
+                timeout=10.0,
+            )
+        try:
+            if limits is not None:
+                self._http_async = httpx.AsyncClient(
+                    base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
+                    headers=headers,
+                    timeout=10.0,
+                    limits=limits,
+                )
+            else:
+                self._http_async = httpx.AsyncClient(
+                    base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
+                    headers=headers,
+                    timeout=10.0,
+                )
+        except Exception:
+            self._http_async = None
+
+        # If endpoint is empty, treat HTTP client as unavailable
+        try:
+            base = str(getattr(self.cfg.http, "endpoint", "") or "")
+            if not base:
+                self._http = None
+                self._http_async = None
+        except Exception:
+            pass
+
+    def _init_redis(self) -> None:
+        # Redis mode removed. Redis-backed behavior should be exposed via the
+        # HTTP memory service if required.
+        return
+
+    def health(self) -> dict:
+        """Best-effort backend health signal for local or http mode."""
+        try:
+            if self._http:
+                r = self._http.get("/health")
+                return {"http": getattr(r, "status_code", 500) == 200}
+        except Exception:
+            return {"ok": False}
+        return {"ok": True}
+
+    def _record_outbox(self, op: str, payload: dict):
+        """Append a failed HTTP operation to the outbox for later retry.
+        The JSON line includes the operation name (remember, recall, link, alink) and the
+        original payload needed to replay the request.
+        """
+        try:
+            with open(self._outbox_path, "a") as f:
+                json.dump({"op": op, "payload": payload}, f)
+                f.write("\n")
+        except Exception:
+            pass
+
+    def remember(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> None:
+        """Store a memory using a stable coordinate derived from coord_key.
+
+        Ensures payload has memory_type, timestamp, and universe fields.
+        """
+        # Refresh builtins-backed mirrors in case tests replaced them
+        _refresh_builtins_globals()
+        # include universe in coordinate hashing to avoid collisions across branches
+        universe = str(payload.get("universe") or "real")
+        coord = _stable_coord(f"{universe}::{coord_key}")
+        payload = dict(payload)
+        payload.setdefault("memory_type", "episodic")
+        payload.setdefault("timestamp", time.time())
+        payload.setdefault("universe", universe)
+        # Primary path: HTTP memory service if available.
+        if self._http is not None:
+            # Primary endpoint: /remember (Option A); fallback to /store if not found
+            body = {
+                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+                "payload": payload,
+                "type": "episodic",
+            }
+            import uuid
+
+            rid = request_id or str(uuid.uuid4())
+            rid_hdr = {"X-Request-ID": rid}
+            stored = False
+            try:
+                r = self._http.post("/remember", json=body, headers=rid_hdr)
+                code = getattr(r, "status_code", 200)
+                if code in (404, 405):
+                    r2 = self._http.post("/store", json=body, headers=rid_hdr)
+                    stored = getattr(r2, "status_code", 500) < 300
+                elif code in (429, 503):
+                    # brief backoff and retry once
+                    time.sleep(0.01 + random.random() * 0.02)
+                    r3 = self._http.post("/remember", json=body, headers=rid_hdr)
+                    stored = getattr(r3, "status_code", 500) < 300
+                elif code >= 500:
+                    # generic server error – retry once before falling back
+                    time.sleep(0.1)
+                    r_retry = self._http.post("/remember", json=body, headers=rid_hdr)
+                    stored = getattr(r_retry, "status_code", 500) < 300
+                else:
+                    stored = code < 300
+                # try to extract coord if server returns one
+                try:
+                    server_coord = _extract_memory_coord(r, idempotency_key=rid)
+                    if server_coord and getattr(
+                        self.cfg, "prefer_server_coords_for_links", False
+                    ):
+                        return server_coord
+                except Exception:
+                    pass
+            except Exception:
+                try:
+                    r4 = self._http.post("/store", json=body, headers=rid_hdr)
+                    stored = getattr(r4, "status_code", 500) < 300
+                except Exception:
+                    stored = False
+            # Record to global mirror (always), and to stub/outbox if the HTTP store failed
+            if not stored:
+                payload = dict(payload)
+                payload["coordinate"] = coord
+                with self._lock:
+                    self._stub_store.append(payload)
+                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(payload)
+                try:
+                    logger.debug(
+                        "remember(http fail): appended payload to _GLOBAL_PAYLOADS ns=%r total=%d",
+                        self.cfg.namespace,
+                        len(_GLOBAL_PAYLOADS.get(self.cfg.namespace, [])),
+                    )
+                except Exception:
+                    pass
+                # Record failure to outbox for later retry
+                self._record_outbox(
+                    "remember",
+                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
+                )
+                try:
+                    from . import metrics as _mx
+
+                    _mx.HTTP_FAILURES.inc()
+                except Exception:
+                    pass
+            else:
+                try:
+                    p2 = dict(payload)
+                    p2["coordinate"] = coord
+                    _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
+                    try:
+                        logger.debug(
+                            "remember(http success): appended payload to _GLOBAL_PAYLOADS ns=%r total=%d",
+                            self.cfg.namespace,
+                            len(_GLOBAL_PAYLOADS.get(self.cfg.namespace, [])),
+                        )
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+            # default: return locally computed coord
+            return coord
+
+        # Fallback: no HTTP client available — behave as a simple in-process
+        # stub: keep the payload locally and mirror to global for visibility.
+        try:
+            p2 = dict(payload)
+            p2["coordinate"] = coord
+            with self._lock:
+                self._stub_store.append(p2)
+            _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
+        except Exception:
+            try:
+                self._stub_store.append(payload)
+                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(payload)
+            except Exception:
+                pass
+        # Record outbox for potential retry
+        self._record_outbox("remember", {"coord_key": coord_key, "payload": payload})
+
+    async def aremember(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> None:
+        """Async variant of remember for HTTP mode; falls back to thread executor.
+
+        Returns the chosen 3‑tuple coord (server‑preferred if configured), or the
+        locally computed coord. On failure, falls back to running the sync remember
+        in a thread executor.
+        """
+        if self._http_async is not None:
+            try:
+                universe = str(payload.get("universe") or "real")
+                coord = _stable_coord(f"{universe}::{coord_key}")
+                body = {
+                    "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+                    "payload": payload,
+                    "type": "episodic",
+                }
+                import uuid
+
+                rid = request_id or str(uuid.uuid4())
+                rid_hdr = {"X-Request-ID": rid}
+                r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
+                code = getattr(r, "status_code", 200)
+                if code in (404, 405):
+                    await self._http_async.post("/store", json=body, headers=rid_hdr)
+                elif code in (429, 503):
+                    await asyncio.sleep(0.01 + random.random() * 0.02)
+                    await self._http_async.post("/remember", json=body, headers=rid_hdr)
+                # try to extract server coord and return preferred coord or fallback
+                try:
+                    data = None
+                    try:
+                        data = await r.json()
+                    except Exception:
+                        data = None
+                    server_coord = _extract_memory_coord(data, idempotency_key=rid)
+                    if server_coord and getattr(
+                        self.cfg, "prefer_server_coords_for_links", False
+                    ):
+                        return server_coord
+                except Exception:
+                    pass
+                return coord
+            except Exception:
+                try:
+                    import uuid
+
+                    rid2 = request_id or str(uuid.uuid4())
+                    rid_hdr = {"X-Request-ID": rid2}
+                    await self._http_async.post("/store", json=body, headers=rid_hdr)  # type: ignore[name-defined]
+                    # fall back to sync remember below
+                except Exception:
+                    pass
+        # Fallback: run the synchronous remember in a thread executor
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.remember, coord_key, payload)
+
+    def recall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
+        """Retrieve memories relevant to the query. Stub returns recent payloads."""
+        # Prefer HTTP recall if available
+        if self._http is not None:
+            import uuid
+
+            rid = request_id or str(uuid.uuid4())
+            rid_hdr = {"X-Request-ID": rid}
+            uni = str(universe or "real")
+            try:
+                r = self._http.post(
+                    "/recall",
+                    json={"query": query, "top_k": int(top_k), "universe": uni},
+                    headers=rid_hdr,
+                )
+                try:
+                    code = getattr(r, "status_code", 200)
+                    if code in (429, 503):
+                        time.sleep(0.01 + random.random() * 0.02)
+                        r = self._http.post(
+                            "/recall",
+                            json={"query": query, "top_k": int(top_k), "universe": uni},
+                            headers=rid_hdr,
+                        )
+                except Exception:
+                    pass
+                try:
+                    data = r.json()
+                except Exception:
+                    data = []
+                else:
+                    return [RecallHit(payload=p) for p in (data or [])]
+            except Exception:
+                pass
+        # Fallback: stub recall — return recent stubbed payloads
+        return [RecallHit(payload=p) for p in self._stub_store[-int(max(0, top_k)) :]]
+
+    async def arecall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
+        """Async recall for HTTP mode; falls back to sync for local/stub."""
+        if self._http_async is not None:
+            try:
+                import uuid
+
+                rid = request_id or str(uuid.uuid4())
+                rid_hdr = {"X-Request-ID": rid}
+                uni = str(universe or "real")
+                r = await self._http_async.post(
+                    "/recall",
+                    json={"query": query, "top_k": int(top_k), "universe": uni},
+                    headers=rid_hdr,
+                )
+                try:
+                    code = getattr(r, "status_code", 200)
+                    if code in (429, 503):
+                        await asyncio.sleep(0.01 + random.random() * 0.02)
+                        r = await self._http_async.post(
+                            "/recall",
+                            json={"query": query, "top_k": int(top_k), "universe": uni},
+                            headers=rid_hdr,
+                        )
+                except Exception:
+                    pass
+                try:
+                    data = r.json()
+                except Exception:
+                    data = []
+            except Exception:
+                data = []
+            return [RecallHit(payload=p) for p in (data or [])]
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, self.recall, query, top_k)
+
+    def link(
+        self,
+        from_coord: tuple[float, float, float],
+        to_coord: tuple[float, float, float],
+        link_type: str = "related",
+        weight: float = 1.0,
+        request_id: str | None = None,
+    ) -> None:
+        """Create or strengthen a typed edge in the memory graph."""
+        _refresh_builtins_globals()
+        # Primary path: call HTTP /link endpoint if available
+        if self._http is not None:
+            try:
+                import uuid
+
+                rid = request_id or str(uuid.uuid4())
+                rid_hdr = {"X-Request-ID": rid}
+                self._http.post(
+                    "/link",
+                    json={
+                        "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
+                        "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
+                        "type": link_type,
+                        "weight": weight,
+                    },
+                    headers=rid_hdr,
+                )
+            except Exception:
+                pass
+            # record locally for process augmentation (mirror)
+            key_from = cast(
+                Tuple[float, float, float],
+                (from_coord[0], from_coord[1], from_coord[2]),
+            )
+            key_to = cast(
+                Tuple[float, float, float], (to_coord[0], to_coord[1], to_coord[2])
+            )
+            with self._lock:
+                adj = self._graph.get(key_from)
+                if adj is None:
+                    adj = {}
+                    self._graph[key_from] = adj
+                prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
+                new_w = float(prev.get("weight", 0.0)) + float(weight)
+                adj[key_to] = {"type": str(link_type), "weight": new_w}
+            # Record in global links mirror for visibility
+            try:
+                ns = getattr(self.cfg, "namespace", None)
+                if ns is not None:
+                    GLOBAL_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
+                    if not hasattr(_builtins, GLOBAL_LINKS_KEY):
+                        setattr(_builtins, GLOBAL_LINKS_KEY, {})
+                    global_links: dict[str, list[dict]] = getattr(
+                        _builtins, GLOBAL_LINKS_KEY
+                    )
+                    ns_links = global_links.setdefault(ns, [])
+                    ns_links.append(
+                        {
+                            "from": list(map(float, from_coord)),
+                            "to": list(map(float, to_coord)),
+                            "type": str(link_type),
+                            "weight": float(weight),
+                        }
+                    )
+                    try:
+                        logger.debug(
+                            "link(http): appended edge to _GLOBAL_LINKS ns=%r total=%d global_id=%r builtin_id=%r",
+                            ns,
+                            len(global_links.get(ns, [])),
+                            id(global_links),
+                            id(getattr(_builtins, GLOBAL_LINKS_KEY, None)),
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            return
+
+        # Fallback: stub — record in-process adjacency and mirror to builtins
+        _refresh_builtins_globals()
+        key_from = cast(
+            Tuple[float, float, float],
+            (from_coord[0], from_coord[1], from_coord[2]),
+        )
+        key_to = cast(
+            Tuple[float, float, float], (to_coord[0], to_coord[1], to_coord[2])
+        )
+        with self._lock:
+            adj = self._graph.get(key_from)
+            if adj is None:
+                adj = {}
+                self._graph[key_from] = adj
+            prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
+            new_w = float(prev.get("weight", 0.0)) + float(weight)
+            adj[key_to] = {"type": str(link_type), "weight": new_w}
+
+        # Record in global links mirror for visibility
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                GLOBAL_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
+                if not hasattr(_builtins, GLOBAL_LINKS_KEY):
+                    setattr(_builtins, GLOBAL_LINKS_KEY, {})
+                global_links: dict[str, list[dict]] = getattr(
+                    _builtins, GLOBAL_LINKS_KEY
+                )
+                ns_links = global_links.setdefault(ns, [])
+                ns_links.append(
+                    {
+                        "from": list(map(float, from_coord)),
+                        "to": list(map(float, to_coord)),
+                        "type": str(link_type),
+                        "weight": float(weight),
+                    }
+                )
+                try:
+                    logger.debug(
+                        "link(stub): appended edge to _GLOBAL_LINKS ns=%r total=%d global_id=%r builtin_id=%r",
+                        ns,
+                        len(global_links.get(ns, [])),
+                        id(global_links),
+                        id(getattr(_builtins, GLOBAL_LINKS_KEY, None)),
+                    )
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def links_from(
+        self,
+        start: Tuple[float, float, float],
+        type_filter: str | None = None,
+        limit: int = 50,
+    ) -> List[dict]:
+        """List outgoing edges with metadata.
+
+        HTTP mode: call the memory service `/neighbors`. Local/stub: use the
+        in-process adjacency mirror.
+        """
+        _refresh_builtins_globals()
+        out: List[dict] = []
+        # Interpret limit<=0 as unlimited
+        unlimited = int(limit) <= 0
+        max_items = None if unlimited else int(limit)
+
+        # HTTP backend: ask remote neighbors endpoint if available
+        if self._http is not None:
+            try:
+                body = {
+                    "from_coord": [float(start[0]), float(start[1]), float(start[2])],
+                    "type": str(type_filter) if type_filter else None,
+                    "limit": int(limit),
+                }
+                r = self._http.post("/neighbors", json=body)
+                data = r.json() if hasattr(r, "json") else None
+                edges = (data or {}).get("edges", []) if isinstance(data, dict) else []
+                # normalize
+                for e in edges:
+                    try:
+                        out.append(
+                            {
+                                "from": tuple(e.get("from") or start),
+                                "to": tuple(e.get("to") or start),
+                                "type": e.get("type"),
+                                "weight": float(e.get("weight", 1.0)),
+                            }
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                out.clear()
+            if out:
+                return out if unlimited else out[:max_items]
+
+        # Local/stub: gather from in-memory adjacency
+        key_from = cast(
+            Tuple[float, float, float],
+            (float(start[0]), float(start[1]), float(start[2])),
+        )
+        with self._lock:
+            adj = self._graph.get(key_from, {})
+            for to_coord, meta in list(adj.items()):
+                try:
+                    if type_filter and meta.get("type") != type_filter:
+                        continue
+                    out.append(
+                        {
+                            "from": key_from,
+                            "to": to_coord,
+                            "type": meta.get("type"),
+                            "weight": float(meta.get("weight", 1.0)),
+                        }
+                    )
+                    if not unlimited and len(out) >= max_items:
+                        break
+                except Exception:
+                    pass
+
+        # Also include mirrored global links for this namespace
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                ns_links = _GLOBAL_LINKS.get(ns, [])
+                # Only include global links whose start coordinate matches the requested start
+                eps = 1e-6
+
+                def _close(
+                    a: Tuple[float, float, float],
+                    b: Tuple[float, float, float],
+                    eps: float = eps,
+                ) -> bool:
+                    return (
+                        abs(float(a[0]) - float(b[0])) <= eps
+                        and abs(float(a[1]) - float(b[1])) <= eps
+                        and abs(float(a[2]) - float(b[2])) <= eps
+                    )
+
+                for e in ns_links:
+                    try:
+                        if type_filter and e.get("type") != type_filter:
+                            continue
+                        ef = e.get("from")
+                        if not isinstance(ef, (list, tuple)) or len(ef) != 3:
+                            continue
+                        ef_t = tuple(map(float, ef))
+                        if not _close(ef_t, key_from):
+                            continue
+                        out.append(
+                            {
+                                "from": ef_t,
+                                "to": tuple(map(float, e.get("to") or [])),
+                                "type": e.get("type"),
+                                "weight": float(e.get("weight", 1.0)),
+                            }
+                        )
+                        if not unlimited and len(out) >= max_items:
+                            break
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
+        return out if unlimited else out[:max_items]
+
+    # --- New Graph Analytics Helpers ---
+    def degree(self, node: Tuple[float, float, float]) -> int:
+        """Return the number of outgoing edges from *node*.
+        This is a lightweight helper for quick degree queries used by
+        analytics or monitoring tools. It mirrors the adjacency stored in
+        ``self._graph`` and falls back to the global links mirror if the
+        node is not present locally.
+        """
+        key = cast(Tuple[float, float, float], (node[0], node[1], node[2]))
+        adj = self._graph.get(key)
+        if adj is not None:
+            return len(adj)
+        # Fallback: count edges from the global mirror for the current namespace
+        try:
+            my_ns = getattr(self.cfg, "namespace", None)
+            if my_ns is None:
+                return 0
+            count = 0
+            global_links_map = getattr(_builtins, _BUILTINS_LINKS_KEY, {})
+            for ns, edges in list(global_links_map.items()):
+                if ns != my_ns:
+                    continue
+                for e in edges:
+                    ef = e.get("from")
+                    if isinstance(ef, (list, tuple)) and len(ef) == 3:
+                        if all(
+                            abs(float(ef[i]) - float(node[i])) <= 1e-6 for i in range(3)
+                        ):
+                            count += 1
+            return count
+        except Exception:
+            return 0
+
+    def centrality(self, node: Tuple[float, float, float]) -> float:
+        """Return a simple degree‑centrality value for *node*.
+        Centrality is defined as ``degree / (total_nodes - 1)`` where
+        ``total_nodes`` is the number of distinct coordinates known in the
+        current namespace (both local graph and global mirror). This provides
+        a quick, interpretable metric without heavy computation.
+        """
+        try:
+            deg = self.degree(node)
+            # Gather all unique nodes in the namespace
+            nodes: set[Tuple[float, float, float]] = set(self._graph.keys())
+            # Include nodes from the global mirror
+            my_ns = getattr(self.cfg, "namespace", None)
+            if my_ns is not None:
+                global_links_map = getattr(_builtins, _BUILTINS_LINKS_KEY, {})
+                for ns, edges in list(global_links_map.items()):
+                    if ns != my_ns:
+                        continue
+                    for e in edges:
+                        f = e.get("from")
+                        t = e.get("to")
+                        if isinstance(f, (list, tuple)) and len(f) == 3:
+                            nodes.add(tuple(map(float, f)))
+                        if isinstance(t, (list, tuple)) and len(t) == 3:
+                            nodes.add(tuple(map(float, t)))
+            total = len(nodes)
+            if total <= 1:
+                return 0.0
+            return deg / (total - 1)
+        except Exception:
+            return 0.0
+
+    # --- Compatibility helper methods expected by migration and other code ---
+    def coord_for_key(
+        self, key: str, universe: str | None = None
+    ) -> Tuple[float, float, float]:
+        """Return a deterministic coordinate for *key* and optional *universe*.
+
+        This is a lightweight compatibility shim used by migration scripts and
+        higher-level services. It mirrors the stable hash used for remembered
+        payloads.
+        """
+        # When universe is not provided, default to 'real' to match remember()
+        # which uses payload.get('universe') or 'real'. Using the namespace here
+        # would produce inconsistent coordinates and break tests that rely on
+        # defaulting to the real universe.
+        uni = universe or "real"
+        return _stable_coord(f"{uni}::{key}")
+
+    def k_hop(
+        self,
+        starts: List[Tuple[float, float, float]],
+        depth: int = 1,
+        limit: int = 50,
+        type_filter: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
+        """Return a list of coordinates reachable from *starts* within *depth* hops.
+
+        This is a lightweight BFS that uses :meth:`links_from` to enumerate
+        neighbors. It is intentionally tolerant and works for stub/local/http
+        modes by relying on the existing links_from fallbacks.
+        """
+        try:
+            if not starts:
+                return []
+            seen: set[Tuple[float, float, float]] = set()
+            frontier = [tuple(float(s[i]) for i in range(3)) for s in starts]
+            out: list[Tuple[float, float, float]] = []
+            for d in range(max(1, int(depth))):
+                new_frontier: list[Tuple[float, float, float]] = []
+                for node in frontier:
+                    if node in seen:
+                        continue
+                    seen.add(node)
+                    # gather neighbors
+                    try:
+                        neigh = self.links_from(
+                            node, type_filter=type_filter, limit=limit
+                        )
+                    except Exception:
+                        neigh = []
+                    for e in neigh:
+                        to_coord = e.get("to")
+                        if isinstance(to_coord, (list, tuple)) and len(to_coord) >= 3:
+                            t = (
+                                float(to_coord[0]),
+                                float(to_coord[1]),
+                                float(to_coord[2]),
+                            )
+                            if t not in seen and t not in out:
+                                out.append(t)
+                                new_frontier.append(t)
+                                if len(out) >= max(1, int(limit)):
+                                    return out
+                frontier = new_frontier
+                if not frontier:
+                    break
+            return out
+        except Exception:
+            return []
+
+    def payloads_for_coords(
+        self, coords: List[Tuple[float, float, float]], universe: str | None = None
+    ) -> List[dict]:
+        """Bulk retrieval of payloads for the given coordinates.
+
+        The method tries several fallbacks (in‑memory stub store, process-global
+        mirror) to return payload dictionaries that include a `coordinate` field.
+        It is intentionally tolerant of small floating point differences.
+        """
+        _refresh_builtins_globals()
+        out: List[dict] = []
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            # If an HTTP endpoint is configured, use the dedicated bulk endpoint.
+            if self._http:
+                # Convert each coordinate tuple to the string form expected by the API.
+                coord_strs = [f"{c[0]},{c[1]},{c[2]}" for c in coords]
+                try:
+                    r = self._http.post("/payloads", json={"coords": coord_strs})
+                    data = r.json() if hasattr(r, "json") else {}
+                    payloads = (
+                        data.get("payloads", []) if isinstance(data, dict) else []
+                    )
+                    for entry in payloads:
+                        # The API returns each entry as {"payload": {...}, "coord": "x,y,z"}
+                        pl = entry.get("payload", {})
+                        coord_raw = entry.get("coord")
+                        if coord_raw:
+                            # Normalise to tuple of floats
+                            parsed = _parse_coord_string(coord_raw)
+                            if parsed:
+                                pl["coordinate"] = parsed
+                        out.append(pl)
+                except Exception:
+                    # On any error fall back to the stub mirrors.
+                    pass
+            # Gather candidates from stub store and global mirror.
+            candidates: List[dict] = []
+            try:
+                candidates.extend(self._stub_store)
+            except Exception:
+                pass
+            try:
+                if ns is not None:
+                    candidates.extend(_GLOBAL_PAYLOADS.get(ns, []))
+            except Exception:
+                pass
+            eps = 1e-6
+            for coord in coords:
+                try:
+                    target = (float(coord[0]), float(coord[1]), float(coord[2]))
+                except Exception:
+                    continue
+                # Collect all matching candidates and choose the most recent by timestamp
+                matches: List[dict] = []
+                for p in candidates:
+                    c = p.get("coordinate")
+                    try:
+                        if isinstance(c, (list, tuple)) and len(c) >= 3:
+                            if all(
+                                abs(float(c[i]) - target[i]) <= eps for i in range(3)
+                            ):
+                                matches.append(p)
+                                continue
+                        if isinstance(c, str):
+                            parsed = _parse_coord_string(c)
+                            if parsed and all(
+                                abs(parsed[i] - target[i]) <= eps for i in range(3)
+                            ):
+                                matches.append(p)
+                                continue
+                    except Exception:
+                        continue
+                if matches:
+                    # choose the payload with the largest timestamp (most recent)
+                    def _ts(p: dict) -> float:
+                        try:
+                            return float(p.get("timestamp") or 0)
+                        except Exception:
+                            return 0.0
+
+                    matches.sort(key=_ts, reverse=True)
+                    out.append(matches[0])
+            try:
+                logger.debug(
+                    "payloads_for_coords: coords=%d candidates=%d out=%d",
+                    len(coords),
+                    len(candidates),
+                    len(out),
+                )
+            except Exception:
+                pass
+            return out
+        except Exception:
+            return out
+
+    def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
+        """Compatibility helper: store a payload dict into the memory backend.
+
+        Tests and migration scripts call this helper. If the payload contains a
+        concrete ``coordinate`` value we mirror it into the in‑process stub and
+        global mirrors. Otherwise we fall back to calling :meth:`remember` with
+        a generated key based on the payload's task or a timestamp.
+        """
+        _refresh_builtins_globals()
+        try:
+            coord = payload.get("coordinate")
+            if coord:
+                # normalize coordinate to tuple
+                try:
+                    c = tuple(float(coord[i]) for i in range(3))
+                except Exception:
+                    c = None
+                p2 = dict(payload)
+                if c is not None:
+                    p2["coordinate"] = c
+                with self._lock:
+                    try:
+                        self._stub_store.append(p2)
+                    except Exception:
+                        pass
+                try:
+                    ns = getattr(self.cfg, "namespace", None)
+                    if ns is not None:
+                        _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
+                except Exception:
+                    pass
+                return True
+            # No coordinate: fall back to remember with a stable key
+            key = payload.get("task") or f"autokey:{int(time.time()*1000)}"
+            try:
+                self.remember(key, payload, request_id=request_id)
+                return True
+            except Exception:
+                return False
+        except Exception:
+            return False

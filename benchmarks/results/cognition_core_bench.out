@@ -1,0 +1,6 @@
+Gate1 (unitary+exact k=1 >=0.70): PASS (mean=1.000)
+Gate2 (Wiener-Tikhonov @k=1 >= 0.03): FAIL (Δ=0.004)
+Gate2 (Wiener-Tikhonov @k=4 >= 0.03): PASS (Δ=0.087)
+Gate2 (Wiener-Tikhonov @k=16 >= 0.03): PASS (Δ=0.052)
+Gate3 (unitary exact p99 <= 1ms): WARN (p99=1.287 ms)
+Plotting skipped: No module named 'matplotlib'

@@ -1,0 +1,23 @@
+black==25.1.0
+ruff==0.13.0
+isort==6.0.1
+pre-commit==4.3.0
+pytest==8.4.2
+pytest-forked==1.5.0
+# Sphinx 8.2.x requires Python >=3.11; CI uses 3.10, pin to 7.2.x
+sphinx==7.2.6
+myst-parser==4.0.1
+sphinx-rtd-theme==3.0.2
+pydantic==2.11.7
+# Use a widely available NumPy version compatible with CI Python
+numpy==2.2.6
+uvicorn==0.35.0
+httpx==0.28.1
+requests==2.31.0
+redis==4.6.0
+kafka-python==2.0.2
+fakeredis==2.20.0
+alembic==1.16.5
+sqlalchemy==2.0.43
+psycopg[binary]==3.2.10
+PyJWT[crypto]==2.9.0

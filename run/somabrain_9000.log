@@ -1,0 +1,7 @@
+2025-09-17 16:44:38,655 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+INFO:     Started server process [13129]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 48] error while attempting to bind on address ('0.0.0.0', 9000): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.

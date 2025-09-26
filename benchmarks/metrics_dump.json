@@ -1,0 +1,16 @@
+{
+  "metrics_snapshot": {
+    "unbind_path_total": {
+      "type": "counter",
+      "value": 0
+    },
+    "unbind_wiener_floor": {
+      "type": "gauge",
+      "value": 1000.0
+    },
+    "unbind_k_est": {
+      "type": "gauge",
+      "value": 0.0
+    }
+  }
+}

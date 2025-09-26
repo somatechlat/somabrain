@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://somatech.la/schemas/audit_event_v1.json",
+  "title": "SomaBrain Audit Event v1",
+  "description": "Audit events emitted by SomaBrain to the soma.audit topic (Kafka) and durable JSONL journal.",
+  "type": "object",
+  "required": ["event_id", "ts", "source", "action", "decision", "schema_version"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid", "description": "Unique event UUID" },
+    "ts": { "type": "number", "description": "Epoch seconds (float) of event emission" },
+    "source": { "type": "string", "description": "Emitting service name" },
+    "tenant_id": { "type": ["string", "null"], "description": "Optional tenant or org id" },
+    "trace_id": { "type": ["string", "null"], "description": "Optional distributed trace id" },
+    "action": { "type": "string", "description": "Canonical action name (e.g., 'context.evaluate', 'context.feedback', 'constitution.validate')" },
+    "request_payload": { "type": ["object", "null"], "description": "Redacted request payload; PII must be removed prior to emission" },
+    "decision": { "type": "string", "description": "Decision or outcome (e.g., 'allow','deny','deferred')" },
+    "explanation": { "type": ["string", "null"], "description": "Optional human-readable explanation or OPA trace" },
+    "constitution_checksum": { "type": ["string", "null"], "description": "Checksum of the loaded constitution" },
+    "constitution_signature": { "type": ["string", "null"], "description": "Optional signature blob (base64)" },
+    "metadata": { "type": ["object", "null"], "description": "Freeform metadata map for provider-specific fields" },
+    "schema_version": { "type": "string", "const": "audit_event_v1" }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "event_id": "11111111-2222-3333-4444-555555555555",
+      "ts": 1710000000.123,
+      "source": "somabrain.gateway",
+      "tenant_id": "tenant-abc",
+      "trace_id": "trace-xyz",
+      "action": "context.feedback",
+      "request_payload": { "prompt_hash": "sha256:abcd..." },
+      "decision": "allow",
+      "explanation": "OPA allowed: matched policy X",
+      "constitution_checksum": "sha256:deadbeef...",
+      "schema_version": "audit_event_v1"
+    }
+  ]
+}

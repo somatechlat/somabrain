@@ -1,0 +1,106 @@
+networks:
+  somabrain_net:
+    driver: bridge
+
+services:
+  # Core supporting services
+  redis:
+    image: redis:7.2-alpine
+    container_name: sb_redis
+    networks: [somabrain_net]
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  kafka:
+    # Single-node Kafka-compatible broker for dev (Redpanda/KRaft-like)
+    # Use a stable Redpanda release; change tag as appropriate for your env.
+    image: redpandadata/redpanda:latest
+    container_name: sb_kafka
+    networks: [somabrain_net]
+    ports:
+      - "${KAFKA_HOST_PORT:-29092}:9092"
+    command: ["redpanda", "start", "--overprovisioned", "--smp 1", "--memory 1G", "--reserve-memory 0M", "--node-id 0", "--check=false"]
+    environment:
+      REDPANDA_AUTO_CREATE_TOPICS: 'true'
+    volumes:
+      - kafka_data:/var/lib/redpanda/data:rw
+
+  opa:
+    image: openpolicyagent/opa:0.48.0
+    container_name: sb_opa
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    networks: [somabrain_net]
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./ops/opa/policies:/policies:ro
+
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: sb_prometheus
+    networks: [somabrain_net]
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  # grafana service intentionally removed per project policy (no Grafana)
+
+  # SomaBrain production‑style instance (real services, no mocks)
+  somabrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_somabrain
+    depends_on:
+      - redis
+      - kafka
+      - opa
+    networks: [somabrain_net]
+    ports:
+      - "${SOMABRAIN_HOST_PORT:-9797}:9696"  # host -> container
+    environment:
+      # Use the external memory service HTTP API. Do NOT build or run a local instance from compose.
+      # On macOS Docker Desktop, containers reach the host at host.docker.internal
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+      SOMABRAIN_HOST: "0.0.0.0"
+      SOMABRAIN_PORT: "9696"
+      SOMABRAIN_WORKERS: "4"
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://sb_kafka:9092"
+      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9696/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # The memory service is provided externally. The stack will NOT build or run it locally.
+  # Ensure an HTTP API is reachable at port 9595 on the host (default: http://host.docker.internal:9595).
+
+  # PostgreSQL database for persistence (if needed)
+  postgres:
+    image: postgres:15.4-alpine
+    container_name: sb_postgres
+    environment:
+      POSTGRES_USER: somabrain
+      POSTGRES_PASSWORD: somabrain
+      POSTGRES_DB: somabrain
+    networks: [somabrain_net]
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "somabrain"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  kafka_data:
+    driver: local

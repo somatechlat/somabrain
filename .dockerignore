@@ -1,0 +1,34 @@
+# Ignore Python caches and VCS
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+*.mypy_cache/
+*.ruff_cache/
+
+# VCS
+.git/
+.gitignore
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Local envs
+.venv/
+venv/
+
+# Not needed in image
+tests/
+examples/
+Log*.txt
+*.log
+
+# IDE/editor
+.vscode/
+.idea/
+
+# Explicitly include arc_cache.py
+!arc_cache.py

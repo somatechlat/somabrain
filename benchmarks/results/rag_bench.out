@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/rag_bench.py", line 18, in <module>
+    from somabrain.app import app
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/app.py", line 104, in <module>
+    from somabrain.embeddings import make_embedder
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/embeddings.py", line 32, in <module>
+    from arc_cache import arc_cache
+ModuleNotFoundError: No module named 'arc_cache'

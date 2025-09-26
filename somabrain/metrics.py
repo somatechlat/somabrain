@@ -1,0 +1,795 @@
+"""
+Metrics Module for SomaBrain.
+
+This module provides comprehensive metrics collection and monitoring for the SomaBrain system
+using Prometheus client library. It includes HTTP request metrics, cognitive performance metrics,
+and system health monitoring with automatic FastAPI integration.
+
+Key Features:
+- Prometheus-compatible metrics collection
+- HTTP request latency and count tracking
+- Cognitive metrics (salience, novelty, prediction error)
+- Memory system performance monitoring
+- Embedding and indexing metrics
+- Consolidation and sleep cycle tracking
+- Automatic middleware integration for request timing
+
+Metrics Categories:
+- HTTP Metrics: Request counts, latency, status codes
+- Working Memory: Hit/miss rates, latency
+- Salience: Score distributions, threshold tracking
+- HRR System: Cleanup usage, anchor saturation, reranking
+- Prediction: Latency by provider, fallback counts
+- Consolidation: Run counts, replay strength, REM synthesis
+- Supervisor: Free energy, neuromodulator modulation
+- Executive Controller: Conflict detection, bandit rewards
+- Microcircuits: Vote entropy, column admissions
+- Embeddings: Latency by provider, cache hits
+- Journal: Append/replay/skip counts, rotations
+
+Functions:
+    metrics_endpoint: FastAPI endpoint for exposing Prometheus metrics.
+    timing_middleware: FastAPI middleware for automatic request timing.
+"""
+
+from __future__ import annotations
+
+import time
+from typing import Any, Awaitable, Callable
+
+try:
+    from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+except (
+    Exception
+):  # pragma: no cover - allow import without prometheus for lightweight checks
+    # Minimal shim so the module can be imported in environments without prometheus_client.
+    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
+
+    class CollectorRegistry:
+        def __init__(self):
+            self._names_to_collectors = {}
+
+    class _NoopMetric:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def inc(self, *a, **k):
+            pass
+
+        def set(self, *a, **k):
+            pass
+
+        def labels(self, *a, **k):
+            return self
+
+        def observe(self, *a, **k):
+            pass
+
+    CollectorRegistry = CollectorRegistry
+    REGISTRY = CollectorRegistry()
+    Counter = _NoopMetric
+    Gauge = _NoopMetric
+    Histogram = _NoopMetric
+
+    def generate_latest(reg):
+        return b""
+
+
+# Aliases used later (avoid interleaved imports)
+_Hist = Histogram
+_PC = Counter
+_PHist = Histogram
+_PCounter = Counter
+
+registry = CollectorRegistry()
+
+
+def _get_existing(name: str):
+    # Prefer the app registry mapping if present; fall back to global REGISTRY
+    try:
+        return registry._names_to_collectors.get(name)
+    except Exception:
+        try:
+            return REGISTRY._names_to_collectors.get(name)
+        except Exception:
+            return None
+
+
+def get_counter(name: str, documentation: str, labelnames: list | None = None):
+    """Get or create a Counter in the central registry.
+
+    Returns an existing collector if already registered, otherwise creates and
+    registers a new Counter attached to the central `registry`.
+    """
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if labelnames:
+        return Counter(name, documentation, labelnames, registry=registry)
+    return Counter(name, documentation, registry=registry)
+
+
+def get_gauge(name: str, documentation: str, labelnames: list | None = None):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if labelnames:
+        return Gauge(name, documentation, labelnames, registry=registry)
+    return Gauge(name, documentation, registry=registry)
+
+
+def get_histogram(
+    name: str, documentation: str, labelnames: list | None = None, **kwargs
+):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if labelnames:
+        return Histogram(name, documentation, labelnames, registry=registry, **kwargs)
+    return Histogram(name, documentation, registry=registry, **kwargs)
+
+
+HTTP_COUNT = Counter(
+    "somabrain_http_requests_total",
+    "HTTP requests",
+    ["method", "path", "status"],
+    registry=registry,
+)
+HTTP_LATENCY = Histogram(
+    "somabrain_http_latency_seconds",
+    "HTTP request latency",
+    ["method", "path"],
+    registry=registry,
+)
+# OPA enforcement metrics – count allow and deny decisions
+OPA_ALLOW_TOTAL = Counter(
+    "somabrain_opa_allow_total",
+    "Number of requests allowed by OPA",
+    registry=registry,
+)
+OPA_DENY_TOTAL = Counter(
+    "somabrain_opa_deny_total",
+    "Number of requests denied by OPA",
+    registry=registry,
+)
+# Reward Gate metrics – count allow and deny decisions
+REWARD_ALLOW_TOTAL = Counter(
+    "somabrain_reward_allow_total",
+    "Number of requests allowed by Reward Gate",
+    registry=registry,
+)
+REWARD_DENY_TOTAL = Counter(
+    "somabrain_reward_deny_total",
+    "Number of requests denied by Reward Gate",
+    registry=registry,
+)
+# Constitution metrics (baseline)
+CONSTITUTION_VERIFIED = Gauge(
+    "somabrain_constitution_verified",
+    "Constitution verification status (1=verified, 0=unverified)",
+    registry=registry,
+)
+CONSTITUTION_VERIFY_LATENCY = Histogram(
+    "somabrain_constitution_verify_latency_seconds",
+    "Time spent verifying constitution signatures on startup",
+    registry=registry,
+)
+# Utility metrics (Phase A)
+UTILITY_NEGATIVE = Counter(
+    "somabrain_utility_negative_total",
+    "Times utility guard rejected a request (U < 0)",
+    registry=registry,
+)
+UTILITY_VALUE = Gauge(
+    "somabrain_utility_value",
+    "Last computed utility value (per process)",
+    registry=registry,
+)
+WM_HITS = Counter("somabrain_wm_hits_total", "WM recall hits", registry=registry)
+WM_MISSES = Counter("somabrain_wm_misses_total", "WM recall misses", registry=registry)
+SALIENCE_STORE = Counter(
+    "somabrain_store_events_total", "Stores gated by salience", registry=registry
+)
+
+SALIENCE_HIST = _Hist(
+    "somabrain_salience_score",
+    "Salience score distribution",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    registry=registry,
+)
+
+# WM admissions and attention level
+WM_ADMIT = Counter(
+    "somabrain_wm_admit_total",
+    "Working Memory admissions",
+    ["source"],
+    registry=registry,
+)
+ATTENTION_LEVEL = Gauge(
+    "somabrain_attention_level",
+    "Current attention level as tracked by thalamus (0..1)",
+    registry=registry,
+)
+
+# HRR cleanup metrics
+HRR_CLEANUP_USED = Counter(
+    "somabrain_hrr_cleanup_used_total",
+    "Times HRR cleanup was applied",
+    registry=registry,
+)
+HRR_CLEANUP_SCORE = _Hist(
+    "somabrain_hrr_cleanup_score",
+    "HRR cleanup top-1 cosine score",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    registry=registry,
+)
+
+HRR_CLEANUP_CALLS = _PC(
+    "somabrain_hrr_cleanup_calls_total",
+    "Count of HRR cleanup invocations",
+    registry=registry,
+)
+HRR_ANCHOR_SIZE = _Hist(
+    "somabrain_hrr_anchor_size",
+    "Number of HRR anchors observed per tenant",
+    buckets=[1, 10, 100, 1_000, 10_000],
+    registry=registry,
+)
+HRR_CONTEXT_SAT = _Hist(
+    "somabrain_hrr_context_saturation",
+    "HRR context saturation (anchors/max_anchors)",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    registry=registry,
+)
+
+# Phase 0 — A/B + stage metrics
+
+RECALL_WM_LAT = _PHist(
+    "somabrain_recall_wm_latency_seconds",
+    "Recall WM stage latency",
+    ["cohort"],
+    registry=registry,
+)
+RECALL_LTM_LAT = _PHist(
+    "somabrain_recall_ltm_latency_seconds",
+    "Recall LTM stage latency",
+    ["cohort"],
+    registry=registry,
+)
+
+RECALL_CACHE_HIT = _PCounter(
+    "somabrain_recall_cache_hit_total",
+    "Recall cache hits",
+    ["cohort"],
+    registry=registry,
+)
+RECALL_CACHE_MISS = _PCounter(
+    "somabrain_recall_cache_miss_total",
+    "Recall cache misses",
+    ["cohort"],
+    registry=registry,
+)
+NOVELTY_RAW = _Hist(
+    "somabrain_novelty_raw",
+    "Novelty raw distribution",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    labelnames=["cohort"],
+    registry=registry,
+)
+ERROR_RAW = _Hist(
+    "somabrain_error_raw",
+    "Prediction error raw distribution",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    labelnames=["cohort"],
+    registry=registry,
+)
+NOVELTY_NORM = _Hist(
+    "somabrain_novelty_norm",
+    "Novelty normalized (z-score) distribution",
+    buckets=[-5 + i * 0.5 for i in range(0, 21)],
+    labelnames=["cohort"],
+    registry=registry,
+)
+ERROR_NORM = _Hist(
+    "somabrain_error_norm",
+    "Prediction error normalized (z-score) distribution",
+    buckets=[-5 + i * 0.5 for i in range(0, 21)],
+    labelnames=["cohort"],
+    registry=registry,
+)
+SDR_PREFILTER_LAT = _PHist(
+    "somabrain_sdr_prefilter_latency_seconds",
+    "SDR prefilter latency",
+    ["cohort"],
+    registry=registry,
+)
+SDR_CANDIDATES = _PCounter(
+    "somabrain_sdr_candidates_total",
+    "SDR candidate coords selected",
+    ["cohort"],
+    registry=registry,
+)
+HRR_RERANK_APPLIED = Counter(
+    "somabrain_hrr_rerank_applied_total",
+    "Times HRR-first re-ranking was applied",
+    registry=registry,
+)
+HRR_RERANK_LTM_APPLIED = Counter(
+    "somabrain_hrr_rerank_ltm_applied_total",
+    "Times HRR-first LTM re-ranking was applied",
+    registry=registry,
+)
+HRR_RERANK_WM_SKIPPED = Counter(
+    "somabrain_hrr_rerank_wm_skipped_total",
+    "Times HRR WM rerank was skipped due to large margin",
+    registry=registry,
+)
+
+# Unbinding path + parameters
+UNBIND_PATH = Counter(
+    "somabrain_unbind_path_total",
+    "Unbind path selection counts",
+    ["path"],
+    registry=registry,
+)
+UNBIND_WIENER_FLOOR = Gauge(
+    "somabrain_unbind_wiener_floor",
+    "Wiener/MAP floor value used in denominator",
+    registry=registry,
+)
+UNBIND_K_EST = Gauge(
+    "somabrain_unbind_k_est",
+    "Estimated number of superposed items (k_est)",
+    registry=registry,
+)
+
+# --- RAG/RAF metrics (PR-3) ---
+RAG_REQUESTS = Counter(
+    "somabrain_rag_requests_total",
+    "RAG requests",
+    ["namespace", "retrievers"],
+    registry=registry,
+)
+RAG_RETRIEVE_LAT = Histogram(
+    "somabrain_rag_retrieve_latency_seconds",
+    "RAG retrieve pipeline latency",
+    registry=registry,
+)
+RAG_CANDIDATES = Histogram(
+    "somabrain_rag_candidates_total",
+    "RAG candidate count after dedupe/rerank",
+    buckets=[1, 3, 5, 10, 20, 50],
+    registry=registry,
+)
+RAG_PERSIST = Counter(
+    "somabrain_rag_persist_total",
+    "RAG session persistence outcomes",
+    ["status"],
+    registry=registry,
+)
+
+# Fusion metrics (RAG enhancements)
+RAG_FUSION_APPLIED = Counter(
+    "somabrain_rag_fusion_applied_total",
+    "Times rank fusion was applied",
+    ["method"],
+    registry=registry,
+)
+RAG_FUSION_SOURCES = Histogram(
+    "somabrain_rag_fusion_sources",
+    "Number of retriever sources fused",
+    buckets=[1, 2, 3, 4, 5, 6],
+    registry=registry,
+)
+
+# Additional unbind observability
+UNBIND_SPECTRAL_BINS_CLAMPED = Counter(
+    "somabrain_spectral_bins_clamped_total",
+    "Number of spectral bins clamped/nudged to avoid division by near-zero",
+    registry=registry,
+)
+
+UNBIND_EPS_USED = Gauge(
+    "somabrain_unbind_eps_used",
+    "Effective epsilon (power units) used in spectral denominator",
+    registry=registry,
+)
+
+RECONSTRUCTION_COSINE = Histogram(
+    "somabrain_reconstruction_cosine",
+    "Cosine similarity between original and reconstructed vector after unbind",
+    registry=registry,
+)
+
+# Predictor metrics
+PREDICTOR_LATENCY = Histogram(
+    "somabrain_predictor_latency_seconds",
+    "Predictor call latency",
+    registry=registry,
+)
+PREDICTOR_LATENCY_BY = Histogram(
+    "somabrain_predictor_latency_seconds_by",
+    "Predictor call latency by provider",
+    ["provider"],
+    registry=registry,
+)
+PREDICTOR_FALLBACK = Counter(
+    "somabrain_predictor_fallback_total",
+    "Count of predictor timeouts/errors causing degrade",
+    registry=registry,
+)
+
+# Decision attribution / recall quality
+RECALL_MARGIN_TOP12 = Histogram(
+    "somabrain_recall_margin_top1_top2",
+    "Margin between top1 and top2 recall scores",
+    registry=registry,
+)
+RECALL_SIM_TOP1 = Histogram(
+    "somabrain_recall_sim_top1",
+    "Top-1 recall score/similarity",
+    registry=registry,
+)
+RECALL_SIM_TOPK_MEAN = Histogram(
+    "somabrain_recall_sim_topk_mean",
+    "Mean similarity of returned WM top-k",
+    registry=registry,
+)
+RERANK_CONTRIB = Histogram(
+    "somabrain_rerank_contrib",
+    "Approx. contribution of re-ranking to final score",
+    registry=registry,
+)
+DIVERSITY_PAIRWISE_MEAN = Histogram(
+    "somabrain_diversity_pairwise_mean",
+    "Mean pairwise cosine distance among returned set",
+    registry=registry,
+)
+
+# Capacity / backpressure
+WM_UTILIZATION = Gauge(
+    "somabrain_wm_utilization",
+    "Working Memory utilization (items/capacity)",
+    registry=registry,
+)
+WM_EVICTIONS = Counter(
+    "somabrain_wm_evictions_total",
+    "Working Memory evictions (best-effort)",
+    registry=registry,
+)
+RATE_LIMITED_TOTAL = Counter(
+    "somabrain_rate_limited_total",
+    "Requests rejected by rate limiting",
+    ["path"],
+    registry=registry,
+)
+QUOTA_DENIED_TOTAL = Counter(
+    "somabrain_quota_denied_total",
+    "Write requests rejected by quota",
+    ["reason"],
+    registry=registry,
+)
+LTM_STORE_LAT = Histogram(
+    "somabrain_ltm_store_latency_seconds",
+    "Latency of LTM store operations",
+    registry=registry,
+)
+
+# Executive details
+EXEC_K_SELECTED = Histogram(
+    "somabrain_exec_k_selected",
+    "Final top_k selected by executive/policy",
+    registry=registry,
+)
+
+# Consolidation / Sleep metrics
+CONSOLIDATION_RUNS = Counter(
+    "somabrain_consolidation_runs_total",
+    "Consolidation runs by phase",
+    ["phase"],
+    registry=registry,
+)
+REPLAY_STRENGTH = Histogram(
+    "somabrain_consolidation_replay_strength",
+    "Distribution of replay reinforcement weights",
+    registry=registry,
+)
+REM_SYNTHESIZED = Counter(
+    "somabrain_consolidation_rem_synthesized_total",
+    "Count of REM synthesized semantic memories",
+    registry=registry,
+)
+
+# Supervisor / Energy metrics
+FREE_ENERGY = Histogram(
+    "somabrain_free_energy",
+    "Free-energy proxy values",
+    registry=registry,
+)
+SUPERVISOR_MODULATION = Histogram(
+    "somabrain_supervisor_modulation",
+    "Magnitude of neuromodulator adjustments",
+    registry=registry,
+)
+
+# Executive Controller metrics
+EXEC_CONFLICT = Histogram(
+    "somabrain_exec_conflict",
+    "Executive conflict proxy (1-mean recall strength)",
+    registry=registry,
+)
+EXEC_USE_GRAPH = Counter(
+    "somabrain_exec_use_graph_total",
+    "Times executive controller enabled graph augmentation",
+    registry=registry,
+)
+EXEC_BANDIT_ARM = Counter(
+    "somabrain_exec_bandit_arm_total",
+    "Executive bandit arm selection counts",
+    ["arm"],
+    registry=registry,
+)
+EXEC_BANDIT_REWARD = Histogram(
+    "somabrain_exec_bandit_reward",
+    "Executive bandit observed rewards",
+    registry=registry,
+)
+
+# Microcircuits
+MICRO_VOTE_ENTROPY = Histogram(
+    "somabrain_micro_vote_entropy",
+    "Entropy of column vote distribution",
+    registry=registry,
+)
+MICRO_COLUMN_ADMIT = Counter(
+    "somabrain_micro_column_admit_total",
+    "Admissions per microcircuit column",
+    ["column"],
+    registry=registry,
+)
+MICRO_COLUMN_BEST = Counter(
+    "somabrain_micro_column_best_total",
+    "Recall best-column selection counts",
+    ["column"],
+    registry=registry,
+)
+
+# Adaptive salience gauges
+SALIENCE_THRESH_STORE = Gauge(
+    "somabrain_salience_threshold_store",
+    "Current store threshold",
+    registry=registry,
+)
+SALIENCE_THRESH_ACT = Gauge(
+    "somabrain_salience_threshold_act",
+    "Current act threshold",
+    registry=registry,
+)
+SALIENCE_STORE_RATE_OBS = Gauge(
+    "somabrain_salience_store_rate_obs",
+    "Observed EWMA store rate",
+    registry=registry,
+)
+SALIENCE_ACT_RATE_OBS = Gauge(
+    "somabrain_salience_act_rate_obs",
+    "Observed EWMA act rate",
+    registry=registry,
+)
+
+# Embeddings
+EMBED_LAT = Histogram(
+    "somabrain_embed_latency_seconds",
+    "Embedding call latency",
+    ["provider"],
+    registry=registry,
+)
+EMBED_CACHE_HIT = Counter(
+    "somabrain_embed_cache_hit_total",
+    "Embedding cache hits",
+    ["provider"],
+    registry=registry,
+)
+
+# Index/Compression configuration usage (ablation labels kept small & numeric)
+INDEX_PROFILE_USE = Counter(
+    "somabrain_index_profile_use_total",
+    "Index/compression profile observed on startup",
+    [
+        "profile",
+        "pq_m",
+        "pq_bits",
+        "opq",
+        "anisotropic",
+        "imi_cells",
+        "hnsw_M",
+        "hnsw_efs",
+    ],
+    registry=registry,
+)
+
+# Graph/link maintenance
+LINK_DECAY_PRUNED = Counter(
+    "somabrain_link_decay_pruned_total",
+    "Count of graph links pruned by decay threshold",
+    registry=registry,
+)
+
+# Journal metrics
+JOURNAL_APPEND = Counter(
+    "somabrain_journal_append_total",
+    "Journal append events",
+    registry=registry,
+)
+JOURNAL_REPLAY = Counter(
+    "somabrain_journal_replay_total",
+    "Journal events replayed",
+    registry=registry,
+)
+JOURNAL_SKIP = Counter(
+    "somabrain_journal_skip_total",
+    "Journal lines skipped due to parse errors",
+    registry=registry,
+)
+JOURNAL_ROTATE = Counter(
+    "somabrain_journal_rotate_total",
+    "Journal file rotations performed",
+    registry=registry,
+)
+
+# Audit pipeline metrics: observe whether events go to Kafka or the durable journal fallback
+AUDIT_KAFKA_PUBLISH = Counter(
+    "somabrain_audit_kafka_publish_total",
+    "Audit events successfully published to Kafka (best-effort)",
+    registry=registry,
+)
+AUDIT_JOURNAL_FALLBACK = Counter(
+    "somabrain_audit_journal_fallback_total",
+    "Audit events written to the durable JSONL journal as a fallback",
+    registry=registry,
+)
+
+# New metrics for outbox and circuit breaker
+# Ensure OUTBOX_PENDING gauge is only created once per process to avoid duplicate registration errors.
+# The Prometheus client stores collectors in REGISTRY._names_to_collectors; we check for existing gauge.
+if "memory_outbox_pending" in REGISTRY._names_to_collectors:
+    OUTBOX_PENDING = REGISTRY._names_to_collectors["memory_outbox_pending"]
+else:
+    OUTBOX_PENDING = Gauge(
+        "memory_outbox_pending",
+        "Number of pending messages in the out‑box queue",
+        registry=REGISTRY,
+    )
+
+# Ensure CIRCUIT_STATE gauge is only created once per process.
+if "memory_circuit_state" in REGISTRY._names_to_collectors:
+    CIRCUIT_STATE = REGISTRY._names_to_collectors["memory_circuit_state"]
+else:
+    CIRCUIT_STATE = Gauge(
+        "memory_circuit_state",
+        "Circuit breaker state for external memory service: 0=closed, 1=open",
+        registry=REGISTRY,
+    )
+# Ensure HTTP_FAILURES counter is only created once per process.
+if "memory_http_failures_total" in REGISTRY._names_to_collectors:
+    HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]
+else:
+    HTTP_FAILURES = Counter(
+        "memory_http_failures_total",
+        "Total number of failed HTTP calls to the external memory service",
+        registry=REGISTRY,
+    )
+
+
+# Neuromodulator value gauges (ensure single registration)
+if "neuromod_dopamine" in REGISTRY._names_to_collectors:
+    NEUROMOD_DOPAMINE = REGISTRY._names_to_collectors["neuromod_dopamine"]
+else:
+    NEUROMOD_DOPAMINE = Gauge(
+        "neuromod_dopamine",
+        "Current dopamine level",
+        registry=REGISTRY,
+    )
+if "neuromod_serotonin" in REGISTRY._names_to_collectors:
+    NEUROMOD_SEROTONIN = REGISTRY._names_to_collectors["neuromod_serotonin"]
+else:
+    NEUROMOD_SEROTONIN = Gauge(
+        "neuromod_serotonin",
+        "Current serotonin level",
+        registry=REGISTRY,
+    )
+if "neuromod_noradrenaline" in REGISTRY._names_to_collectors:
+    NEUROMOD_NORADRENALINE = REGISTRY._names_to_collectors["neuromod_noradrenaline"]
+else:
+    NEUROMOD_NORADRENALINE = Gauge(
+        "neuromod_noradrenaline",
+        "Current noradrenaline level",
+        registry=REGISTRY,
+    )
+if "neuromod_acetylcholine" in REGISTRY._names_to_collectors:
+    NEUROMOD_ACETYLCHOLINE = REGISTRY._names_to_collectors["neuromod_acetylcholine"]
+else:
+    NEUROMOD_ACETYLCHOLINE = Gauge(
+        "neuromod_acetylcholine",
+        "Current acetylcholine level",
+        registry=REGISTRY,
+    )
+if "neuromod_updates_total" in REGISTRY._names_to_collectors:
+    NEUROMOD_UPDATE_COUNT = REGISTRY._names_to_collectors["neuromod_updates_total"]
+else:
+    NEUROMOD_UPDATE_COUNT = Counter(
+        "neuromod_updates_total",
+        "Total number of neuromodulator updates",
+        registry=REGISTRY,
+    )
+
+
+async def metrics_endpoint() -> Any:
+    """
+    FastAPI endpoint for exposing Prometheus metrics.
+
+    Returns the current metrics in Prometheus exposition format.
+    This endpoint can be scraped by Prometheus servers for monitoring.
+
+    Returns:
+        Response: FastAPI response with metrics data in Prometheus format.
+
+    Example:
+        >>> # Access via: GET /metrics
+        >>> response = await metrics_endpoint()
+        >>> print(response.media_type)  # 'text/plain; version=0.0.4; charset=utf-8'
+    """
+    # import Response locally to avoid hard dependency at module import time
+    try:
+        from fastapi import Response  # type: ignore
+    except Exception:  # pragma: no cover - optional runtime dependency
+        # If FastAPI isn't present, return raw bytes
+        return generate_latest(registry)
+    data = generate_latest(registry)
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
+
+
+async def timing_middleware(
+    request: Any, call_next: Callable[[Any], Awaitable[Any]]
+) -> Any:
+    """
+    FastAPI middleware for automatic request timing and metrics collection.
+
+    Intercepts all HTTP requests to measure latency and count requests by method,
+    path, and status code. Automatically updates Prometheus metrics.
+
+    Args:
+        request (Request): Incoming FastAPI request.
+        call_next (Callable[[Request], Awaitable[Response]]): Next middleware/endpoint in chain.
+
+    Returns:
+        Response: The response from the next handler in the chain.
+
+    Note:
+        This middleware should be added to the FastAPI app middleware stack
+        to enable automatic HTTP metrics collection.
+    """
+    start = time.perf_counter()
+    response: Any | None = None
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        elapsed = max(0.0, time.perf_counter() - start)
+        path = request.url.path
+        method = request.method
+        HTTP_LATENCY.labels(method=method, path=path).observe(elapsed)
+        status = getattr(
+            response, "status_code", 500 if response is None else response.status_code
+        )
+        HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()

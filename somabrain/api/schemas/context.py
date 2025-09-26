@@ -1,0 +1,52 @@
+"""Pydantic schemas for Evaluate/Feedback APIs."""
+
+from __future__ import annotations
+
+from typing import Dict, List, Optional
+
+try:
+    from pydantic import BaseModel, Field
+except Exception:  # pragma: no cover
+    BaseModel = object  # type: ignore
+    Field = lambda *a, **k: None  # type: ignore
+
+
+class EvaluateRequest(BaseModel):  # type: ignore[misc]
+    session_id: str
+    query: str
+    top_k: int = Field(default=5, ge=1, le=50)
+    tenant_id: Optional[str] = None
+
+
+class MemoryItem(BaseModel):  # type: ignore[misc]
+    id: str
+    score: float
+    metadata: Dict
+    embedding: Optional[List[float]] = None
+
+
+class EvaluateResponse(BaseModel):  # type: ignore[misc]
+    query: str
+    prompt: str
+    tenant_id: str
+    memories: List[MemoryItem]
+    weights: List[float]
+    residual_vector: List[float]
+    working_memory: List[Dict]
+    constitution_checksum: Optional[str] = None
+
+
+class FeedbackRequest(BaseModel):  # type: ignore[misc]
+    session_id: str
+    query: str
+    prompt: str
+    response_text: str
+    utility: float
+    reward: Optional[float] = None
+    metadata: Optional[Dict] = None
+    tenant_id: Optional[str] = None
+
+
+class FeedbackResponse(BaseModel):  # type: ignore[misc]
+    accepted: bool
+    adaptation_applied: bool

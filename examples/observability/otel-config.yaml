@@ -1,0 +1,21 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  logging:
+    loglevel: debug
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging]
+    metrics:
+      receivers: [otlp]
+      exporters: [logging]
+
+# This is a minimal OTEL collector config that logs traces/metrics to stdout.
+# For real collection/export you can add an OTLP exporter to your backend (e.g., Jaeger, Honeycomb, OTLP/gRPC to a collector).

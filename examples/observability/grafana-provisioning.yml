@@ -1,0 +1,11 @@
+apiVersion: 1
+providers:
+  - name: 'SomaBrain'
+    orgId: 1
+    folder: ''
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
+
+# To auto-load `grafana_dashboard.json` place it under ./examples/observability/dashboards/ and mount
+# the directory into Grafana in the docker-compose file.

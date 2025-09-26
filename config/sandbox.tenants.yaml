@@ -1,0 +1,5 @@
+# Example sandbox tenants used for local testing.
+tenants:
+  - sandbox
+  - tenant-alpha
+  - tenant-beta

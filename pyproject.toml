@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "somabrain"
+version = "0.2.0"
+description = "SomaBrain — cognitive layer with WM, salience, HRR, planner, controls, and observability"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "SomaBrain Contributors" }]
+keywords = ["agents", "cognition", "HRR", "FastAPI", "memory", "observability"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Framework :: FastAPI",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "fastapi>=0.103",
+  "uvicorn>=0.22",
+  "numpy>=1.24",
+  "prometheus-client>=0.17",
+  "httpx>=0.24",
+  "cachetools>=5.3",
+  "psutil>=5.9",
+  "redis>=4.6",
+  "kafka-python>=2.0",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.1",
+  "cryptography>=41",
+  "PyJWT[crypto]>=2.9",
+]
+
+[project.optional-dependencies]
+controls = ["cryptography>=41"]
+dev = ["pytest>=7", "ruff>=0.5", "mypy>=1.5", "matplotlib>=3.8"]
+
+[project.scripts]
+somabrain-api = "somabrain.cli:run_api"
+somabrain-sleep = "somabrain.consolidation:main"
+somabrain-journal = "somabrain.cli:journal_cli"
+
+[tool.setuptools]
+packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 88
+combine_as_imports = true
+known_first_party = ["somabrain"]
+default_section = "THIRDPARTY"
