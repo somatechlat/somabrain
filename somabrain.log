@@ -1132,3 +1132,30 @@
 2025-09-26 19:44:36,102 - somabrain.opa - WARNING - OPA evaluation failed (fallback allow): HTTPConnectionPool(host='localhost', port=8181): Max retries exceeded with url: /v1/data/somabrain/auth/allow (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107a3c9e0>: Failed to establish a new connection: [Errno 61] Connection refused'))
 2025-09-26 19:44:36,105 - somabrain.opa - WARNING - OPA evaluation failed (fallback allow): HTTPConnectionPool(host='localhost', port=8181): Max retries exceeded with url: /v1/data/somabrain/auth/allow (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107a3caf0>: Failed to establish a new connection: [Errno 61] Connection refused'))
 2025-09-26 19:44:36,108 - somabrain.opa - WARNING - OPA evaluation failed (fallback allow): HTTPConnectionPool(host='localhost', port=8181): Max retries exceeded with url: /v1/data/somabrain/auth/allow (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x107a3cc00>: Failed to establish a new connection: [Errno 61] Connection refused'))
+2025-09-27 10:48:49,101 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+2025-09-27 10:48:49,911 - somabrain - WARNING - ConstitutionEngine load failed: No constitution document available
+2025-09-27 10:55:44,712 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+2025-09-27 10:55:45,189 - somabrain - WARNING - ConstitutionEngine load failed: No constitution document available
+2025-09-27 10:57:12,529 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+2025-09-27 10:57:12,806 - somabrain - WARNING - ConstitutionEngine load failed: No constitution document available
+2025-09-27 10:59:02,657 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+2025-09-27 10:59:03,017 - somabrain - WARNING - ConstitutionEngine load failed: No constitution document available
+2025-09-27 11:02:37,336 - somabrain.cognitive - INFO - 🧠 Request 1758988957.336816_5831498948465278167: POST /remember - Cognitive processing initiated
+2025-09-27 11:02:39,984 - httpx - INFO - HTTP Request: POST http://localhost:9595/remember "HTTP/1.1 200 OK"
+2025-09-27 11:02:39,991 - root - INFO - SUCCESS: Memory saved for key=Author of Book42 is Author42 namespace=somabrain_ns:public trace_id=4628615632
+2025-09-27 11:02:39,995 - somabrain.cognitive - INFO - 🧠 Request 1758988957.336816_5831498948465278167: POST /remember - Processing completed in 2.6587s
+2025-09-27 11:02:39,995 - somabrain.cognitive - DEBUG - ✅ Request 1758988957.336816_5831498948465278167 completed successfully
+2025-09-27 11:02:50,733 - somabrain.cognitive - INFO - 🧠 Request 1758988970.732936_-7749160510741257448: POST /rag/retrieve - Cognitive processing initiated
+2025-09-27 11:02:50,766 - somabrain.services.rag_pipeline - INFO - RAG runtime state: embedder=True mt_memory=True mt_wm=True mc_wm=True mem_client=True
+2025-09-27 11:02:50,876 - httpx - INFO - HTTP Request: POST http://localhost:9595/recall "HTTP/1.1 200 OK"
+2025-09-27 11:02:50,886 - httpx - INFO - HTTP Request: POST http://localhost:9595/neighbors "HTTP/1.1 405 Method Not Allowed"
+2025-09-27 11:02:50,968 - httpx - INFO - HTTP Request: POST http://localhost:9595/neighbors "HTTP/1.1 405 Method Not Allowed"
+2025-09-27 11:02:51,013 - httpx - INFO - HTTP Request: POST http://localhost:9595/payloads "HTTP/1.1 404 Not Found"
+2025-09-27 11:02:51,056 - somabrain.cognitive - INFO - 🧠 Request 1758988970.732936_-7749160510741257448: POST /rag/retrieve - Processing completed in 0.3235s
+2025-09-27 11:02:51,056 - somabrain.cognitive - DEBUG - ✅ Request 1758988970.732936_-7749160510741257448 completed successfully
+2025-09-27 11:09:24,987 - somabrain.cognitive - INFO - 🧠 Request 1758989364.9869819_5521103258940000522: POST /recall - Cognitive processing initiated
+2025-09-27 11:09:25,036 - httpx - INFO - HTTP Request: POST http://localhost:9595/recall "HTTP/1.1 200 OK"
+2025-09-27 11:09:25,046 - httpx - INFO - HTTP Request: POST http://localhost:9595/neighbors "HTTP/1.1 405 Method Not Allowed"
+2025-09-27 11:09:25,103 - httpx - INFO - HTTP Request: POST http://localhost:9595/payloads "HTTP/1.1 404 Not Found"
+2025-09-27 11:09:25,146 - somabrain.cognitive - INFO - 🧠 Request 1758989364.9869819_5521103258940000522: POST /recall - Processing completed in 0.1598s
+2025-09-27 11:09:25,147 - somabrain.cognitive - DEBUG - ✅ Request 1758989364.9869819_5521103258940000522 completed successfully

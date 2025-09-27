@@ -4,6 +4,8 @@ import builtins
 from typing import List, Optional
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
+import logging
+import sys
 from somabrain.services.retrievers import (
     retrieve_graph,
     retrieve_graph_stub,
@@ -97,6 +99,7 @@ async def run_rag_pipeline(
         retrievers = ["vector", "wm"]
     # Try real adapters first if runtime singletons are available; fallback to stubs
     from somabrain import runtime as _rt
+    logger = logging.getLogger(__name__)
 
     # Defensive: always ensure _rt.cfg is present, fallback to dummy if missing
     if not hasattr(_rt, "cfg") or getattr(_rt, "cfg", None) is None:
@@ -127,6 +130,10 @@ async def run_rag_pipeline(
             mem_client = memsvc.client()
     except Exception:
         mem_client = None
+        try:
+            logger.info("rag_pipeline: error instantiating mem_client from runtime.mt_memory: %s", repr(_rt.mt_memory))
+        except Exception:
+            pass
     # Fallback: if runtime singletons are not wired (common in some dev setups),
     # try to import the application module singletons so seeded /remember calls
     # and the pipeline operate on the same memory/embedder instances.
@@ -145,7 +152,23 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
         except Exception:
+            try:
+                logger.info("rag_pipeline: fallback import somabrain.app failed: %s", repr(sys.exc_info()))
+            except Exception:
+                pass
             pass
+    # Log diagnostic state (helpful when running in dev mode)
+    try:
+        logger.info(
+            "RAG runtime state: embedder=%s mt_memory=%s mt_wm=%s mc_wm=%s mem_client=%s",
+            getattr(_rt, "embedder", None) is not None,
+            getattr(_rt, "mt_memory", None) is not None,
+            getattr(_rt, "mt_wm", None) is not None,
+            getattr(_rt, "mc_wm", None) is not None,
+            mem_client is not None,
+        )
+    except Exception:
+        pass
     # Ensure we have an embedder available (fall back to app.embedder)
     try:
         if (not hasattr(_rt, "embedder") or getattr(_rt, "embedder", None) is None) and hasattr(
@@ -204,6 +227,9 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
+            else:
+                logger.info("wm retriever: falling back to stub (embedder or wm backend missing)")
+                
             lst = retrieve_wm_stub(req.query, top_k)
             lists_by_retriever["wm"] = lst
             cands += lst
@@ -226,6 +252,7 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
+            logger.info("vector retriever: falling back to stub (embedder or mem_client missing)")
             lst = retrieve_vector_stub(req.query, top_k)
             lists_by_retriever["vector"] = lst
             cands += lst
