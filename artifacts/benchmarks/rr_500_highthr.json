@@ -1,0 +1,708 @@
+{
+  "write_stats": {
+    "count": 500,
+    "ok": 26,
+    "total_time_ms": 31330.810262006707,
+    "mean_ms": 28980.23619506182,
+    "median_ms": 31106.599131016992,
+    "p95_ms": 31141.248752296087
+  },
+  "recall_status": 200,
+  "recall": {
+    "wm": [
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.735494,
+          "universe": null,
+          "who": "bench",
+          "did": "action-1",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.7513,
+          "universe": null,
+          "who": "bench",
+          "did": "action-46",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.755834,
+          "universe": null,
+          "who": "bench",
+          "did": "action-63",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.747387,
+          "universe": null,
+          "who": "bench",
+          "did": "action-37",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.754789,
+          "universe": null,
+          "who": "bench",
+          "did": "action-59",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.758802,
+          "universe": null,
+          "who": "bench",
+          "did": "action-73",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.763201,
+          "universe": null,
+          "who": "bench",
+          "did": "action-86",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.763746,
+          "universe": null,
+          "who": "bench",
+          "did": "action-88",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.765138,
+          "universe": null,
+          "who": "bench",
+          "did": "action-93",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.764862,
+          "universe": null,
+          "who": "bench",
+          "did": "action-92",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933379.76348,
+          "universe": null,
+          "who": "bench",
+          "did": "action-87",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.124495,
+          "universe": null,
+          "who": "bench",
+          "did": "action-8",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.129143,
+          "universe": null,
+          "who": "bench",
+          "did": "action-22",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.129923,
+          "universe": null,
+          "who": "bench",
+          "did": "action-24",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.1339169,
+          "universe": null,
+          "who": "bench",
+          "did": "action-33",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.143672,
+          "universe": null,
+          "who": "bench",
+          "did": "action-61",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.139767,
+          "universe": null,
+          "who": "bench",
+          "did": "action-48",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.147166,
+          "universe": null,
+          "who": "bench",
+          "did": "action-73",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.135176,
+          "universe": null,
+          "who": "bench",
+          "did": "action-37",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      },
+      {
+        "score": 0.026117075234651566,
+        "payload": {
+          "task": "scale-test",
+          "importance": 1,
+          "memory_type": "episodic",
+          "timestamp": 1758933501.143081,
+          "universe": null,
+          "who": "bench",
+          "did": "action-59",
+          "what": "scale-memory",
+          "where": "bench-suite",
+          "when": null,
+          "why": "load-test"
+        }
+      }
+    ],
+    "memory": [
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.151006,
+        "universe": null,
+        "who": "bench",
+        "did": "action-83",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.153671,
+        "universe": null,
+        "who": "bench",
+        "did": "action-89",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.144512,
+        "universe": null,
+        "who": "bench",
+        "did": "action-64",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.153258,
+        "universe": null,
+        "who": "bench",
+        "did": "action-88",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.148013,
+        "universe": null,
+        "who": "bench",
+        "did": "action-75",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.147669,
+        "universe": null,
+        "who": "bench",
+        "did": "action-74",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933501.15137,
+        "universe": null,
+        "who": "bench",
+        "did": "action-84",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.226264,
+        "universe": null,
+        "who": "bench",
+        "did": "action-391",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.996795,
+        "universe": null,
+        "who": "bench",
+        "did": "action-67",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.017649,
+        "universe": null,
+        "who": "bench",
+        "did": "action-107",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.969132,
+        "universe": null,
+        "who": "bench",
+        "did": "action-10",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.975277,
+        "universe": null,
+        "who": "bench",
+        "did": "action-20",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.979272,
+        "universe": null,
+        "who": "bench",
+        "did": "action-30",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.9855769,
+        "universe": null,
+        "who": "bench",
+        "did": "action-46",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.019716,
+        "universe": null,
+        "who": "bench",
+        "did": "action-112",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933688.990823,
+        "universe": null,
+        "who": "bench",
+        "did": "action-54",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.008169,
+        "universe": null,
+        "who": "bench",
+        "did": "action-88",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.050445,
+        "universe": null,
+        "who": "bench",
+        "did": "action-172",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.028759,
+        "universe": null,
+        "who": "bench",
+        "did": "action-130",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      },
+      {
+        "task": "scale-test",
+        "importance": 1,
+        "memory_type": "episodic",
+        "timestamp": 1758933689.049129,
+        "universe": null,
+        "who": "bench",
+        "did": "action-169",
+        "what": "scale-memory",
+        "where": "bench-suite",
+        "when": null,
+        "why": "load-test",
+        "coordinate": [
+          -0.8702428401447833,
+          0.023015981540083885,
+          -0.19848382659256458
+        ]
+      }
+    ],
+    "namespace": "somabrain_ns:public",
+    "trace_id": "140465572704944",
+    "deadline_ms": null,
+    "idempotency_key": null,
+    "reality": {
+      "ok": true,
+      "sources": 20,
+      "confidence": 1.0
+    },
+    "drift": null,
+    "hrr_cleanup": null
+  }
+}

@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
+
 try:  # pragma: no cover - optional dependency
     import psutil  # type: ignore
 except Exception:  # pragma: no cover

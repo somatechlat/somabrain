@@ -44,7 +44,7 @@ def main():
         consumer = KafkaConsumer(
             args.topic,
             bootstrap_servers=bs,
-            auto_offset_reset="latest",
+            auto_offset_reset="earliest",
             consumer_timeout_ms=args.timeout * 1000,
             enable_auto_commit=False,
             value_deserializer=lambda b: json.loads(b.decode("utf-8")),

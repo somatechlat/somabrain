@@ -37,7 +37,9 @@ class ContextPlanner:
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
     def _generate_candidates(self, bundle) -> List[PlanCandidate]:
-        base = PlanCandidate(prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt))
+        base = PlanCandidate(
+            prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt)
+        )
         summaries = self._memory_highlights(bundle)
         candidates = [base]
         candidates.extend(summaries)

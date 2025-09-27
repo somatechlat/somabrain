@@ -34,6 +34,7 @@ Classes:
 
 from __future__ import annotations
 
+import asyncio
 import time as _t
 from typing import Callable, List, Optional, Tuple
 
@@ -177,8 +178,13 @@ async def recall_ltm_async(
     graph_hops: int,
     graph_limit: int,
 ) -> Tuple[List[dict], List[Tuple[float, dict]]]:
-    # Reuse sync SDR prefilter; then prefer async HTTP recall if available
-    payloads, hits = recall_ltm(
+    # Avoid blocking the event loop: run the synchronous recall_ltm in a
+    # thread executor so heavy sync operations (including sync HTTP calls)
+    # don't stall the async worker under high concurrency.
+    loop = asyncio.get_event_loop()
+    payloads, hits = await loop.run_in_executor(
+        None,
+        recall_ltm,
         mem_client,
         text,
         top_k,

@@ -8,7 +8,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from somabrain.api.dependencies.utility_guard import utility_guard
-from somabrain.api.dependencies.auth import auth_guard, get_allowed_tenants, get_default_tenant
+from somabrain.api.dependencies.auth import (
+    auth_guard,
+    get_allowed_tenants,
+    get_default_tenant,
+)
 from somabrain.api.schemas.context import (
     EvaluateRequest,
     EvaluateResponse,
@@ -32,7 +36,8 @@ _token_ledger = TokenLedger()
 async def evaluate_endpoint(
     payload: EvaluateRequest,
     request: Request,
-    _guard=Depends(utility_guard), auth=Depends(auth_guard),
+    _guard=Depends(utility_guard),
+    auth=Depends(auth_guard),
 ):
     builder = get_context_builder()
     planner = get_context_planner()
@@ -55,12 +60,17 @@ async def evaluate_endpoint(
     if len(bundle.memories) > 20:
         raise HTTPException(status_code=400, detail="memories exceeds 20 items")
     if len(bundle.prompt) > 4096:
-        raise HTTPException(status_code=400, detail="prompt length exceeds 4096 characters")
+        raise HTTPException(
+            status_code=400, detail="prompt length exceeds 4096 characters"
+        )
     if len(bundle.residual_vector) > 2048:
-        raise HTTPException(status_code=400, detail="residual vector exceeds 2048 floats")
+        raise HTTPException(
+            status_code=400, detail="residual vector exceeds 2048 floats"
+        )
     if len(bundle.working_memory_snapshot) > 10:
         raise HTTPException(status_code=400, detail="working memory exceeds 10 items")
     import json
+
     resp_obj = EvaluateResponse(
         query=bundle.query,
         prompt=plan.prompt,
@@ -80,7 +90,8 @@ async def evaluate_endpoint(
 async def feedback_endpoint(
     payload: FeedbackRequest,
     request: Request,
-    _guard=Depends(utility_guard), auth=Depends(auth_guard),
+    _guard=Depends(utility_guard),
+    auth=Depends(auth_guard),
 ):
     planner = get_context_planner()
     builder = get_context_builder()
@@ -90,10 +101,18 @@ async def feedback_endpoint(
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
     # Enforce payload size/length limits
-    for field in [payload.session_id, payload.query, payload.prompt, payload.response_text]:
+    for field in [
+        payload.session_id,
+        payload.query,
+        payload.prompt,
+        payload.response_text,
+    ]:
         if field and len(field) > 1024:
-            raise HTTPException(status_code=400, detail="input field exceeds 1024 characters")
+            raise HTTPException(
+                status_code=400, detail="input field exceeds 1024 characters"
+            )
     import json
+
     if payload.metadata is not None:
         try:
             if len(json.dumps(payload.metadata)) > 8 * 1024:
@@ -133,8 +152,13 @@ async def feedback_endpoint(
     }
     # Compute deltas
     delta = {
-        "retrieval": {k: after["retrieval"][k] - before["retrieval"][k] for k in before["retrieval"]},
-        "utility": {k: after["utility"][k] - before["utility"][k] for k in before["utility"]},
+        "retrieval": {
+            k: after["retrieval"][k] - before["retrieval"][k]
+            for k in before["retrieval"]
+        },
+        "utility": {
+            k: after["utility"][k] - before["utility"][k] for k in before["utility"]
+        },
     }
     event_id = _make_event_id(payload.session_id)
     try:
@@ -150,14 +174,20 @@ async def feedback_endpoint(
         )
         tokens = None
         if isinstance(payload.metadata, dict):
-            tokens = payload.metadata.get("tokens") or payload.metadata.get("tokens_used")
+            tokens = payload.metadata.get("tokens") or payload.metadata.get(
+                "tokens_used"
+            )
         if tokens is not None:
             _token_ledger.record(
                 entry_id=f"{payload.session_id}:{uuid.uuid4().hex}",
                 session_id=payload.session_id,
                 tokens=float(tokens),
                 tenant_id=tenant_id,
-                model=payload.metadata.get("model") if isinstance(payload.metadata, dict) else None,
+                model=(
+                    payload.metadata.get("model")
+                    if isinstance(payload.metadata, dict)
+                    else None
+                ),
             )
         audit.publish_event(
             {
@@ -204,7 +234,6 @@ def _get_adaptation(builder, planner: ContextPlanner) -> AdaptationEngine:
         )
         _adaptation_engine = adaptation
     return _adaptation_engine
-
 
 
 def _make_event_id(session_id: str) -> str:

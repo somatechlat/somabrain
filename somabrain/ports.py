@@ -6,7 +6,8 @@ import socket
 from typing import Dict
 
 DEFAULT_SERVICE_PORTS: Dict[str, int] = {
-    "SOMABRAIN_HOST_PORT": 9797,
+    "SOMABRAIN_HOST_PORT": 9696,
+    # canonical host port for local somabrain API
     "REDIS_HOST_PORT": 6379,
     "KAFKA_HOST_PORT": 9092,
     "PROMETHEUS_HOST_PORT": 9090,

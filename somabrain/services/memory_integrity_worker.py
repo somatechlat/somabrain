@@ -23,12 +23,17 @@ except ImportError:
 
 LOGGER = logging.getLogger("somabrain.services.memory_integrity_worker")
 
+
 class MemoryIntegrityWorker:
     def __init__(self, redis_url: Optional[str] = None, poll_interval: int = 60):
         self.poll_interval = poll_interval
         self._use_redis = False
         if redis is not None:
-            url = redis_url or os.getenv("SOMABRAIN_REDIS_URL", "redis://localhost:6379/0")
+            host = os.getenv("SOMABRAIN_REDIS_HOST", "localhost")
+            port = os.getenv("SOMABRAIN_REDIS_PORT", "6379")
+            url = redis_url or os.getenv(
+                "SOMABRAIN_REDIS_URL", f"redis://{host}:{port}/0"
+            )
             try:
                 self._redis = redis.from_url(url)
                 self._redis.ping()
@@ -65,7 +70,9 @@ class MemoryIntegrityWorker:
         if missing_in_redis:
             LOGGER.warning(f"Keys in Postgres but missing in Redis: {missing_in_redis}")
         if missing_in_vector:
-            LOGGER.warning(f"Keys in Redis but missing in vector store: {missing_in_vector}")
+            LOGGER.warning(
+                f"Keys in Redis but missing in vector store: {missing_in_vector}"
+            )
         # TODO: Add reconciliation logic if desired
 
     def run(self):
@@ -73,6 +80,7 @@ class MemoryIntegrityWorker:
         while True:
             self.poll_and_check()
             time.sleep(self.poll_interval)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

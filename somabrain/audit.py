@@ -173,7 +173,12 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             return kurl[len("kafka://") :]
         return kurl
 
-    kafka_url = _parse_kafka_url(os.getenv("SOMA_KAFKA_URL", "kafka://localhost:9092"))
+    kafka_host = os.getenv("SOMABRAIN_KAFKA_HOST", "localhost")
+    kafka_port = os.getenv("SOMABRAIN_KAFKA_PORT", "9092")
+    # Use the correct environment variable name for the Kafka URL.
+    kafka_url = _parse_kafka_url(
+        os.getenv("SOMABRAIN_KAFKA_URL", f"kafka://{kafka_host}:{kafka_port}")
+    )
     use_idempotent = os.getenv("SOMA_KAFKA_IDEMPOTENT", "0") == "1"
     prefer_confluent = os.getenv("SOMA_KAFKA_PREFER_CONFLUENT", "0") == "1"
 
@@ -289,6 +294,8 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             acks="all",
             retries=2,
             request_timeout_ms=5000,
+            # Increase max request size to avoid broker rejection of large messages.
+            max_request_size=2147483648,  # 2 GiB, matches broker config
         )
         if use_idempotent:
             # Attempt to enable idempotence; kafka-python supports 'enable_idempotence'

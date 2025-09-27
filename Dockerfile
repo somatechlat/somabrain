@@ -15,6 +15,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md /build/
 COPY somabrain /build/somabrain
+COPY memory /build/memory
 COPY scripts /build/scripts
 COPY arc_cache.py /build/
 
@@ -43,12 +44,14 @@ RUN if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install --no-cache-di
 # Ensure confluent-kafka (librdkafka) is available for stronger Kafka semantics in
 # integration and production images. Installing via pip will build against
 # librdkafka-dev installed above.
-RUN pip install --no-cache-dir confluent-kafka || echo "confluent-kafka install failed; continuing without it"
+RUN pip install --no-cache-dir confluent-kafka kafka-python || echo "kafka client install failed; continuing without it"
 
-# Copy docs and scripts (optional, useful for debugging)
+# Copy docs, scripts, and memory (for runtime import)
 COPY docs /app/docs
 COPY scripts /app/scripts
+COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
 COPY arc_cache.py /app/
+COPY memory /app/memory
 
 # Create non-root user
 RUN useradd --create-home --shell /sbin/nologin appuser \

@@ -21,8 +21,17 @@ def _make_request(headers):
 
 
 def test_require_auth_with_jwt_secret():
-    cfg = Config(jwt_secret="secret", auth_required=True, jwt_audience="agents", jwt_issuer="somabrain")
-    token = jwt.encode({"sub": "user", "aud": "agents", "iss": "somabrain"}, "secret", algorithm="HS256")
+    cfg = Config(
+        jwt_secret="secret",
+        auth_required=True,
+        jwt_audience="agents",
+        jwt_issuer="somabrain",
+    )
+    token = jwt.encode(
+        {"sub": "user", "aud": "agents", "iss": "somabrain"},
+        "secret",
+        algorithm="HS256",
+    )
     req = _make_request({"Authorization": f"Bearer {token}"})
     require_auth(req, cfg)
 

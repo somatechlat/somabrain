@@ -193,3 +193,45 @@ For more details, see the [Envoy mTLS docs](https://www.envoyproxy.io/docs/envoy
 - See `transport/bridge.py` for details.
 
 All modules are float64, batched, and monitored for stability. See `docs/architecture/DETAILED_ARCHITECTURE.md` for math details.
+
+## 10. HTTP client tuning for the Memory Service
+
+When SomaBrain communicates with the external memory service (SFM) it uses an httpx
+client. For high-concurrency workloads you can tune the transport and pooling
+parameters via environment variables. These knobs are read by
+`somabrain/somabrain/memory_client.py` at startup.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SOMABRAIN_HTTP_MAX_CONNS` | `64` | Maximum concurrent connections httpx will open to the memory service. Increase this under high concurrency. |
+| `SOMABRAIN_HTTP_KEEPALIVE` | `32` | Maximum keep‑alive connections retained by the client. Higher values reduce connection churn for frequent requests. |
+| `SOMABRAIN_HTTP_RETRIES` | `1` | Number of transport-level retries configured on the async HTTP transport. This is a low-level retry and is useful for transient network blips. |
+
+Notes:
+- These settings are optional; sensible defaults are used if the variables are not set.
+- When tuning, monitor connection counts on the memory service and somabrain p95 latency.
+
+## 11. Outbox (offline writes)
+
+SomaBrain records failed writes to the memory service in an "outbox" so they can be
+replayed later. This is a critical reliability mechanism for environments where the
+memory service may be temporarily unavailable.
+
+- Default path: `./data/somabrain/outbox.jsonl` (configurable via `outbox_path` in `config.yaml`).
+- Each line is a single JSON object with fields `op` (operation) and `payload` (original request payload).
+- The application starts a background outbox worker at startup which periodically attempts to replay
+   entries using the configured memory client. The same worker decrements an `OUTBOX_PENDING` metric
+   for observability.
+- To manually replay the outbox use: `python scripts/replay_outbox.py` (it prints a short summary and
+   does not delete the outbox file).
+
+Example entry (JSONL):
+
+      {"op": "remember", "payload": {"coord_key": "task:123", "payload": {...}}}
+
+If you prefer a different location, set `outbox_path` in your `config.yaml` and ensure the directory
+is writable by the runtime user.
+
+---
+
+Update this document whenever new configuration knobs are introduced or existing ones change.

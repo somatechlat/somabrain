@@ -62,7 +62,9 @@ def migrate_journal(base_dir: str, namespace: str, client) -> Tuple[int, int]:
                 and len(from_coord) >= 3
                 and len(to_coord) >= 3
             ):
-                link_type = str(event.get("link_type") or event.get("type") or "related")
+                link_type = str(
+                    event.get("link_type") or event.get("type") or "related"
+                )
                 weight = float(event.get("weight") or 1.0)
                 fcoord = (
                     float(from_coord[0]),
@@ -90,7 +92,15 @@ def migrate_journal(base_dir: str, namespace: str, client) -> Tuple[int, int]:
                                 float(eto[2]),
                             )
                             if (
-                                all(math.isclose(eto_tuple[i], tcoord[i], rel_tol=1e-6, abs_tol=1e-6) for i in range(3))
+                                all(
+                                    math.isclose(
+                                        eto_tuple[i],
+                                        tcoord[i],
+                                        rel_tol=1e-6,
+                                        abs_tol=1e-6,
+                                    )
+                                    for i in range(3)
+                                )
                                 and edge.get("type") == link_type
                                 and math.isclose(
                                     float(edge.get("weight", 1.0)),

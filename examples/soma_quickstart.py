@@ -12,7 +12,9 @@ import sys
 try:
     import requests
 except Exception:
-    print("The 'requests' library is required to run this example. Install with: pip install requests")
+    print(
+        "The 'requests' library is required to run this example. Install with: pip install requests"
+    )
     sys.exit(1)
 
 

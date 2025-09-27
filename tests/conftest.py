@@ -98,19 +98,25 @@ def ensure_runtime_backend_and_clear_mirror():
 
         # Patch runtime with stub embedder and other required singletons if missing
         if rt.embedder is None:
+
             class DummyEmbedder:
                 def embed(self, x):
                     return [0.0]
+
             rt.embedder = DummyEmbedder()
         if rt.mt_wm is None:
+
             class DummyWM:
                 def __init__(self):
                     pass
+
             rt.mt_wm = DummyWM()
         if rt.mc_wm is None:
+
             class DummyMCWM:
                 def __init__(self):
                     pass
+
             rt.mc_wm = DummyMCWM()
 
         # Clear any existing client pool to ensure a clean slate for tests

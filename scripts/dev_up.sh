@@ -56,7 +56,9 @@ ports.update(env)
 services=['somabrain','redis','kafka','prometheus','postgres']
 for s in services:
     try:
-        out=subprocess.check_output(['docker','compose','-f','Docker_Canonical.yml','port',s,'9696' if s=='somabrain' else '0'], text=True).strip()
+        # Map each service to its container port for port lookup
+        container_port = '9696' if s == 'somabrain' else ('6379' if s=='redis' else ('9092' if s=='kafka' else ('9090' if s=='prometheus' else '5432')))
+        out=subprocess.check_output(['docker','compose','-f','Docker_Canonical.yml','port',s,container_port], text=True).strip()
         ports[s+'_host_mapping']=out
     except Exception:
         ports[s+'_host_mapping']=''

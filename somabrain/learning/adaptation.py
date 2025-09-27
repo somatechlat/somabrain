@@ -20,7 +20,6 @@ class UtilityWeights:
         self.nu = min(max(self.nu, lower), upper)
 
 
-
 class AdaptationEngine:
     """
     Applies simple online updates to retrieval/utility weights.
@@ -75,9 +74,13 @@ class AdaptationEngine:
         # Update retrieval emphasis: positive reward boosts semantic weight,
         # negative reward increases temporal penalty.
         self._retrieval.alpha = self._constrain("alpha", self._retrieval.alpha + delta)
-        self._retrieval.gamma = self._constrain("gamma", self._retrieval.gamma - 0.5 * delta)
+        self._retrieval.gamma = self._constrain(
+            "gamma", self._retrieval.gamma - 0.5 * delta
+        )
         # Update utility trade-offs
-        self._utility.lambda_ = self._constrain("lambda_", self._utility.lambda_ + delta)
+        self._utility.lambda_ = self._constrain(
+            "lambda_", self._utility.lambda_ + delta
+        )
         self._utility.mu = self._constrain("mu", self._utility.mu - 0.25 * delta)
         self._utility.nu = self._constrain("nu", self._utility.nu - 0.25 * delta)
         self._utility.clamp()
@@ -104,19 +107,21 @@ class AdaptationEngine:
         # Save a shallow copy of current weights for rollback
         if len(self._history) >= self._max_history:
             self._history.pop(0)
-        self._history.append((
-            {
-                "alpha": self._retrieval.alpha,
-                "beta": self._retrieval.beta,
-                "gamma": self._retrieval.gamma,
-                "tau": self._retrieval.tau,
-            },
-            {
-                "lambda_": self._utility.lambda_,
-                "mu": self._utility.mu,
-                "nu": self._utility.nu,
-            },
-        ))
+        self._history.append(
+            (
+                {
+                    "alpha": self._retrieval.alpha,
+                    "beta": self._retrieval.beta,
+                    "gamma": self._retrieval.gamma,
+                    "tau": self._retrieval.tau,
+                },
+                {
+                    "lambda_": self._utility.lambda_,
+                    "mu": self._utility.mu,
+                    "nu": self._utility.nu,
+                },
+            )
+        )
 
     def _constrain(self, name: str, value: float) -> float:
         lower, upper = self._constraints.get(name, (None, None))

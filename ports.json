@@ -1,15 +1,13 @@
 {
   "SOMABRAIN_MEMORY_HTTP_ENDPOINT": "http://host.docker.internal:9595",
-  "SOMABRAIN_HOST_PORT": "9797",
+  "SOMABRAIN_HOST_PORT": "9696",
   "REDIS_HOST_PORT": "6379",
-  "KAFKA_HOST_PORT": "9093",
+  "KAFKA_HOST_PORT": "9092",
   "PROMETHEUS_HOST_PORT": "9090",
-  "GRAFANA_HOST_PORT": "3000",
   "POSTGRES_HOST_PORT": "15432",
-  "somabrain_host_mapping": "0.0.0.0:9797",
-  "redis_host_mapping": "",
-  "kafka_host_mapping": "",
-  "prometheus_host_mapping": "",
-  "grafana_host_mapping": "",
-  "postgres_host_mapping": ""
+  "somabrain_host_mapping": "0.0.0.0:9696",
+  "redis_host_mapping": "0.0.0.0:6379",
+  "kafka_host_mapping": "0.0.0.0:9092",
+  "prometheus_host_mapping": "0.0.0.0:9090",
+  "postgres_host_mapping": "0.0.0.0:15432"
 }

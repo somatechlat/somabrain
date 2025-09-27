@@ -1,19 +1,21 @@
-import pytest
-
-
 
 
 # Minimal app with only /context/feedback and all dependencies mocked
 
+
 # Use the real app and dependencies, no overrides or mocks
 def get_real_app():
     from somabrain.app import app as fastapi_app
+
     return fastapi_app
+
 
 def test_feedback_audit_adaptation(monkeypatch):
     import os
+
     os.environ["DISABLE_AUTH"] = "true"
     from fastapi.testclient import TestClient
+
     app = get_real_app()
     client = TestClient(app)
     # Use real payload and real endpoint

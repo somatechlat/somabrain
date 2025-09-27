@@ -20,7 +20,9 @@ class TokenUsage(db.Base):
     tenant_id = Column(String(128), nullable=True)
     tokens = Column(Float, nullable=False)
     model = Column(String(128), nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=dt.datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=dt.datetime.utcnow
+    )
 
 
 class TokenLedger:

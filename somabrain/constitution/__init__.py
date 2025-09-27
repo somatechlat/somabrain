@@ -89,6 +89,7 @@ class ConstitutionEngine:
         if vault_addr and vault_token and vault_path:
             try:
                 import hvac
+
                 client = hvac.Client(url=vault_addr, token=vault_token)
                 secret = client.secrets.kv.v2.read_secret_version(path=vault_path)
                 data = secret["data"]["data"]
@@ -194,7 +195,10 @@ class ConstitutionEngine:
                 errors.append(f"missing key/signature for signer {signer_id}")
                 continue
             try:
-                from cryptography.hazmat.primitives.serialization import load_pem_public_key
+                from cryptography.hazmat.primitives.serialization import (
+                    load_pem_public_key,
+                )
+
                 if key_val.startswith("-----BEGIN "):
                     # PEM string (from Vault or env)
                     pub = load_pem_public_key(key_val.encode("utf-8"))
@@ -232,7 +236,9 @@ class ConstitutionEngine:
             LOGGER.debug("No checksum available to sign")
             return None
         try:
-            from cryptography.hazmat.primitives.serialization import load_pem_private_key
+            from cryptography.hazmat.primitives.serialization import (
+                load_pem_private_key,
+            )
 
             with open(priv_path, "rb") as f:
                 priv = load_pem_private_key(f.read(), password=None)
@@ -242,7 +248,11 @@ class ConstitutionEngine:
             signer_id = os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
             self._signature = hexsig
             self._signatures = [
-                {"signer_id": signer_id, "signature": hexsig, "checksum": self._checksum}
+                {
+                    "signer_id": signer_id,
+                    "signature": hexsig,
+                    "checksum": self._checksum,
+                }
             ]
             self._storage.record_signature(self._checksum, signer_id, hexsig)
             try:

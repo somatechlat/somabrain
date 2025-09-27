@@ -2,9 +2,10 @@ import numpy as np
 import scipy.sparse as sp
 from transport.flow_opt import solve_flows, update_conductances
 
+
 def test_solve_flows_and_update_conductances():
     n = 5
-    edges = [(0,1),(1,2),(2,3),(3,4),(4,0)]
+    edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]
     L = sp.lil_matrix((n, n))
     for i, j in edges:
         L[i, i] += 1

@@ -9,7 +9,6 @@ Safe, idempotent, and logs all actions. Usage:
 - Requires SOMABRAIN_KAFKA_URL and SOMA_AUDIT_TOPIC env vars.
 """
 import os
-import sys
 import argparse
 import json
 import logging
@@ -28,8 +27,12 @@ except ImportError:
     KafkaProducer = None
 
 AUDIT_JOURNAL_PATH = os.getenv("SOMA_AUDIT_JOURNAL_PATH", "./audit_log.jsonl")
-REDIS_URL = os.getenv("SOMABRAIN_REDIS_URL", "redis://localhost:6379/0")
-KAFKA_URL = os.getenv("SOMABRAIN_KAFKA_URL", "localhost:9092")
+REDIS_HOST = os.getenv("SOMABRAIN_REDIS_HOST", "localhost")
+REDIS_PORT = os.getenv("SOMABRAIN_REDIS_PORT", "6379")
+REDIS_URL = os.getenv("SOMABRAIN_REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
+KAFKA_HOST = os.getenv("SOMABRAIN_KAFKA_HOST", "localhost")
+KAFKA_PORT = os.getenv("SOMABRAIN_KAFKA_PORT", "9092")
+KAFKA_URL = os.getenv("SOMABRAIN_KAFKA_URL", f"{KAFKA_HOST}:{KAFKA_PORT}")
 AUDIT_TOPIC = os.getenv("SOMA_AUDIT_TOPIC", "soma.audit")
 
 
@@ -56,6 +59,7 @@ def replay_from_redis(limit: Optional[int] = None):
     LOGGER.info("Replayed %d events from Redis buffer", count)
     return count
 
+
 def replay_from_journal(limit: Optional[int] = None):
     if not os.path.exists(AUDIT_JOURNAL_PATH):
         LOGGER.info("No audit journal at %s", AUDIT_JOURNAL_PATH)
@@ -75,6 +79,7 @@ def replay_from_journal(limit: Optional[int] = None):
     LOGGER.info("Replayed %d events from journal", count)
     return count
 
+
 def send_to_kafka(event: dict) -> bool:
     if not KafkaProducer:
         LOGGER.error("kafka-python not installed")
@@ -93,9 +98,17 @@ def send_to_kafka(event: dict) -> bool:
         LOGGER.error("Kafka send failed: %s", exc)
         return False
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Replay buffered audit events to Kafka.")
-    parser.add_argument("--source", choices=["redis", "journal"], default=None, help="Source buffer (default: redis, fallback journal)")
+    parser = argparse.ArgumentParser(
+        description="Replay buffered audit events to Kafka."
+    )
+    parser.add_argument(
+        "--source",
+        choices=["redis", "journal"],
+        default=None,
+        help="Source buffer (default: redis, fallback journal)",
+    )
     parser.add_argument("--limit", type=int, default=None, help="Max events to replay")
     args = parser.parse_args()
 
@@ -107,6 +120,7 @@ def main():
     elif args.source == "journal":
         total += replay_from_journal(args.limit)
     LOGGER.info("Total events replayed: %d", total)
+
 
 if __name__ == "__main__":
     main()

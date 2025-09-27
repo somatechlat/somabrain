@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import HTTPException, Request
+from fastapi import Request
 
 from somabrain.auth import require_auth
 from somabrain.config import Config
@@ -20,7 +20,9 @@ def set_auth_config(cfg: Config) -> None:
     """Register configuration for downstream auth + tenant helpers."""
     global _current_config, _allowed_tenants, _default_tenant
     _current_config = cfg
-    _default_tenant = cfg.default_tenant or os.getenv("SOMABRAIN_DEFAULT_TENANT", "sandbox")
+    _default_tenant = cfg.default_tenant or os.getenv(
+        "SOMABRAIN_DEFAULT_TENANT", "sandbox"
+    )
     os.environ.setdefault("SOMABRAIN_DEFAULT_TENANT", _default_tenant)
     _allowed_tenants = _resolve_tenants(cfg)
 

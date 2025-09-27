@@ -1,6 +1,6 @@
-import pytest
 from somabrain.context.builder import RetrievalWeights
 from somabrain.learning.adaptation import AdaptationEngine, UtilityWeights
+
 
 def test_adaptation_apply_and_rollback():
     rw = RetrievalWeights(alpha=1.0, beta=0.2, gamma=0.5, tau=0.7)
@@ -20,6 +20,7 @@ def test_adaptation_apply_and_rollback():
     # Values should be restored
     restored = (rw.alpha, rw.gamma, uw.lambda_, uw.mu, uw.nu)
     assert restored == initial
+
 
 def test_adaptation_constraints():
     rw = RetrievalWeights(alpha=4.9, beta=0.2, gamma=0.95, tau=0.7)

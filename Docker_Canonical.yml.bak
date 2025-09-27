@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: sb_redis
+    networks:
+      - somabrain_net
+    ports:
+      - "6379"  # container-only port; Docker will assign host port dynamically
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  kafka:
+    image: redpandadata/redpanda:latest
+    container_name: sb_kafka
+    networks:
+      - somabrain_net
+    ports:
+      - "9092"  # container-only port; Docker will assign host port dynamically
+    command: ["redpanda", "start", "--overprovisioned", "--smp", "1", "--memory", "1G", "--reserve-memory", "0M", "--node-id", "0", "--check=false"]
+    environment:
+      REDPANDA_AUTO_CREATE_TOPICS: 'true'
+    volumes:
+      - kafka_data:/var/lib/redpanda/data:rw
+
+  opa:
+    image: openpolicyagent/opa:0.48.0
+    container_name: sb_opa
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
+    networks:
+      - somabrain_net
+    ports:
+      - "8181"  # container-only port
+    volumes:
+      - ./ops/opa/policies:/policies:ro
+
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: sb_prometheus
+    networks:
+      - somabrain_net
+    ports:
+      - "9090"  # container-only port
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  somabrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_somabrain
+    depends_on:
+      - redis
+      - kafka
+      - opa
+    networks:
+      - somabrain_net
+    environment:
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+      SOMABRAIN_HOST: "0.0.0.0"
+      SOMABRAIN_PORT: "9696"
+      SOMABRAIN_WORKERS: "4"
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://sb_kafka:9092"
+      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  memory_integrity_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_memory_integrity_worker
+    depends_on:
+      - redis
+    networks:
+      - somabrain_net
+    environment:
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+    command: ["python", "-m", "somabrain.services.memory_integrity_worker"]
+    restart: unless-stopped
+
+volumes:
+  kafka_data:
+    driver: local
+
+networks:
+  somabrain_net:
+    driver: bridge

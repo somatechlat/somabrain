@@ -63,7 +63,8 @@ class RAGResponse(BaseModel):
 async def rag_endpoint(
     req: RAGRequest,
     http_request: Request,
-    _guard=Depends(utility_guard), auth=Depends(auth_guard),
+    _guard=Depends(utility_guard),
+    auth=Depends(auth_guard),
 ):
     start = time.perf_counter()
     try:

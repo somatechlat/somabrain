@@ -258,55 +258,69 @@ class MemoryClient:
         headers = {}
         if self.cfg.http and self.cfg.http.token:
             headers["Authorization"] = f"Bearer {self.cfg.http.token}"
-        # Propagate tenancy via standardized headers
+
+        # Propagate tenancy via standardized headers (best-effort)
         ns = str(getattr(self.cfg, "namespace", ""))
         if ns:
             headers["X-Soma-Namespace"] = ns
-            # best-effort tenant extraction from namespace suffix
             try:
                 tenant_guess = ns.split(":")[-1] if ":" in ns else ns
                 headers["X-Soma-Tenant"] = tenant_guess
             except Exception:
                 pass
+
+        # Allow tuning via environment variables for production/dev use
+        try:
+            max_conns = int(os.getenv("SOMABRAIN_HTTP_MAX_CONNS", "64"))
+        except Exception:
+            max_conns = 64
+        try:
+            keepalive = int(os.getenv("SOMABRAIN_HTTP_KEEPALIVE", "32"))
+        except Exception:
+            keepalive = 32
+        try:
+            retries = int(os.getenv("SOMABRAIN_HTTP_RETRIES", "1"))
+        except Exception:
+            retries = 1
+
         limits = None
         try:
-            limits = httpx.Limits(max_connections=64, max_keepalive_connections=32)
+            limits = httpx.Limits(
+                max_connections=max_conns, max_keepalive_connections=keepalive
+            )
         except Exception:
             limits = None
+
+        base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
+        client_kwargs = {
+            "base_url": base_url,
+            "headers": headers,
+            "timeout": 10.0,
+        }
         if limits is not None:
-            self._http = httpx.Client(
-                base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
-                headers=headers,
-                timeout=10.0,
-                limits=limits,
-            )
-        else:
-            self._http = httpx.Client(
-                base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
-                headers=headers,
-                timeout=10.0,
-            )
+            client_kwargs["limits"] = limits
+
+        # Create sync client
         try:
-            if limits is not None:
-                self._http_async = httpx.AsyncClient(
-                    base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
-                    headers=headers,
-                    timeout=10.0,
-                    limits=limits,
-                )
-            else:
-                self._http_async = httpx.AsyncClient(
-                    base_url=str(getattr(self.cfg.http, "endpoint", "") or ""),
-                    headers=headers,
-                    timeout=10.0,
-                )
+            self._http = httpx.Client(**client_kwargs)
         except Exception:
-            self._http_async = None
+            self._http = None
+
+        # Create async client with configurable transport retries
+        try:
+            transport = httpx.AsyncHTTPTransport(retries=retries)
+            async_kwargs = dict(client_kwargs)
+            async_kwargs["transport"] = transport
+            self._http_async = httpx.AsyncClient(**async_kwargs)
+        except Exception:
+            try:
+                self._http_async = httpx.AsyncClient(**client_kwargs)
+            except Exception:
+                self._http_async = None
 
         # If endpoint is empty, treat HTTP client as unavailable
         try:
-            base = str(getattr(self.cfg.http, "endpoint", "") or "")
-            if not base:
+            if not base_url:
                 self._http = None
                 self._http_async = None
         except Exception:
@@ -348,105 +362,25 @@ class MemoryClient:
         """
         # Refresh builtins-backed mirrors in case tests replaced them
         _refresh_builtins_globals()
+
         # include universe in coordinate hashing to avoid collisions across branches
         universe = str(payload.get("universe") or "real")
         coord = _stable_coord(f"{universe}::{coord_key}")
+
+        # ensure we don't mutate caller's dict
         payload = dict(payload)
         payload.setdefault("memory_type", "episodic")
         payload.setdefault("timestamp", time.time())
         payload.setdefault("universe", universe)
-        # Primary path: HTTP memory service if available.
-        if self._http is not None:
-            # Primary endpoint: /remember (Option A); fallback to /store if not found
-            body = {
-                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-                "payload": payload,
-                "type": "episodic",
-            }
-            import uuid
 
-            rid = request_id or str(uuid.uuid4())
-            rid_hdr = {"X-Request-ID": rid}
-            stored = False
-            try:
-                r = self._http.post("/remember", json=body, headers=rid_hdr)
-                code = getattr(r, "status_code", 200)
-                if code in (404, 405):
-                    r2 = self._http.post("/store", json=body, headers=rid_hdr)
-                    stored = getattr(r2, "status_code", 500) < 300
-                elif code in (429, 503):
-                    # brief backoff and retry once
-                    time.sleep(0.01 + random.random() * 0.02)
-                    r3 = self._http.post("/remember", json=body, headers=rid_hdr)
-                    stored = getattr(r3, "status_code", 500) < 300
-                elif code >= 500:
-                    # generic server error – retry once before falling back
-                    time.sleep(0.1)
-                    r_retry = self._http.post("/remember", json=body, headers=rid_hdr)
-                    stored = getattr(r_retry, "status_code", 500) < 300
-                else:
-                    stored = code < 300
-                # try to extract coord if server returns one
-                try:
-                    server_coord = _extract_memory_coord(r, idempotency_key=rid)
-                    if server_coord and getattr(
-                        self.cfg, "prefer_server_coords_for_links", False
-                    ):
-                        return server_coord
-                except Exception:
-                    pass
-            except Exception:
-                try:
-                    r4 = self._http.post("/store", json=body, headers=rid_hdr)
-                    stored = getattr(r4, "status_code", 500) < 300
-                except Exception:
-                    stored = False
-            # Record to global mirror (always), and to stub/outbox if the HTTP store failed
-            if not stored:
-                payload = dict(payload)
-                payload["coordinate"] = coord
-                with self._lock:
-                    self._stub_store.append(payload)
-                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(payload)
-                try:
-                    logger.debug(
-                        "remember(http fail): appended payload to _GLOBAL_PAYLOADS ns=%r total=%d",
-                        self.cfg.namespace,
-                        len(_GLOBAL_PAYLOADS.get(self.cfg.namespace, [])),
-                    )
-                except Exception:
-                    pass
-                # Record failure to outbox for later retry
-                self._record_outbox(
-                    "remember",
-                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
-                )
-                try:
-                    from . import metrics as _mx
+        # Detect async context: if present, schedule background persistence
+        try:
+            loop = asyncio.get_running_loop()
+            in_async = True
+        except Exception:
+            in_async = False
 
-                    _mx.HTTP_FAILURES.inc()
-                except Exception:
-                    pass
-            else:
-                try:
-                    p2 = dict(payload)
-                    p2["coordinate"] = coord
-                    _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
-                    try:
-                        logger.debug(
-                            "remember(http success): appended payload to _GLOBAL_PAYLOADS ns=%r total=%d",
-                            self.cfg.namespace,
-                            len(_GLOBAL_PAYLOADS.get(self.cfg.namespace, [])),
-                        )
-                    except Exception:
-                        pass
-                except Exception:
-                    pass
-            # default: return locally computed coord
-            return coord
-
-        # Fallback: no HTTP client available — behave as a simple in-process
-        # stub: keep the payload locally and mirror to global for visibility.
+        # Mirror locally for quick reads and visibility
         try:
             p2 = dict(payload)
             p2["coordinate"] = coord
@@ -454,13 +388,71 @@ class MemoryClient:
                 self._stub_store.append(p2)
             _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
         except Exception:
+            pass
+
+        import uuid
+
+        rid = request_id or str(uuid.uuid4())
+
+        # If we're in an async loop, schedule an async background persist (non-blocking)
+        if in_async:
             try:
-                self._stub_store.append(payload)
-                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(payload)
+                loop = asyncio.get_running_loop()
+                if self._http_async is not None:
+                    try:
+                        loop.create_task(
+                            self._aremember_background(coord_key, payload, rid)
+                        )
+                    except Exception as e:
+                        logger.debug("_aremember_background scheduling failed: %r", e)
+                        loop.run_in_executor(
+                            None, self._remember_sync_persist, coord_key, payload, rid
+                        )
+                else:
+                    loop.run_in_executor(
+                        None, self._remember_sync_persist, coord_key, payload, rid
+                    )
+            except Exception:
+                try:
+                    self._remember_sync_persist(coord_key, payload, rid)
+                except Exception:
+                    pass
+            return coord
+
+        # Synchronous callers: default is blocking persist, but allow an opt-in
+        # fast-ack mode which writes to the local outbox and schedules background
+        # persistence to improve client latency under load.
+        fast_ack = os.getenv("SOMABRAIN_MEMORY_FAST_ACK", "0") in ("1", "true", "True")
+        if fast_ack:
+            # record to outbox immediately and schedule a background persist
+            try:
+                self._record_outbox(
+                    "remember",
+                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
+                )
             except Exception:
                 pass
-        # Record outbox for potential retry
-        self._record_outbox("remember", {"coord_key": coord_key, "payload": payload})
+            try:
+                loop = asyncio.get_event_loop()
+                # schedule background sync persist in the executor so we don't block
+                loop.run_in_executor(
+                    None, self._remember_sync_persist, coord_key, payload, rid
+                )
+            except Exception:
+                # last resort: run sync persist (best-effort)
+                try:
+                    self._remember_sync_persist(coord_key, payload, rid)
+                except Exception:
+                    pass
+            return coord
+
+        # Default (no fast-ack): perform the persist synchronously (blocking)
+        try:
+            self._remember_sync_persist(coord_key, payload, rid)
+        except Exception:
+            # best-effort: we already mirrored locally and will record to outbox in helper
+            pass
+        return coord
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -1119,3 +1111,97 @@ class MemoryClient:
                 return False
         except Exception:
             return False
+
+    def _remember_sync_persist(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> None:
+        """Synchronous persistence implementation used by both sync callers and run_in_executor.
+
+        This mirrors the original HTTP remember logic but centralizes retries and outbox fallback.
+        """
+        import uuid as _uuid
+
+        if self._http is None:
+            try:
+                self._record_outbox(
+                    "remember",
+                    {
+                        "coord_key": coord_key,
+                        "payload": payload,
+                        "request_id": request_id,
+                    },
+                )
+            except Exception:
+                pass
+            return
+
+        # compute coord string once
+        sc = _stable_coord(f"{payload.get('universe','real')}::{coord_key}")
+        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
+        body = {"coord": coord_str, "payload": payload, "type": "episodic"}
+
+        rid = request_id or str(_uuid.uuid4())
+        rid_hdr = {"X-Request-ID": rid}
+        stored = False
+        try:
+            r = self._http.post("/remember", json=body, headers=rid_hdr)
+            code = getattr(r, "status_code", 200)
+            if code in (404, 405):
+                r2 = self._http.post("/store", json=body, headers=rid_hdr)
+                stored = getattr(r2, "status_code", 500) < 300
+            elif code in (429, 503):
+                time.sleep(0.01 + random.random() * 0.02)
+                r3 = self._http.post("/remember", json=body, headers=rid_hdr)
+                stored = getattr(r3, "status_code", 500) < 300
+            elif code >= 500:
+                time.sleep(0.1)
+                r_retry = self._http.post("/remember", json=body, headers=rid_hdr)
+                stored = getattr(r_retry, "status_code", 500) < 300
+            else:
+                stored = code < 300
+        except Exception:
+            stored = False
+
+        if not stored:
+            try:
+                self._record_outbox(
+                    "remember",
+                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
+                )
+            except Exception:
+                pass
+
+    async def _aremember_background(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> None:
+        """Async background persistence using the AsyncClient; used when remember is called from async contexts."""
+        if self._http_async is None:
+            # fallback to sync persist in executor
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, self._remember_sync_persist, coord_key, payload, request_id
+            )
+            return
+
+        rid = request_id
+        rid_hdr = {"X-Request-ID": rid} if rid else {}
+        sc = _stable_coord(f"{payload.get('universe','real')}::{coord_key}")
+        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
+        body = {"coord": coord_str, "payload": payload, "type": "episodic"}
+        try:
+            r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
+            code = getattr(r, "status_code", 200)
+            if code in (404, 405):
+                await self._http_async.post("/store", json=body, headers=rid_hdr)
+            elif code in (429, 503):
+                await asyncio.sleep(0.01 + random.random() * 0.02)
+                await self._http_async.post("/remember", json=body, headers=rid_hdr)
+        except Exception:
+            # record for later retry
+            try:
+                self._record_outbox(
+                    "remember",
+                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
+                )
+            except Exception:
+                pass

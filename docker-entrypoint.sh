@@ -17,9 +17,12 @@ echo "SOMABRAIN container starting on host: ${SOMABRAIN_HOST}, port: ${SOMABRAIN
 echo "Checking dependencies: Kafka and OPA"
 KAFKA_OK=0
 OPA_OK=0
+
+# Use the real Kafka smoke test for health check
+KAFKA_BROKER="${SOMABRAIN_KAFKA_HOST:-kafka}:${SOMABRAIN_KAFKA_PORT:-9092}"
 for i in 1 2 3 4 5 6; do
   echo "Attempt $i: checking Kafka broker..."
-  python3 scripts/check_kafka_broker.py && KAFKA_OK=1 && break || true
+  python3 scripts/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
   sleep 2
 done
 

@@ -101,6 +101,9 @@ reflect_max_summaries: 5
 # service and configure the HTTP endpoint below.
 namespace: somabrain_ns
 memory_http_endpoint: http://localhost:9595
+# Optional: path where failed memory writes are recorded as JSONL for later replay.
+# Default: ./data/somabrain/outbox.jsonl
+outbox_path: ./data/somabrain/outbox.jsonl
 
 # Persistence (optional overrides)
 postgres_dsn: postgresql://somabrain:somabrain@localhost:5432/somabrain

@@ -4,6 +4,7 @@ Profiling Harness for SomaBrain (S9)
 Profiles CPU and memory usage for any benchmark or API endpoint under load.
 Outputs bottleneck analysis and optimization suggestions.
 """
+
 import cProfile
 import pstats
 import io
@@ -35,6 +36,7 @@ def profile_benchmark():
     print(f"--- CPU Profile (top 20 cumulative) ---\n{s.getvalue()}")
     print(f"--- Memory usage: current={current/1e6:.2f}MB, peak={peak/1e6:.2f}MB ---")
     print(f"--- Wall time: {t1-t0:.2f}s ---")
+
 
 if __name__ == "__main__":
     profile_benchmark()

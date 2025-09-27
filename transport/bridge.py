@@ -1,6 +1,6 @@
 import numpy as np
-import scipy.sparse as sp
 import scipy.sparse.linalg as spla
+
 
 def heat_kernel_expmv(L, v, beta=1.0, tol=1e-6):
     """
@@ -11,6 +11,7 @@ def heat_kernel_expmv(L, v, beta=1.0, tol=1e-6):
     """
     return spla.expm_multiply(-beta * L, v)
 
+
 def schrodinger_bridge(L, mu0, mu1, beta=1.0, n_iter=20, tol=1e-6):
     """
     Sinkhorn scaling for graph Schrödinger bridge (heat kernel transport).
@@ -19,8 +20,10 @@ def schrodinger_bridge(L, mu0, mu1, beta=1.0, n_iter=20, tol=1e-6):
     Returns: u, v (scaling vectors), K (heat kernel matrix as linear operator)
     """
     n = L.shape[0]
+
     def K(x):
         return heat_kernel_expmv(L, x, beta=beta)
+
     u = np.ones(n)
     v = np.ones(n)
     for _ in range(n_iter):
@@ -31,6 +34,7 @@ def schrodinger_bridge(L, mu0, mu1, beta=1.0, n_iter=20, tol=1e-6):
         if np.linalg.norm(u * Ku - mu1) < tol:
             break
     return u, v, K
+
 
 def bridge_reach_prob(u, v, K, t=1.0):
     """

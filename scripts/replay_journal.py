@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+
 def replay(journal_dir, checkpoint_path, dry_run=True, batch=1):
     """
     Minimal replay implementation for test compatibility.

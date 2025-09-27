@@ -87,6 +87,7 @@ class Config:
     )
     outbox_path: str = "./data/somabrain/outbox.jsonl"
     # Redis backend configuration (optional)
+    # Redis connection string is now dynamically constructed from SOMABRAIN_REDIS_HOST and SOMABRAIN_REDIS_PORT
     redis_url: str = "redis://localhost:6379"
 
     # Security and Limits
@@ -246,6 +247,7 @@ class Config:
     use_graph_augment: bool = True
     use_microcircuits: bool = True
 
+
 # Load configuration helper
 def load_config() -> Config:
     """Load configuration from 'config.yaml' if present and environment variables.
@@ -296,7 +298,9 @@ def load_config() -> Config:
                 elif isinstance(current, float):
                     setattr(cfg, attr, float(env_val))
                 elif isinstance(current, list):
-                    values = [item.strip() for item in env_val.split(",") if item.strip()]
+                    values = [
+                        item.strip() for item in env_val.split(",") if item.strip()
+                    ]
                     setattr(cfg, attr, values)
                 else:
                     setattr(cfg, attr, env_val)

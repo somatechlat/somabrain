@@ -12,6 +12,7 @@ from typing import Optional
 import jwt
 from fastapi import HTTPException, Request
 from jwt import PyJWTError
+import os
 
 from .config import Config
 
@@ -23,7 +24,9 @@ def _get_jwt_key(cfg: Config) -> Optional[str]:
     if cfg.jwt_public_key_path:
         if _JWT_PUBLIC_CACHE is None:
             try:
-                _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(encoding="utf-8")
+                _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(
+                    encoding="utf-8"
+                )
             except Exception:
                 return None
         return _JWT_PUBLIC_CACHE
@@ -40,6 +43,9 @@ def _jwt_algorithms(cfg: Config) -> list[str]:
 
 def require_auth(request: Request, cfg: Config) -> None:
     """Validate authentication for API requests."""
+    # Allow tests/dev to disable auth by setting SOMABRAIN_DISABLE_AUTH=1/true
+    if os.getenv("SOMABRAIN_DISABLE_AUTH", "").lower() in ("1", "true", "yes"):
+        return
     auth = request.headers.get("Authorization", "")
 
     jwt_key = _get_jwt_key(cfg)
@@ -79,6 +85,9 @@ def require_auth(request: Request, cfg: Config) -> None:
 
 
 def require_admin_auth(request: Request, cfg: Config) -> None:
+    # Allow tests/dev to disable admin auth as well
+    if os.getenv("SOMABRAIN_DISABLE_AUTH", "").lower() in ("1", "true", "yes"):
+        return
     if not cfg.api_token:
         return
     token_header = request.headers.get("Authorization", "")

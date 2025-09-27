@@ -96,7 +96,6 @@ class ContextBuilder:
             working_memory_snapshot=wm_snapshot,
         )
 
-
     @property
     def weights(self) -> RetrievalWeights:
         return self._weights

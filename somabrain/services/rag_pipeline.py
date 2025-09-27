@@ -76,9 +76,18 @@ async def run_rag_pipeline(
 
         from somabrain import metrics as M
 
-        M.RAG_REQUESTS.labels(namespace=ctx.namespace, retrievers=retriever_set).inc()
+        # Safe increment; metrics module may be a noop in some test envs
+        try:
+            M.RAG_REQUESTS.labels(namespace=ctx.namespace, retrievers=retriever_set).inc()
+        except Exception:
+            pass
         _t0 = _time.perf_counter()
+        _metrics_ctx = {
+            "namespace": ctx.namespace,
+            "retrievers": retriever_set,
+        }
     except Exception:
+        _metrics_ctx = {}
         pass
 
     # Collect candidates by retriever name
@@ -88,8 +97,10 @@ async def run_rag_pipeline(
         retrievers = ["vector", "wm"]
     # Try real adapters first if runtime singletons are available; fallback to stubs
     from somabrain import runtime as _rt
+
     # Defensive: always ensure _rt.cfg is present, fallback to dummy if missing
     if not hasattr(_rt, "cfg") or getattr(_rt, "cfg", None) is None:
+
         class _TmpCfg:
             use_query_expansion = False
             query_expansion_variants = 0
@@ -104,6 +115,7 @@ async def run_rag_pipeline(
             reranker_top_n = 50
             reranker_out_k = 1
             reranker_batch = 32
+
         _rt.cfg = _TmpCfg()
 
     mem_client = None
@@ -447,15 +459,28 @@ async def run_rag_pipeline(
     except Exception:
         pass
 
-    # Record latency and candidate count
+    # Record latency and candidate count (safe instrumentation)
     try:
         import time as _time
 
         from somabrain import metrics as M
 
         if _t0 is not None:
-            M.RAG_RETRIEVE_LAT.observe(max(0.0, _time.perf_counter() - _t0))
-        M.RAG_CANDIDATES.observe(len(out))
+            try:
+                M.RAG_RETRIEVE_LAT.labels(**_metrics_ctx).observe(max(0.0, _time.perf_counter() - _t0))
+            except Exception:
+                try:
+                    # Fallback to unlabeled metric
+                    M.RAG_RETRIEVE_LAT.observe(max(0.0, _time.perf_counter() - _t0))
+                except Exception:
+                    pass
+        try:
+            M.RAG_CANDIDATES.labels(**_metrics_ctx).observe(len(out))
+        except Exception:
+            try:
+                M.RAG_CANDIDATES.observe(len(out))
+            except Exception:
+                pass
     except Exception:
         pass
 

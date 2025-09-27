@@ -1,0 +1,30 @@
+{
+  "run_at": "20250927T150444Z",
+  "base_url": "http://localhost:9696",
+  "results": [
+    {
+      "n": 10,
+      "precision_at_1": 0.0
+    },
+    {
+      "n": 50,
+      "precision_at_1": 0.0
+    },
+    {
+      "n": 100,
+      "precision_at_1": 0.0
+    },
+    {
+      "n": 500,
+      "precision_at_1": 0.0
+    },
+    {
+      "n": 1000,
+      "precision_at_1": 0.0
+    },
+    {
+      "n": 1000,
+      "precision_at_1": 0.0
+    }
+  ]
+}

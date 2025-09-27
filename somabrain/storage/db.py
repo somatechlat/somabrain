@@ -74,7 +74,9 @@ def get_session_factory(url: Optional[str] = None) -> sessionmaker:
     global _SESSION_FACTORY
     if _SESSION_FACTORY is None or url is not None:
         engine = get_engine(url)
-        _SESSION_FACTORY = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
+        _SESSION_FACTORY = sessionmaker(
+            bind=engine, autoflush=False, expire_on_commit=False, future=True
+        )
     return _SESSION_FACTORY
 
 

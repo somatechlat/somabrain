@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import collections
 import json
+
+import os
 from typing import Deque, Dict, List, Optional
 
 try:  # pragma: no cover - optional dependency
@@ -26,7 +28,9 @@ class WorkingMemoryBuffer:
         self._use_redis = False
         self._local: Dict[str, Deque[Dict]] = {}
         if redis is not None:
-            url = redis_url or "redis://localhost:6379/0"
+            host = os.getenv("SOMABRAIN_REDIS_HOST", "localhost")
+            port = os.getenv("SOMABRAIN_REDIS_PORT", "6379")
+            url = redis_url or f"redis://{host}:{port}/0"
             try:
                 self._redis = redis.from_url(url)
                 # lightweight ping to ensure connectivity
@@ -47,7 +51,9 @@ class WorkingMemoryBuffer:
             pipe.expire(key, self._ttl)
             pipe.execute()
         else:
-            buf = self._local.setdefault(session_id, collections.deque(maxlen=self._max_items))
+            buf = self._local.setdefault(
+                session_id, collections.deque(maxlen=self._max_items)
+            )
             buf.appendleft(item)
 
     def snapshot(self, session_id: str) -> List[Dict]:

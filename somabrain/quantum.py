@@ -648,7 +648,9 @@ class QuantumLayer:
         return float(np.dot(a, b) / (na * nb))
 
     def cleanup(
-        self, q: np.ndarray, anchors: Dict[str, np.ndarray],
+        self,
+        q: np.ndarray,
+        anchors: Dict[str, np.ndarray],
         *,
         use_wiener: bool = True,
         density_matrix: "DensityMatrix" = None,
@@ -660,6 +662,7 @@ class QuantumLayer:
         """
         q = self._ensure_vector(q, name="cleanup.query")
         from somabrain.numerics import compute_tiny_floor
+
         tiny = compute_tiny_floor(
             self.cfg.dim, dtype=self.cfg.dtype, strategy=self.cfg.tiny_floor_strategy
         )

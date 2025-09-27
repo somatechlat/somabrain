@@ -124,6 +124,9 @@ eta_pred = expected_arrival_time(P)
 ## 📚 Why it’s different
 
 SomaBrain doesn’t just **store vectors**—it **shapes the space** they move through. Usage induces flows; flows re-shape routes; second-order evidence calibrates memory; planning sums over paths. The result is a brain that **learns from its own traffic**, stays **lean** as it grows, and **explains** the choices it makes.
+
+```bash
+# Create a local venv and install dev deps
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements-dev.txt

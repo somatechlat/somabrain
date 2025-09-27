@@ -24,7 +24,9 @@ class FeedbackEvent(db.Base):
     utility = Column(Float, nullable=False)
     reward = Column(Float, nullable=True)
     metadata_json = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=dt.datetime.utcnow)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=dt.datetime.utcnow
+    )
 
 
 class FeedbackStore:

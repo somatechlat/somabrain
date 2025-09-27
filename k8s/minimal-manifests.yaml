@@ -1,0 +1,193 @@
+# Minimal Kubernetes manifests for Somabrain dev (namespace: somabrain-dev)
+# NOTE: Adjust image names to match your local registry or build and load into kind.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: somabrain-dev
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain
+  namespace: somabrain-dev
+spec:
+  type: NodePort  # change to LoadBalancer in minikube/metalLB if preferred
+  ports:
+    - port: 9696
+      targetPort: 9696
+      protocol: TCP
+      nodePort: 30096
+  selector:
+    app: somabrain
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain
+  namespace: somabrain-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain
+  template:
+    metadata:
+      labels:
+        app: somabrain
+    spec:
+      containers:
+        - name: somabrain
+          image: somatechlat/somabrain:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9696
+          env:
+            - name: SOMA_KAFKA_URL
+              value: "sb-kafka:9092"
+            - name: SOMABRAIN_OPA_URL
+              value: "http://sb-opa:8181"
+            - name: SOMA_REDIS_URL
+              value: "redis://sb-redis:6379/0"
+            - name: SOMABRAIN_MEMORY_HTTP_ENDPOINT
+              value: "http://somamemory:9595"
+            - name: SOMABRAIN_HTTP_MAX_CONNS
+              value: "16"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 15
+            periodSeconds: 20
+
+---
+# Redis - simple deployment for dev. For production use a StatefulSet and PVCs.
+apiVersion: v1
+kind: Service
+metadata:
+  name: sb-redis
+  namespace: somabrain-dev
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: sb-redis
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sb-redis
+  namespace: somabrain-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sb-redis
+  template:
+    metadata:
+      labels:
+        app: sb-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2
+          ports:
+            - containerPort: 6379
+
+---
+# OPA
+apiVersion: v1
+kind: Service
+metadata:
+  name: sb-opa
+  namespace: somabrain-dev
+spec:
+  ports:
+    - port: 8181
+      targetPort: 8181
+  selector:
+    app: sb-opa
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sb-opa
+  namespace: somabrain-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sb-opa
+  template:
+    metadata:
+      labels:
+        app: sb-opa
+    spec:
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:0.54.0
+          args: ["run", "--server", "--addr=0.0.0.0:8181"]
+          ports:
+            - containerPort: 8181
+
+---
+# Memory service (SFM) placeholder - replace image with your memory service image
+apiVersion: v1
+kind: Service
+metadata:
+  name: somamemory
+  namespace: somabrain-dev
+spec:
+  ports:
+    - port: 9595
+      targetPort: 9595
+  selector:
+    app: somamemory
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somamemory
+  namespace: somabrain-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somamemory
+  template:
+    metadata:
+      labels:
+        app: somamemory
+    spec:
+      containers:
+        - name: somamemory
+          image: somatechlat/somamemory:dev
+          ports:
+            - containerPort: 9595
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9595
+            initialDelaySeconds: 3
+            periodSeconds: 5
+
+# NOTES:
+# - For Kafka, Postgres and Qdrant, prefer using an operator/helm chart. See docs/KUBERNETES_MIGRATION.md for recommendations.
+# - Update image names to match your builds and registry. For kind, use `kind load docker-image`.
+# - NodePort 30096 exposes Somabrain on cluster node(s). For local dev with kind/minikube you can use this or run `kubectl port-forward`.

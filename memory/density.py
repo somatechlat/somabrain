@@ -1,10 +1,12 @@
 import numpy as np
 
+
 class DensityMatrix:
     """
     Maintains a PSD density matrix (rho) for second-order memory scoring.
     Supports EMA update, PSD projection, and scoring.
     """
+
     def __init__(self, d, lam=0.05):
         self.d = d
         self.lam = lam
