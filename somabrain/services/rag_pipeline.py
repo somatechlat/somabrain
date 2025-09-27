@@ -127,6 +127,42 @@ async def run_rag_pipeline(
             mem_client = memsvc.client()
     except Exception:
         mem_client = None
+    # Fallback: if runtime singletons are not wired (common in some dev setups),
+    # try to import the application module singletons so seeded /remember calls
+    # and the pipeline operate on the same memory/embedder instances.
+    if mem_client is None:
+        try:
+            import somabrain.app as _app_mod
+
+            if hasattr(_app_mod, "mt_memory") and _app_mod.mt_memory is not None:
+                from somabrain.services.memory_service import MemoryService
+
+                memsvc = MemoryService(_app_mod.mt_memory, ctx.namespace)
+                mem_client = memsvc.client()
+                # ensure runtime module points to the same backend for later calls
+                try:
+                    _rt.mt_memory = _app_mod.mt_memory
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    # Ensure we have an embedder available (fall back to app.embedder)
+    try:
+        if (not hasattr(_rt, "embedder") or getattr(_rt, "embedder", None) is None) and hasattr(
+            globals().get("__builtins__", {}), "__name__"
+        ):
+            try:
+                import somabrain.app as _app_mod2
+
+                if hasattr(_app_mod2, "embedder") and _app_mod2.embedder is not None:
+                    try:
+                        _rt.embedder = _app_mod2.embedder
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+    except Exception:
+        pass
     # Simple query expansion (optional)
     expansions = [req.query]
     try:
