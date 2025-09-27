@@ -1,30 +1,9 @@
-networks:
-  somabrain_net:
-    driver: bridge
-
 services:
-  envoy:
-    build:
-      context: ./ops/envoy
-      dockerfile: Dockerfile
-    image: somabrain-envoy:latest
-    container_name: sb_envoy
-    depends_on:
-      - somabrain
-    networks: [somabrain_net]
-    ports:
-      - "8443:8443"  # mTLS ingress
-    volumes:
-      - ./ops/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
-      - ./ops/envoy/certs:/etc/envoy/certs:ro
-    restart: unless-stopped
-
-services:
-  # Core supporting services
   redis:
     image: redis:7.2-alpine
     container_name: sb_redis
-    networks: [somabrain_net]
+    networks:
+      - somabrain_net
     ports:
       - "${REDIS_HOST_PORT:-6379}:6379"
     healthcheck:
@@ -33,25 +12,36 @@ services:
       timeout: 5s
       retries: 3
 
+  # Kafka in KRaft (no Zookeeper)
   kafka:
-    # Single-node Kafka-compatible broker for dev (Redpanda/KRaft-like)
-    # Use a stable Redpanda release; change tag as appropriate for your env.
-    image: redpandadata/redpanda:latest
+    image: bitnami/kafka:latest
     container_name: sb_kafka
-    networks: [somabrain_net]
-    ports:
-      - "${KAFKA_HOST_PORT:-29092}:9092"
-    command: ["redpanda", "start", "--overprovisioned", "--smp 1", "--memory 1G", "--reserve-memory 0M", "--node-id 0", "--check=false"]
     environment:
-      REDPANDA_AUTO_CREATE_TOPICS: 'true'
-    volumes:
-      - kafka_data:/var/lib/redpanda/data:rw
+      - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_CFG_LOG_DIRS=/bitnami/kafka/data
+    ports:
+      - "${KAFKA_HOST_PORT:-9092}:9092"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+    networks:
+      - somabrain_net
 
   opa:
     image: openpolicyagent/opa:0.48.0
     container_name: sb_opa
     command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
-    networks: [somabrain_net]
+    networks:
+      - somabrain_net
     ports:
       - "8181:8181"
     volumes:
@@ -60,15 +50,29 @@ services:
   prometheus:
     image: prom/prometheus:v2.49.0
     container_name: sb_prometheus
-    networks: [somabrain_net]
+    networks:
+      - somabrain_net
     ports:
       - "${PROMETHEUS_HOST_PORT:-9090}:9090"
     volumes:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
-  # grafana service intentionally removed per project policy (no Grafana)
+  # Postgres for development
+  postgres:
+    image: postgres:15-alpine
+    container_name: sb_postgres
+    environment:
+      - POSTGRES_USER=soma
+      - POSTGRES_PASSWORD=soma_pass
+      - POSTGRES_DB=somabrain
+    ports:
+      - "${POSTGRES_HOST_PORT:-15432}:5432"
+    # Use a named Docker volume for postgres data to avoid host directory conflicts
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - somabrain_net
 
-  # SomaBrain production‑style instance (real services, no mocks)
   somabrain:
     build:
       context: .
@@ -76,43 +80,33 @@ services:
     image: somabrain:latest
     container_name: sb_somabrain
     depends_on:
-      - redis
-      - kafka
-      - opa
-    networks: [somabrain_net]
-    # No direct host port; ingress is via Envoy mTLS
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      opa:
+        condition: service_started
+      postgres:
+        condition: service_started
+    networks:
+      - somabrain_net
     environment:
-      # Use the external memory service HTTP API. Do NOT build or run a local instance from compose.
-      # On macOS Docker Desktop, containers reach the host at host.docker.internal
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+      # Use the in-Docker-network service hostname so the API talks directly to the
+      # memory worker. host.docker.internal is only necessary when calling from the
+      # host machine into containers (macOS). Using the container DNS avoids
+      # resolution/connectivity issues between containers.
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://sb_memory_integrity_worker:9696"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
       SOMABRAIN_WORKERS: "4"
       SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
-      SOMABRAIN_KAFKA_URL: "kafka://sb_kafka:9092"
+      SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
       SOMABRAIN_OPA_URL: "http://sb_opa:8181"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9696/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  # The memory service is provided externally. The stack will NOT build or run it locally.
-  # Ensure an HTTP API is reachable at port 9595 on the host (default: http://host.docker.internal:9595).
-
-  # PostgreSQL database for persistence (if needed)
-  postgres:
-    image: postgres:15.4-alpine
-    container_name: sb_postgres
-    environment:
-      POSTGRES_USER: somabrain
-      POSTGRES_PASSWORD: somabrain
-      POSTGRES_DB: somabrain
-    networks: [somabrain_net]
+      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
     ports:
-      - "${POSTGRES_HOST_PORT:-15432}:5432"
+      - "${SOMABRAIN_HOST_PORT:-9696}:9696"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "somabrain"]
+      test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -125,14 +119,21 @@ services:
     container_name: sb_memory_integrity_worker
     depends_on:
       - redis
-      - postgres
-    networks: [somabrain_net]
+    networks:
+      - somabrain_net
     environment:
       SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
-      # Add other environment variables as needed
     command: ["python", "-m", "somabrain.services.memory_integrity_worker"]
     restart: unless-stopped
 
 volumes:
   kafka_data:
     driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  somabrain_net:
+    driver: bridge
