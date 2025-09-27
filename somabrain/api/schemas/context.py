@@ -8,7 +8,8 @@ try:
     from pydantic import BaseModel, Field
 except Exception:  # pragma: no cover
     BaseModel = object  # type: ignore
-    Field = lambda *a, **k: None  # type: ignore
+    def Field(*a, **k):  # type: ignore
+        return None
 
 
 class EvaluateRequest(BaseModel):  # type: ignore[misc]

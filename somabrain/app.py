@@ -957,12 +957,14 @@ mc_wm = MultiColumnWM(
         vote_temperature=cfg.micro_vote_temperature,
     ),
 )
-from . import runtime as _rt
+from . import runtime as _rt  # noqa: E402
+
 if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
     mt_memory = MultiTenantMemory(cfg)
     _rt.mt_memory = mt_memory
     # Also patch this module's global for test visibility
     import sys
+
     mod = sys.modules[__name__]
     setattr(mod, "mt_memory", _rt.mt_memory)
 else:
@@ -1001,28 +1003,36 @@ fractal_memory: Any = None  # type: ignore[assignment]
 
 # Expose singletons for services that avoid importing this module directly
 try:
-    from . import runtime as _rt
+    # runtime import intentionally late in module for startup ordering; silence E402
+    from . import runtime as _rt  # noqa: E402
 
     # Patch runtime with stub singletons if missing
     def _patch_runtime_singletons():
         # Only patch if missing (None or not present)
         if not hasattr(_rt, "embedder") or _rt.embedder is None:
+
             class DummyEmbedder:
                 def embed(self, x):
                     return [0.0]
+
             _rt.embedder = DummyEmbedder()
         if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
             from somabrain.memory_pool import MultiTenantMemory
+
             _rt.mt_memory = MultiTenantMemory(cfg)
         if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
+
             class DummyWM:
                 def __init__(self):
                     pass
+
             _rt.mt_wm = DummyWM()
         if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
+
             class DummyMCWM:
                 def __init__(self):
                     pass
+
             _rt.mc_wm = DummyMCWM()
 
     _patch_runtime_singletons()
@@ -1043,6 +1053,7 @@ try:
     _auth_dep.set_auth_config(cfg)
 except Exception:
     pass
+
 
 # PHASE 2: UNIFIED PROCESSING CORE - SIMPLIFIED ARCHITECTURE
 class UnifiedBrainCore:
@@ -1568,6 +1579,7 @@ async def recall(req: S.RecallRequest, request: Request):
                     if m > float(getattr(cfg, "rerank_margin_threshold", 0.05) or 0.05):
                         do_rerank = False
                         from . import metrics as _mx
+
                         _mx.HRR_RERANK_WM_SKIPPED.inc()
             # compute HRR similarity to query for each candidate by encoding task/fact
             if do_rerank:
@@ -1597,7 +1609,10 @@ async def recall(req: S.RecallRequest, request: Request):
         wm_hits = [
             (s, p)
             for s, p in wm_hits
-            if (isinstance(p, dict) and str(p.get("universe") or "real") == str(universe))
+            if (
+                isinstance(p, dict)
+                and str(p.get("universe") or "real") == str(universe)
+            )
         ]
     if wm_hits:
         M.WM_HITS.inc()
@@ -1686,7 +1701,8 @@ async def recall(req: S.RecallRequest, request: Request):
             seen_coords = {
                 tuple(coord)
                 for p in mem_payloads
-                if isinstance(p, dict) and (coord := p.get("coordinate")) is not None
+                if isinstance(p, dict)
+                and (coord := p.get("coordinate")) is not None
                 and isinstance(coord, (list, tuple))
             }
             added = 0
