@@ -203,9 +203,9 @@ class ConstitutionStorage:
         Returns the local file path or S3 URI, whichever is used/preferred.
         """
         import json
-        import pathlib
         import os
         import datetime as dt
+
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         payload = {
             "checksum": checksum,
@@ -229,6 +229,7 @@ class ConstitutionStorage:
         if s3_bucket:
             try:
                 import boto3
+
                 s3 = boto3.client("s3")
                 s3_key = f"constitution/constitution_{timestamp}_{checksum[:12]}.json"
                 s3.put_object(
