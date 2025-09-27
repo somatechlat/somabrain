@@ -277,8 +277,35 @@ class QuantumLayer:
         n_bins = D // 2 + 1
         seed64 = _seed64(f"role::{token}") ^ int(self.cfg.seed)
         rng = np.random.default_rng(np.uint64(seed64))
-        phases = rng.uniform(0.0, 2.0 * np.pi, size=n_bins).astype("float64")
-        H = np.exp(1j * phases)
+
+        # If the project-level hybrid math feature is enabled, prefer the
+        # learned-unitary phases if available in the experimental math package.
+        try:
+            from somabrain.config import load_config
+
+            cfg = load_config()
+            if getattr(cfg, "hybrid_math_enabled", False):
+                # Attempt to use learned phases from somabrain.math (best-effort)
+                try:
+                    from somabrain.math.learned_roles import LearnedUnitaryRoles
+
+                    lr = LearnedUnitaryRoles(D)
+                    # initialize deterministic phase and retrieve rfft-sized theta
+                    lr.init_role(token, seed=seed64)
+                    theta = lr.get_role(token)
+                    H = np.exp(1j * theta[:n_bins])
+                except Exception:
+                    # fallback to random phases if learned_roles isn't available
+                    phases = rng.uniform(0.0, 2.0 * np.pi, size=n_bins).astype(
+                        "float64"
+                    )
+                    H = np.exp(1j * phases)
+            else:
+                phases = rng.uniform(0.0, 2.0 * np.pi, size=n_bins).astype("float64")
+                H = np.exp(1j * phases)
+        except Exception:
+            phases = rng.uniform(0.0, 2.0 * np.pi, size=n_bins).astype("float64")
+            H = np.exp(1j * phases)
         # For real irfft, DC (0) and Nyquist (if even length) bins should be real
         H[0] = 1.0 + 0.0j
         if D % 2 == 0:

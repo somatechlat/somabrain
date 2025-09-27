@@ -247,6 +247,13 @@ class Config:
     use_graph_augment: bool = True
     use_microcircuits: bool = True
 
+    # HybridBrain+ truth-budget integration (opt-in)
+    hybrid_math_enabled: bool = False
+    # Optional path to a YAML truth-budget spec (see docs/truth_budget_example.yaml)
+    truth_budget_path: Optional[str] = None
+    # Runtime-loaded truth budget (populated by load_config if path provided)
+    truth_budget: Optional[dict] = None
+
 
 # Load configuration helper
 def load_config() -> Config:
