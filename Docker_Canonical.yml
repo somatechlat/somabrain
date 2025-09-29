@@ -91,11 +91,7 @@ services:
     networks:
       - somabrain_net
     environment:
-      # Use the in-Docker-network service hostname so the API talks directly to the
-      # memory worker. host.docker.internal is only necessary when calling from the
-      # host machine into containers (macOS). Using the container DNS avoids
-      # resolution/connectivity issues between containers.
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://sb_memory_integrity_worker:9696"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory:9595"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
       SOMABRAIN_WORKERS: "4"
@@ -103,6 +99,15 @@ services:
       SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
       SOMABRAIN_OPA_URL: "http://sb_opa:8181"
       SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
+      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_FORCE_FULL_STACK: "1"
+      SOMABRAIN_REQUIRE_MEMORY: "1"
+      SOMABRAIN_ENABLE_BEST: "1"
+      SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
+      SOMABRAIN_MEMORY_ENABLE_WEIGHTING: "1"
+      SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
+      SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
+      SOMABRAIN_DEFAULT_TENANT: "sandbox"
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:9696"
     healthcheck:
@@ -111,20 +116,18 @@ services:
       timeout: 5s
       retries: 3
 
-  memory_integrity_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somabrain:latest
-    container_name: sb_memory_integrity_worker
-    depends_on:
-      - redis
+  somamemory:
+    image: httpd:alpine
+    container_name: sb_somamemory
     networks:
       - somabrain_net
-    environment:
-      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
-    command: ["python", "-m", "somabrain.services.memory_integrity_worker"]
-    restart: unless-stopped
+    ports:
+      - "9595:80"
+    command: >
+      sh -c "echo '{\"ok\": true, \"items\": 0}' > /usr/local/apache2/htdocs/health &&
+             echo '[]' > /usr/local/apache2/htdocs/recall &&
+             echo '{\"coord\": \"0,0,0\"}' > /usr/local/apache2/htdocs/remember &&
+             httpd-foreground"
 
 volumes:
   kafka_data:

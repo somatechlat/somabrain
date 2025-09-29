@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 
 from somabrain.schemas import RAGRequest
+import os
+import pytest
 from somabrain.services.rag_pipeline import run_rag_pipeline
 
 
@@ -12,6 +14,10 @@ class Ctx:
         self.tenant_id = "test"
 
 
+@pytest.mark.skipif(
+    os.getenv("SOMABRAIN_STRICT_REAL", "").lower() in ("1","true","yes","on"),
+    reason="Stub pipeline test skipped in strict real mode",
+)
 def test_rag_pipeline_stub_basic():
     req = RAGRequest(
         query="Ada Lovelace",

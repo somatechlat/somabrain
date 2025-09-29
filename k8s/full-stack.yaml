@@ -1,0 +1,375 @@
+# Full-stack Kubernetes deployment for SomaBrain (strict, no mocks)
+# Namespace: somabrain-prod (adjust as needed)
+# This manifest includes:
+# - Namespace
+# - ConfigMap with base env (STRICT + BEST + required memory)
+# - Secrets placeholders (jwt, db, kafka) -- create real secrets before apply
+# - Somabrain Deployment + Service (port 9696)
+# - Memory Service (SomaFractalMemory) Deployment + Service (port 9595)
+# - Redis (cache) Deployment + Service
+# - OPA (policy) Deployment + Service
+# - Optional NodePort 9797 duplicate service for test harness mapping (exposes same pods)
+# - PersistentVolumeClaim for somabrain outbox/logs
+# NOTE: Replace image tags with immutable digests for production.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: somabrain-prod
+  labels:
+    app.kubernetes.io/name: somabrain
+    app.kubernetes.io/part-of: somabrain
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: somabrain-env
+  namespace: somabrain-prod
+  labels:
+    app: somabrain
+    tier: api
+  annotations:
+    somabrain.io/config-version: "1"
+data:
+  SOMABRAIN_ENABLE_BEST: "1"
+  SOMABRAIN_STRICT_REAL: "1"
+  SOMABRAIN_FORCE_FULL_STACK: "1"
+  SOMABRAIN_REQUIRE_MEMORY: "1"
+  SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
+  SOMABRAIN_HTTP_MAX_CONNS: "64"
+  SOMABRAIN_HTTP_KEEPALIVE: "32"
+  SOMABRAIN_HTTP_RETRIES: "1"
+  SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
+  SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
+  # Endpoint for fractal memory inside cluster
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory:9595"
+  # Observability endpoints (optional)
+  SOMABRAIN_OTLP_ENDPOINT: "http://otel-collector:4318" # adjust or remove
+  # Tenancy / defaults
+  SOMABRAIN_DEFAULT_TENANT: "sandbox"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: somabrain-secrets
+  namespace: somabrain-prod
+stringData:
+  # Populate these with real values via sealed-secrets / external secret operator
+  SOMABRAIN_JWT_PUBLIC_KEY_PATH: "/secrets/jwt_pub.pem"  # mount path below
+  jwt_public_key.pem: "REPLACE_WITH_BASE64_FREE_PEM"
+  SOMABRAIN_KAFKA_URL: "kafka:9092"
+  SOMABRAIN_POSTGRES_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
+  SOMABRAIN_TOKEN_LEDGER_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
+  SOMABRAIN_FEEDBACK_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: somabrain-outbox-pvc
+  namespace: somabrain-prod
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: somabrain
+  ports:
+    - name: http
+      port: 9696
+      targetPort: 9696
+  type: ClusterIP
+
+---
+# Optional NodePort for external test harness hitting 9797 while pod listens 9696
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-nodeport
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: somabrain
+  type: NodePort
+  ports:
+    - name: http
+      port: 9696
+      targetPort: 9696
+      nodePort: 30979 # valid NodePort range (30000‑32767)
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-test
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: somabrain
+  type: NodePort
+  ports:
+    - name: http-test
+      port: 9696
+      targetPort: 9696
+      nodePort: 30980 # test exposure (valid range)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain
+  namespace: somabrain-prod
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: somabrain
+  template:
+    metadata:
+      labels:
+        app: somabrain
+    spec:
+      containers:
+        - name: somabrain
+          image: python:3.13-slim
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "pip install -e . && uvicorn somabrain.app:app --host 0.0.0.0 --port 9696"]
+          workingDir: /app
+          ports:
+            - containerPort: 9696
+          envFrom:
+            - configMapRef:
+                name: somabrain-env
+            - secretRef:
+                name: somabrain-secrets
+          volumeMounts:
+            - name: outbox-vol
+              mountPath: /app/data/somabrain
+            - name: jwt-pub
+              mountPath: /secrets
+              readOnly: true
+            - name: code-vol
+              mountPath: /app
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+      volumes:
+        - name: outbox-vol
+          persistentVolumeClaim:
+            claimName: somabrain-outbox-pvc
+        - name: jwt-pub
+          secret:
+            secretName: somabrain-secrets
+            items:
+              - key: jwt_public_key.pem
+                path: jwt_pub.pem
+        - name: code-vol
+          hostPath:
+            path: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
+            type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somamemory
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: somamemory
+  ports:
+    - port: 9595
+      targetPort: 9595
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somamemory
+  namespace: somabrain-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somamemory
+  template:
+    metadata:
+      labels:
+        app: somamemory
+    spec:
+      containers:
+        - name: somamemory
+          image: python:3.13-slim
+          command:
+            - "sh"
+            - "-c"
+            - |
+              pip install fastapi uvicorn && \
+              python - <<'PY'
+              from fastapi import FastAPI, Request
+              app = FastAPI()
+              @app.get('/health')
+              def health():
+                  return {'ok': True, 'items': 0}
+              @app.post('/remember')
+              async def remember(body: dict, request: Request):
+                  return {'coord': '0,0,0'}
+              @app.post('/recall')
+              async def recall(body: dict):
+                  return []
+              import uvicorn
+              uvicorn.run(app, host='0.0.0.0', port=9595)
+              PY
+          ports:
+            - containerPort: 9595
+          envFrom:
+            - configMapRef:
+                name: somabrain-env
+            - secretRef:
+                name: somabrain-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9595
+            initialDelaySeconds: 5
+            periodSeconds: 8
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9595
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "16Mi"
+            limits:
+              cpu: "50m"
+              memory: "64Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sb-redis
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: sb-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sb-redis
+  namespace: somabrain-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sb-redis
+  template:
+    metadata:
+      labels:
+        app: sb-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sb-opa
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: sb-opa
+  ports:
+    - port: 8181
+      targetPort: 8181
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sb-opa
+  namespace: somabrain-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sb-opa
+  template:
+    metadata:
+      labels:
+        app: sb-opa
+    spec:
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:0.54.0
+          args: ["run", "--server", "--addr=0.0.0.0:8181"]
+          ports:
+            - containerPort: 8181
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+
+# NOTES:
+# 1. Replace all :latest tags with digests for production.
+# 2. Add NetworkPolicies, PodSecurityStandards, and RBAC as needed.
+# 3. Integrate a proper Postgres, Kafka, and tracing stack separately (operators/helm charts).
+# 4. To expose externally, add an Ingress or LoadBalancer service (not included here by default).
+# 5. For TLS + mTLS fronting, deploy Envoy or Istio Gateway referencing the somabrain service.

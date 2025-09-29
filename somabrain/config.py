@@ -23,7 +23,7 @@ Functions:
 from __future__ import annotations
 
 from dataclasses import dataclass, field  # add field import
-from typing import List, Optional
+from typing import List, Optional, Any
 
 # dynaconf is optional; we don't require it at runtime. Configuration is loaded
 # via `load_config()` using dataclass defaults and a YAML + environment override.
@@ -253,6 +253,96 @@ class Config:
     truth_budget_path: Optional[str] = None
     # Runtime-loaded truth budget (populated by load_config if path provided)
     truth_budget: Optional[dict] = None
+    # Convenience runtime fields mapped from truth-budget (populated by loader)
+    truth_bind_block_m: Optional[int] = None
+    truth_wiener_lambda: Optional[float] = None
+    truth_ev_target: Optional[float] = None
+    truth_ev_max_r: Optional[int] = None
+    truth_appr_eps: Optional[float] = None
+    truth_chebyshev_K: Optional[int] = None
+    truth_kernel_relerr: Optional[float] = None
+    truth_sinkhorn_tol: Optional[float] = None
+
+
+# Typed truth-budget schema (module-level so tests can import)
+@dataclass
+class TruthBudget:
+    epsilon_total: float = 0.05
+    # bind
+    bind_block_size_m: int = 128
+    bind_wiener_lambda: float = 1e-4
+    # density / rho
+    density_ev_target: float = 0.9
+    density_max_r: int = 128
+    # graph
+    appr_eps: float = 1e-4
+    # kernel / chebyshev
+    chebyshev_order_K: int = 24
+    chebyshev_relerr: float = 0.02
+    # bridge
+    sinkhorn_tol: float = 1e-3
+
+    def to_dict(self) -> dict:
+        return {
+            "epsilon_total": self.epsilon_total,
+            "bind": {
+                "block_size_m": self.bind_block_size_m,
+                "wiener_lambda": self.bind_wiener_lambda,
+            },
+            "rho": {"ev_target": self.density_ev_target, "max_r": self.density_max_r},
+            "graph": {"appr_eps": self.appr_eps},
+            "kernel": {"chebyshev_K": self.chebyshev_order_K, "rel_err": self.chebyshev_relerr},
+            "bridge": {"sinkhorn_tol": self.sinkhorn_tol},
+        }
+
+
+def _validate_and_map_truth_budget(cfg: Config, raw: dict) -> TruthBudget:
+    """Validate a raw truth-budget dict and return a typed TruthBudget.
+
+    This also maps conservative defaults and populates convenience `cfg.truth_*` fields.
+    Does not raise on recoverable errors; upstream code may use strict validation later.
+    """
+    tb = TruthBudget()
+    try:
+        if not isinstance(raw, dict):
+            raw = {}
+        tb.epsilon_total = float(raw.get("epsilon_total", tb.epsilon_total))
+        b = raw.get("bind", {}) or {}
+        tb.bind_block_size_m = int(b.get("block_size_m", tb.bind_block_size_m))
+        tb.bind_wiener_lambda = float(b.get("wiener_lambda", tb.bind_wiener_lambda))
+        r = raw.get("rho", {}) or {}
+        # support either 'r' or 'max_r' or 'ev_target'
+        if "r" in r:
+            tb.density_max_r = int(r.get("r", tb.density_max_r))
+        else:
+            tb.density_max_r = int(r.get("max_r", tb.density_max_r))
+        tb.density_ev_target = float(r.get("ev_target", tb.density_ev_target))
+        g = raw.get("graph", {}) or {}
+        tb.appr_eps = float(g.get("appr_eps", tb.appr_eps))
+        k = raw.get("kernel", {}) or {}
+        # support either chebyshev_order or chebyshev_K naming
+        tb.chebyshev_order_K = int(k.get("chebyshev_order", k.get("chebyshev_K", tb.chebyshev_order_K)))
+        tb.chebyshev_relerr = float(k.get("relerr", k.get("rel_err", tb.chebyshev_relerr)))
+        br = raw.get("bridge", {}) or {}
+        tb.sinkhorn_tol = float(br.get("sinkhorn_tol", tb.sinkhorn_tol))
+    except Exception:
+        # best-effort: keep tb defaults on parse failure
+        pass
+
+    # populate cfg convenience fields
+    try:
+        cfg.truth_bind_block_m = tb.bind_block_size_m
+        cfg.truth_wiener_lambda = tb.bind_wiener_lambda
+        cfg.truth_ev_target = tb.density_ev_target
+        cfg.truth_ev_max_r = tb.density_max_r
+        cfg.truth_appr_eps = tb.appr_eps
+        cfg.truth_chebyshev_K = tb.chebyshev_order_K
+        cfg.truth_kernel_relerr = tb.chebyshev_relerr
+        cfg.truth_sinkhorn_tol = tb.sinkhorn_tol
+    except Exception:
+        pass
+
+    return tb
 
 
 # Load configuration helper
@@ -313,4 +403,178 @@ def load_config() -> Config:
                     setattr(cfg, attr, env_val)
             except Exception:
                 setattr(cfg, attr, env_val)
+    return cfg
+
+
+def load_truth_budget(cfg: Config) -> None:
+    """If cfg.truth_budget_path is set and readable, load YAML into cfg.truth_budget."""
+    import os
+    from dataclasses import dataclass
+    # Define a small dataclass schema for runtime mapping (kept local to avoid import cycles)
+    @dataclass
+    class TruthBudget:
+        epsilon_total: float = 0.05
+        bind: dict = None
+        rho: dict = None
+        graph: dict = None
+        kernel: dict = None
+        bridge: dict = None
+
+        def to_dict(self) -> dict:
+            return {
+                "epsilon_total": self.epsilon_total,
+                "bind": self.bind or {},
+                "rho": self.rho or {},
+                "graph": self.graph or {},
+                "kernel": self.kernel or {},
+                "bridge": self.bridge or {},
+            }
+
+    path = getattr(cfg, "truth_budget_path", None)
+    if not path:
+        return
+    if not os.path.isfile(path):
+        return
+    try:
+        import yaml
+        with open(path, "r") as f:
+            raw = yaml.safe_load(f) or {}
+        # Basic validation and mapping to typed structure
+        tb = TruthBudget()
+        if isinstance(raw, dict):
+            tb.epsilon_total = float(raw.get("epsilon_total", tb.epsilon_total))
+            tb.bind = raw.get("bind", {})
+            tb.rho = raw.get("rho", {})
+            tb.graph = raw.get("graph", {})
+            tb.kernel = raw.get("kernel", {})
+            tb.bridge = raw.get("bridge", {})
+        data = tb.to_dict()
+        cfg.truth_budget = data
+        # Populate convenience runtime knobs with safe defaults and clamps
+        # bind.block_size_m -> truth_bind_block_m
+        try:
+            b = data.get("bind", {})
+            cfg.truth_bind_block_m = int(b.get("block_size_m", 128))
+        except Exception:
+            cfg.truth_bind_block_m = 128
+        try:
+            cfg.truth_wiener_lambda = float(b.get("wiener_lambda", 1e-4))
+        except Exception:
+            cfg.truth_wiener_lambda = 1e-4
+        # rho: ev_target or r
+        try:
+            r = data.get("rho", {})
+            cfg.truth_ev_target = float(r.get("ev_target", 0.9))
+            cfg.truth_ev_max_r = int(r.get("max_r", 128))
+        except Exception:
+            cfg.truth_ev_target = 0.9
+            cfg.truth_ev_max_r = 128
+        # graph: appr_eps
+        try:
+            g = data.get("graph", {})
+            cfg.truth_appr_eps = float(g.get("appr_eps", 1e-4))
+        except Exception:
+            cfg.truth_appr_eps = 1e-4
+        # kernel: chebyshev K and relative error
+        try:
+            k = data.get("kernel", {})
+            cfg.truth_chebyshev_K = int(k.get("chebyshev_K", 24))
+            cfg.truth_kernel_relerr = float(k.get("rel_err", 0.02))
+        except Exception:
+            cfg.truth_chebyshev_K = 24
+            cfg.truth_kernel_relerr = 0.02
+        # bridge/sinkhorn tolerance
+        try:
+            br = data.get("bridge", {})
+            cfg.truth_sinkhorn_tol = float(br.get("sinkhorn_tol", 1e-3))
+        except Exception:
+            cfg.truth_sinkhorn_tol = 1e-3
+    except Exception:
+        # best-effort; do not raise on parse failures here
+        cfg.truth_budget = None
+
+
+@dataclass
+class TruthBudget:
+    """Typed schema for the truth-budget YAML.
+
+    This is a minimal, conservative schema capturing the core knobs we will
+    auto-tune and validate in CI. Fields are optional; validators will fill
+    conservative defaults when missing.
+    """
+    epsilon_total: float = 0.05
+    bind_block_m: Optional[int] = None
+    wiener_lambda: Optional[float] = None
+    density_ev_target: Optional[float] = 0.9
+    density_r: Optional[int] = None
+    graph_appr_eps: Optional[float] = 1e-3
+    chebyshev_order_K: Optional[int] = 24
+    kernel_relerr: Optional[float] = 0.02
+    sinkhorn_tol: Optional[float] = 1e-3
+
+
+def _validate_and_map_truth_budget(cfg: Config, data: dict[str, Any]) -> Optional[TruthBudget]:
+    """Validate minimal truth-budget keys and map into Config-level knobs.
+
+    Returns a TruthBudget instance or None on fatal parse error.
+    """
+    try:
+        tb = TruthBudget(
+            epsilon_total=float(data.get("epsilon_total", 0.05)),
+            bind_block_m=(None if data.get("bind", None) is None else int(data.get("bind", {}).get("block_size_m", 0) or 0) or None),
+            wiener_lambda=(None if data.get("bind", None) is None else float(data.get("bind", {}).get("wiener_lambda", 0) or 0) or None),
+            density_ev_target=(None if data.get("rho", None) is None else float(data.get("rho", {}).get("ev_target", 0.9) or 0.9)),
+            density_r=(None if data.get("rho", None) is None else (int(data.get("rho", {}).get("r", 0)) or None)),
+            graph_appr_eps=(None if data.get("graph", None) is None else float(data.get("graph", {}).get("appr_eps", 1e-3) or 1e-3)),
+            chebyshev_order_K=(None if data.get("kernel", None) is None else int(data.get("kernel", {}).get("chebyshev_order", 24) or 24)),
+            kernel_relerr=(None if data.get("kernel", None) is None else float(data.get("kernel", {}).get("relerr", 0.02) or 0.02)),
+            sinkhorn_tol=(None if data.get("bridge", None) is None else float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3) or 1e-3)),
+        )
+        # Sanity clamps
+        if tb.epsilon_total <= 0 or tb.epsilon_total >= 1:
+            tb.epsilon_total = 0.05
+        if tb.density_ev_target is None or not (0.0 < tb.density_ev_target <= 1.0):
+            tb.density_ev_target = 0.9
+        if tb.bind_block_m is not None and tb.bind_block_m < 8:
+            tb.bind_block_m = 8
+        if tb.chebyshev_order_K is not None and tb.chebyshev_order_K < 4:
+            tb.chebyshev_order_K = 4
+
+        # Map conservative defaults into cfg for runtime convenience (only set if not already set)
+        if tb.bind_block_m and not getattr(cfg, "truth_bind_block_m", None):
+            setattr(cfg, "truth_bind_block_m", tb.bind_block_m)
+        if tb.wiener_lambda and not getattr(cfg, "truth_wiener_lambda", None):
+            setattr(cfg, "truth_wiener_lambda", tb.wiener_lambda)
+        if tb.density_r and not getattr(cfg, "truth_density_r", None):
+            setattr(cfg, "truth_density_r", tb.density_r)
+        if tb.chebyshev_order_K and not getattr(cfg, "truth_chebyshev_K", None):
+            setattr(cfg, "truth_chebyshev_K", tb.chebyshev_order_K)
+        if tb.graph_appr_eps and not getattr(cfg, "truth_graph_appr_eps", None):
+            setattr(cfg, "truth_graph_appr_eps", tb.graph_appr_eps)
+        if tb.kernel_relerr and not getattr(cfg, "truth_kernel_relerr", None):
+            setattr(cfg, "truth_kernel_relerr", tb.kernel_relerr)
+        if tb.sinkhorn_tol and not getattr(cfg, "truth_sinkhorn_tol", None):
+            setattr(cfg, "truth_sinkhorn_tol", tb.sinkhorn_tol)
+
+        return tb
+    except Exception:
+        return None
+
+
+def load_config_and_truth() -> Config:
+    """Helper that loads main config and attempts to load a truth-budget YAML if configured.
+
+    This wraps `load_config()` for call sites that want the runtime truth budget loaded
+    into the returned Config object.
+    """
+    cfg = load_config()
+    # Best-effort: if truth_budget_path provided, attempt to load it and enable hybrid math
+    try:
+        load_truth_budget(cfg)
+        if cfg.truth_budget and not cfg.hybrid_math_enabled:
+            # If a truth budget is present, default to enabling hybrid math to honor the spec.
+            cfg.hybrid_math_enabled = True
+    except Exception:
+        # swallow errors; leave cfg as-is
+        pass
     return cfg

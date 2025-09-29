@@ -228,8 +228,11 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
             else:
+                from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+                if __SR:
+                    raise RuntimeError("STRICT REAL MODE: wm retriever fallback to stub disallowed (embedder or WM missing)")
                 logger.info("wm retriever: falling back to stub (embedder or wm backend missing)")
-                
+                __record_stub("rag_pipeline.wm.stub_fallback")
             lst = retrieve_wm_stub(req.query, top_k)
             lists_by_retriever["wm"] = lst
             cands += lst
@@ -252,7 +255,11 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
+            from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+            if __SR:
+                raise RuntimeError("STRICT REAL MODE: vector retriever fallback to stub disallowed (embedder or mem_client missing)")
             logger.info("vector retriever: falling back to stub (embedder or mem_client missing)")
+            __record_stub("rag_pipeline.vector.stub_fallback")
             lst = retrieve_vector_stub(req.query, top_k)
             lists_by_retriever["vector"] = lst
             cands += lst
@@ -276,6 +283,10 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
+            from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+            if __SR:
+                raise RuntimeError("STRICT REAL MODE: graph retriever fallback to stub disallowed (embedder or mem_client missing)")
+            __record_stub("rag_pipeline.graph.stub_fallback")
             lst = retrieve_graph_stub(req.query, top_k)
             lists_by_retriever["graph"] = lst
             cands += lst
@@ -297,16 +308,22 @@ async def run_rag_pipeline(
 
     # If nothing retrieved, backfill with stubs to ensure endpoint responsiveness in empty stores
     if not cands:
+        from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+        if __SR:
+            raise RuntimeError("STRICT REAL MODE: no retriever results; stub backfill disallowed")
         for rname in retrievers:
             if rname == "wm":
+                __record_stub("rag_pipeline.backfill.wm")
                 lst = retrieve_wm_stub(req.query, top_k)
                 lists_by_retriever["wm"] = lst
                 cands += lst
             elif rname == "vector":
+                __record_stub("rag_pipeline.backfill.vector")
                 lst = retrieve_vector_stub(req.query, top_k)
                 lists_by_retriever["vector"] = lst
                 cands += lst
             elif rname == "graph":
+                __record_stub("rag_pipeline.backfill.graph")
                 lst = retrieve_graph_stub(req.query, top_k)
                 lists_by_retriever["graph"] = lst
                 cands += lst

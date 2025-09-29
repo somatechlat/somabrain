@@ -45,7 +45,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9696
+          volumeMounts:
+            - name: brain-artifacts
+              mountPath: /var/lib/somabrain
           env:
+            # Core connectivity
             - name: SOMA_KAFKA_URL
               value: "sb-kafka:9092"
             - name: SOMABRAIN_OPA_URL
@@ -54,8 +58,42 @@ spec:
               value: "redis://sb-redis:6379/0"
             - name: SOMABRAIN_MEMORY_HTTP_ENDPOINT
               value: "http://somamemory:9595"
+            # Strict + full-stack + best profile (no mocks)
+            - name: SOMABRAIN_STRICT_REAL
+              value: "1"
+            - name: SOMABRAIN_FORCE_FULL_STACK
+              value: "1"
+            - name: SOMABRAIN_REQUIRE_MEMORY
+              value: "1"
+            - name: SOMABRAIN_ENABLE_BEST
+              value: "1"
+            # Predictor provider
+            - name: SOMABRAIN_PREDICTOR_PROVIDER
+              value: "mahal"
+            # Memory weighting & priors
+            - name: SOMABRAIN_MEMORY_ENABLE_WEIGHTING
+              value: "1"
+            - name: SOMABRAIN_MEMORY_PHASE_PRIORS
+              value: "bootstrap:1.05,general:1.0,specialized:1.03"
+            - name: SOMABRAIN_MEMORY_QUALITY_EXP
+              value: "1.0"
+            # HTTP client tuning (adjusted for prod-like dev)
             - name: SOMABRAIN_HTTP_MAX_CONNS
+              value: "32"
+            - name: SOMABRAIN_HTTP_KEEPALIVE
               value: "16"
+            - name: SOMABRAIN_HTTP_RETRIES
+              value: "1"
+            # Default tenant
+            - name: SOMABRAIN_DEFAULT_TENANT
+              value: "sandbox"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
           readinessProbe:
             httpGet:
               path: /health
@@ -68,6 +106,10 @@ spec:
               port: 9696
             initialDelaySeconds: 15
             periodSeconds: 20
+      volumes:
+        - name: brain-artifacts
+          persistentVolumeClaim:
+            claimName: brain-artifacts-pvc
 
 ---
 # Redis - simple deployment for dev. For production use a StatefulSet and PVCs.
@@ -105,6 +147,20 @@ spec:
           image: redis:7.2
           ports:
             - containerPort: 6379
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+      volumes:
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
 
 ---
 # OPA
@@ -143,6 +199,13 @@ spec:
           args: ["run", "--server", "--addr=0.0.0.0:8181"]
           ports:
             - containerPort: 8181
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
 
 ---
 # Memory service (SFM) placeholder - replace image with your memory service image
@@ -180,12 +243,73 @@ spec:
           image: somatechlat/somamemory:dev
           ports:
             - containerPort: 9595
+          volumeMounts:
+            - name: memory-data
+              mountPath: /data
           readinessProbe:
             httpGet:
               path: /health
               port: 9595
             initialDelaySeconds: 3
             periodSeconds: 5
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "800m"
+              memory: "512Mi"
+
+      volumes:
+        - name: brain-artifacts
+          persistentVolumeClaim:
+            claimName: brain-artifacts-pvc
+        - name: redis-data
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
+        - name: memory-data
+          persistentVolumeClaim:
+            claimName: somamemory-data-pvc
+
+---
+# Persistent Volume Claims (adjust storageClassName as needed for your cluster)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: brain-artifacts-pvc
+  namespace: somabrain-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-data-pvc
+  namespace: somabrain-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 512Mi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: somamemory-data-pvc
+  namespace: somabrain-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 
 # NOTES:
 # - For Kafka, Postgres and Qdrant, prefer using an operator/helm chart. See docs/KUBERNETES_MIGRATION.md for recommendations.

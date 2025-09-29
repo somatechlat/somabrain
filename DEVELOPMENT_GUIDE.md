@@ -95,3 +95,62 @@ To run the full stack in DEV_FULL mode (all services):
 ---
 
 *This guide is updated live as the codebase and workflow evolve.*
+
+---
+
+## 8. Canonical Roadmap: Math Integrity & Production Readiness
+
+This section captures the high-impact, strictly necessary roadmap items to keep the "brain" mathematically sound, simple, and real-world scalable. Only items that materially improve correctness, stability, determinism, or large-scale readiness are listed.
+
+### A. Math Verification (Core Invariants)
+| Area | Invariant | Planned Test (real vectors, no mocks) |
+|------|-----------|----------------------------------------|
+| HRR Roles | Unitary spectrum (|H_k|≈1) & determinism | `test_hrr_invariants.py` role spectrum & seed repeatability |
+| Bind/Unbind | Roundtrip cosine ≥ threshold (dim-aware) | Bind→Unbind property test (random vec, token role) |
+| Wiener Unbinding | Higher SNR → lower lambda & better cosine | SNR sweep (20,40,60 dB) monotonic assertions |
+| Normalization | Idempotent, stable tiny-floor fallback | Zero & subtiny vectors robustness test |
+| Tiny Floor Scaling | sqrt strategy: tiny ∝ sqrt(D) | Compare ratios across dims (256,1024,4096) |
+| Sinkhorn | Marginal fidelity within tol | Extended transport test (uniform + random marginals) |
+| Spectral Heat | Chebyshev ≈ Lanczos exp(-tA)x | SPD test matrix relative error bound |
+
+Execution Order (lean): HRR → Numerics → Determinism → Wiener → Sinkhorn → Spectral.
+
+### B. Production Configuration (Recommended Defaults)
+| Component | Recommendation | Rationale |
+|-----------|----------------|-----------|
+| HRR Dim | 8192 (baseline), 16384 for richer semantic density | Balance memory vs binding accuracy |
+| FFT Epsilon | `HRR_FFT_EPSILON=1e-6` (float32 path) | Stable unbinding without oversmoothing |
+| Wiener SNR Default | 40 dB | Good trade-off robustness vs fidelity |
+| Redis | Dedicated instance, maxclients ≥ 10k, latency monitor enabled | Predictable low-latency store |
+| Uvicorn/Gunicorn | Gunicorn w/ Uvicorn workers: `workers = 2 * cores`, `--loop uvloop` | Throughput + lower overhead |
+| HTTP Keepalive | Enable; idle timeout 30s | Reuse connections for agent swarm traffic |
+| Metrics Interval | Prom scrape every 5s | Timely drift + load feedback |
+| HRR Role Cache | Persist spectra to disk (mmap) | Avoid recomputation spikes |
+| Memory Sharding | Hash by tenant or semantic bucket | Horizontal scalability for millions of agents |
+
+### C. Scaling Strategy (Agents / Millions of Users)
+1. Stateless API layer behind L4/L7 load balancer.
+2. Shard working memory; promote hot items to in-memory tier; cold pass-through to durable store.
+3. Batch embeddings; consider vector DB for long-term recall if LTM size exceeds RAM.
+4. Pre-generate frequently used unitary roles at process warm-up.
+5. Introduce backpressure: rate limiter ties into neuromodulator signal for graceful degradation.
+
+### D. Guardrails Against Regression
+| Risk | Mitigation |
+|------|------------|
+| Silent norm drift | Property tests + assert unit norm post-normalize |
+| Over-regularized unbinding | Track effective epsilon + cosine threshold alerts |
+| Role non-determinism | Seed-specified tests fail on drift |
+| Marginal mismatch (OT) | Sinkhorn test enforcing marginal L∞ error < 1e-5 |
+| Spectral interval misestimate | Lanczos interval containment test |
+
+### E. Minimal Future Enhancements (Optional)
+- Expose `(vector, eps_used)` from unbind (optional, not required now) for direct inspection.
+- Add a lightweight route to dump current HRR config (read-only) for operational observability.
+
+### F. Acceptance Criteria for "Mathematically Verified" Stamp
+All the A-series property tests pass in CI under both default and a high-dimension profile (skipped if CI resources constrain). No NaNs, all cosine thresholds met, marginal / spectral assertions hold.
+
+---
+
+*Edits to this roadmap must preserve: simplicity, determinism, and real numeric execution (no mocks).*

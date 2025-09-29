@@ -1,0 +1,63 @@
+2025-09-29 15:03:13,079 - somabrain - INFO - 🧠 SomaBrain cognitive logging initialized
+INFO:     Started server process [87009]
+INFO:     Waiting for application startup.
+2025-09-29 15:03:13,259 - somabrain - WARNING - ConstitutionEngine load failed: No constitution document available
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:9797 (Press CTRL+C to quit)
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+ERROR:    Traceback (most recent call last):
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/starlette/routing.py", line 694, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 221, in __aexit__
+    await anext(self.gen)
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/fastapi/routing.py", line 140, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ~~~~~~~~~~~~~~~~^^^^^
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/starlette/routing.py", line 574, in __aexit__
+    await self._router.shutdown()
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/.cleanup-venv/lib/python3.13/site-packages/starlette/routing.py", line 681, in shutdown
+    await handler()
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/app.py", line 2574, in stop_background_workers
+    await _background_task
+  File "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/somabrain/app.py", line 2561, in worker
+    await asyncio.sleep(5)  # run every 5 seconds
+    ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/Cellar/python@3.13/3.13.7/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/tasks.py", line 718, in sleep
+    return await future
+           ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError
+
+ERROR:    Application shutdown failed. Exiting.
+INFO:     Finished server process [87009]

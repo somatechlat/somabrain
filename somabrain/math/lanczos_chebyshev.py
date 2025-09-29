@@ -6,7 +6,10 @@ of exp(-t L) to a vector using that interval.
 """
 
 import numpy as np
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Optional
+
+# lazy config import to read truth-budget defaults when needed
+from somabrain.config import load_config
 
 
 def estimate_spectral_interval(apply_A: Callable[[np.ndarray], np.ndarray],
@@ -50,7 +53,7 @@ def estimate_spectral_interval(apply_A: Callable[[np.ndarray], np.ndarray],
 def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
                          x: np.ndarray,
                          t: float,
-                         K: int,
+                         K: Optional[int],
                          a: float,
                          b: float) -> np.ndarray:
     """Approximate y = exp(-t A) x using Chebyshev polynomial of degree K.
@@ -62,6 +65,9 @@ def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
     a,b: spectral interval bounds of A
     """
     n = x.shape[0]
+    if K is None:
+        cfg = load_config()
+        K = int(getattr(cfg, "truth_chebyshev_K", 32))
     # map operator to [-1,1]: A' = (2A - (b+a)I)/(b-a)
     if b <= a:
         raise ValueError("Invalid spectral interval")
@@ -92,4 +98,55 @@ def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
         b_k = 2.0 * apply_Ap(b_k) - b_kplus1 + coeffs[k] * x
         b_kplus1 = tmp
     y = apply_Ap(b_k) - b_kplus1 + coeffs[0] * x
+    return y
+
+
+def lanczos_expv(apply_A: Callable[[np.ndarray], np.ndarray],
+                 x: np.ndarray,
+                 t: float,
+                 m: int = 32) -> np.ndarray:
+    """Approximate y = exp(-t A) x using Lanczos / Krylov method.
+
+    This is robust for small-to-moderate m and avoids needing Chebyshev
+    coefficient estimation. Returns ||x|| * V * exp(-t T) e1.
+    """
+    n = x.shape[0]
+    normx = np.linalg.norm(x)
+    if normx == 0:
+        return np.zeros_like(x)
+    v = x / normx
+    V = np.zeros((n, m), dtype=float)
+    alphas = np.zeros(m, dtype=float)
+    betas = np.zeros(m, dtype=float)
+    V[:, 0] = v
+    w = apply_A(v)
+    alphas[0] = np.dot(v, w)
+    w = w - alphas[0] * v
+    betas[0] = np.linalg.norm(w)
+    k = 1
+    for j in range(1, m):
+        if betas[j - 1] == 0:
+            k = j
+            break
+        v_next = w / betas[j - 1]
+        V[:, j] = v_next
+        w = apply_A(v_next) - betas[j - 1] * V[:, j - 1]
+        alphas[j] = np.dot(v_next, w)
+        w = w - alphas[j] * v_next
+        betas[j] = np.linalg.norm(w)
+        k = j + 1
+    # Build tridiagonal T of size k
+    T = np.zeros((k, k), dtype=float)
+    for i in range(k):
+        T[i, i] = alphas[i]
+        if i + 1 < k:
+            T[i, i + 1] = betas[i]
+            T[i + 1, i] = betas[i]
+    # Compute exp(-t T) via eigendecomposition (k small)
+    evals, evecs = np.linalg.eigh(T)
+    expT = evecs @ np.diag(np.exp(-t * evals)) @ evecs.T
+    e1 = np.zeros(k)
+    e1[0] = 1.0
+    yk = expT @ e1
+    y = normx * (V[:, :k] @ yk)
     return y

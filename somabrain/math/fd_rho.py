@@ -50,3 +50,26 @@ class FrequentDirections:
         if r is None:
             return U, s
         return U[:, :r], s[:r]
+
+
+def sketch_from_matrix(X: np.ndarray, ell: int) -> "FrequentDirections":
+    """Stream rows of X into an FD sketch and return the sketch.
+
+    X: array-like of shape (n, d)
+    ell: sketch size
+    """
+    fd = FrequentDirections(d=X.shape[1], ell=ell)
+    for row in X:
+        fd.insert(row)
+    return fd
+
+
+def topk_eigenvalues_from_sketch(fd: "FrequentDirections", k: int) -> np.ndarray:
+    """Return the top-k eigenvalues (as a 1-D array) from the FD sketch.
+
+    Note: the FD `top_components` returns singular values of the approximated
+    covariance matrix; since those are singular values of the covariance, they
+    are already eigenvalues (non-negative).
+    """
+    _, s = fd.top_components(r=k)
+    return np.asarray(s, dtype=float)

@@ -1,72 +1,37 @@
-# SomaBrain Settings & Runtime Tunables
+# SomaBrain Settings (Deprecated Summary)
 
-This document maps configuration knobs to their corresponding code paths and recommended values for
-different environments (development, staging, production).
+This file has been **consolidated** into the canonical configuration reference: see
+`docs/CONFIGURATION.md`.
 
-## 1. Core Settings (Config Dataclasses)
+Only deltas and environment profile guidance remain here to avoid duplication.
 
-`somabrain/config.py` defines the primary runtime dataclass `Config`. Even though a more structured
-config system will be introduced in later sprints, the following fields are already available:
+## 1. Canonical Source
+All environment variables, strict mode rules, predictor precedence, health/readiness contract,
+and mode matrix now live in: `docs/CONFIGURATION.md`.
 
-| Setting | Description | Default (dev) | Recommended Production |
-|---------|-------------|----------------|-------------------------|
-| `namespace` | Default namespace for memory operations. | `somabrain_ns` | Unique per tenant (e.g. `tenant_a`) |
-| `http.endpoint` | Memory service endpoint (HTTP). | `http://localhost:9595` | Managed memory service URL |
-| `outbox_path` | Local outbox file path (legacy). | `./data/somabrain/outbox.jsonl` | **Disable** (use Redis/Kafka) |
-| `redis_url` | Redis connection string. | `redis://localhost:6379/0` | Managed Redis cluster URL |
-| `rate_rps` | Default rate limit per second. | `50` | Derived from tenant contract |
-| `write_daily_limit` | Daily write cap. | `10000` | Derived from tenant contract |
-| `predictor_provider` | Predictor implementation (`stub|mahal|slow|llm`). | `stub` | `llm` with caching |
-| `embed_provider` | Embedding backend. | `"tiny"` | Model-specific identifier |
+## 2. Environment Profiles (Short Form)
+| Profile | Strict | Predictor Default | Recall Path Priority | Notes |
+|---------|--------|-------------------|----------------------|-------|
+| dev | Off | stub | in-process recent | Use only for rapid prototyping. |
+| strict-dev | On | mahal | HTTP -> in-process | CI / pre-prod validation. |
+| staging | On | mahal | HTTP -> in-process | Full observability + alerting. |
+| prod | On | dynamic (mahal/llm) | HTTP -> in-process | No stub usage tolerated. |
+| bench | On | mahal | in-process deterministic | Deterministic performance runs. |
 
-Future sprints (S3, S4) will replace local fields such as `outbox_path` with cloud alternatives and
-introduce additional sections for vector index tuning and pipeline concurrency limits.
+## 3. Observability Quick Targets
+| Signal | Action Threshold |
+|--------|------------------|
+| `UNBIND_EPS_USED` p95 | >3× baseline → investigate spectral drift |
+| `RECALL_MARGIN_TOP12` | Falling trend >20% → review noise / rerank weight |
+| `ready=false` (health) | Block agents consuming tasks |
 
-## 2. Environment-Specific Profiles
+## 4. Migration Notes
+- Remove any internal references to `predictor_provider=stub` in staging/prod manifests.
+- Ensure agents gate on `/health.ready` before dispatching workloads.
+- If memory HTTP backend intentionally absent (sandbox), seed a few memories before expecting recall quality.
 
-### Development
-- Use `./scripts/dev_up.sh` to generate `.env.local` with sane defaults.
-- `SOMABRAIN_ENABLE_TRACING=0`, `SOMABRAIN_ENABLE_REWARD_GATE=0`.
-- Local Postgres and Redis containers with non-persistent volumes.
+## 5. Future Removals
+This file will be deleted once all external integrations reference `CONFIGURATION.md` directly.
 
-### Staging
-- Connect to staging Redis/Postgres clusters.
-- `SOMABRAIN_ENABLE_TRACING=1` with OTLP collector pointing to staging observability stack.
-- Lower rate limits to prevent unexpected load (e.g. 10 req/sec per tenant) while still testing
-  concurrency.
-- Coordinate with agent teams so their staging SLM endpoints point at the staging SomaBrain API.
-
-### Production
-- All secrets managed via Vault.
-- Rate limits loaded from tenant config service.
-- Reward gate enabled; constitution enforcement fail-closed.
-- Kafka cluster endpoints pointed to HA brokers with TLS/SASL.
-- Benchmarks executed before each release to ensure SLO compliance.
-
-## 3. Mathematical Parameters
-
-The constitution stores parameters for utility calculation (`λ`, `μ`, `ν`) and reward policies. Keep
-these under version control in the constitution JSON and document changes in the constitution
-release notes. Future math modules (S8) will read additional parameters:
-- `geodesic_metric`: toggles geodesic vs. Euclidean similarity.
-- `embedding_decay`: controls memory aging.
-- `reward_window`: number of audit-confirmed decisions considered for reward computation.
-
-## 4. Observability Settings
-
-- `SOMABRAIN_OTLP_ENDPOINT` – required for traces/metrics/export.
-- `SOMABRAIN_LOG_LEVEL` (planned) – exposes log verbosity (default `INFO`).
-- Alert thresholds defined in `ops/alerts/` (to be added). Configure Alertmanager to page on:
-  - `somabrain_audit_fallback_total` spikes.
-  - `somabrain_constitution_verified` dropping to 0.
-  - Agent-reported SLM latency (captured via feedback) breaching SLO targets.
-
-## 5. Testing & Benchmark Settings
-
-- Integration tests read `.env.test` or `ports.json` for endpoints.
-- Benchmarks use configuration files under `benchmarks/config/` specifying concurrency, payload
-  size, and model selection.
-- Chaos tests (S9) will reference YAML manifests describing failure scenarios and durations.
-
-Keep this document synchronized with the codebase; each new configuration flag or setting must be
-added with environment defaults and production guidance.
+---
+For full details open: `docs/CONFIGURATION.md`.

@@ -35,10 +35,12 @@ Tokens must be sent as `Authorization: Bearer <JWT>` in all API requests. The ba
 ---
 ## 1. Environment Variables
 
+The table below lists core environment variables. New realism / enforcement flags introduced after the strict-mode upgrade are included at the end. All precedence rules are explicitly documented ("env overrides config").
+
 | Variable | Default | Description | Referenced In |
 |----------|---------|-------------|---------------|
 | `SOMABRAIN_HOST` | `0.0.0.0` | Bind address for FastAPI service. | `somabrain/app.py` |
-| `SOMABRAIN_PORT` | `9696` | Internal port for API server. Exposed host port is auto-chosen by `scripts/dev_up.sh`. | `somabrain/app.py` |
+| `SOMABRAIN_PORT` | `9696` | Internal port for API server. (Test harness forces 9797 via `SOMA_API_URL` to avoid collisions.) | `somabrain/app.py` |
 | `SOMABRAIN_WORKERS` | `4` | Gunicorn/Uvicorn workers in container deployments. | Dockerfile entrypoint |
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | _required_ | Base URL of external memory service. Leave blank to enable offline mode (writes buffered). | `somabrain/memory_client.py` |
 | `SOMABRAIN_REDIS_URL` | `redis://sb_redis:6379/0` | Connection string for Redis cluster. | Constitution cache, rate limiting, hot memory cache. |
@@ -63,6 +65,39 @@ Tokens must be sent as `Authorization: Bearer <JWT>` in all API requests. The ba
 | `SOMABRAIN_JWT_AUDIENCE` | — | Expected JWT audience claim. | `somabrain/auth.py` |
 | `SOMABRAIN_SANDBOX_TENANTS` | — | Comma-separated allowlist of tenant ids. | `/context/evaluate` |
 | `SOMABRAIN_SANDBOX_TENANTS_FILE` | — | YAML file listing sandbox tenants. | `/context/evaluate` |
+| `SOMABRAIN_STRICT_REAL` | `0` | When `1/true`: forbid stub/dummy fallbacks (predictor, recall, embedder). | `somabrain/stub_audit.py`, `somabrain/app.py`, `memory_client.py` |
+| `SOMABRAIN_PREDICTOR_PROVIDER` | (config or `stub`) | Predictor provider precedence: env > config > default. Values: `mahal`, `llm`, `slow`, `stub` (stub disallowed if strict). | `somabrain/app.py` |
+| `SOMA_API_URL` | — | Full base URL used by tests / agents (overrides port assumptions). | Test harness, clients |
+| `SOMABRAIN_HTTP_MAX_CONNS` | `64` | httpx client max connections to memory service. | `memory_client.py` |
+| `SOMABRAIN_HTTP_KEEPALIVE` | `32` | httpx keep‑alive pool size. | `memory_client.py` |
+| `SOMABRAIN_HTTP_RETRIES` | `1` | Transport retries for async memory client. | `memory_client.py` |
+| `SOMABRAIN_MEMORY_FAST_ACK` | `0` | When `1`: remember() records outbox + schedules background persist (latency optimization). | `memory_client.py` |
+| `SOMABRAIN_RECALL_INPROCESS_ENABLE` | `1` (implicit if strict & no HTTP) | Enable deterministic embedder similarity recall when HTTP backend absent. | `memory_client.py` |
+| `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | `0` | When `1`: enable optional phase + quality_score weighting in in-process recall ranking. | `memory_client.py` |
+| `SOMABRAIN_MEMORY_PHASE_PRIORS` | — | Comma list `phase:multiplier` (e.g. `bootstrap:1.05,general:1.0,specialized:1.02`). Unknown phases => 1.0. | `memory_client.py` |
+| `SOMABRAIN_MEMORY_QUALITY_EXP` | `1.0` | Exponent applied to quality_score prior to weighting (allows sharpening or smoothing). | `memory_client.py` |
+| `SOMABRAIN_FORCE_FULL_STACK` | `0` | When `1`: require external memory (HTTP ok) + embedder + non-stub predictor for readiness; applies weighting to HTTP recall if weighting flag also set. | `app.py`, `memory_client.py` |
+| `SOMABRAIN_ENABLE_BEST` | `0` | Composite profile: auto-enables full stack + weighting with default priors (does not override explicitly set individual flags). | `app.py` |
+| `SOMABRAIN_REQUIRE_MEMORY` | `1` | When unset or `1`: external memory service mandatory; client defaults to `http://localhost:9595` and raises if unreachable (no silent in-process fallback). Set to `0` only for isolated algorithm tests. | `memory_client.py`, `app.py` |
+
+### Predictor Provider Precedence
+1. `SOMABRAIN_PREDICTOR_PROVIDER` (environment)
+2. `predictor_provider` in `config.yaml`
+3. Fallback `stub` (rejected when strict)
+
+On startup in strict mode with `stub` chosen, the process raises:
+```
+STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm.
+```
+
+### Strict Mode (Realism Enforcement)
+Setting `SOMABRAIN_STRICT_REAL=1` activates a no‑mocks contract:
+* Any call to a known stub path (`record_stub(...)`) throws `StubUsageError`.
+* Predictor provider `stub|baseline` rejected.
+* Runtime singletons (embedder / WM) must be real; dummy placeholders disabled.
+* Memory recall without HTTP backend uses real in‑process deterministic similarity if payloads exist; otherwise raises instructive error.
+
+Use strict mode in CI, staging, and prod. Leave off only during exploratory local prototyping.
 
 All secrets (Kafka passwords, Postgres credentials, private keys) must be delivered via Vault or
 cloud secret manager and injected as environment variables or mounted files.
@@ -233,5 +268,43 @@ If you prefer a different location, set `outbox_path` in your `config.yaml` and 
 is writable by the runtime user.
 
 ---
+
+## 12. Health & Readiness Contract
+
+The `/health` endpoint now returns extended realism diagnostics:
+```json
+{
+   "ok": true,
+   "components": {"memory": {"http": true}, "wm_items": "tenant-scoped", "api_version": "v1"},
+   "namespace": "sandbox",
+   "predictor_provider": "mahal",
+   "strict_real": true,
+   "embedder": {"provider": "tiny", "dim": 256},
+   "stub_counts": {},
+   "ready": true,
+   "memory_items": 42
+}
+```
+Readiness logic under strict mode requires:
+* Non‑stub predictor
+* Working embedder
+* Memory HTTP healthy OR at least one in‑process memory payload
+
+Agents SHOULD gate task consumption on `ready=true`.
+
+## 13. Mode Guidance (Recommended Profiles)
+
+| Mode | Use Case | Strict | Predictor Default | Recall Path | Notes |
+|------|----------|--------|-------------------|-------------|-------|
+| dev | Fast iteration | Off | stub | in‑process recent | Allows experiments; not suitable for validation |
+| strict-dev | Pre‑prod validation | On | mahal | HTTP or in‑process | CI + internal staging before public staging |
+| staging | Dress rehearsal | On | mahal (override per test) | HTTP primary / in‑process fallback | Full observability & alerting |
+| prod | Live | On | dynamic (mahal/llm) | HTTP primary / in‑process fallback | No stub counts permitted > 0 |
+| bench | Deterministic perf | On | mahal | in‑process deterministic | Pin seeds & isolate namespace |
+
+Set future umbrella variable `SOMABRAIN_MODE` (planned) to derive these; until then compose individual flags.
+
+---
+Maintain this document as the single canonical reference. Remove any duplicated environment tables elsewhere and link back here.
 
 Update this document whenever new configuration knobs are introduced or existing ones change.

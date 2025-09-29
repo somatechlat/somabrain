@@ -2,6 +2,8 @@
 
 **SomaBrain** is a deterministic, float-precision, hyperdimensional memory + transport engine that **learns from use**, **recalls under heavy superposition**, and **routes knowledge like a living network**. It plugs into your apps as a set of small, composable modules.
 
+> Strict Real Mode: The repository enforces a no-mocks contract in CI and production-like flows. See `docs/architecture/STRICT_MODE.md` for enforcement rationale and readiness gating.
+
 ---
 
 ## 🚀 Headline Features
@@ -147,9 +149,76 @@ alembic upgrade head
 ./scripts/export_openapi.py
 ```
 
+### 🚀 Fast Strict-Dev Quickstart (Realism, No Stubs)
+
+```bash
+export SOMABRAIN_STRICT_REAL=1
+export SOMABRAIN_PREDICTOR_PROVIDER=mahal
+uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
+curl -s localhost:9696/health | jq
+```
+
+If running the test harness (integration tests) a dedicated port `9797` is used to avoid collisions. Production containers still expose internal port `9696`.
+
+### 🔍 Health & Readiness Sample
+
+```json
+{
+  "ok": true,
+  "components": {"memory": {"http": false}, "wm_items": "tenant-scoped", "api_version": "v1"},
+  "namespace": "sandbox",
+  "predictor_provider": "mahal",
+  "strict_real": true,
+  "embedder": {"provider": "tiny", "dim": 256},
+  "stub_counts": {},
+  "ready": true,
+  "memory_items": 12
+}
+```
+`ready=false` under strict mode indicates: (a) predictor still stub, or (b) no memory backend and no in-process payloads yet, or (c) embedder missing.
+
+### 🔁 Recall Path Resolution
+1. HTTP memory service (if endpoint configured & healthy)
+2. Deterministic in-process similarity (real embeddings) if HTTP not available and local payloads exist
+3. Strict mode: raise instead of falling back to stub when neither path can serve
+
+### 🧪 Mode Overview
+
+| Mode | Strict | Predictor Default | Recall Strategy | Primary Use |
+|------|--------|-------------------|-----------------|-------------|
+| dev | Off | stub | in-process recent | Rapid prototyping |
+| strict-dev | On | mahal | HTTP → in-process | CI / pre-prod validation |
+| staging | On | mahal | HTTP → in-process | Dress rehearsal |
+| prod | On | dynamic (mahal/llm) | HTTP → in-process | Live traffic |
+| bench | On | mahal | in-process deterministic | Deterministic perf |
+
+Full variable list and precedence rules: `docs/CONFIGURATION.md`.
+
 The canonical stack automatically detects occupied host ports and allocates alternatives; the
 POC `ports.json` file records the assignments so CLI tooling and tests can hydrate the correct
 endpoints.
+
+## Full‑stack Kubernetes deployment
+
+- **API service** – `somabrain` listening on **port 9696** (ClusterIP). For external testing a **NodePort 30979** is exposed.
+- **Memory service** – `somamemory` listening on **port 9595** (ClusterIP).
+- **Redis** – `sb-redis` on **6379**.
+- **OPA** – `sb-opa` on **8181**.
+- Persistent volume claim `somabrain-outbox-pvc` stores outbox artifacts for the API.
+
+The stack can be started with:
+```bash
+kubectl apply -f k8s/full-stack.yaml
+```
+
+A quick health‑check:
+```bash
+curl http://<node-ip>:30979/health   # API
+curl http://<node-ip>:9595/health    # Memory service
+```
+Both should return `{"ok": true, ...}` and report `ready: true`.
+
+For CI you can run the integration test `tests/test_full_stack_k8s.py` which performs port‑forwarding, queries the health endpoints and verifies the PVC is bound.
 
 ## Contributing
 
@@ -205,3 +274,12 @@ the end of every sprint (two-week cadence) along with release notes and exemplar
 cd clients/python
 python cli.py "Hello Soma" --session sandbox-cli
 ```
+
+---
+Additional architecture, strict mode, and scaling docs:
+
+* `docs/CONFIGURATION.md` – canonical environment + mode matrix
+* `docs/architecture/STRICT_MODE.md` – no-stub enforcement details
+* `docs/developer/PRODUCTION_CONFIG.md` – high-impact prod knobs
+* `docs/developer/PERFORMANCE_SCALING.md` – performance levers
+* `docs/developer/MATH_VERIFICATION_REPORT.md` – invariant coverage

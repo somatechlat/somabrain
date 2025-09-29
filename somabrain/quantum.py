@@ -264,10 +264,19 @@ class QuantumLayer:
             cached = _sc.get_role(token)
             if cached is not None:
                 role_time, role_fft = cached
-                # Ensure shapes/types and populate in-memory caches
-                self._role_cache[token] = role_time.astype(self.cfg.dtype)
-                self._role_fft_cache[token] = role_fft.astype(np.complex128)
-                return self._role_cache[token]
+                # Validate cached role matches current dimension & spectrum size
+                D_expected = self.cfg.dim
+                n_bins_expected = D_expected // 2 + 1
+                if (
+                    isinstance(role_time, np.ndarray)
+                    and role_time.shape == (D_expected,)
+                    and isinstance(role_fft, np.ndarray)
+                    and role_fft.shape == (n_bins_expected,)
+                ):
+                    self._role_cache[token] = role_time.astype(self.cfg.dtype)
+                    self._role_fft_cache[token] = role_fft.astype(np.complex128)
+                    return self._role_cache[token]
+                # Mismatch: ignore cached value and regenerate for correctness
         except Exception:
             # If cache module is unavailable or read fails, fall back to in-memory
             # generation. We intentionally swallow exceptions to avoid breaking
@@ -724,6 +733,39 @@ class QuantumLayer:
         best_idx = int(np.argmax(scores))
         best_id = keys[valid[best_idx]]
         return best_id, float(scores[best_idx])
+
+
+def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
+    """Factory that returns a QuantumLayer implementation.
+
+    If `cfg.hybrid_math_enabled` is True and the optional `HybridQuantumLayer`
+    is available, this function will instantiate and return it. The import is
+    performed lazily to avoid circular imports at module-load time.
+    """
+    try:
+        hybrid_enabled = False
+        # If caller passed a runtime-like cfg with the feature flag, respect it.
+        if hasattr(cfg, "hybrid_math_enabled"):
+            hybrid_enabled = bool(getattr(cfg, "hybrid_math_enabled", False))
+        else:
+            # Best-effort: inspect global runtime config if available
+            try:
+                from somabrain.config import load_config
+
+                runtime_cfg = load_config()
+                hybrid_enabled = bool(getattr(runtime_cfg, "hybrid_math_enabled", False))
+            except Exception:
+                hybrid_enabled = False
+
+        if hybrid_enabled:
+            # Lazy import to avoid circular import at module import time
+            from somabrain.quantum_hybrid import HybridQuantumLayer
+
+            return HybridQuantumLayer(cfg)
+    except Exception:
+        # Best-effort: fall back to canonical QuantumLayer on any failure
+        pass
+    return QuantumLayer(cfg)
 
 
 # ---------------------------------------------------------------------------

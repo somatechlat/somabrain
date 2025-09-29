@@ -29,7 +29,7 @@ Classes:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
@@ -251,6 +251,11 @@ class MemoryPayload(BaseModel):
 
     # Minimal episodic payload
     task: Optional[str] = None
+    content: Optional[str] = None
+    phase: Optional[str] = None
+    quality_score: Optional[float] = None
+    domains: Optional[Union[List[str], str]] = None
+    reasoning_chain: Optional[Union[List[str], str]] = None
     importance: int = 1
     memory_type: str = "episodic"
     timestamp: Optional[float] = None
@@ -545,6 +550,19 @@ class HealthResponse(BaseModel):
     trace_id: Optional[str] = None
     deadline_ms: Optional[str] = None
     idempotency_key: Optional[str] = None
+    constitution_version: Optional[str] = None
+    constitution_status: Optional[str] = None
+    minimal_public_api: Optional[bool] = None
+    strict_real: Optional[bool] = None
+    predictor_provider: Optional[str] = None
+    full_stack: Optional[bool] = None
+    embedder: Optional[Dict[str, Any]] = None
+    stub_counts: Optional[Dict[str, int]] = None
+    ready: Optional[bool] = None
+    memory_items: Optional[int] = None
+    predictor_ok: Optional[bool] = None
+    memory_ok: Optional[bool] = None
+    embedder_ok: Optional[bool] = None
 
 
 class PersonalityState(BaseModel):
