@@ -1,6 +1,6 @@
-Kubernetes local run instructions (dev)
+Kubernetes full-stack run instructions (dev/staging parity)
 
-This file explains quick steps to try the minimal manifests with `kind` or `minikube`.
+These steps mirror `k8s/full-stack.yaml`, which targets the `somabrain-prod` namespace by default. Adjust the namespace if you are testing in a sandbox (e.g. `somabrain-dev`).
 
 1) Create a local cluster (kind example):
 
@@ -8,38 +8,39 @@ This file explains quick steps to try the minimal manifests with `kind` or `mini
 # create kind cluster
 kind create cluster --name somabrain
 
-# build somabrain image locally and load into kind
+# build somabrain image locally and load into kind (optional for local overrides)
 docker build -t somatechlat/somabrain:dev .
 kind load docker-image somatechlat/somabrain:dev --name somabrain
 
-# if you have a memory service image, build and load it too
-# docker build -t somatechlat/somamemory:dev path/to/memory
+# optional: pre-build other service images and load them if you customize manifests
 # kind load docker-image somatechlat/somamemory:dev --name somabrain
 ```
 
 2) Apply the manifests:
 
 ```bash
-kubectl apply -f k8s/minimal-manifests.yaml
+kubectl apply -f k8s/full-stack.yaml
+
+# verify namespace and pods
+kubectl get pods -n somabrain-prod
+kubectl get svc -n somabrain-prod
 ```
 
 3) Make Somabrain and other services reachable from your host for tests:
 
-Option A (port-forward):
+Option A (port-forward, recommended for parity with CI and strict-real tests):
 
 ```bash
-# forward somabrain
-kubectl -n somabrain-dev port-forward svc/somabrain 9696:9696 &
-# forward memory service
-kubectl -n somabrain-dev port-forward svc/somamemory 9595:9595 &
-# forward redis if desired
-kubectl -n somabrain-dev port-forward svc/sb-redis 6379:6379 &
-# forward opa
-kubectl -n somabrain-dev port-forward svc/sb-opa 8181:8181 &
-```
+kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
+kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
+kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
+kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
+kubectl -n somabrain-prod port-forward svc/sb-opa 8181:8181 &
 
-Option B (NodePort):
-- Somabrain is configured in the manifest to use NodePort 30096; use `kubectl get nodes -o wide` and `kubectl get svc -n somabrain-dev somabrain` to determine the node IP and access it via `NODE_IP:30096`.
+# or run helper script for the main API tunnel
+./scripts/port_forward_api.sh &
+```
 
 4) Run prechecks and tests from `.venv`:
 
@@ -48,14 +49,14 @@ Option B (NodePort):
 python scripts/sb_precheck.py
 
 # run integration tests (example)
-SOMA_KAFKA_URL=sb-kafka:9092 \ 
-SOMABRAIN_OPA_URL=http://localhost:8181 \ 
-SOMA_REDIS_URL=redis://localhost:6379/0 \ 
-SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \ 
+SOMABRAIN_KAFKA_URL=kafka://localhost:9092 \
+SOMABRAIN_OPA_URL=http://localhost:8181 \
+SOMABRAIN_REDIS_URL=redis://localhost:6379/0 \
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \
 python -m pytest -m integration -q -r a --maxfail=5
 ```
 
 Notes:
-- For Kafka in Kubernetes use Strimzi or Redpanda operator; the minimal manifests intentionally omit Kafka since operator installation is recommended.
+- For Kafka in Kubernetes use Strimzi or Redpanda operator; the full-stack manifest assumes operator-managed brokers or an external bootstrap URL.
 - If you run tests from host, prefer port-forward per-service so the host `scripts/sb_precheck.py` can reach the services at `localhost`.
 - For production-grade deployments create Helm charts or Kustomize overlays and configure resource requests/limits, probes, and RBAC.

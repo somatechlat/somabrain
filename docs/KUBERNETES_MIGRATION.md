@@ -18,26 +18,31 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
   - persistence/backups -> PersistentVolumeClaims + StorageClass
 
 ### Required Kubernetes resources
-- Namespace (e.g. `somabrain-dev`)
+- Namespace (e.g. `somabrain-prod` in the provided manifest)
 - Deployments or StatefulSets for stateful services
 - Services (ClusterIP for internal connectivity; NodePort/LoadBalancer for host access)
 - ConfigMaps for non-sensitive configuration (SOMABRAIN envs, OPA policies)
 - Secrets for credentials (DB users, Kafka TLS, etc.)
+- For development namespaces, set `SOMABRAIN_DISABLE_AUTH=1` in the API ConfigMap so you can hit
+  `/remember` and `/recall` without provisioning JWT keys. Remove the flag (or set to `0`) before
+  promoting manifests to staging/production.
+- Point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at the in-cluster DNS name
+  `http://somamemory.<namespace>.svc.cluster.local:9595` so the API uses the deployed memory
+  service instead of localhost defaults.
 - PersistentVolumeClaims for Postgres/Qdrant/Redis if you need durable storage
 - Probes (readiness & liveness) for Somabrain and memory service
 - RBAC if using operators that require it
 - NetworkPolicy if you need isolation (optional for dev)
 
 ### Networking and host access
-- In-cluster services should reference each other by DNS name (service.namespace.svc.cluster.local). For the Somabrain app use environment variables like:
-  - SOMA_KAFKA_URL=sb-kafka:9092
+- In-cluster services should reference each other by DNS name (`service.namespace.svc.cluster.local`). For the Somabrain app use environment variables like:
+  - SOMABRAIN_KAFKA_URL=kafka://sb-kafka:9092
   - SOMABRAIN_OPA_URL=http://sb-opa:8181
-  - SOMA_REDIS_URL=redis://sb-redis:6379/0
+  - SOMABRAIN_REDIS_URL=redis://sb-redis:6379/0
   - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://somamemory:9595
 - To reach services from the host (for running `.venv`-based tests):
-  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (9696, 9092, 8181, 6379, 9595)
-  - Option B: expose Somabrain via NodePort (or LoadBalancer in minikube) and access via minikube IP or localhost for kind with node port mapping
-  - Option C: use a LoadBalancer implementation (MetalLB) on kind to provide cluster IPs reachable from host
+  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696/9797, memory 9595, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
+  - Option B: expose Somabrain via LoadBalancer/Ingress if your cluster provides it (not configured in `full-stack.yaml`).
 
 ### Storage and stateful considerations
 - For development, you can run Redis and Qdrant with ephemeral storage. For persistence and integration testing that checks persistence to Postgres/Qdrant:
@@ -66,12 +71,12 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
 - Networking differences: host-local access differs; mitigate by testing both host-run (port-forward) and cluster-run (tests executed in a test pod).
 - Stateful data persistence: ensure PVC size and StorageClass are available in the target cluster before migrating.
 
-### Minimal testing checklist
-- [ ] Create a `somabrain-dev` namespace
-- [ ] Deploy Redis, OPA, Memory, and Somabrain in the namespace
-- [ ] Expose Somabrain on localhost:9696 via `kubectl port-forward` or NodePort
-- [ ] Run `scripts/sb_precheck.py` from `.venv` with host port forwards in place
-- [ ] Run integration tests; if tests are flaky, run them from a job/pod inside the cluster to ensure same network view
+### Full-stack validation checklist
+- [ ] Create the target namespace (e.g. `somabrain-dev` or `somabrain-prod`)
+- [ ] Apply `k8s/full-stack.yaml` (or your environment-specific overlay)
+- [ ] Port-forward Somabrain service to localhost:9696 (and optional 9797) and verify `/health`
+- [ ] Run `scripts/sb_precheck.py` against forwarded services
+- [ ] Execute integration test suite from `.venv` (or in-cluster job) against the stack
 
 ### Example commands (local kind cluster)
 
@@ -84,16 +89,20 @@ docker build -t somatechlat/somabrain:dev .
 kind create cluster --name somabrain
 # load image into kind
 kind load docker-image somatechlat/somabrain:dev --name somabrain
-# apply manifests
-kubectl apply -f k8s/minimal-manifests.yaml -n somabrain-dev
-# port-forward somabrain to localhost:9696
-kubectl -n sombrain-dev port-forward svc/somabrain 9696:9696 &
+# apply manifests (namespace is created by the manifest)
+kubectl apply -f k8s/full-stack.yaml
+# port-forward services needed for host tests
+kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
+kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
+kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
+kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 # then run prechecks from host
 python scripts/sb_precheck.py
 ```
 
 ### Next steps & migration plan
-1. Create k8s manifests for dev (this repo includes `k8s/minimal-manifests.yaml` as a starting point).
+1. Create or tailor the full-stack manifests (`k8s/full-stack.yaml`) for your namespace and secrets.
 2. Stand up a local cluster (kind/minikube) and iterate on manifests until the prechecks pass.
 3. Decide on operator choices for Kafka/Postgres/Qdrant and install them in a staging cluster.
 4. Migrate data from current local volumes (if needed) into PVCs.
@@ -105,7 +114,7 @@ python scripts/sb_precheck.py
 ---
 
 File pointers:
-- `k8s/minimal-manifests.yaml` — minimal manifests for dev testing (Namespace, Deployments, Services)
+- `k8s/full-stack.yaml` — opinionated full deployment manifest for Somabrain + dependencies
 - `k8s/README.md` — quick local-run instructions
 
 If you'd like I can now generate a Helm chart skeleton, or scaffold separate manifests per service and a Kustomize overlay for dev/staging/production.

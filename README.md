@@ -113,12 +113,13 @@ eta_pred = expected_arrival_time(P)
 
 ## 📦 Modules (drop-in)
 
-* `embeddings.py` – TinyDeterministicEmbedder (unit-norm)
-* `quantum.py` – HRR/QuantumLayer (FFT bind/unbind, Wiener)
-* `memory/density.py` – ρ update + scoring (PSD/trace)
-* `transport/flow_opt.py` – sparse CG + FRGO updater
-* `transport/bridge.py` – heat-kernel Sinkhorn (Krylov expm-v)
-* `adaptation.py` – bounded OCO (λ, μ, ν, …)
+* `somabrain/embeddings.py` – TinyDeterministicEmbedder (unit-norm)
+* `somabrain/quantum.py` – HRR/QuantumLayer (FFT bind/unbind, Wiener)
+* `memory/density.py` – ρ update + scoring (PSD/trace) *[root directory]*
+* `somabrain/math/bridge.py` – heat-kernel Sinkhorn planning
+* `somabrain/math/sinkhorn.py` – Sinkhorn scaling operations  
+* `somabrain/math/graph_heat.py` – graph heat kernel operations
+* `somabrain/learning/adaptation.py` – bounded OCO (λ, μ, ν, …)
 * `tests/` – property tests + benchmarks
 
 ---
@@ -158,8 +159,86 @@ uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
 curl -s localhost:9696/health | jq
 ```
 
-If running the test harness (integration tests) a dedicated port `9797` is used to avoid collisions. Production containers still expose internal port `9696`.
+If running the integration harness a dedicated port `9797` is used to avoid collisions. Production containers still expose internal port `9696`.
 
+### ✅ Live Cognition Verification (real services)
+
+When the Kubernetes stack is port-forwarded back to localhost, run the cognition suite to prove the brain learns from real interactions:
+
+```bash
+export SOMA_API_URL=http://127.0.0.1:9797
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
+export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
+export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
+pytest -vv tests/test_cognition_learning.py
+```
+
+The tests confirm three signals:
+
+* `/remember` increases the memory item count and `/recall` returns live entries.
+* `/context/feedback` writes new rows into `feedback_events` and `token_usage` via Postgres.
+* Session working-memory history grows monotonically across evaluate/feedback loops.
+
+If any check fails, inspect the port-forward logs (e.g. `/tmp/pf-*.log`) and re-run once the services return `{"ok": true}` from their `/health` probes.
+
+### Kubernetes Test Port (9797)
+The full-stack manifest includes an additional ClusterIP service `somabrain-test` exposing port **9797** mapped to the primary pod container port 9696. This lets you:
+
+- Isolate test / load / learning verification traffic
+- Keep dashboards and alert routes pointed at the canonical `somabrain` service on 9696
+
+Port-forward for local validation and run a quick learning probe directly from the repo:
+
+```bash
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797
+export SOMA_API_URL=http://127.0.0.1:9797
+python - <<'PY'
+import os
+import time
+import requests
+
+BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9797")
+SESSION = "doc-check"
+HEADERS = {"X-Model-Confidence": "2.0"}
+
+task = {"coord": None, "payload": {"task": "alpha waves and cognitive resonance"}}
+requests.post(f"{BASE}/remember", json=task, headers=HEADERS, timeout=10).raise_for_status()
+
+before = requests.get(f"{BASE}/context/adaptation/state", timeout=10).json()
+for _ in range(3):
+    ev = requests.post(
+        f"{BASE}/context/evaluate",
+        json={"session_id": SESSION, "query": "neural reward modulation", "top_k": 5},
+        headers=HEADERS,
+        timeout=10,
+    )
+    ev.raise_for_status()
+    prompt = ev.json()["prompt"]
+    fb = requests.post(
+        f"{BASE}/context/feedback",
+        json={
+            "session_id": SESSION,
+            "query": "neural reward modulation",
+            "prompt": prompt,
+            "response_text": "ok",
+            "utility": 0.8,
+            "reward": 0.8,
+        },
+        headers=HEADERS,
+        timeout=10,
+    )
+    fb.raise_for_status()
+    time.sleep(0.05)
+
+after = requests.get(f"{BASE}/context/adaptation/state", timeout=10).json()
+print({
+    "alpha_delta": after["retrieval"]["alpha"] - before["retrieval"]["alpha"],
+    "lambda_delta": after["utility"]["lambda_"] - before["utility"]["lambda_"],
+})
+PY
+```
+
+You should observe positive deltas for `alpha` and `lambda_`, confirming adaptation is active. Any HTTP 4xx/5xx indicates the stack is not fully wired.
 ### 🔍 Health & Readiness Sample
 
 ```json
@@ -200,25 +279,75 @@ endpoints.
 
 ## Full‑stack Kubernetes deployment
 
-- **API service** – `somabrain` listening on **port 9696** (ClusterIP). For external testing a **NodePort 30979** is exposed.
-- **Memory service** – `somamemory` listening on **port 9595** (ClusterIP).
-- **Redis** – `sb-redis` on **6379**.
-- **OPA** – `sb-opa` on **8181**.
-- Persistent volume claim `somabrain-outbox-pvc` stores outbox artifacts for the API.
+- **API service** – `somabrain` (ClusterIP) exposing container port **9696**. A sibling service,
+  `somabrain-test`, maps **9797 → 9696** for load or soak tests without touching dashboards.
+- **Memory service** – `somamemory` (ClusterIP) on **9595**. The API points at the DNS name
+  `http://somamemory.somabrain-prod.svc.cluster.local:9595` by default.
+- **Redis** – `sb-redis` on **6379** and **OPA** – `sb-opa` on **8181**.
+- Persistent volume claim `somabrain-outbox-pvc` stores the API outbox artifacts.
+- Authentication is disabled by default via `SOMABRAIN_DISABLE_AUTH=1` in the `somabrain-env`
+  ConfigMap so you can hit endpoints immediately. Remove the flag and populate the JWT secret to
+  re-enable auth (see `docs/CONFIGURATION.md`).
 
-The stack can be started with:
+Apply the stack:
 ```bash
 kubectl apply -f k8s/full-stack.yaml
 ```
 
-A quick health‑check:
+Port‑forward the services for local validation:
 ```bash
-curl http://<node-ip>:30979/health   # API
-curl http://<node-ip>:9595/health    # Memory service
+kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696   # primary API
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   # optional test port
+kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595  # memory service (optional)
+kubectl -n somabrain-prod port-forward svc/postgres 55432:5432   # Postgres (feedback + token ledger)
 ```
-Both should return `{"ok": true, ...}` and report `ready: true`.
 
-For CI you can run the integration test `tests/test_full_stack_k8s.py` which performs port‑forwarding, queries the health endpoints and verifies the PVC is bound.
+Need the forwards to survive a shell restart? Run them in the background and log to `/tmp`:
+
+```bash
+nohup kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696         > /tmp/pf-somabrain.log      2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   > /tmp/pf-somabrain-test.log 2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595       > /tmp/pf-somamemory.log     2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379         > /tmp/pf-redis.log          2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/postgres 55432:5432        > /tmp/pf-postgres.log        2>&1 &
+```
+Tail the corresponding log file if a forward drops unexpectedly. When finished, clean them up with
+`pkill -f "kubectl -n somabrain-prod port-forward"`.
+
+Health probes:
+```bash
+curl http://127.0.0.1:9696/health
+curl http://127.0.0.1:9797/health  # same pod, test service
+curl http://127.0.0.1:9595/health  # memory service
+PGPASSWORD=somabrain-dev-password psql "host=127.0.0.1 port=55432 user=somabrain dbname=somabrain" -c 'select 1;'
+```
+All should report `{"ok": true, ...}` with `ready: true` once memory and Redis are reachable.
+
+To verify in-cluster learning, run the lightweight end-to-end script that stores 10 memories and
+checks recall:
+```bash
+python benchmarks/agent_coding_bench.py --base http://127.0.0.1:9696 --tenant benchdev
+```
+Or reuse the existing pytest scenario that encodes and recalls a memory via the agent memory
+module:
+```bash
+pytest tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
+```
+Both commands fail fast if encode/recall plumbing is broken.
+
+After forwarding the test service (`somabrain-test`), you can force the pytest run to hit the
+forwarded address explicitly:
+
+```bash
+SOMA_API_URL=http://127.0.0.1:9797 .venv/bin/pytest \
+  tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
+```
+
+The test prints `[pytest_configure] STRICT REAL MODE enabled` and reports a single `.` when the
+live stack (API + Redis + memory) is wired correctly.
+
+For CI you can run the integration test `tests/test_full_stack_k8s.py`; it performs the same
+port‑forwarding, queries health endpoints, and verifies the PVC is bound before exercising the API.
 
 ## Contributing
 
