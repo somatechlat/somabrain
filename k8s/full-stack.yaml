@@ -8,7 +8,6 @@
 # - Memory Service (SomaFractalMemory) Deployment + Service (port 9595)
 # - Redis (cache) Deployment + Service
 # - OPA (policy) Deployment + Service
-# - Optional NodePort 9797 duplicate service for test harness mapping (exposes same pods)
 # - PersistentVolumeClaim for somabrain outbox/logs
 # NOTE: Replace image tags with immutable digests for production.
 
@@ -33,6 +32,8 @@ metadata:
   annotations:
     somabrain.io/config-version: "1"
 data:
+  SOMABRAIN_HOST: "0.0.0.0"
+  SOMABRAIN_PORT: "9696"
   SOMABRAIN_ENABLE_BEST: "1"
   SOMABRAIN_STRICT_REAL: "1"
   SOMABRAIN_FORCE_FULL_STACK: "1"
@@ -44,11 +45,24 @@ data:
   SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
   SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
   # Endpoint for fractal memory inside cluster
-  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory:9595"
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory.somabrain-prod.svc.cluster.local:9595"
+  SOMABRAIN_REDIS_URL: "redis://sb-redis.somabrain-prod.svc.cluster.local:6379/0"
+  SOMABRAIN_REDIS_HOST: "sb-redis.somabrain-prod.svc.cluster.local"
+  SOMABRAIN_REDIS_PORT: "6379"
+  SOMABRAIN_OPA_URL: "http://sb-opa.somabrain-prod.svc.cluster.local:8181"
+  SOMABRAIN_DISABLE_AUTH: "1"
   # Observability endpoints (optional)
   SOMABRAIN_OTLP_ENDPOINT: "http://otel-collector:4318" # adjust or remove
   # Tenancy / defaults
   SOMABRAIN_DEFAULT_TENANT: "sandbox"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: somabrain-overrides
+  namespace: somabrain-prod
+data: {}
 
 ---
 apiVersion: v1
@@ -58,12 +72,107 @@ metadata:
   namespace: somabrain-prod
 stringData:
   # Populate these with real values via sealed-secrets / external secret operator
-  SOMABRAIN_JWT_PUBLIC_KEY_PATH: "/secrets/jwt_pub.pem"  # mount path below
-  jwt_public_key.pem: "REPLACE_WITH_BASE64_FREE_PEM"
+  SOMABRAIN_JWT_PUBLIC_KEY_PATH: ""
+  jwt_public_key.pem: ""
   SOMABRAIN_KAFKA_URL: "kafka:9092"
-  SOMABRAIN_POSTGRES_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
-  SOMABRAIN_TOKEN_LEDGER_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
-  SOMABRAIN_FEEDBACK_DSN: "postgresql://somabrain:change_me@postgres:5432/somabrain"
+  SOMABRAIN_POSTGRES_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_TOKEN_LEDGER_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_FEEDBACK_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: somabrain-postgres
+  namespace: somabrain-prod
+type: Opaque
+stringData:
+  POSTGRES_DB: "somabrain"
+  POSTGRES_USER: "somabrain"
+  POSTGRES_PASSWORD: "somabrain-dev-password"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: somabrain-prod
+  labels:
+    app: postgres
+spec:
+  selector:
+    app: postgres
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: somabrain-prod
+spec:
+  serviceName: postgres
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15.7-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - secretRef:
+                name: somabrain-postgres
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+      securityContext:
+        fsGroup: 999
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
 
 ---
 apiVersion: v1
@@ -76,6 +185,102 @@ spec:
   resources:
     requests:
       storage: 2Gi
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: somabrain-migrate
+  namespace: somabrain-prod
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        job: somabrain-migrate
+    spec:
+      restartPolicy: OnFailure
+      volumes:
+        - name: code-vol
+          emptyDir: {}
+        - name: overrides-vol
+          configMap:
+            name: somabrain-overrides
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15.7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - >-
+              until pg_isready -h postgres.somabrain-prod.svc.cluster.local -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo "waiting for postgres"; sleep 2; done
+          envFrom:
+            - secretRef:
+                name: somabrain-postgres
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+        - name: copy-code
+          image: alpine/git
+          command:
+            - sh
+            - -c
+            - |
+              git clone https://github.com/somatechlat/somabrain.git /src && cp -r /src/* /app
+          volumeMounts:
+            - name: code-vol
+              mountPath: /app
+        - name: apply-overrides
+          image: alpine:3.20
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -euo pipefail
+              if [ -f /overrides/context_route.py ]; then
+                cp /overrides/context_route.py /app/somabrain/api/context_route.py
+              fi
+          volumeMounts:
+            - name: overrides-vol
+              mountPath: /overrides
+            - name: code-vol
+              mountPath: /app
+      containers:
+        - name: migrate
+          image: python:3.13-slim
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: somabrain-env
+            - secretRef:
+                name: somabrain-secrets
+            - secretRef:
+                name: somabrain-postgres
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              cd /app
+              pip install --upgrade pip
+              pip install -e .
+              pip install alembic psycopg2-binary
+              alembic upgrade head
+          volumeMounts:
+            - name: code-vol
+              mountPath: /app
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
 
 ---
 apiVersion: v1
@@ -93,37 +298,24 @@ spec:
   type: ClusterIP
 
 ---
-# Optional NodePort for external test harness hitting 9797 while pod listens 9696
-apiVersion: v1
-kind: Service
-metadata:
-  name: somabrain-nodeport
-  namespace: somabrain-prod
-spec:
-  selector:
-    app: somabrain
-  type: NodePort
-  ports:
-    - name: http
-      port: 9696
-      targetPort: 9696
-      nodePort: 30979 # valid NodePort range (30000‑32767)
-
----
+# Dedicated test ClusterIP service exposing port 9797 internally mapping to same pods.
+# Useful for segregating monitoring or test traffic without altering primary service.
 apiVersion: v1
 kind: Service
 metadata:
   name: somabrain-test
   namespace: somabrain-prod
+  labels:
+    app: somabrain
+    purpose: test-port
 spec:
   selector:
     app: somabrain
-  type: NodePort
   ports:
     - name: http-test
-      port: 9696
+      port: 9797
       targetPort: 9696
-      nodePort: 30980 # test exposure (valid range)
+  type: ClusterIP
 
 ---
 apiVersion: apps/v1
@@ -132,7 +324,7 @@ metadata:
   name: somabrain
   namespace: somabrain-prod
 spec:
-  replicas: 2
+  replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
@@ -142,11 +334,49 @@ spec:
       labels:
         app: somabrain
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15.7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - >-
+              until pg_isready -h postgres.somabrain-prod.svc.cluster.local -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo "waiting for postgres"; sleep 2; done
+          envFrom:
+            - secretRef:
+                name: somabrain-postgres
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+        - name: copy-code
+          image: alpine/git
+          command:
+            - sh
+            - -c
+            - |
+              git clone https://github.com/somatechlat/somabrain.git /src && cp -r /src/* /app
+          volumeMounts:
+            - name: code-vol
+              mountPath: /app
       containers:
         - name: somabrain
           image: python:3.13-slim
           imagePullPolicy: IfNotPresent
-          command: ["sh", "-c", "pip install -e . && uvicorn somabrain.app:app --host 0.0.0.0 --port 9696"]
+          command:
+            - "sh"
+            - "-c"
+            - |
+              export PYTHONPATH=/app
+              pip install --upgrade pip && \
+              pip install -e . && \
+              pip install uvicorn requests psycopg2-binary alembic && \
+              alembic upgrade head && \
+              python -m uvicorn somabrain.app:app --host "${SOMABRAIN_HOST:-0.0.0.0}" --port "${SOMABRAIN_PORT:-9696}"
           workingDir: /app
           ports:
             - containerPort: 9696
@@ -155,6 +385,8 @@ spec:
                 name: somabrain-env
             - secretRef:
                 name: somabrain-secrets
+            - secretRef:
+                name: somabrain-postgres
           volumeMounts:
             - name: outbox-vol
               mountPath: /app/data/somabrain
@@ -163,7 +395,8 @@ spec:
               readOnly: true
             - name: code-vol
               mountPath: /app
-              readOnly: true
+            - name: overrides-vol
+              mountPath: /overrides
           readinessProbe:
             httpGet:
               path: /health
@@ -180,11 +413,11 @@ spec:
             failureThreshold: 3
           resources:
             requests:
-              cpu: "250m"
-              memory: "512Mi"
+              cpu: "200m"
+              memory: "256Mi"
             limits:
-              cpu: "1"
-              memory: "1Gi"
+              cpu: "600m"
+              memory: "768Mi"
       volumes:
         - name: outbox-vol
           persistentVolumeClaim:
@@ -196,9 +429,10 @@ spec:
               - key: jwt_public_key.pem
                 path: jwt_pub.pem
         - name: code-vol
-          hostPath:
-            path: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
-            type: Directory
+          emptyDir: {}
+        - name: overrides-vol
+          configMap:
+            name: somabrain-overrides
 
 ---
 apiVersion: v1
@@ -239,22 +473,55 @@ spec:
             - |
               pip install fastapi uvicorn && \
               python - <<'PY'
+              import os
+              import time
+              import hashlib
+              from threading import RLock
               from fastapi import FastAPI, Request
+              import uvicorn
+
               app = FastAPI()
+              _STORE = []
+              _LOCK = RLock()
+
+              def _coord(key: str):
+                  h = hashlib.blake2b(key.encode(), digest_size=12).digest()
+                  a = int.from_bytes(h[0:4], 'big')/2**32
+                  b = int.from_bytes(h[4:8], 'big')/2**32
+                  c = int.from_bytes(h[8:12], 'big')/2**32
+                  return f"{2*a-1:.6f},{2*b-1:.6f},{2*c-1:.6f}"
+
               @app.get('/health')
               def health():
-                  return {'ok': True, 'items': 0}
+                  with _LOCK:
+                    return {'ok': True, 'items': len(_STORE)}
+
               @app.post('/remember')
               async def remember(body: dict, request: Request):
-                  return {'coord': '0,0,0'}
+                  payload = body.get('payload') or {}
+                  coord = body.get('coord') or _coord(str(payload.get('id') or time.time()))
+                  record = {'coord': coord, 'payload': payload}
+                  with _LOCK:
+                      _STORE.append(record)
+                  return {'coord': coord, 'payload': payload}
+
               @app.post('/recall')
               async def recall(body: dict):
-                  return []
-              import uvicorn
-              uvicorn.run(app, host='0.0.0.0', port=9595)
+                  top_k = int(body.get('top_k') or 5)
+                  with _LOCK:
+                      return [rec['payload'] for rec in _STORE[-top_k:]][::-1]
+
+              host = os.getenv('SOMAMEMORY_HOST', '0.0.0.0')
+              port = int(os.getenv('SOMAMEMORY_PORT', '9595'))
+              uvicorn.run(app, host=host, port=port)
               PY
           ports:
             - containerPort: 9595
+          env:
+            - name: SOMAMEMORY_HOST
+              value: "0.0.0.0"
+            - name: SOMAMEMORY_PORT
+              value: "9595"
           envFrom:
             - configMapRef:
                 name: somabrain-env
@@ -275,10 +542,10 @@ spec:
           resources:
             requests:
               cpu: "10m"
-              memory: "16Mi"
-            limits:
-              cpu: "50m"
               memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
 
 ---
 apiVersion: v1
