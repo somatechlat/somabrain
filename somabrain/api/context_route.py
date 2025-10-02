@@ -19,6 +19,9 @@ from somabrain.api.schemas.context import (
     FeedbackRequest,
     FeedbackResponse,
     MemoryItem,
+    AdaptationStateResponse,
+    RetrievalWeightsState,
+    UtilityWeightsState,
 )
 from somabrain.context import ContextPlanner
 from somabrain.context.factory import get_context_builder, get_context_planner
@@ -238,3 +241,35 @@ def _get_adaptation(builder, planner: ContextPlanner) -> AdaptationEngine:
 
 def _make_event_id(session_id: str) -> str:
     return f"{session_id}:{uuid.uuid4().hex}"
+
+
+@router.get("/adaptation/state", response_model=AdaptationStateResponse)
+async def adaptation_state_endpoint(request: Request, auth=Depends(auth_guard)):
+    """Return current adaptation weights (retrieval + utility) and history length.
+
+    Useful for external monitoring/tests to verify learning progress without
+    mutating state.
+    """
+    builder = get_context_builder()
+    planner = get_context_planner()
+    adapter = _get_adaptation(builder, planner)
+    retrieval_state = RetrievalWeightsState(
+        alpha=adapter.retrieval_weights.alpha,
+        beta=adapter.retrieval_weights.beta,
+        gamma=adapter.retrieval_weights.gamma,
+        tau=adapter.retrieval_weights.tau,
+    )
+    utility_state = UtilityWeightsState(
+        lambda_=adapter.utility_weights.lambda_,
+        mu=adapter.utility_weights.mu,
+        nu=adapter.utility_weights.nu,
+    )
+    # Access protected members for observability (history length, lr)
+    history_len = len(getattr(adapter, "_history", []))
+    learning_rate = float(getattr(adapter, "_lr", 0.0))
+    return AdaptationStateResponse(
+        retrieval=retrieval_state,
+        utility=utility_state,
+        history_len=history_len,
+        learning_rate=learning_rate,
+    )

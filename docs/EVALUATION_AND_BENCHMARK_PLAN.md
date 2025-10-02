@@ -147,6 +147,37 @@ Notes on environment:
 - Record CPU, number of cores, memory, disk type (SSD/HDD), Docker host OS.
 - For local testing use a single-node, reproducible Docker Compose; for scale runs, use a dedicated host or cloud instances with pinned CPUs.
 
+### 3.4 Live cognition verification (strict real mode)
+
+Goal: demonstrate that the deployed brain updates memory, feedback stores, and session history when driven through public endpoints.
+
+1. Prepare connectivity via `kubectl port-forward`:
+  - `somabrain-test` → `127.0.0.1:9797`
+  - `somamemory` → `127.0.0.1:9595`
+  - `sb-redis` → `127.0.0.1:6379`
+  - `postgres` → `127.0.0.1:55432`
+2. Export live endpoint variables (pytest skips automatically if any health probe fails):
+
+  ```bash
+  export SOMA_API_URL=http://127.0.0.1:9797
+  export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
+  export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
+  export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
+  ```
+
+3. Execute the cognition suite:
+
+  ```bash
+  pytest -vv tests/test_cognition_learning.py
+  ```
+
+Success criteria:
+- Memory `/health` reports an increased `items` count after `/remember`, and `/recall` returns at least one entry.
+- `/context/feedback` writes rows into `feedback_events` and `token_usage` in Postgres (validated via SQL queries inside the test).
+- Session `working_memory` lengths grow monotonically across repeated evaluate/feedback cycles.
+
+If any assertion fails, re-check the forwards (`pgrep -fl "kubectl.*port-forward"`), inspect `/tmp/pf-*.log`, and only rerun once each `/health` endpoint returns `{"ok": true}`.
+
 ## 4. Numerics correctness & tests
 
 Tests to assert invariants (implement as unit tests / property tests):

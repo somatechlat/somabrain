@@ -71,6 +71,81 @@ pytest -m integration -q
 ```
 The suite reads `ports.json` to determine service endpoints.
 
+To confirm the memory round-trip workflow without spinning up the full stack, reuse an existing
+pytest scenario that exercises the agent memory module:
+```bash
+pytest tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
+```
+The test clears the in-process store, encodes a memory, and asserts it can be recalled via
+`somabrain.agent_memory.recall_memory`.
+
+### Using an Existing Kubernetes Stack (Strict Workflow)
+When you have a full stack running in Kubernetes, bridge the cluster back to localhost and reuse
+the strict pytest scenario to validate the live services:
+
+```bash
+# Optional: clear any lingering forwards from previous sessions
+pkill -f "kubectl -n somabrain-prod port-forward" || true
+
+# 1. Forward the production API on 9696 using the helper script, then forward test/memory/redis (detach + log to /tmp)
+./scripts/port_forward_api.sh
+nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   > /tmp/pf-somabrain-test.log 2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595       > /tmp/pf-somamemory.log     2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379         > /tmp/pf-redis.log          2>&1 &
+
+# 2. Sanity-check health once the tunnels are up
+curl -s http://127.0.0.1:9696/health | jq '.ok'
+curl -s http://127.0.0.1:9797/health | jq '.ok'
+curl -s http://127.0.0.1:9595/health | jq '.ok'
+
+# 3. Run the strict memory integration against the forwarded endpoint
+SOMA_API_URL=http://127.0.0.1:9797 .venv/bin/pytest \
+  tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
+
+# 4. Stop the port-forwards when finished
+pkill -f "kubectl -n somabrain-prod port-forward"
+```
+
+Successful runs report `true` from the health probes and a single `.` from pytest. Inspect the
+log files in `/tmp/pf-*.log` if any command reports errors.
+
+### Live Cognition Learning Suite
+These end-to-end tests assert that the deployed stack really learns when driven through
+`/context/evaluate`, `/context/feedback`, and `/remember`. They require **live services** — no mocks
+or docker-compose shortcuts — and will be skipped automatically if the API, memory, or Redis health
+checks fail.
+
+1. Ensure port-forwards (or direct connections) exist for:
+  - Somabrain API: `http://127.0.0.1:9797`
+  - Somabrain memory service: `http://127.0.0.1:9595`
+  - Redis: `redis://127.0.0.1:6379/0`
+  - Postgres (forward `svc/postgres` → `55432`):
+    ```bash
+    nohup kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 \
+     > /tmp/pf-postgres.log 2>&1 &
+    ```
+
+2. Export the environment so pytest hits the live endpoints:
+  ```bash
+  export SOMA_API_URL=http://127.0.0.1:9797
+  export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
+  export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
+  export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
+  ```
+
+3. Run the cognition suite with verbose output:
+  ```bash
+  pytest -vv tests/test_cognition_learning.py
+  ```
+
+The file defines three `@pytest.mark.learning` cases that validate:
+- memory recall increases the item count after `/remember`,
+- `/context/feedback` persists rows to `feedback_events` & `token_usage`, and
+- working-memory history grows monotonically across a session.
+
+All three tests must pass to demonstrate the real stack is learning. Failed runs usually indicate
+missing port-forwards, stale credentials, or Postgres not reachable on `55432`.
+
 ### Benchmarks (Work in Progress)
 Benchmarks live under `benchmarks/` and will be expanded in S9. Example command:
 ```bash

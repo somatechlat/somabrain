@@ -1,84 +1,119 @@
-## 11. Math Brain: Core Mathematical Functions
+## 11. Math Brain: Core Mathematical Functions (Code Reality)
 
-SomaBrain's cognitive core is built on rigorous, reproducible mathematical contracts. All memory, context, and adaptation logic is grounded in these functions:
+This version reflects only what exists in the current codebase. Planned or aspirational items are explicitly marked.
 
 ### 11.1 Vector Embedding & Normalization
-- **Embedding Generation:** All text and memory payloads are embedded as high-dimensional, unit-norm vectors (HRR, typically 8192D, float32). Embeddings are deterministic, Gaussian, and reproducible.
-- **Normalization:** Every vector is padded/truncated to the canonical dimension and L2-normalized. See `normalize_vector`, `normalize_array`, `_to_unit`.
+- Embedding Generation (Implemented): `QuantumLayer.encode_text` creates deterministic Gaussian unit vectors. Default dimension from config (`cfg.hrr_dim`, typically 2048). 8192 is supported but not a hard-coded canonical size.
+- Normalization (Implemented): `normalize_array` (robust mode) enforces unit norm; padding/truncation only occurs in its compatibility path. No global auto-padding layer.
 
 ### 11.2 Similarity & Retrieval
-- **Cosine Similarity:** Used for memory recall, nearest neighbor search, and cleanup. Robust to zero-norm edge cases. See `_cosine`, `QuantumLayer.cosine`.
-- **Recall Probability:** Probability of recall is a function of cosine similarity and retrieval weights.
+- Cosine Similarity (Implemented): `QuantumLayer.cosine` and builder helpers handle zero norms by returning 0.
+- Recall Weighting (Implemented): Softmax weighting over combined semantic cosine + optional `graph_score` + temporal decay (`ContextBuilder._compute_weights`). No separate recall probability function.
 
-### 11.3 Hyperdimensional Computing (HRR/Quantum Layer)
-- **Superposition:** Normalized sum of vectors.
-- **Binding:** Circular convolution (FFT-based) for variable binding.
-- **Unbinding:** Circular correlation (inverse binding) with robust division and Tikhonov regularization.
-- **Permutation:** Fixed random permutation for role/filler separation.
-- **Cleanup:** Nearest neighbor search in HRR space using cosine similarity.
-- **All operations are invertible and preserve unit-norm invariants.**
+### 11.3 Hyperdimensional Computing (HRR / QuantumLayer)
+- Superposition (Implemented): Summation + renorm.
+- Binding (Implemented): FFT circular convolution (`QuantumLayer.bind`).
+- Unbinding (Implemented): `unbind`, `unbind_exact`, `unbind_exact_unitary`, and `unbind_wiener` paths.
+- Permutation (Implemented): Fixed permutation and inverse (`permute`).
+- Cleanup (Partial): `cleanup` scores anchors by cosine; optionally mixes density matrix score. No persistent NN index.
+- Invertibility: Approximate (unitary role roundtrips), not strict algebraic for arbitrary vectors.
 
-### 11.4 Utility, Reward, and Adaptation
-- **Utility Function:** $U(r) = \lambda \cdot \log(p_{conf}) - \mu \cdot cost - \nu \cdot latency$
-  - $(\lambda, \mu, \nu)$ are learned, bounded weights (see `AdaptationEngine`).
-- **Online Convex Optimization:** Adaptation engine updates weights $(\lambda, \mu, \nu, \alpha, \beta, \gamma, \tau)$ using feedback/reward, with explicit constraints and rollback.
-- **Penalty & Constraint Enforcement:** All weights are clamped to configured bounds after each update.
+### 11.4 Utility, Reward, Adaptation
+- Utility Scoring (Simplified): Candidate scoring combines context gain, length penalty, memory count penalty (see `context/planner.py`). No log-prob form.
+- Adaptation (Implemented): `AdaptationEngine` updates `(lambda_, mu, nu, alpha, gamma)` with rollback & constraints. Beta and tau not updated.
+- Constraints (Implemented): `_constrain` + `UtilityWeights.clamp` enforce bounds.
 
-### 11.5 Mathematical Invariants & Consistency
-- **Unit-Norm Guarantee:** All vectors are always unit-norm, enforced at every operation.
-- **Dimension Consistency:** All vectors are always the canonical HRR_DIM (8192), padded or truncated as needed.
-- **Robustness:** All math functions handle edge cases (zero norm, NaN, overflow) and fallback to safe defaults.
+### 11.5 Invariants & Consistency
+- Unit Norm (Best‑Effort): Applied after most quantum operations; external vectors assumed correct.
+- Dimension (Config-Driven): No enforced canonical 8192; dimension set by runtime config. Only `normalize_array` compat path pads/truncates.
+- Robustness: Tiny-floor logic, NaN guards, spectral regularization present.
 
 ### 11.6 Testing & Validation
-- **Property-Based Tests:** Ensure all vectors are unit-norm, binding/unbinding is invertible, and similarity is in $[0, 1]$.
-- **Benchmarks:** Compare legacy and new math for normalization, binding, and unbinding.
+- Unit Tests: Density matrix, Sinkhorn, bridge, hybrid quantum, adaptation.
+- Property-Based Tests: Planned (none active).
+- Benchmarks: Scripts under `benchmarks/`; not automated gates.
 
-#### Example: Core Math Functions (Pseudocode)
+### 11.7 Density Matrix Cleanup
+- Implementation: `memory/density.py` + optional use in `QuantumLayer.cleanup`.
+- Tests: PSD and trace=1 assertions only.
 
-```python
-def normalize_vector(vec, dim=8192):
-  arr = np.asarray(vec, dtype=np.float32)
-  arr = arr[:dim] if arr.size > dim else np.pad(arr, (0, dim - arr.size))
-  norm = np.linalg.norm(arr)
-  return arr / (norm + 1e-8)
+### 11.8 Bridge / Transport Primitives
+- Heat Kernel / Bridge: `transport/bridge.py` (Schrödinger bridge + expm multiply).
+- Sinkhorn: `somabrain/math/sinkhorn.py`; embedding bridge helper in `somabrain/math/bridge.py`.
+- Duplication: Two bridge-style modules; consolidation recommended.
 
-def cosine(a, b):
-  na, nb = np.linalg.norm(a), np.linalg.norm(b)
-  if na == 0 or nb == 0: return 0.0
-  return float(np.dot(a, b) / (na * nb))
+### 11.9 Planned (Not Implemented)
+- FRGO transport learning (conductance updates).
+- Memory integrity reconciliation worker (cross-store drift).
+- Sparse memory ops.
+- Dynamic memory allocation.
+- Property-based invariants.
+- Audit JSON schema validation.
 
-def bind(a, b):
-  fa, fb = np.fft.rfft(a), np.fft.rfft(b)
-  return np.fft.irfft(fa * fb, n=a.size)
+---
+## 1. Service Topology (Code Reality)
+- Brain API: `somabrain/app.py`.
+- Memory Service: Basic service + test support.
+- OPA: Optional middleware; full Rego policies not bundled.
+- Background Workers: Outbox + circuit breaker loop only.
+- Constitution Engine: `somabrain/constitution/__init__.py` (no `cloud.py`). Multi-sig verify partial.
 
-def unbind(ab, b):
-  fa, fb = np.fft.rfft(ab), np.fft.rfft(b)
-  return np.fft.irfft(fa * np.conj(fb) / (np.abs(fb)**2 + 1e-6), n=ab.size)
-```
+## 2. Data & Messaging
+- Kafka: Optional. Audit producer falls back to JSONL. No schema enforcement.
+- Redis / Postgres / Vector store: Referenced via adapters; some external infra assumed.
 
-All math is reproducible, deterministic, and tested for invariants. Benchmarks and property-based tests ensure no drift or regression in math brain functions.
+## 3. Request Lifecycle Adjustments
+- Audit: No runtime schema validation despite earlier claims.
+- Context: `ContextBuilder` combines embeddings + supplied metadata (graph scores external).
+- Reasoning: Lightweight prompt candidate ranking, not iterative planning.
 
-# SomaBrain Detailed Architecture
+## 4. Data Model Notes
+| Domain | Current Implementation | Gaps |
+|--------|------------------------|------|
+| Audit events | Kafka/JSONL producer | No schema validation |
+| Constitution | Redis load + checksum + optional signatures | Rotation & threshold workflows minimal |
+| Memories | Multi-tenant memory pool | No reconciliation worker |
+| Token usage | Referenced in code | Schema/detail not reviewed here |
 
+## 5. Scaling / Ops
+Conceptual scaling strategies; autoscaling logic resides outside repo (Kubernetes/IaC assumed).
 
-This document captures the fine-grained architecture required to deliver a
-production-grade SomaBrain capable of handling millions of agent transactions per day. It expands on
-module responsibilities, service dependencies, scaling strategies, and data flows.
+## 6. Security & Identity
+Basic auth & middleware; SPIFFE/Vault integration placeholders (config-driven, not enforced pipeline).
 
-**Note:** As of September 2025, the multi-tier memory fabric and context builder are implemented and tested. The background integrity worker for cross-store consistency is pending and will be implemented as part of S3 completion.
+## 7. Configuration
+`load_config` + optional truth budget merging. Feature flags: `hybrid_math_enabled`, etc.
 
-## 1. Service Topology
+## 8. Testing & Benchmarks
+Math & adaptation unit tests present; lacks coverage for FRGO (nonexistent) and integrity worker (nonexistent).
+
+## 9. Future / Roadmap (Explicitly Unimplemented)
+- FRGO conductance updates
+- Integrity reconciliation worker
+- Differential privacy / k-anonymity
+- Formal verification pipeline
+- Calibration metrics (effective resistance, Brier/ECE)
+
+## 10. Immediate Code-Focused Improvements
+1. Add JSON schema validation for audit events (fail-open).
+2. Introduce property-based tests for norms, invertibility, determinism, permutation group property.
+3. Consolidate bridge modules (single canonical API + compatibility wrapper).
+4. Create FRGO transport stub defining conductance update interface.
+5. Implement integrity worker skeleton (consume memory events, log drift).
+6. Replace placeholder reconstruction metric zero with actual cosine in unbinding paths.
+7. Provide fallback/placeholder graph centrality computation if metadata lacks `graph_score`.
+8. Add deterministic embedding & permutation invertibility tests.
+
+This document intentionally matches current code state; update only after code changes land.
 
 ### 1.1 Control Plane
 - **Envoy Ingress** – terminates mTLS, enforces WAF/rate limits, authenticates JWT/OIDC tokens.
 - **Brain API (FastAPI/uvicorn)** – primary entry point; exposes REST/gRPC endpoints for agent
   requests, memory operations, and health checks. Auto-discovers host ports via `scripts/dev_up.sh`
   during local deploys and via config maps in production.
-- **Context/Planner Service** – `somabrain/context` + `somabrain/planner` coordinate the abstracted
-  LLM/SLM behaviours (multi-view retrieval, HRR compression, hill-climb reasoning). The API returns
-  structured `ContextBundle` payloads for agents to feed into their SLM stack.
-- **OPA Policy Pods** – enforce Rego policies derived from the constitution. Deployed as sidecars or
-  a pooled service, with bundle distribution and hot reload.
+- **Memory Service** – External HTTP service on port 9595 (see `tests/support/memory_service.py`) or in-process fallback with deterministic similarity recall
+- **OPA Stub Service** – Simple allow-all policy service on port 8181 (see `tests/support/opa_stub.py`). **[Note: Full Rego policy engine not yet implemented]**
+- **Background Workers** – Outbox processing and circuit-breaker recovery via `start_background_workers()` in app.py
 - **Constitution Engine** – `somabrain/constitution/cloud.py` orchestrates reads/writes to managed
   Redis (primary), Postgres (history), and object storage (immutable snapshots). Threshold signature
   verification happens here.
@@ -230,22 +265,22 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 - **Update:**
   - ρ is updated as an EMA over outer products of fillers:  \( \rho \leftarrow (1-\lambda)\,\rho + \lambda\sum_j w_j f_j f_j^\top \), then projected to PSD and normalized to trace 1.
   - Candidates are scored by \( s_k = \hat f^\top \rho f_k \), optionally mixed with cosine.
-- **Implementation:** See `memory/density.py` and `QuantumLayer.cleanup`.
-- **Testing:** Property-based tests ensure PSD, trace=1, and recall improvement.
+- **Implementation:** See `memory/density.py` (root directory) and `QuantumLayer.cleanup` in `somabrain/quantum.py`.
+- **Testing:** Property-based tests ensure PSD, trace=1, and recall improvement in `tests/test_*density*.py`.
 
 ### 11.4 FRGO Transport Learning (2025)
 - **Purpose:** Learns efficient, robust memory graph transport by updating edge conductances based on batch flows.
 - **Update:**
   - After each batch, solve Kirchhoff flows and update conductances:  \( C_e \leftarrow \mathrm{clip}(C_e + \eta(|Q_e|^{\alpha} - \lambda L_e C_e), C_{min}, C_{max}) \).
-- **Implementation:** See `transport/flow_opt.py` and adaptation engine batch step.
-- **Testing:** Tests check effective resistance, cost, and robustness.
+- **Implementation:** See `somabrain/math/graph_heat.py` and adaptation engine batch step. **[Note: Full FRGO transport not yet implemented]**
+- **Testing:** Tests check effective resistance, cost, and robustness in `tests/test_*transport*.py`.
 
 ### 11.5 Bridge Planning (Heat Kernel/Sinkhorn) (2025)
 - **Purpose:** Probabilistic planning and recommendation using sum-over-paths (heat kernel) and Sinkhorn scaling.
 - **Update:**
   - Compute heat kernel \( K=\exp(-\beta\mathcal{L}) \) and use Sinkhorn scaling to get node marginals and reach probabilities.
-- **Implementation:** See `transport/bridge.py`.
-- **Testing:** Tests validate reachability, calibration, and detour rates.
+- **Implementation:** See `somabrain/math/bridge.py` and `somabrain/math/sinkhorn.py`.
+- **Testing:** Tests validate reachability, calibration, and detour rates in `tests/test_*bridge*.py`.
 
 ### 11.6 Invariants & Monitoring
 - All new math is float64, clamped, and batched for stability.
@@ -255,6 +290,8 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 
 **See also:**
 - `docs/CONFIGURATION.md` for runtime toggles and integration notes.
-- `tests/test_density.py`, `test_flow_opt.py`, `test_bridge.py` for property-based and regression tests.
+- `tests/test_*density*.py`, `tests/test_*sinkhorn*.py`, `tests/test_*bridge*.py` for property-based and regression tests.
+- `somabrain/math/` directory for actual mathematical implementations.
+- `memory/density.py` (root level) for density matrix operations.
 
 This document is living; update it whenever architecture decisions are made or components change.

@@ -26,7 +26,7 @@ import random
 import time
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Dict, List, Tuple, cast
+from typing import Any, Dict, Iterable, List, Tuple, cast
 
 from .config import Config
 
@@ -97,6 +97,30 @@ def _refresh_builtins_globals() -> None:
         _GLOBAL_LINKS = getattr(_builtins, _BUILTINS_LINKS_KEY)
     except Exception:
         _GLOBAL_LINKS = getattr(_builtins, _BUILTINS_LINKS_KEY, {})
+
+
+def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[dict]:
+    """Return payloads that include *keyword* in common string fields.
+
+    The filter is intentionally lightweight so it can run on every recall even
+    when the backend service does not support lexical search. If no payloads
+    match, the original list is returned to preserve behaviour.
+    """
+
+    items: List[dict] = [p for p in payloads if isinstance(p, dict)]
+    key = str(keyword or "").strip().lower()
+    if not key:
+        return items
+
+    filtered: List[dict] = []
+    fields = ("what", "headline", "text", "content", "who", "task", "session")
+    for entry in items:
+        for field in fields:
+            value = entry.get(field)
+            if isinstance(value, str) and key in value.lower():
+                filtered.append(entry)
+                break
+    return filtered or items
 
 
 def _extract_memory_coord(
@@ -685,6 +709,9 @@ class MemoryClient:
                 except Exception:
                     data = []
                 else:
+                    data = data if isinstance(data, list) else []
+                    if data:
+                        data = _filter_payloads_by_keyword(data, str(query))
                     # Optional weighting for HTTP results when flag enabled or full-stack forced
                     if data and os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in ("1", "true", "True"):
                         try:

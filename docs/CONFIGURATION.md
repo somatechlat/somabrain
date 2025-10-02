@@ -7,12 +7,24 @@ relevant code paths.
 
 ## 0. OIDC/JWT Authentication (Keycloak, Cognito, Auth0)
 
-SomaBrain supports OIDC-compliant JWT authentication for all API endpoints. To enable:
+SomaBrain supports OIDC-compliant JWT authentication for all API endpoints. The runtime now ships
+with an explicit **disable flag** to allow air-gapped development clusters to come online without
+credentials while keeping the configuration to re-enable auth documented in-source.
 
-- Set `auth_required: true` in config or `SOMABRAIN_AUTH_REQUIRED=1` in env.
+- Set `auth_required: true` in config or `SOMABRAIN_AUTH_REQUIRED=1` in env to demand JWTs.
+- Set `SOMABRAIN_DISABLE_AUTH=1` (default `0`) to bypass JWT validation entirely. This is applied
+   in the `k8s/full-stack.yaml` manifest so developers can run the stack without provisioning keys.
 - For HS256 (dev/test): set `jwt_secret` or `SOMABRAIN_JWT_SECRET`.
-- For RS256 (production): set `jwt_public_key_path` or `SOMABRAIN_JWT_PUBLIC_KEY_PATH` to a PEM file (downloaded from your OIDC provider's JWKS endpoint).
+- For RS256 (production): set `jwt_public_key_path` or `SOMABRAIN_JWT_PUBLIC_KEY_PATH` to a PEM
+   file (downloaded from your OIDC provider's JWKS endpoint).
 - Set `jwt_issuer` and `jwt_audience` to match your OIDC provider (Keycloak, Cognito, etc).
+
+**Re-enabling auth in Kubernetes:**
+1. Remove `SOMABRAIN_DISABLE_AUTH` (or set it to `0`) in the `somabrain-env` ConfigMap.
+2. Populate `SOMABRAIN_JWT_PUBLIC_KEY_PATH` (and mount the matching PEM) or
+    `SOMABRAIN_JWT_SECRET` inside `somabrain-secrets`.
+3. Restart the deployment: `kubectl rollout restart deployment/somabrain -n <namespace>`.
+4. Confirm `curl -i /health` now returns `401` when called without a bearer token.
 
 **Keycloak Example:**
 ```
@@ -30,7 +42,8 @@ jwt_issuer: https://cognito-idp.<region>.amazonaws.com/<user-pool-id>
 jwt_audience: <app-client-id>
 ```
 
-Tokens must be sent as `Authorization: Bearer <JWT>` in all API requests. The backend will validate signature, issuer, and audience.
+Tokens must be sent as `Authorization: Bearer <JWT>` in all API requests when auth is enabled. The
+backend will validate signature, issuer, and audience.
 
 ---
 ## 1. Environment Variables
@@ -41,11 +54,11 @@ The table below lists core environment variables. New realism / enforcement flag
 |----------|---------|-------------|---------------|
 | `SOMABRAIN_HOST` | `0.0.0.0` | Bind address for FastAPI service. | `somabrain/app.py` |
 | `SOMABRAIN_PORT` | `9696` | Internal port for API server. (Test harness forces 9797 via `SOMA_API_URL` to avoid collisions.) | `somabrain/app.py` |
-| `SOMABRAIN_WORKERS` | `4` | Gunicorn/Uvicorn workers in container deployments. | Dockerfile entrypoint |
-| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | _required_ | Base URL of external memory service. Leave blank to enable offline mode (writes buffered). | `somabrain/memory_client.py` |
-| `SOMABRAIN_REDIS_URL` | `redis://sb_redis:6379/0` | Connection string for Redis cluster. | Constitution cache, rate limiting, hot memory cache. |
+| `SOMABRAIN_WORKERS` | `1` | Uvicorn worker count (override to scale CPU-bound work; canonical compose sets `4`). | `docker-entrypoint.sh` |
+| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | _required_ | Base URL of external memory service. In Kubernetes set this to `http://somamemory.<namespace>.svc.cluster.local:9595`. Leave blank only to enable offline mode (writes buffered). | `somabrain/memory_client.py` |
+| `SOMABRAIN_REDIS_URL` | `redis://redis:6379/0` | Connection string for Redis cluster (compose/k8s override to service aliases such as `sb_redis`). | Constitution cache, rate limiting, hot memory cache. |
 | `SOMABRAIN_POSTGRES_DSN` | _required_ | Postgres DSN for ledger, constitution history, graph tables. | `somabrain/storage/db.py` and stores under `somabrain/storage/`. |
-| `SOMABRAIN_KAFKA_URL` | `kafka://sb_kafka:9092` | Kafka bootstrap address. | `somabrain/audit.py`, pipeline workers. |
+| `SOMABRAIN_KAFKA_URL` | `kafka://kafka:9092` | Kafka bootstrap address (override to in-cluster DNS such as `sb-kafka:9092`). | `somabrain/audit.py`, pipeline workers. |
 | `SOMABRAIN_KAFKA_SASL_*` | — | SASL username/password for secured clusters. | Kafka client configuration. |
 | `SOMABRAIN_KAFKA_TLS_*` | — | Paths or inline certs for TLS auth. | Kafka client configuration. |
 | `SOMABRAIN_CONSTITUTION_KEY` | `soma:constitution` | Redis key storing active constitution JSON. | `somabrain/constitution/cloud.py` |
@@ -53,6 +66,7 @@ The table below lists core environment variables. New realism / enforcement flag
 | `SOMABRAIN_CONSTITUTION_PUBKEY_PATH` | — | PEM path for verifying constitution signatures (provided by secret store). | `somabrain/constitution/cloud.py` |
 | `SOMABRAIN_CONSTITUTION_THRESHOLD` | `2` | Minimum signatures required for constitution update. | `somabrain/constitution/cloud.py` |
 | `SOMABRAIN_OPA_URL` | `http://sb_opa:8181` | OPA service endpoint. | `somabrain/api/middleware/opa.py` |
+| `SOMABRAIN_DISABLE_AUTH` | `0` | When `1` skips all bearer/JWT validation. Useful for dev clusters; **never** ship to production. | `somabrain/auth.py` |
 | `SOMABRAIN_OTLP_ENDPOINT` | — | OTLP collector endpoint for exporting traces/metrics. | `observability/provider.py` |
 | `SOMABRAIN_TENANT_CONFIG_PATH` | — | Optional path/URL to tenant configuration (JSON/YAML). | `somabrain/tenant.py` |
 | `SOMABRAIN_RATE_LIMIT_*` | — | Rate limiting quotas (per-minute, per-second). | `somabrain/ratelimit.py` |
@@ -150,6 +164,9 @@ Upcoming feature flags (implemented as environment toggles):
 - Benchmarks read configuration from `benchmarks/config/*.yaml` (coming in S9) to drive load.
 - Test secrets (Kafka, Redis) are stored in `.env.test` for local runs; CI injects secrets via
   GitHub Actions environment variables.
+- When targeting an in-cluster deployment from your laptop, port-forward the services and set
+   `SOMA_API_URL=http://127.0.0.1:9797` before running pytest. The strict harness locks to that URL
+   and will fail fast if Redis or the memory service (`http://127.0.0.1:9595`) are unreachable.
 
 ## 7. Deployment Configuration
 
@@ -162,9 +179,9 @@ Kubernetes manifests (to be added in `infra/`):
 
 Update this document whenever new configuration knobs are introduced or existing ones change.
 
-## 8. mTLS Ingress with Envoy
+## 8. Optional mTLS Ingress with Envoy
 
-All inbound API traffic is routed through Envoy, which enforces mutual TLS (mTLS).
+The canonical Docker compose stack does **not** include Envoy by default. If you need mTLS in front of the API, use the optional overlay under `ops/envoy/`.
 
 - Envoy listens on port 8443 and proxies to the internal API service.
 - Only clients with valid certificates signed by the trusted CA can connect.
@@ -180,14 +197,17 @@ All inbound API traffic is routed through Envoy, which enforces mutual TLS (mTLS
    ```
    This creates `ca.crt`, `server.crt`, `server.key`, `client.crt`, `client.key` in `ops/envoy/certs/`.
 
-2. **Build and Start the Stack**
+2. **Run Envoy alongside the stack**
    ```sh
-   docker compose -f Docker_Canonical.yml build envoy
-   # Or build all services:
-   docker compose -f Docker_Canonical.yml build
-   docker compose -f Docker_Canonical.yml up
+   docker compose -f Docker_Canonical.yml up -d
+   docker run --rm \
+     -p 8443:8443 \
+     -v "$(pwd)/ops/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro" \
+     -v "$(pwd)/ops/envoy/certs:/certs:ro" \
+     envoyproxy/envoy:v1.30.0 \
+     -c /etc/envoy/envoy.yaml
    ```
-   Envoy listens on `8443` (mTLS). All API requests must use this port and present a valid client certificate.
+   Envoy listens on `8443` (mTLS) while this container is running. All API requests must use this port and present a valid client certificate.
 
 3. **Test mTLS Ingress**
    Example curl command (from project root):

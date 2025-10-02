@@ -39,13 +39,30 @@ def _reset_globals():
         setattr(_builtins, _GLOBAL_LINKS_KEY, {})
 
 
+LOCAL_HOSTNAMES = {"127.0.0.1", "localhost"}
+
+
 def _clear_env():
+    # Preserve explicit endpoint variables so the skip logic can see them.
     for var in [
         "SOMABRAIN_REQUIRE_PROVENANCE",
         "SOMABRAIN_KILL_SWITCH",
-        "SOMABRAIN_MEMORY_HTTP_ENDPOINT",
+        # "SOMABRAIN_MEMORY_HTTP_ENDPOINT",  # keep if user sets it
+        # "SOMABRAIN_REDIS_URL",            # keep if user sets it
     ]:
         os.environ.pop(var, None)
+
+
+def _is_local_url(url: str | None) -> bool:
+    if not url:
+        return True
+    try:
+        from urllib.parse import urlparse
+
+        host = urlparse(url).hostname
+    except Exception:
+        return True
+    return host in LOCAL_HOSTNAMES or host is None
 
 
 def pytest_configure(config):
@@ -57,8 +74,16 @@ def pytest_configure(config):
     # running there. We override any pre-set SOMA_API_URL (unless explicitly
     # exported SOMA_API_URL_LOCK_BYPASS=1 for an advanced/manual scenario).
     if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") not in ("1", "true", "yes"):
-        desired = "http://127.0.0.1:9797"
         prev = os.environ.get("SOMA_API_URL")
+        if prev and not _is_local_url(prev):
+            desired = prev
+        elif os.environ.get("KUBERNETES_SERVICE_HOST"):
+            desired = os.environ.get(
+                "SOMA_API_URL",
+                "http://somabrain.somabrain-prod.svc.cluster.local:9696",
+            )
+        else:
+            desired = "http://127.0.0.1:9797"
         os.environ["SOMA_API_URL"] = desired
         if prev and prev != desired:
             print(f"[pytest_configure] Overriding SOMA_API_URL {prev} -> {desired} (locked)")
@@ -76,6 +101,7 @@ def pytest_configure(config):
 
 @pytest.fixture(autouse=True)
 def reset_state():
+    # Do not clear the explicit endpoint vars – they may have been set by the caller.
     _clear_env()
     _reset_globals()
     yield
@@ -194,41 +220,56 @@ def isolate_metrics(monkeypatch):
 
 @pytest.fixture(scope="session", autouse=True)
 def start_fastapi_server():
-    """Start the FastAPI app in a background thread for tests that use the
-    SOMA_API_URL environment variable (e.g., Constitution integration tests).
-    The server runs on a random free port and is terminated when the pytest
-    session ends.
+    """Start a local FastAPI instance for tests when required.
+
+    When tests are executed inside a Kubernetes context (or the caller
+    explicitly provides an external ``SOMA_API_URL``), we assume the API is
+    already running and reachable and therefore skip bootstrapping a local
+    uvicorn server. This keeps the test suite aligned with the "no mocks"
+    directive while still supporting developer machines.
     """
-    # Prefer an explicit SOMA_API_URL if the test runner or user provided one.
-    # This ensures module-level BASE constants computed at import time match
-    # the actual server the fixture starts. If not provided, fall back to the
-    # conventional default port 9696.
     from urllib.parse import urlparse
 
-    # NOTE: Dedicated integration test server port
-    # We deliberately use port 9797 (instead of the default 9696) for the
-    # FastAPI test server to reduce collisions with any developer-run
-    # instances or other local services. If you need to override this (e.g.,
-    # parallel test shards), set SOMA_API_URL before invoking pytest.
-    # Real server only (no mocking) per repository testing policy.
-    # User directive: "real everything".
-    # Use dedicated test server port 9797 by default to avoid colliding with
-    # developer services that may bind 9696.
     soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9797")
-    # Ensure external memory service is running (minimal real implementation) if required
+
+    # Respect bypass flag: caller promises a live endpoint is running.
+    if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") in ("1", "true", "yes"):
+        print(f"[tests.conftest] Bypass enabled; trusting external SOMA_API_URL={soma_url}")
+        os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
+        yield
+        return
+
+    # Local fallback: ensure we run on dedicated loopback port 9797
+    host = "127.0.0.1"
+    port = 9797
+    desired = f"http://{host}:{port}"
+    if soma_url != desired:
+        parsed = urlparse(soma_url)
+        if parsed.hostname and parsed.hostname not in LOCAL_HOSTNAMES:
+            print(
+                f"[tests.conftest] Ignoring provided SOMA_API_URL={soma_url}; using {desired} for local test server"
+            )
+        else:
+            print(f"[tests.conftest] Normalising SOMA_API_URL to {desired} for local test server")
+    os.environ["SOMA_API_URL"] = desired
+    print(f"[tests.conftest] SOMA_API_URL={desired}")
+
+    os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
+
+    # Ensure memory stub is online (only needed for local test harness)
     try:
         from tests.support.memory_service import run_memory_server  # type: ignore
+
         mem_required = os.environ.get("SOMABRAIN_REQUIRE_MEMORY", "1") in ("1", "true", "True", "")
         if mem_required:
-            # Only start if not already responding
             import requests
+
             try:
                 r = requests.get("http://127.0.0.1:9595/health", timeout=0.4)
                 if r.status_code != 200:
                     raise RuntimeError("memory not healthy yet")
             except Exception:
                 run_memory_server()
-                # Wait briefly for readiness
                 for _ in range(20):
                     try:
                         rr = requests.get("http://127.0.0.1:9595/health", timeout=0.25)
@@ -238,37 +279,7 @@ def start_fastapi_server():
                         time.sleep(0.1)
     except Exception:
         pass
-    parsed = urlparse(soma_url)
-    # Force canonical host/port (host stays 127.0.0.1; port must be 9797)
-    host = "127.0.0.1"
-    port = 9797
-    if (parsed.hostname and parsed.hostname not in ("127.0.0.1", "localhost")) or (parsed.port and parsed.port != 9797):
-        print(
-            f"[tests.conftest] Ignoring provided SOMA_API_URL={soma_url}; using http://{host}:{port} (test lock)"
-        )
 
-    os.environ["SOMA_API_URL"] = f"http://{host}:{port}"
-    # Emit a concise diagnostic so test logs show which base URL is in use.
-    try:
-        print(f"[tests.conftest] SOMA_API_URL={os.environ['SOMA_API_URL']}")
-    except Exception:
-        pass
-
-    # Ensure minimal-public-api is disabled during test runs so tests can hit
-    # /constitution/version and other endpoints. The app checks both the
-    # environment variable SOMABRAIN_MINIMAL_PUBLIC_API and cfg.minimal_public_api.
-    # We must ensure the env var is explicitly falsy here.
-    os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
-
-    # We'll construct the uvicorn command later once we've settled on the
-    # final host/port. Doing so lets the fixture automatically pick an
-    # ephemeral fallback port when the configured port is busy but not
-    # serving HTTP, avoiding brittle failures on developer machines where
-    # other services may bind the nominal port.
-    # If another process is already listening on the desired port, prefer to
-    # reuse it rather than trying to start a new uvicorn that will fail to
-    # bind. Check TCP then perform a lightweight HTTP probe to confirm the
-    # existing service responds as expected.
     import socket as _socket
 
     def _tcp_up(h, p, timeout=0.2):
@@ -292,7 +303,6 @@ def start_fastapi_server():
             r = requests.get(url, timeout=timeout)
             return r.status_code == 200
         except Exception:
-            # fallback to raw socket GET when requests unavailable
             try:
                 s = _socket.socket(_socket.AF_INET, _socket.SOCK_STREAM)
                 s.settimeout(timeout)
@@ -309,22 +319,18 @@ def start_fastapi_server():
                 except Exception:
                     pass
 
+    proc = None
     if _tcp_up(host, port):
-        # Reuse existing service ONLY if it exposes /constitution/version.
         for _ in range(30):
             if _http_probe(host, port):
-                print(
-                    f"[tests.conftest] Reusing existing service at http://{host}:{port} (constitution ok)"
-                )
-                proc = None
+                print(f"[tests.conftest] Reusing existing service at {desired} (constitution ok)")
                 break
             time.sleep(0.1)
         else:
             raise RuntimeError(
-                f"Port {port} already in use but /constitution/version not available. Please stop the external process on {port} (wrong version?) and re-run tests."
+                f"Port {port} already in use but /constitution/version not available. Stop the external process on {port} (wrong version?) and re-run tests."
             )
     else:
-        # Build uvicorn command now that we have a final host/port to use.
         uvicorn_cmd = [
             sys.executable,
             "-m",
@@ -340,12 +346,8 @@ def start_fastapi_server():
             "off",
         ]
 
-        # Start uvicorn as a child process and capture stdout/stderr for
-        # diagnostic messages if startup fails. Ensure the env explicitly
-        # disables the minimal public API so middleware won't hide endpoints.
         envp = os.environ.copy()
-        envp["SOMABRAIN_MINIMAL_PUBLIC_API"] = "0"  # force full API for tests
-        # Provide explicit diagnostic flags for troubleshooting 404s.
+        envp["SOMABRAIN_MINIMAL_PUBLIC_API"] = "0"
         envp["SOMABRAIN_TEST_SERVER"] = "1"
         proc = subprocess.Popen(
             uvicorn_cmd,
@@ -354,7 +356,6 @@ def start_fastapi_server():
             stderr=subprocess.STDOUT,
         )
 
-        # Wait for the server to bind the TCP port and respond to HTTP probe.
         for _ in range(60):
             if proc.poll() is not None:
                 out = b""
@@ -378,18 +379,17 @@ def start_fastapi_server():
                 f"FastAPI test server failed to expose /constitution/version on port {port}. Last output:\n{out.decode('utf-8', errors='ignore')}"
             )
 
-    # Surface a final diagnostic path list (best-effort) for debugging after all tests.
     try:
         import requests as _rq
-        info = _rq.get(f"http://{host}:{port}/health", timeout=0.5)
+
+        info = _rq.get(f"{desired}/health", timeout=0.5)
         print(f"[tests.conftest] Final health status={info.status_code}")
     except Exception:
         pass
 
-    yield  # tests run while server is alive
+    yield
 
-    # Shutdown the server after tests
-    if 'proc' in locals() and proc is not None:
+    if proc is not None:
         try:
             proc.terminate()
             proc.wait(timeout=3)

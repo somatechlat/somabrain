@@ -52,6 +52,8 @@ COPY scripts /app/scripts
 COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
 COPY arc_cache.py /app/
 COPY memory /app/memory
+COPY brain /app/brain
+COPY observability /app/observability
 
 # Create non-root user
 RUN useradd --create-home --shell /sbin/nologin appuser \

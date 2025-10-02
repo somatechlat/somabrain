@@ -51,3 +51,23 @@ class FeedbackRequest(BaseModel):  # type: ignore[misc]
 class FeedbackResponse(BaseModel):  # type: ignore[misc]
     accepted: bool
     adaptation_applied: bool
+
+
+class RetrievalWeightsState(BaseModel):  # type: ignore[misc]
+    alpha: float
+    beta: float
+    gamma: float
+    tau: float
+
+
+class UtilityWeightsState(BaseModel):  # type: ignore[misc]
+    lambda_: float
+    mu: float
+    nu: float
+
+
+class AdaptationStateResponse(BaseModel):  # type: ignore[misc]
+    retrieval: RetrievalWeightsState
+    utility: UtilityWeightsState
+    history_len: int
+    learning_rate: float
