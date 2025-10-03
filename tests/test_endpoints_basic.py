@@ -16,6 +16,8 @@ def main():
     env = {
         "SOMABRAIN_USE_HRR": "false",
         "SOMABRAIN_MEMORY_HTTP_ENDPOINT": "",
+        "SOMABRAIN_REQUIRE_MEMORY": "0",
+        "SOMABRAIN_STRICT_REAL": "0",
     }
     app = _fresh_app_with_env(env)
     from fastapi.testclient import TestClient

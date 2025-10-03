@@ -43,13 +43,17 @@ Memory Schema
    {
      "coordinate": [1.0, 2.0, 3.0],
      "memory_type": "episodic",
-     "timestamp": 1693593600,
+     "timestamp": 1693593600.0,
      "importance": 1,
      "task": "write documentation",
      "links": [
        {"to": [4.0, 5.0, 6.0], "type": "related", "timestamp": 1693593700}
      ]
    }
+
+Timestamp fields are expressed in Unix epoch seconds (float). Clients may send
+ISO-8601 strings (e.g., ``"2025-10-03T09:30:00Z"``); the API converts them to
+epoch seconds so recall responses and exported payloads remain consistent.
 
 For more details, see the API documentation and guides in this site.
 

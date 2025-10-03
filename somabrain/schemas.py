@@ -31,10 +31,13 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
+from datetime import datetime
+
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
 
 from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
+from somabrain.datetime_utils import coerce_to_epoch_seconds
 
 
 def normalize_vector(vec_like, dim: int = HRR_DIM):
@@ -217,6 +220,9 @@ class RecallRequest(BaseModel):
     universe: Optional[str] = None
 
 
+TimestampInput = Union[float, int, str, datetime]
+
+
 class MemoryPayload(BaseModel):
     """
     Schema for episodic memory payloads.
@@ -229,7 +235,9 @@ class MemoryPayload(BaseModel):
         task (Optional[str]): Associated task or context identifier.
         importance (int): Importance score (higher values = more important). Default 1.
         memory_type (str): Type of memory ("episodic", "semantic", etc.). Default "episodic".
-        timestamp (Optional[float]): Unix timestamp of memory creation.
+        timestamp (Optional[float]): Unix epoch seconds (float). Accepts
+            ISO-8601 input from clients but is stored internally as epoch
+            seconds for consistency across the API.
         universe (Optional[str]): Universe/namespace identifier.
         who (Optional[str]): Who performed the action.
         did (Optional[str]): What action was performed.
@@ -258,7 +266,7 @@ class MemoryPayload(BaseModel):
     reasoning_chain: Optional[Union[List[str], str]] = None
     importance: int = 1
     memory_type: str = "episodic"
-    timestamp: Optional[float] = None
+    timestamp: Optional[TimestampInput] = None
     universe: Optional[str] = None
     # Optional event tuple fields
     who: Optional[str] = None
@@ -267,6 +275,15 @@ class MemoryPayload(BaseModel):
     where: Optional[str] = None
     when: Optional[str] = None
     why: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _normalize_timestamp(self):
+        if self.timestamp is not None:
+            try:
+                self.timestamp = coerce_to_epoch_seconds(self.timestamp)
+            except ValueError as exc:
+                raise ValueError(f"Invalid timestamp format: {exc}")
+        return self
 
 
 class RememberRequest(BaseModel):
@@ -302,6 +319,8 @@ class RecallResponse(BaseModel):
     """Canonical response model for the /recall endpoint.
 
     Fields mirror what the runtime returns in `app.recall` so OpenAPI is accurate.
+    Timestamp-bearing fields (e.g. ``payload.timestamp``) are normalized to Unix
+    epoch seconds (float) for consistency.
     """
 
     wm: List[WMHit]

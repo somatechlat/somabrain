@@ -104,6 +104,7 @@ from somabrain.controls.middleware import ControlsMiddleware
 from somabrain.controls.reality_monitor import assess_reality
 from somabrain.embeddings import make_embedder
 from somabrain.events import extract_event_fields
+from somabrain.datetime_utils import coerce_to_epoch_seconds
 from somabrain.exec_controller import ExecConfig, ExecutiveController
 from somabrain.hippocampus import ConsolidationConfig, Hippocampus
 from somabrain.journal import append_event
@@ -247,6 +248,43 @@ def _extract_text_from_candidate(candidate: Dict) -> str:
                 # Recursively extract from nested dict
                 return _extract_text_from_candidate(value)
     return str(candidate) if candidate is not None else ""
+
+
+def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Shallow-copy ``payload`` ensuring timestamp fields are epoch floats.
+
+    Accepts ISO 8601 strings or numeric-string inputs and coerces them into
+    Unix epoch seconds to keep downstream services and documentation aligned.
+    Invalid timestamps are pruned to avoid propagating unexpected strings.
+    """
+
+    normalized = dict(payload)
+
+    ts_value = normalized.get("timestamp")
+    if ts_value is not None:
+        try:
+            normalized["timestamp"] = coerce_to_epoch_seconds(ts_value)
+        except ValueError:
+            normalized.pop("timestamp", None)
+
+    links = normalized.get("links")
+    if isinstance(links, list):
+        coerced_links = []
+        for link in links:
+            if not isinstance(link, dict):
+                coerced_links.append(link)
+                continue
+            link_item = dict(link)
+            link_ts = link_item.get("timestamp")
+            if link_ts is not None:
+                try:
+                    link_item["timestamp"] = coerce_to_epoch_seconds(link_ts)
+                except ValueError:
+                    link_item.pop("timestamp", None)
+            coerced_links.append(link_item)
+        normalized["links"] = coerced_links
+
+    return normalized
 
 
 def _cosine_similarity(a, b):
@@ -1953,7 +1991,11 @@ async def recall(req: S.RecallRequest, request: Request):
     # Only return valid dicts in memory for response validation
     resp = {
         "wm": [{"score": s, "payload": p} for s, p in wm_hits],
-        "memory": [p for p in mem_payloads if isinstance(p, dict)],
+        "memory": [
+            _normalize_payload_timestamps(p)
+            for p in mem_payloads
+            if isinstance(p, dict)
+        ],
         "namespace": ctx.namespace,
         "trace_id": trace_id,
         "deadline_ms": deadline_ms,
@@ -2009,6 +2051,14 @@ async def remember(req: S.RememberRequest, request: Request):
     # if coord not provided, key by task + timestamp for stable coord
     key = req.coord or (req.payload.task or "task")
     payload = req.payload.model_dump()
+    if payload.get("timestamp") is not None:
+        try:
+            payload["timestamp"] = coerce_to_epoch_seconds(payload["timestamp"])
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid timestamp format: {exc}",
+            )
     # Universe scoping: payload value overrides header
     header_u = request.headers.get("X-Universe", "").strip() or None
     if not payload.get("universe") and header_u:

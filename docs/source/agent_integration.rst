@@ -37,6 +37,10 @@ Notes
 
 - Delete outdated or irrelevant memories with the appropriate API.
 
+- Timestamps are returned as Unix epoch seconds (float). When sending data to
+   ``/remember`` you can provide either epoch seconds or an ISO-8601 string; the
+   service normalizes everything to epoch seconds before storage.
+
 Runnable examples
 -----------------
 

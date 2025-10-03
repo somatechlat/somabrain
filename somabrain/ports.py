@@ -12,16 +12,19 @@ DEFAULT_SERVICE_PORTS: Dict[str, int] = {
     "KAFKA_HOST_PORT": 9092,
     "PROMETHEUS_HOST_PORT": 9090,
     "POSTGRES_HOST_PORT": 15432,
+    "SOMAMEMORY_HOST_PORT": 9595,
 }
 
 
 def is_port_free(port: int, host: str = "127.0.0.1") -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        try:
-            sock.bind((host, port))
-        except OSError:
-            return False
+    hosts = {host, "0.0.0.0"}
+    for entry in hosts:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind((entry, port))
+            except OSError:
+                return False
     return True
 
 

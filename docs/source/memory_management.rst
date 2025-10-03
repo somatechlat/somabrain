@@ -8,6 +8,10 @@ Features
 - Use semantic search for natural language queries
 - Prune or consolidate memories for efficiency
 
+Timestamp fields across the API are expressed as Unix epoch seconds (float).
+When writing data you may pass either epoch seconds or ISO-8601 strings; the
+service converts them to epoch seconds for storage and recall responses.
+
 Advanced Usage
 --------------
 - Batch operations: store, recall, delete many

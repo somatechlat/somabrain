@@ -22,7 +22,7 @@ services:
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@localhost:9093
       - KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+      - "KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092"
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_CFG_LOG_DIRS=/bitnami/kafka/data
@@ -91,7 +91,7 @@ services:
     networks:
       - somabrain_net
     environment:
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory:9595"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
       SOMABRAIN_WORKERS: "4"
@@ -122,10 +122,12 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "9595:80"
+      - "${SOMAMEMORY_HOST_PORT:-9595}:9595"
     command: >
-      sh -c "echo '{\"ok\": true, \"items\": 0}' > /usr/local/apache2/htdocs/health &&
-             echo '[]' > /usr/local/apache2/htdocs/recall &&
+      sh -c "sed -i 's/Listen 80/Listen 9595/' /usr/local/apache2/conf/httpd.conf &&
+             echo 'ServerName somamemory' >> /usr/local/apache2/conf/httpd.conf &&
+             echo '{\"ok\": true, \"items\": 0}' > /usr/local/apache2/htdocs/health &&
+             echo '[{\"task\": \"stub\", \"content\": \"Sample memory stub item\", \"universe\": \"real\"}]' > /usr/local/apache2/htdocs/recall &&
              echo '{\"coord\": \"0,0,0\"}' > /usr/local/apache2/htdocs/remember &&
              httpd-foreground"
 
