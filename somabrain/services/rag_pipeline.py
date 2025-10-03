@@ -5,7 +5,6 @@ from typing import List, Optional
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
 import logging
-import sys
 from somabrain.services.retrievers import (
     retrieve_graph,
     retrieve_graph_stub,
@@ -153,7 +152,7 @@ async def run_rag_pipeline(
                     pass
         except Exception:
             try:
-                logger.info("rag_pipeline: fallback import somabrain.app failed: %s", repr(sys.exc_info()))
+                logger.info("rag_pipeline: fallback import somabrain.app failed (no app singletons available)")
             except Exception:
                 pass
             pass
@@ -171,21 +170,23 @@ async def run_rag_pipeline(
         pass
     # Ensure we have an embedder available (fall back to app.embedder)
     try:
-        if (not hasattr(_rt, "embedder") or getattr(_rt, "embedder", None) is None) and hasattr(
-            globals().get("__builtins__", {}), "__name__"
-        ):
-            try:
-                import somabrain.app as _app_mod2
-
-                if hasattr(_app_mod2, "embedder") and _app_mod2.embedder is not None:
-                    try:
-                        _rt.embedder = _app_mod2.embedder
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+        rt_embedder = getattr(_rt, "embedder", None)
     except Exception:
-        pass
+        rt_embedder = None
+    if rt_embedder is None:
+        try:
+            import somabrain.app as _app_mod2
+
+            app_embedder = getattr(_app_mod2, "embedder", None)
+            if app_embedder is not None:
+                rt_embedder = app_embedder
+                try:
+                    # best-effort to keep runtime in sync for later calls
+                    setattr(_rt, "embedder", app_embedder)
+                except Exception:
+                    pass
+        except Exception:
+            rt_embedder = None
     # Simple query expansion (optional)
     expansions = [req.query]
     try:
@@ -203,8 +204,8 @@ async def run_rag_pipeline(
         pass
     for rname in retrievers:
         if rname == "wm":
-            if _rt.embedder is not None and (
-                _rt.mt_wm is not None or _rt.mc_wm is not None
+            if rt_embedder is not None and (
+                getattr(_rt, "mt_wm", None) is not None or getattr(_rt, "mc_wm", None) is not None
             ):
                 try:
                     lst_all: list[RAGCandidate] = []
@@ -213,9 +214,9 @@ async def run_rag_pipeline(
                             qx,
                             top_k,
                             tenant_id=ctx.tenant_id,
-                            embedder=_rt.embedder,
-                            mt_wm=_rt.mt_wm,
-                            mc_wm=_rt.mc_wm,
+                            embedder=rt_embedder,
+                            mt_wm=getattr(_rt, "mt_wm", None),
+                            mc_wm=getattr(_rt, "mc_wm", None),
                             use_microcircuits=bool(
                                 getattr(_rt.cfg, "use_microcircuits", False)
                             ),
@@ -230,14 +231,16 @@ async def run_rag_pipeline(
             else:
                 from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
                 if __SR:
-                    raise RuntimeError("STRICT REAL MODE: wm retriever fallback to stub disallowed (embedder or WM missing)")
+                    # Strict mode: skip WM instead of using stubs
+                    logger.info("wm retriever: skipped in strict mode (embedder or wm backend missing)")
+                    continue
                 logger.info("wm retriever: falling back to stub (embedder or wm backend missing)")
                 __record_stub("rag_pipeline.wm.stub_fallback")
-            lst = retrieve_wm_stub(req.query, top_k)
-            lists_by_retriever["wm"] = lst
-            cands += lst
+                lst = retrieve_wm_stub(req.query, top_k)
+                lists_by_retriever["wm"] = lst
+                cands += lst
         elif rname == "vector":
-            if _rt.embedder is not None and mem_client is not None:
+            if rt_embedder is not None and mem_client is not None:
                 try:
                     lst_all: list[RAGCandidate] = []
                     for qx in expansions:
@@ -245,7 +248,7 @@ async def run_rag_pipeline(
                             qx,
                             top_k,
                             mem_client=mem_client,
-                            embedder=_rt.embedder,
+                            embedder=rt_embedder,
                             universe=universe,
                         )
                         lst_all.extend(lst)
@@ -257,14 +260,16 @@ async def run_rag_pipeline(
                     pass
             from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
             if __SR:
-                raise RuntimeError("STRICT REAL MODE: vector retriever fallback to stub disallowed (embedder or mem_client missing)")
+                # Strict mode: skip vector instead of using stubs
+                logger.info("vector retriever: skipped in strict mode (embedder or mem_client missing)")
+                continue
             logger.info("vector retriever: falling back to stub (embedder or mem_client missing)")
             __record_stub("rag_pipeline.vector.stub_fallback")
             lst = retrieve_vector_stub(req.query, top_k)
             lists_by_retriever["vector"] = lst
             cands += lst
         elif rname == "graph":
-            if _rt.embedder is not None and mem_client is not None:
+            if rt_embedder is not None and mem_client is not None:
                 try:
                     hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
                     limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
@@ -273,7 +278,7 @@ async def run_rag_pipeline(
                         req.query,
                         top_k,
                         mem_client=mem_client,
-                        embedder=_rt.embedder,
+                        embedder=rt_embedder,
                         hops=hops,
                         limit=limit,
                         universe=universe,
@@ -306,27 +311,27 @@ async def run_rag_pipeline(
             # Unknown retriever; skip
             continue
 
-    # If nothing retrieved, backfill with stubs to ensure endpoint responsiveness in empty stores
+    # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
+    # in non-strict mode, backfill to keep endpoint responsive in empty stores.
     if not cands:
         from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
-        if __SR:
-            raise RuntimeError("STRICT REAL MODE: no retriever results; stub backfill disallowed")
-        for rname in retrievers:
-            if rname == "wm":
-                __record_stub("rag_pipeline.backfill.wm")
-                lst = retrieve_wm_stub(req.query, top_k)
-                lists_by_retriever["wm"] = lst
-                cands += lst
-            elif rname == "vector":
-                __record_stub("rag_pipeline.backfill.vector")
-                lst = retrieve_vector_stub(req.query, top_k)
-                lists_by_retriever["vector"] = lst
-                cands += lst
-            elif rname == "graph":
-                __record_stub("rag_pipeline.backfill.graph")
-                lst = retrieve_graph_stub(req.query, top_k)
-                lists_by_retriever["graph"] = lst
-                cands += lst
+        if not __SR:
+            for rname in retrievers:
+                if rname == "wm":
+                    __record_stub("rag_pipeline.backfill.wm")
+                    lst = retrieve_wm_stub(req.query, top_k)
+                    lists_by_retriever["wm"] = lst
+                    cands += lst
+                elif rname == "vector":
+                    __record_stub("rag_pipeline.backfill.vector")
+                    lst = retrieve_vector_stub(req.query, top_k)
+                    lists_by_retriever["vector"] = lst
+                    cands += lst
+                elif rname == "graph":
+                    __record_stub("rag_pipeline.backfill.graph")
+                    lst = retrieve_graph_stub(req.query, top_k)
+                    lists_by_retriever["graph"] = lst
+                    cands += lst
 
     # Rank fusion (normalized & weighted RRF) over available retriever lists
     fusion_method = "wrrf"

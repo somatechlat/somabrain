@@ -1100,7 +1100,9 @@ def _make_predictor():
     provider = (env_provider or (cfg.predictor_provider or "stub")).lower()
     global _PREDICTOR_PROVIDER
     _PREDICTOR_PROVIDER = provider
-    if __SR and provider in ("stub", "baseline"):
+    # Dynamic strict read so tests that set env per-import still take effect
+    sr_env = os.getenv("SOMABRAIN_STRICT_REAL", "").strip().lower() in ("1", "true", "yes")
+    if (sr_env or __SR) and provider in ("stub", "baseline"):
         raise RuntimeError(
             "STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
         )

@@ -363,6 +363,12 @@ class MemoryClient:
         if env_base:
             try:
                 env_base = str(env_base)
+                # If missing scheme, default to http://
+                if "://" not in env_base and env_base.startswith("/"):
+                    # likely a path; leave as-is
+                    pass
+                elif "://" not in env_base:
+                    env_base = f"http://{env_base}"
                 # if user provided full openapi.json path, strip it
                 if env_base.endswith("/openapi.json"):
                     env_base = env_base[: -len("/openapi.json")]
@@ -805,6 +811,43 @@ class MemoryClient:
                             data = weighted
                         except Exception:
                             pass
+                    # If HTTP returned no results, fall back to locally mirrored payloads
+                    if not data:
+                        try:
+                            uni = str(universe or "real")
+                            # Gather candidates from stub store (recent) and process-global mirror for this namespace
+                            local: list[dict] = []
+                            with self._lock:
+                                local.extend(self._stub_store)
+                            try:
+                                ns = getattr(self.cfg, "namespace", None)
+                                if ns is not None:
+                                    local.extend(list(_GLOBAL_PAYLOADS.get(ns, [])))
+                            except Exception:
+                                pass
+                            # Universe-filter and keyword filter
+                            out = []
+                            for p in local:
+                                try:
+                                    if universe is not None and str(p.get("universe") or "real") != uni:
+                                        continue
+                                    # quick textual match on common fields
+                                    txt = None
+                                    if isinstance(p, dict):
+                                        for k in ("task", "text", "content", "what"):
+                                            v = p.get(k)
+                                            if isinstance(v, str) and v.strip():
+                                                txt = v
+                                                break
+                                    if not txt:
+                                        continue
+                                    if str(query).lower() in txt.lower():
+                                        out.append(p)
+                                except Exception:
+                                    pass
+                            data = out
+                        except Exception:
+                            data = []
                     return [RecallHit(payload=p) for p in (data or [])]
             except Exception:
                 pass

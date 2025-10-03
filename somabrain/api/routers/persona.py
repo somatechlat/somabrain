@@ -44,8 +44,28 @@ async def put_persona(
     # import runtime lazily to avoid circular imports at module load
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+    # Robustness: if runtime.mt_memory is missing (import ordering), fall back to app.mt_memory or a local instance
+    mem_backend = getattr(_rt, "mt_memory", None)
+    if mem_backend is None:
+        try:
+            import somabrain.app as _app_mod
 
-    ms = _MS(_rt.mt_memory, ctx.namespace)
+            mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
+        except Exception:
+            mem_backend = None
+    if mem_backend is None:
+        try:
+            from somabrain.config import load_config as _load
+            from somabrain.memory_pool import MultiTenantMemory
+
+            mem_backend = MultiTenantMemory(_load())
+            try:
+                setattr(_rt, "mt_memory", mem_backend)
+            except Exception:
+                pass
+        except Exception:
+            mem_backend = None
+    ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
 
     # lookup existing persona payload (best-effort)
@@ -107,8 +127,15 @@ async def get_persona(pid: str, request: Request, response: Response):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+    mem_backend = getattr(_rt, "mt_memory", None)
+    if mem_backend is None:
+        try:
+            import somabrain.app as _app_mod
 
-    ms = _MS(_rt.mt_memory, ctx.namespace)
+            mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
+        except Exception:
+            mem_backend = None
+    ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
     coord = ms.coord_for_key(key)
     try:
@@ -135,8 +162,15 @@ async def delete_persona(pid: str, request: Request):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+    mem_backend = getattr(_rt, "mt_memory", None)
+    if mem_backend is None:
+        try:
+            import somabrain.app as _app_mod
 
-    ms = _MS(_rt.mt_memory, ctx.namespace)
+            mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
+        except Exception:
+            mem_backend = None
+    ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
     tomb = {
         "id": pid,
