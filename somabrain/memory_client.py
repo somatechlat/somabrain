@@ -460,6 +460,46 @@ class MemoryClient:
         except Exception:
             pass
 
+    # --- HTTP compatibility helpers -------------------------------------------------
+    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]:
+        """Return an enriched (payload_copy, universe, extra_headers).
+
+        Ensures downstream HTTP memory services receive common fields that many
+        implementations index on: text/content/id/universe. Does not mutate input.
+        """
+        p = dict(payload or {})
+        # Universe scoping
+        universe = str(p.get("universe") or "real")
+        # Choose canonical text for indexing: prefer 'task' then 'text' then 'content' then 'what/fact'
+        text = None
+        for k in ("task", "text", "content", "what", "fact", "headline", "description"):
+            v = p.get(k)
+            if isinstance(v, str) and v.strip():
+                text = v.strip()
+                break
+        if not text:
+            # last resort – coord_key as text anchor
+            text = str(coord_key)
+        # Mirror into common keys if absent
+        p.setdefault("text", text)
+        p.setdefault("content", text)
+        # Provide a stable id if caller didn't specify one
+        p.setdefault("id", p.get("memory_id") or p.get("key") or coord_key)
+        # Provide a timestamp if missing
+        p.setdefault("timestamp", time.time())
+        # Ensure universe present
+        p.setdefault("universe", universe)
+        # Namespace (best-effort) – some services record this for tenancy
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns and not p.get("namespace"):
+                p["namespace"] = ns
+        except Exception:
+            pass
+        # Extra headers for HTTP calls
+        headers = {"X-Universe": universe}
+        return p, universe, headers
+
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> None:
@@ -477,11 +517,12 @@ class MemoryClient:
         _refresh_builtins_globals()
 
         # include universe in coordinate hashing to avoid collisions across branches
-        universe = str(payload.get("universe") or "real")
+        # and enrich payload for downstream compatibility
+        enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
         coord = _stable_coord(f"{universe}::{coord_key}")
 
         # ensure we don't mutate caller's dict; copy and normalize metadata
-        payload = dict(payload)
+        payload = dict(enriched)
         payload.setdefault("memory_type", "episodic")
         payload.setdefault("timestamp", time.time())
         payload.setdefault("universe", universe)
@@ -620,17 +661,18 @@ class MemoryClient:
         """
         if self._http_async is not None:
             try:
-                universe = str(payload.get("universe") or "real")
+                enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
                 coord = _stable_coord(f"{universe}::{coord_key}")
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-                    "payload": payload,
+                    "payload": enriched,
                     "type": "episodic",
                 }
                 import uuid
 
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
+                rid_hdr.update(compat_hdr)
                 r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
                 code = getattr(r, "status_code", 200)
                 if code in (404, 405):
@@ -659,6 +701,7 @@ class MemoryClient:
 
                     rid2 = request_id or str(uuid.uuid4())
                     rid_hdr = {"X-Request-ID": rid2}
+                    rid_hdr.update(compat_hdr)
                     await self._http_async.post("/store", json=body, headers=rid_hdr)  # type: ignore[name-defined]
                     # fall back to sync remember below
                 except Exception:
@@ -683,10 +726,11 @@ class MemoryClient:
         # Prefer HTTP recall if available
         if self._http is not None:
             import uuid
-
             rid = request_id or str(uuid.uuid4())
+            # Build compatibility headers (adds X-Universe)
+            compat_payload, uni, compat_hdr = self._compat_enrich_payload({"query": query, "universe": universe or "real"}, query)
             rid_hdr = {"X-Request-ID": rid}
-            uni = str(universe or "real")
+            rid_hdr.update(compat_hdr)
             try:
                 r = self._http.post(
                     "/recall",
@@ -869,10 +913,11 @@ class MemoryClient:
         if self._http_async is not None:
             try:
                 import uuid
-
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
-                uni = str(universe or "real")
+                # Enrich for compatibility; also adds X-Universe header
+                _, uni, compat_hdr = self._compat_enrich_payload({"query": query, "universe": universe or "real"}, query)
+                rid_hdr.update(compat_hdr)
                 r = await self._http_async.post(
                     "/recall",
                     json={"query": query, "top_k": int(top_k), "universe": uni},
@@ -1438,13 +1483,15 @@ class MemoryClient:
                 pass
             return
 
-        # compute coord string once
-        sc = _stable_coord(f"{payload.get('universe','real')}::{coord_key}")
+        # Enrich payload and compute coord string once
+        enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+        sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        body = {"coord": coord_str, "payload": payload, "type": "episodic"}
+        body = {"coord": coord_str, "payload": enriched, "type": "episodic"}
 
         rid = request_id or str(_uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}
+        rid_hdr.update(compat_hdr)
         stored = False
         try:
             r = self._http.post("/remember", json=body, headers=rid_hdr)
@@ -1488,9 +1535,11 @@ class MemoryClient:
 
         rid = request_id
         rid_hdr = {"X-Request-ID": rid} if rid else {}
-        sc = _stable_coord(f"{payload.get('universe','real')}::{coord_key}")
+        enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+        rid_hdr.update(compat_hdr)
+        sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        body = {"coord": coord_str, "payload": payload, "type": "episodic"}
+        body = {"coord": coord_str, "payload": enriched, "type": "episodic"}
         try:
             r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
             code = getattr(r, "status_code", 200)

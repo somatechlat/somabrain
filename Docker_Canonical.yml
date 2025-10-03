@@ -108,6 +108,7 @@ services:
       SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
       SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
       SOMABRAIN_DEFAULT_TENANT: "sandbox"
+      SOMABRAIN_MODE: "enterprise"
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:9696"
     healthcheck:

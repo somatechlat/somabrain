@@ -1019,6 +1019,48 @@ if _MINIMAL_API:
 
     app.add_middleware(MinimalAPIMiddleware)
 
+# ---------------------------------------------------------------------------
+# Background Tasks: Outbox Processing
+# ---------------------------------------------------------------------------
+from contextlib import suppress as _suppress
+
+async def _outbox_poller():
+    """Periodic task that replays queued memory operations.
+
+    Only runs if SOMABRAIN_REQUIRE_MEMORY is set (default) so that in real
+    enterprise mode queued writes flush promptly once backend is healthy.
+    """
+    import asyncio as _asyncio
+    import os as _os
+    try:
+        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY") in ("1", "true", "True", None)
+    except Exception:
+        require_memory = True
+    if not require_memory:
+        return
+    # Acquire a MemoryService bound to default namespace so we can invoke its internal
+    # outbox processor (namespace iteration happens inside service/mt pool usage).
+    try:
+        ms = MemoryService(mt_memory, cfg.namespace)
+    except Exception:
+        return
+    while True:
+        with _suppress(Exception):
+            # Private method intentionally used; safe operationally.
+            _cb = getattr(ms, "_process_outbox", None)
+            if _cb:
+                # _process_outbox is async, so await it directly.
+                if _asyncio.iscoroutinefunction(_cb):
+                    await _cb()
+                else:
+                    _cb()
+        await _asyncio.sleep(5.0)
+
+@app.on_event("startup")
+async def _start_outbox_poller():
+    import asyncio as _asyncio
+    _asyncio.create_task(_outbox_poller())
+
 # (dashboard and debug endpoints removed per user request)
 
 # Core components
@@ -2083,8 +2125,17 @@ async def remember(req: S.RememberRequest, request: Request):
     _s0 = _t.perf_counter()
     try:
         await memsvc.aremember(key, payload)
-    except RuntimeError:
-        # Circuit is open – operation queued in outbox, proceed as success
+    except RuntimeError as e:
+        # Previously this silently succeeded which hid real backend outages.
+        # In enterprise/full-stack mode (memory required) surface a 503 so callers
+        # know the write is only queued and not yet persisted remotely.
+        try:
+            require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in ("1", "true", "True", None)
+        except Exception:
+            require_memory = True
+        if require_memory:
+            raise HTTPException(status_code=503, detail="memory backend unavailable; write queued") from e
+        # If memory not strictly required we degrade to previous soft behavior.
         pass
     try:
         M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
