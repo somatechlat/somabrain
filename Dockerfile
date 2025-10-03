@@ -15,7 +15,6 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md /build/
 COPY somabrain /build/somabrain
-COPY memory /build/memory
 COPY scripts /build/scripts
 COPY arc_cache.py /build/
 
@@ -51,9 +50,11 @@ COPY docs /app/docs
 COPY scripts /app/scripts
 COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
 COPY arc_cache.py /app/
-COPY memory /app/memory
 COPY brain /app/brain
 COPY observability /app/observability
+
+# Add memory package back for runtime imports
+COPY memory /app/memory
 
 # Create non-root user
 RUN useradd --create-home --shell /sbin/nologin appuser \

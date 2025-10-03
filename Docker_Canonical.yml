@@ -116,21 +116,6 @@ services:
       timeout: 5s
       retries: 3
 
-  somamemory:
-    image: httpd:alpine
-    container_name: sb_somamemory
-    networks:
-      - somabrain_net
-    ports:
-      - "${SOMAMEMORY_HOST_PORT:-9595}:9595"
-    command: >
-      sh -c "sed -i 's/Listen 80/Listen 9595/' /usr/local/apache2/conf/httpd.conf &&
-             echo 'ServerName somamemory' >> /usr/local/apache2/conf/httpd.conf &&
-             echo '{\"ok\": true, \"items\": 0}' > /usr/local/apache2/htdocs/health &&
-             echo '[{\"task\": \"stub\", \"content\": \"Sample memory stub item\", \"universe\": \"real\"}]' > /usr/local/apache2/htdocs/recall &&
-             echo '{\"coord\": \"0,0,0\"}' > /usr/local/apache2/htdocs/remember &&
-             httpd-foreground"
-
 volumes:
   kafka_data:
     driver: local

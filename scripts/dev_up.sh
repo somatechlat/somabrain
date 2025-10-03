@@ -30,7 +30,7 @@ POSTGRES_HOST_PORT=15432
 SOMAMEMORY_HOST_PORT=9595
 PORTS
 
-# Ensure the memory endpoint points to the host‑exposed port
+# Ensure the memory endpoint points to the host‑exposed port (hard‑coded to match the above)
 echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595" >> $ENVFILE
 
 echo "Wrote $ENVFILE:" && sed -n '1,200p' $ENVFILE
@@ -38,7 +38,7 @@ echo "Wrote $ENVFILE:" && sed -n '1,200p' $ENVFILE
 echo "Cleaning any previous compose state (down --remove-orphans)"
 docker compose --env-file $ENVFILE -f Docker_Canonical.yml down --remove-orphans || true
 echo "Bringing up docker compose (this will build the somabrain image)..."
-docker compose --env-file $ENVFILE -f Docker_Canonical.yml up -d --build
+docker compose --env-file $ENVFILE -f Docker_Canonical.yml up -d --build somabrain redis kafka prometheus postgres
 
 # Wait for somabrain health
 SOMABRAIN_PORT=$(grep '^SOMABRAIN_HOST_PORT=' $ENVFILE | cut -d= -f2)
@@ -62,8 +62,8 @@ with open('.env.local') as f:
             env[k]=v
 ports={}
 ports.update(env)
-services=['somabrain','redis','kafka','prometheus','postgres','somamemory']
-port_map={'somabrain':'9696','redis':'6379','kafka':'9092','prometheus':'9090','postgres':'5432','somamemory':'9596'}
+services=['somabrain','redis','kafka','prometheus','postgres']
+port_map={'somabrain':'9696','redis':'6379','kafka':'9092','prometheus':'9090','postgres':'5432'}
 for s in services:
     try:
         # Map each service to its container port for port lookup
