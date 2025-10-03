@@ -92,6 +92,48 @@ def recall_ltm(
             mem_hits = hits  # type: ignore
         except Exception:
             mem_payloads = []
+        # If recall returned items but none lexically match the query, inject
+        # a deterministic read-your-writes result derived from the query key.
+        try:
+            ql = str(text or "").strip().lower()
+            def _lex_match(p: dict) -> bool:
+                for k in ("task", "text", "content", "what", "fact"):
+                    v = p.get(k)
+                    if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
+                        return True
+                return False
+            if ql and (not any(_lex_match(p) for p in mem_payloads)):
+                coord = mem_client.coord_for_key(text, universe=universe)
+                direct = mem_client.payloads_for_coords([coord], universe=universe)
+                if direct:
+                    # Prepend direct hit ensuring uniqueness by 'task' text
+                    dh = direct[0]
+                    seen = set()
+                    out: list[dict] = []
+                    def _key(p: dict) -> str:
+                        return str(p.get("task") or p.get("fact") or p.get("text") or "")
+                    out.append(dh)
+                    seen.add(_key(dh))
+                    for p in mem_payloads:
+                        kp = _key(p)
+                        if kp in seen:
+                            continue
+                        out.append(p)
+                        seen.add(kp)
+                    mem_payloads = out
+        except Exception:
+            pass
+    # Deterministic read-your-writes fallback:
+    # If no payloads were returned via SDR/recall, derive the coordinate
+    # from the query text (used as key on store) and fetch directly.
+    if not mem_payloads:
+        try:
+            coord = mem_client.coord_for_key(text, universe=universe)
+            direct = mem_client.payloads_for_coords([coord], universe=universe)
+            if direct:
+                mem_payloads = direct
+        except Exception:
+            pass
     # Filter by universe if any
     if universe:
         mem_payloads = [

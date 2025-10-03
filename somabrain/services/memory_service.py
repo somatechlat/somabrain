@@ -313,9 +313,16 @@ class MemoryService:
         # Ensure payload indexed with coordinate for planner lookup (stub/local)
         if coord is not None:
             try:
-                from ..memory_client import _GLOBAL_PAYLOADS
+                from ..memory_client import _GLOBAL_PAYLOADS, _stable_coord
 
                 p = dict(payload)
+                # Ensure coordinate present; compute if needed for consistency
+                if not p.get("coordinate"):
+                    try:
+                        uni = p.get("universe") or universe or "real"
+                        coord = _stable_coord(f"{uni}::{key}")
+                    except Exception:
+                        pass
                 p["coordinate"] = coord
                 _GLOBAL_PAYLOADS.setdefault(self.namespace, []).append(p)
             except Exception:

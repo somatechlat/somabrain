@@ -665,6 +665,23 @@ class MemoryClient:
         locally computed coord. On failure, falls back to running the sync remember
         in a thread executor.
         """
+        # Mirror locally first for read-your-writes semantics
+        try:
+            _refresh_builtins_globals()
+            enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
+            coord = _stable_coord(f"{universe}::{coord_key}")
+            p2 = dict(enriched)
+            p2["coordinate"] = coord
+            with self._lock:
+                self._stub_store.append(p2)
+            try:
+                ns = getattr(self.cfg, "namespace", None)
+                if ns is not None:
+                    _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
+            except Exception:
+                pass
+        except Exception:
+            pass
         if self._http_async is not None:
             try:
                 enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
@@ -759,7 +776,34 @@ class MemoryClient:
                 except Exception:
                     data = []
                 else:
-                    data = data if isinstance(data, list) else []
+                    # Normalize common response shapes from various memory services
+                    # Accept either a plain list of payloads, or a list of wrappers
+                    # (each with a 'payload' field), or a dict containing
+                    # 'memory' / 'payloads' / 'hits'.
+                    if isinstance(data, dict):
+                        if isinstance(data.get("memory"), list):
+                            data = data.get("memory", [])
+                        elif isinstance(data.get("payloads"), list):
+                            data = data.get("payloads", [])
+                        elif isinstance(data.get("hits"), list):
+                            data = data.get("hits", [])
+                        else:
+                            data = []
+                    # If we now have a list, unwrap wrappers like {"payload": {...}}
+                    if isinstance(data, list):
+                        unwrapped: list[dict] = []
+                        for item in data:
+                            if isinstance(item, dict) and "payload" in item and isinstance(item.get("payload"), dict):
+                                unwrapped.append(item["payload"])  # type: ignore[index]
+                            elif isinstance(item, dict):
+                                unwrapped.append(item)
+                            else:
+                                # ignore non-dict entries
+                                pass
+                        data = unwrapped
+                    else:
+                        data = []
+                    # Optional keyword filter for lightweight lexical matching
                     if data:
                         data = _filter_payloads_by_keyword(data, str(query))
                     # Optional weighting for HTTP results when flag enabled or full-stack forced
@@ -981,6 +1025,29 @@ class MemoryClient:
                     data = r.json()
                 except Exception:
                     data = []
+                else:
+                    # Normalize to a list of payload dicts, same as sync path
+                    if isinstance(data, dict):
+                        if isinstance(data.get("memory"), list):
+                            data = data.get("memory", [])
+                        elif isinstance(data.get("payloads"), list):
+                            data = data.get("payloads", [])
+                        elif isinstance(data.get("hits"), list):
+                            data = data.get("hits", [])
+                        else:
+                            data = []
+                    if isinstance(data, list):
+                        unwrapped: list[dict] = []
+                        for item in data:
+                            if isinstance(item, dict) and "payload" in item and isinstance(item.get("payload"), dict):
+                                unwrapped.append(item["payload"])  # type: ignore[index]
+                            elif isinstance(item, dict):
+                                unwrapped.append(item)
+                        data = unwrapped
+                    else:
+                        data = []
+                    if data:
+                        data = _filter_payloads_by_keyword(data, str(query))
             except Exception:
                 data = []
             return [RecallHit(payload=p) for p in (data or [])]

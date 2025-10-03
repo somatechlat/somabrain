@@ -30,6 +30,7 @@ See Sphinx documentation for full details.
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress as _suppress
 import logging
 import math
 import os
@@ -1022,7 +1023,6 @@ if _MINIMAL_API:
 # ---------------------------------------------------------------------------
 # Background Tasks: Outbox Processing
 # ---------------------------------------------------------------------------
-from contextlib import suppress as _suppress
 
 async def _outbox_poller():
     """Periodic task that replays queued memory operations.
@@ -1926,6 +1926,16 @@ async def recall(req: S.RecallRequest, request: Request):
         M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
             max(0.0, _t.perf_counter() - _t1)
         )
+        # Read-your-writes fallback: if LTM recall returned nothing, try direct
+        # coordinate lookup based on the query text used as key.
+        if not mem_payloads:
+            try:
+                direct_coord = mem_client.coord_for_key(text, universe=universe)
+                direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                if direct:
+                    mem_payloads = direct
+            except Exception:
+                pass
         # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
         if (
             cfg.use_hrr_first
@@ -1954,8 +1964,66 @@ async def recall(req: S.RecallRequest, request: Request):
                 M.HRR_RERANK_LTM_APPLIED.inc()
             except Exception:
                 pass
+        # If still empty, backfill from WM hits that lexically match the query
+        if not mem_payloads and wm_hits:
+            try:
+                ql = str(text).strip().lower()
+                backfill: list[dict] = []
+                for _s, cand in wm_hits:
+                    if not isinstance(cand, dict):
+                        continue
+                    txt = str(cand.get("task") or cand.get("fact") or cand.get("text") or "")
+                    if txt and ql and (ql in txt.lower() or txt.lower() in ql):
+                        # Universe-filter if requested
+                        if universe and str(cand.get("universe") or "real") != str(universe):
+                            continue
+                        backfill.append(cand)
+                # Keep order as in WM hits, but unique by 'task' text
+                seen_tasks = set()
+                uniq: list[dict] = []
+                for p in backfill:
+                    t = str(p.get("task") or p.get("fact") or p.get("text") or "")
+                    if t in seen_tasks:
+                        continue
+                    seen_tasks.add(t)
+                    uniq.append(p)
+                mem_payloads = uniq
+            except Exception:
+                pass
         # cache result
         cache[ckey] = mem_payloads
+        # Final safety: if still empty, consult process-global payload mirror
+        # to provide read-your-writes visibility within this API process.
+        if not mem_payloads:
+            try:
+                from somabrain import memory_client as _mc
+
+                # Refresh module-level globals in case tests swapped builtins maps
+                try:
+                    _mc._refresh_builtins_globals()
+                except Exception:
+                    pass
+                GP = getattr(_mc, "_GLOBAL_PAYLOADS", {}) or {}
+                ns_items = list(GP.get(ctx.namespace, [])) if isinstance(GP, dict) else []
+                ql = str(text).strip().lower()
+                backfill = []
+                for p in ns_items[::-1]:  # search newest first
+                    try:
+                        if not isinstance(p, dict):
+                            continue
+                        if universe and str(p.get("universe") or "real") != str(universe):
+                            continue
+                        t = str(p.get("task") or p.get("fact") or p.get("text") or "")
+                        if t and (ql in t.lower() or t.lower() in ql):
+                            backfill.append(p)
+                            if len(backfill) >= int(req.top_k):
+                                break
+                    except Exception:
+                        pass
+                if backfill:
+                    mem_payloads = backfill
+            except Exception:
+                pass
         # Optional graph augmentation: expand k-hop from query key coord
         if cfg.use_graph_augment:
             start = mem_client.coord_for_key(text, universe=universe)
