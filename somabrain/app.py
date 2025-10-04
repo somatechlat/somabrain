@@ -2082,6 +2082,105 @@ async def recall(req: S.RecallRequest, request: Request):
                     added += 1
                     if added >= max_add:
                         break
+        # Promote exact token-like queries (e.g., human-friendly IDs) even if LTM returned items.
+        # This removes the need for users to switch endpoints when they have a label/token.
+        try:
+            promote_exact = bool(getattr(cfg, "promote_exact_token_enabled", True))
+        except Exception:
+            promote_exact = True
+        if promote_exact and isinstance(text, str):
+            try:
+                import re as _re
+
+                # Heuristic: token-like if mostly [A-Za-z0-9_-] and length >= 6
+                _tokish = bool(_re.match(r"^[A-Za-z0-9_-]{6,}$", text.strip()))
+            except Exception:
+                _tokish = False
+            if _tokish:
+                try:
+                    direct_coord = mem_client.coord_for_key(text, universe=universe)
+                    direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                    if direct:
+                        # Insert at front if not already present (by coordinate if available)
+                        d0 = direct[0]
+                        def _coord_of(p):
+                            c = p.get("coordinate") if isinstance(p, dict) else None
+                            return tuple(c) if isinstance(c, (list, tuple)) and len(c) == 3 else None
+                        dcoord = _coord_of(d0)
+                        seen = set()
+                        out = []
+                        if dcoord is not None:
+                            seen.add(dcoord)
+                            out.append(d0)
+                            for p in mem_payloads:
+                                pc = _coord_of(p)
+                                if pc is not None and pc in seen:
+                                    continue
+                                if pc is not None:
+                                    seen.add(pc)
+                                out.append(p)
+                            mem_payloads = out
+                        else:
+                            # If no coordinate, ensure textual uniqueness by payload string
+                            keyset = {str(d0)}
+                            out = [d0]
+                            for p in mem_payloads:
+                                sp = str(p)
+                                if sp in keyset:
+                                    continue
+                                keyset.add(sp)
+                                out.append(p)
+                            mem_payloads = out
+                        try:
+                            from . import metrics as _mx
+
+                            _mx.WM_ADMIT.labels(source="promote_token").inc()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+
+        # Apply a lightweight lexical boost so keyword-like queries surface exact matches.
+        # This stays on by default to keep /recall zero-config and intuitive.
+        try:
+            lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
+        except Exception:
+            lexical_boost = True
+        if lexical_boost and isinstance(text, str) and mem_payloads:
+            try:
+                ql = text.strip().lower()
+                # Tokenize query on non-alphanumerics; keep short tokens too to allow IDs
+                import re as _re
+
+                qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
+                def _payload_text(p):
+                    if not isinstance(p, dict):
+                        return str(p).lower()
+                    parts = [
+                        str(p.get("task") or ""),
+                        str(p.get("fact") or ""),
+                        str(p.get("text") or ""),
+                        str(p.get("content") or ""),
+                    ]
+                    return "\n".join(parts).lower()
+                scored = []
+                for p in mem_payloads:
+                    txt = _payload_text(p)
+                    # count occurrences of any token
+                    score = 0
+                    for t in qtokens:
+                        try:
+                            if t and t in txt:
+                                score += 1
+                        except Exception:
+                            pass
+                    scored.append((score, p))
+                # Stable sort: higher lexical score first, preserve relative order among equals
+                scored.sort(key=lambda sp: sp[0], reverse=True)
+                mem_payloads = [p for _, p in scored]
+            except Exception:
+                pass
+
         # Optional diversity pass (MMR)
         if getattr(cfg, "use_diversity", False):
             try:
@@ -2314,6 +2413,8 @@ async def remember(req: S.RememberRequest, request: Request):
         "deadline_ms": deadline_ms,
         "idempotency_key": idempotency_key,
     }
+
+
 
 
 if not _MINIMAL_API:

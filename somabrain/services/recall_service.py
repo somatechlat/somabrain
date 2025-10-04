@@ -37,6 +37,7 @@ from __future__ import annotations
 import asyncio
 import time as _t
 from typing import Callable, List, Optional, Tuple
+import re
 
 from .. import metrics as M
 from ..sdr import LSHIndex
@@ -123,6 +124,39 @@ def recall_ltm(
                     mem_payloads = out
         except Exception:
             pass
+    # Lexical/token-aware boost: if the query looks like a short unique token or
+    # if any payload contains the exact query string, promote those payloads to
+    # the top so users don't need manual tuning to find label-like memories.
+    try:
+        q = str(text or "").strip()
+        ql = q.lower()
+        def _is_token_like(s: str) -> bool:
+            # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
+            if not s or len(s) < 6 or len(s) > 64:
+                return False
+            if not re.match(r"^[A-Za-z0-9_-]+$", s):
+                return False
+            has_alpha = any(c.isalpha() for c in s)
+            has_digit = any(c.isdigit() for c in s)
+            return has_alpha and has_digit
+        def _lexical_score(p: dict) -> int:
+            # Score by exact contains in common fields; higher for exact token-like
+            score = 0
+            fields = ("task", "text", "content", "what", "fact")
+            for k in fields:
+                v = p.get(k)
+                if isinstance(v, str) and v:
+                    vl = v.lower()
+                    if ql and ql in vl:
+                        score += 5 if _is_token_like(q) else 2
+            return score
+        if mem_payloads and q:
+            scored = [(p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)]
+            if any(s > 0 for _, s in scored):
+                # Stable sort: keep original relative order for equal scores
+                mem_payloads = [p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)]
+    except Exception:
+        pass
     # Deterministic read-your-writes fallback:
     # If no payloads were returned via SDR/recall, derive the coordinate
     # from the query text (used as key on store) and fetch directly.

@@ -53,7 +53,7 @@ This version reflects only what exists in the current codebase. Planned or aspir
 ---
 ## 1. Service Topology (Code Reality)
 - Brain API: `somabrain/app.py`.
-- Memory Service: Basic service + test support.
+- Memory Service: External HTTP service only (default port 9595). The brain maintains a small in‑process mirror for read‑your‑writes visibility and an outbox for retries, but does not run a full local memory backend.
 - OPA: Optional middleware; full Rego policies not bundled.
 - Background Workers: Outbox + circuit breaker loop only.
 - Constitution Engine: `somabrain/constitution/__init__.py` (no `cloud.py`). Multi-sig verify partial.
@@ -111,7 +111,7 @@ This document intentionally matches current code state; update only after code c
 - **Brain API (FastAPI/uvicorn)** – primary entry point; exposes REST/gRPC endpoints for agent
   requests, memory operations, and health checks. Auto-discovers host ports via `scripts/dev_up.sh`
   during local deploys and via config maps in production.
-- **Memory Service** – External HTTP service on port 9595 (see `tests/support/memory_service.py`) or in-process fallback with deterministic similarity recall
+- **Memory Service** – External HTTP service on port 9595 (see `tests/support/memory_service.py`). No in‑process fallback backend; the brain keeps a process‑global mirror (for read‑your‑writes) and an outbox to replay queued writes if the service is temporarily unavailable.
 - **OPA Stub Service** – Simple allow-all policy service on port 8181 (see `tests/support/opa_stub.py`). **[Note: Full Rego policy engine not yet implemented]**
 - **Background Workers** – Outbox processing and circuit-breaker recovery via `start_background_workers()` in app.py
 - **Constitution Engine** – `somabrain/constitution/cloud.py` orchestrates reads/writes to managed
@@ -168,7 +168,7 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 1. **Ingress** – Agent sends request with signed headers. Envoy validates cert/JWT and sleeps the
    request only if thresholds are exceeded.
 2. **Governance** – FastAPI handler loads constitution (cached in Redis) and verifies latest
-   signature. OPA evaluated; decision and metadata captured.
+  signature. OPA evaluated; decision and metadata captured. Readiness in `/health` reflects OPA posture via `opa_ok` (boolean) and `opa_required` (boolean). Setting `SOMA_OPA_FAIL_CLOSED=1` gates readiness on OPA.
 3. **Audit** – `somabrain/audit.publish_event` produces a transactional record to Kafka with schema
    validation, capturing constitution hash, signature, request metadata, and trace ID. Redis Stream
    fallback buffers events if Kafka unreachable.
@@ -183,6 +183,10 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
    updates memory salience, and adjusts utility/retrieval weights via online optimisation.
 8. **Observability** – Traces, metrics, and logs shipped to OTEL collector and stored in Prometheus/
    Loki/Tempo for dashboards and alerting.
+
+### 3.1 Memory Retrieval Endpoints (Current API)
+
+- `POST /recall` – Semantic retrieval. Accepts `{query, top_k, universe?}` and returns working‑memory hits and long‑term memory payloads. Multi‑tenant via `X-Tenant-ID`.
 
 ## 4. Data Models & Storage
 
