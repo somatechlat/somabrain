@@ -66,7 +66,16 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return await call_next(request)
             except Exception as exc:
-                # Previously this returned a 403 deny; now treat as safe‑allow fallback
+                # Respect fail-closed posture if configured
+                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+                if fail_closed:
+                    LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
+                    app_metrics.OPA_DENY_TOTAL.inc()
+                    return Response(
+                        content=json.dumps({"detail": "OPA policy unavailable"}),
+                        status_code=403,
+                        media_type="application/json",
+                    )
                 LOGGER.debug("OPA evaluation error (fallback allow): %s", exc)
                 app_metrics.OPA_ALLOW_TOTAL.inc()
                 return await call_next(request)
@@ -97,7 +106,16 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 # Treat unexpected status as a safe‑allow fallback
                 app_metrics.OPA_ALLOW_TOTAL.inc()
         except Exception as exc:
-            # Any failure to contact OPA results in a safe‑allow fallback (fail‑open)
+            # Failure to contact OPA – honor fail-closed posture if enabled
+            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+            if fail_closed:
+                LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
+                app_metrics.OPA_DENY_TOTAL.inc()
+                return Response(
+                    content=json.dumps({"detail": "OPA policy unavailable"}),
+                    status_code=403,
+                    media_type="application/json",
+                )
             LOGGER.debug("OPA request failed (fallback allow): %s", exc)
             app_metrics.OPA_ALLOW_TOTAL.inc()
             # Continue processing the request instead of denying

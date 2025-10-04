@@ -52,6 +52,12 @@ The Docker stack starts Somabrain on port 9696 with external services (Redis, Ka
 In developer mode the API runs with a single worker (SOMABRAIN_WORKERS=1) to ensure in‑process working‑memory
 read‑your‑writes consistency.
 
+OPA policy enforcement defaults to fail-open for local development. To simulate production posture (deny when OPA is
+unavailable), set SOMA_OPA_FAIL_CLOSED=1. The /health endpoint will include:
+
+- opa_required: true when fail-closed is enabled
+- opa_ok: whether OPA /health is reachable (and required for readiness when fail-closed)
+
 Run a quick live smoke to verify remember/recall end‑to‑end:
 
 ```bash

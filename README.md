@@ -29,8 +29,35 @@ docker run --rm \
   -e SOMABRAIN_DISABLE_AUTH=false \
   -e SOMABRAIN_API_TOKEN=yourtoken \
   ghcr.io/somatechlat/somabrain:latest
+  
+# Call with:
+#   -H "Authorization: Bearer yourtoken"
+# Multi-tenant isolation header:
+#   -H "X-Tenant-ID: demo"
 
 # Call with:
+### ⚖️ OPA Posture (fail-open vs fail-closed)
+
+By default, policy checks via OPA are fail-open, meaning requests are allowed if OPA is unreachable. For production, you can enable fail-closed to deny requests when OPA is unavailable:
+
+- Set SOMA_OPA_FAIL_CLOSED=1 to require OPA for allow/deny decisions.
+- The health endpoint exposes opa_ok and opa_required. When fail-closed is on, readiness requires opa_ok=true.
+
+Example:
+
+```bash
+docker run --rm \
+  -p 8000:9696 \
+  -e SOMABRAIN_DISABLE_AUTH=false \
+  -e SOMA_OPA_URL=http://sb_opa:8181 \
+  -e SOMA_OPA_FAIL_CLOSED=1 \
+  ghcr.io/somatechlat/somabrain:latest
+```
+
+Health payload fields:
+- opa_required: true when SOMA_OPA_FAIL_CLOSED is enabled
+- opa_ok: true when OPA /health responds 200 within timeout
+
 #   -H "Authorization: Bearer yourtoken"
 # Multi-tenant isolation header:
 #   -H "X-Tenant-ID: demo"

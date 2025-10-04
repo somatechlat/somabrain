@@ -47,9 +47,25 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            # In testing or when OPA is unavailable, default to allow (fail‑open).
+            # Respect fail-open vs fail-closed posture via SOMA_OPA_FAIL_CLOSED
+            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+            if fail_closed:
+                LOGGER.error("OPA evaluation failed (fail-closed deny): %s", e)
+                return False
             LOGGER.warning("OPA evaluation failed (fallback allow): %s", e)
             return True
+
+    def is_ready(self) -> bool:
+        """Check OPA readiness via its /health endpoint.
+
+        Returns True if OPA responds with HTTP 200 within the configured timeout.
+        """
+        health_url = f"{self.base_url}/health"
+        try:
+            resp = self.session.get(health_url, timeout=self.timeout)
+            return resp.status_code == 200
+        except Exception:
+            return False
 
     def reload_policy(self) -> bool:
         """Trigger OPA to reload its policies.

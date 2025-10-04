@@ -1668,6 +1668,7 @@ async def health(request: Request) -> S.HealthResponse:
     # Strict mode & predictor/embedder diagnostics
     try:
         from somabrain.stub_audit import STRICT_REAL as __SR, stub_stats as __stub_stats
+        from somabrain.opa.client import opa_client as __opa
         resp["strict_real"] = bool(__SR)
         resp["predictor_provider"] = _PREDICTOR_PROVIDER
         # Full-stack mode flag (forces external memory presence & embedder)
@@ -1718,11 +1719,21 @@ async def health(request: Request) -> S.HealthResponse:
         except Exception:
             memory_ok = mem_items > 0
         embedder_ok = embedder is not None
-        # Enforce full-stack readiness if requested
+        # OPA readiness (only required if fail-closed posture is enabled)
+        opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+        opa_ok = True
+        if opa_required:
+            try:
+                opa_ok = bool(__opa.is_ready())
+            except Exception:
+                opa_ok = False
+        resp["opa_ok"] = bool(opa_ok)
+        # Enforce full-stack readiness if requested (and include OPA if required)
         if full_stack:
-            strict_ready = predictor_ok and memory_ok and embedder_ok
+            strict_ready = predictor_ok and memory_ok and embedder_ok and (opa_ok if opa_required else True)
         else:
-            strict_ready = (not __SR) or (predictor_ok and memory_ok and embedder_ok)
+            base_ok = predictor_ok and memory_ok and embedder_ok
+            strict_ready = (not __SR) or (base_ok and (opa_ok if opa_required else True))
         # If predictor still blocking readiness and override present, degrade message
         if not strict_ready and predictor_ok and memory_ok and embedder_ok:
             # Should not happen, but safeguard: mark ready
@@ -1733,6 +1744,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["predictor_ok"] = bool(predictor_ok)
         resp["memory_ok"] = bool(memory_ok)
         resp["embedder_ok"] = bool(embedder_ok)
+        resp["opa_required"] = bool(opa_required)
     except Exception:
         resp["strict_real"] = False
         resp["ready"] = True

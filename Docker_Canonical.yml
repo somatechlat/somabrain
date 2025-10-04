@@ -55,7 +55,7 @@ services:
     ports:
       - "${PROMETHEUS_HOST_PORT:-9090}:9090"
     volumes:
-      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   # Postgres for development
   postgres:
