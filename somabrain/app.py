@@ -1784,35 +1784,6 @@ async def recall(req: S.RecallRequest, request: Request):
     require_auth(request, cfg)
     # Retrieve tenant context
     ctx = get_tenant(request, cfg.namespace)
-    # Compatibility: bump Reward Gate metrics based on header even if middleware isn't active
-    try:
-        from . import metrics as _mx
-
-        _mx.REWARD_ALLOW_TOTAL.inc()
-        hdr = request.headers.get("X-Utility-Value")
-        if hdr is not None:
-            try:
-                if float(hdr) < 0:
-                    _mx.REWARD_DENY_TOTAL.inc()
-            except Exception:
-                pass
-        # Also track event counts in builtins for metrics endpoint synthesis
-        try:
-            import builtins as _b
-
-            cnt = int(getattr(_b, "_SB_REC_CALLS", 0) or 0)
-            setattr(_b, "_SB_REC_CALLS", cnt + 1)
-            if hdr is not None:
-                try:
-                    if float(hdr) < 0:
-                        d = int(getattr(_b, "_SB_REC_DENY", 0) or 0)
-                        setattr(_b, "_SB_REC_DENY", d + 1)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-    except Exception:
-        pass
     # Input validation for brain safety
     try:
         if hasattr(req, "query") and req.query:

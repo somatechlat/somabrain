@@ -763,18 +763,7 @@ async def metrics_endpoint() -> Any:
         except Exception:
             return b""
 
-    # Before generating, synthesize any pending compatibility counters recorded in builtins.
-    try:
-        pending_calls = int(getattr(_builtins, "_SB_REC_CALLS", 0) or 0)
-        pending_deny = int(getattr(_builtins, "_SB_REC_DENY", 0) or 0)
-        if pending_calls > 0:
-            REWARD_ALLOW_TOTAL.inc(pending_calls)
-            setattr(_builtins, "_SB_REC_CALLS", 0)
-        if pending_deny > 0:
-            REWARD_DENY_TOTAL.inc(pending_deny)
-            setattr(_builtins, "_SB_REC_DENY", 0)
-    except Exception:
-        pass
+    # Export only real counters from the shared registry – no synthetic increments.
     try:
         data = generate_latest(registry)
     except Exception:
@@ -816,20 +805,3 @@ async def timing_middleware(
             response, "status_code", 500 if response is None else response.status_code
         )
         HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
-        # Compatibility shim: ensure Reward Gate metrics are observable even if
-        # the dedicated middleware isn't active in this environment.
-        try:
-            if method.upper() == "POST" and path == "/recall":
-                hdr = request.headers.get("X-Utility-Value")
-                util = None
-                if hdr is not None:
-                    try:
-                        util = float(hdr)
-                    except Exception:
-                        util = None
-                # Count allow for processed request
-                REWARD_ALLOW_TOTAL.inc()
-                if (util is not None and util < 0) or int(status) == 403:
-                    REWARD_DENY_TOTAL.inc()
-        except Exception:
-            pass
