@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  somabrain:
+    image: ghcr.io/somatechlat/somabrain:latest
+    environment:
+      SOMABRAIN_HOST: "0.0.0.0"
+      SOMABRAIN_PORT: "9696"
+      # Demo-friendly: keep strict-real defaults off here; for production use strict-real flags.
+      SOMABRAIN_DISABLE_AUTH: "1"
+    ports: ["9696:9696"]
+    networks: [ sbnet ]
+
+  prometheus:
+    image: prom/prometheus:latest
+    command: --config.file=/etc/prometheus/prometheus.yml
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    networks: [ sbnet ]
+    depends_on: [ somabrain ]
+
+networks:
+  sbnet: {}

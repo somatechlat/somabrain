@@ -96,7 +96,7 @@ close of each sprint (✅ done, 🟡 in progress, 🔴 blocked).
 **DoD**
 - Writes propagate to all tiers atomically; **pending:** integrity worker must report zero mismatches.
 - Retrieval latency p95 <75ms for 100k memories.
-- Grafana panels for cache hit rate, write amplification, consistency alerts.
+- Prometheus panels and alerts for cache hit rate, write amplification, consistency.
 
 ### S4 – Context Bundles, Planner Loop & Agent RPC (✅ Completed)
 *Status: Complete. gRPC/OpenAPI contracts, reasoning loop, adaptation engine, context builder, and audit pipeline are implemented and tested in main.*
@@ -151,8 +151,7 @@ close of each sprint (✅ done, 🟡 in progress, 🔴 blocked).
 **Scope**
 - Instrument code paths with OpenTelemetry (trace + metrics) and configure collectors in the
   canonical stack.
-- Create dashboards for governance, memory, agent-facing SLM telemetry, audit; export Grafana JSON
-  to `ops/grafana/`.
+- Create Prometheus recording rules and panels for governance, memory, agent-facing telemetry, audit.
 - Implement anomaly detection job (Prometheus recording rules + Alertmanager) for utility, audit
   fallback, latency, and integrity metrics.
 - Replace ad-hoc logging with structured logs (JSON) and ship to Loki/Elastic.
@@ -293,3 +292,51 @@ close of each sprint (✅ done, 🟡 in progress, 🔴 blocked).
 Updates to this roadmap require approval from the roadmap steward and must be recorded in the
 project changelog. The latest signed version should be referenced in release communications and
 product briefs.
+
+## Parallel Hardening Sprints (Release v0.1.x)
+
+To ship a public, copy-pasteable Quickstart, a visible GHCR image, health checks, and one-command observability, we will run two short sprints in parallel. These sprints are idempotent and documentation-focused with light CI/container work.
+
+### HS1 – GHCR publish, Docs sync, Healthcheck (1–2 days)
+Scope
+- Add a GitHub Actions workflow to publish multi-arch images to GHCR on semver tags; ensure package visibility is public.
+- Align container defaults and docs so the server binds 0.0.0.0 and healthcheck probes /health on the configured port.
+- Unify Quickstart across README and Release Notes; include auth and multi-tenancy snippet.
+- Draft Release Notes v0.1.0 with endpoints and observability instructions.
+
+Artifacts
+- .github/workflows/publish.yml (push on tags v*.*.*).
+- README Quickstart (GHCR image, -p 8000:8000 or documented port mapping) + Auth & Tenancy section.
+- RELEASE_NOTES_v0.1.0.md with identical Quickstart and endpoints.
+- Verified Dockerfile HEALTHCHECK targets ${SOMABRAIN_PORT}.
+
+Definition of Done
+- Tag push builds and publishes latest + semver to GHCR (public visibility confirmed).
+- README and Release Notes show the same Quickstart and auth/tenancy instructions.
+- Container healthcheck passes locally and in CI smoke.
+
+Risks & Mitigations
+- Port mismatch (9696 vs 8000): document mapping or standardize defaults; healthcheck uses env port to avoid drift.
+- Stub vs strict-real: Quickstart can use demo stub vars (clearly labeled) while strict-real remains default for CI/production.
+
+### HS2 – Observability stack, Alerts, Repo hygiene (1–2 days)
+Scope
+- Provide a docker-compose.observability.yml that runs somabrain + Prometheus. Grafana is out of scope and will live in a separate UI project (Electron-based).
+- Add a minimal Prometheus alert rule for elevated recall failures.
+- Consolidate public observability assets under docs/ops and point README to them.
+- Clean repo: remove stray logs, backups, and egg-info; strengthen .gitignore; avoid custom stubs shadowing real packages.
+
+Artifacts
+- docker-compose.observability.yml at repo root.
+- docs/ops/prometheus.yml and docs/ops/alerts.yml (HighRecallFailures rule).
+- (Removed) Grafana provisioning and dashboards. Observability relies on Prometheus endpoints and rules only.
+- Updated .gitignore to exclude logs, backups, egg-info; removal of committed egg-info and stray files.
+
+Definition of Done
+- `docker compose -f docker-compose.observability.yml up` starts Somabrain and Prometheus; metrics are accessible at Prometheus UI. UI dashboards are handled by a separate Electron app.
+- Alert rule loads in Prometheus and can be viewed in the UI; thresholds documented.
+- Repo is free of logs/backups/egg-info; only canonical observability configs remain referenced.
+
+Risks & Mitigations
+- Duplicate observability configs cause confusion: centralize on docs/ops for public quickstarts and keep ops/ for internal use.
+- cachetools stub (`cachetools.py`) can shadow the real package: remove/relocate to tests or depend on the real library.

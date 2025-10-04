@@ -10,6 +10,5 @@
   "redis_host_mapping": "0.0.0.0:6379",
   "kafka_host_mapping": "0.0.0.0:9092",
   "prometheus_host_mapping": "0.0.0.0:9090",
-  "postgres_host_mapping": "0.0.0.0:15432",
-  "somamemory_host_mapping": "0.0.0.0:9595"
+  "postgres_host_mapping": "0.0.0.0:15432"
 }

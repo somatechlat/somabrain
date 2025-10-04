@@ -9,6 +9,35 @@ the fields defined in the `somabrain.config.Config` dataclass.
 Key entries include memory backend selection, networking options, journal and
 outbox settings, and feature flags used for autonomous operation.
 
+Strict-real and full-stack flags
+--------------------------------
+
+These flags harden the application to run only with real services:
+
+- ``SOMABRAIN_STRICT_REAL=1`` — disable stubs/mocks and require real backends.
+- ``SOMABRAIN_FORCE_FULL_STACK=1`` — expect all managed dependencies to be reachable.
+- ``SOMABRAIN_REQUIRE_MEMORY=1`` — fail startup if the external memory API is not reachable.
+
+Service endpoints and ports can be customized, but the canonical defaults are:
+
+- API: ``http://127.0.0.1:9696`` (developer mapping ``9797->9696`` supported)
+- Memory: ``http://127.0.0.1:9595``
+- Redis: ``redis://127.0.0.1:6379/0``
+- Postgres: ``postgresql://localhost:15432/postgres`` (or forwarded ``55432``)
+
+Test harness overrides
+----------------------
+
+To run tests against a live API without spawning a local server:
+
+.. code-block:: bash
+
+	export SOMA_API_URL_LOCK_BYPASS=1
+	export SOMA_API_URL=http://127.0.0.1:9696
+	pytest -q
+
+See also :doc:`strict_real` for end-to-end guidance.
+
 Persistence verification
 ------------------------
 

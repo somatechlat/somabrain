@@ -11,3 +11,13 @@ venv/
 dist/
 build/
 *.egg-info/
+somabrain.egg-info/
+docs/build/
+
+# Logs and transient artifacts
+*.log
+uvicorn_*.log
+runtime_profile.json
+docker-build.log
+pip-install*.log
+*.bak

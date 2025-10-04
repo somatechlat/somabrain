@@ -6,6 +6,36 @@
 
 ---
 
+## 🚀 Quickstart (container)
+
+```bash
+docker run --rm \
+  -p 8000:9696 \
+  -e SOMABRAIN_DISABLE_AUTH=true \
+  ghcr.io/somatechlat/somabrain:latest
+```
+
+Then open:
+- Health: http://localhost:8000/health
+- OpenAPI: http://localhost:8000/docs
+- Metrics: http://localhost:8000/metrics
+
+### 🔐 Auth & Tenancy
+Enable token auth (recommended for non-local):
+
+```bash
+docker run --rm \
+  -p 8000:9696 \
+  -e SOMABRAIN_DISABLE_AUTH=false \
+  -e SOMABRAIN_API_TOKEN=yourtoken \
+  ghcr.io/somatechlat/somabrain:latest
+
+# Call with:
+#   -H "Authorization: Bearer yourtoken"
+# Multi-tenant isolation header:
+#   -H "X-Tenant-ID: demo"
+```
+
 ## 🚀 Headline Features
 
 * **Unit-norm Hyperdimensional Embeddings (HRR)**

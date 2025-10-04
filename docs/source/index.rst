@@ -78,6 +78,8 @@ For more details, see the API documentation and guides in this site.
   AUTONOMOUS_OPERATIONS_GUIDE
   Docker_Configuration_Options_Soma_Brain
   configuration
+  strict_real
+  memory_modes
   memory_management
   modules
   numerics

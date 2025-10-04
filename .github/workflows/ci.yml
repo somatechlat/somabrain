@@ -54,3 +54,14 @@ jobs:
         with:
           name: openapi
           path: artifacts/openapi.json
+
+      - name: Docker build (sanity)
+        run: docker build -t somabrain:ci .
+
+      - name: Container health smoke
+        run: |
+          cid=$(docker run -d -p 9696:9696 somabrain:ci)
+          for i in {1..15}; do
+            if curl -fsS http://127.0.0.1:9696/health >/dev/null; then echo ok; break; fi; sleep 2; done
+          curl -fsS http://127.0.0.1:9696/health | jq '.ok'
+          docker rm -f "$cid"
