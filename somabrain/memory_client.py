@@ -805,7 +805,14 @@ class MemoryClient:
                         data = []
                     # Optional keyword filter for lightweight lexical matching
                     if data:
-                        data = _filter_payloads_by_keyword(data, str(query))
+                        # Apply lexical filter; if no matches, treat as empty to
+                        # enable direct coord/mirror fallback for read-your-writes.
+                        filtered = _filter_payloads_by_keyword(data, str(query))
+                        # Only keep filtered results if at least one matched
+                        if filtered and (len(filtered) <= len(data)):
+                            data = filtered
+                        else:
+                            data = []
                     # Optional weighting for HTTP results when flag enabled or full-stack forced
                     if data and os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in ("1", "true", "True"):
                         try:
@@ -1047,7 +1054,11 @@ class MemoryClient:
                     else:
                         data = []
                     if data:
-                        data = _filter_payloads_by_keyword(data, str(query))
+                        filtered = _filter_payloads_by_keyword(data, str(query))
+                        if filtered and (len(filtered) <= len(data)):
+                            data = filtered
+                        else:
+                            data = []
             except Exception:
                 data = []
             return [RecallHit(payload=p) for p in (data or [])]

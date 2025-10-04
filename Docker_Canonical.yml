@@ -94,7 +94,8 @@ services:
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
-      SOMABRAIN_WORKERS: "4"
+      # Use a single worker in dev to ensure in-process WM read-your-writes across requests
+      SOMABRAIN_WORKERS: "1"
       SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
       SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
       SOMABRAIN_OPA_URL: "http://sb_opa:8181"
@@ -111,6 +112,7 @@ services:
       SOMABRAIN_MODE: "enterprise"
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:9696"
+      - "9797:9696"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
       interval: 30s

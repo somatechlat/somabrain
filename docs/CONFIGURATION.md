@@ -26,6 +26,7 @@ All runtime configuration is controlled via environment variables. This document
 | `SOMABRAIN_STRICT_REAL` | `0` | Enforce "no‑stubs" mode (predictor, embedder, recall). | Various runtime checks |
 | `SOMABRAIN_PREDICTOR_PROVIDER` | `stub` (dev) | Predictor implementation (`mahal`, `llm`, `stub`). In strict mode `stub` is rejected. | `somabrain/app.py` |
 | `SOMABRAIN_FORCE_FULL_STACK` | `0` | Require external memory, real embedder, and non‑stub predictor for readiness. | `somabrain/app.py` |
+| `SOMABRAIN_CONSOLIDATION_TIMEOUT_S` | `1.0` | Max seconds per NREM/REM phase during `/sleep/run` to avoid long requests. | `somabrain/consolidation.py` |
 | `SOMABRAIN_ENABLE_BEST` | `0` | Shortcut that enables full stack + weighting defaults. | `somabrain/app.py` |
 | `SOMABRAIN_REQUIRE_MEMORY` | `1` | When `1` the memory service must be reachable; otherwise the process fails on startup. | `somabrain/memory_client.py` |
 | `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | `0` | Enable phase‑based weighting for recall results. | `somabrain/memory_client.py` |
@@ -113,6 +114,10 @@ When running against a remote cluster, port‑forward the services and set `SOMA
 }
 ```
 Readiness requires a non‑stub predictor, a working embedder, and a reachable memory service (or deterministic in‑process recall when memory is unavailable).
+
+Dev‑mode notes:
+- Docker profile uses a single worker (SOMABRAIN_WORKERS=1) to preserve in‑process WM read‑your‑writes across requests.
+- If you run multiple workers locally, immediate `/recall` after `/remember` may rely on the external memory backend. Keep memory healthy or add a brief client retry.
 
 ---
 ## 7. Deployment Guidance

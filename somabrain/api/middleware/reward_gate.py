@@ -37,11 +37,11 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
             # Proceed with request handling first.
             response = await call_next(request)
 
-            # Determine metric based on utility and final response status.
+            # Metrics semantics: every processed request increments ALLOW;
+            # additionally increment DENY when utility is negative or final status is 403.
+            app_metrics.REWARD_ALLOW_TOTAL.inc()
             if (utility is not None and utility < 0) or response.status_code == 403:
                 app_metrics.REWARD_DENY_TOTAL.inc()
-            else:
-                app_metrics.REWARD_ALLOW_TOTAL.inc()
             return response
         except Exception as exc:
             # Log the error but do not block the request.

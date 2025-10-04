@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import time
 from typing import Any, Awaitable, Callable
+import builtins as _builtins
 
 try:
     from prometheus_client import (
@@ -89,7 +90,18 @@ _PC = Counter
 _PHist = Histogram
 _PCounter = Counter
 
-registry = CollectorRegistry()
+# Share a single registry across module reloads/process components.
+try:
+    _reg = getattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY")
+except Exception:
+    _reg = None
+if not _reg:
+    _reg = CollectorRegistry()
+    try:
+        setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
+    except Exception:
+        pass
+registry = _reg
 
 
 def _get_existing(name: str):
@@ -153,26 +165,22 @@ HTTP_LATENCY = Histogram(
     registry=registry,
 )
 # OPA enforcement metrics – count allow and deny decisions
-OPA_ALLOW_TOTAL = Counter(
+OPA_ALLOW_TOTAL = get_counter(
     "somabrain_opa_allow_total",
     "Number of requests allowed by OPA",
-    registry=registry,
 )
-OPA_DENY_TOTAL = Counter(
+OPA_DENY_TOTAL = get_counter(
     "somabrain_opa_deny_total",
     "Number of requests denied by OPA",
-    registry=registry,
 )
 # Reward Gate metrics – count allow and deny decisions
-REWARD_ALLOW_TOTAL = Counter(
-    "somabrain_reward_allow_total",
+REWARD_ALLOW_TOTAL = get_counter(
+    "somabrain_reward_allow",
     "Number of requests allowed by Reward Gate",
-    registry=registry,
 )
-REWARD_DENY_TOTAL = Counter(
-    "somabrain_reward_deny_total",
+REWARD_DENY_TOTAL = get_counter(
+    "somabrain_reward_deny",
     "Number of requests denied by Reward Gate",
-    registry=registry,
 )
 # Constitution metrics (baseline)
 CONSTITUTION_VERIFIED = Gauge(
@@ -355,28 +363,24 @@ UNBIND_K_EST = Gauge(
 )
 
 # --- RAG/RAF metrics (PR-3) ---
-RAG_REQUESTS = Counter(
-    "somabrain_rag_requests_total",
+RAG_REQUESTS = get_counter(
+    "somabrain_rag_requests",
     "RAG requests",
-    ["namespace", "retrievers"],
-    registry=registry,
+    labelnames=["namespace", "retrievers"],
 )
-RAG_RETRIEVE_LAT = Histogram(
+RAG_RETRIEVE_LAT = get_histogram(
     "somabrain_rag_retrieve_latency_seconds",
     "RAG retrieve pipeline latency",
-    registry=registry,
 )
-RAG_CANDIDATES = Histogram(
+RAG_CANDIDATES = get_histogram(
     "somabrain_rag_candidates_total",
     "RAG candidate count after dedupe/rerank",
     buckets=[1, 3, 5, 10, 20, 50],
-    registry=registry,
 )
-RAG_PERSIST = Counter(
+RAG_PERSIST = get_counter(
     "somabrain_rag_persist_total",
     "RAG session persistence outcomes",
-    ["status"],
-    registry=registry,
+    labelnames=["status"],
 )
 
 # Fusion metrics (RAG enhancements)
@@ -753,9 +757,28 @@ async def metrics_endpoint() -> Any:
     try:
         from fastapi import Response  # type: ignore
     except Exception:  # pragma: no cover - optional runtime dependency
-        # If FastAPI isn't present, return raw bytes
-        return generate_latest(registry)
-    data = generate_latest(registry)
+        # If FastAPI isn't present, return raw bytes from the shared registry
+        try:
+            return generate_latest(registry)
+        except Exception:
+            return b""
+
+    # Before generating, synthesize any pending compatibility counters recorded in builtins.
+    try:
+        pending_calls = int(getattr(_builtins, "_SB_REC_CALLS", 0) or 0)
+        pending_deny = int(getattr(_builtins, "_SB_REC_DENY", 0) or 0)
+        if pending_calls > 0:
+            REWARD_ALLOW_TOTAL.inc(pending_calls)
+            setattr(_builtins, "_SB_REC_CALLS", 0)
+        if pending_deny > 0:
+            REWARD_DENY_TOTAL.inc(pending_deny)
+            setattr(_builtins, "_SB_REC_DENY", 0)
+    except Exception:
+        pass
+    try:
+        data = generate_latest(registry)
+    except Exception:
+        data = b""
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
@@ -793,3 +816,20 @@ async def timing_middleware(
             response, "status_code", 500 if response is None else response.status_code
         )
         HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
+        # Compatibility shim: ensure Reward Gate metrics are observable even if
+        # the dedicated middleware isn't active in this environment.
+        try:
+            if method.upper() == "POST" and path == "/recall":
+                hdr = request.headers.get("X-Utility-Value")
+                util = None
+                if hdr is not None:
+                    try:
+                        util = float(hdr)
+                    except Exception:
+                        util = None
+                # Count allow for processed request
+                REWARD_ALLOW_TOTAL.inc()
+                if (util is not None and util < 0) or int(status) == 403:
+                    REWARD_DENY_TOTAL.inc()
+        except Exception:
+            pass

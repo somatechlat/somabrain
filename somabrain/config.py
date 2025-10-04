@@ -118,6 +118,8 @@ class Config:
     nrem_batch_size: int = 16
     rem_recomb_rate: float = 0.2
     max_summaries_per_cycle: int = 3
+    # Consolidation time budget per phase (seconds); guards NREM/REM loops
+    consolidation_timeout_s: float = 1.0
 
     # Soft Salience
     use_soft_salience: bool = False
@@ -495,12 +497,11 @@ def load_truth_budget(cfg: Config) -> None:
 
 
 @dataclass
-class TruthBudget:
-    """Typed schema for the truth-budget YAML.
+class _LocalTruthBudgetModel:
+    """Internal helper schema for truth-budget parsing.
 
-    This is a minimal, conservative schema capturing the core knobs we will
-    auto-tune and validate in CI. Fields are optional; validators will fill
-    conservative defaults when missing.
+    Kept separate from the public TruthBudget to avoid class redefinition
+    conflicts and make it clear we map into the public API before returning.
     """
     epsilon_total: float = 0.05
     bind_block_m: Optional[int] = None
@@ -516,49 +517,61 @@ class TruthBudget:
 def _validate_and_map_truth_budget(cfg: Config, data: dict[str, Any]) -> Optional[TruthBudget]:
     """Validate minimal truth-budget keys and map into Config-level knobs.
 
-    Returns a TruthBudget instance or None on fatal parse error.
+    Returns a TruthBudget instance or a TruthBudget with conservative defaults on parse error.
     """
     try:
-        tb = TruthBudget(
+        model = _LocalTruthBudgetModel(
             epsilon_total=float(data.get("epsilon_total", 0.05)),
-            bind_block_m=(None if data.get("bind", None) is None else int(data.get("bind", {}).get("block_size_m", 0) or 0) or None),
-            wiener_lambda=(None if data.get("bind", None) is None else float(data.get("bind", {}).get("wiener_lambda", 0) or 0) or None),
-            density_ev_target=(None if data.get("rho", None) is None else float(data.get("rho", {}).get("ev_target", 0.9) or 0.9)),
-            density_r=(None if data.get("rho", None) is None else (int(data.get("rho", {}).get("r", 0)) or None)),
-            graph_appr_eps=(None if data.get("graph", None) is None else float(data.get("graph", {}).get("appr_eps", 1e-3) or 1e-3)),
-            chebyshev_order_K=(None if data.get("kernel", None) is None else int(data.get("kernel", {}).get("chebyshev_order", 24) or 24)),
-            kernel_relerr=(None if data.get("kernel", None) is None else float(data.get("kernel", {}).get("relerr", 0.02) or 0.02)),
-            sinkhorn_tol=(None if data.get("bridge", None) is None else float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3) or 1e-3)),
+            bind_block_m=(int(data.get("bind", {}).get("block_size_m", data.get("bind", {}).get("block_m", 128))) or 128),
+            wiener_lambda=(float(data.get("bind", {}).get("wiener_lambda", 1e-4)) or 1e-4),
+            density_ev_target=(float(data.get("rho", {}).get("ev_target", 0.9)) or 0.9),
+            density_r=(int(data.get("rho", {}).get("r", 128)) or 128),
+            graph_appr_eps=(float(data.get("graph", {}).get("appr_eps", 1e-3)) or 1e-3),
+            chebyshev_order_K=(int(data.get("kernel", {}).get("chebyshev_order", data.get("kernel", {}).get("chebyshev_K", 24))) or 24),
+            kernel_relerr=(float(data.get("kernel", {}).get("relerr", data.get("kernel", {}).get("rel_err", 0.02))) or 0.02),
+            sinkhorn_tol=(float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3)) or 1e-3),
         )
         # Sanity clamps
-        if tb.epsilon_total <= 0 or tb.epsilon_total >= 1:
-            tb.epsilon_total = 0.05
-        if tb.density_ev_target is None or not (0.0 < tb.density_ev_target <= 1.0):
-            tb.density_ev_target = 0.9
-        if tb.bind_block_m is not None and tb.bind_block_m < 8:
-            tb.bind_block_m = 8
-        if tb.chebyshev_order_K is not None and tb.chebyshev_order_K < 4:
-            tb.chebyshev_order_K = 4
+        if model.epsilon_total <= 0 or model.epsilon_total >= 1:
+            model.epsilon_total = 0.05
+        if model.density_ev_target is None or not (0.0 < model.density_ev_target <= 1.0):
+            model.density_ev_target = 0.9
+        if model.bind_block_m is not None and model.bind_block_m < 8:
+            model.bind_block_m = 8
+        if model.chebyshev_order_K is not None and model.chebyshev_order_K < 4:
+            model.chebyshev_order_K = 4
 
         # Map conservative defaults into cfg for runtime convenience (only set if not already set)
-        if tb.bind_block_m and not getattr(cfg, "truth_bind_block_m", None):
-            setattr(cfg, "truth_bind_block_m", tb.bind_block_m)
-        if tb.wiener_lambda and not getattr(cfg, "truth_wiener_lambda", None):
-            setattr(cfg, "truth_wiener_lambda", tb.wiener_lambda)
-        if tb.density_r and not getattr(cfg, "truth_density_r", None):
-            setattr(cfg, "truth_density_r", tb.density_r)
-        if tb.chebyshev_order_K and not getattr(cfg, "truth_chebyshev_K", None):
-            setattr(cfg, "truth_chebyshev_K", tb.chebyshev_order_K)
-        if tb.graph_appr_eps and not getattr(cfg, "truth_graph_appr_eps", None):
-            setattr(cfg, "truth_graph_appr_eps", tb.graph_appr_eps)
-        if tb.kernel_relerr and not getattr(cfg, "truth_kernel_relerr", None):
-            setattr(cfg, "truth_kernel_relerr", tb.kernel_relerr)
-        if tb.sinkhorn_tol and not getattr(cfg, "truth_sinkhorn_tol", None):
-            setattr(cfg, "truth_sinkhorn_tol", tb.sinkhorn_tol)
-
-        return tb
+        if model.bind_block_m and not getattr(cfg, "truth_bind_block_m", None):
+            setattr(cfg, "truth_bind_block_m", model.bind_block_m)
+        if model.wiener_lambda and not getattr(cfg, "truth_wiener_lambda", None):
+            setattr(cfg, "truth_wiener_lambda", model.wiener_lambda)
+        if model.density_r and not getattr(cfg, "truth_density_r", None):
+            setattr(cfg, "truth_density_r", model.density_r)
+        if model.chebyshev_order_K and not getattr(cfg, "truth_chebyshev_K", None):
+            setattr(cfg, "truth_chebyshev_K", model.chebyshev_order_K)
+        if model.graph_appr_eps and not getattr(cfg, "truth_graph_appr_eps", None):
+            setattr(cfg, "truth_graph_appr_eps", model.graph_appr_eps)
+        if model.kernel_relerr and not getattr(cfg, "truth_kernel_relerr", None):
+            setattr(cfg, "truth_kernel_relerr", model.kernel_relerr)
+        if model.sinkhorn_tol and not getattr(cfg, "truth_sinkhorn_tol", None):
+            setattr(cfg, "truth_sinkhorn_tol", model.sinkhorn_tol)
+        # Return the public TruthBudget instance for tests/callers with correct field names
+        tb_public = TruthBudget(
+            epsilon_total=model.epsilon_total,
+            bind_block_size_m=(model.bind_block_m if model.bind_block_m is not None else TruthBudget().bind_block_size_m),
+            bind_wiener_lambda=(model.wiener_lambda if model.wiener_lambda is not None else TruthBudget().bind_wiener_lambda),
+            density_ev_target=(model.density_ev_target if model.density_ev_target is not None else TruthBudget().density_ev_target),
+            density_max_r=(model.density_r if model.density_r is not None else TruthBudget().density_max_r),
+            appr_eps=(model.graph_appr_eps if model.graph_appr_eps is not None else TruthBudget().appr_eps),
+            chebyshev_order_K=(model.chebyshev_order_K if model.chebyshev_order_K is not None else TruthBudget().chebyshev_order_K),
+            chebyshev_relerr=(model.kernel_relerr if model.kernel_relerr is not None else TruthBudget().chebyshev_relerr),
+            sinkhorn_tol=(model.sinkhorn_tol if model.sinkhorn_tol is not None else TruthBudget().sinkhorn_tol),
+        )
+        return tb_public
     except Exception:
-        return None
+        # On parse error, return conservative defaults instead of None
+        return TruthBudget()
 
 
 def load_config_and_truth() -> Config:

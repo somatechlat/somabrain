@@ -38,6 +38,7 @@ from __future__ import annotations
 import argparse
 import random
 from typing import List, Tuple
+import time as _time
 
 from .config import Config, load_config
 from .memory_client import MemoryClient
@@ -80,6 +81,9 @@ def run_nrem(
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if not episodics:
         return {"created": 0, "reinforced": 0}
+    # Time budget guard
+    _t0 = _time.perf_counter()
+    _budget = float(getattr(cfg, "consolidation_timeout_s", 0.0) or 0.0)
     episodics.sort(key=lambda p: int(p.get("importance", 1)), reverse=True)
     batch = episodics[: max(1, int(top_k))]
     # Summarize batch and store semantic
@@ -97,7 +101,12 @@ def run_nrem(
     coords = _coords_for_payloads(mem, batch)
     reinforced = 0
     for i in range(len(coords)):
+        # Check time budget at outer loop
+        if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
+            break
         for j in range(i + 1, len(coords)):
+            if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
+                break
             mem.link(coords[i], coords[j], link_type="co_replay", weight=1.0)
             REPLAY_STRENGTH.observe(1.0)
             reinforced += 1
@@ -129,7 +138,11 @@ def run_rem(
     # Sample pairs for recombination
     n_pairs = max(0, int(recomb_rate * len(episodics)))
     created = 0
+    _t0 = _time.perf_counter()
+    _budget = float(getattr(cfg, "consolidation_timeout_s", 0.0) or 0.0)
     for _ in range(min(n_pairs, max_summaries)):
+        if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
+            break
         a, b = random.sample(episodics, 2)
         ta = str(a.get("task") or "")
         tb = str(b.get("task") or "")

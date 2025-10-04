@@ -14,6 +14,7 @@ Only high-impact settings that materially affect correctness, throughput, or lar
 | SOMABRAIN_USE_HRR | Enable HRR layer | true | Disable only for emergency fallback |
 | SOMABRAIN_USE_HRR_FIRST | HRR-first rerank | true (if dim>=4096) | Gains depend on workload |
 | SOMABRAIN_WIENER_SNR_DB | Default Wiener SNR | 40 | 20=more smoothing, 60=sharper |
+| SOMABRAIN_CONSOLIDATION_TIMEOUT_S | Max seconds per NREM/REM phase | 1.0 | Prevents long-running consolidation from blocking API |
 
 ## 2. Process Model
 | Layer | Recommendation | Rationale |
@@ -77,6 +78,17 @@ Prometheus scrape interval: 5s (fast) or 15s (cost-conscious).
 | HRR bind/unbind | <0.2ms | <0.6ms | Pure NumPy FFT on 8k dim |
 | Sinkhorn (small OT) | <3ms | <8ms | Avoid large n^2 in sync path |
 
+## 13. Dev-Prod Parity Tips
+
+- In local Docker, run the API with a single worker (SOMABRAIN_WORKERS=1) to keep in‑process WM read‑your‑writes
+  for smoke/tests. In production, scale workers as needed.
+- To run tests against the live Docker API on 9696 instead of the test harness’s 9797, export:
+  ```bash
+  export SOMA_API_URL_LOCK_BYPASS=1
+  export SOMA_API_URL=http://127.0.0.1:9696
+  pytest -q
+  ```
+- Keep SOMABRAIN_CONSOLIDATION_TIMEOUT_S small (1–2s) to avoid request timeouts during `/sleep/run` under load.
 ## 8. Scaling Strategy (Horizontal)
 1. Stateless API pods behind load balancer.
 2. Shard working memory by tenant hash (consistent hashing ring) to keep locality.

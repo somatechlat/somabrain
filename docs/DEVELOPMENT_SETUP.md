@@ -46,6 +46,23 @@ Tear down when finished:
 docker compose -f Docker_Canonical.yml down --remove-orphans
 ```
 
+### 2.1 Dev-Prod profile (Docker) and live smoke
+
+The Docker stack starts Somabrain on port 9696 with external services (Redis, Kafka, Postgres, OPA, Prometheus).
+In developer mode the API runs with a single worker (SOMABRAIN_WORKERS=1) to ensure in‑process working‑memory
+read‑your‑writes consistency.
+
+Run a quick live smoke to verify remember/recall end‑to‑end:
+
+```bash
+# After scripts/dev_up.sh has started the stack
+python scripts/devprod_smoke.py --url http://127.0.0.1:9696
+# Output: OK: remember/recall read-your-writes verified.
+```
+
+If you see intermittent empties on very first call after startup, re‑run once; the smoke script already adds
+a small settle delay to avoid cold‑start races.
+
 ## 3. Configure Environment Variables
 
 ```bash
@@ -78,6 +95,23 @@ pytest tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
 ```
 The test clears the in-process store, encodes a memory, and asserts it can be recalled via
 `somabrain.agent_memory.recall_memory`.
+
+### 4.1 Running tests against an already running API (port 9696)
+
+Most live tests default to a dedicated port 9797 to avoid clobbering dev services. To target the Docker API at
+9696 instead, export the lock bypass and the URL explicitly:
+
+```bash
+export SOMA_API_URL_LOCK_BYPASS=1
+export SOMA_API_URL=http://127.0.0.1:9696
+pytest -q
+```
+
+Notes:
+- Keep the Docker stack running (scripts/dev_up.sh). Health must be ok=true before running tests.
+- In dev Docker, Somabrain uses a single worker to ensure WM read‑your‑writes in process.
+- Consolidation (/sleep) is time‑budgeted by SOMABRAIN_CONSOLIDATION_TIMEOUT_S (default 1s) to prevent
+  long request hangs.
 
 ### Using an Existing Kubernetes Stack (Strict Workflow)
 When you have a full stack running in Kubernetes, bridge the cluster back to localhost and reuse
