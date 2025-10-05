@@ -11,6 +11,16 @@ persona records correctly.
 - **Regression test** – `tests/test_synthetic_memory_recall.py` writes a
   temporary persona through the REST API, fetches it back, verifies SomaMemory
   can recall it, and finally deletes the record.
+- **SFM response shape** – HTTP recalls now return
+  `{ "matches": [{ "payload": {...}, "score": <float>, "coord": "x,y,z" }, ...] }`.
+  The client normalizes this into `RecallHit` objects (payload, score, coordinate)
+  before the application layer consumes the results.
+- **Bulk + scoreful endpoints** – the memory client first attempts to persist
+  batches via `/store_bulk` and uses `/recall_with_scores` when present. Both
+  fall back to the legacy `/store` and `/recall` endpoints if the deployment
+  has not yet upgraded.
+- **Graph maintenance** – new helpers wrap `/unlink` and `/prune` so tests can
+  validate edge removal and degree trimming against the real service.
 - **Skip guards** – helper utilities in
   `somabrain/testing/synthetic_memory.py` verify network availability and skip
   the test automatically if the stack is unreachable.

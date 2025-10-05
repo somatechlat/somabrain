@@ -34,6 +34,9 @@ router = APIRouter()
 _feedback_store = FeedbackStore()
 _token_ledger = TokenLedger()
 
+# Global counter for feedback applications across requests
+_feedback_counter = 0
+
 
 @router.post("/evaluate", response_model=EvaluateResponse)
 async def evaluate_endpoint(
@@ -139,6 +142,12 @@ async def feedback_endpoint(
         },
     }
     applied = adapter.apply_feedback(utility=payload.utility, reward=payload.reward)
+    # Increment global feedback counter if adaptation was applied
+    global _feedback_counter
+    if applied:
+        adapter_count = getattr(adapter, "_feedback_count", 0)
+        # Track the highest observed count from either the adapter or module-level counter.
+        _feedback_counter = max(_feedback_counter + 1, adapter_count)
     # Capture weights after adaptation
     after = {
         "retrieval": {
@@ -211,6 +220,13 @@ async def feedback_endpoint(
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
+    if applied:
+        try:
+            store_total = _feedback_store.total_count()
+            adapter_total = getattr(adapter, "_feedback_count", 0)
+            _feedback_counter = max(_feedback_counter, adapter_total, store_total)
+        except Exception:
+            pass
     return FeedbackResponse(accepted=True, adaptation_applied=applied)
 
 
@@ -265,7 +281,15 @@ async def adaptation_state_endpoint(request: Request, auth=Depends(auth_guard)):
         nu=adapter.utility_weights.nu,
     )
     # Access protected members for observability (history length, lr)
-    history_len = len(getattr(adapter, "_history", []))
+    # Use the module‑level feedback counter for a clean monotonic metric.
+    # The counter is incremented on each successful feedback application.
+    adapter_count = getattr(adapter, "_feedback_count", 0)
+    store_total = 0
+    try:
+        store_total = int(_feedback_store.total_count())
+    except Exception:
+        store_total = 0
+    history_len = max(int(_feedback_counter), int(adapter_count), int(store_total))
     learning_rate = float(getattr(adapter, "_lr", 0.0))
     return AdaptationStateResponse(
         retrieval=retrieval_state,

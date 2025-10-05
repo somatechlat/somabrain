@@ -6,7 +6,7 @@
   "POSTGRES_HOST_PORT": "15432",
   "SOMAMEMORY_HOST_PORT": "9595",
   "SOMABRAIN_MEMORY_HTTP_ENDPOINT": "http://host.docker.internal:9595",
-  "somabrain_host_mapping": "0.0.0.0:9797",
+  "somabrain_host_mapping": "0.0.0.0:9696",
   "redis_host_mapping": "0.0.0.0:6379",
   "kafka_host_mapping": "0.0.0.0:9092",
   "prometheus_host_mapping": "0.0.0.0:9090",

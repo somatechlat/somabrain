@@ -843,39 +843,6 @@ try:
 except Exception:
     pass
 
-# Ensure the module object has a usable __spec__ attribute and that
-# sys.modules maps the fully-qualified module name to the current module
-# object. Tests commonly call importlib.reload(module) after clearing
-# modules; importlib.reload requires sys.modules[name] to be the same
-# object as the module being reloaded. Make this robust and best-effort.
-try:
-    _mod = sys.modules.get(__name__)
-    if _mod is not None:
-        _spec = getattr(_mod, "__spec__", None)
-        if not _spec:
-            _spec = importlib.util.spec_from_loader(__name__, loader=None)
-            try:
-                # attach spec to the module object itself
-                setattr(_mod, "__spec__", _spec)
-            except Exception:
-                # fallback to a module-level __spec__ variable
-                __spec__ = _spec  # type: ignore
-        else:
-            # try to ensure the spec name matches the module's __name__
-            try:
-                _spec.name = __name__
-            except Exception:
-                pass
-        # Ensure sys.modules maps both the canonical name and spec.name
-        try:
-            sys.modules[__name__] = _mod
-            if getattr(_spec, "name", None):
-                sys.modules[_spec.name] = _mod
-        except Exception:
-            pass
-except Exception:
-    pass
-
 # Secondary flag for demo endpoints (FNOM/Fractal/experimental brain routes)
 try:
     _EXPOSE_DEMOS = bool(getattr(cfg, "expose_brain_demos", False))
@@ -2107,6 +2074,13 @@ async def recall(req: S.RecallRequest, request: Request):
                         reranked.append((s, p))
                         continue
                     hv = quantum.encode_text(text_p)
+
+
+
+                   
+
+
+
                     hsim = (
                         QuantumLayer.cosine(hrr_qv, hv) if hrr_qv is not None else 0.0
                     )
@@ -3136,3 +3110,25 @@ async def stop_background_workers():
         except Exception:
             pass
         _background_task = None
+
+
+# --- Module reload support -------------------------------------------------
+_current_module = sys.modules[__name__]
+
+# Ensure the canonical module name `somabrain.app` always resolves to this module
+if sys.modules.get("somabrain.app") is not _current_module:
+    sys.modules["somabrain.app"] = _current_module
+
+# Provide a ModuleSpec so importlib.reload works in test fixtures
+spec = getattr(_current_module, "__spec__", None)
+if spec is None:
+    _current_module.__spec__ = importlib.util.spec_from_loader("somabrain.app", loader=None)
+else:
+    spec_name = getattr(spec, "name", None)
+    if spec_name != "somabrain.app":
+        try:
+            spec.name = "somabrain.app"  # type: ignore[attr-defined]
+        except Exception:
+            _current_module.__spec__ = importlib.util.spec_from_loader(
+                "somabrain.app", loader=getattr(spec, "loader", None)
+            )

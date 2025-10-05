@@ -43,9 +43,9 @@ try:
         CONTENT_TYPE_LATEST,
         REGISTRY,
         CollectorRegistry,
-        Counter,
-        Gauge,
-        Histogram,
+        Counter as _PromCounter,
+        Gauge as _PromGauge,
+        Histogram as _PromHistogram,
         generate_latest,
     )
 except (
@@ -76,19 +76,15 @@ except (
 
     CollectorRegistry = CollectorRegistry
     REGISTRY = CollectorRegistry()
-    Counter = _NoopMetric
-    Gauge = _NoopMetric
-    Histogram = _NoopMetric
+    _PromCounter = _NoopMetric
+    _PromGauge = _NoopMetric
+    _PromHistogram = _NoopMetric
 
     def generate_latest(reg):
         return b""
 
 
 # Aliases used later (avoid interleaved imports)
-_Hist = Histogram
-_PC = Counter
-_PHist = Histogram
-_PCounter = Counter
 
 # Share a single registry across module reloads/process components.
 try:
@@ -115,6 +111,36 @@ def _get_existing(name: str):
             return None
 
 
+def _counter(name: str, documentation: str, *args, **kwargs):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromCounter(name, documentation, *args, **kwargs)
+
+
+def _gauge(name: str, documentation: str, *args, **kwargs):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromGauge(name, documentation, *args, **kwargs)
+
+
+def _histogram(name: str, documentation: str, *args, **kwargs):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromHistogram(name, documentation, *args, **kwargs)
+
+
 def get_counter(name: str, documentation: str, labelnames: list | None = None):
     """Get or create a Counter in the central registry.
 
@@ -126,8 +152,8 @@ def get_counter(name: str, documentation: str, labelnames: list | None = None):
         return existing
 
     if labelnames:
-        return Counter(name, documentation, labelnames, registry=registry)
-    return Counter(name, documentation, registry=registry)
+        return _counter(name, documentation, labelnames, registry=registry)
+    return _counter(name, documentation, registry=registry)
 
 
 def get_gauge(name: str, documentation: str, labelnames: list | None = None):
@@ -136,8 +162,8 @@ def get_gauge(name: str, documentation: str, labelnames: list | None = None):
         return existing
 
     if labelnames:
-        return Gauge(name, documentation, labelnames, registry=registry)
-    return Gauge(name, documentation, registry=registry)
+        return _gauge(name, documentation, labelnames, registry=registry)
+    return _gauge(name, documentation, registry=registry)
 
 
 def get_histogram(
@@ -148,8 +174,22 @@ def get_histogram(
         return existing
 
     if labelnames:
-        return Histogram(name, documentation, labelnames, registry=registry, **kwargs)
-    return Histogram(name, documentation, registry=registry, **kwargs)
+        return _histogram(
+            name, documentation, labelnames, registry=registry, **kwargs
+        )
+    return _histogram(name, documentation, registry=registry, **kwargs)
+
+
+# Rebind public constructors to safe wrappers for in-module usage.
+Counter = _counter
+Gauge = _gauge
+Histogram = _histogram
+
+# Aliases used later (avoid interleaved imports)
+_Hist = Histogram
+_PC = Counter
+_PHist = Histogram
+_PCounter = Counter
 
 
 HTTP_COUNT = Counter(
@@ -175,11 +215,11 @@ OPA_DENY_TOTAL = get_counter(
 )
 # Reward Gate metrics – count allow and deny decisions
 REWARD_ALLOW_TOTAL = get_counter(
-    "somabrain_reward_allow",
+    "somabrain_reward_allow_total",
     "Number of requests allowed by Reward Gate",
 )
 REWARD_DENY_TOTAL = get_counter(
-    "somabrain_reward_deny",
+    "somabrain_reward_deny_total",
     "Number of requests denied by Reward Gate",
 )
 # Constitution metrics (baseline)

@@ -54,7 +54,7 @@ This version reflects only what exists in the current codebase. Planned or aspir
 ---
 ## 1. Service Topology (Code Reality)
 - Brain API: `somabrain/app.py`.
-- Memory Service: External HTTP service only (default port 9595). The brain maintains a small in‑process mirror for read‑your‑writes visibility and an outbox for retries, but does not run a full local memory backend.
+- Memory Service: External HTTP service only (default port 9595). The brain keeps a small in‑process mirror for read-your-writes visibility, persists failures to an outbox, and now mirrors every link operation through both sync `link()` and async `alink()` helpers so FastAPI handlers stay non-blocking. There is still no full local memory backend.
 - OPA: Optional middleware; full Rego policies not bundled.
 - Background Workers: Outbox + circuit breaker loop only.
 - Constitution Engine: `somabrain/constitution/__init__.py` (no `cloud.py`). Multi-sig verify partial.
@@ -87,6 +87,9 @@ Basic auth & middleware; SPIFFE/Vault integration placeholders (config-driven, n
 
 ## 8. Testing & Benchmarks
 Math & adaptation unit tests present; lacks coverage for FRGO (nonexistent) and integrity worker (nonexistent).
+- **Chaos tests** – orchestrated via chaos tooling; must confirm auto-recovery and state
+  correctness.
+- **Metrics exposure** – Prometheus endpoints remain available for scraping, but no bundled UI or dashboard assets are shipped with SomaBrain.
 
 ## 9. Future / Roadmap (Explicitly Unimplemented)
 - FRGO conductance updates
@@ -188,6 +191,7 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 ### 3.1 Memory Retrieval Endpoints (Current API)
 
 - `POST /recall` – Semantic retrieval. Accepts `{query, top_k, universe?}` and returns working‑memory hits and long‑term memory payloads. Multi‑tenant via `X-Tenant-ID`.
+- `POST /link` – Graph edge creation accepts coordinates or keys. The router calls `MemoryService.alink`, which delegates to the async HTTP client and still mirrors edges into the local graph cache so stubs and tests observe fresh links immediately.
 
 ## 4. Data Models & Storage
 
@@ -236,6 +240,7 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
   resource usage metrics; results stored in object storage and compared against SLOs.
 - **Chaos tests** – orchestrated via chaos tooling; must confirm auto-recovery and state
   correctness.
+- **Metrics exposure** – Prometheus endpoints remain available for scraping, but no bundled UI or dashboard assets are shipped with SomaBrain.
 
 ## 9. Deployment & Operations
 
@@ -301,12 +306,13 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 
 This document is living; update it whenever architecture decisions are made or components change.
 
-## 12. Recent Code Audit and Fixes
+## 12. Recent Infrastructure Updates (2025)
 
-- **Docstrings added**: Comprehensive one‑line and parameter docstrings were added to many functions and methods, including the entire `somabrain/services/memory_service.py` module and internal helper functions in `somabrain/app.py` (e.g., `_diversify`, `_extract_text_from_candidate`, `_normalize_payload_timestamps`, `_cosine_similarity`).
-- **Syntax correction**: Fixed a stray `{` syntax error in `memory_service.py` that prevented module import.
-- **Unused import cleanup**: Removed the unused `Dict` import from `memory_service.py`.
-- **Ruff linting accommodations**: Added `# ruff: noqa: E402,F841` comment at the top of `examples/train_role_adam.py` and replaced the unused variable `rec` with `_` to silence `F841` warnings.
-- **Documentation alignment**: Updated this architecture document to reflect the current code state after the above changes.
+- **Full dev stack restart**: `scripts/dev_up.sh` now builds and starts the complete Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory service, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for `/health` before completing.
+- **Python environment**: The project now uses **uv** for dependency management and command execution (`uv pip install -e .[dev]`, `uv run ruff`, `uv run black`, `uv run pytest`). This speeds up installs and ensures reproducible builds.
+- **CI workflow**: `.github/workflows/ci.yml` has been modernised to run on **Python 3.13**, install dependencies with `uv`, execute linting (`ruff`), formatting (`black`), the full test suite (`pytest`), build the Docker image, and perform a health‑check smoke test against the running container.
+- **Docstring coverage**: Comprehensive one‑line and parameter docstrings have been added to many functions across the `somabrain` package (e.g., `memory_service.py`, helpers in `app.py`). Remaining gaps are tracked in the todo list.
+- **Health endpoints**: `/health` now reports component readiness, predictor provider, strict-real mode, embedder details, and memory item counts, matching the updated configuration documentation.
+- **Visualization policy**: SomaBrain publishes metrics for external scraping but intentionally omits embedded dashboards or UI bundles; operators can point external tools (Grafana, etc.) if needed.
 
-These changes improve code readability, maintainability, and prepare the repository for stricter linting and CI enforcement.
+These changes bring the repository to a production‑ready state with full stack verification, reproducible builds, and tighter CI enforcement.

@@ -35,6 +35,7 @@ Functions:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import time
@@ -406,6 +407,82 @@ class MemoryService:
             )
             raise
 
+    async def alink(
+        self,
+        from_coord: Tuple[float, float, float],
+        to_coord: Tuple[float, float, float],
+        link_type: str = "related",
+        weight: float = 1.0,
+    ) -> None:
+        """Async companion to :meth:`link` with circuit-breaker awareness."""
+
+        self._reset_circuit_if_needed()
+        if self.__class__._circuit_open:
+            self._write_outbox(
+                {
+                    "op": "link",
+                    "from_coord": from_coord,
+                    "to_coord": to_coord,
+                    "link_type": link_type,
+                    "weight": weight,
+                }
+            )
+            raise RuntimeError("Memory backend circuit open – operation queued")
+
+        client = self.client()
+        try:
+            if hasattr(client, "alink") and callable(getattr(client, "alink")):
+                await client.alink(  # type: ignore[attr-defined]
+                    from_coord,
+                    to_coord,
+                    link_type=link_type,
+                    weight=weight,
+                )
+            else:
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(
+                    None,
+                    lambda: client.link(
+                        from_coord,
+                        to_coord,
+                        link_type=link_type,
+                        weight=weight,
+                    ),
+                )
+            try:
+                from .. import memory_client as _mc
+
+                try:
+                    _mc._refresh_builtins_globals()
+                except Exception:
+                    pass
+                GLOBAL_LINKS = getattr(_mc, "_GLOBAL_LINKS", None)
+                if GLOBAL_LINKS is not None:
+                    ns = getattr(self, "namespace", None)
+                    if ns is not None:
+                        GLOBAL_LINKS.setdefault(ns, []).append(
+                            {
+                                "from": list(map(float, from_coord)),
+                                "to": list(map(float, to_coord)),
+                                "type": str(link_type),
+                                "weight": float(weight),
+                            }
+                        )
+            except Exception:
+                pass
+        except Exception:
+            self._record_failure()
+            self._write_outbox(
+                {
+                    "op": "link",
+                    "from_coord": from_coord,
+                    "to_coord": to_coord,
+                    "link_type": link_type,
+                    "weight": weight,
+                }
+            )
+            raise
+
     def coord_for_key(self, key: str, universe: Optional[str] = None):
         """Return the coordinate for a given key, delegating to the underlying client."""
         return self.client().coord_for_key(key, universe=universe)
@@ -422,3 +499,27 @@ class MemoryService:
         Returns the result of the underlying client delete operation (often None).
         """
         return self.client().delete(coordinate)
+
+    def links_from(
+        self,
+        start: Tuple[float, float, float],
+        type_filter: str | None = None,
+        limit: int = 50,
+    ) -> List[dict]:
+        """Retrieve outgoing edges from *start* with optional type filter.
+
+        Mirrors :meth:`MemoryClient.links_from` and respects the circuit‑breaker.
+        Returns an empty list if the circuit is open or on error.
+        """
+        # Reset circuit before attempting the read operation
+        self._reset_circuit_if_needed()
+        if self.__class__._circuit_open:
+            return []
+        try:
+            return self.client().links_from(
+                start, type_filter=type_filter, limit=limit
+            )
+        except Exception:
+            # Record the failure but do not raise – link queries are best‑effort
+            self._record_failure()
+            return []

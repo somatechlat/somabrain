@@ -7,91 +7,140 @@ running the canonical stack, executing tests/benchmarks, and contributing change
 
 | Tool | Version | Notes |
 |------|---------|-------|
-| Python | 3.11+ | Use `pyenv` or system Python. |
-| Docker & Docker Compose | 24.x+ | Required for canonical stack; ensure Docker Desktop resources ≥ 8GB RAM. |
-| Node.js (optional) | 20.x | Needed for some tooling dashboards (future). |
+| Python | 3.13 (matches CI workflow) | Install via `pyenv`, `asdf`, or system package. |
+| [uv](https://github.com/astral-sh/uv) | 0.8+ | Fast Python installer/runner used everywhere in this project. |
+| Docker & Docker Compose | 24.x+ | Required for the canonical stack; allocate ≥ 8 GB RAM and 4 CPUs. |
+| Node.js (optional) | 20.x | Needed only for forthcoming dashboards. |
 | Git | latest | SSH access recommended. |
-| make (optional) | — | Convenience wrapper (planned). |
 
-Install Python dependencies:
+Set up the Python environment using `uv` (mirrors CI):
 ```bash
-python -m venv .venv
+# Install uv once (pipx recommended)
+pipx install uv  # or: pip install --user uv
+
+# Create and activate the project virtual environment
+uv venv --python 3.13
 source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements-dev.txt
+
+# Install the package in editable mode with dev extras
+uv pip install --editable .[dev]
+
+# Tooling examples (works even without activating the venv)
+uv run ruff check .
+uv run pytest -q
 ```
+
+> ❗ **Virtualenv warning tip:** If you see `VIRTUAL_ENV=venv does not match .venv`, the shell is pointing at a different environment. Either `source .venv/bin/activate` again or run commands with `uv run --active ...` to target the correct env automatically.
+
+### 1.1 `uv.lock` maintenance
+
+- Keep `uv.lock` **checked into git** so local installs, CI runs, and production deploys resolve identical dependency versions.
+- When you change dependencies (edit `pyproject.toml` or bump extras), regenerate the lock with:
+  ```bash
+  uv pip compile pyproject.toml --extra dev --lockfile uv.lock
+  ```
+  or simply rerun `uv pip install -e .[dev]` and commit the updated lock that `uv` produces.
+- If you intentionally discard the lock file (e.g., to test fresh resolution), delete it and rerun the install command; the new file should be committed with the change.
 
 ## 2. Launch the Canonical Stack
 
-```bash
-# Generates .env.local and starts all services using Docker_Canonical.yml
-./scripts/dev_up.sh
+Follow this checklist every time you need the full development cluster:
 
-# Run migrations (uses SOMABRAIN_POSTGRES_DSN or falls back to local SQLite)
-alembic upgrade head
+1. **Start (or restart) everything**
+  ```bash
+  ./scripts/dev_up.sh
+  ```
+  The script removes any stale containers, rebuilds the Somabrain image, and starts Redis, Kafka, Postgres, Prometheus, Somabrain, the external memory service, and the OPA stub. It emits:
+  - `.env.local` – environment variables with host port mappings.
+  - `ports.json` – the same information in JSON for tooling/tests.
 
-# 5. Export OpenAPI (optional)
-./scripts/export_openapi.py
+2. **Confirm the API is ready** (already checked by the script, but always good to spot-check):
+  ```bash
+  curl -fsS http://localhost:9696/health | jq
+  ```
 
-# Optional: wait for services to settle (Redis, Kafka, Postgres, OPA, Somabrain)
-./scripts/wait_for_services.sh 120
-```
+3. **Apply database migrations** (idempotent):
+  ```bash
+  uv run alembic upgrade head
+  ```
 
-Outputs:
-- `.env.local` – environment variables (host port mappings, service URLs).
-- `ports.json` – JSON object mapping service names to host ports (e.g. `"SOMABRAIN_HOST_PORT": 9797`).
+4. **Full-stack smoke verification** – run these commands in order to ensure every dependency is reachable:
+  ```bash
+  # Memory service
+  curl -fsS http://localhost:9595/health
 
-Tear down when finished:
-```bash
-docker compose -f Docker_Canonical.yml down --remove-orphans
-```
+  # OPA stub & Prometheus metrics
+  curl -fsS http://localhost:8181/health
+  curl -fsS http://localhost:9090/metrics | head -n 5
 
-### 2.1 Dev-Prod profile (Docker) and live smoke
+  # Redis
+  MSG="smoke-$(date +%s)"
+  redis-cli -u redis://localhost:6379 SET smoke_test_key "$MSG"
+  redis-cli -u redis://localhost:6379 GET smoke_test_key
 
-The Docker stack starts Somabrain on port 9696 with external services (Redis, Kafka, Postgres, OPA, Prometheus).
-In developer mode the API runs with a single worker (SOMABRAIN_WORKERS=1) to ensure in‑process working‑memory
-read‑your‑writes consistency.
+  # Postgres
+  docker exec -i sb_postgres psql -U soma -d somabrain -c "SELECT 'feedback_events' AS tbl, COUNT(*) FROM feedback_events;"
+  docker exec -i sb_postgres psql -U soma -d somabrain -c "SELECT 'token_usage' AS tbl, COUNT(*) FROM token_usage;"
 
-OPA policy enforcement defaults to fail-open for local development. To simulate production posture (deny when OPA is
-unavailable), set SOMA_OPA_FAIL_CLOSED=1. The /health endpoint will include:
+  # Kafka (create topic once; subsequent runs reuse it)
+  docker exec sb_kafka kafka-topics.sh --create --topic test-smoke --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1 || true
+  SMOKE_MSG="smoke-$(uuidgen)"
+  printf '%s\n' "$SMOKE_MSG" | docker exec -i sb_kafka kafka-console-producer.sh --bootstrap-server localhost:9092 --topic test-smoke >/dev/null
+  docker exec sb_kafka kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic test-smoke --from-beginning --max-messages 1 --timeout-ms 10000
 
-- opa_required: true when fail-closed is enabled
-- opa_ok: whether OPA /health is reachable (and required for readiness when fail-closed)
+  # End-to-end remember/recall sanity check
+  curl -fsS -X POST http://localhost:9696/remember -H 'Content-Type: application/json' \
+    -d '{"coord_key":"smoke:integration","payload":{"content":"integration smoke memory","phase":"bootstrap","quality_score":0.95}}'
+  curl -fsS -X POST http://localhost:9696/recall -H 'Content-Type: application/json' -d '{"query":"integration","top_k":3}' | jq '.wm'
+  ```
 
-Run a quick live smoke to verify remember/recall end‑to‑end:
+  All commands should return successfully; the recall output must include the newly stored memory in both the `wm` and `memory` arrays.
 
-```bash
-# After scripts/dev_up.sh has started the stack
-python scripts/devprod_smoke.py --url http://127.0.0.1:9696
-# Output: OK: remember/recall read-your-writes verified.
-```
+5. **Quick combined smoke** – the helper script condenses the above checks and is ideal after every restart:
+  ```bash
+  bash scripts/smoke_test.sh
+  ```
 
-If you see intermittent empties on very first call after startup, re‑run once; the smoke script already adds
-a small settle delay to avoid cold‑start races.
+6. **Optional artifacts** – the stack automatically writes health snapshots to `artifacts/run/` (see `scripts/dev_up.sh`).
 
-For an explicit manual check of the math-focused ranking path, you can use `curl` directly. The example below
-stores a memory that includes `domains=["math","learning"]` and immediately verifies it is surfaced by
-`/recall` with the composite scorer enabled by default:
+7. **Shutdown** when you are done:
+  ```bash
+  docker compose -f Docker_Canonical.yml down --remove-orphans
+  ```
 
-```bash
-curl -s -X POST http://127.0.0.1:9696/remember \
-  -H 'Content-Type: application/json' \
-  -d '{"coord_key":"dev-smoke:math","payload":{"task":"Quadratic mastery sequence","domains":["math","learning"],"quality_score":0.97,"phase":"learning"}}'
+### 2.1 Posture knobs for local vs. production parity
 
-curl -s -X POST http://127.0.0.1:9696/recall \
-  -H 'Content-Type: application/json' \
-  -d '{"query":"Quadratic mastery sequence","top_k":3}' | jq '.'
-```
+- **Single worker with read-your-writes:** the compose profile sets `SOMABRAIN_WORKERS=1` so `/remember` writes are visible immediately to `/recall`.
+- **Force full-stack readiness:** `SOMABRAIN_FORCE_FULL_STACK=1` (default in `dev_up.sh`) requires a real predictor, embedder, and reachable memory service. Disabling it relaxes readiness for isolated development.
+- **OPA fail-closed simulation:** set `SOMA_OPA_FAIL_CLOSED=1` to make `/health` depend on the OPA stub (`opa_required=true`).
+- **devprod smoke script:** `python scripts/devprod_smoke.py --url http://127.0.0.1:9696` runs the same remember/recall loop with additional assertions if you prefer a Python-based check.
 
-The response should show the stored payload in both the `wm` and `memory` arrays, confirming persistence
-through SomaMemory (port 9595) and the new recall ranking blend.
+### 2.2 Rebuild image & redeploy the full stack
+
+Whenever you change application code or dependencies, rebuild the image and restart the entire developer stack before testing:
+
+1. Stop any previous run:
+  ```bash
+  docker compose -f Docker_Canonical.yml down --remove-orphans
+  ```
+2. Rebuild and relaunch everything (image build is automatic):
+  ```bash
+  ./scripts/dev_up.sh --rebuild
+  ```
+  The `--rebuild` flag forces a clean Docker image rebuild before containers start. If omitted, the script still detects most changes, but using the flag guarantees a fresh image.
+3. Wait for the script to report a healthy `/health` check and review the generated `.env.local`/`ports.json`.
+4. Run the smoke checks from step 4 above or the condensed helper:
+  ```bash
+  bash scripts/smoke_test.sh
+  ```
+5. With the stack healthy, run the desired test suite (examples in §4). This ensures code and image stay in lockstep with the running services.
 
 ## 3. Configure Environment Variables
 
 ```bash
 source .env.local
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595  # or actual endpoint
-export SOMABRAIN_OTLP_ENDPOINT=http://localhost:4317                    # if OTEL collector running
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}
+export SOMABRAIN_OTLP_ENDPOINT=http://localhost:4317  # if OTEL collector running
 ```
 
 Sensitive secrets should **never** be committed. For local testing, store them in `.env.secrets`
@@ -102,26 +151,28 @@ secret manager.
 
 ### Unit Tests
 ```bash
-pytest tests -k "not integration" -q
+uv run pytest tests -k "not integration" -q
 ```
+
+> ⚠️ **Python 3.13 heads-up:** if you run tests outside of `uv` (for example via a custom venv), make sure `typing_extensions>=4.12`. Older releases bundled by some tooling crash with `ValueError: '__doc__' in __slots__ conflicts with class variable` when FastAPI imports under Python 3.13. The `uv` workflow already pins a safe version.
 
 To focus on the composite recall scorer (math prioritization, WM reinforcement, metadata weighting), run the
 dedicated regression suite:
 
 ```bash
-pytest tests/test_recall_scoring.py -q
+uv run pytest tests/test_recall_scoring.py -q
 ```
 
 ### Integration Tests (NO_MOCKS)
 ```bash
-pytest -m integration -q
+uv run pytest -m integration -q
 ```
 The suite reads `ports.json` to determine service endpoints.
 
 To confirm the memory round-trip workflow without spinning up the full stack, reuse an existing
 pytest scenario that exercises the agent memory module:
 ```bash
-pytest tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
+uv run pytest tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
 ```
 The test clears the in-process store, encodes a memory, and asserts it can be recalled via
 `somabrain.agent_memory.recall_memory`.
@@ -134,7 +185,7 @@ Most live tests default to a dedicated port 9797 to avoid clobbering dev service
 ```bash
 export SOMA_API_URL_LOCK_BYPASS=1
 export SOMA_API_URL=http://127.0.0.1:9696
-pytest -q
+uv run pytest -q
 ```
 
 Notes:
@@ -163,7 +214,7 @@ curl -s http://127.0.0.1:9797/health | jq '.ok'
 curl -s http://127.0.0.1:9595/health | jq '.ok'
 
 # 3. Run the strict memory integration against the forwarded endpoint
-SOMA_API_URL=http://127.0.0.1:9797 .venv/bin/pytest \
+SOMA_API_URL=http://127.0.0.1:9797 uv run --active pytest \
   tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
 
 # 4. Stop the port-forwards when finished
@@ -199,7 +250,7 @@ checks fail.
 
 3. Run the cognition suite with verbose output:
   ```bash
-  pytest -vv tests/test_cognition_learning.py
+  uv run pytest -vv tests/test_cognition_learning.py
   ```
 
 The file defines three `@pytest.mark.learning` cases that validate:
@@ -224,8 +275,8 @@ integration tests:
 ### Postgres
 ```bash
 source .env.local
-psql "$SOMABRAIN_POSTGRES_DSN" -c '\dt'
-alembic upgrade head  # idempotent; safe to rerun
+docker exec -i sb_postgres psql -U soma -d somabrain -c '\dt'
+uv run alembic upgrade head  # idempotent; safe to rerun
 ```
 The `feedback_events` and `token_usage` tables should exist after migrations. Use the
 `migrations/versions/` directory as the authoritative schema source.
@@ -254,9 +305,9 @@ tested. Configure endpoints via environment variables documented in `docs/CONFIG
 ## 6. Linting & Formatting
 
 ```bash
-ruff check somabrain tests
-black somabrain tests
-mypy somabrain
+uv run ruff check somabrain tests
+uv run black somabrain tests
+uv run mypy somabrain
 ```
 Pre-commit hooks will be added to automate these steps.
 
@@ -266,7 +317,7 @@ Pre-commit hooks will be added to automate these steps.
 2. Create a feature branch; update `docs/architecture/CANONICAL_ROADMAP.md` if modifying roadmap
    items.
 3. Implement changes with tests.
-4. Run unit + integration tests locally.
+4. Run unit + integration tests locally (`uv run pytest ...`).
 5. Submit PR; GitHub Actions will rerun tests against the canonical stack.
 
 ## 8. Troubleshooting
@@ -298,4 +349,4 @@ ledger) that require additional setup steps.
 ## 10. CLI / SDK
 
 - Basic client available under `clients/python/`.
-- Example: `python clients/python/cli.py "Hello" --session sandbox-cli --token dev-token`.
+- Example: `uv run python clients/python/cli.py "Hello" --session sandbox-cli --token dev-token`.

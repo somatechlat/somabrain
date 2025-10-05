@@ -24,6 +24,7 @@ import logging
 import os  # added for environment handling
 import random
 import time
+import uuid
 from dataclasses import dataclass
 from threading import RLock
 from typing import Any, Dict, Iterable, List, Tuple, cast
@@ -204,16 +205,12 @@ def _extract_memory_coord(
 
 @dataclass
 class RecallHit:
-    """
-    Represents a memory recall hit.
-
-    Attributes
-    ----------
-    payload : Dict[str, Any]
-        The recalled memory payload.
-    """
+    """Represents a normalized memory recall hit from the SFM service."""
 
     payload: Dict[str, Any]
+    score: float | None = None
+    coordinate: Tuple[float, float, float] | None = None
+    raw: Dict[str, Any] | None = None
 
 
 class MemoryClient:
@@ -362,16 +359,17 @@ class MemoryClient:
         )
         if env_base:
             try:
-                env_base = str(env_base)
+                # Clean any surrounding whitespace/newlines that may be injected by tests
+                env_base = str(env_base).strip()
                 # If missing scheme, default to http://
-                if "://" not in env_base and env_base.startswith("/"):
-                    # likely a path; leave as-is
+                if "://" not in env_base and env_base.startswith('/'):
+                    # likely a path; leave as‑is
                     pass
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
-                # if user provided full openapi.json path, strip it
-                if env_base.endswith("/openapi.json"):
-                    env_base = env_base[: -len("/openapi.json")]
+                # Strip trailing openapi.json if present
+                if env_base.endswith('/openapi.json'):
+                    env_base = env_base[:-len('/openapi.json')]
             except Exception:
                 env_base = None
         base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
@@ -385,6 +383,11 @@ class MemoryClient:
             base_url = "http://localhost:9595"
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
+        if base_url:
+            try:
+                os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
+            except Exception:
+                pass
         # If running inside Docker and no endpoint provided, default to the
         # host gateway which is commonly reachable as host.docker.internal on
         # macOS/Windows. This helps tests running inside containers talk to
@@ -478,6 +481,413 @@ class MemoryClient:
         except Exception:
             pass
 
+    # --- HTTP helpers ---------------------------------------------------------
+    @staticmethod
+    def _response_json(resp: Any) -> Any:
+        try:
+            if hasattr(resp, "json") and callable(resp.json):
+                return resp.json()
+        except Exception:
+            return None
+        return None
+
+    def _http_post_with_retries_sync(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
+        if self._http is None:
+            return False, 0, None
+        status = 0
+        data: Any = None
+        for attempt in range(max_retries + 1):
+            try:
+                resp = self._http.post(endpoint, json=body, headers=headers)
+            except Exception:
+                if attempt < max_retries:
+                    time.sleep(0.01 + random.random() * 0.02)
+                continue
+            status = int(getattr(resp, "status_code", 0) or 0)
+            if status in (429, 503) and attempt < max_retries:
+                time.sleep(0.01 + random.random() * 0.02)
+                continue
+            if status >= 500 and attempt < max_retries:
+                time.sleep(0.05 + random.random() * 0.05)
+                continue
+            data = self._response_json(resp)
+            return status < 300, status, data
+        return False, status, data
+
+    async def _http_post_with_retries_async(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
+        if self._http_async is None:
+            return False, 0, None
+        status = 0
+        data: Any = None
+        for attempt in range(max_retries + 1):
+            try:
+                resp = await self._http_async.post(endpoint, json=body, headers=headers)
+            except Exception:
+                if attempt < max_retries:
+                    await asyncio.sleep(0.01 + random.random() * 0.02)
+                continue
+            status = int(getattr(resp, "status_code", 0) or 0)
+            if status in (429, 503) and attempt < max_retries:
+                await asyncio.sleep(0.01 + random.random() * 0.02)
+                continue
+            if status >= 500 and attempt < max_retries:
+                await asyncio.sleep(0.05 + random.random() * 0.05)
+                continue
+            data = self._response_json(resp)
+            return status < 300, status, data
+        return False, status, data
+
+    def _store_http_sync(
+        self, body: dict, headers: dict
+    ) -> tuple[bool, Any]:
+        # Prefer /remember endpoint first; fall back to /store if /remember is unavailable.
+        success, status, data = self._http_post_with_retries_sync("/remember", body, headers)
+        if success:
+            return True, data
+        if status in (404, 405):
+            # /remember not available – try /store as fallback.
+            fallback_success, _, fallback_data = self._http_post_with_retries_sync(
+                "/store", body, headers
+            )
+            if fallback_success:
+                return True, fallback_data
+        return False, data
+
+    async def _store_http_async(
+        self, body: dict, headers: dict
+    ) -> tuple[bool, Any]:
+        # Try /remember first; fall back to /store if /remember is unavailable.
+        success, status, data = await self._http_post_with_retries_async(
+            "/remember", body, headers
+        )
+        if success:
+            return True, data
+        if status in (404, 405):
+            fallback_success, _, fallback_data = await self._http_post_with_retries_async(
+                "/store", body, headers
+            )
+            if fallback_success:
+                return True, fallback_data
+        return False, data
+
+    def _store_bulk_http_sync(
+        self, items: List[dict], headers: dict
+    ) -> tuple[bool, int, Any]:
+        if self._http is None:
+            return False, 0, None
+        payload = {"items": items}
+        success, status, data = self._http_post_with_retries_sync(
+            "/store_bulk", payload, headers
+        )
+        return success, status, data
+
+    async def _store_bulk_http_async(
+        self, items: List[dict], headers: dict
+    ) -> tuple[bool, int, Any]:
+        if self._http_async is None:
+            return False, 0, None
+        payload = {"items": items}
+        success, status, data = await self._http_post_with_retries_async(
+            "/store_bulk", payload, headers
+        )
+        return success, status, data
+
+    def _http_recall_sync(
+        self,
+        endpoint: str,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
+    ) -> List[RecallHit] | None:
+        if self._http is None:
+            return None
+        compat_payload, _, compat_hdr = self._compat_enrich_payload(
+            {"query": query, "universe": universe or "real"}, query
+        )
+        headers = {"X-Request-ID": request_id}
+        headers.update(compat_hdr)
+        try:
+            resp = self._http.post(
+                endpoint,
+                json={
+                    "query": query,
+                    "top_k": int(top_k),
+                    "universe": compat_payload.get("universe", universe or "real"),
+                },
+                headers=headers,
+            )
+            try:
+                code = getattr(resp, "status_code", 200)
+                if code in (429, 503):
+                    time.sleep(0.01 + random.random() * 0.02)
+                    resp = self._http.post(
+                        endpoint,
+                        json={
+                            "query": query,
+                            "top_k": int(top_k),
+                            "universe": compat_payload.get("universe", universe or "real"),
+                        },
+                        headers=headers,
+                    )
+            except Exception:
+                pass
+            data = self._response_json(resp)
+            hits = self._normalize_recall_hits(data)
+            if hits:
+                hits = self._filter_hits_by_keyword(hits, str(query))
+                if hits:
+                    self._apply_weighting_to_hits(hits)
+                    return hits
+        except Exception:
+            return None
+        return None
+
+    async def _http_recall_async(
+        self,
+        endpoint: str,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
+    ) -> List[RecallHit] | None:
+        if self._http_async is None:
+            return None
+        _, _, compat_hdr = self._compat_enrich_payload(
+            {"query": query, "universe": universe or "real"}, query
+        )
+        headers = {"X-Request-ID": request_id}
+        headers.update(compat_hdr)
+        try:
+            resp = await self._http_async.post(
+                endpoint,
+                json={
+                    "query": query,
+                    "top_k": int(top_k),
+                    "universe": universe or "real",
+                },
+                headers=headers,
+            )
+            try:
+                code = getattr(resp, "status_code", 200)
+                if code in (429, 503):
+                    await asyncio.sleep(0.01 + random.random() * 0.02)
+                    resp = await self._http_async.post(
+                        endpoint,
+                        json={
+                            "query": query,
+                            "top_k": int(top_k),
+                            "universe": universe or "real",
+                        },
+                        headers=headers,
+                    )
+            except Exception:
+                pass
+            data = self._response_json(resp)
+            hits = self._normalize_recall_hits(data)
+            if hits:
+                hits = self._filter_hits_by_keyword(hits, str(query))
+                if hits:
+                    self._apply_weighting_to_hits(hits)
+                    return hits
+        except Exception:
+            return None
+        return None
+
+    def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
+        hits: List[RecallHit] = []
+        if isinstance(data, dict):
+            matches = data.get("matches")
+            if isinstance(matches, list):
+                for item in matches:
+                    if not isinstance(item, dict):
+                        continue
+                    payload = item.get("payload")
+                    if not isinstance(payload, dict):
+                        mem = item.get("memory")
+                        if isinstance(mem, dict):
+                            payload = mem.get("payload") or mem
+                    if not isinstance(payload, dict):
+                        payload = {
+                            k: v
+                            for k, v in item.items()
+                            if k
+                            not in (
+                                "score",
+                                "coord",
+                                "coordinate",
+                                "distance",
+                                "vector",
+                            )
+                        }
+                    payload = dict(payload or {})
+                    score = None
+                    try:
+                        score_val = item.get("score")
+                        if score_val is None:
+                            score_val = item.get("similarity")
+                        if score_val is not None:
+                            score = float(score_val)
+                            payload.setdefault("_score", score)
+                    except Exception:
+                        score = None
+                    coord = _extract_memory_coord(item)
+                    if coord and "coordinate" not in payload:
+                        payload["coordinate"] = coord
+                    hits.append(
+                        RecallHit(
+                            payload=payload,
+                            score=score,
+                            coordinate=coord,
+                            raw=item,
+                        )
+                    )
+                return hits
+        if isinstance(data, list):
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                payload = dict(item)
+                coord = _extract_memory_coord(item)
+                if coord and "coordinate" not in payload:
+                    payload["coordinate"] = coord
+                hits.append(
+                    RecallHit(
+                        payload=payload,
+                        score=None,
+                        coordinate=coord,
+                        raw=item,
+                    )
+                )
+        return hits
+
+    def _filter_hits_by_keyword(
+        self, hits: List[RecallHit], keyword: str
+    ) -> List[RecallHit]:
+        if not hits:
+            return []
+        payloads = [h.payload for h in hits]
+        filtered = _filter_payloads_by_keyword(payloads, keyword)
+        if filtered and len(filtered) <= len(payloads):
+            allowed_ids = {id(p) for p in filtered}
+            return [h for h in hits if id(h.payload) in allowed_ids]
+        return []
+
+    def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
+        if not hits:
+            return
+        if os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") not in (
+            "1",
+            "true",
+            "True",
+        ):
+            return
+        try:
+            priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
+            qexp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
+            priors: dict[str, float] = {}
+            if priors_env:
+                for part in priors_env.split(","):
+                    if not part.strip() or ":" not in part:
+                        continue
+                    k, v = part.split(":", 1)
+                    try:
+                        priors[k.strip().lower()] = float(v)
+                    except Exception:
+                        pass
+            for hit in hits:
+                payload = hit.payload
+                phase_factor = 1.0
+                quality_factor = 1.0
+                try:
+                    phase = payload.get("phase") if isinstance(payload, dict) else None
+                    if phase and priors:
+                        phase_factor = float(priors.get(str(phase).lower(), 1.0))
+                except Exception:
+                    phase_factor = 1.0
+                try:
+                    if isinstance(payload, dict) and "quality_score" in payload:
+                        qs = float(payload.get("quality_score") or 0.0)
+                        if qs < 0:
+                            qs = 0.0
+                        if qs > 1:
+                            qs = 1.0
+                        quality_factor = (qs**qexp) if qs > 0 else 0.0
+                except Exception:
+                    quality_factor = 1.0
+                try:
+                    payload.setdefault("_weight_factor", phase_factor * quality_factor)
+                except Exception:
+                    pass
+        except Exception:
+            return
+
+    def _local_recall_hits(
+        self, query: str, universe: str | None
+    ) -> List[RecallHit]:
+        try:
+            uni = str(universe or "real")
+            local: list[dict] = []
+            with self._lock:
+                local.extend(self._stub_store)
+            try:
+                ns = getattr(self.cfg, "namespace", None)
+                if ns is not None:
+                    local.extend(list(_GLOBAL_PAYLOADS.get(ns, [])))
+            except Exception:
+                pass
+            needle = str(query or "").lower()
+            out: list[dict] = []
+            for p in local:
+                try:
+                    if universe is not None and str(p.get("universe") or "real") != uni:
+                        continue
+                    txt = None
+                    if isinstance(p, dict):
+                        for k in ("task", "text", "content", "what"):
+                            v = p.get(k)
+                            if isinstance(v, str) and v.strip():
+                                txt = v
+                                break
+                    if not txt:
+                        continue
+                    if not needle or needle in txt.lower():
+                        out.append(p)
+                except Exception:
+                    pass
+
+            def _coord_from_payload(entry: dict) -> Tuple[float, float, float] | None:
+                c = entry.get("coordinate")
+                try:
+                    if isinstance(c, (list, tuple)) and len(c) >= 3:
+                        return (float(c[0]), float(c[1]), float(c[2]))
+                    if isinstance(c, str):
+                        parsed = _parse_coord_string(c)
+                        if parsed:
+                            return parsed
+                except Exception:
+                    return None
+                return None
+
+            return [
+                RecallHit(payload=p, coordinate=_coord_from_payload(p)) for p in out
+            ]
+        except Exception:
+            return []
     # --- HTTP compatibility helpers -------------------------------------------------
     def _compat_enrich_payload(
         self, payload: dict, coord_key: str
@@ -602,6 +1012,7 @@ class MemoryClient:
         except Exception:
             in_async = False
 
+        p2: dict[str, Any] | None = None
         # Mirror locally for quick reads and visibility
         try:
             p2 = dict(payload)
@@ -609,6 +1020,11 @@ class MemoryClient:
             with self._lock:
                 self._stub_store.append(p2)
             _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
+        except Exception:
+            p2 = None
+
+        try:
+            payload.setdefault("coordinate", coord)
         except Exception:
             pass
 
@@ -669,12 +1085,177 @@ class MemoryClient:
             return coord
 
         # Default (no fast-ack): perform the persist synchronously (blocking)
+        server_coord: Tuple[float, float, float] | None = None
         try:
-            self._remember_sync_persist(coord_key, payload, rid)
+            server_coord = self._remember_sync_persist(coord_key, payload, rid)
         except Exception:
-            # best-effort: we already mirrored locally and will record to outbox in helper
-            pass
+            server_coord = None
+        if server_coord:
+            coord = server_coord
+            try:
+                payload["coordinate"] = server_coord
+            except Exception:
+                pass
+            if p2 is not None:
+                try:
+                    p2["coordinate"] = server_coord
+                except Exception:
+                    pass
         return coord
+
+    def remember_bulk(
+        self,
+        items: Iterable[tuple[str, dict[str, Any]]],
+        request_id: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
+        """Store multiple memories in a single HTTP round-trip when supported.
+
+        Each element in *items* is a ``(coord_key, payload)`` pair. The method
+        mirrors :meth:`remember` semantics: local mirrors are updated eagerly for
+        read-your-writes guarantees, while the HTTP call happens best-effort. The
+        return value is a list of coordinates (server-provided when available)
+        aligned with the input order.
+        """
+
+        _refresh_builtins_globals()
+        records = list(items)
+        if not records:
+            return []
+
+        prepared: List[dict[str, Any]] = []
+        local_payloads: List[dict[str, Any]] = []
+        universes: List[str] = []
+        coords: List[Tuple[float, float, float]] = []
+
+        for idx, (coord_key, payload) in enumerate(records):
+            enriched, universe, _ = self._compat_enrich_payload(payload, coord_key)
+            coord = _stable_coord(f"{universe}::{coord_key}")
+            enriched_payload = dict(enriched)
+            enriched_payload.setdefault("coordinate", coord)
+            enriched_payload.setdefault("memory_type", "episodic")
+            body = {
+                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+                "payload": enriched_payload,
+                "type": enriched_payload.get("memory_type", "episodic"),
+            }
+            # Local mirrors for read-your-writes
+            local_copy = dict(enriched_payload)
+            local_payloads.append(local_copy)
+            universes.append(universe)
+            coords.append(coord)
+            prepared.append(
+                {
+                    "coord_key": coord_key,
+                    "body": body,
+                    "local_payload": local_copy,
+                    "universe": universe,
+                }
+            )
+
+        # Mirror into in-process stores before hitting HTTP for read-your-writes
+        with self._lock:
+            self._stub_store.extend(local_payloads)
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                bucket = _GLOBAL_PAYLOADS.setdefault(ns, [])
+                bucket.extend(local_payloads)
+        except Exception:
+            pass
+
+        if self._http is None:
+            rid = request_id or str(uuid.uuid4())
+            try:
+                self._record_outbox(
+                    "remember_bulk",
+                    {
+                        "request_id": rid,
+                        "items": [
+                            {
+                                "coord_key": entry["coord_key"],
+                                "payload": entry["body"]["payload"],
+                                "coord": entry["body"]["coord"],
+                            }
+                            for entry in prepared
+                        ],
+                    },
+                )
+            except Exception:
+                pass
+            return coords
+
+        rid = request_id or str(uuid.uuid4())
+        headers = {"X-Request-ID": rid}
+        unique_universes = {u for u in universes if u}
+        if len(unique_universes) == 1:
+            headers["X-Universe"] = unique_universes.pop()
+
+        success, status, response = self._store_bulk_http_sync(
+            [entry["body"] for entry in prepared], headers
+        )
+        if success and response is not None:
+            returned: List[Any] = []
+            if isinstance(response, dict):
+                for key in ("items", "results", "memories", "entries"):
+                    seq = response.get(key)
+                    if isinstance(seq, list):
+                        returned = seq
+                        break
+            elif isinstance(response, list):
+                returned = response
+            for idx, entry in enumerate(returned[: len(prepared)]):
+                server_coord = _extract_memory_coord(
+                    entry, idempotency_key=f"{rid}:{idx}"
+                )
+                if server_coord:
+                    coords[idx] = server_coord
+                    try:
+                        prepared[idx]["body"]["payload"]["coordinate"] = server_coord
+                    except Exception:
+                        pass
+                    try:
+                        prepared[idx]["local_payload"]["coordinate"] = server_coord
+                    except Exception:
+                        pass
+            return coords
+
+        if status in (404, 405):
+            # Fallback to individual store calls
+            for idx, entry in enumerate(prepared):
+                single_headers = dict(headers)
+                single_headers["X-Request-ID"] = f"{rid}:{idx}"
+                ok, resp = self._store_http_sync(entry["body"], single_headers)
+                if ok and resp is not None:
+                    server_coord = _extract_memory_coord(
+                        resp, idempotency_key=single_headers["X-Request-ID"]
+                    )
+                    if server_coord:
+                        coords[idx] = server_coord
+                        try:
+                            entry["local_payload"]["coordinate"] = server_coord
+                        except Exception:
+                            pass
+            return coords
+
+        # HTTP request failed – record outbox for replay
+        try:
+            self._record_outbox(
+                "remember_bulk",
+                {
+                    "request_id": rid,
+                    "items": [
+                        {
+                            "coord_key": entry["coord_key"],
+                            "payload": entry["body"]["payload"],
+                            "coord": entry["body"]["coord"],
+                        }
+                        for entry in prepared
+                    ],
+                },
+            )
+        except Exception:
+            pass
+        return coords
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -686,6 +1267,7 @@ class MemoryClient:
         in a thread executor.
         """
         # Mirror locally first for read-your-writes semantics
+        p2: dict[str, Any] | None = None
         try:
             _refresh_builtins_globals()
             enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
@@ -708,6 +1290,8 @@ class MemoryClient:
                     payload, coord_key
                 )
                 coord = _stable_coord(f"{universe}::{coord_key}")
+                enriched = dict(enriched)
+                enriched.setdefault("coordinate", coord)
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                     "payload": enriched,
@@ -718,42 +1302,157 @@ class MemoryClient:
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
                 rid_hdr.update(compat_hdr)
-                r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
-                code = getattr(r, "status_code", 200)
-                if code in (404, 405):
-                    await self._http_async.post("/store", json=body, headers=rid_hdr)
-                elif code in (429, 503):
-                    await asyncio.sleep(0.01 + random.random() * 0.02)
-                    await self._http_async.post("/remember", json=body, headers=rid_hdr)
-                # try to extract server coord and return preferred coord or fallback
-                try:
-                    data = None
-                    try:
-                        data = await r.json()
-                    except Exception:
-                        data = None
-                    server_coord = _extract_memory_coord(data, idempotency_key=rid)
-                    if server_coord and getattr(
-                        self.cfg, "prefer_server_coords_for_links", False
-                    ):
+                ok, response_data = await self._store_http_async(body, rid_hdr)
+                if ok and response_data is not None:
+                    server_coord = _extract_memory_coord(
+                        response_data, idempotency_key=rid
+                    )
+                    if server_coord:
+                        try:
+                            enriched["coordinate"] = server_coord
+                        except Exception:
+                            pass
+                        if p2 is not None:
+                            try:
+                                p2["coordinate"] = server_coord
+                            except Exception:
+                                pass
+                        if getattr(
+                            self.cfg, "prefer_server_coords_for_links", False
+                        ):
+                            return server_coord
                         return server_coord
-                except Exception:
-                    pass
                 return coord
             except Exception:
-                try:
-                    import uuid
-
-                    rid2 = request_id or str(uuid.uuid4())
-                    rid_hdr = {"X-Request-ID": rid2}
-                    rid_hdr.update(compat_hdr)
-                    await self._http_async.post("/store", json=body, headers=rid_hdr)  # type: ignore[name-defined]
-                    # fall back to sync remember below
-                except Exception:
-                    pass
+                pass
         # Fallback: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.remember, coord_key, payload)
+
+    async def aremember_bulk(
+        self,
+        items: Iterable[tuple[str, dict[str, Any]]],
+        request_id: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
+        """Async companion to :meth:`remember_bulk` using the async HTTP client."""
+
+        _refresh_builtins_globals()
+        records = list(items)
+        if not records:
+            return []
+
+        prepared: List[dict[str, Any]] = []
+        local_payloads: List[dict[str, Any]] = []
+        universes: List[str] = []
+        coords: List[Tuple[float, float, float]] = []
+
+        for idx, (coord_key, payload) in enumerate(records):
+            enriched, universe, _ = self._compat_enrich_payload(payload, coord_key)
+            coord = _stable_coord(f"{universe}::{coord_key}")
+            enriched_payload = dict(enriched)
+            enriched_payload.setdefault("coordinate", coord)
+            enriched_payload.setdefault("memory_type", "episodic")
+            body = {
+                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+                "payload": enriched_payload,
+                "type": enriched_payload.get("memory_type", "episodic"),
+            }
+            local_copy = dict(enriched_payload)
+            local_payloads.append(local_copy)
+            universes.append(universe)
+            coords.append(coord)
+            prepared.append(
+                {
+                    "coord_key": coord_key,
+                    "body": body,
+                    "local_payload": local_copy,
+                    "universe": universe,
+                }
+            )
+
+        with self._lock:
+            self._stub_store.extend(local_payloads)
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                bucket = _GLOBAL_PAYLOADS.setdefault(ns, [])
+                bucket.extend(local_payloads)
+        except Exception:
+            pass
+
+        if self._http_async is None:
+            return self.remember_bulk(records, request_id=request_id)
+
+        rid = request_id or str(uuid.uuid4())
+        headers = {"X-Request-ID": rid}
+        unique_universes = {u for u in universes if u}
+        if len(unique_universes) == 1:
+            headers["X-Universe"] = unique_universes.pop()
+
+        success, status, response = await self._store_bulk_http_async(
+            [entry["body"] for entry in prepared], headers
+        )
+        if success and response is not None:
+            returned: List[Any] = []
+            if isinstance(response, dict):
+                for key in ("items", "results", "memories", "entries"):
+                    seq = response.get(key)
+                    if isinstance(seq, list):
+                        returned = seq
+                        break
+            elif isinstance(response, list):
+                returned = response
+            for idx, entry in enumerate(returned[: len(prepared)]):
+                server_coord = _extract_memory_coord(
+                    entry, idempotency_key=f"{rid}:{idx}"
+                )
+                if server_coord:
+                    coords[idx] = server_coord
+                    try:
+                        prepared[idx]["body"]["payload"]["coordinate"] = server_coord
+                    except Exception:
+                        pass
+                    try:
+                        prepared[idx]["local_payload"]["coordinate"] = server_coord
+                    except Exception:
+                        pass
+            return coords
+
+        if status in (404, 405):
+            for idx, entry in enumerate(prepared):
+                single_headers = dict(headers)
+                single_headers["X-Request-ID"] = f"{rid}:{idx}"
+                ok, resp = await self._store_http_async(entry["body"], single_headers)
+                if ok and resp is not None:
+                    server_coord = _extract_memory_coord(
+                        resp, idempotency_key=single_headers["X-Request-ID"]
+                    )
+                    if server_coord:
+                        coords[idx] = server_coord
+                        try:
+                            entry["local_payload"]["coordinate"] = server_coord
+                        except Exception:
+                            pass
+            return coords
+
+        try:
+            self._record_outbox(
+                "remember_bulk",
+                {
+                    "request_id": rid,
+                    "items": [
+                        {
+                            "coord_key": entry["coord_key"],
+                            "payload": entry["body"]["payload"],
+                            "coord": entry["body"]["coord"],
+                        }
+                        for entry in prepared
+                    ],
+                },
+            )
+        except Exception:
+            pass
+        return coords
 
     def recall(
         self,
@@ -774,178 +1473,13 @@ class MemoryClient:
             )
         # Prefer HTTP recall if available
         if self._http is not None:
-            import uuid
-
             rid = request_id or str(uuid.uuid4())
-            # Build compatibility headers (adds X-Universe)
-            compat_payload, uni, compat_hdr = self._compat_enrich_payload(
-                {"query": query, "universe": universe or "real"}, query
+            hits = self._http_recall_sync(
+                "/recall", query, top_k, universe or "real", rid
             )
-            rid_hdr = {"X-Request-ID": rid}
-            rid_hdr.update(compat_hdr)
-            try:
-                r = self._http.post(
-                    "/recall",
-                    json={"query": query, "top_k": int(top_k), "universe": uni},
-                    headers=rid_hdr,
-                )
-                try:
-                    code = getattr(r, "status_code", 200)
-                    if code in (429, 503):
-                        time.sleep(0.01 + random.random() * 0.02)
-                        r = self._http.post(
-                            "/recall",
-                            json={"query": query, "top_k": int(top_k), "universe": uni},
-                            headers=rid_hdr,
-                        )
-                except Exception:
-                    pass
-                try:
-                    data = r.json()
-                except Exception:
-                    data = []
-                else:
-                    # Normalize common response shapes from various memory services
-                    # Accept either a plain list of payloads, or a list of wrappers
-                    # (each with a 'payload' field), or a dict containing
-                    # 'memory' / 'payloads' / 'hits'.
-                    if isinstance(data, dict):
-                        if isinstance(data.get("memory"), list):
-                            data = data.get("memory", [])
-                        elif isinstance(data.get("payloads"), list):
-                            data = data.get("payloads", [])
-                        elif isinstance(data.get("hits"), list):
-                            data = data.get("hits", [])
-                        else:
-                            data = []
-                    # If we now have a list, unwrap wrappers like {"payload": {...}}
-                    if isinstance(data, list):
-                        unwrapped: list[dict] = []
-                        for item in data:
-                            if (
-                                isinstance(item, dict)
-                                and "payload" in item
-                                and isinstance(item.get("payload"), dict)
-                            ):
-                                unwrapped.append(item["payload"])  # type: ignore[index]
-                            elif isinstance(item, dict):
-                                unwrapped.append(item)
-                            else:
-                                # ignore non-dict entries
-                                pass
-                        data = unwrapped
-                    else:
-                        data = []
-                    # Optional keyword filter for lightweight lexical matching
-                    if data:
-                        # Apply lexical filter; if no matches, treat as empty to
-                        # enable direct coord/mirror fallback for read-your-writes.
-                        filtered = _filter_payloads_by_keyword(data, str(query))
-                        # Only keep filtered results if at least one matched
-                        if filtered and (len(filtered) <= len(data)):
-                            data = filtered
-                        else:
-                            data = []
-                    # Optional weighting for HTTP results when flag enabled or full-stack forced
-                    if data and os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in (
-                        "1",
-                        "true",
-                        "True",
-                    ):
-                        try:
-                            priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
-                            qexp = float(
-                                os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0")
-                            )
-                            priors: dict[str, float] = {}
-                            if priors_env:
-                                for part in priors_env.split(","):
-                                    if not part.strip() or ":" not in part:
-                                        continue
-                                    k, v = part.split(":", 1)
-                                    try:
-                                        priors[k.strip().lower()] = float(v)
-                                    except Exception:
-                                        pass
-                            # If server returns scores (future) we could multiply; for now recompute multiplier only
-                            weighted = []
-                            for p in data or []:
-                                if not isinstance(p, dict):
-                                    weighted.append(p)
-                                    continue
-                                phase_factor = 1.0
-                                quality_factor = 1.0
-                                try:
-                                    phase = p.get("phase")
-                                    if phase and priors:
-                                        phase_factor = float(
-                                            priors.get(str(phase).lower(), 1.0)
-                                        )
-                                except Exception:
-                                    phase_factor = 1.0
-                                try:
-                                    if "quality_score" in p:
-                                        qs = float(p.get("quality_score") or 0.0)
-                                        if qs < 0:
-                                            qs = 0.0
-                                        if qs > 1:
-                                            qs = 1.0
-                                        quality_factor = (qs**qexp) if qs > 0 else 0.0
-                                except Exception:
-                                    quality_factor = 1.0
-                                # Attach adjustment factor so higher layers can optionally re-rank
-                                try:
-                                    adj = phase_factor * quality_factor
-                                    p.setdefault("_weight_factor", adj)
-                                except Exception:
-                                    pass
-                                weighted.append(p)
-                            data = weighted
-                        except Exception:
-                            pass
-                    # If HTTP returned no results, fall back to locally mirrored payloads
-                    if not data:
-                        try:
-                            uni = str(universe or "real")
-                            # Gather candidates from stub store (recent) and process-global mirror for this namespace
-                            local: list[dict] = []
-                            with self._lock:
-                                local.extend(self._stub_store)
-                            try:
-                                ns = getattr(self.cfg, "namespace", None)
-                                if ns is not None:
-                                    local.extend(list(_GLOBAL_PAYLOADS.get(ns, [])))
-                            except Exception:
-                                pass
-                            # Universe-filter and keyword filter
-                            out = []
-                            for p in local:
-                                try:
-                                    if (
-                                        universe is not None
-                                        and str(p.get("universe") or "real") != uni
-                                    ):
-                                        continue
-                                    # quick textual match on common fields
-                                    txt = None
-                                    if isinstance(p, dict):
-                                        for k in ("task", "text", "content", "what"):
-                                            v = p.get(k)
-                                            if isinstance(v, str) and v.strip():
-                                                txt = v
-                                                break
-                                    if not txt:
-                                        continue
-                                    if str(query).lower() in txt.lower():
-                                        out.append(p)
-                                except Exception:
-                                    pass
-                            data = out
-                        except Exception:
-                            data = []
-                    return [RecallHit(payload=p) for p in (data or [])]
-            except Exception:
-                pass
+            if hits:
+                return hits
+            return self._local_recall_hits(query, universe)
         # In-process deterministic recall only if memory not required or HTTP absent and allowed.
         from somabrain.stub_audit import (
             STRICT_REAL as __SR,
@@ -1066,6 +1600,24 @@ class MemoryClient:
         __record_stub("memory_client.recall.stub_fallback")
         return [RecallHit(payload=p) for p in self._stub_store[-int(max(0, top_k)) :]]
 
+    def recall_with_scores(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
+        """Recall memories via the dedicated ``/recall_with_scores`` endpoint when available."""
+
+        if self._http is not None:
+            rid = request_id or str(uuid.uuid4())
+            hits = self._http_recall_sync(
+                "/recall_with_scores", query, top_k, universe or "real", rid
+            )
+            if hits:
+                return hits
+        return self.recall(query, top_k, universe, request_id)
+
     async def arecall(
         self,
         query: str,
@@ -1075,72 +1627,35 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Async recall for HTTP mode; falls back to sync for local/stub."""
         if self._http_async is not None:
-            try:
-                import uuid
-
-                rid = request_id or str(uuid.uuid4())
-                rid_hdr = {"X-Request-ID": rid}
-                # Enrich for compatibility; also adds X-Universe header
-                _, uni, compat_hdr = self._compat_enrich_payload(
-                    {"query": query, "universe": universe or "real"}, query
-                )
-                rid_hdr.update(compat_hdr)
-                r = await self._http_async.post(
-                    "/recall",
-                    json={"query": query, "top_k": int(top_k), "universe": uni},
-                    headers=rid_hdr,
-                )
-                try:
-                    code = getattr(r, "status_code", 200)
-                    if code in (429, 503):
-                        await asyncio.sleep(0.01 + random.random() * 0.02)
-                        r = await self._http_async.post(
-                            "/recall",
-                            json={"query": query, "top_k": int(top_k), "universe": uni},
-                            headers=rid_hdr,
-                        )
-                except Exception:
-                    pass
-                try:
-                    data = r.json()
-                except Exception:
-                    data = []
-                else:
-                    # Normalize to a list of payload dicts, same as sync path
-                    if isinstance(data, dict):
-                        if isinstance(data.get("memory"), list):
-                            data = data.get("memory", [])
-                        elif isinstance(data.get("payloads"), list):
-                            data = data.get("payloads", [])
-                        elif isinstance(data.get("hits"), list):
-                            data = data.get("hits", [])
-                        else:
-                            data = []
-                    if isinstance(data, list):
-                        unwrapped: list[dict] = []
-                        for item in data:
-                            if (
-                                isinstance(item, dict)
-                                and "payload" in item
-                                and isinstance(item.get("payload"), dict)
-                            ):
-                                unwrapped.append(item["payload"])  # type: ignore[index]
-                            elif isinstance(item, dict):
-                                unwrapped.append(item)
-                        data = unwrapped
-                    else:
-                        data = []
-                    if data:
-                        filtered = _filter_payloads_by_keyword(data, str(query))
-                        if filtered and (len(filtered) <= len(data)):
-                            data = filtered
-                        else:
-                            data = []
-            except Exception:
-                data = []
-            return [RecallHit(payload=p) for p in (data or [])]
+            rid = request_id or str(uuid.uuid4())
+            hits = await self._http_recall_async(
+                "/recall", query, top_k, universe or "real", rid
+            )
+            if hits:
+                return hits
+            return self._local_recall_hits(query, universe)
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, self.recall, query, top_k)
+        return await loop.run_in_executor(
+            None, self.recall, query, top_k, universe, request_id
+        )
+
+    async def arecall_with_scores(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
+        """Async companion to :meth:`recall_with_scores`."""
+
+        if self._http_async is not None:
+            rid = request_id or str(uuid.uuid4())
+            hits = await self._http_recall_async(
+                "/recall_with_scores", query, top_k, universe or "real", rid
+            )
+            if hits:
+                return hits
+        return await self.arecall(query, top_k, universe, request_id)
 
     def link(
         self,
@@ -1152,7 +1667,6 @@ class MemoryClient:
     ) -> None:
         """Create or strengthen a typed edge in the memory graph."""
         _refresh_builtins_globals()
-        # Primary path: call HTTP /link endpoint if available
         if self._http is not None:
             try:
                 import uuid
@@ -1171,64 +1685,24 @@ class MemoryClient:
                 )
             except Exception:
                 pass
-            # record locally for process augmentation (mirror)
-            key_from = cast(
-                Tuple[float, float, float],
-                (from_coord[0], from_coord[1], from_coord[2]),
-            )
-            key_to = cast(
-                Tuple[float, float, float], (to_coord[0], to_coord[1], to_coord[2])
-            )
-            with self._lock:
-                adj = self._graph.get(key_from)
-                if adj is None:
-                    adj = {}
-                    self._graph[key_from] = adj
-                prev = adj.get(key_to, {"type": str(link_type), "weight": 0.0})
-                new_w = float(prev.get("weight", 0.0)) + float(weight)
-                adj[key_to] = {"type": str(link_type), "weight": new_w}
-            # Record in global links mirror for visibility
-            try:
-                ns = getattr(self.cfg, "namespace", None)
-                if ns is not None:
-                    GLOBAL_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
-                    if not hasattr(_builtins, GLOBAL_LINKS_KEY):
-                        setattr(_builtins, GLOBAL_LINKS_KEY, {})
-                    global_links: dict[str, list[dict]] = getattr(
-                        _builtins, GLOBAL_LINKS_KEY
-                    )
-                    ns_links = global_links.setdefault(ns, [])
-                    ns_links.append(
-                        {
-                            "from": list(map(float, from_coord)),
-                            "to": list(map(float, to_coord)),
-                            "type": str(link_type),
-                            "weight": float(weight),
-                        }
-                    )
-                    try:
-                        logger.debug(
-                            "link(http): appended edge to _GLOBAL_LINKS ns=%r total=%d global_id=%r builtin_id=%r",
-                            ns,
-                            len(global_links.get(ns, [])),
-                            id(global_links),
-                            id(getattr(_builtins, GLOBAL_LINKS_KEY, None)),
-                        )
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            self._mirror_link_locally(from_coord, to_coord, link_type, weight)
             return
 
-        # Fallback: stub — record in-process adjacency and mirror to builtins
-        _refresh_builtins_globals()
+        self._mirror_link_locally(from_coord, to_coord, link_type, weight)
+
+    def _mirror_link_locally(
+        self,
+        from_coord: tuple[float, float, float],
+        to_coord: tuple[float, float, float],
+        link_type: str,
+        weight: float,
+    ) -> None:
         key_from = cast(
             Tuple[float, float, float],
             (from_coord[0], from_coord[1], from_coord[2]),
         )
         key_to = cast(
-            Tuple[float, float, float], (to_coord[0], to_coord[1], to_coord[2])
-        )
+            Tuple[float, float, float], (to_coord[0], to_coord[1], to_coord[2]))
         with self._lock:
             adj = self._graph.get(key_from)
             if adj is None:
@@ -1238,7 +1712,6 @@ class MemoryClient:
             new_w = float(prev.get("weight", 0.0)) + float(weight)
             adj[key_to] = {"type": str(link_type), "weight": new_w}
 
-        # Record in global links mirror for visibility
         try:
             ns = getattr(self.cfg, "namespace", None)
             if ns is not None:
@@ -1259,7 +1732,7 @@ class MemoryClient:
                 )
                 try:
                     logger.debug(
-                        "link(stub): appended edge to _GLOBAL_LINKS ns=%r total=%d global_id=%r builtin_id=%r",
+                        "link(local): appended edge to _GLOBAL_LINKS ns=%r total=%d global_id=%r builtin_id=%r",
                         ns,
                         len(global_links.get(ns, [])),
                         id(global_links),
@@ -1269,6 +1742,50 @@ class MemoryClient:
                     pass
         except Exception:
             pass
+
+    async def alink(
+        self,
+        from_coord: tuple[float, float, float],
+        to_coord: tuple[float, float, float],
+        link_type: str = "related",
+        weight: float = 1.0,
+        request_id: str | None = None,
+    ) -> None:
+        """Async helper mirroring :meth:`link` behaviour."""
+
+        _refresh_builtins_globals()
+        if self._http_async is not None:
+            try:
+                import uuid
+
+                rid = request_id or str(uuid.uuid4())
+                headers = {"X-Request-ID": rid}
+                await self._http_async.post(
+                    "/link",
+                    json={
+                        "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
+                        "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
+                        "type": link_type,
+                        "weight": weight,
+                    },
+                    headers=headers,
+                )
+            except Exception:
+                pass
+            self._mirror_link_locally(from_coord, to_coord, link_type, weight)
+            return
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self.link(
+                from_coord,
+                to_coord,
+                link_type=link_type,
+                weight=weight,
+                request_id=request_id,
+            ),
+        )
 
     def links_from(
         self,
@@ -1385,6 +1902,262 @@ class MemoryClient:
             pass
 
         return out if unlimited else out[:max_items]
+
+    def unlink(
+        self,
+        from_coord: tuple[float, float, float],
+        to_coord: tuple[float, float, float],
+        link_type: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Remove a directed edge from the memory graph."""
+
+        _refresh_builtins_globals()
+        removed = False
+        if self._http is not None:
+            try:
+                rid = request_id or str(uuid.uuid4())
+                headers = {"X-Request-ID": rid}
+                self._http.post(
+                    "/unlink",
+                    json={
+                        "from_coord": [float(from_coord[0]), float(from_coord[1]), float(from_coord[2])],
+                        "to_coord": [float(to_coord[0]), float(to_coord[1]), float(to_coord[2])],
+                        "type": link_type,
+                    },
+                    headers=headers,
+                )
+            except Exception:
+                pass
+
+        key_from = cast(
+            Tuple[float, float, float],
+            (float(from_coord[0]), float(from_coord[1]), float(from_coord[2])),
+        )
+        key_to = cast(
+            Tuple[float, float, float],
+            (float(to_coord[0]), float(to_coord[1]), float(to_coord[2])),
+        )
+        with self._lock:
+            adj = self._graph.get(key_from)
+            if adj and key_to in adj:
+                if link_type is None or adj[key_to].get("type") == link_type:
+                    adj.pop(key_to, None)
+                    removed = True
+                    if not adj:
+                        self._graph.pop(key_from, None)
+
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                eps = 1e-6
+
+                def _close(a: tuple[float, float, float], b: tuple[float, float, float]) -> bool:
+                    return all(abs(a[i] - b[i]) <= eps for i in range(3))
+
+                entries = _GLOBAL_LINKS.get(ns, [])
+                retained: List[dict] = []
+                for edge in entries:
+                    frm = edge.get("from")
+                    to = edge.get("to")
+                    if not (isinstance(frm, (list, tuple)) and isinstance(to, (list, tuple))):
+                        retained.append(edge)
+                        continue
+                    frm_t = tuple(map(float, frm[:3]))
+                    to_t = tuple(map(float, to[:3]))
+                    if _close(frm_t, key_from) and _close(to_t, key_to):
+                        if link_type is not None and edge.get("type") != link_type:
+                            retained.append(edge)
+                            continue
+                        removed = True
+                        continue
+                    retained.append(edge)
+                _GLOBAL_LINKS[ns] = retained
+        except Exception:
+            pass
+        return removed
+
+    async def aunlink(
+        self,
+        from_coord: tuple[float, float, float],
+        to_coord: tuple[float, float, float],
+        link_type: str | None = None,
+        request_id: str | None = None,
+    ) -> bool:
+        """Async variant of :meth:`unlink`."""
+
+        if self._http_async is not None:
+            try:
+                rid = request_id or str(uuid.uuid4())
+                headers = {"X-Request-ID": rid}
+                await self._http_async.post(
+                    "/unlink",
+                    json={
+                        "from_coord": [float(from_coord[0]), float(from_coord[1]), float(from_coord[2])],
+                        "to_coord": [float(to_coord[0]), float(to_coord[1]), float(to_coord[2])],
+                        "type": link_type,
+                    },
+                    headers=headers,
+                )
+            except Exception:
+                pass
+        return self.unlink(from_coord, to_coord, link_type=link_type, request_id=request_id)
+
+    def prune_links(
+        self,
+        coord: tuple[float, float, float],
+        *,
+        weight_below: float | None = None,
+        max_degree: int | None = None,
+        type_filter: str | None = None,
+        request_id: str | None = None,
+    ) -> int:
+        """Prune outgoing edges using lightweight heuristics.
+
+        Returns the number of locally removed edges (or the remote-reported count
+        when greater). ``weight_below`` removes edges with weights strictly below
+        the threshold. ``max_degree`` keeps the highest-weight edges up to the
+        limit. ``type_filter`` restricts pruning to matching edge types.
+        """
+
+        _refresh_builtins_globals()
+        removed_remote = 0
+        if self._http is not None:
+            try:
+                rid = request_id or str(uuid.uuid4())
+                headers = {"X-Request-ID": rid}
+                payload = {
+                    "from_coord": [float(coord[0]), float(coord[1]), float(coord[2])],
+                    "weight_below": weight_below,
+                    "max_degree": max_degree,
+                    "type": type_filter,
+                }
+                resp = self._http.post("/prune", json=payload, headers=headers)
+                data = self._response_json(resp)
+                if isinstance(data, dict) and "removed" in data:
+                    try:
+                        removed_remote = int(data.get("removed") or 0)
+                    except Exception:
+                        removed_remote = 0
+            except Exception:
+                removed_remote = 0
+
+        key_from = cast(
+            Tuple[float, float, float],
+            (float(coord[0]), float(coord[1]), float(coord[2])),
+        )
+
+        removed_local = 0
+        with self._lock:
+            adj = self._graph.get(key_from)
+            if adj:
+                to_remove: List[Tuple[float, float, float]] = []
+                if weight_below is not None:
+                    for neighbor, meta in list(adj.items()):
+                        if type_filter and meta.get("type") != type_filter:
+                            continue
+                        try:
+                            if float(meta.get("weight", 0.0)) < float(weight_below):
+                                to_remove.append(neighbor)
+                        except Exception:
+                            to_remove.append(neighbor)
+                for nbr in to_remove:
+                    if nbr in adj:
+                        adj.pop(nbr, None)
+                        removed_local += 1
+
+                # Enforce max_degree by trimming lowest-weight edges
+                if max_degree is not None and max_degree >= 0:
+                    candidates = [
+                        (nbr, float(meta.get("weight", 0.0)))
+                        for nbr, meta in adj.items()
+                        if not type_filter or meta.get("type") == type_filter
+                    ]
+                    if len(candidates) > max_degree:
+                        candidates.sort(key=lambda x: x[1])
+                        for nbr, _ in candidates[: len(candidates) - int(max_degree)]:
+                            if nbr in adj:
+                                adj.pop(nbr, None)
+                                removed_local += 1
+
+                if not adj:
+                    self._graph.pop(key_from, None)
+
+        try:
+            ns = getattr(self.cfg, "namespace", None)
+            if ns is not None:
+                eps = 1e-6
+
+                def _close(a: tuple[float, float, float], b: tuple[float, float, float]) -> bool:
+                    return all(abs(a[i] - b[i]) <= eps for i in range(3))
+
+                edges = _GLOBAL_LINKS.get(ns, [])
+                retained: List[dict] = []
+                for edge in edges:
+                    frm = edge.get("from")
+                    to = edge.get("to")
+                    if not (isinstance(frm, (list, tuple)) and isinstance(to, (list, tuple))):
+                        retained.append(edge)
+                        continue
+                    frm_t = tuple(map(float, frm[:3]))
+                    if not _close(frm_t, key_from):
+                        retained.append(edge)
+                        continue
+                    if type_filter and edge.get("type") != type_filter:
+                        retained.append(edge)
+                        continue
+                    weight_val = 0.0
+                    try:
+                        weight_val = float(edge.get("weight", 0.0))
+                    except Exception:
+                        weight_val = 0.0
+                    if weight_below is not None and weight_val < float(weight_below):
+                        removed_local += 1
+                        continue
+                    retained.append(edge)
+                _GLOBAL_LINKS[ns] = retained
+        except Exception:
+            pass
+
+        total_removed = removed_local
+        if removed_remote and removed_remote > total_removed:
+            total_removed = removed_remote
+        return total_removed
+
+    async def aprune_links(
+        self,
+        coord: tuple[float, float, float],
+        *,
+        weight_below: float | None = None,
+        max_degree: int | None = None,
+        type_filter: str | None = None,
+        request_id: str | None = None,
+    ) -> int:
+        """Async helper matching :meth:`prune_links`."""
+
+        if self._http_async is not None:
+            try:
+                rid = request_id or str(uuid.uuid4())
+                headers = {"X-Request-ID": rid}
+                await self._http_async.post(
+                    "/prune",
+                    json={
+                        "from_coord": [float(coord[0]), float(coord[1]), float(coord[2])],
+                        "weight_below": weight_below,
+                        "max_degree": max_degree,
+                        "type": type_filter,
+                    },
+                    headers=headers,
+                )
+            except Exception:
+                pass
+        return self.prune_links(
+            coord,
+            weight_below=weight_below,
+            max_degree=max_degree,
+            type_filter=type_filter,
+            request_id=request_id,
+        )
 
     # --- New Graph Analytics Helpers ---
     def degree(self, node: Tuple[float, float, float]) -> int:
@@ -1691,24 +2464,20 @@ class MemoryClient:
         rid_hdr = {"X-Request-ID": rid}
         rid_hdr.update(compat_hdr)
         stored = False
-        try:
-            r = self._http.post("/remember", json=body, headers=rid_hdr)
-            code = getattr(r, "status_code", 200)
-            if code in (404, 405):
-                r2 = self._http.post("/store", json=body, headers=rid_hdr)
-                stored = getattr(r2, "status_code", 500) < 300
-            elif code in (429, 503):
-                time.sleep(0.01 + random.random() * 0.02)
-                r3 = self._http.post("/remember", json=body, headers=rid_hdr)
-                stored = getattr(r3, "status_code", 500) < 300
-            elif code >= 500:
-                time.sleep(0.1)
-                r_retry = self._http.post("/remember", json=body, headers=rid_hdr)
-                stored = getattr(r_retry, "status_code", 500) < 300
-            else:
-                stored = code < 300
-        except Exception:
-            stored = False
+        response_payload: Any = None
+        if self._http is not None:
+            try:
+                stored, response_payload = self._store_http_sync(body, rid_hdr)
+            except Exception:
+                stored = False
+        server_coord: Tuple[float, float, float] | None = None
+        if stored and response_payload is not None:
+            try:
+                server_coord = _extract_memory_coord(
+                    response_payload, idempotency_key=rid
+                )
+            except Exception:
+                server_coord = None
 
         if not stored:
             try:
@@ -1718,6 +2487,7 @@ class MemoryClient:
                 )
             except Exception:
                 pass
+        return server_coord
 
     async def _aremember_background(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -1739,13 +2509,16 @@ class MemoryClient:
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         body = {"coord": coord_str, "payload": enriched, "type": "episodic"}
         try:
-            r = await self._http_async.post("/remember", json=body, headers=rid_hdr)
-            code = getattr(r, "status_code", 200)
-            if code in (404, 405):
-                await self._http_async.post("/store", json=body, headers=rid_hdr)
-            elif code in (429, 503):
-                await asyncio.sleep(0.01 + random.random() * 0.02)
-                await self._http_async.post("/remember", json=body, headers=rid_hdr)
+            ok, response_data = await self._store_http_async(body, rid_hdr)
+            if ok and response_data is not None:
+                server_coord = _extract_memory_coord(
+                    response_data, idempotency_key=rid
+                )
+                if server_coord:
+                    try:
+                        payload["coordinate"] = server_coord
+                    except Exception:
+                        pass
         except Exception:
             # record for later retry
             try:

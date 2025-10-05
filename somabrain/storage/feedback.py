@@ -72,3 +72,22 @@ class FeedbackStore:
             return session.query(FeedbackEvent).filter_by(session_id=session_id).all()
         finally:
             session.close()
+
+    def total_count(self) -> int:
+        """Return total number of recorded feedback events.
+
+        Provides a lightweight aggregate used by observability endpoints to
+        report adaptation history growth. Errors fall back to ``0`` so the
+        caller can degrade gracefully when the backing store is unavailable.
+        """
+
+        session: Session = self._session_factory()
+        try:
+            return int(session.query(FeedbackEvent).count())
+        except SQLAlchemyError:
+            session.rollback()
+            return 0
+        except Exception:
+            return 0
+        finally:
+            session.close()

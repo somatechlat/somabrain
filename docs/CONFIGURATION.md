@@ -144,4 +144,26 @@ Failed writes to the memory service are stored in `./data/somabrain/outbox.jsonl
 Composite recall ranking is enabled by default. The blend runs inside `/recall` and scores each long-term memory payload using lexical overlap, working-memory agreement, recency, `quality_score`, and math-domain hints. To opt out (for example, when debugging backend ordering), set `lexical_boost_enabled: false` in `config.yaml`. Leaving it enabled ensures math learning memories with proper metadata (`domains` including `math`/`learning`, higher `quality_score`) surface first without additional tuning.
 
 ---
+## 11. Deprecated Configuration
+
+The following variables are no longer used and have no effect:
+* `SOMABRAIN_DEPRECATED_VAR` – example deprecated var
+
+---
+## 12. Recent Infrastructure Updates (2025)
+
+- **Dependency management with `uv`**: The project now uses `uv` for installing dependencies and running tools. Typical commands are:
+  ```bash
+  uv pip install -e .[dev]   # install package in editable mode with dev extras
+  uv run ruff check .        # lint
+  uv run black --check .     # format check
+  uv run pytest              # test suite
+  ```
+- **CI workflow (`.github/workflows/ci.yml`)**: Updated to run on **Python 3.13**, install dependencies via `uv`, execute linting (`ruff`), formatting (`black`), the full test suite (`pytest`), build the Docker image, and perform a health‑check smoke test against the running container.
+- **Development stack script (`scripts/dev_up.sh`)**: Builds and starts the full Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory service, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for the `/health` endpoint before completing.
+- **Health endpoint (`/health`)**: Now returns detailed component readiness, predictor provider, strict‑real mode, embedder details, and memory item counts, matching the updated configuration documentation.
+- **Feature flags**: New flags such as `SOMABRAIN_ENABLE_REWARD_GATE`, `SOMABRAIN_ENABLE_TRACING`, and `SOMABRAIN_DISABLE_CONSTITUTION_ENFORCEMENT` are documented here for future use.
+
+These updates ensure the documentation aligns with the current codebase and operational practices.
+
 *This document is the single source of truth for configuration. All other docs that duplicate environment variable tables should be removed or redirected here.*

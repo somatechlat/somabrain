@@ -31,7 +31,7 @@ class AdaptationEngine:
         retrieval: RetrievalWeights,
         utility: Optional[UtilityWeights] = None,
         learning_rate: float = 0.05,
-        max_history: int = 10,
+        max_history: int = 1000,
         constraints: Optional[dict] = None,
     ) -> None:
         self._retrieval = retrieval
@@ -46,6 +46,8 @@ class AdaptationEngine:
             "mu": (0.01, 5.0),
             "nu": (0.01, 5.0),
         }
+        # Counter for how many feedback applications have occurred – used for observability
+        self._feedback_count = 0
 
     @property
     def retrieval_weights(self) -> RetrievalWeights:
@@ -84,6 +86,11 @@ class AdaptationEngine:
         self._utility.mu = self._constrain("mu", self._utility.mu - 0.25 * delta)
         self._utility.nu = self._constrain("nu", self._utility.nu - 0.25 * delta)
         self._utility.clamp()
+        # Track that a feedback event was applied
+        try:
+            self._feedback_count = getattr(self, "_feedback_count", 0) + 1
+        except Exception:
+            pass
         return True
 
     def rollback(self) -> bool:
