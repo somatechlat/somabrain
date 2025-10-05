@@ -14,7 +14,7 @@ class UtilityWeights:
     mu: float = 0.1
     nu: float = 0.05
 
-    def clamp(self, lower: float = 0.0, upper: float = 10.0) -> None:
+    def clamp(self, lower: float = 0.0, upper: float = 5.0) -> None:
         self.lambda_ = min(max(self.lambda_, lower), upper)
         self.mu = min(max(self.mu, lower), upper)
         self.nu = min(max(self.nu, lower), upper)
@@ -40,9 +40,9 @@ class AdaptationEngine:
         self._history = []  # Track (retrieval, utility) tuples for rollback
         self._max_history = max_history
         self._constraints = constraints or {
-            "alpha": (0.1, 10.0),
+            "alpha": (0.1, 5.0),
             "gamma": (0.0, 1.0),
-            "lambda_": (0.1, 10.0),
+            "lambda_": (0.1, 5.0),
             "mu": (0.01, 5.0),
             "nu": (0.01, 5.0),
         }

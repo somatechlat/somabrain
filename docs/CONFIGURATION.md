@@ -1,3 +1,29 @@
+## Production-like Defaults
+
+The development stack is configured to run in a production-like posture by default to ensure tests
+and manual verification hit real services with no local mocks:
+
+- `SOMABRAIN_FORCE_FULL_STACK=1`
+- `SOMABRAIN_STRICT_REAL=1`
+- `SOMABRAIN_REQUIRE_MEMORY=1`
+- `SOMABRAIN_MODE=enterprise`
+
+These are written into `.env.local` by `scripts/dev_up.sh` and are also set as defaults in the
+`Dockerfile`, so both compose-based and standalone `docker run` workflows inherit them. Override any
+value at runtime using `-e VAR=value` or by editing `.env.local` before launching compose.
+
+Examples:
+
+```bash
+# Relax strict-real temporarily
+SOMABRAIN_STRICT_REAL=0 docker compose -f Docker_Canonical.yml up -d
+
+# Override when running the image directly
+docker run --rm -p 9696:9696 \
+  -e SOMABRAIN_FORCE_FULL_STACK=0 \
+  -e SOMABRAIN_STRICT_REAL=0 \
+  somabrain:latest
+```
 # SomaBrain Configuration Reference
 
 All runtime configuration is controlled via environment variables. This document now reflects the actual code paths and defaults.

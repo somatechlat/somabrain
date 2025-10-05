@@ -256,7 +256,13 @@ def _get_adaptation(builder, planner: ContextPlanner) -> AdaptationEngine:
 
 
 def _make_event_id(session_id: str) -> str:
-    return f"{session_id}:{uuid.uuid4().hex}"
+    suffix = uuid.uuid4().hex
+    max_prefix = 64 - len(suffix) - 1  # account for colon separator
+    prefix = (session_id or "")[: max(0, max_prefix)]
+    if prefix:
+        return f"{prefix}:{suffix}"
+    # Fall back to suffix-only when no session id provided or prefix length is zero
+    return suffix[:64]
 
 
 @router.get("/adaptation/state", response_model=AdaptationStateResponse)

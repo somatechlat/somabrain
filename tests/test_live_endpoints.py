@@ -9,8 +9,6 @@ import redis
 import requests
 from fastapi.testclient import TestClient
 
-import somabrain.app as app_module
-
 
 @pytest.fixture
 def live_client(monkeypatch):
@@ -41,14 +39,15 @@ def live_client(monkeypatch):
     monkeypatch.setenv("DISABLE_AUTH", "true")
     monkeypatch.setenv("SOMABRAIN_LOG_LEVEL", "error")
 
-    importlib.reload(app_module)
-    client = TestClient(app_module.app)
+    app_mod = importlib.import_module("somabrain.app")
+    app_mod = importlib.reload(app_mod)
+    client = TestClient(app_mod.app)
     redis_client.flushdb()
     try:
         yield client
     finally:
         client.close()
-        importlib.reload(app_module)
+    importlib.reload(app_mod)
 
 
 @pytest.mark.integration
@@ -124,11 +123,10 @@ def test_rag_pipeline_with_live_services(live_client: TestClient):
 def _extract_metric_value(metrics_text: str, metric: str) -> float:
     from prometheus_client.parser import text_string_to_metric_families
 
+    total = 0.0
     for family in text_string_to_metric_families(metrics_text):
-        if family.name != metric:
-            continue
-        # Return the first sample value (no labels in use for these metrics)
         for sample in family.samples:
             if sample.name == metric:
-                return float(sample.value)
-    return 0.0
+                # Metrics like RAG counters emit one sample per label combination; sum them.
+                total += float(sample.value)
+    return total

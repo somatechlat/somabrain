@@ -33,6 +33,14 @@ PORTS
 # Ensure the memory endpoint points to the host‑exposed port (hard‑coded to match the above)
 echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595" >> $ENVFILE
 
+# Production-like defaults for development: strict-real and full stack
+cat <<'FLAGS' >> $ENVFILE
+SOMABRAIN_FORCE_FULL_STACK=1
+SOMABRAIN_STRICT_REAL=1
+SOMABRAIN_REQUIRE_MEMORY=1
+SOMABRAIN_MODE=enterprise
+FLAGS
+
 echo "Wrote $ENVFILE:" && sed -n '1,200p' $ENVFILE
 
 echo "Cleaning any previous compose state (down --remove-orphans)"

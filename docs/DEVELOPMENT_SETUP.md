@@ -111,7 +111,7 @@ Follow this checklist every time you need the full development cluster:
 ### 2.1 Posture knobs for local vs. production parity
 
 - **Single worker with read-your-writes:** the compose profile sets `SOMABRAIN_WORKERS=1` so `/remember` writes are visible immediately to `/recall`.
-- **Force full-stack readiness:** `SOMABRAIN_FORCE_FULL_STACK=1` (default in `dev_up.sh`) requires a real predictor, embedder, and reachable memory service. Disabling it relaxes readiness for isolated development.
+- **Force full-stack readiness:** `SOMABRAIN_FORCE_FULL_STACK=1` (now written to `.env.local` by `scripts/dev_up.sh`) requires a real predictor, embedder, and reachable memory service. Disabling it relaxes readiness for isolated development.
 - **OPA fail-closed simulation:** set `SOMA_OPA_FAIL_CLOSED=1` to make `/health` depend on the OPA stub (`opa_required=true`).
 - **devprod smoke script:** `python scripts/devprod_smoke.py --url http://127.0.0.1:9696` runs the same remember/recall loop with additional assertions if you prefer a Python-based check.
 
@@ -128,6 +128,35 @@ Whenever you change application code or dependencies, rebuild the image and rest
   ./scripts/dev_up.sh --rebuild
   ```
   The `--rebuild` flag forces a clean Docker image rebuild before containers start. If omitted, the script still detects most changes, but using the flag guarantees a fresh image.
+  
+  By default, `scripts/dev_up.sh` writes production-like flags into `.env.local` so every run uses a strict, full-stack posture:
+  - `SOMABRAIN_FORCE_FULL_STACK=1`
+  - `SOMABRAIN_STRICT_REAL=1`
+  - `SOMABRAIN_REQUIRE_MEMORY=1`
+  - `SOMABRAIN_MODE=enterprise`
+
+  To temporarily relax this (e.g., offline dev), comment out or override these envs before running `docker compose`.
+
+### 2.3 Default Docker image posture
+
+The `Dockerfile` sets production-like defaults for development parity even when running the container standalone:
+
+```
+ENV SOMABRAIN_FORCE_FULL_STACK=1 \\
+    SOMABRAIN_STRICT_REAL=1 \\
+    SOMABRAIN_REQUIRE_MEMORY=1 \\
+    SOMABRAIN_MODE=enterprise
+```
+
+You can override at runtime with `-e VAR=value`, for example:
+
+```bash
+docker run --rm -p 9696:9696 \
+  -e SOMABRAIN_PORT=9696 \
+  -e SOMABRAIN_FORCE_FULL_STACK=0 \
+  -e SOMABRAIN_STRICT_REAL=0 \
+  somabrain:latest
+```
 3. Wait for the script to report a healthy `/health` check and review the generated `.env.local`/`ports.json`.
 4. Run the smoke checks from step 4 above or the condensed helper:
   ```bash

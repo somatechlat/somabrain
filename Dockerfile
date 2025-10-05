@@ -64,11 +64,16 @@ USER appuser
 # Expose default API port (can be overridden)
 EXPOSE 9696
 
-# Environment defaults
+# Environment defaults (production-like for development parity)
+# Override at runtime with -e VAR=value as needed.
 ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \
     SOMABRAIN_HOST=0.0.0.0 \
     SOMABRAIN_PORT=9696 \
-    SOMABRAIN_WORKERS=1
+    SOMABRAIN_WORKERS=1 \
+    SOMABRAIN_FORCE_FULL_STACK=1 \
+    SOMABRAIN_STRICT_REAL=1 \
+    SOMABRAIN_REQUIRE_MEMORY=1 \
+    SOMABRAIN_MODE=enterprise
 
 # Entrypoint script for flexible startup
 COPY --chown=appuser:appuser --chmod=0755 docker-entrypoint.sh /usr/local/bin/

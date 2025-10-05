@@ -74,7 +74,7 @@ def submit_feedback(session_id, query, prompt, headers):
 def main():
     """TODO: Add docstring."""
     before = get_adaptation_state()
-    session_id = f"learning-{uuid.uuid4().hex}"
+    session_id = f"learning-{uuid.uuid4().hex[:16]}"
     headers = {"X-Model-Confidence": "8.5", "X-Session-ID": session_id}
     query = "measure my adaptation progress"
     remember_memory()

@@ -1,11 +1,11 @@
-{"ts": 1759687003, "path": "/neuromodulators", "method": "POST", "client": "testclient", "action": "neuromodulators_set", "details": {"tenant": "secret-token-123", "new_state": {"dopamine": 0.11, "serotonin": 0.21, "noradrenaline": 0.02, "acetylcholine": 0.12}}}
-{"ts": 1759687036, "path": "/neuromodulators", "method": "GET", "client": "testclient", "action": "neuromodulators_read"}
-{"ts": 1759687037, "path": "/neuromodulators", "method": "POST", "client": "testclient", "action": "neuromodulators_set", "details": {"tenant": "public", "new_state": {"dopamine": 0.8, "serotonin": 0.9, "noradrenaline": 0.1, "acetylcholine": 0.05}}}
-{"ts": 1759687037, "path": "/neuromodulators", "method": "GET", "client": "testclient", "action": "neuromodulators_read"}
-{"ts": 1759687049, "path": "/autonomous/canary/test_param", "method": "AUTO", "client": "localhost", "action": "canary_promote", "details": {"param": "test_param", "new_value": 0.8}}
-{"ts": 1759687049, "path": "/autonomous/canary/timeout_ms", "method": "AUTO", "client": "localhost", "action": "canary_promote", "details": {"param": "timeout_ms", "new_value": 50}}
-{"ts": 1759687049, "path": "/autonomous/canary/timeout_ms/rollback", "method": "AUTO", "client": "localhost", "action": "canary_rollback", "details": {"param": "timeout_ms", "restored_value": null}}
-{"ts": 1759687056, "path": "/autonomous/circuit/svc", "method": "AUTO", "client": "localhost", "action": "circuit_auto_trigger", "details": {"circuit": "svc", "recovery_action": "fix_svc"}}
-{"ts": 1759687056, "path": "/autonomous/circuit/svc/reset", "method": "AUTO", "client": "localhost", "action": "circuit_reset", "details": {"circuit": "svc"}}
-{"ts": 1759687056, "path": "/autonomous/circuit/svc", "method": "AUTO", "client": "localhost", "action": "circuit_auto_trigger", "details": {"circuit": "svc", "recovery_action": "fix_svc"}}
-{"ts": 1759687125, "path": "/autonomous/recovery/critical_restart", "method": "AUTO", "client": "localhost", "action": "recovery_blocked_human_oversight", "details": {"action_id": "critical_restart"}}
+{"ts": 1759700755, "path": "/neuromodulators", "method": "POST", "client": "testclient", "action": "neuromodulators_set", "details": {"tenant": "secret-token-123", "new_state": {"dopamine": 0.11, "serotonin": 0.21, "noradrenaline": 0.02, "acetylcholine": 0.12}}}
+{"ts": 1759700764, "path": "/neuromodulators", "method": "GET", "client": "testclient", "action": "neuromodulators_read"}
+{"ts": 1759700764, "path": "/neuromodulators", "method": "POST", "client": "testclient", "action": "neuromodulators_set", "details": {"tenant": "public", "new_state": {"dopamine": 0.8, "serotonin": 0.9, "noradrenaline": 0.1, "acetylcholine": 0.05}}}
+{"ts": 1759700764, "path": "/neuromodulators", "method": "GET", "client": "testclient", "action": "neuromodulators_read"}
+{"ts": 1759700771, "path": "/autonomous/canary/test_param", "method": "AUTO", "client": "localhost", "action": "canary_promote", "details": {"param": "test_param", "new_value": 0.8}}
+{"ts": 1759700771, "path": "/autonomous/canary/timeout_ms", "method": "AUTO", "client": "localhost", "action": "canary_promote", "details": {"param": "timeout_ms", "new_value": 50}}
+{"ts": 1759700771, "path": "/autonomous/canary/timeout_ms/rollback", "method": "AUTO", "client": "localhost", "action": "canary_rollback", "details": {"param": "timeout_ms", "restored_value": null}}
+{"ts": 1759700775, "path": "/autonomous/circuit/svc", "method": "AUTO", "client": "localhost", "action": "circuit_auto_trigger", "details": {"circuit": "svc", "recovery_action": "fix_svc"}}
+{"ts": 1759700775, "path": "/autonomous/circuit/svc/reset", "method": "AUTO", "client": "localhost", "action": "circuit_reset", "details": {"circuit": "svc"}}
+{"ts": 1759700775, "path": "/autonomous/circuit/svc", "method": "AUTO", "client": "localhost", "action": "circuit_auto_trigger", "details": {"circuit": "svc", "recovery_action": "fix_svc"}}
+{"ts": 1759700846, "path": "/autonomous/recovery/critical_restart", "method": "AUTO", "client": "localhost", "action": "recovery_blocked_human_oversight", "details": {"action_id": "critical_restart"}}

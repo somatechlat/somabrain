@@ -62,10 +62,15 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
         **({"universe": universe} if universe else {}),
     }
     r2 = post_json(recall_url, body)
-    mem = r2.get("memory", [])
+    candidates = []
+    for key in ("memory", "wm"):
+        seq = r2.get(key)
+        if isinstance(seq, list):
+            candidates.extend(seq)
+
     text_lower = key_text.lower()
     found = False
-    for p in mem:
+    for p in candidates:
         if isinstance(p, dict):
             t = str(p.get("task") or p.get("fact") or p.get("text") or "").lower()
             if t and (text_lower in t or t in text_lower):

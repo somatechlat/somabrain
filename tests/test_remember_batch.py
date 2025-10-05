@@ -6,7 +6,7 @@ import requests
 
 def test_remember_handles_batch_of_memories_live():
     base_url = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
-    memory_url = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:9595")
+    memory_url = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT") or "http://127.0.0.1:9595"
 
     # Basic health checks to fail fast if services are unreachable
     health = requests.get(f"{base_url}/health", timeout=5)
@@ -45,7 +45,12 @@ def test_remember_handles_batch_of_memories_live():
         assert recall_res.status_code == 200, recall_res.text
         body = recall_res.json()
         assert isinstance(body, dict)
-        memories = body.get("memory") or []
+        candidates = []
+        for key in ("memory", "wm"):
+            seq = body.get(key)
+            if isinstance(seq, list):
+                candidates.extend(seq)
+        memories = candidates
         assert any(
             m.get("task") == task for m in memories
         ), f"Missing memory for {task}"
