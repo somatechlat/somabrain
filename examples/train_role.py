@@ -24,13 +24,17 @@ def simple_reconstruction_gradient(theta, qlayer, token, target_vector):
     """
     eps = 1e-3
     grad = np.zeros_like(theta, dtype=float)
-    base_recon = qlayer._learned_roles.unbind(token, qlayer._learned_roles.bind(token, target_vector))
+    base_recon = qlayer._learned_roles.unbind(
+        token, qlayer._learned_roles.bind(token, target_vector)
+    )
     base_mse = float(np.mean((target_vector - base_recon) ** 2))
     for i in range(len(theta)):
         theta_p = theta.copy()
         theta_p[i] += eps
         qlayer._learned_roles.set_role(token, theta_p)
-        recon_p = qlayer._learned_roles.unbind(token, qlayer._learned_roles.bind(token, target_vector))
+        recon_p = qlayer._learned_roles.unbind(
+            token, qlayer._learned_roles.bind(token, target_vector)
+        )
         mse_p = float(np.mean((target_vector - recon_p) ** 2))
         grad[i] = (mse_p - base_mse) / eps
     # restore original theta

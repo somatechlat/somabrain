@@ -14,6 +14,7 @@ def test_strict_mode_health_and_no_stub_backfill(monkeypatch):
     else:
         import somabrain.app  # noqa: F401
     import requests
+
     r = requests.get(os.getenv("SOMA_API_URL") + "/health", timeout=1.5)
     assert r.status_code == 200, r.text
     data = r.json()

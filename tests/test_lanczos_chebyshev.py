@@ -1,5 +1,9 @@
 import numpy as np
-from somabrain.math.lanczos_chebyshev import lanczos_expv, chebyshev_heat_apply, estimate_spectral_interval
+from somabrain.math.lanczos_chebyshev import (
+    lanczos_expv,
+    chebyshev_heat_apply,
+    estimate_spectral_interval,
+)
 
 
 def test_lanczos_expv_small_symmetric():
@@ -8,8 +12,10 @@ def test_lanczos_expv_small_symmetric():
     # small symmetric positive semidefinite matrix (M @ M.T)
     M = rng.normal(size=(n, 8))
     full = M @ M.T
+
     def apply_A(x):
         return full @ x
+
     x = rng.normal(size=(n,))
     t = 0.5
     y = lanczos_expv(apply_A, x, t, m=32)
@@ -28,8 +34,10 @@ def test_chebyshev_heat_apply_consistency():
     n = 64
     A = rng.normal(size=(n, n))
     A = A + A.T + n * np.eye(n)  # make symmetric positive definite
+
     def apply_A(x):
         return A @ x
+
     # estimate interval
     a, b = estimate_spectral_interval(apply_A, n=n, m=20)
     x = rng.normal(size=(n,))

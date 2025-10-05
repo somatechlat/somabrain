@@ -22,6 +22,8 @@ API_BASE = os.getenv("SOMA_API_URL", "http://localhost:9696")
 MEMORY_BASE = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
 REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+
+
 def test_persona_round_trip_against_live_stack():
     """Write, read, and clean up a persona record using the live stack."""
 
@@ -58,7 +60,9 @@ def test_persona_round_trip_against_live_stack():
     )
     assert recall_resp.status_code == 200, recall_resp.text
     memories = recall_resp.json()
-    assert any(m.get("id") == persona_id for m in memories), "Persona not stored in SomaMemory"
+    assert any(
+        m.get("id") == persona_id for m in memories
+    ), "Persona not stored in SomaMemory"
 
     delete_resp = requests.delete(
         f"{API_BASE}/persona/{persona_id}",

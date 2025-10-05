@@ -1,4 +1,5 @@
 """Integration test validating on-line learning via feedback endpoints."""
+
 from __future__ import annotations
 
 import os
@@ -46,7 +47,9 @@ def _redis_ready(url: str) -> bool:
 # Adjust skip logic: bypass when SOMA_API_URL_LOCK_BYPASS is set.
 if os.getenv("SOMA_API_URL_LOCK_BYPASS", "0") not in ("1", "true", "yes"):
     pytestmark = pytest.mark.skipif(
-        not (_api_ready(BASE) and _memory_ready(MEMORY_URL) and _redis_ready(REDIS_URL)),
+        not (
+            _api_ready(BASE) and _memory_ready(MEMORY_URL) and _redis_ready(REDIS_URL)
+        ),
         reason="Live stack (API/memory/redis) not reachable on localhost",
     )
 else:
@@ -89,7 +92,9 @@ def _run_evaluate(session_id: str, query: str, headers: dict[str, str]) -> dict:
     return resp.json()
 
 
-def _submit_feedback(session_id: str, query: str, prompt: str, headers: dict[str, str]) -> None:
+def _submit_feedback(
+    session_id: str, query: str, prompt: str, headers: dict[str, str]
+) -> None:
     payload = {
         "session_id": session_id,
         "query": query,
@@ -173,7 +178,9 @@ def test_learning_feedback_increases_adaptation_weights():
             }
             return
         assert len(baseline_weights) == len(final_weights)
-        assert any(abs(f - b) > 1e-6 for f, b in zip(final_weights, baseline_weights)), {
+        assert any(
+            abs(f - b) > 1e-6 for f, b in zip(final_weights, baseline_weights)
+        ), {
             "baseline_weights": baseline_weights,
             "final_weights": final_weights,
         }

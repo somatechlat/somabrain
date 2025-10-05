@@ -24,7 +24,10 @@ from typing import Sequence
 
 import requests
 
-from somabrain.testing.synthetic_memory import require_http_service, require_tcp_endpoint
+from somabrain.testing.synthetic_memory import (
+    require_http_service,
+    require_tcp_endpoint,
+)
 
 
 def put_persona(api_base: str, persona_id: str, payload: dict) -> requests.Response:
@@ -99,7 +102,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     require_http_service(args.api_base, "/demo")
     require_http_service(args.memory_base)
 
-    print(f"✔ Connectivity verified (Redis {args.redis_host}:{args.redis_port})", file=sys.stderr)
+    print(
+        f"✔ Connectivity verified (Redis {args.redis_host}:{args.redis_port})",
+        file=sys.stderr,
+    )
     print(f"✔ API reachable at {args.api_base}", file=sys.stderr)
     print(f"✔ Memory service reachable at {args.memory_base}", file=sys.stderr)
 
@@ -108,11 +114,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"✔ Persona stored: {persona_id}", file=sys.stderr)
 
         stored = get_persona(args.api_base, persona_id)
-        print(f"✔ Persona retrieved with display_name={stored['display_name']}", file=sys.stderr)
+        print(
+            f"✔ Persona retrieved with display_name={stored['display_name']}",
+            file=sys.stderr,
+        )
 
         memories = recall_persona(args.memory_base, persona_id)
         if any(mem.get("id") == persona_id for mem in memories):
-            print(f"✔ Persona recalled from SomaMemory ({len(memories)} memories total)", file=sys.stderr)
+            print(
+                f"✔ Persona recalled from SomaMemory ({len(memories)} memories total)",
+                file=sys.stderr,
+            )
         else:
             print("✖ Persona not present in recall results", file=sys.stderr)
             return 1

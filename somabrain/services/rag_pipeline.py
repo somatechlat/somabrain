@@ -79,7 +79,9 @@ async def run_rag_pipeline(
 
         # Safe increment; metrics module may be a noop in some test envs
         try:
-            M.RAG_REQUESTS.labels(namespace=ctx.namespace, retrievers=retriever_set).inc()
+            M.RAG_REQUESTS.labels(
+                namespace=ctx.namespace, retrievers=retriever_set
+            ).inc()
         except Exception:
             pass
         _t0 = _time.perf_counter()
@@ -98,6 +100,7 @@ async def run_rag_pipeline(
         retrievers = ["vector", "wm"]
     # Try real adapters first if runtime singletons are available; fallback to stubs
     from somabrain import runtime as _rt
+
     logger = logging.getLogger(__name__)
 
     # Defensive: always ensure _rt.cfg is present, fallback to dummy if missing
@@ -130,7 +133,10 @@ async def run_rag_pipeline(
     except Exception:
         mem_client = None
         try:
-            logger.info("rag_pipeline: error instantiating mem_client from runtime.mt_memory: %s", repr(_rt.mt_memory))
+            logger.info(
+                "rag_pipeline: error instantiating mem_client from runtime.mt_memory: %s",
+                repr(_rt.mt_memory),
+            )
         except Exception:
             pass
     # Fallback: if runtime singletons are not wired (common in some dev setups),
@@ -152,7 +158,9 @@ async def run_rag_pipeline(
                     pass
         except Exception:
             try:
-                logger.info("rag_pipeline: fallback import somabrain.app failed (no app singletons available)")
+                logger.info(
+                    "rag_pipeline: fallback import somabrain.app failed (no app singletons available)"
+                )
             except Exception:
                 pass
             pass
@@ -205,7 +213,8 @@ async def run_rag_pipeline(
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is not None and (
-                getattr(_rt, "mt_wm", None) is not None or getattr(_rt, "mc_wm", None) is not None
+                getattr(_rt, "mt_wm", None) is not None
+                or getattr(_rt, "mc_wm", None) is not None
             ):
                 try:
                     lst_all: list[RAGCandidate] = []
@@ -229,12 +238,20 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
             else:
-                from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+                from somabrain.stub_audit import (
+                    STRICT_REAL as __SR,
+                    record_stub as __record_stub,
+                )
+
                 if __SR:
                     # Strict mode: skip WM instead of using stubs
-                    logger.info("wm retriever: skipped in strict mode (embedder or wm backend missing)")
+                    logger.info(
+                        "wm retriever: skipped in strict mode (embedder or wm backend missing)"
+                    )
                     continue
-                logger.info("wm retriever: falling back to stub (embedder or wm backend missing)")
+                logger.info(
+                    "wm retriever: falling back to stub (embedder or wm backend missing)"
+                )
                 __record_stub("rag_pipeline.wm.stub_fallback")
                 lst = retrieve_wm_stub(req.query, top_k)
                 lists_by_retriever["wm"] = lst
@@ -258,12 +275,20 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
-            from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+            from somabrain.stub_audit import (
+                STRICT_REAL as __SR,
+                record_stub as __record_stub,
+            )
+
             if __SR:
                 # Strict mode: skip vector instead of using stubs
-                logger.info("vector retriever: skipped in strict mode (embedder or mem_client missing)")
+                logger.info(
+                    "vector retriever: skipped in strict mode (embedder or mem_client missing)"
+                )
                 continue
-            logger.info("vector retriever: falling back to stub (embedder or mem_client missing)")
+            logger.info(
+                "vector retriever: falling back to stub (embedder or mem_client missing)"
+            )
             __record_stub("rag_pipeline.vector.stub_fallback")
             lst = retrieve_vector_stub(req.query, top_k)
             lists_by_retriever["vector"] = lst
@@ -288,9 +313,15 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
-            from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+            from somabrain.stub_audit import (
+                STRICT_REAL as __SR,
+                record_stub as __record_stub,
+            )
+
             if __SR:
-                raise RuntimeError("STRICT REAL MODE: graph retriever fallback to stub disallowed (embedder or mem_client missing)")
+                raise RuntimeError(
+                    "STRICT REAL MODE: graph retriever fallback to stub disallowed (embedder or mem_client missing)"
+                )
             __record_stub("rag_pipeline.graph.stub_fallback")
             lst = retrieve_graph_stub(req.query, top_k)
             lists_by_retriever["graph"] = lst
@@ -314,7 +345,11 @@ async def run_rag_pipeline(
     # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
     # in non-strict mode, backfill to keep endpoint responsive in empty stores.
     if not cands:
-        from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+        from somabrain.stub_audit import (
+            STRICT_REAL as __SR,
+            record_stub as __record_stub,
+        )
+
         if not __SR:
             for rname in retrievers:
                 if rname == "wm":
@@ -552,7 +587,9 @@ async def run_rag_pipeline(
 
         if _t0 is not None:
             try:
-                M.RAG_RETRIEVE_LAT.labels(**_metrics_ctx).observe(max(0.0, _time.perf_counter() - _t0))
+                M.RAG_RETRIEVE_LAT.labels(**_metrics_ctx).observe(
+                    max(0.0, _time.perf_counter() - _t0)
+                )
             except Exception:
                 try:
                     # Fallback to unlabeled metric

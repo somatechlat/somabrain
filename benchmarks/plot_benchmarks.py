@@ -6,6 +6,7 @@ Usage:
 This looks for latest `learning_speed_*.json` and `rag_precision_*.json` in
 `artifacts/benchmarks/` and writes `learning_curve.png` and `precision_hist.png`.
 """
+
 import glob
 import json
 import os
@@ -49,7 +50,9 @@ def plot_precision_hist():
         return
     with open(path) as f:
         j = json.load(f)
-    vals = [r.get("precision@k", 0.0) for r in j.get("results", []) if isinstance(r, dict)]
+    vals = [
+        r.get("precision@k", 0.0) for r in j.get("results", []) if isinstance(r, dict)
+    ]
     if not vals:
         print("No precision values found in artifact.")
         return

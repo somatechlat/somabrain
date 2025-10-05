@@ -139,5 +139,9 @@ These modules are gated behind environment flags and are monitored for stability
 
 Failed writes to the memory service are stored in `./data/somabrain/outbox.jsonl` (configurable via `outbox_path` in `config.yaml`). A background worker retries these entries and updates the `OUTBOX_PENDING` metric.
 
+## 10. Recall Ranking Controls
+
+Composite recall ranking is enabled by default. The blend runs inside `/recall` and scores each long-term memory payload using lexical overlap, working-memory agreement, recency, `quality_score`, and math-domain hints. To opt out (for example, when debugging backend ordering), set `lexical_boost_enabled: false` in `config.yaml`. Leaving it enabled ensures math learning memories with proper metadata (`domains` including `math`/`learning`, higher `quality_score`) surface first without additional tuning.
+
 ---
 *This document is the single source of truth for configuration. All other docs that duplicate environment variable tables should be removed or redirected here.*

@@ -44,6 +44,7 @@ async def put_persona(
     # import runtime lazily to avoid circular imports at module load
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+
     # Robustness: if runtime.mt_memory is missing (import ordering), fall back to app.mt_memory or a local instance
     mem_backend = getattr(_rt, "mt_memory", None)
     if mem_backend is None:
@@ -127,6 +128,7 @@ async def get_persona(pid: str, request: Request, response: Response):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+
     mem_backend = getattr(_rt, "mt_memory", None)
     if mem_backend is None:
         try:
@@ -162,6 +164,7 @@ async def delete_persona(pid: str, request: Request):
 
     from somabrain import runtime as _rt
     from somabrain.services.memory_service import MemoryService as _MS
+
     mem_backend = getattr(_rt, "mt_memory", None)
     if mem_backend is None:
         try:

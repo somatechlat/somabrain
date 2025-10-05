@@ -1,14 +1,18 @@
 import numpy as np
-from somabrain.math import LearnedUnitaryRoles, FrequentDirections, estimate_spectral_interval
+from somabrain.math import (
+    LearnedUnitaryRoles,
+    FrequentDirections,
+    estimate_spectral_interval,
+)
 
 
 def test_learned_roles_roundtrip():
     d = 128
     lr = LearnedUnitaryRoles(d)
-    lr.init_role('r1', seed=0)
+    lr.init_role("r1", seed=0)
     x = np.random.RandomState(1).randn(d)
-    y = lr.bind('r1', x)
-    xhat = lr.unbind('r1', y)
+    y = lr.bind("r1", x)
+    xhat = lr.unbind("r1", y)
     err = np.linalg.norm(x - xhat) / np.linalg.norm(x)
     # FFT-based phase binding/unbinding is numerically invertible up to
     # floating point error; allow a small tolerance.
@@ -34,8 +38,10 @@ def test_lanczos_chebyshev_small():
     n = 50
     # simple diagonal operator with spectrum in [0,2]
     A = np.diag(np.linspace(0, 2.0, n))
+
     def apply_A(v):
         return A @ v
+
     a, b = estimate_spectral_interval(apply_A, n, m=10)
     assert a >= -1e-6 and b <= 2.1
     x = np.random.RandomState(3).randn(n)

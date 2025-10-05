@@ -3,6 +3,7 @@
 Run from the repo root with the project's venv:
     python benchmarks/fd_benchmark.py
 """
+
 import numpy as np
 from somabrain.math.fd_rho import sketch_from_matrix, topk_eigenvalues_from_sketch
 
@@ -22,7 +23,9 @@ def main():
     for ell in (2 * r0, 4 * r0, 8 * r0):
         fd = sketch_from_matrix(X, ell=ell)
         approx_vals = topk_eigenvalues_from_sketch(fd, k=r0)
-        rel_err = np.linalg.norm(true_vals[:r0] - approx_vals[:r0]) / (np.linalg.norm(true_vals[:r0]) + 1e-12)
+        rel_err = np.linalg.norm(true_vals[:r0] - approx_vals[:r0]) / (
+            np.linalg.norm(true_vals[:r0]) + 1e-12
+        )
         print(f"ell={ell} rel_err_top{r0}={rel_err:.4f}")
 
 

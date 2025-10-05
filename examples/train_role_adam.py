@@ -9,6 +9,8 @@ Usage:
     python examples/train_role_adam.py
 """
 
+# ruff: noqa: E402,F841  # allow imports after sys.path manipulation & ignore unused variable
+
 import os
 import sys
 
@@ -36,8 +38,8 @@ class Adam:
         self.t += 1
         self.m = self.b1 * self.m + (1 - self.b1) * grad
         self.v = self.b2 * self.v + (1 - self.b2) * (grad * grad)
-        m_hat = self.m / (1 - self.b1 ** self.t)
-        v_hat = self.v / (1 - self.b2 ** self.t)
+        m_hat = self.m / (1 - self.b1**self.t)
+        v_hat = self.v / (1 - self.b2**self.t)
         return -self.lr * m_hat / (np.sqrt(v_hat) + self.eps)
 
 
@@ -60,14 +62,14 @@ def analytic_phase_gradient(theta, layer, token, x):
     # unbind via conjugate phases
     X_hat = np.fft.rfft(y)
     R_conj = np.conjugate(R)
-    rec = np.fft.irfft(X_hat * R_conj, n=D)
+    _ = np.fft.irfft(X_hat * R_conj, n=D)  # noqa: F841 unused variable
     # error
     # reconstruction error (used only for debugging/MSE below)
     # gradient w.r.t theta_k relates to imaginary part of (conj(R_k) * X_k^* * ...)
     # We'll compute a heuristic directional derivative: dMSE/dtheta_k ~ 2 * Im( something )
     # This is a hand-wavy but practical estimator for demonstration purposes.
     # Compute frequency-domain sensitivity S_k = X_k * conj(X_hat_k) (proxy)
-    S = X * np.conjugate(X_hat[: n_bins])
+    S = X * np.conjugate(X_hat[:n_bins])
     # gradient approx: 2 * real( i * R_conj * S ).imag -> 2 * imag(R_conj * S)
     grad = 2.0 * np.imag(R_conj * S)
     # pad to full theta length if needed (theta already rfft-length in LearnedUnitaryRoles)

@@ -56,7 +56,11 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
     # Small delay to allow WM admission and caches to settle in dev environments
     time.sleep(0.4)
     # 2) recall (read-your-writes should succeed)
-    body = {"query": key_text, "top_k": 5, **({"universe": universe} if universe else {})}
+    body = {
+        "query": key_text,
+        "top_k": 5,
+        **({"universe": universe} if universe else {}),
+    }
     r2 = post_json(recall_url, body)
     mem = r2.get("memory", [])
     text_lower = key_text.lower()
@@ -68,7 +72,9 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
                 found = True
                 break
     if not found:
-        raise SystemExit(f"/recall did not include the freshly stored memory. Response: {r2}")
+        raise SystemExit(
+            f"/recall did not include the freshly stored memory. Response: {r2}"
+        )
 
     print("OK: remember/recall read-your-writes verified.")
 

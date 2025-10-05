@@ -86,7 +86,9 @@ def pytest_configure(config):
             desired = "http://127.0.0.1:9797"
         os.environ["SOMA_API_URL"] = desired
         if prev and prev != desired:
-            print(f"[pytest_configure] Overriding SOMA_API_URL {prev} -> {desired} (locked)")
+            print(
+                f"[pytest_configure] Overriding SOMA_API_URL {prev} -> {desired} (locked)"
+            )
     # Force strict real mode for the entire test session unless explicitly bypassed.
     # This disables silent stub fallbacks (see somabrain.stub_audit) and forbids fakeredis.
     if os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS", "0") not in ("1", "true", "yes"):
@@ -234,7 +236,9 @@ def start_fastapi_server():
 
     # Respect bypass flag: caller promises a live endpoint is running.
     if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") in ("1", "true", "yes"):
-        print(f"[tests.conftest] Bypass enabled; trusting external SOMA_API_URL={soma_url}")
+        print(
+            f"[tests.conftest] Bypass enabled; trusting external SOMA_API_URL={soma_url}"
+        )
         os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
         yield
         return
@@ -250,7 +254,9 @@ def start_fastapi_server():
                 f"[tests.conftest] Ignoring provided SOMA_API_URL={soma_url}; using {desired} for local test server"
             )
         else:
-            print(f"[tests.conftest] Normalising SOMA_API_URL to {desired} for local test server")
+            print(
+                f"[tests.conftest] Normalising SOMA_API_URL to {desired} for local test server"
+            )
     os.environ["SOMA_API_URL"] = desired
     print(f"[tests.conftest] SOMA_API_URL={desired}")
 
@@ -260,7 +266,12 @@ def start_fastapi_server():
     try:
         from tests.support.memory_service import run_memory_server  # type: ignore
 
-        mem_required = os.environ.get("SOMABRAIN_REQUIRE_MEMORY", "1") in ("1", "true", "True", "")
+        mem_required = os.environ.get("SOMABRAIN_REQUIRE_MEMORY", "1") in (
+            "1",
+            "true",
+            "True",
+            "",
+        )
         if mem_required:
             import requests
 
@@ -323,7 +334,9 @@ def start_fastapi_server():
     if _tcp_up(host, port):
         for _ in range(30):
             if _http_probe(host, port):
-                print(f"[tests.conftest] Reusing existing service at {desired} (constitution ok)")
+                print(
+                    f"[tests.conftest] Reusing existing service at {desired} (constitution ok)"
+                )
                 break
             time.sleep(0.1)
         else:
@@ -410,9 +423,16 @@ def fake_redis():
     # Allow opting into a real Redis for integration realism.
     # Set SOMABRAIN_TEST_REAL_REDIS=1 to skip fakeredis patch.
     import os as _os
+
     # In strict real mode, require an actual Redis instance. Provide a fast probe.
     import socket
-    strict = (_os.getenv("SOMABRAIN_STRICT_REAL", "").lower() in ("1","true","yes","on"))
+
+    strict = _os.getenv("SOMABRAIN_STRICT_REAL", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     host = _os.getenv("REDIS_HOST", "127.0.0.1")
     port = int(_os.getenv("REDIS_PORT", "6379"))
     if strict:
@@ -423,7 +443,9 @@ def fake_redis():
                 raise RuntimeError(
                     f"STRICT REAL MODE: Redis not reachable at {host}:{port}. Start Redis or bypass via SOMABRAIN_STRICT_REAL_BYPASS=1."
                 )
-            print(f"[tests.conftest] STRICT REAL MODE: Redis reachable at {host}:{port}")
+            print(
+                f"[tests.conftest] STRICT REAL MODE: Redis reachable at {host}:{port}"
+            )
         finally:
             try:
                 s.close()
@@ -431,12 +453,18 @@ def fake_redis():
                 pass
     else:
         # Legacy relaxed path: allow fakeredis unless explicitly disabled.
-        if _os.getenv("SOMABRAIN_TEST_REAL_REDIS", "").lower() in ("1", "true", "yes", "on"):
+        if _os.getenv("SOMABRAIN_TEST_REAL_REDIS", "").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ):
             print("[tests.conftest] REAL Redis requested (no fakeredis patch)")
             return
         try:
             import fakeredis  # type: ignore
             import redis  # type: ignore
+
             redis.Redis = fakeredis.FakeRedis  # type: ignore[attr-defined]
             if hasattr(redis, "connection"):
                 try:
@@ -445,5 +473,7 @@ def fake_redis():
                     pass
             print("[tests.conftest] fakeredis patched for Redis client (relaxed mode)")
         except Exception:
-            print("[tests.conftest] fakeredis unavailable; proceeding without patch (relaxed mode)")
+            print(
+                "[tests.conftest] fakeredis unavailable; proceeding without patch (relaxed mode)"
+            )
     return

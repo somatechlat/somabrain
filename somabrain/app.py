@@ -1,30 +1,25 @@
-"""
-SomaBrain Cognitive AI System
+"""SomaBrain Cognitive AI System
 =============================
 
-This module implements the main application logic for SomaBrain, a brain-inspired cognitive architecture for AI.
-It provides API endpoints, memory management, advanced mathematical and quantum cognition, and emergent pattern recognition.
+This module implements the main application logic for SomaBrain, a brain‑inspired cognitive architecture for AI. It provides API endpoints, memory management, advanced mathematical and quantum cognition, and emergent pattern recognition.
 
 Key Features:
-- Multi-tenant memory and working memory systems
+- Multi‑tenant memory and working‑memory systems
 - Fractal and oscillatory memory models
-- Quantum cognition and superposition-based processing
-- Auto-scaling intelligence and emergent pattern recognition
-- Sphinx-ready docstrings and comments for all major classes and functions
+- Quantum cognition and superposition‑based processing
+- Auto‑scaling intelligence and emergent pattern recognition
+- Sphinx‑ready docstrings and comments for all major classes and functions
 
 Usage:
-    Run with Uvicorn:
-        uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
+    uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
 
-API Endpoints:
-    /remember   - Store a new memory
-    /recall     - Retrieve memories
-    /health     - System health check
-    /plan/suggest - Suggest a plan from semantic graph
-    /sleep/run  - Run consolidation (NREM/REM)
+Public FastAPI entry point:
+- ``/remember`` – store a new episodic or semantic memory.
+- ``/recall`` – retrieve relevant memories for a query.
+- ``/plan/suggest`` – generate a short plan based on the semantic graph.
+- ``/health`` – health‑check endpoint used by orchestration.
 
-See Sphinx documentation for full details.
-
+The module also wires together core services (memory, planning, adaptation, etc.), sets up background workers (outbox processing, circuit‑breaker monitoring), and integrates optional components such as OPA authorization and the Constitution engine.
 """
 
 from __future__ import annotations
@@ -45,7 +40,7 @@ import time as _time
 import traceback
 
 # Standard library imports
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Tuple
 
 try:
     from fastapi import FastAPI, HTTPException, Request
@@ -125,6 +120,7 @@ from somabrain.prediction import (
 )
 from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
+
 try:
     from somabrain.quantum_hybrid import HybridQuantumLayer
 except Exception:
@@ -155,17 +151,27 @@ FractalMemorySystem = None  # type: ignore
 
 
 def _diversify(embed_func, query, candidates, method="mmr", k=10, lam=0.5):
-    """
-    Re-rank candidates for diversity using MMR or clustering.
-    Args:
-        embed_func: Embedding function for text.
-        query: Query string to compare against candidates.
-        candidates: List of candidate memory payloads.
-        method: Diversity method ('mmr', 'diversify', 'cluster'). Default is 'mmr'.
-        k: Number of items to return. Default is 10.
-        lam: Lambda for relevance/diversity tradeoff (0=relevance, 1=diversity). Default is 0.5.
-    Returns:
-        List[Dict]: Re-ranked list of candidates with diversity.
+    """Re‑rank candidates for diversity using Maximal Marginal Relevance (MMR) or similar methods.
+
+    Parameters
+    ----------
+    embed_func: Callable[[str], np.ndarray]
+        Function that produces an embedding vector for a given text.
+    query: str
+        The query string whose embedding is used as the relevance reference.
+    candidates: List[Dict]
+        List of memory payload dictionaries to be re‑ranked.
+    method: str, optional
+        Diversity method; currently supports ``"mmr"`` (default) and ``"diversify"``.
+    k: int, optional
+        Number of top candidates to return.
+    lam: float, optional
+        Trade‑off parameter between relevance and diversity (0 = all relevance, 1 = all diversity).
+
+    Returns
+    -------
+    List[Dict]
+        Re‑ranked list of candidate payloads.
     """
     try:
         query_emb = embed_func(query)
@@ -235,10 +241,10 @@ def _diversify(embed_func, query, candidates, method="mmr", k=10, lam=0.5):
 
 
 def _extract_text_from_candidate(candidate: Dict) -> str:
-    """
-    Extract text content from a memory candidate for embedding.
-    Tries common fields ('task', 'content', 'text', 'description', 'payload').
-    If not found, returns string representation of candidate.
+    """Extract a textual representation from a memory candidate for embedding.
+
+    Looks for common fields like ``task``, ``content``, ``text``, ``description`` or ``payload``.
+    If none are found, returns ``str(candidate)``.
     """
     for key in ["task", "content", "text", "description", "payload"]:
         if isinstance(candidate, dict) and key in candidate:
@@ -252,11 +258,10 @@ def _extract_text_from_candidate(candidate: Dict) -> str:
 
 
 def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Shallow-copy ``payload`` ensuring timestamp fields are epoch floats.
+    """Normalize ``timestamp`` fields in a payload to Unix epoch seconds.
 
-    Accepts ISO 8601 strings or numeric-string inputs and coerces them into
-    Unix epoch seconds to keep downstream services and documentation aligned.
-    Invalid timestamps are pruned to avoid propagating unexpected strings.
+    Accepts ISO‑8601 strings, numeric strings or numbers. Invalid timestamps are removed.
+    Also normalizes timestamps inside any ``links`` list.
     """
 
     normalized = dict(payload)
@@ -289,10 +294,7 @@ def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _cosine_similarity(a, b):
-    """
-    Calculate cosine similarity between two vectors.
-    Returns 0.0 if either vector is zero or not valid.
-    """
+    """Compute cosine similarity between two vectors, returning ``0.0`` for zero‑norm inputs."""
     import numpy as np
 
     a = np.array(a)
@@ -303,10 +305,191 @@ def _cosine_similarity(a, b):
 
 
 def _cosine_similarity_vectors(a, b):
-    """
-    Alternate cosine similarity calculation.
-    """
+    """Alias for :func:`_cosine_similarity`."""
     return _cosine_similarity(a, b)
+
+
+_MATH_DOMAIN_KEYWORDS = {
+    "math",
+    "mathematics",
+    "algebra",
+    "geometry",
+    "calculus",
+    "arithmetic",
+    "trigonometry",
+    "probability",
+    "statistics",
+    "number theory",
+    "linear algebra",
+    "equation",
+    "derivative",
+    "integral",
+    "matrix",
+    "learning",
+    "education",
+    "stem",
+}
+
+
+def _collect_candidate_keys(payload: Any) -> set[tuple[str, Any]]:
+    keys: set[tuple[str, Any]] = set()
+    if isinstance(payload, dict):
+        coord = payload.get("coordinate")
+        if isinstance(coord, (list, tuple)) and len(coord) == 3:
+            try:
+                keys.add(("coord", tuple(coord)))
+            except Exception:
+                pass
+        for k in ("id", "memory_id", "key"):
+            v = payload.get(k)
+            if isinstance(v, str) and v.strip():
+                keys.add(("id", v.strip()))
+        text = str(
+            payload.get("task")
+            or payload.get("fact")
+            or payload.get("text")
+            or payload.get("content")
+            or ""
+        ).strip()
+        if text:
+            keys.add(("text", text.lower()))
+    else:
+        text = str(payload).strip()
+        if text:
+            keys.add(("text", text.lower()))
+    return keys
+
+
+def _build_wm_support_index(
+    wm_hits: Iterable[Tuple[float, dict]],
+) -> dict[tuple[str, Any], float]:
+    index: dict[tuple[str, Any], float] = {}
+    for sim, payload in wm_hits:
+        try:
+            score = float(sim)
+        except Exception:
+            continue
+        for key in _collect_candidate_keys(payload):
+            index[key] = max(index.get(key, 0.0), score)
+    return index
+
+
+def _score_memory_candidate(
+    payload: Any,
+    *,
+    query_lower: str,
+    query_tokens: list[str],
+    wm_support: dict[tuple[str, Any], float],
+    now_ts: float,
+    quantum_layer: QuantumLayer | None,
+    query_hrr,
+    hrr_cache: dict[str, Any],
+) -> float:
+    score = 0.0
+    payload_dict = payload if isinstance(payload, dict) else {"_raw": payload}
+
+    text = str(
+        payload_dict.get("task")
+        or payload_dict.get("fact")
+        or payload_dict.get("text")
+        or payload_dict.get("content")
+        or ""
+    ).strip()
+    text_lower = text.lower()
+
+    # Lexical evidence
+    if query_lower and text_lower:
+        if query_lower == text_lower:
+            score += 5.0
+        if query_lower in text_lower or text_lower in query_lower:
+            score += 2.0
+        if query_tokens:
+            for token in dict.fromkeys(query_tokens):
+                if token and token in text_lower:
+                    score += 0.75
+
+    # Math-focused evidence
+    if text_lower:
+        if any(k in text_lower for k in _MATH_DOMAIN_KEYWORDS):
+            score += 1.5
+    domains = payload_dict.get("domains")
+    domain_tokens: list[str] = []
+    if isinstance(domains, (list, tuple, set)):
+        domain_tokens = [str(d).strip().lower() for d in domains if isinstance(d, str)]
+    elif isinstance(domains, str) and domains.strip():
+        domain_tokens = [
+            d.strip().lower() for d in domains.replace(",", " ").split() if d.strip()
+        ]
+    if domain_tokens and any(d in _MATH_DOMAIN_KEYWORDS for d in domain_tokens):
+        score += 2.5
+    phase = payload_dict.get("phase")
+    if isinstance(phase, str):
+        pl = phase.strip().lower()
+        if pl:
+            if "learn" in pl:
+                score += 1.0
+            if any(k in pl for k in _MATH_DOMAIN_KEYWORDS):
+                score += 1.0
+
+    # Working memory reinforcement
+    wm_keys = _collect_candidate_keys(payload)
+    wm_boost = max((wm_support.get(k, 0.0) for k in wm_keys), default=0.0)
+    if wm_boost > 0:
+        score += 3.0 * wm_boost
+
+    # HRR similarity (cheap cleanup): optional
+    if quantum_layer is not None and query_hrr is not None and text_lower:
+        hv = hrr_cache.get(text_lower)
+        if hv is None:
+            try:
+                hv = quantum_layer.encode_text(text)
+            except Exception:
+                hv = None
+            if hv is not None:
+                hrr_cache[text_lower] = hv
+        if hv is not None:
+            try:
+                hsim = QuantumLayer.cosine(query_hrr, hv)
+                if isinstance(hsim, (int, float)):
+                    score += max(0.0, float(hsim)) * 1.5
+            except Exception:
+                pass
+
+    # Recency benefit: prefer fresher memories (decays over ~3 days)
+    ts = payload_dict.get("timestamp")
+    if ts is not None:
+        try:
+            tsf = float(ts)
+            age_hours = max(0.0, (now_ts - tsf) / 3600.0)
+            rec = max(0.0, 1.0 - min(age_hours / 72.0, 1.0))
+            score += rec * 1.5
+        except Exception:
+            pass
+
+    # Quality / weighting metadata
+    quality = payload_dict.get("quality_score")
+    quality_factor = 1.0
+    if quality is not None:
+        try:
+            q = float(quality)
+            if q < 0:
+                q = 0.0
+            if q > 1:
+                q = 1.0
+            score += q * 2.0
+            quality_factor = 0.5 + 0.5 * q
+        except Exception:
+            pass
+    weight_factor = payload_dict.get("_weight_factor")
+    wf = 1.0
+    if isinstance(weight_factor, (int, float)):
+        try:
+            wf = float(weight_factor)
+        except Exception:
+            wf = 1.0
+    wf = float(max(0.2, min(3.0, wf)))
+    combined = (score + 1e-3) * wf * quality_factor
+    return combined
 
 
 # Configure advanced logging for brain-like cognitive monitoring
@@ -868,6 +1051,7 @@ except Exception:
     # so integration tests can probe constitution status even when full router
     # or ConstitutionEngine dependencies aren't available.
     try:
+
         @app.get("/constitution/version")
         async def _constitution_version_minimal(request: Request):
             # Mirror the behavior expected by tests: return 200 with status fields
@@ -889,6 +1073,7 @@ except Exception:
                 "constitution_status": status,
                 "constitution_signatures": sigs,
             }
+
     except Exception:
         # best-effort: if even the minimal route can't be registered, continue
         pass
@@ -1024,6 +1209,7 @@ if _MINIMAL_API:
 # Background Tasks: Outbox Processing
 # ---------------------------------------------------------------------------
 
+
 async def _outbox_poller():
     """Periodic task that replays queued memory operations.
 
@@ -1032,8 +1218,14 @@ async def _outbox_poller():
     """
     import asyncio as _asyncio
     import os as _os
+
     try:
-        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY") in ("1", "true", "True", None)
+        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY") in (
+            "1",
+            "true",
+            "True",
+            None,
+        )
     except Exception:
         require_memory = True
     if not require_memory:
@@ -1056,10 +1248,13 @@ async def _outbox_poller():
                     _cb()
         await _asyncio.sleep(5.0)
 
+
 @app.on_event("startup")
 async def _start_outbox_poller():
     import asyncio as _asyncio
+
     _asyncio.create_task(_outbox_poller())
+
 
 # (dashboard and debug endpoints removed per user request)
 
@@ -1096,12 +1291,17 @@ def _make_predictor():
     runtime cannot silently degrade cognitive quality.
     """
     from somabrain.stub_audit import STRICT_REAL as __SR  # local import to avoid cycles
+
     env_provider = os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower()
     provider = (env_provider or (cfg.predictor_provider or "stub")).lower()
     global _PREDICTOR_PROVIDER
     _PREDICTOR_PROVIDER = provider
     # Dynamic strict read so tests that set env per-import still take effect
-    sr_env = os.getenv("SOMABRAIN_STRICT_REAL", "").strip().lower() in ("1", "true", "yes")
+    sr_env = os.getenv("SOMABRAIN_STRICT_REAL", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     if (sr_env or __SR) and provider in ("stub", "baseline"):
         raise RuntimeError(
             "STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
@@ -1198,31 +1398,43 @@ try:
     # Patch runtime with stub singletons if missing (unless STRICT real mode)
     def _patch_runtime_singletons():
         from somabrain.stub_audit import STRICT_REAL as __SR
+
         if not hasattr(_rt, "embedder") or _rt.embedder is None:
             if __SR:
                 raise RuntimeError(
                     "STRICT REAL MODE: embedder missing; initialize before importing somabrain.app"
                 )
+
             class DummyEmbedder:
                 def embed(self, x):
                     return [0.0]
+
             _rt.embedder = DummyEmbedder()
         if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
             from somabrain.memory_pool import MultiTenantMemory
+
             _rt.mt_memory = MultiTenantMemory(cfg)
         if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
             if __SR:
-                raise RuntimeError("STRICT REAL MODE: mt_wm missing; cannot use DummyWM")
+                raise RuntimeError(
+                    "STRICT REAL MODE: mt_wm missing; cannot use DummyWM"
+                )
+
             class DummyWM:
                 def __init__(self):
                     pass
+
             _rt.mt_wm = DummyWM()
         if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
             if __SR:
-                raise RuntimeError("STRICT REAL MODE: mc_wm missing; cannot use DummyMCWM")
+                raise RuntimeError(
+                    "STRICT REAL MODE: mc_wm missing; cannot use DummyMCWM"
+                )
+
             class DummyMCWM:
                 def __init__(self):
                     pass
+
             _rt.mc_wm = DummyMCWM()
 
     _patch_runtime_singletons()
@@ -1669,6 +1881,7 @@ async def health(request: Request) -> S.HealthResponse:
     try:
         from somabrain.stub_audit import STRICT_REAL as __SR, stub_stats as __stub_stats
         from somabrain.opa.client import opa_client as __opa
+
         resp["strict_real"] = bool(__SR)
         resp["predictor_provider"] = _PREDICTOR_PROVIDER
         # Full-stack mode flag (forces external memory presence & embedder)
@@ -1720,7 +1933,11 @@ async def health(request: Request) -> S.HealthResponse:
             memory_ok = mem_items > 0
         embedder_ok = embedder is not None
         # OPA readiness (only required if fail-closed posture is enabled)
-        opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+        opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
         opa_ok = True
         if opa_required:
             try:
@@ -1730,10 +1947,17 @@ async def health(request: Request) -> S.HealthResponse:
         resp["opa_ok"] = bool(opa_ok)
         # Enforce full-stack readiness if requested (and include OPA if required)
         if full_stack:
-            strict_ready = predictor_ok and memory_ok and embedder_ok and (opa_ok if opa_required else True)
+            strict_ready = (
+                predictor_ok
+                and memory_ok
+                and embedder_ok
+                and (opa_ok if opa_required else True)
+            )
         else:
             base_ok = predictor_ok and memory_ok and embedder_ok
-            strict_ready = (not __SR) or (base_ok and (opa_ok if opa_required else True))
+            strict_ready = (not __SR) or (
+                base_ok and (opa_ok if opa_required else True)
+            )
         # If predictor still blocking readiness and override present, degrade message
         if not strict_ready and predictor_ok and memory_ok and embedder_ok:
             # Should not happen, but safeguard: mark ready
@@ -1822,6 +2046,17 @@ async def recall(req: S.RecallRequest, request: Request):
     universe = req_u or header_u
     text = data.get("query", req.query)
     import time as _t
+    import re as _re
+
+    ql = ""
+    qtokens: list[str] = []
+    if isinstance(text, str):
+        try:
+            ql = text.strip().lower()
+            qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
+        except Exception:
+            ql = ""
+            qtokens = []
 
     _e0 = _t.perf_counter()
     wm_qv = embedder.embed(text)
@@ -1842,6 +2077,7 @@ async def recall(req: S.RecallRequest, request: Request):
             margin = max(0.0, top1 - top2)
             M.RECALL_MARGIN_TOP12.observe(margin)
             M.RECALL_SIM_TOP1.observe(top1)
+
             mcount = max(1, min(len(wm_hits), int(req.top_k)))
             mean_k = sum(float(s) for s, _ in wm_hits[:mcount]) / float(mcount)
             M.RECALL_SIM_TOPK_MEAN.observe(mean_k)
@@ -1943,7 +2179,9 @@ async def recall(req: S.RecallRequest, request: Request):
         if not mem_payloads:
             try:
                 direct_coord = mem_client.coord_for_key(text, universe=universe)
-                direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                direct = mem_client.payloads_for_coords(
+                    [direct_coord], universe=universe
+                )
                 if direct:
                     mem_payloads = direct
             except Exception:
@@ -1984,10 +2222,14 @@ async def recall(req: S.RecallRequest, request: Request):
                 for _s, cand in wm_hits:
                     if not isinstance(cand, dict):
                         continue
-                    txt = str(cand.get("task") or cand.get("fact") or cand.get("text") or "")
+                    txt = str(
+                        cand.get("task") or cand.get("fact") or cand.get("text") or ""
+                    )
                     if txt and ql and (ql in txt.lower() or txt.lower() in ql):
                         # Universe-filter if requested
-                        if universe and str(cand.get("universe") or "real") != str(universe):
+                        if universe and str(cand.get("universe") or "real") != str(
+                            universe
+                        ):
                             continue
                         backfill.append(cand)
                 # Keep order as in WM hits, but unique by 'task' text
@@ -2014,14 +2256,18 @@ async def recall(req: S.RecallRequest, request: Request):
                 except Exception:
                     pass
                 GP = getattr(_mc, "_GLOBAL_PAYLOADS", {}) or {}
-                ns_items = list(GP.get(ctx.namespace, [])) if isinstance(GP, dict) else []
+                ns_items = (
+                    list(GP.get(ctx.namespace, [])) if isinstance(GP, dict) else []
+                )
                 ql = str(text).strip().lower()
                 backfill = []
                 for p in ns_items[::-1]:  # search newest first
                     try:
                         if not isinstance(p, dict):
                             continue
-                        if universe and str(p.get("universe") or "real") != str(universe):
+                        if universe and str(p.get("universe") or "real") != str(
+                            universe
+                        ):
                             continue
                         t = str(p.get("task") or p.get("fact") or p.get("text") or "")
                         if t and (ql in t.lower() or t.lower() in ql):
@@ -2046,10 +2292,18 @@ async def recall(req: S.RecallRequest, request: Request):
                 for p in items:
                     if not isinstance(p, dict):
                         continue
-                    t = str(p.get("task") or p.get("fact") or p.get("text") or p.get("content") or "")
+                    t = str(
+                        p.get("task")
+                        or p.get("fact")
+                        or p.get("text")
+                        or p.get("content")
+                        or ""
+                    )
                     tl = t.lower()
                     if t and (ql in tl or tl in ql):
-                        if not universe or str(p.get("universe") or "real") == str(universe):
+                        if not universe or str(p.get("universe") or "real") == str(
+                            universe
+                        ):
                             lifted.append(p)
                 if lifted:
                     mem_payloads = lifted
@@ -2099,13 +2353,21 @@ async def recall(req: S.RecallRequest, request: Request):
             if _tokish:
                 try:
                     direct_coord = mem_client.coord_for_key(text, universe=universe)
-                    direct = mem_client.payloads_for_coords([direct_coord], universe=universe)
+                    direct = mem_client.payloads_for_coords(
+                        [direct_coord], universe=universe
+                    )
                     if direct:
                         # Insert at front if not already present (by coordinate if available)
                         d0 = direct[0]
+
                         def _coord_of(p):
                             c = p.get("coordinate") if isinstance(p, dict) else None
-                            return tuple(c) if isinstance(c, (list, tuple)) and len(c) == 3 else None
+                            return (
+                                tuple(c)
+                                if isinstance(c, (list, tuple)) and len(c) == 3
+                                else None
+                            )
+
                         dcoord = _coord_of(d0)
                         seen = set()
                         out = []
@@ -2140,44 +2402,35 @@ async def recall(req: S.RecallRequest, request: Request):
                 except Exception:
                     pass
 
-        # Apply a lightweight lexical boost so keyword-like queries surface exact matches.
-        # This stays on by default to keep /recall zero-config and intuitive.
+        # Apply composite ranking so the most relevant (math-focused) memories rise first.
         try:
             lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
         except Exception:
             lexical_boost = True
-        if lexical_boost and isinstance(text, str) and mem_payloads:
+        if lexical_boost and mem_payloads:
             try:
-                ql = text.strip().lower()
-                # Tokenize query on non-alphanumerics; keep short tokens too to allow IDs
-                import re as _re
-
-                qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
-                def _payload_text(p):
-                    if not isinstance(p, dict):
-                        return str(p).lower()
-                    parts = [
-                        str(p.get("task") or ""),
-                        str(p.get("fact") or ""),
-                        str(p.get("text") or ""),
-                        str(p.get("content") or ""),
-                    ]
-                    return "\n".join(parts).lower()
+                now_ts = _t.time()
+                wm_support = _build_wm_support_index(wm_hits)
+                hrr_cache: dict[str, Any] = {}
                 scored = []
                 for p in mem_payloads:
-                    txt = _payload_text(p)
-                    # count occurrences of any token
-                    score = 0
-                    for t in qtokens:
-                        try:
-                            if t and t in txt:
-                                score += 1
-                        except Exception:
-                            pass
-                    scored.append((score, p))
-                # Stable sort: higher lexical score first, preserve relative order among equals
+                    try:
+                        comp_score = _score_memory_candidate(
+                            p,
+                            query_lower=ql,
+                            query_tokens=qtokens,
+                            wm_support=wm_support,
+                            now_ts=now_ts,
+                            quantum_layer=quantum,
+                            query_hrr=hrr_qv,
+                            hrr_cache=hrr_cache,
+                        )
+                    except Exception:
+                        comp_score = 0.0
+                    scored.append((comp_score, p))
                 scored.sort(key=lambda sp: sp[0], reverse=True)
                 mem_payloads = [p for _, p in scored]
+                cache[ckey] = mem_payloads
             except Exception:
                 pass
 
@@ -2330,11 +2583,18 @@ async def remember(req: S.RememberRequest, request: Request):
         # In enterprise/full-stack mode (memory required) surface a 503 so callers
         # know the write is only queued and not yet persisted remotely.
         try:
-            require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in ("1", "true", "True", None)
+            require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in (
+                "1",
+                "true",
+                "True",
+                None,
+            )
         except Exception:
             require_memory = True
         if require_memory:
-            raise HTTPException(status_code=503, detail="memory backend unavailable; write queued") from e
+            raise HTTPException(
+                status_code=503, detail="memory backend unavailable; write queued"
+            ) from e
         # If memory not strictly required we degrade to previous soft behavior.
         pass
     try:
@@ -2413,8 +2673,6 @@ async def remember(req: S.RememberRequest, request: Request):
         "deadline_ms": deadline_ms,
         "idempotency_key": idempotency_key,
     }
-
-
 
 
 if not _MINIMAL_API:

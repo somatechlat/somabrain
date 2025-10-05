@@ -18,13 +18,14 @@ def arc_cache(max_size: int = 128) -> Callable:
     """
 
     def decorator(fn: Callable) -> Callable:
+        """TODO: Add docstring."""
         cached = lru_cache(maxsize=max_size)(fn)
 
         @wraps(fn)
         def wrapper(*args, **kwargs):
+            """TODO: Add docstring."""
             return cached(*args, **kwargs)
 
-        # expose cache_clear for tests that need to reset
         wrapper.cache_clear = cached.cache_clear
         return wrapper
 

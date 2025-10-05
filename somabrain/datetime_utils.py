@@ -32,9 +32,7 @@ def coerce_to_epoch_seconds(value: Any) -> float:
         except ValueError:
             pass
         try:
-            dt = datetime.fromisoformat(
-                stripped.replace(ISO_Z_SUFFIX, "+00:00")
-            )
+            dt = datetime.fromisoformat(stripped.replace(ISO_Z_SUFFIX, "+00:00"))
         except ValueError as exc:  # pragma: no cover - message propagated upstream
             raise ValueError(
                 "Unsupported timestamp format; expected seconds since epoch or ISO 8601"

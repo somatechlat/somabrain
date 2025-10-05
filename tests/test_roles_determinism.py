@@ -5,6 +5,7 @@ from somabrain.numerics import rfft_norm
 DIM = 256
 SEED = 123
 
+
 def test_role_determinism_and_spectrum_symmetry():
     cfg = HRRConfig(dim=DIM, seed=SEED)
     q = make_quantum_layer(cfg)

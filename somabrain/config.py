@@ -293,7 +293,10 @@ class TruthBudget:
             },
             "rho": {"ev_target": self.density_ev_target, "max_r": self.density_max_r},
             "graph": {"appr_eps": self.appr_eps},
-            "kernel": {"chebyshev_K": self.chebyshev_order_K, "rel_err": self.chebyshev_relerr},
+            "kernel": {
+                "chebyshev_K": self.chebyshev_order_K,
+                "rel_err": self.chebyshev_relerr,
+            },
             "bridge": {"sinkhorn_tol": self.sinkhorn_tol},
         }
 
@@ -323,8 +326,12 @@ def _validate_and_map_truth_budget(cfg: Config, raw: dict) -> TruthBudget:
         tb.appr_eps = float(g.get("appr_eps", tb.appr_eps))
         k = raw.get("kernel", {}) or {}
         # support either chebyshev_order or chebyshev_K naming
-        tb.chebyshev_order_K = int(k.get("chebyshev_order", k.get("chebyshev_K", tb.chebyshev_order_K)))
-        tb.chebyshev_relerr = float(k.get("relerr", k.get("rel_err", tb.chebyshev_relerr)))
+        tb.chebyshev_order_K = int(
+            k.get("chebyshev_order", k.get("chebyshev_K", tb.chebyshev_order_K))
+        )
+        tb.chebyshev_relerr = float(
+            k.get("relerr", k.get("rel_err", tb.chebyshev_relerr))
+        )
         br = raw.get("bridge", {}) or {}
         tb.sinkhorn_tol = float(br.get("sinkhorn_tol", tb.sinkhorn_tol))
     except Exception:
@@ -412,6 +419,7 @@ def load_truth_budget(cfg: Config) -> None:
     """If cfg.truth_budget_path is set and readable, load YAML into cfg.truth_budget."""
     import os
     from dataclasses import dataclass
+
     # Define a small dataclass schema for runtime mapping (kept local to avoid import cycles)
     @dataclass
     class TruthBudget:
@@ -439,6 +447,7 @@ def load_truth_budget(cfg: Config) -> None:
         return
     try:
         import yaml
+
         with open(path, "r") as f:
             raw = yaml.safe_load(f) or {}
         # Basic validation and mapping to typed structure
@@ -503,6 +512,7 @@ class _LocalTruthBudgetModel:
     Kept separate from the public TruthBudget to avoid class redefinition
     conflicts and make it clear we map into the public API before returning.
     """
+
     epsilon_total: float = 0.05
     bind_block_m: Optional[int] = None
     wiener_lambda: Optional[float] = None
@@ -514,7 +524,9 @@ class _LocalTruthBudgetModel:
     sinkhorn_tol: Optional[float] = 1e-3
 
 
-def _validate_and_map_truth_budget(cfg: Config, data: dict[str, Any]) -> Optional[TruthBudget]:
+def _validate_and_map_truth_budget(
+    cfg: Config, data: dict[str, Any]
+) -> Optional[TruthBudget]:
     """Validate minimal truth-budget keys and map into Config-level knobs.
 
     Returns a TruthBudget instance or a TruthBudget with conservative defaults on parse error.
@@ -522,19 +534,46 @@ def _validate_and_map_truth_budget(cfg: Config, data: dict[str, Any]) -> Optiona
     try:
         model = _LocalTruthBudgetModel(
             epsilon_total=float(data.get("epsilon_total", 0.05)),
-            bind_block_m=(int(data.get("bind", {}).get("block_size_m", data.get("bind", {}).get("block_m", 128))) or 128),
-            wiener_lambda=(float(data.get("bind", {}).get("wiener_lambda", 1e-4)) or 1e-4),
+            bind_block_m=(
+                int(
+                    data.get("bind", {}).get(
+                        "block_size_m", data.get("bind", {}).get("block_m", 128)
+                    )
+                )
+                or 128
+            ),
+            wiener_lambda=(
+                float(data.get("bind", {}).get("wiener_lambda", 1e-4)) or 1e-4
+            ),
             density_ev_target=(float(data.get("rho", {}).get("ev_target", 0.9)) or 0.9),
             density_r=(int(data.get("rho", {}).get("r", 128)) or 128),
             graph_appr_eps=(float(data.get("graph", {}).get("appr_eps", 1e-3)) or 1e-3),
-            chebyshev_order_K=(int(data.get("kernel", {}).get("chebyshev_order", data.get("kernel", {}).get("chebyshev_K", 24))) or 24),
-            kernel_relerr=(float(data.get("kernel", {}).get("relerr", data.get("kernel", {}).get("rel_err", 0.02))) or 0.02),
-            sinkhorn_tol=(float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3)) or 1e-3),
+            chebyshev_order_K=(
+                int(
+                    data.get("kernel", {}).get(
+                        "chebyshev_order", data.get("kernel", {}).get("chebyshev_K", 24)
+                    )
+                )
+                or 24
+            ),
+            kernel_relerr=(
+                float(
+                    data.get("kernel", {}).get(
+                        "relerr", data.get("kernel", {}).get("rel_err", 0.02)
+                    )
+                )
+                or 0.02
+            ),
+            sinkhorn_tol=(
+                float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3)) or 1e-3
+            ),
         )
         # Sanity clamps
         if model.epsilon_total <= 0 or model.epsilon_total >= 1:
             model.epsilon_total = 0.05
-        if model.density_ev_target is None or not (0.0 < model.density_ev_target <= 1.0):
+        if model.density_ev_target is None or not (
+            0.0 < model.density_ev_target <= 1.0
+        ):
             model.density_ev_target = 0.9
         if model.bind_block_m is not None and model.bind_block_m < 8:
             model.bind_block_m = 8
@@ -559,14 +598,46 @@ def _validate_and_map_truth_budget(cfg: Config, data: dict[str, Any]) -> Optiona
         # Return the public TruthBudget instance for tests/callers with correct field names
         tb_public = TruthBudget(
             epsilon_total=model.epsilon_total,
-            bind_block_size_m=(model.bind_block_m if model.bind_block_m is not None else TruthBudget().bind_block_size_m),
-            bind_wiener_lambda=(model.wiener_lambda if model.wiener_lambda is not None else TruthBudget().bind_wiener_lambda),
-            density_ev_target=(model.density_ev_target if model.density_ev_target is not None else TruthBudget().density_ev_target),
-            density_max_r=(model.density_r if model.density_r is not None else TruthBudget().density_max_r),
-            appr_eps=(model.graph_appr_eps if model.graph_appr_eps is not None else TruthBudget().appr_eps),
-            chebyshev_order_K=(model.chebyshev_order_K if model.chebyshev_order_K is not None else TruthBudget().chebyshev_order_K),
-            chebyshev_relerr=(model.kernel_relerr if model.kernel_relerr is not None else TruthBudget().chebyshev_relerr),
-            sinkhorn_tol=(model.sinkhorn_tol if model.sinkhorn_tol is not None else TruthBudget().sinkhorn_tol),
+            bind_block_size_m=(
+                model.bind_block_m
+                if model.bind_block_m is not None
+                else TruthBudget().bind_block_size_m
+            ),
+            bind_wiener_lambda=(
+                model.wiener_lambda
+                if model.wiener_lambda is not None
+                else TruthBudget().bind_wiener_lambda
+            ),
+            density_ev_target=(
+                model.density_ev_target
+                if model.density_ev_target is not None
+                else TruthBudget().density_ev_target
+            ),
+            density_max_r=(
+                model.density_r
+                if model.density_r is not None
+                else TruthBudget().density_max_r
+            ),
+            appr_eps=(
+                model.graph_appr_eps
+                if model.graph_appr_eps is not None
+                else TruthBudget().appr_eps
+            ),
+            chebyshev_order_K=(
+                model.chebyshev_order_K
+                if model.chebyshev_order_K is not None
+                else TruthBudget().chebyshev_order_K
+            ),
+            chebyshev_relerr=(
+                model.kernel_relerr
+                if model.kernel_relerr is not None
+                else TruthBudget().chebyshev_relerr
+            ),
+            sinkhorn_tol=(
+                model.sinkhorn_tol
+                if model.sinkhorn_tol is not None
+                else TruthBudget().sinkhorn_tol
+            ),
         )
         return tb_public
     except Exception:

@@ -3,12 +3,15 @@
 This module provides a convenience function to build cost matrices from kernel
 vectors (or pairwise distances) and compute an OT plan using sinkhorn.
 """
+
 import numpy as np
 from somabrain.math.sinkhorn import sinkhorn_log_stabilized
 from somabrain.config import load_config
 
 
-def sinkhorn_bridge_from_embeddings(X: np.ndarray, Y: np.ndarray, eps: float = None, tol: float = None):
+def sinkhorn_bridge_from_embeddings(
+    X: np.ndarray, Y: np.ndarray, eps: float = None, tol: float = None
+):
     """Compute Sinkhorn transport between point clouds X (n x d) and Y (m x d).
 
     Uses squared Euclidean as cost by default.

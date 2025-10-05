@@ -15,7 +15,7 @@ class Ctx:
 
 
 @pytest.mark.skipif(
-    os.getenv("SOMABRAIN_STRICT_REAL", "").lower() in ("1","true","yes","on"),
+    os.getenv("SOMABRAIN_STRICT_REAL", "").lower() in ("1", "true", "yes", "on"),
     reason="Stub pipeline test skipped in strict real mode",
 )
 def test_rag_pipeline_stub_basic():

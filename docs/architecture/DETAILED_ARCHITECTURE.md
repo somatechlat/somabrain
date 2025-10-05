@@ -9,6 +9,7 @@ This version reflects only what exists in the current codebase. Planned or aspir
 ### 11.2 Similarity & Retrieval
 - Cosine Similarity (Implemented): `QuantumLayer.cosine` and builder helpers handle zero norms by returning 0.
 - Recall Weighting (Implemented): Softmax weighting over combined semantic cosine + optional `graph_score` + temporal decay (`ContextBuilder._compute_weights`). No separate recall probability function.
+- Composite Recall Ranking (Implemented): `/recall` applies a zero-config scoring blend that combines lexical token overlap, working-memory reinforcement, `quality_score` weighting, recency decay, and math-domain detection. Enabled by default via `lexical_boost_enabled` in `config.yaml`; disabling the flag reverts to backend ordering.
 
 ### 11.3 Hyperdimensional Computing (HRR / QuantumLayer)
 - Superposition (Implemented): Summation + renorm.
@@ -299,3 +300,13 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 - `memory/density.py` (root level) for density matrix operations.
 
 This document is living; update it whenever architecture decisions are made or components change.
+
+## 12. Recent Code Audit and Fixes
+
+- **Docstrings added**: Comprehensive one‑line and parameter docstrings were added to many functions and methods, including the entire `somabrain/services/memory_service.py` module and internal helper functions in `somabrain/app.py` (e.g., `_diversify`, `_extract_text_from_candidate`, `_normalize_payload_timestamps`, `_cosine_similarity`).
+- **Syntax correction**: Fixed a stray `{` syntax error in `memory_service.py` that prevented module import.
+- **Unused import cleanup**: Removed the unused `Dict` import from `memory_service.py`.
+- **Ruff linting accommodations**: Added `# ruff: noqa: E402,F841` comment at the top of `examples/train_role_adam.py` and replaced the unused variable `rec` with `_` to silence `F841` warnings.
+- **Documentation alignment**: Updated this architecture document to reflect the current code state after the above changes.
+
+These changes improve code readability, maintainability, and prepare the repository for stricter linting and CI enforcement.

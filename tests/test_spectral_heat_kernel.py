@@ -1,7 +1,11 @@
 import numpy as np
 import pytest
 
-from somabrain.math.lanczos_chebyshev import estimate_spectral_interval, chebyshev_heat_apply, lanczos_expv
+from somabrain.math.lanczos_chebyshev import (
+    estimate_spectral_interval,
+    chebyshev_heat_apply,
+    lanczos_expv,
+)
 
 
 def _make_spd(k, seed=0):
@@ -10,6 +14,7 @@ def _make_spd(k, seed=0):
     A = M @ M.T  # symmetric PSD
     # Shift + scale to moderate spectrum
     return A / np.linalg.norm(A, ord=2)
+
 
 @pytest.mark.parametrize("k", [24, 48])
 @pytest.mark.parametrize("t", [0.1, 0.25])

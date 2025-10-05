@@ -69,6 +69,23 @@ python scripts/devprod_smoke.py --url http://127.0.0.1:9696
 If you see intermittent empties on very first call after startup, re‑run once; the smoke script already adds
 a small settle delay to avoid cold‑start races.
 
+For an explicit manual check of the math-focused ranking path, you can use `curl` directly. The example below
+stores a memory that includes `domains=["math","learning"]` and immediately verifies it is surfaced by
+`/recall` with the composite scorer enabled by default:
+
+```bash
+curl -s -X POST http://127.0.0.1:9696/remember \
+  -H 'Content-Type: application/json' \
+  -d '{"coord_key":"dev-smoke:math","payload":{"task":"Quadratic mastery sequence","domains":["math","learning"],"quality_score":0.97,"phase":"learning"}}'
+
+curl -s -X POST http://127.0.0.1:9696/recall \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"Quadratic mastery sequence","top_k":3}' | jq '.'
+```
+
+The response should show the stored payload in both the `wm` and `memory` arrays, confirming persistence
+through SomaMemory (port 9595) and the new recall ranking blend.
+
 ## 3. Configure Environment Variables
 
 ```bash
@@ -86,6 +103,13 @@ secret manager.
 ### Unit Tests
 ```bash
 pytest tests -k "not integration" -q
+```
+
+To focus on the composite recall scorer (math prioritization, WM reinforcement, metadata weighting), run the
+dedicated regression suite:
+
+```bash
+pytest tests/test_recall_scoring.py -q
 ```
 
 ### Integration Tests (NO_MOCKS)

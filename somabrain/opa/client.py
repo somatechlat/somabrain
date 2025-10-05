@@ -48,7 +48,11 @@ class OPAClient:
             return bool(result)
         except Exception as e:
             # Respect fail-open vs fail-closed posture via SOMA_OPA_FAIL_CLOSED
-            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in ("1", "true", "yes")
+            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
             if fail_closed:
                 LOGGER.error("OPA evaluation failed (fail-closed deny): %s", e)
                 return False

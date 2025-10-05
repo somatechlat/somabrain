@@ -219,51 +219,51 @@ class RecallHit:
 class MemoryClient:
     """Single gateway to the external memory service.
 
-        Contract
-        --------
-        Core API surface intentionally small and stable:
-            - remember(), aremember()
-            - recall(), arecall()
-            - link()/alink(), links_from(), k_hop()
-            - payloads_for_coords()
+    Contract
+    --------
+    Core API surface intentionally small and stable:
+        - remember(), aremember()
+        - recall(), arecall()
+        - link()/alink(), links_from(), k_hop()
+        - payloads_for_coords()
 
-        Metadata & Weighting (New)
-        --------------------------
-        Low‑complexity curriculum / data quality inspired fields can be attached to
-        each memory payload. These are fully optional and *never* required by the
-        base system. When provided they can influence ranking via a light‑weight
-        weighting hook (disabled by default):
+    Metadata & Weighting (New)
+    --------------------------
+    Low‑complexity curriculum / data quality inspired fields can be attached to
+    each memory payload. These are fully optional and *never* required by the
+    base system. When provided they can influence ranking via a light‑weight
+    weighting hook (disabled by default):
 
-            phase            : str   (e.g., "bootstrap", "general", "specialized")
-            quality_score    : float (bounded recommendation: [0, 1])
-            domains          : list[str] or comma string (topic / domain tags)
-            reasoning_chain  : list[str] | str (intermediate steps, RAG synthesis notes)
+        phase            : str   (e.g., "bootstrap", "general", "specialized")
+        quality_score    : float (bounded recommendation: [0, 1])
+        domains          : list[str] or comma string (topic / domain tags)
+        reasoning_chain  : list[str] | str (intermediate steps, RAG synthesis notes)
 
-        Feature Flags (env)
-        -------------------
-            SOMABRAIN_MEMORY_ENABLE_WEIGHTING=1
-                 Enable score modulation: final_sim = cosine_sim * W where W derived from
-                 optional quality_score (default 1.0) and phase prior.
-            SOMABRAIN_MEMORY_PHASE_PRIORS="bootstrap:1.05,general:1.0,specialized:1.02"
-                 Comma list mapping phase->multiplier. Unknown phases => 1.0.
-            SOMABRAIN_MEMORY_QUALITY_EXP=1.0
-                 Exponent applied to quality_score before multiplying (allows sharpening).
+    Feature Flags (env)
+    -------------------
+        SOMABRAIN_MEMORY_ENABLE_WEIGHTING=1
+             Enable score modulation: final_sim = cosine_sim * W where W derived from
+             optional quality_score (default 1.0) and phase prior.
+        SOMABRAIN_MEMORY_PHASE_PRIORS="bootstrap:1.05,general:1.0,specialized:1.02"
+             Comma list mapping phase->multiplier. Unknown phases => 1.0.
+        SOMABRAIN_MEMORY_QUALITY_EXP=1.0
+             Exponent applied to quality_score before multiplying (allows sharpening).
 
-        Guarantees
-        ----------
-        - Tenancy scoping via namespace (separate local mirrors per namespace)
-        - Legacy vendor-specific memory client imports stay isolated to this module (ADR‑0002)
-        - Strict mode correctness: If STRICT_REAL is enabled and neither HTTP nor
-            deterministic local recall returns hits, recall() raises instead of silently
-            falling back to a blind recent‑payload stub.
+    Guarantees
+    ----------
+    - Tenancy scoping via namespace (separate local mirrors per namespace)
+    - Legacy vendor-specific memory client imports stay isolated to this module (ADR‑0002)
+    - Strict mode correctness: If STRICT_REAL is enabled and neither HTTP nor
+        deterministic local recall returns hits, recall() raises instead of silently
+        falling back to a blind recent‑payload stub.
 
-        Implementation Notes
-        --------------------
-        The weighting hook purposefully *post*‑multiplies cosine similarity; it does
-        not change the embedding space and stays numerically stable (bounded factors
-        in [~0, ~2]). We avoid injecting weighting into the embedding generation path
-        to preserve determinism and test invariants.
-        """
+    Implementation Notes
+    --------------------
+    The weighting hook purposefully *post*‑multiplies cosine similarity; it does
+    not change the embedding space and stays numerically stable (bounded factors
+    in [~0, ~2]). We avoid injecting weighting into the embedding generation path
+    to preserve determinism and test invariants.
+    """
 
     def __init__(self, cfg: Config):
         self.cfg = cfg
@@ -379,7 +379,9 @@ class MemoryClient:
             base_url = env_base
         # Hard requirement: if SOMABRAIN_REQUIRE_MEMORY unset or ==1 force default endpoint
         require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-        if (require_memory is None or require_memory in ("1", "true", "True")) and not base_url:
+        if (
+            require_memory is None or require_memory in ("1", "true", "True")
+        ) and not base_url:
             base_url = "http://localhost:9595"
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
@@ -393,8 +395,14 @@ class MemoryClient:
             in_docker = False
         if not base_url and in_docker:
             try:
-                base_url = os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK") or "http://host.docker.internal:9595"
-                logger.debug("MemoryClient running in Docker, defaulting base_url to %r", base_url)
+                base_url = (
+                    os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
+                    or "http://host.docker.internal:9595"
+                )
+                logger.debug(
+                    "MemoryClient running in Docker, defaulting base_url to %r",
+                    base_url,
+                )
             except Exception:
                 pass
         client_kwargs = {
@@ -436,8 +444,12 @@ class MemoryClient:
         except Exception:
             pass
         # If memory is required and client not initialized, raise immediately to fail fast.
-        if (require_memory is None or require_memory in ("1", "true", "True")) and (self._http is None):
-            raise RuntimeError("SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Expected http://localhost:9595 or configured URL.")
+        if (require_memory is None or require_memory in ("1", "true", "True")) and (
+            self._http is None
+        ):
+            raise RuntimeError(
+                "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Expected http://localhost:9595 or configured URL."
+            )
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
@@ -467,7 +479,9 @@ class MemoryClient:
             pass
 
     # --- HTTP compatibility helpers -------------------------------------------------
-    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]:
+    def _compat_enrich_payload(
+        self, payload: dict, coord_key: str
+    ) -> tuple[dict, str, dict]:
         """Return an enriched (payload_copy, universe, extra_headers).
 
         Ensures downstream HTTP memory services receive common fields that many
@@ -510,7 +524,7 @@ class MemoryClient:
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> None:
         """Store a memory using a stable coordinate derived from coord_key.
-        
+
         Ensures required structural keys, and normalizes optional metadata if
         present. Supported optional metadata (all pass‑through if already in
         correct shape): phase, quality_score, domains, reasoning_chain.
@@ -554,7 +568,11 @@ class MemoryClient:
                 dval = payload["domains"]
                 if isinstance(dval, str):
                     # split on comma or whitespace
-                    parts = [p.strip().lower() for p in dval.replace(",", " ").split() if p.strip()]
+                    parts = [
+                        p.strip().lower()
+                        for p in dval.replace(",", " ").split()
+                        if p.strip()
+                    ]
                     payload["domains"] = parts or []
                 elif isinstance(dval, (list, tuple)):
                     cleaned = []
@@ -565,7 +583,9 @@ class MemoryClient:
                 else:
                     payload.pop("domains", None)
             # reasoning_chain: accept list[str] or single string -> keep
-            if "reasoning_chain" in payload and isinstance(payload["reasoning_chain"], str):
+            if "reasoning_chain" in payload and isinstance(
+                payload["reasoning_chain"], str
+            ):
                 rc = payload["reasoning_chain"].strip()
                 if rc:
                     payload["reasoning_chain"] = [rc]
@@ -684,7 +704,9 @@ class MemoryClient:
             pass
         if self._http_async is not None:
             try:
-                enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+                enriched, universe, compat_hdr = self._compat_enrich_payload(
+                    payload, coord_key
+                )
                 coord = _stable_coord(f"{universe}::{coord_key}")
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
@@ -743,15 +765,22 @@ class MemoryClient:
         """Retrieve memories relevant to the query. Stub returns recent payloads."""
         # Enforce memory requirement: do not allow fallback when required
         require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-        memory_required = (require_memory is None) or (require_memory in ("1", "true", "True"))
+        memory_required = (require_memory is None) or (
+            require_memory in ("1", "true", "True")
+        )
         if memory_required and self._http is None:
-            raise RuntimeError("MEMORY SERVICE REQUIRED: HTTP memory backend not available (expected on port 9595).")
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (expected on port 9595)."
+            )
         # Prefer HTTP recall if available
         if self._http is not None:
             import uuid
+
             rid = request_id or str(uuid.uuid4())
             # Build compatibility headers (adds X-Universe)
-            compat_payload, uni, compat_hdr = self._compat_enrich_payload({"query": query, "universe": universe or "real"}, query)
+            compat_payload, uni, compat_hdr = self._compat_enrich_payload(
+                {"query": query, "universe": universe or "real"}, query
+            )
             rid_hdr = {"X-Request-ID": rid}
             rid_hdr.update(compat_hdr)
             try:
@@ -793,7 +822,11 @@ class MemoryClient:
                     if isinstance(data, list):
                         unwrapped: list[dict] = []
                         for item in data:
-                            if isinstance(item, dict) and "payload" in item and isinstance(item.get("payload"), dict):
+                            if (
+                                isinstance(item, dict)
+                                and "payload" in item
+                                and isinstance(item.get("payload"), dict)
+                            ):
                                 unwrapped.append(item["payload"])  # type: ignore[index]
                             elif isinstance(item, dict):
                                 unwrapped.append(item)
@@ -814,10 +847,16 @@ class MemoryClient:
                         else:
                             data = []
                     # Optional weighting for HTTP results when flag enabled or full-stack forced
-                    if data and os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in ("1", "true", "True"):
+                    if data and os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in (
+                        "1",
+                        "true",
+                        "True",
+                    ):
                         try:
                             priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
-                            qexp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
+                            qexp = float(
+                                os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0")
+                            )
                             priors: dict[str, float] = {}
                             if priors_env:
                                 for part in priors_env.split(","):
@@ -830,7 +869,7 @@ class MemoryClient:
                                         pass
                             # If server returns scores (future) we could multiply; for now recompute multiplier only
                             weighted = []
-                            for p in (data or []):
+                            for p in data or []:
                                 if not isinstance(p, dict):
                                     weighted.append(p)
                                     continue
@@ -839,7 +878,9 @@ class MemoryClient:
                                 try:
                                     phase = p.get("phase")
                                     if phase and priors:
-                                        phase_factor = float(priors.get(str(phase).lower(), 1.0))
+                                        phase_factor = float(
+                                            priors.get(str(phase).lower(), 1.0)
+                                        )
                                 except Exception:
                                     phase_factor = 1.0
                                 try:
@@ -849,7 +890,7 @@ class MemoryClient:
                                             qs = 0.0
                                         if qs > 1:
                                             qs = 1.0
-                                        quality_factor = (qs ** qexp) if qs > 0 else 0.0
+                                        quality_factor = (qs**qexp) if qs > 0 else 0.0
                                 except Exception:
                                     quality_factor = 1.0
                                 # Attach adjustment factor so higher layers can optionally re-rank
@@ -880,7 +921,10 @@ class MemoryClient:
                             out = []
                             for p in local:
                                 try:
-                                    if universe is not None and str(p.get("universe") or "real") != uni:
+                                    if (
+                                        universe is not None
+                                        and str(p.get("universe") or "real") != uni
+                                    ):
                                         continue
                                     # quick textual match on common fields
                                     txt = None
@@ -903,18 +947,26 @@ class MemoryClient:
             except Exception:
                 pass
         # In-process deterministic recall only if memory not required or HTTP absent and allowed.
-        from somabrain.stub_audit import STRICT_REAL as __SR, record_stub as __record_stub
+        from somabrain.stub_audit import (
+            STRICT_REAL as __SR,
+            record_stub as __record_stub,
+        )
+
         # If memory required but we are here (HTTP failed mid-flight), escalate error.
         if memory_required:
-            raise RuntimeError("MEMORY SERVICE REQUIRED: HTTP recall path failed unexpectedly.")
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED: HTTP recall path failed unexpectedly."
+            )
         # Try real in-process recall if we have any payloads stored and memory not required.
         if self._stub_store:
             try:
                 # Lazy import embedder from runtime to avoid heavy deps at import time
                 from somabrain import runtime as _rt  # type: ignore
+
                 embedder = getattr(_rt, "embedder", None)
                 if embedder is not None and hasattr(embedder, "embed"):
                     import numpy as _np
+
                     qv = _np.array(embedder.embed(query), dtype=_np.float32)
                     if _np.linalg.norm(qv) > 0:
                         qv = qv / (float(_np.linalg.norm(qv)) + 1e-8)
@@ -942,13 +994,21 @@ class MemoryClient:
                             # --- Optional weighting hook ---
                             # Controlled by env SOMABRAIN_MEMORY_ENABLE_WEIGHTING
                             # final_sim = sim * phase_factor * quality_factor
-                            if os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in ("1", "true", "True"):
+                            if os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in (
+                                "1",
+                                "true",
+                                "True",
+                            ):
                                 phase_factor = 1.0
                                 quality_factor = 1.0
                                 # Phase prior multiplier
                                 try:
-                                    phase = p.get("phase") if isinstance(p, dict) else None
-                                    priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
+                                    phase = (
+                                        p.get("phase") if isinstance(p, dict) else None
+                                    )
+                                    priors_env = os.getenv(
+                                        "SOMABRAIN_MEMORY_PHASE_PRIORS", ""
+                                    )
                                     if phase and priors_env:
                                         # parse once per recall? (cheap, small string) -> acceptable
                                         priors: dict[str, float] = {}
@@ -958,10 +1018,14 @@ class MemoryClient:
                                             if ":" in part:
                                                 k, val = part.split(":", 1)
                                                 try:
-                                                    priors[k.strip().lower()] = float(val)
+                                                    priors[k.strip().lower()] = float(
+                                                        val
+                                                    )
                                                 except Exception:
                                                     pass
-                                        phase_factor = float(priors.get(str(phase).lower(), 1.0))
+                                        phase_factor = float(
+                                            priors.get(str(phase).lower(), 1.0)
+                                        )
                                 except Exception:
                                     phase_factor = 1.0
                                 # Quality score exponent weighting
@@ -972,8 +1036,12 @@ class MemoryClient:
                                             qs = 0.0
                                         if qs > 1:
                                             qs = 1.0
-                                        qexp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
-                                        quality_factor = (qs ** qexp) if qs > 0 else 0.0
+                                        qexp = float(
+                                            os.getenv(
+                                                "SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"
+                                            )
+                                        )
+                                        quality_factor = (qs**qexp) if qs > 0 else 0.0
                                 except Exception:
                                     quality_factor = 1.0
                                 sim *= phase_factor * quality_factor
@@ -981,7 +1049,9 @@ class MemoryClient:
                             sim = 0.0
                         scored.append((sim, p))
                     scored.sort(key=lambda t: t[0], reverse=True)
-                    hits = [RecallHit(payload=p) for _, p in scored[: int(max(0, top_k))]]
+                    hits = [
+                        RecallHit(payload=p) for _, p in scored[: int(max(0, top_k))]
+                    ]
                     if hits:
                         return hits
             except Exception:
@@ -1007,10 +1077,13 @@ class MemoryClient:
         if self._http_async is not None:
             try:
                 import uuid
+
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
                 # Enrich for compatibility; also adds X-Universe header
-                _, uni, compat_hdr = self._compat_enrich_payload({"query": query, "universe": universe or "real"}, query)
+                _, uni, compat_hdr = self._compat_enrich_payload(
+                    {"query": query, "universe": universe or "real"}, query
+                )
                 rid_hdr.update(compat_hdr)
                 r = await self._http_async.post(
                     "/recall",
@@ -1046,7 +1119,11 @@ class MemoryClient:
                     if isinstance(data, list):
                         unwrapped: list[dict] = []
                         for item in data:
-                            if isinstance(item, dict) and "payload" in item and isinstance(item.get("payload"), dict):
+                            if (
+                                isinstance(item, dict)
+                                and "payload" in item
+                                and isinstance(item.get("payload"), dict)
+                            ):
                                 unwrapped.append(item["payload"])  # type: ignore[index]
                             elif isinstance(item, dict):
                                 unwrapped.append(item)

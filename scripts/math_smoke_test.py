@@ -1,6 +1,12 @@
 """Quick smoke tests for core math primitives: QuantumLayer bind/unbind/unitary roles and numerics."""
-from somabrain.quantum import HRRConfig, QuantumLayer, make_quantum_layer
-from somabrain.numerics import normalize_array, compute_tiny_floor, rfft_norm, irfft_norm, spectral_floor_from_tiny
+
+from somabrain.quantum import HRRConfig, make_quantum_layer
+from somabrain.numerics import (
+    normalize_array,
+    compute_tiny_floor,
+    rfft_norm,
+    spectral_floor_from_tiny,
+)
 import numpy as np
 
 
@@ -22,7 +28,6 @@ def run():
     # unitary role
     role = q.make_unitary_role("token:hello")
     # check role spectrum magnitude
-    from somabrain.numerics import rfft_norm
     H = rfft_norm(role, n=cfg.dim)
     mags = np.abs(H)
     print("role spectrum min/max:", float(mags.min()), float(mags.max()))
@@ -40,5 +45,6 @@ def run():
     print("tiny_floor:", tf)
     print("spectral_floor_from_tiny:", spectral_floor_from_tiny(tf, cfg.dim))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     run()

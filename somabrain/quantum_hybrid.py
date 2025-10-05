@@ -57,7 +57,9 @@ class HybridQuantumLayer(QuantumLayer):
                 pass
         return super().make_unitary_role(token)
 
-    def train_role_phases(self, token: str, gradient_fn, steps: int = 100, lr: float = 1e-3):
+    def train_role_phases(
+        self, token: str, gradient_fn, steps: int = 100, lr: float = 1e-3
+    ):
         """Train the learned role phases for `token` using a simple SGD loop.
 
         gradient_fn: callable(theta) -> gradient on theta (same shape)

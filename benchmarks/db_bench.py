@@ -5,12 +5,14 @@ Usage:
 
 This will open sessions and perform simple insert/select cycles against the configured DB.
 """
+
 import argparse
 import time
 
 from somabrain.storage.db import get_session_factory, Base, get_engine
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import Session
+
 
 # Minimal test table model declared here to avoid touching application models
 class _BenchItem(Base):
@@ -36,7 +38,9 @@ def run(iterations: int, url: str | None = None):
                 s.flush()
         s.commit()
     t1 = time.perf_counter()
-    print(f"Inserted {iterations} rows in {t1-t0:.3f}s ({iterations/(t1-t0):.1f} ops/s)")
+    print(
+        f"Inserted {iterations} rows in {t1-t0:.3f}s ({iterations/(t1-t0):.1f} ops/s)"
+    )
 
 
 if __name__ == "__main__":

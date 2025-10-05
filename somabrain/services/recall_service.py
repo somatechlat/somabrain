@@ -97,12 +97,18 @@ def recall_ltm(
         # a deterministic read-your-writes result derived from the query key.
         try:
             ql = str(text or "").strip().lower()
+
             def _lex_match(p: dict) -> bool:
                 for k in ("task", "text", "content", "what", "fact"):
                     v = p.get(k)
-                    if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
+                    if (
+                        isinstance(v, str)
+                        and v
+                        and (ql in v.lower() or v.lower() in ql)
+                    ):
                         return True
                 return False
+
             if ql and (not any(_lex_match(p) for p in mem_payloads)):
                 coord = mem_client.coord_for_key(text, universe=universe)
                 direct = mem_client.payloads_for_coords([coord], universe=universe)
@@ -111,8 +117,12 @@ def recall_ltm(
                     dh = direct[0]
                     seen = set()
                     out: list[dict] = []
+
                     def _key(p: dict) -> str:
-                        return str(p.get("task") or p.get("fact") or p.get("text") or "")
+                        return str(
+                            p.get("task") or p.get("fact") or p.get("text") or ""
+                        )
+
                     out.append(dh)
                     seen.add(_key(dh))
                     for p in mem_payloads:
@@ -130,6 +140,7 @@ def recall_ltm(
     try:
         q = str(text or "").strip()
         ql = q.lower()
+
         def _is_token_like(s: str) -> bool:
             # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
             if not s or len(s) < 6 or len(s) > 64:
@@ -139,6 +150,7 @@ def recall_ltm(
             has_alpha = any(c.isalpha() for c in s)
             has_digit = any(c.isdigit() for c in s)
             return has_alpha and has_digit
+
         def _lexical_score(p: dict) -> int:
             # Score by exact contains in common fields; higher for exact token-like
             score = 0
@@ -150,11 +162,16 @@ def recall_ltm(
                     if ql and ql in vl:
                         score += 5 if _is_token_like(q) else 2
             return score
+
         if mem_payloads and q:
-            scored = [(p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)]
+            scored = [
+                (p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)
+            ]
             if any(s > 0 for _, s in scored):
                 # Stable sort: keep original relative order for equal scores
-                mem_payloads = [p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)]
+                mem_payloads = [
+                    p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
+                ]
     except Exception:
         pass
     # Deterministic read-your-writes fallback:

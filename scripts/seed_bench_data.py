@@ -7,6 +7,7 @@ This creates simple "fact" payloads like {"task": "Author of Book{i} is Author{i
 and calls the `/remember` API to persist them. The script writes a JSON manifest
 to `artifacts/benchmarks/seed_manifest_{timestamp}.json` with the inserted keys.
 """
+
 import argparse
 import json
 import os

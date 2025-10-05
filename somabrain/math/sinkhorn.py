@@ -4,11 +4,19 @@ This module provides a compact, robust Sinkhorn solver for small-to-moderate
 cost matrices. It returns a transport matrix P that approximately minimizes
 <P, C> - eps * H(P) subject to marginals a,b.
 """
+
 import numpy as np
 from typing import Tuple
 
 
-def sinkhorn_log_stabilized(C: np.ndarray, a: np.ndarray, b: np.ndarray, eps: float = 1e-2, niter: int = 1000, tol: float = 1e-6) -> Tuple[np.ndarray, float]:
+def sinkhorn_log_stabilized(
+    C: np.ndarray,
+    a: np.ndarray,
+    b: np.ndarray,
+    eps: float = 1e-2,
+    niter: int = 1000,
+    tol: float = 1e-6,
+) -> Tuple[np.ndarray, float]:
     """Return transport matrix P and final error.
 
     C: cost matrix (n, m)
@@ -26,6 +34,7 @@ def sinkhorn_log_stabilized(C: np.ndarray, a: np.ndarray, b: np.ndarray, eps: fl
     # For stability, work with log-K and use log-sum-exp updates
     u = np.zeros(n)
     v = np.zeros(m)
+
     def _lse_rows(v_vec: np.ndarray) -> np.ndarray:
         """Compute log-sum-exp over columns for each row: returns shape (n,)"""
         A = K + v_vec[None, :]

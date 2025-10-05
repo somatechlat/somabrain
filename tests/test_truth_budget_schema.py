@@ -1,6 +1,11 @@
 import os
 
-from somabrain.config import load_config, load_truth_budget, _validate_and_map_truth_budget, TruthBudget
+from somabrain.config import (
+    load_config,
+    load_truth_budget,
+    _validate_and_map_truth_budget,
+    TruthBudget,
+)
 
 
 def test_truth_budget_example_loads():

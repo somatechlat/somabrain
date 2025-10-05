@@ -5,6 +5,7 @@ Usage:
 
 This sends POST requests with a simple RAGRequest body and prints latency percentiles.
 """
+
 import argparse
 import asyncio
 import time
@@ -41,7 +42,10 @@ async def run(url: str, concurrency: int, total: int):
         q.put_nowait(i)
     results = []
     async with httpx.AsyncClient() as client:
-        tasks = [asyncio.create_task(worker(client, url, q, results)) for _ in range(concurrency)]
+        tasks = [
+            asyncio.create_task(worker(client, url, q, results))
+            for _ in range(concurrency)
+        ]
         await asyncio.gather(*tasks)
     codes = [r for r, _ in results if r is not None]
     latencies = [lat for _, lat in results]
@@ -51,7 +55,11 @@ async def run(url: str, concurrency: int, total: int):
         lat_sorted = sorted(latencies)
         p50 = lat_sorted[int(0.5 * len(lat_sorted))]
         p90 = lat_sorted[int(0.9 * len(lat_sorted))]
-        p99 = lat_sorted[int(0.99 * len(lat_sorted))] if len(lat_sorted) > 100 else lat_sorted[-1]
+        p99 = (
+            lat_sorted[int(0.99 * len(lat_sorted))]
+            if len(lat_sorted) > 100
+            else lat_sorted[-1]
+        )
         print(f"p50: {p50:.4f}s p90: {p90:.4f}s p99: {p99:.4f}s")
 
 

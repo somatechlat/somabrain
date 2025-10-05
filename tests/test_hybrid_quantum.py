@@ -10,7 +10,7 @@ def mse(a, b):
 
 
 def test_hybrid_encode_and_bind_roundtrip():
-    cfg = HRRConfig(dim=256, seed=123, dtype='float32')
+    cfg = HRRConfig(dim=256, seed=123, dtype="float32")
     q = QuantumLayer(cfg)
     h = HybridQuantumLayer(cfg)
 

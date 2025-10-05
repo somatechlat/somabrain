@@ -12,8 +12,9 @@ from typing import Callable, Tuple, Optional
 from somabrain.config import load_config
 
 
-def estimate_spectral_interval(apply_A: Callable[[np.ndarray], np.ndarray],
-                               n: int, m: int = 16) -> Tuple[float, float]:
+def estimate_spectral_interval(
+    apply_A: Callable[[np.ndarray], np.ndarray], n: int, m: int = 16
+) -> Tuple[float, float]:
     """Run m-step Lanczos to estimate the spectral interval of A on n-dim space.
 
     apply_A: function that applies A to a vector
@@ -50,12 +51,14 @@ def estimate_spectral_interval(apply_A: Callable[[np.ndarray], np.ndarray],
     return float(eigs.min()), float(eigs.max())
 
 
-def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
-                         x: np.ndarray,
-                         t: float,
-                         K: Optional[int],
-                         a: float,
-                         b: float) -> np.ndarray:
+def chebyshev_heat_apply(
+    apply_A: Callable[[np.ndarray], np.ndarray],
+    x: np.ndarray,
+    t: float,
+    K: Optional[int],
+    a: float,
+    b: float,
+) -> np.ndarray:
     """Approximate y = exp(-t A) x using Chebyshev polynomial of degree K.
 
     apply_A: function to apply A
@@ -71,6 +74,7 @@ def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
     # map operator to [-1,1]: A' = (2A - (b+a)I)/(b-a)
     if b <= a:
         raise ValueError("Invalid spectral interval")
+
     def apply_Ap(v: np.ndarray) -> np.ndarray:
         return (2.0 * apply_A(v) - (b + a) * v) / (b - a)
 
@@ -101,10 +105,9 @@ def chebyshev_heat_apply(apply_A: Callable[[np.ndarray], np.ndarray],
     return y
 
 
-def lanczos_expv(apply_A: Callable[[np.ndarray], np.ndarray],
-                 x: np.ndarray,
-                 t: float,
-                 m: int = 32) -> np.ndarray:
+def lanczos_expv(
+    apply_A: Callable[[np.ndarray], np.ndarray], x: np.ndarray, t: float, m: int = 32
+) -> np.ndarray:
     """Approximate y = exp(-t A) x using Lanczos / Krylov method.
 
     This is robust for small-to-moderate m and avoids needing Chebyshev

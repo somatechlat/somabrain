@@ -1,4 +1,3 @@
-
 from somabrain.runtime.working_memory import WorkingMemoryBuffer
 
 

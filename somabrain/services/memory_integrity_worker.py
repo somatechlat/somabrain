@@ -9,7 +9,7 @@ and emits alerts or attempts reconciliation if mismatches are found.
 import os
 import time
 import logging
-from typing import Optional, Set, List
+from typing import Optional, Set
 import argparse
 import sqlite3
 import json
@@ -51,9 +51,7 @@ class MemoryIntegrityWorker:
         try:
             import psycopg2
 
-            pg_dsn = os.getenv("SOMABRAIN_PG_DSN") or os.getenv(
-                "SOMABRAIN_PG_URL"
-            )
+            pg_dsn = os.getenv("SOMABRAIN_PG_DSN") or os.getenv("SOMABRAIN_PG_URL")
             if pg_dsn:
                 try:
                     self._pg = psycopg2.connect(pg_dsn)
@@ -135,12 +133,17 @@ class MemoryIntegrityWorker:
         missing_in_vector = redis_keys - vector_keys
         # Log/report discrepancies
         if missing_in_pg:
-            LOGGER.warning("Keys in Redis but missing in Postgres: %s", list(missing_in_pg)[:20])
+            LOGGER.warning(
+                "Keys in Redis but missing in Postgres: %s", list(missing_in_pg)[:20]
+            )
         if missing_in_redis:
-            LOGGER.warning("Keys in Postgres but missing in Redis: %s", list(missing_in_redis)[:20])
+            LOGGER.warning(
+                "Keys in Postgres but missing in Redis: %s", list(missing_in_redis)[:20]
+            )
         if missing_in_vector:
             LOGGER.warning(
-                "Keys in Redis but missing in vector store: %s", list(missing_in_vector)[:20]
+                "Keys in Redis but missing in vector store: %s",
+                list(missing_in_vector)[:20],
             )
 
         # Emit a short report to stdout for CI/dev usage
@@ -162,7 +165,9 @@ class MemoryIntegrityWorker:
         LOGGER.info("Starting Memory Integrity Worker...")
         # Support both continuous and one-shot CLI usage
         parser = argparse.ArgumentParser()
-        parser.add_argument("--once", action="store_true", help="Run one check and exit")
+        parser.add_argument(
+            "--once", action="store_true", help="Run one check and exit"
+        )
         args, _ = parser.parse_known_args()
         if args.once:
             self.poll_and_check()

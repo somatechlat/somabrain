@@ -4,6 +4,7 @@ Prerequisite: run `scripts/seed_bench_data.py --count N` or seed using the same 
 This script expects the first seed manifest in `artifacts/benchmarks/` and will
 query `/rag/retrieve` for a set of evaluation queries derived from the seeded items.
 """
+
 import glob
 import json
 import os

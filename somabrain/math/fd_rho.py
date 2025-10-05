@@ -34,7 +34,7 @@ class FrequentDirections:
         U, s, Vt = np.linalg.svd(self.S, full_matrices=False)
         # shrink by smallest singular value s[-1]
         delta = s[-1] ** 2
-        s2 = np.sqrt(np.maximum(s ** 2 - delta, 0.0))
+        s2 = np.sqrt(np.maximum(s**2 - delta, 0.0))
         # keep top ell-1 components
         k = min(self.ell, len(s2))
         Snew = np.diag(s2[:k]) @ Vt[:k, :]

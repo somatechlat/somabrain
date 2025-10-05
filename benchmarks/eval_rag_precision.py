@@ -2,6 +2,7 @@
 
 Produces `artifacts/benchmarks/rag_precision_{timestamp}.json` with precision@k and recall@k.
 """
+
 import glob
 import json
 import os
@@ -28,7 +29,7 @@ def eval_precision_recall(base_url: str, items, k=5):
         try:
             r = client.post(url, json=body)
             if r.status_code != 200:
-                results.append({"i": it['i'], "status": r.status_code})
+                results.append({"i": it["i"], "status": r.status_code})
                 continue
             j = r.json()
             cands = j.get("candidates", [])
@@ -36,9 +37,11 @@ def eval_precision_recall(base_url: str, items, k=5):
             topk = cands[:k]
             found_k = sum(1 for c in topk if expected in str(c.get("payload", {})))
             # naive recall: since each query has a single ground-truth, recall==found_k>0
-            results.append({"i": it['i'], "precision@k": found_k / max(1, k), "found": found_k})
+            results.append(
+                {"i": it["i"], "precision@k": found_k / max(1, k), "found": found_k}
+            )
         except Exception as e:
-            results.append({"i": it['i'], "status": "error", "error": str(e)})
+            results.append({"i": it["i"], "status": "error", "error": str(e)})
     return results
 
 

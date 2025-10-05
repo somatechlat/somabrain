@@ -5,6 +5,7 @@ Usage:
 
 This simulates calling internal retriever stubs and the fusion code paths without network IO.
 """
+
 import argparse
 import time
 
@@ -15,6 +16,7 @@ import asyncio
 
 async def _run_async(iterations: int):
     req = RAGRequest(query="benchmark test", top_k=10)
+
     # ctx-like stub used by the pipeline
     class Ctx:
         namespace = "bench"
@@ -22,9 +24,13 @@ async def _run_async(iterations: int):
 
     t0 = time.perf_counter()
     for i in range(iterations):
-        await run_rag_pipeline(req, ctx=Ctx(), cfg=None, universe=None, trace_id=f"b{i}")
+        await run_rag_pipeline(
+            req, ctx=Ctx(), cfg=None, universe=None, trace_id=f"b{i}"
+        )
     t1 = time.perf_counter()
-    print(f"Simulated {iterations} pipelines in {t1-t0:.3f}s ({iterations/(t1-t0):.1f} ops/s)")
+    print(
+        f"Simulated {iterations} pipelines in {t1-t0:.3f}s ({iterations/(t1-t0):.1f} ops/s)"
+    )
 
 
 def run(iterations: int):

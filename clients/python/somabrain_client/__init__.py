@@ -1,14 +1,15 @@
 from __future__ import annotations
-
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
-
 import requests
 
 
 class SomaBrainClient:
+    """TODO: Add class docstring."""
+
     def __init__(self, base_url: str, api_token: Optional[str] = None) -> None:
+        """TODO: Add docstring."""
         self.base_url = base_url.rstrip("/")
         self.session = requests.Session()
         if api_token:
@@ -16,6 +17,7 @@ class SomaBrainClient:
         self._load_ports()
 
     def _load_ports(self) -> None:
+        """TODO: Add docstring."""
         ports_path = Path("ports.json")
         if ports_path.exists():
             try:
@@ -27,6 +29,7 @@ class SomaBrainClient:
                 pass
 
     def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         payload = {"session_id": session_id, "query": query, "top_k": top_k}
         resp = self.session.post(f"{self.base_url}/evaluate", json=payload, timeout=10)
         resp.raise_for_status()
@@ -42,6 +45,7 @@ class SomaBrainClient:
         reward: Optional[float] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         payload = {
             "session_id": session_id,
             "query": query,

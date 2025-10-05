@@ -9,16 +9,17 @@ Usage:
 """
 
 from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
-
 import httpx
 
 
 class SomaBrainClient:
+    """TODO: Add class docstring."""
+
     def __init__(
         self, base_url: str, token: Optional[str] = None, tenant: Optional[str] = None
     ):
+        """TODO: Add docstring."""
         self.base = base_url.rstrip("/")
         self.headers: Dict[str, str] = {"Content-Type": "application/json"}
         if token:
@@ -32,6 +33,7 @@ class SomaBrainClient:
     def remember(
         self, payload: Dict[str, Any], coord: Optional[str] = None
     ) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         body = {"coord": coord, "payload": payload}
         r = self._http.post("/remember", json=body)
         r.raise_for_status()
@@ -40,6 +42,7 @@ class SomaBrainClient:
     def recall(
         self, query: str, top_k: int = 3, universe: Optional[str] = None
     ) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         body: Dict[str, Any] = {"query": query, "top_k": int(top_k)}
         if universe:
             body["universe"] = universe
@@ -58,6 +61,7 @@ class SomaBrainClient:
         weight: float = 1.0,
         universe: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         body: Dict[str, Any] = {
             "from_key": from_key,
             "to_key": to_key,
@@ -79,6 +83,7 @@ class SomaBrainClient:
         rel_types: Optional[List[str]] = None,
         universe: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """TODO: Add docstring."""
         body: Dict[str, Any] = {"task_key": task_key}
         if max_steps is not None:
             body["max_steps"] = int(max_steps)

@@ -46,4 +46,6 @@ def test_remember_handles_batch_of_memories_live():
         body = recall_res.json()
         assert isinstance(body, dict)
         memories = body.get("memory") or []
-        assert any(m.get("task") == task for m in memories), f"Missing memory for {task}"
+        assert any(
+            m.get("task") == task for m in memories
+        ), f"Missing memory for {task}"

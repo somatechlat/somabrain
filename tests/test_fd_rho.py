@@ -23,5 +23,9 @@ def test_fd_sketch_topk_accuracy():
     approx_vals = topk_eigenvalues_from_sketch(fd, k=k)
 
     # compute relative error on top-k eigenvalues
-    rel_err = np.linalg.norm(true_vals[:k] - approx_vals[:k]) / (np.linalg.norm(true_vals[:k]) + 1e-12)
-    assert rel_err < 0.5  # FD is approximate; expect relative error < 50% for this setting
+    rel_err = np.linalg.norm(true_vals[:k] - approx_vals[:k]) / (
+        np.linalg.norm(true_vals[:k]) + 1e-12
+    )
+    assert (
+        rel_err < 0.5
+    )  # FD is approximate; expect relative error < 50% for this setting

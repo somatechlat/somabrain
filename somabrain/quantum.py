@@ -753,7 +753,9 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
                 from somabrain.config import load_config
 
                 runtime_cfg = load_config()
-                hybrid_enabled = bool(getattr(runtime_cfg, "hybrid_math_enabled", False))
+                hybrid_enabled = bool(
+                    getattr(runtime_cfg, "hybrid_math_enabled", False)
+                )
             except Exception:
                 hybrid_enabled = False
 

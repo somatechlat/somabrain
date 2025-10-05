@@ -38,7 +38,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from somabrain.config import load_config
 
@@ -61,6 +61,7 @@ class MemoryService:
     _last_failure_time: float = 0.0
 
     def __init__(self, mt_memory, namespace: str):
+        """Initialize MemoryService with a MultiTenantMemory client and namespace."""
         self.mt_memory = mt_memory
         self.namespace = namespace
         # Ensure outbox file exists
@@ -128,6 +129,7 @@ class MemoryService:
             raise e
 
     def client(self):
+        """Return the underlying MultiTenantMemory client scoped to the namespace."""
         return self.mt_memory.for_namespace(self.namespace)
 
     def _write_outbox(self, entry: dict):
@@ -242,6 +244,11 @@ class MemoryService:
             pass
 
     def remember(self, key: str, payload: dict, universe: Optional[str] = None):
+        """Store a memory payload under the given key, handling circuit‑breaker logic.
+
+        If the circuit is open, the operation is queued to the outbox.
+        Returns the coordinate of the stored memory.
+        """
         # Reset circuit before attempting write
         self._reset_circuit_if_needed()
         if self.__class__._circuit_open:
@@ -282,6 +289,10 @@ class MemoryService:
             return res
 
     async def aremember(self, key: str, payload: dict, universe: Optional[str] = None):
+        """Asynchronous version of :meth:`remember` handling both HTTP and stub modes.
+
+        Returns the coordinate of the stored memory or ``None`` on failure.
+        """
         # Reset circuit if needed before attempting write
         self._reset_circuit_if_needed()
         if self.__class__._circuit_open:
@@ -339,6 +350,10 @@ class MemoryService:
         link_type: str = "related",
         weight: float = 1.0,
     ) -> None:
+        """Create a directed link between two memory coordinates.
+
+        Handles circuit‑breaker logic and mirrors the link in the global in‑process map.
+        """
         # Ensure circuit is reset before attempting link operation
         self._reset_circuit_if_needed()
         if self.__class__._circuit_open:
@@ -354,11 +369,11 @@ class MemoryService:
             raise RuntimeError("Memory backend circuit open – operation queued")
         try:
             self.client().link(from_coord, to_coord, link_type=link_type, weight=weight)
-            # Also mirror to the process-global links map to ensure visibility
+            # Also mirror to the process‑global links map to ensure visibility
             try:
                 from .. import memory_client as _mc
 
-                # Ensure module-level bindings reflect current builtins-backed maps
+                # Ensure module‑level bindings reflect current builtins‑backed maps
                 try:
                     _mc._refresh_builtins_globals()
                 except Exception:
@@ -367,17 +382,14 @@ class MemoryService:
                 if GLOBAL_LINKS is not None:
                     ns = getattr(self, "namespace", None)
                     if ns is not None:
-                        try:
-                            GLOBAL_LINKS.setdefault(ns, []).append(
-                                {
-                                    "from": list(map(float, from_coord)),
-                                    "to": list(map(float, to_coord)),
-                                    "type": str(link_type),
-                                    "weight": float(weight),
-                                }
-                            )
-                        except Exception:
-                            pass
+                        GLOBAL_LINKS.setdefault(ns, []).append(
+                            {
+                                "from": list(map(float, from_coord)),
+                                "to": list(map(float, to_coord)),
+                                "type": str(link_type),
+                                "weight": float(weight),
+                            }
+                        )
             except Exception:
                 pass
         except Exception:
@@ -394,75 +406,14 @@ class MemoryService:
             )
             raise
 
-    async def alink(
-        self,
-        from_coord: Tuple[float, float, float],
-        to_coord: Tuple[float, float, float],
-        link_type: str = "related",
-        weight: float = 1.0,
-        request_id: str | None = None,
-    ) -> None:
-        """Async link handling for all modes.
-
-        For HTTP mode we use the backend ``alink`` method. For stub or other
-        modes where ``alink`` is not applicable, we fall back to the synchronous
-        ``link`` implementation, ensuring the in‑process graph is updated.
-        """
-        client = self.client()
-        # If the client supports an async alink (HTTP mode), use it.
-        if hasattr(client, "alink") and getattr(client, "_mode", None) == "http":
-            try:
-                await client.alink(
-                    from_coord, to_coord, link_type=link_type, weight=weight
-                )
-                return
-            except Exception:
-                # Record for retry and re‑raise.
-                self._write_outbox(
-                    {
-                        "op": "link",
-                        "from_coord": from_coord,
-                        "to_coord": to_coord,
-                        "link_type": link_type,
-                        "weight": weight,
-                    }
-                )
-                raise
-        # Fallback for stub or any non‑HTTP mode: use the synchronous link.
-        self.link(from_coord, to_coord, link_type=link_type, weight=weight)
-
     def coord_for_key(self, key: str, universe: Optional[str] = None):
+        """Return the coordinate for a given key, delegating to the underlying client."""
         return self.client().coord_for_key(key, universe=universe)
-
-    def links_from(
-        self,
-        start: Tuple[float, float, float],
-        type_filter: Optional[str] = None,
-        limit: int = 50,
-    ) -> List[Dict]:
-        try:
-            # debug: expose global mirror size and namespace for triage
-            import logging as _logging
-
-            from .. import memory_client as _mc
-
-            _log = _logging.getLogger(__name__)
-            try:
-                _log.debug(
-                    "MemoryService.links_from ns=%r pool_keys=%r global_links_keys=%r",
-                    self.namespace,
-                    list(getattr(self.mt_memory, "_pool", {}).keys()),
-                    list(getattr(_mc, "_GLOBAL_LINKS", {}).keys()),
-                )
-            except Exception:
-                pass
-        except Exception:
-            pass
-        return self.client().links_from(start, type_filter=type_filter, limit=limit)
 
     def payloads_for_coords(
         self, coords: List[Tuple[float, float, float]], universe: Optional[str] = None
     ) -> List[dict]:
+        """Retrieve payloads for a list of coordinates from the backend client."""
         return self.client().payloads_for_coords(coords, universe=universe)
 
     def delete(self, coordinate: Tuple[float, float, float]):
