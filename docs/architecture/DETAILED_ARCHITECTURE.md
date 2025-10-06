@@ -9,7 +9,7 @@ This version reflects only what exists in the current codebase. Planned or aspir
 ### 11.2 Similarity & Retrieval
 - Cosine Similarity (Implemented): `QuantumLayer.cosine` and builder helpers handle zero norms by returning 0.
 - Recall Weighting (Implemented): Softmax weighting over combined semantic cosine + optional `graph_score` + temporal decay (`ContextBuilder._compute_weights`). No separate recall probability function.
-- Composite Recall Ranking (Implemented): `/recall` applies a zero-config scoring blend that combines lexical token overlap, working-memory reinforcement, `quality_score` weighting, recency decay, and math-domain detection. Enabled by default via `lexical_boost_enabled` in `config.yaml`; disabling the flag reverts to backend ordering.
+- Composite Recall Ranking (Implemented): `/recall` applies a zero-config scoring blend that combines lexical token overlap, working-memory reinforcement, `quality_score` weighting, recency decay, and math-domain detection. Enabled by default via `lexical_boost_enabled` in `config.yaml`; disabling the flag reverts to backend ordering. The MemoryClient now aggregates vector similarity (`/recall_with_scores`), hybrid retrieval (`/hybrid_recall_with_scores`), and lexical matches (`/keyword_search`) before the blend runs, guaranteeing the final list reflects every available signal.
 
 ### 11.3 Hyperdimensional Computing (HRR / QuantumLayer)
 - Superposition (Implemented): Summation + renorm.
@@ -50,6 +50,36 @@ This version reflects only what exists in the current codebase. Planned or aspir
 - Dynamic memory allocation.
 - Property-based invariants.
 - Audit JSON schema validation.
+
+### 11.10 Experiment Framework (Implemented)
+
+- **Experiment Manager API** – `ExperimentManager` now provides a helper method `exp_retrieval_alpha_vs_tau` to streamline creation of two‑group A/B experiments that compare a configurable parameter (e.g., a retrieval weight `alpha`) against a control value. The method:
+  1. Constructs a descriptive experiment name and description.
+  2. Calls `create_experiment` with no static parameters (the experiment varies only the target parameter).
+  3. Adds a `control` group containing the baseline value and a `variant` group containing the candidate value.
+  4. Starts the experiment immediately and logs the launch.
+  5. Returns the generated experiment ID for later result recording.
+
+  ```python
+  exp_id = experiment_manager.exp_retrieval_alpha_vs_tau(
+      param_name="retrieval_alpha",
+      control_value=0.1,
+      variant_value=0.2,
+      metric="latency",
+      alpha=0.05,
+  )
+  ```
+
+  This utility abstracts the repetitive boiler‑plate of experiment creation, group addition and start‑up, enabling developers to focus on recording metric samples via `record_experiment_result`.
+
+- **Canary Promotion Logic** – The `AdaptiveConfigManager.promote_canaries` method scans configuration keys prefixed with `canary::`, locates a matching experiment named `canary_{param}`, and analyses the results using Welch's t‑test (via `ExperimentManager.analyze_experiment`). Promotion occurs when:
+  * The statistical test is significant (`p < alpha`).
+  * The effect size (Cohen's d) exceeds the `min_effect` threshold.
+  * For latency‑type metrics, the variant mean is lower (indicating improvement).
+
+  Upon promotion, the staged canary value is written to the live custom parameter, an audit event is emitted, and Prometheus counters `soma_canary_promotions_total` and `soma_canary_promotion_skipped_total` are updated. Rollback logic mirrors this process, demoting parameters when later experiments indicate regression.
+
+These capabilities complete the autonomous learning loop: experiments are launched automatically, statistical analysis drives safe canary promotion, and rollbacks protect against degradation.
 
 ---
 ## 1. Service Topology (Code Reality)
@@ -191,6 +221,7 @@ SomaBrain emulates core LLM functions while remaining a lightweight orchestrator
 ### 3.1 Memory Retrieval Endpoints (Current API)
 
 - `POST /recall` – Semantic retrieval. Accepts `{query, top_k, universe?}` and returns working‑memory hits and long‑term memory payloads. Multi‑tenant via `X-Tenant-ID`.
+- **Aggregated Recall Flow** – `MemoryClient.recall()` dispatches to `/recall_with_scores`, `/hybrid_recall_with_scores`, and `/keyword_search`, normalizes each response into `RecallHit` records, deduplicates by coordinate/id/text, applies optional quality weighting, and then ranks using the lexical/temporal blend. This ensures vector-only, keyword-only, and hybrid matches all surface in `/recall` results without requiring manual endpoint fan-out at the application layer.
 - `POST /link` – Graph edge creation accepts coordinates or keys. The router calls `MemoryService.alink`, which delegates to the async HTTP client and still mirrors edges into the local graph cache so stubs and tests observe fresh links immediately.
 
 ## 4. Data Models & Storage
@@ -316,3 +347,22 @@ This document is living; update it whenever architecture decisions are made or c
 - **Visualization policy**: SomaBrain publishes metrics for external scraping but intentionally omits embedded dashboards or UI bundles; operators can point external tools (Grafana, etc.) if needed.
 
 These changes bring the repository to a production‑ready state with full stack verification, reproducible builds, and tighter CI enforcement.
+
+# Tau Adaptation Module
+# ------------------------
+# Implements diversity preservation through tau clamping [0.4, 1.2] and coordinate repetition detection
+# Exposes Prometheus metrics for tracking per-tenant tau values
+
+## 11.1 Tau Adaptation
+- **Tau Clamping:** Limits tau values to the [0.4, 1.2] range during adaptation.
+- **Coordinate Repetition Detection:** Identifies and handles repeated coordinates in input sequences to preserve diversity.
+
+## 11.2 Prometheus Metrics
+- **Per-Tenant Metrics:** Exposes tau-related metrics, adaptation weights, feedback latency, working memory length, and neuromodulator states, all namespaced by tenant_id.
+
+## 11.3 Autonomous Coordinator System
+- **System Initialization:** FastAPI lifespan hook initializes the coordinator system.
+- **Feedback Polling:** 5-minute polling of feedback_events collection.
+- **Component Wiring:** Connects FeedbackCollector and ParameterOptimizer components.
+- **Canary Promotion Logic:** Implements promotion logic based on statistical significance (p < 0.05) and effect size (d > 0.3).
+- **Kafka Audit Events:** Emits audit events for parameter changes to Kafka.

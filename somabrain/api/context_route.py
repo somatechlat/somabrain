@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Optional
 
@@ -29,6 +30,14 @@ from somabrain import audit
 from somabrain.learning import AdaptationEngine
 from somabrain.storage.feedback import FeedbackStore
 from somabrain.storage.token_ledger import TokenLedger
+from somabrain.metrics import (
+    update_learning_retrieval_weights,
+    update_learning_utility_weights,
+    record_learning_feedback_applied,
+    record_learning_feedback_rejected,
+    record_learning_feedback_latency,
+    update_learning_effective_lr,
+)
 
 router = APIRouter()
 _feedback_store = FeedbackStore()
@@ -49,6 +58,9 @@ async def evaluate_endpoint(
     planner = get_context_planner()
     default_tenant = get_default_tenant()
     tenant_id = payload.tenant_id or default_tenant
+    # Ensure the builder knows the tenant for metric attribution
+    if hasattr(builder, "set_tenant"):
+        builder.set_tenant(tenant_id)
     allowed = get_allowed_tenants()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
@@ -99,10 +111,14 @@ async def feedback_endpoint(
     _guard=Depends(utility_guard),
     auth=Depends(auth_guard),
 ):
+    start_time = time.perf_counter()
     planner = get_context_planner()
     builder = get_context_builder()
     default_tenant = get_default_tenant()
     tenant_id = payload.tenant_id or default_tenant
+    # Ensure the builder knows the tenant for metric attribution
+    if hasattr(builder, "set_tenant"):
+        builder.set_tenant(tenant_id)
     allowed = get_allowed_tenants()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
@@ -126,7 +142,7 @@ async def feedback_endpoint(
         except Exception:
             raise HTTPException(status_code=400, detail="invalid metadata encoding")
 
-    adapter = _get_adaptation(builder, planner)
+    adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
     # Capture weights before adaptation
     before = {
         "retrieval": {
@@ -148,6 +164,32 @@ async def feedback_endpoint(
         adapter_count = getattr(adapter, "_feedback_count", 0)
         # Track the highest observed count from either the adapter or module-level counter.
         _feedback_counter = max(_feedback_counter + 1, adapter_count)
+        
+        # Record metrics on successful feedback application
+        record_learning_feedback_applied(tenant_id)
+        
+        # Update weight metrics
+        update_learning_retrieval_weights(
+            tenant_id,
+            alpha=adapter.retrieval_weights.alpha,
+            beta=adapter.retrieval_weights.beta,
+            gamma=adapter.retrieval_weights.gamma,
+            tau=adapter.retrieval_weights.tau,
+        )
+        update_learning_utility_weights(
+            tenant_id,
+            lambda_=adapter.utility_weights.lambda_,
+            mu=adapter.utility_weights.mu,
+            nu=adapter.utility_weights.nu,
+        )
+        
+        # Update effective learning rate metric
+        lr_eff = getattr(adapter, "_lr", 0.0)
+        update_learning_effective_lr(tenant_id, lr_eff)
+    else:
+        # Feedback rejected - determine reason
+        reason = "bounds" if payload.utility is None or payload.reward is None else "outlier"
+        record_learning_feedback_rejected(tenant_id, reason)
     # Capture weights after adaptation
     after = {
         "retrieval": {
@@ -227,6 +269,11 @@ async def feedback_endpoint(
             _feedback_counter = max(_feedback_counter, adapter_total, store_total)
         except Exception:
             pass
+    
+    # Record feedback latency
+    elapsed = time.perf_counter() - start_time
+    record_learning_feedback_latency(tenant_id, elapsed)
+    
     return FeedbackResponse(accepted=True, adaptation_applied=applied)
 
 
@@ -241,18 +288,24 @@ def _constitution_checksum() -> Optional[str]:
         return None
 
 
-_adaptation_engine: Optional[AdaptationEngine] = None
+_adaptation_engines: dict[str, AdaptationEngine] = {}
 
 
-def _get_adaptation(builder, planner: ContextPlanner) -> AdaptationEngine:
-    global _adaptation_engine
-    if _adaptation_engine is None:
+def _get_adaptation(builder, planner: ContextPlanner, tenant_id: str = "default") -> AdaptationEngine:
+    """
+    Get or create a per-tenant AdaptationEngine instance.
+    Each tenant maintains independent learning state.
+    """
+    global _adaptation_engines
+    if tenant_id not in _adaptation_engines:
         adaptation = AdaptationEngine(
             retrieval=builder.weights,
             utility=planner.utility_weights,
+            tenant_id=tenant_id,
+            enable_dynamic_lr=True,  # Enable neuromod-driven learning rate
         )
-        _adaptation_engine = adaptation
-    return _adaptation_engine
+        _adaptation_engines[tenant_id] = adaptation
+    return _adaptation_engines[tenant_id]
 
 
 def _make_event_id(session_id: str) -> str:
@@ -266,15 +319,21 @@ def _make_event_id(session_id: str) -> str:
 
 
 @router.get("/adaptation/state", response_model=AdaptationStateResponse)
-async def adaptation_state_endpoint(request: Request, auth=Depends(auth_guard)):
+async def adaptation_state_endpoint(
+    request: Request, 
+    tenant_id: Optional[str] = None,
+    auth=Depends(auth_guard)
+):
     """Return current adaptation weights (retrieval + utility) and history length.
 
     Useful for external monitoring/tests to verify learning progress without
-    mutating state.
+    mutating state. Supports per-tenant queries via ?tenant_id=X parameter.
     """
     builder = get_context_builder()
     planner = get_context_planner()
-    adapter = _get_adaptation(builder, planner)
+    default_tenant = get_default_tenant()
+    tid = tenant_id or default_tenant
+    adapter = _get_adaptation(builder, planner, tenant_id=tid)
     retrieval_state = RetrievalWeightsState(
         alpha=adapter.retrieval_weights.alpha,
         beta=adapter.retrieval_weights.beta,

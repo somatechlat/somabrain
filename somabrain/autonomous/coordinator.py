@@ -5,17 +5,26 @@ This module coordinates all autonomous operations including monitoring,
 learning, and healing capabilities.
 """
 
+from __future__ import annotations
+
+import asyncio
+import datetime
+import os
 import logging
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Dict, Optional
+
+from fastapi import FastAPI
 
 from .config import AdaptiveConfig, AdaptiveConfigManager, AutonomousConfig
 from .healing import AutonomousHealer
 from .learning import AutonomousLearner
 from .monitor import AutonomousMonitor
+from somabrain.storage.feedback import FeedbackStore
+from somabrain.autonomous.learning import ExperimentManager, ParameterOptimizer, FeedbackCollector
+from somabrain import audit
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +37,7 @@ class AutonomousStatus:
     monitoring_active: bool = False
     learning_active: bool = False
     healing_active: bool = False
-    last_update: datetime = field(default_factory=datetime.now)
+    last_update: datetime = field(default_factory=lambda: datetime.datetime.now())
     metrics: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -202,7 +211,7 @@ class AutonomousCoordinator:
                     self.status.healing_active = False
 
                 # Update status
-                self.status.last_update = datetime.now()
+                self.status.last_update = datetime.datetime.now()
 
                 # Sleep for monitoring interval
                 interval = self.config.monitoring.health_check_interval
@@ -273,7 +282,7 @@ class AutonomousCoordinator:
         )
 
         self.status.metrics = metrics
-        self.status.last_update = datetime.now()
+        self.status.last_update = datetime.datetime.now()
 
         return self.status
 
@@ -381,3 +390,86 @@ def initialize_autonomous_operations(
         _autonomous_coordinator.update_config(config)
 
     return _autonomous_coordinator
+
+
+# Removed duplicate imports and redundant definitions. Keep helper functions.
+
+def get_feedback_store() -> FeedbackStore:
+    global _feedback_store
+    if _feedback_store is None:
+        _feedback_store = FeedbackStore()
+    return _feedback_store
+
+
+def get_experiment_manager(config: Optional[AutonomousConfig] = None) -> ExperimentManager:
+    """Retrieve the global ExperimentManager, creating it if necessary.
+
+    The original implementation instantiated ``ExperimentManager`` without a
+    configuration, which raises a ``TypeError`` because the constructor
+    requires an ``AutonomousConfig`` instance.  We now accept an optional
+    ``config`` argument; if none is provided we fall back to a default
+    ``AutonomousConfig``.  This keeps backward compatibility for callers that
+    do not supply a config while fixing the error for internal usage.
+    """
+    global _experiment_manager
+    if _experiment_manager is None:
+        cfg = config if config is not None else AutonomousConfig()
+        _experiment_manager = ExperimentManager(cfg)
+    return _experiment_manager
+
+
+def get_parameter_optimizer() -> ParameterOptimizer:
+    global _parameter_optimizer
+    if _parameter_optimizer is None:
+        _parameter_optimizer = ParameterOptimizer()
+    return _parameter_optimizer
+
+
+async def _poll_feedback_loop(app: FastAPI) -> None:
+    """Background task that runs every POLL_INTERVAL seconds.
+
+    It fetches recent feedback events, feeds them to FeedbackCollector, and
+    triggers the experiment manager to evaluate any pending experiments.
+    """
+    poll_interval = int(os.getenv("SOMABRAIN_COORDINATOR_POLL_SEC", "300"))  # default 5 min
+    while True:
+        try:
+            store = get_feedback_store()
+            # Retrieve events from the last poll interval
+            since = datetime.datetime.utcnow() - datetime.timedelta(seconds=poll_interval)
+            recent = store.get_events_since(since.isoformat())
+            if recent:
+                collector = FeedbackCollector()
+                for ev in recent:
+                    # Expected keys: utility, reward, tenant_id
+                    collector.record(
+                        tenant_id=ev.get("tenant_id", "default"),
+                        utility=ev.get("utility"),
+                        reward=ev.get("reward"),
+                    )
+                # Run optimizer on aggregated feedback
+                optimizer = get_parameter_optimizer()
+                optimizer.optimize(collector)
+                # Evaluate experiments
+                exp_mgr = get_experiment_manager()
+                exp_mgr.evaluate_pending()
+        except Exception as exc:
+            # Log but do not crash the loop
+            audit.publish_event({"action": "coordinator_error", "error": str(exc)})
+        await asyncio.sleep(poll_interval)
+
+
+def setup_coordinator(app: FastAPI) -> None:
+    """Attach the coordinator to a FastAPI app via lifespan events.
+
+    Usage: in the main FastAPI creation file, call ``setup_coordinator(app)``.
+    """
+    @app.on_event("startup")
+    async def start_coordinator() -> None:
+        # Kick off the background poller
+        asyncio.create_task(_poll_feedback_loop(app))
+
+    @app.on_event("shutdown")
+    async def stop_coordinator() -> None:
+        # No explicit shutdown needed; the task will exit when the event loop stops.
+        pass

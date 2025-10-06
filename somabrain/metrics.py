@@ -777,6 +777,151 @@ else:
         registry=REGISTRY,
     )
 
+# ==============================
+# Learning & Adaptation Metrics (Per-Tenant)
+# ==============================
+
+# Retrieval weights (per-tenant adaptation state)
+LEARNING_RETRIEVAL_ALPHA = get_gauge(
+    "somabrain_learning_retrieval_alpha",
+    "Semantic weight in retrieval (α) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_RETRIEVAL_BETA = get_gauge(
+    "somabrain_learning_retrieval_beta",
+    "Graph weight in retrieval (β) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_RETRIEVAL_GAMMA = get_gauge(
+    "somabrain_learning_retrieval_gamma",
+    "Recent weight in retrieval (γ) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_RETRIEVAL_TAU = get_gauge(
+    "somabrain_learning_retrieval_tau",
+    "Temperature for diversity (τ) per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Utility weights (per-tenant adaptation state)
+LEARNING_UTILITY_LAMBDA = get_gauge(
+    "somabrain_learning_utility_lambda",
+    "Semantic utility weight (λ) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_UTILITY_MU = get_gauge(
+    "somabrain_learning_utility_mu",
+    "Graph utility weight (μ) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_UTILITY_NU = get_gauge(
+    "somabrain_learning_utility_nu",
+    "Recent utility weight (ν) per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Feedback loop metrics
+LEARNING_FEEDBACK_APPLIED = get_counter(
+    "somabrain_learning_feedback_applied_total",
+    "Total feedback applications (success) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_FEEDBACK_REJECTED = get_counter(
+    "somabrain_learning_feedback_rejected_total",
+    "Feedback rejected due to outliers or bounds per tenant",
+    labelnames=["tenant_id", "reason"],
+)
+LEARNING_FEEDBACK_LATENCY = get_histogram(
+    "somabrain_learning_feedback_latency_seconds",
+    "Latency of feedback application (end-to-end) per tenant",
+    labelnames=["tenant_id"],
+    buckets=[0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0],
+)
+
+# Adaptation dynamics
+LEARNING_EFFECTIVE_LR = get_gauge(
+    "somabrain_learning_effective_lr",
+    "Effective learning rate (lr_eff) per tenant",
+    labelnames=["tenant_id"],
+)
+LEARNING_ROLLBACKS = get_counter(
+    "somabrain_learning_rollbacks_total",
+    "Number of weight rollbacks triggered per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Working memory growth
+LEARNING_WM_LENGTH = get_gauge(
+    "somabrain_learning_wm_length",
+    "Working memory length per session/tenant",
+    labelnames=["session_id", "tenant_id"],
+)
+
+# Autonomous experiments
+LEARNING_EXPERIMENT_ACTIVE = get_gauge(
+    "somabrain_learning_experiment_active",
+    "Number of active A/B experiments",
+    labelnames=["experiment_name"],
+)
+LEARNING_EXPERIMENT_PROMOTIONS = get_counter(
+    "somabrain_learning_experiment_promotions_total",
+    "Number of successful canary promotions",
+    labelnames=["experiment_name"],
+)
+
+
+# ==============================
+# Helper Functions for Learning Metrics
+# ==============================
+
+def update_learning_retrieval_weights(
+    tenant_id: str, alpha: float, beta: float, gamma: float, tau: float
+):
+    """Update per-tenant retrieval weight metrics."""
+    LEARNING_RETRIEVAL_ALPHA.labels(tenant_id=tenant_id).set(alpha)
+    LEARNING_RETRIEVAL_BETA.labels(tenant_id=tenant_id).set(beta)
+    LEARNING_RETRIEVAL_GAMMA.labels(tenant_id=tenant_id).set(gamma)
+    LEARNING_RETRIEVAL_TAU.labels(tenant_id=tenant_id).set(tau)
+
+
+def update_learning_utility_weights(
+    tenant_id: str, lambda_: float, mu: float, nu: float
+):
+    """Update per-tenant utility weight metrics."""
+    LEARNING_UTILITY_LAMBDA.labels(tenant_id=tenant_id).set(lambda_)
+    LEARNING_UTILITY_MU.labels(tenant_id=tenant_id).set(mu)
+    LEARNING_UTILITY_NU.labels(tenant_id=tenant_id).set(nu)
+
+
+def record_learning_feedback_applied(tenant_id: str):
+    """Increment feedback applied counter for tenant."""
+    LEARNING_FEEDBACK_APPLIED.labels(tenant_id=tenant_id).inc()
+
+
+def record_learning_feedback_rejected(tenant_id: str, reason: str):
+    """Increment feedback rejected counter for tenant."""
+    LEARNING_FEEDBACK_REJECTED.labels(tenant_id=tenant_id, reason=reason).inc()
+
+
+def record_learning_feedback_latency(tenant_id: str, latency_seconds: float):
+    """Record feedback latency for tenant."""
+    LEARNING_FEEDBACK_LATENCY.labels(tenant_id=tenant_id).observe(latency_seconds)
+
+
+def update_learning_effective_lr(tenant_id: str, lr_eff: float):
+    """Update effective learning rate metric for tenant."""
+    LEARNING_EFFECTIVE_LR.labels(tenant_id=tenant_id).set(lr_eff)
+
+
+def record_learning_rollback(tenant_id: str):
+    """Increment rollback counter for tenant."""
+    LEARNING_ROLLBACKS.labels(tenant_id=tenant_id).inc()
+
+
+def update_learning_wm_length(session_id: str, tenant_id: str, length: int):
+    """Update working memory length metric for session/tenant."""
+    LEARNING_WM_LENGTH.labels(session_id=session_id, tenant_id=tenant_id).set(length)
+
 
 async def metrics_endpoint() -> Any:
     """

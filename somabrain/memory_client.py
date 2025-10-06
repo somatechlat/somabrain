@@ -21,8 +21,10 @@ import builtins as _builtins
 import hashlib
 import json
 import logging
+import math
 import os  # added for environment handling
 import random
+import re
 import time
 import uuid
 from dataclasses import dataclass
@@ -711,9 +713,16 @@ class MemoryClient:
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
         hits: List[RecallHit] = []
         if isinstance(data, dict):
-            matches = data.get("matches")
-            if isinstance(matches, list):
-                for item in matches:
+            items = None
+            for key in ("matches", "results", "items", "memories", "entries", "hits"):
+                seq = data.get(key)
+                if isinstance(seq, list):
+                    items = seq
+                    break
+            if items is None and isinstance(data.get("data"), list):
+                items = data.get("data")
+            if items is not None:
+                for item in items:
                     if not isinstance(item, dict):
                         continue
                     payload = item.get("payload")
@@ -740,6 +749,8 @@ class MemoryClient:
                         score_val = item.get("score")
                         if score_val is None:
                             score_val = item.get("similarity")
+                        if score_val is None and isinstance(item.get("metadata"), dict):
+                            score_val = item["metadata"].get("score")
                         if score_val is not None:
                             score = float(score_val)
                             payload.setdefault("_score", score)
@@ -775,17 +786,359 @@ class MemoryClient:
                 )
         return hits
 
+    def _keyword_terms(self, query: str) -> List[str]:
+        q = str(query or "").strip()
+        if not q:
+            return []
+        terms: List[str] = []
+        seen: set[str] = set()
+        for token in re.split(r"[^A-Za-z0-9]+", q):
+            token = token.strip()
+            if len(token) < 3:
+                continue
+            lower = token.lower()
+            if not lower or lower in seen:
+                continue
+            seen.add(lower)
+            terms.append(token)
+        return terms
+
+    def _hit_identity(self, hit: RecallHit) -> str:
+        coord = hit.coordinate
+        if coord is None:
+            coord = _extract_memory_coord(hit.payload) or _extract_memory_coord(hit.raw)
+        if coord:
+            try:
+                return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
+            except Exception:
+                pass
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        if isinstance(payload, dict):
+            for key in ("id", "memory_id", "key", "coord_key"):
+                identifier = payload.get(key)
+                if identifier:
+                    return f"id:{identifier}"
+            for field in ("task", "text", "content", "what", "fact", "headline"):
+                value = payload.get(field)
+                if isinstance(value, str) and value.strip():
+                    return f"text:{value.strip().lower()}"
+        try:
+            raw = hit.raw or hit.payload
+            serial = json.dumps(raw, sort_keys=True, default=str)
+            digest = hashlib.blake2s(serial.encode("utf-8"), digest_size=16).hexdigest()
+            return f"hash:{digest}"
+        except Exception:
+            return f"obj:{id(hit)}"
+
+    def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
+        deduped: List[RecallHit] = []
+        seen: set[str] = set()
+        for hit in hits:
+            ident = self._hit_identity(hit)
+            if ident in seen:
+                continue
+            seen.add(ident)
+            deduped.append(hit)
+        return deduped
+
+    def _lexical_bonus(self, payload: dict, query: str) -> float:
+        q = str(query or "").strip()
+        if not q or not isinstance(payload, dict):
+            return 0.0
+        ql = q.lower()
+        bonus = 0.0
+        fields = ("task", "text", "content", "what", "fact", "headline", "summary")
+        for field in fields:
+            value = payload.get(field)
+            if isinstance(value, str) and value:
+                vl = value.lower()
+                if vl == ql:
+                    bonus = max(bonus, 1.5)
+                elif ql in vl:
+                    bonus = max(bonus, 1.0)
+        token_matches = 0
+        for token in re.split(r"[\s,;:/-]+", q):
+            token = token.strip().lower()
+            if len(token) < 3:
+                continue
+            for field in fields:
+                value = payload.get(field)
+                if isinstance(value, str) and token in value.lower():
+                    token_matches += 1
+                    break
+        if token_matches:
+            bonus += min(0.25 * token_matches, 1.0)
+        return bonus
+
+    def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+        ranked: List[tuple[float, float, float, int, RecallHit]] = []
+        for idx, hit in enumerate(hits):
+            payload = hit.payload if isinstance(hit.payload, dict) else {}
+            lex_bonus = self._lexical_bonus(payload, query)
+            base = 0.0
+            if hit.score is not None:
+                try:
+                    base = float(hit.score)
+                    if abs(base) > 1.0:
+                        base = math.copysign(math.log1p(abs(base)), base)
+                except Exception:
+                    base = 0.0
+            weight = 1.0
+            if isinstance(payload, dict):
+                try:
+                    wf = payload.get("_weight_factor")
+                    if isinstance(wf, (int, float)):
+                        weight = float(wf)
+                except Exception:
+                    weight = 1.0
+            final_score = (base * weight) + lex_bonus
+            if hit.score is None and lex_bonus > 0:
+                try:
+                    hit.score = lex_bonus
+                    payload.setdefault("_score", hit.score)
+                except Exception:
+                    pass
+            ranked.append((final_score, lex_bonus, weight, -idx, hit))
+        ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
+        return [item[-1] for item in ranked]
+
+    def _http_post_hits_sync(
+        self,
+        endpoint: str,
+        body: dict,
+        request_id: str,
+        headers: dict,
+        query: str,
+    ) -> List[RecallHit]:
+        if self._http is None:
+            return []
+        hdrs = {"X-Request-ID": f"{request_id}:{endpoint.strip('/').replace('/', '_') or 'root'}"}
+        hdrs.update(headers or {})
+        ok, status, data = self._http_post_with_retries_sync(endpoint, body, hdrs)
+        if not ok:
+            if status not in (404, 405):
+                try:
+                    logger.debug(
+                        "MemoryClient HTTP %s returned status=%s body=%s", endpoint, status, data
+                    )
+                except Exception:
+                    pass
+            return []
+        hits = self._normalize_recall_hits(data)
+        for hit in hits:
+            try:
+                hit.payload.setdefault("_source_endpoint", endpoint)
+            except Exception:
+                pass
+        return hits
+
+    async def _http_post_hits_async(
+        self,
+        endpoint: str,
+        body: dict,
+        request_id: str,
+        headers: dict,
+        query: str,
+    ) -> List[RecallHit]:
+        if self._http_async is None:
+            return []
+        hdrs = {"X-Request-ID": f"{request_id}:{endpoint.strip('/').replace('/', '_') or 'root'}"}
+        hdrs.update(headers or {})
+        ok, status, data = await self._http_post_with_retries_async(endpoint, body, hdrs)
+        if not ok:
+            if status not in (404, 405):
+                try:
+                    logger.debug(
+                        "MemoryClient HTTP %s returned status=%s body=%s", endpoint, status, data
+                    )
+                except Exception:
+                    pass
+            return []
+        hits = self._normalize_recall_hits(data)
+        for hit in hits:
+            try:
+                hit.payload.setdefault("_source_endpoint", endpoint)
+            except Exception:
+                pass
+        return hits
+
+    def _http_recall_aggregate_sync(
+        self,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
+    ) -> List[RecallHit]:
+        if self._http is None:
+            return []
+        _, compat_universe, compat_headers = self._compat_enrich_payload(
+            {"query": query, "universe": universe or "real"}, query
+        )
+        universe = str(compat_universe or universe or "real")
+        compat_headers = dict(compat_headers or {})
+        fetch_limit = max(int(top_k) * 3, 10)
+        aggregated: List[RecallHit] = []
+        query_text = str(query or "")
+        normalized_query = query_text.strip()
+
+        primary_body = {
+            "query": query_text,
+            "top_k": fetch_limit,
+            "universe": universe,
+            "exact": False,
+            "case_sensitive": False,
+        }
+        primary_hits = self._http_post_hits_sync(
+            "/recall_with_scores", primary_body, request_id, compat_headers, query
+        )
+        aggregated.extend(primary_hits)
+        if not primary_hits:
+            fallback_body = {
+                "query": query_text,
+                "top_k": fetch_limit,
+                "universe": universe,
+                "hybrid": True,
+            }
+            aggregated.extend(
+                self._http_post_hits_sync(
+                    "/recall", fallback_body, request_id, compat_headers, query
+                )
+            )
+
+        terms = self._keyword_terms(normalized_query or query_text)
+        if normalized_query:
+            hybrid_body = {
+                "query": query_text,
+                "terms": terms or None,
+                "top_k": fetch_limit,
+                "exact": False,
+                "case_sensitive": False,
+            }
+            aggregated.extend(
+                self._http_post_hits_sync(
+                    "/hybrid_recall_with_scores",
+                    hybrid_body,
+                    request_id,
+                    compat_headers,
+                    query,
+                )
+            )
+
+            keyword_body = {
+                "term": normalized_query,
+                "exact": False,
+                "case_sensitive": False,
+                "top_k": fetch_limit,
+            }
+            aggregated.extend(
+                self._http_post_hits_sync(
+                    "/keyword_search", keyword_body, request_id, compat_headers, query
+                )
+            )
+
+        deduped = self._deduplicate_hits(aggregated)
+        if not deduped:
+            return []
+        self._apply_weighting_to_hits(deduped)
+        ranked = self._rank_hits(deduped, query)
+        limit = max(1, int(top_k))
+        return ranked[:limit]
+
+    async def _http_recall_aggregate_async(
+        self,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
+    ) -> List[RecallHit]:
+        if self._http_async is None:
+            return []
+        _, compat_universe, compat_headers = self._compat_enrich_payload(
+            {"query": query, "universe": universe or "real"}, query
+        )
+        universe = str(compat_universe or universe or "real")
+        compat_headers = dict(compat_headers or {})
+        fetch_limit = max(int(top_k) * 3, 10)
+        aggregated: List[RecallHit] = []
+        query_text = str(query or "")
+        normalized_query = query_text.strip()
+
+        primary_body = {
+            "query": query_text,
+            "top_k": fetch_limit,
+            "universe": universe,
+            "exact": False,
+            "case_sensitive": False,
+        }
+        primary_hits = await self._http_post_hits_async(
+            "/recall_with_scores", primary_body, request_id, compat_headers, query
+        )
+        aggregated.extend(primary_hits)
+        if not primary_hits:
+            fallback_body = {
+                "query": query_text,
+                "top_k": fetch_limit,
+                "universe": universe,
+                "hybrid": True,
+            }
+            aggregated.extend(
+                await self._http_post_hits_async(
+                    "/recall", fallback_body, request_id, compat_headers, query
+                )
+            )
+
+        terms = self._keyword_terms(normalized_query or query_text)
+        if normalized_query:
+            hybrid_body = {
+                "query": query_text,
+                "terms": terms or None,
+                "top_k": fetch_limit,
+                "exact": False,
+                "case_sensitive": False,
+            }
+            aggregated.extend(
+                await self._http_post_hits_async(
+                    "/hybrid_recall_with_scores",
+                    hybrid_body,
+                    request_id,
+                    compat_headers,
+                    query,
+                )
+            )
+
+            keyword_body = {
+                "term": normalized_query,
+                "exact": False,
+                "case_sensitive": False,
+                "top_k": fetch_limit,
+            }
+            aggregated.extend(
+                await self._http_post_hits_async(
+                    "/keyword_search", keyword_body, request_id, compat_headers, query
+                )
+            )
+
+        deduped = self._deduplicate_hits(aggregated)
+        if not deduped:
+            return []
+        self._apply_weighting_to_hits(deduped)
+        ranked = self._rank_hits(deduped, query)
+        limit = max(1, int(top_k))
+        return ranked[:limit]
+
     def _filter_hits_by_keyword(
         self, hits: List[RecallHit], keyword: str
     ) -> List[RecallHit]:
         if not hits:
             return []
-        payloads = [h.payload for h in hits]
+        payloads = [h.payload for h in hits if isinstance(h.payload, dict)]
         filtered = _filter_payloads_by_keyword(payloads, keyword)
         if filtered and len(filtered) <= len(payloads):
             allowed_ids = {id(p) for p in filtered}
-            return [h for h in hits if id(h.payload) in allowed_ids]
-        return []
+            narrowed = [h for h in hits if id(h.payload) in allowed_ids]
+            if narrowed:
+                return narrowed
+        return hits
 
     def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
         if not hits:
@@ -1474,9 +1827,13 @@ class MemoryClient:
         # Prefer HTTP recall if available
         if self._http is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = self._http_recall_sync(
-                "/recall", query, top_k, universe or "real", rid
+            hits = self._http_recall_aggregate_sync(
+                query, top_k, universe or "real", rid
             )
+            if not hits:
+                hits = self._http_recall_sync(
+                    "/recall", query, top_k, universe or "real", rid
+                )
             if hits:
                 return hits
             return self._local_recall_hits(query, universe)
@@ -1611,9 +1968,13 @@ class MemoryClient:
 
         if self._http is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = self._http_recall_sync(
-                "/recall_with_scores", query, top_k, universe or "real", rid
+            hits = self._http_recall_aggregate_sync(
+                query, top_k, universe or "real", rid
             )
+            if not hits:
+                hits = self._http_recall_sync(
+                    "/recall_with_scores", query, top_k, universe or "real", rid
+                )
             if hits:
                 return hits
         return self.recall(query, top_k, universe, request_id)
@@ -1628,9 +1989,13 @@ class MemoryClient:
         """Async recall for HTTP mode; falls back to sync for local/stub."""
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = await self._http_recall_async(
-                "/recall", query, top_k, universe or "real", rid
+            hits = await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", rid
             )
+            if not hits:
+                hits = await self._http_recall_async(
+                    "/recall", query, top_k, universe or "real", rid
+                )
             if hits:
                 return hits
             return self._local_recall_hits(query, universe)
@@ -1650,9 +2015,13 @@ class MemoryClient:
 
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
-            hits = await self._http_recall_async(
-                "/recall_with_scores", query, top_k, universe or "real", rid
+            hits = await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", rid
             )
+            if not hits:
+                hits = await self._http_recall_async(
+                    "/recall_with_scores", query, top_k, universe or "real", rid
+                )
             if hits:
                 return hits
         return await self.arecall(query, top_k, universe, request_id)

@@ -264,6 +264,41 @@ class ExperimentManager:
             self._samples[experiment_id] = {}
         return True
 
+    def evaluate_pending(self) -> None:
+        """Evaluate all running experiments and perform statistical analysis.
+
+        For each experiment currently marked as running, if both the ``control`` and
+        ``variant`` groups have collected at least two samples for the configured
+        metric, we invoke :meth:`analyze_experiment` to compute Welch's t‑test and
+        Cohen's d. The result is stored back into the experiment's ``results``
+        dictionary under the key ``analysis`` for later promotion/rollback logic.
+        """
+        for exp_id in list(self.running_experiments):
+            # Ensure we have sample data for this experiment
+            if exp_id not in self._samples:
+                continue
+            groups = self._samples[exp_id]
+            # Require both control and variant groups present
+            if not ({"control", "variant"} <= set(groups.keys())):
+                continue
+            # Require at least two samples per group for statistical validity
+            if any(len(groups[g]) < 2 for g in ("control", "variant")):
+                continue
+            # Determine the metric used – we assume the first metric recorded is the target
+            # The ``record_experiment_result`` stores metric values per group; we can infer metric name
+            # from the experiment's ``results`` structure if present, otherwise default to "latency"
+            metric = "latency"
+            # Perform analysis using the existing method
+            analysis = self.analyze_experiment(exp_id, metric)
+            if analysis:
+                # Store analysis for external consumers (e.g., promotion logic)
+                self.experiments[exp_id].setdefault("analysis", analysis)
+                logger.info(f"Analyzed experiment {exp_id}: p={analysis.get('p_value'):.4f}, d={analysis.get('effect_size_cohen_d'):.4f}")
+                # Optionally stop the experiment after analysis
+                self.stop_experiment(exp_id)
+            else:
+                logger.debug(f"Insufficient data to analyze experiment {exp_id}")
+
     def stop_experiment(self, experiment_id: str) -> bool:
         """Stop an experiment."""
         if experiment_id not in self.experiments:
@@ -402,6 +437,45 @@ class ExperimentManager:
             "effect_size_cohen_d": float(cohen_d),
             "significant": p_val < alpha,
         }
+
+    def exp_retrieval_alpha_vs_tau(
+        self,
+        param_name: str,
+        control_value: Any,
+        variant_value: Any,
+        metric: str = "latency",
+        alpha: float = 0.05,
+    ) -> str:
+        """Create and start a two‑group experiment comparing `control_value` vs `variant_value`
+        for a given parameter.
+
+        Returns the experiment ID. The caller can later record results via
+        ``record_experiment_result`` and analyse with ``analyze_experiment``.
+        """
+        # Create experiment with descriptive name
+        exp_name = f"exp_{param_name}_vs_{control_value}_vs_{variant_value}"
+        description = (
+            f"Experiment to compare {param_name} values {control_value} (control) "
+            f"and {variant_value} (variant) using metric '{metric}'."
+        )
+        # No extra parameters needed beyond the param being varied
+        exp_id = self.create_experiment(
+            name=exp_name,
+            description=description,
+            parameters={},
+            control_group="control",
+        )
+        # Add variant group with the alternative value
+        self.add_experiment_group(exp_id, "variant", {param_name: variant_value})
+        # Control group may have the default value (or empty dict if not needed)
+        self.add_experiment_group(exp_id, "control", {param_name: control_value})
+        # Start the experiment immediately
+        self.start_experiment(exp_id)
+        logger.info(
+            f"Started experiment {exp_id} for param {param_name}: "
+            f"control={control_value}, variant={variant_value}, metric={metric}"
+        )
+        return exp_id
 
 
 class AutonomousLearner:

@@ -6,7 +6,6 @@ structured bundles that the agent can feed into its SLM.
 
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional
@@ -56,6 +55,14 @@ class ContextBuilder:
         self._memstore = memstore or MemstoreAdapter()
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
+        # Tenant identifier for per‑tenant metrics (default placeholder)
+        self._tenant_id: str = "default"
+
+    # New method to set the tenant for the current request
+    def set_tenant(self, tenant_id: str) -> None:
+        """Store the tenant ID so weight updates can be attributed correctly."""
+        if tenant_id:
+            self._tenant_id = tenant_id
 
     def build(  # noqa: PLR0914
         self,
@@ -145,6 +152,32 @@ class ContextBuilder:
         if weights_sum == 0:
             return [1.0 / len(weights)] * len(weights)
         normalized = weights / weights_sum
+
+        # ==== Tau adaptation for diversity ====
+        # Simple heuristic: increase tau when many duplicate memory IDs are returned.
+        # This encourages a higher temperature (more exploration) when diversity is low.
+        try:
+            ids = [m.id for m in memories]
+            unique = len(set(ids))
+            dup_ratio = 1.0 - (unique / max(len(ids), 1))
+        except Exception:
+            dup_ratio = 0.0
+        # Adjust tau within the allowed range [0.4, 1.2]
+        if dup_ratio > 0.5:
+            new_tau = min(self._weights.tau + 0.1, 1.2)
+        else:
+            new_tau = max(self._weights.tau - 0.05, 0.4)
+        self._weights.tau = new_tau
+        # Emit metric for the current tenant (import inside to respect monkeypatch)
+        from somabrain.metrics import update_learning_retrieval_weights as _update_metric
+
+        _update_metric(
+            tenant_id=self._tenant_id,
+            alpha=self._weights.alpha,
+            beta=self._weights.beta,
+            gamma=self._weights.gamma,
+            tau=self._weights.tau,
+        )
         return normalized.tolist()
 
     def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
@@ -199,9 +232,9 @@ class ContextBuilder:
         if ts <= 0:
             return 0.0
         age = max(time.time() - ts, 0.0)
-        # Exponential decay with 24h half-life
-        half_life = 86400.0
-        return math.exp(-age / half_life)
+        # Simple exponential decay; half‑life of 60 s
+        half_life = 60.0
+        return np.exp(-age / half_life)
 
 
 try:  # circular import guard

@@ -83,8 +83,15 @@ except Exception:
             return None
 
     FastAPI = DummyApp  # type: ignore
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+# Import FastAPI exception/response classes with safe fallback when FastAPI is not installed.
+try:
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.responses import JSONResponse
+except Exception:  # pragma: no cover
+    RequestValidationError = Exception  # type: ignore
+    class JSONResponse:  # Minimal stub
+        def __init__(self, *args, **kwargs):
+            pass
 
 from cachetools import TTLCache
 from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
@@ -1109,6 +1116,15 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 
 
 # Add cognitive middleware
+# --- Autonomous Coordinator integration ---
+try:
+    from somabrain.autonomous.coordinator import setup_coordinator
+    setup_coordinator(app)
+except Exception as e:
+    logger = globals().get('logger')
+    if logger:
+        logger.debug("Failed to set up autonomous coordinator: %s", e)
+
 app.add_middleware(CognitiveMiddleware)
 
 # Add existing middleware
@@ -1336,7 +1352,9 @@ mt_ctx = (
 )
 quotas = QuotaManager(QuotaConfig(daily_writes=cfg.write_daily_limit))
 per_tenant_neuromods = PerTenantNeuromodulators()
-# Alias for existing code expecting a global neuromods instance
+# Alias to match existing variable name used throughout the module
+per_tenant_neuromodulators = per_tenant_neuromods
+# Alias for compatibility with existing code expecting `neuromods`
 neuromods = per_tenant_neuromods
 amygdala = AmygdalaSalience(
     SalienceConfig(
@@ -1552,6 +1570,7 @@ class UnifiedBrainCore:
 # Initialize Unified Brain Core (PHASE 2 OPTIMIZATION)
 unified_brain = None  # default when demos disabled
 if fnom_memory is not None and fractal_memory is not None:
+    # Use the neuromodulators singleton alias defined earlier (neuromods)
     unified_brain = UnifiedBrainCore(fractal_memory, fnom_memory, neuromods)
 
 
@@ -1753,7 +1772,7 @@ exec_ctrl = (
             conflict_threshold=cfg.exec_conflict_threshold,
             explore_boost_k=cfg.exec_explore_boost_k,
             use_bandits=bool(getattr(cfg, "exec_use_bandits", False)),
-            bandit_eps=float(getattr(cfg, "exec_bandit_eps", 0.1)),
+            bandit_eps=cfg.exec_bandit_eps,
         )
     )
     if cfg.use_exec_controller
@@ -2005,7 +2024,7 @@ async def recall(req: S.RecallRequest, request: Request):
 
     data = thalamus.normalize(req.model_dump())
     # Apply thalamic filtering based on attention and neuromodulators
-    data = thalamus.filter_input(data, per_tenant_neuromods.get_state(ctx.tenant_id))
+    data = thalamus.filter_input(data, per_tenant_neuromodulators.get_state(ctx.tenant_id))
     cohort = request.headers.get("X-Backend-Cohort", "baseline").strip() or "baseline"
     # Universe scoping: request field overrides header if provided
     req_u = getattr(req, "universe", None) or None
@@ -2067,6 +2086,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 reranked = []
                 for s, p in wm_hits:
                     if isinstance(p, dict):
+                       
                         text_p = str(p.get("task") or p.get("fact") or "")
                     else:
                         text_p = str(p)
@@ -2074,13 +2094,6 @@ async def recall(req: S.RecallRequest, request: Request):
                         reranked.append((s, p))
                         continue
                     hv = quantum.encode_text(text_p)
-
-
-
-                   
-
-
-
                     hsim = (
                         QuantumLayer.cosine(hrr_qv, hv) if hrr_qv is not None else 0.0
                     )
@@ -2864,7 +2877,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
         wm_vec=wm_vec,
         cfg=cfg,
         predictor=predictor,
-        neuromods=per_tenant_neuromods,
+        neuromods=per_tenant_neuromodulators,
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
@@ -2916,7 +2929,7 @@ async def get_neuromodulators(request: Request):
         pass
     # Return current state; the Neuromodulators singleton holds a NeuromodState
     tenant_ctx = get_tenant(request, cfg.namespace)
-    state = per_tenant_neuromods.get_state(tenant_ctx.tenant_id)
+    state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
     return S.NeuromodStateModel(
         dopamine=state.dopamine,
         serotonin=state.serotonin,
