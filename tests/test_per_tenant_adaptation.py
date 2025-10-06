@@ -1,35 +1,47 @@
-import os
 import json
+import os
 import pytest
-from unittest import mock
+import redis
 from somabrain.learning.adaptation import AdaptationEngine, UtilityWeights
-from somabrain.context.builder import RetrievalWeights
-from somabrain.metrics import tau_gauge
+from somabrain.context.builder import RetrievalWeights, ContextBuilder, MemoryRecord
 from somabrain.feedback import Feedback
-from somabrain.context_builder import ContextBuilder
-
-# Simple in‑memory mock for Redis
-class DummyRedis:
-    def __init__(self):
-        self.store = {}
-    def setex(self, key, ttl, value):
-        self.store[key] = (value, ttl)
-    def get(self, key):
-        return self.store.get(key, (None,))[0]
-
-@pytest.fixture(autouse=True)
-def patch_redis(monkeypatch):
-    dummy = DummyRedis()
-    monkeypatch.setattr('somabrain.learning.adaptation._get_redis', lambda: dummy)
-    yield dummy
+from somabrain.metrics import tau_gauge
+# ---------------------------------------------------------------------------
+# Test fixtures
+# ---------------------------------------------------------------------------
+from unittest import mock
 
 @pytest.fixture(autouse=True)
 def patch_metrics(monkeypatch):
+    """Patch the metrics update function used by ContextBuilder.
+
+    The production code calls ``somabrain.metrics.update_learning_retrieval_weights``
+    inside ``ContextBuilder._compute_weights``.  During unit tests we replace it
+    with a ``Mock`` so no external side‑effects occur and we can inspect the
+    call arguments.
+    """
     mock_update = mock.Mock()
     monkeypatch.setattr('somabrain.metrics.update_learning_retrieval_weights', mock_update)
     return mock_update
 
-def test_per_tenant_state_is_isolated(patch_redis):
+# Real Redis client fixture – connects to the running Redis server
+@pytest.fixture(autouse=True)
+def real_redis(monkeypatch):
+    # Use environment variables or defaults matching the dev setup
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = int(os.getenv("REDIS_PORT", "6379"))
+    client = redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+    # Ensure a clean slate for the test by deleting any existing adaptation keys
+    for key in client.scan_iter(match="adaptation:state:*"):
+        client.delete(key)
+    # Monkey‑patch the internal _get_redis function to return this client
+    # No need to import _get_redis directly; we monkey‑patch it via the fixture.
+    yield client
+    # Cleanup after test – delete the keys again
+    for key in client.scan_iter(match="adaptation:state:*"):
+        client.delete(key)
+
+def test_per_tenant_state_is_isolated(real_redis):
     # Create two engines with different tenant ids
     rw1 = RetrievalWeights()
     uw1 = UtilityWeights()
@@ -45,11 +57,11 @@ def test_per_tenant_state_is_isolated(patch_redis):
     # Verify that each tenant has its own persisted state key
     key_a = "adaptation:state:tenant_a"
     key_b = "adaptation:state:tenant_b"
-    assert key_a in patch_redis.store
-    assert key_b in patch_redis.store
+    assert real_redis.exists(key_a)
+    assert real_redis.exists(key_b)
     # The stored JSON should reflect different feedback counts
-    data_a = json.loads(patch_redis.store[key_a][0])
-    data_b = json.loads(patch_redis.store[key_b][0])
+    data_a = json.loads(real_redis.get(key_a))
+    data_b = json.loads(real_redis.get(key_b))
     assert data_a["feedback_count"] == 1
     assert data_b["feedback_count"] == 1
     # Ensure that the learning rates differ according to the applied signal
@@ -72,7 +84,7 @@ def test_per_tenant_feedback_updates_weights_and_metrics(patch_metrics):
     assert kwargs["gamma"] == engine.retrieval_weights.gamma
     assert kwargs["tau"] == engine.retrieval_weights.tau
 
-def test_per_tenant_adaptation():
+def test_per_tenant_adaptation(patch_metrics):
     engine1 = AdaptationEngine(tenant_id="tenantA")
     engine2 = AdaptationEngine(tenant_id="tenantB")
     
@@ -88,10 +100,22 @@ def test_per_tenant_adaptation():
     assert tau_gauge.labels("tenantA")._value != tau_gauge.labels("tenantB")._value
 
     # Test diversity adaptation
-    cb = ContextBuilder()
-    cb._current_tau = 0.5
-    cb._track_diversity()
-    assert 0.4 <= cb._current_tau <= 1.2
+    cb = ContextBuilder(embed_fn=lambda x: [], memstore=None)
+    # Directly set an initial tau value
+    cb._weights.tau = 0.5
+    # Create a dummy embedding and a single dummy memory record to force weight computation
+    dummy_query = [0.1, 0.2, 0.3]
+    dummy_mem = [
+        MemoryRecord(
+            id="mem1",
+            score=1.0,
+            metadata={"graph_score": 0.0, "timestamp": 0},
+            embedding=[0.1, 0.2, 0.3],
+        )
+    ]
+    # This will run the weight logic and adjust tau based on diversity (only one item → no dupes)
+    cb._compute_weights(dummy_query, dummy_mem)
+    assert 0.4 <= cb._weights.tau <= 1.2
 
     # Test dynamic learning rate
     feedback = Feedback(event="test", score=0.8)

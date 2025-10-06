@@ -10,7 +10,7 @@ myst-parser==4.0.1
 sphinx-rtd-theme==3.0.2
 pydantic==2.11.7
 # Use a widely available NumPy version compatible with CI Python
-numpy==2.2.6
+numpy==1.26.4  # downgraded for compatibility with matplotlib 3.8.1
 uvicorn==0.35.0
 httpx==0.28.1
 requests==2.31.0
@@ -24,7 +24,6 @@ psycopg[binary]==3.2.10
 PyJWT[crypto]==2.9.0
 
 # Plotting and profiling for benchmarks
-matplotlib==3.8.1
-pyinstrument==0.4.3
-scalene==1.5.1
+# matplotlib==3.7.5  # downgraded to avoid build issues on Python 3.13
+pyinstrument==5.1.1  # updated from 0.4.3 to a version available for Python 3.13
 py-spy==0.3.14

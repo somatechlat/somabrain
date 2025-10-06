@@ -923,6 +923,18 @@ def update_learning_wm_length(session_id: str, tenant_id: str, length: int):
     LEARNING_WM_LENGTH.labels(session_id=session_id, tenant_id=tenant_id).set(length)
 
 
+# Ensure tau_gauge for context builder is defined only once and shared across modules.
+if "soma_context_builder_tau" in REGISTRY._names_to_collectors:
+    tau_gauge = REGISTRY._names_to_collectors["soma_context_builder_tau"]
+else:
+    tau_gauge = Gauge(
+        "soma_context_builder_tau",
+        "Current tau value for diversity adaptation",
+        ["tenant_id"],
+        registry=REGISTRY,
+    )
+
+
 async def metrics_endpoint() -> Any:
     """
     FastAPI endpoint for exposing Prometheus metrics.

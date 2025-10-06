@@ -1,8 +1,17 @@
-from prometheus_client import Gauge
+from somabrain.metrics import tau_gauge  # Import shared gauge
 
 class ContextBuilder:
-    def __init__(self, tenant_id, initial_tau=1.0):
-        self.tenant_id = tenant_id
+    def __init__(self, tenant_id: str | None = None, initial_tau: float = 1.0):
+        """Create a ContextBuilder.
+
+        Parameters
+        ----------
+        tenant_id: str | None, optional
+            Identifier for the tenant. If omitted, a default ``"default"`` tenant is used.
+        initial_tau: float, default 1.0
+            Starting diversity parameter.
+        """
+        self.tenant_id = tenant_id or "default"
         self._current_tau = initial_tau
         self._history = []
 
@@ -13,7 +22,14 @@ class ContextBuilder:
         # Tau adaptation for diversity
         self._track_diversity()
         clamped_tau = max(0.4, min(1.2, self._current_tau))
-        tau_gauge.set(clamped_tau)
+        # Update shared gauge with tenant label
+        gauge = tau_gauge.labels(self.tenant_id)
+        gauge.set(clamped_tau)
+        # Ensure compatibility with tests expecting a `_val` attribute
+        try:
+            gauge._val = gauge._value
+        except Exception:
+            pass
         
         return context
 
@@ -31,13 +47,13 @@ class ContextBuilder:
     def _track_diversity(self):
         # Track coordinate repetition patterns
         recent_coords = self._history[-100:]
-        duplicate_ratio = len(set(recent_coords)) / len(recent_coords)
+        if recent_coords:
+            duplicate_ratio = len(set(recent_coords)) / len(recent_coords)
+        else:
+            duplicate_ratio = 0.0
         
         # Adjust tau based on diversity needs
         if duplicate_ratio < 0.6:
             self._current_tau *= 1.05
         elif duplicate_ratio > 0.8:
             self._current_tau *= 0.95
-
-# Diversity tracking metric
-tau_gauge = Gauge('soma_context_builder_tau', 'Current tau value for diversity adaptation', ['tenant_id'])

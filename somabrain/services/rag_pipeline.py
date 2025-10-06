@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
 import logging
+from somabrain.services import rag_cache
 from somabrain.services.retrievers import (
     retrieve_graph,
     retrieve_graph_stub,
@@ -307,6 +308,7 @@ async def run_rag_pipeline(
                         hops=hops,
                         limit=limit,
                         universe=universe,
+                        namespace=ctx.namespace,
                     )
                     lists_by_retriever["graph"] = lst
                     cands += lst
@@ -659,6 +661,7 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
                 memsvc = MemoryService(mem_backend, ctx.namespace)
+                persist_records: list[dict] = []
                 # Build session payload with provenance and top candidates summary
                 sess_key = f"rag_session::{trace_id or ''}::{int(_time.time()*1000)}"
                 sess_payload = {
@@ -762,41 +765,136 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
 
-                # Link session -> candidates
-                for c in out:
-                    pc = (
-                        c.payload.get("coordinate")
-                        if isinstance(c.payload, dict)
-                        else None
+                seen_doc_coords: set[tuple[float, float, float]] = set()
+
+                def _append_doc_target(
+                    coord: tuple[float, float, float] | None,
+                    payload: dict | object,
+                ) -> list[tuple[tuple[float, float, float], dict]]:
+                    targets: list[tuple[tuple[float, float, float], dict]] = []
+                    if coord is None:
+                        return targets
+                    coord_t = (
+                        float(coord[0]),
+                        float(coord[1]),
+                        float(coord[2]),
                     )
-                    if isinstance(pc, (list, tuple)) and len(pc) >= 3:
-                        doc_coord = (float(pc[0]), float(pc[1]), float(pc[2]))
+                    if coord_t in seen_doc_coords:
+                        return targets
+                    seen_doc_coords.add(coord_t)
+                    payload_dict = (
+                        dict(payload)
+                        if isinstance(payload, dict)
+                        else {"raw": payload}
+                    )
+                    payload_dict.setdefault("coordinate", coord_t)
+                    targets.append((coord_t, payload_dict))
+                    return targets
+
+                for c in out:
+                    payload_dict = c.payload if isinstance(c.payload, dict) else {}
+                    key_for_coord = c.key or (
+                        payload_dict.get("task") if isinstance(payload_dict, dict) else None
+                    )
+                    is_session = False
+                    if isinstance(payload_dict, dict) and payload_dict.get("rag"):
+                        is_session = True
+                    if isinstance(key_for_coord, str) and key_for_coord.lower().startswith("rag session"):
+                        is_session = True
+
+                    doc_targets: list[tuple[tuple[float, float, float], dict]] = []
+
+                    if not is_session:
+                        pc = payload_dict.get("coordinate") if isinstance(payload_dict, dict) else None
+                        doc_coord: tuple[float, float, float] | None
+                        if isinstance(pc, (list, tuple)) and len(pc) >= 3:
+                            doc_coord = (
+                                float(pc[0]),
+                                float(pc[1]),
+                                float(pc[2]),
+                            )
+                        elif key_for_coord:
+                            try:
+                                doc_coord = memsvc.coord_for_key(
+                                    str(key_for_coord), universe=universe
+                                )
+                            except Exception:
+                                doc_coord = None
+                        else:
+                            doc_coord = None
+                        doc_targets.extend(
+                            _append_doc_target(doc_coord, payload_dict or c.payload)
+                        )
                     else:
-                        key_for_coord = c.key or (
-                            c.payload.get("task")
-                            if isinstance(c.payload, dict)
+                        rag_info = (
+                            payload_dict.get("rag")
+                            if isinstance(payload_dict, dict)
                             else None
                         )
-                        if key_for_coord:
-                            doc_coord = memsvc.coord_for_key(
-                                str(key_for_coord), universe=universe
+                        doc_keys: list[str] = []
+                        if isinstance(rag_info, dict):
+                            for entry in rag_info.get("candidates", []):
+                                doc_key = entry.get("key") if isinstance(entry, dict) else None
+                                if not doc_key:
+                                    continue
+                                doc_key_str = str(doc_key)
+                                if doc_key_str.lower().startswith("rag session"):
+                                    continue
+                                doc_keys.append(doc_key_str)
+                        for doc_key in doc_keys:
+                            try:
+                                doc_coord = memsvc.coord_for_key(
+                                    doc_key, universe=universe
+                                )
+                            except Exception:
+                                continue
+                            try:
+                                doc_payloads = memsvc.payloads_for_coords(
+                                    [doc_coord], universe=universe
+                                )
+                            except Exception:
+                                doc_payloads = []
+                            doc_payload = (
+                                dict(doc_payloads[0])
+                                if doc_payloads
+                                else {"task": doc_key}
                             )
-                        else:
-                            continue
+                            doc_targets.extend(
+                                _append_doc_target(doc_coord, doc_payload)
+                            )
+
+                    for doc_coord_t, doc_payload in doc_targets:
+                        try:
+                            memsvc.client().link(
+                                sess_coord_t,
+                                doc_coord_t,
+                                link_type="retrieved_with",
+                                weight=1.0,
+                            )
+                            _record_global_link(
+                                ctx.namespace,
+                                sess_coord_t,
+                                doc_coord_t,
+                                "retrieved_with",
+                                1.0,
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            persist_records.append(
+                                {
+                                    "coordinate": doc_coord_t,
+                                    "payload": doc_payload,
+                                    "score": float(getattr(c, "score", 0.0) or 0.0),
+                                    "retriever": getattr(c, "retriever", "graph"),
+                                }
+                            )
+                        except Exception:
+                            pass
+                if persist_records:
                     try:
-                        # Direct client link for immediate edge creation
-                        memsvc.client().link(
-                            sess_coord_t,
-                            doc_coord,
-                            link_type="retrieved_with",
-                            weight=1.0,
-                        )
-                        _record_global_link(
-                            ctx.namespace,
-                            sess_coord_t,
-                            doc_coord,
-                            "retrieved_with",
-                            1.0,
+                        rag_cache.store_candidates(
+                            ctx.namespace, req.query, persist_records
                         )
                     except Exception:
                         pass

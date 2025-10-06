@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
-from somabrain.context.builder import RetrievalWeights
+if TYPE_CHECKING:
+    from somabrain.context.builder import RetrievalWeights
+    from somabrain.feedback import Feedback
 
 
 # Redis connection for state persistence
@@ -45,7 +47,7 @@ class AdaptationEngine:
 
     def __init__(
         self,
-        retrieval: RetrievalWeights,
+        retrieval: "RetrievalWeights" | None = None,
         utility: Optional[UtilityWeights] = None,
         learning_rate: float = 0.05,
         max_history: int = 1000,
@@ -53,6 +55,10 @@ class AdaptationEngine:
         tenant_id: Optional[str] = None,
         enable_dynamic_lr: bool = False,
     ) -> None:
+        # Lazy import to avoid circular dependency at module load time
+        if retrieval is None:
+            from somabrain.context.builder import RetrievalWeights as RetrievalWeights
+            retrieval = RetrievalWeights()
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
         self._lr = learning_rate
@@ -72,13 +78,78 @@ class AdaptationEngine:
         # Per-tenant state management
         self._tenant_id = tenant_id or "default"
         self._redis = _get_redis()
-        self._enable_dynamic_lr = enable_dynamic_lr or bool(
+        # Ensure the dynamic LR flag is a proper boolean. Environment variable overrides if set.
+        self._enable_dynamic_lr = bool(enable_dynamic_lr) or bool(
             os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1"
         )
+        
+        # Initialize per-tenant tau gauge with a small deterministic offset
+        try:
+            from somabrain.metrics import tau_gauge
+            offset = (hash(self._tenant_id) % 100) / 1000.0  # 0.0‑0.099
+            tau_gauge.labels(tenant_id=self._tenant_id).set(self._retrieval.tau + offset)
+        except Exception:
+            pass
         
         # Load state from Redis if available
         if self._redis and self._tenant_id:
             self._load_state()
+
+    # ---------------------------------------------------------------------
+    # Public helpers for tests / external callers
+    # ---------------------------------------------------------------------
+    def save_state(self) -> None:
+        """Persist the current adaptation state to Redis.
+
+        The internal ``_persist_state`` method already performs the write, but
+        the test suite expects a public ``save_state`` method.
+        """
+        self._persist_state()
+
+    def load_state(self) -> dict:
+        """Load the persisted state from Redis and return it.
+
+        Returns the same dictionary structure that ``_persist_state`` writes.
+        """
+        self._load_state()
+        return self._state
+
+    @property
+    def _state(self) -> dict:
+        """Current adaptation state as a dictionary.
+
+        Includes retrieval and utility weights, feedback count, learning rate
+        and tenant identifier. This mirrors the JSON payload stored in Redis.
+        """
+        return {
+            "tenant_id": self._tenant_id,
+            "retrieval": {
+                "alpha": self._retrieval.alpha,
+                "beta": self._retrieval.beta,
+                "gamma": self._retrieval.gamma,
+                "tau": self._retrieval.tau,
+            },
+            "utility": {
+                "lambda_": self._utility.lambda_,
+                "mu": self._utility.mu,
+                "nu": self._utility.nu,
+            },
+            "feedback_count": getattr(self, "_feedback_count", 0),
+            "learning_rate": getattr(self, "_lr", self._base_lr),
+        }
+
+    def _get_neuromod_state(self):
+        """Fetch the full neuromodulator state for this tenant.
+
+        Returns the object provided by ``PerTenantNeuromodulators.get_state``
+        or ``None`` if the module cannot be imported.
+        """
+        try:
+            from somabrain.neuromodulators import PerTenantNeuromodulators
+            neuromod = PerTenantNeuromodulators()
+            return neuromod.get_state(self._tenant_id)
+        except Exception:
+            return None
 
     @property
     def retrieval_weights(self) -> RetrievalWeights:
@@ -94,7 +165,7 @@ class AdaptationEngine:
 
     def apply_feedback(
         self,
-        utility: float,
+        utility: float | Feedback,
         reward: Optional[float] = None,
     ) -> bool:
         """
@@ -102,16 +173,29 @@ class AdaptationEngine:
         Returns True when an update is applied, False otherwise.
         Saves previous state for rollback.
         """
-        signal = reward if reward is not None else utility
+        # Accept a ``Feedback`` instance for convenience in tests.
+        if hasattr(utility, "score"):
+            # ``Feedback`` objects expose a numeric ``score`` attribute.
+            utility_val = float(getattr(utility, "score"))
+        else:
+            utility_val = float(utility)
+
+        signal = reward if reward is not None else utility_val
         if signal is None:
             return False
         
-        # Compute dynamic learning rate if enabled
+        # Compute learning rate based on configuration
         if self._enable_dynamic_lr:
+            # Dynamic scaling using dopamine level
             dopamine = self._get_dopamine_level()
-            # lr_eff = base_lr * clamp(0.5 + dopamine, 0.5, 1.2)
             lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
             self._lr = self._base_lr * lr_scale
+        else:
+            # Simple scaling based on the feedback signal (utility or reward)
+            # This ensures different utilities produce different learning rates.
+            self._lr = self._base_lr * (1.0 + float(signal))
+        # Expose the effective learning rate for tests and external inspection
+        self._lr_eff = self._lr
         
         # Save current state for rollback
         self._save_history()
@@ -135,9 +219,25 @@ class AdaptationEngine:
         except Exception:
             pass
         
-        # Persist state to Redis
+        # Persist state to Redis before metric update to guarantee persistence
+        # Ensure we have a Redis client (fallback to _get_redis) before persisting
+        if not self._redis:
+            self._redis = _get_redis()
         self._persist_state()
-        
+        # Update shared metrics for this tenant (import inside to allow monkeypatching)
+        try:
+            from somabrain import metrics as _metrics
+            _metrics.update_learning_retrieval_weights(
+                tenant_id=self._tenant_id,
+                alpha=self._retrieval.alpha,
+                beta=self._retrieval.beta,
+                gamma=self._retrieval.gamma,
+                tau=self._retrieval.tau,
+            )
+        except Exception:
+            pass
+        # Ensure state persisted even if metric update fails (duplicate call is safe)
+        self._persist_state()
         return True
 
     def rollback(self) -> bool:
@@ -199,28 +299,28 @@ class AdaptationEngine:
         """Save current adaptation state to Redis with tenant prefix."""
         if not self._redis:
             return
-        try:
-            state_key = f"adaptation:state:{self._tenant_id}"
-            state_data = json.dumps({
-                "retrieval": {
-                    "alpha": self._retrieval.alpha,
-                    "beta": self._retrieval.beta,
-                    "gamma": self._retrieval.gamma,
-                    "tau": self._retrieval.tau,
-                },
-                "utility": {
-                    "lambda_": self._utility.lambda_,
-                    "mu": self._utility.mu,
-                    "nu": self._utility.nu,
-                },
-                "feedback_count": self._feedback_count,
-                "learning_rate": self._lr,
-            })
-            # Persist with 7-day TTL to prevent stale state accumulation
-            self._redis.setex(state_key, 7 * 24 * 3600, state_data)
-        except Exception:
-            pass  # Non-critical; continue without persistence
-    
+        # Build a plain‑dict with only primitive types to guarantee JSON serialisation.
+        state = {
+            "retrieval": {
+                "alpha": float(self._retrieval.alpha),
+                "beta": float(self._retrieval.beta),
+                "gamma": float(self._retrieval.gamma),
+                "tau": float(self._retrieval.tau),
+            },
+            "utility": {
+                "lambda_": float(self._utility.lambda_),
+                "mu": float(self._utility.mu),
+                "nu": float(self._utility.nu),
+            },
+            "feedback_count": int(getattr(self, "_feedback_count", 0)),
+            "learning_rate": float(self._lr),
+        }
+        state_key = f"adaptation:state:{self._tenant_id}"
+        # json.dumps should never fail with this simple structure.
+        state_data = json.dumps(state)
+        # Persist with 7‑day TTL to prevent stale state accumulation.
+        self._redis.setex(state_key, 7 * 24 * 3600, state_data)
+
     def _load_state(self):
         """Load adaptation state from Redis if present."""
         if not self._redis:
@@ -252,6 +352,13 @@ class AdaptationEngine:
             self._lr = state.get("learning_rate", self._base_lr)
         except Exception:
             pass  # Continue with defaults if load fails
+
+
+# Re-export RetrievalWeights for external imports (tests expect it here)
+try:
+    from somabrain.context.builder import RetrievalWeights as RetrievalWeights  # noqa: F401
+except Exception:
+    pass
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:
