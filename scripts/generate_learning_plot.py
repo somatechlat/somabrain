@@ -98,9 +98,8 @@ def run_learning_iterations(iterations: int = 6) -> dict:
 
 
 def plot_learning_curves(data: dict) -> pathlib.Path:
-    # Create figure and primary axis for utility lambda
+    # Create figure and primary axis for utility lambda (blue)
     fig, ax1 = plt.subplots(figsize=(8, 4.5))
-    # Plot utility lambda on primary (left) axis in solid blue
     ax1.plot(
         data["iterations"],
         data["lambda"],
@@ -114,9 +113,8 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
     ax1.set_ylabel("Utility lambda", color="blue")
     ax1.tick_params(axis="y", labelcolor="blue")
 
-    # Create secondary axis for retrieval alpha
+    # Secondary axis for retrieval alpha (orange)
     ax2 = ax1.twinx()
-    # Plot retrieval alpha on secondary (right) axis in dashed orange
     ax2.plot(
         data["iterations"],
         data["alpha"],
@@ -124,15 +122,15 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
         label="Retrieval alpha",
         color="orange",
         linestyle="--",
-        linewidth=2,
+        linewidth=2.5,
     )
     ax2.set_ylabel("Retrieval alpha", color="orange")
     ax2.tick_params(axis="y", labelcolor="orange")
 
     # Combine legends from both axes
-    lines_1, labels_1 = ax1.get_legend_handles_labels()
-    lines_2, labels_2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines_1 + lines_2, labels_1 + labels_2, loc="upper left")
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper left")
 
     plt.title("SomaBrain Online Adaptation Progress")
     plt.grid(True, linestyle="--", alpha=0.3)
