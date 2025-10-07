@@ -11,7 +11,7 @@ from typing import Optional
 
 import jwt
 from fastapi import HTTPException, Request
-from jwt import PyJWTError
+from jwt.exceptions import PyJWTError
 import os
 
 from .config import Config

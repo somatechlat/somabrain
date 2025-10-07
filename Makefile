@@ -8,7 +8,7 @@ PYTEST:=$(VENV)/bin/pytest
 RUFF:=$(VENV)/bin/ruff
 MYPY:=$(VENV)/bin/mypy
 
-.PHONY: help venv install dev run test lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push
+.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push
 
 help:
 	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean"
@@ -33,6 +33,10 @@ bench:
 
 test:
 	PYTHONPATH=. $(PYTEST) -q
+
+.PHONY: test-live
+test-live:
+	SOMABRAIN_TEST_LIVE_STACK=1 SOMA_API_URL=$${SOMA_API_URL:-http://127.0.0.1:9696} PYTHONPATH=. $(PYTEST) -q
 
 lint:
 	$(RUFF) check .
@@ -65,13 +69,43 @@ clean:
 	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__
 PY := .venv/bin/python
 
+# ---------------------------------------------------------------------------
+# Documentation
+# ---------------------------------------------------------------------------
+.PHONY: docs
+# Build HTML documentation with Sphinx. Uses the ``docs/source`` configuration.
+# The ``AUTOSUMMARY`` env var can be set to ``1`` to enable API autosummary.
+# Example: ``AUTOSUMMARY=1 make docs``
+
+docs:
+	@echo "Building Sphinx documentation..."
+	@AUTOSUMMARY=$(AUTOSUMMARY) sphinx-build -b html docs/source docs/build
+
+# Consolidated test target – runs the full pytest suite (kept from earlier edit)
 .PHONY: test
 test:
-	PYTHONPATH=. $(PY) tests/test_endpoints_basic.py
-	PYTHONPATH=. $(PY) tests/test_hrr_cleanup.py
-	PYTHONPATH=. $(PY) tests/test_memory_client.py
-	PYTHONPATH=. $(PY) tests/test_reflection_v2.py
-	PYTHONPATH=. $(PY) tests/test_graph_reasoning.py
-	PYTHONPATH=. $(PY) tests/test_personality.py
-	PYTHONPATH=. $(PY) tests/test_predictor_budget.py
-	PYTHONPATH=. $(PY) tests/test_migration.py
+	PYTHONPATH=. $(PYTEST) -q
+
+# Keep the original docker build/run targets for backward compatibility
+.PHONY: docker-build docker-run docker-build-prod docker-run-prod docker-push
+
+# Generate Kubernetes ConfigMap from CONFIGURATION.md
+.PHONY: configmap
+configmap:
+	@python scripts/generate_configmap.py
+
+# Convenience aliases for the two main startup scripts
+.PHONY: dev-up local-up
+
+dev-up:
+	@echo "Starting Docker‑Compose development stack..."
+	@./scripts/dev_up.sh
+
+local-up:
+	@echo "Starting pure‑Python local stack..."
+	@./scripts/run_full_stack.sh
+
+# Clean up virtual environment and caches (keeps existing behavior)
+.PHONY: clean
+clean:
+	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__

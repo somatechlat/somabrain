@@ -42,6 +42,19 @@ def _reset_globals():
 LOCAL_HOSTNAMES = {"127.0.0.1", "localhost"}
 
 
+def _use_live_stack() -> bool:
+    """Whether tests should target the live (port 9696) stack instead of the in-process harness."""
+
+    for env_name in (
+        "SOMABRAIN_TEST_LIVE_STACK",
+        "SOMABRAIN_USE_LIVE_STACK",
+    ):
+        value = os.getenv(env_name, "").strip().lower()
+        if value in {"1", "true", "yes", "live", "full"}:
+            return True
+    return False
+
+
 def _clear_env():
     # Preserve explicit endpoint variables so the skip logic can see them.
     for var in [
@@ -69,11 +82,21 @@ def pytest_configure(config):
     # Ensure a clean state at the start of the test run
     _clear_env()
     _reset_globals()
-    # HARD LOCK: Always point tests at dedicated integration server port 9797.
-    # The user requested we never hit 9696 because a different version may be
-    # running there. We override any pre-set SOMA_API_URL (unless explicitly
-    # exported SOMA_API_URL_LOCK_BYPASS=1 for an advanced/manual scenario).
-    if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") not in ("1", "true", "yes"):
+    use_live_stack = _use_live_stack()
+
+    # In live-stack mode we intentionally target the canonical serving port (9696) and
+    # skip the strict override that forces 9797. Honour any user-provided SOMA_API_URL
+    # so that port-forwards or remote endpoints keep working.
+    if use_live_stack:
+        desired = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9696")
+        os.environ["SOMA_API_URL"] = desired
+        os.environ.setdefault("SOMA_API_URL_LOCK_BYPASS", "1")
+        print(f"[pytest_configure] Live stack mode enabled; SOMA_API_URL={desired}")
+    elif os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") not in ("1", "true", "yes"):
+        # HARD LOCK: Always point tests at dedicated integration server port 9797.
+        # The user requested we never hit 9696 because a different version may be
+        # running there. We override any pre-set SOMA_API_URL (unless explicitly
+        # exported SOMA_API_URL_LOCK_BYPASS=1 for an advanced/manual scenario).
         prev = os.environ.get("SOMA_API_URL")
         if prev and not _is_local_url(prev):
             desired = prev
@@ -231,6 +254,16 @@ def start_fastapi_server():
     directive while still supporting developer machines.
     """
     from urllib.parse import urlparse
+
+    if _use_live_stack():
+        soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9696")
+        print(
+            f"[tests.conftest] Live stack mode enabled; assuming existing service at {soma_url}"
+        )
+        os.environ.setdefault("SOMA_API_URL_LOCK_BYPASS", "1")
+        os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
+        yield
+        return
 
     soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9797")
 

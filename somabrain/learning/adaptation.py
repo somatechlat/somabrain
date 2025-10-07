@@ -14,9 +14,22 @@ if TYPE_CHECKING:
 
 # Redis connection for state persistence
 def _get_redis():
-    """Get Redis client for per-tenant state persistence."""
+    """Get Redis client for per-tenant state persistence.
+    Prefer the full URL via ``SOMABRAIN_REDIS_URL`` if provided (as set in the
+    Docker compose environment).  Fall back to ``REDIS_HOST``/``REDIS_PORT``
+    for compatibility with local development.
+    """
+    import os
     try:
+        # First, try full Redis URL (e.g., ``redis://sb_redis:6379/0``)
+        redis_url = os.getenv("SOMABRAIN_REDIS_URL")
+        # Remove any accidental leading/trailing whitespace that can break parsing
+        if redis_url:
+            redis_url = redis_url.strip()
         import redis
+        if redis_url:
+            return redis.from_url(redis_url)
+        # Legacy fallback to host/port variables
         redis_host = os.getenv("REDIS_HOST", "localhost")
         redis_port = int(os.getenv("REDIS_PORT", "6379"))
         return redis.Redis(host=redis_host, port=redis_port, decode_responses=True)

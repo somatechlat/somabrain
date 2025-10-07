@@ -39,6 +39,8 @@ RUN apt-get update \
 # Copy wheel from builder stage and install
 COPY --from=builder /build/dist /dist
 RUN if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install --no-cache-dir /dist/*.whl; else echo "No wheel files found"; exit 1; fi
+# Ensure JWT library is available for auth module
+RUN pip install --no-cache-dir "PyJWT[crypto]"
 
 # Ensure confluent-kafka (librdkafka) is available for stronger Kafka semantics in
 # integration and production images. Installing via pip will build against

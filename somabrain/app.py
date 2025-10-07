@@ -656,6 +656,9 @@ class CognitiveMiddleware:
                     f"🧠 Request {request_id}: {method} {path} - Processing completed in {processing_time:.4f}s"
                 )
 
+        except HTTPException:
+            # Allow FastAPI/Starlette to handle intentional HTTP errors (e.g. auth/validation).
+            raise
         except Exception as e:
             processing_time = time.time() - start_time
             error_info = CognitiveErrorHandler.handle_error(
