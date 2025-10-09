@@ -264,7 +264,8 @@ class MemoryPayload(BaseModel):
     quality_score: Optional[float] = None
     domains: Optional[Union[List[str], str]] = None
     reasoning_chain: Optional[Union[List[str], str]] = None
-    importance: int = 1
+    # Importance can be a float (0.0-1.0) or an int; using float for broader compatibility.
+    importance: float = 1.0
     memory_type: str = "episodic"
     timestamp: Optional[TimestampInput] = None
     universe: Optional[str] = None

@@ -194,7 +194,7 @@ pip install -r requirements-dev.txt
 # 2. Launch canonical stack (auto-selects free ports and writes ports.json)
 ./scripts/dev_up.sh
 
-# 3. Run integration tests (NO_MOCKS)
+# 3. Run integration tests (real services only)
 pytest -m integration -q
 
 # 4. Tail metrics / logs

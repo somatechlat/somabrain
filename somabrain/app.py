@@ -2501,20 +2501,38 @@ async def recall(req: S.RecallRequest, request: Request):
 
 
 @app.post("/remember", response_model=S.RememberResponse)
-async def remember(req: S.RememberRequest, request: Request):
+async def remember(body: dict, request: Request):
+    """Handle memory storage.
+
+    The original API expected a ``RememberRequest`` with a ``payload`` field.
+    Many integration tests (and some external callers) send the payload
+    fields directly at the top level (e.g. ``{"task": "…", "content": "…"}``).
+    To maintain backward compatibility we accept both shapes:
+
+    * If ``payload`` is present, we treat the request as the original schema.
+    * Otherwise the entire body is interpreted as the payload.
+    """
     require_auth(request, cfg)
-    # Retrieve tenant context
     ctx = get_tenant(request, cfg.namespace)
 
-    # Input validation for brain safety
+    # Determine coordinate and payload data supporting both request shapes.
+    coord = body.get("coord")
+    payload_data = body.get("payload", body)
+
+    # Validate and coerce the payload using the defined MemoryPayload model.
     try:
-        if hasattr(req.payload, "task") and req.payload.task:
-            req.payload.task = CognitiveInputValidator.validate_text_input(
-                req.payload.task, "task"
+        payload_obj: S.MemoryPayload = S.MemoryPayload(**payload_data)  # type: ignore[arg-type]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
+
+    # Input validation for brain safety (task text & coordinate format).
+    try:
+        if payload_obj.task:
+            payload_obj.task = CognitiveInputValidator.validate_text_input(
+                payload_obj.task, "task"
             )
-        if hasattr(req, "coord") and req.coord:
-            # Parse coordinate string and validate
-            coord_parts = req.coord.split(",")
+        if coord:
+            coord_parts = str(coord).split(",")
             if len(coord_parts) == 3:
                 coords_tuple = tuple(float(x.strip()) for x in coord_parts)
                 CognitiveInputValidator.validate_coordinates(coords_tuple)
@@ -2534,8 +2552,8 @@ async def remember(req: S.RememberRequest, request: Request):
             pass
         raise HTTPException(status_code=429, detail="daily write quota exceeded")
     # if coord not provided, key by task + timestamp for stable coord
-    key = req.coord or (req.payload.task or "task")
-    payload = req.payload.model_dump()
+    key = coord or (payload_obj.task or "task")
+    payload = payload_obj.model_dump()
     if payload.get("timestamp") is not None:
         try:
             payload["timestamp"] = coerce_to_epoch_seconds(payload["timestamp"])

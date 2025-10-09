@@ -11,7 +11,7 @@
   "SOMABRAIN_REQUIRE_MEMORY": "1",
   "SOMABRAIN_MODE": "enterprise",
   "SOMABRAIN_PREDICTOR_PROVIDER": "mahal",
-  "somabrain_host_mapping": "0.0.0.0:9797",
+  "somabrain_host_mapping": "0.0.0.0:9696",
   "redis_host_mapping": "0.0.0.0:6379",
   "kafka_host_mapping": "0.0.0.0:9092",
   "prometheus_host_mapping": "0.0.0.0:9090",

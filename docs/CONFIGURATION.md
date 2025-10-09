@@ -1,16 +1,21 @@
-## Production-like Defaults
+## Production-like Defaults (code reality)
 
-The development stack is configured to run in a production-like posture by default to ensure tests
-and manual verification hit real services with no local mocks:
+The **code base does not embed any hard‑coded defaults** for the production‑like flags.  Those flags are
+populated by the development helper script `scripts/dev_up.sh` (which writes a `.env.local` file) and
+may also be supplied explicitly when launching the container via `docker run -e VAR=…`.  The Python
+runtime simply reads the environment variables when they are needed; if a variable is absent the code
+behaves according to its own internal defaults.
 
-- `SOMABRAIN_FORCE_FULL_STACK=1`
-- `SOMABRAIN_STRICT_REAL=1`
-- `SOMABRAIN_REQUIRE_MEMORY=1`
-- `SOMABRAIN_MODE=enterprise`
+The flags that are typically set for a full‑stack, strict‑real deployment are:
 
-These are written into `.env.local` by `scripts/dev_up.sh` and are also set as defaults in the
-`Dockerfile`, so both compose-based and standalone `docker run` workflows inherit them. Override any
-value at runtime using `-e VAR=value` or by editing `.env.local` before launching compose.
+* `SOMABRAIN_FORCE_FULL_STACK` – require external memory, a real embedder and a non‑stub predictor for readiness.
+* `SOMABRAIN_STRICT_REAL` – enforce the “no‑stubs” policy (predictor, embedder, recall).
+* `SOMABRAIN_REQUIRE_MEMORY` – abort start‑up if the memory service cannot be reached.
+* `SOMABRAIN_MODE` – optional mode identifier (e.g., `enterprise`).
+
+These values can be overridden at runtime with `-e VAR=value` or by editing `.env.local` before invoking
+`docker compose`.  The documentation now reflects the **actual source of truth – the code** – rather than
+implying that defaults are baked into the Dockerfile.
 
 Examples:
 

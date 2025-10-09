@@ -192,7 +192,7 @@ dedicated regression suite:
 uv run pytest tests/test_recall_scoring.py -q
 ```
 
-### Integration Tests (NO_MOCKS)
+### Integration Tests (real services only)
 ```bash
 uv run pytest -m integration -q
 ```

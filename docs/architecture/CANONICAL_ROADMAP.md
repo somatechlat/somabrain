@@ -19,7 +19,7 @@ cross-functional team spanning platform, infra, math/ML, and application enginee
   and object storage back all durable state.
 - **Observable by default:** traces, metrics, and logs flow through OpenTelemetry collectors;
   every new feature ships with dashboards and alerts.
-- **NO_MOCKS policy:** tests rely on real services (or deterministic in-process emulations) and
+-- **Real‑service policy:** tests rely on real services (or deterministic in‑process emulations) and
   run in CI against the canonical stack.
 - **Performance & math integrity:** memory and reasoning layers use rigorous mathematics (vector
   geometry, constrained optimization) validated with reproducible benchmarks.
