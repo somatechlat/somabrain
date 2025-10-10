@@ -145,8 +145,8 @@ This document intentionally matches current code state; update only after code c
 - **Brain API (FastAPI/uvicorn)** – primary entry point; exposes REST/gRPC endpoints for agent
   requests, memory operations, and health checks. Auto-discovers host ports via `scripts/dev_up.sh`
   during local deploys and via config maps in production.
-- **Memory Service** – External HTTP service on port 9595 (see `tests/support/memory_service.py`). No in‑process fallback backend; the brain keeps a process‑global mirror (for read‑your‑writes) and an outbox to replay queued writes if the service is temporarily unavailable.
-- **OPA Stub Service** – Simple allow-all policy service on port 8181 (see `tests/support/opa_stub.py`). **[Note: Full Rego policy engine not yet implemented]**
+- **Memory Service** – External HTTP service on port 9595 (backed by the live SomaBrain deployment; no in‑process fallback). The brain keeps a process‑global mirror (for read‑your‑writes) and an outbox to replay queued writes if the service is temporarily unavailable.
+- **OPA Service** – Real OPA policy engine exposed on port 8181. Production deployments point the brain at `opa.soma-infra.svc.cluster.local:8181`; local development should run the same container via Helm or docker-compose.
 - **Background Workers** – Outbox processing and circuit-breaker recovery via `start_background_workers()` in app.py
 - **Constitution Engine** – `somabrain/constitution/cloud.py` orchestrates reads/writes to managed
   Redis (primary), Postgres (history), and object storage (immutable snapshots). Threshold signature

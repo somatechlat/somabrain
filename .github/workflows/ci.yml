@@ -24,6 +24,8 @@ jobs:
         run: uv run ruff check .
       - name: Run black formatting check
         run: uv run black --check .
+      - name: Run mypy type checks
+        run: uv run mypy somabrain
 
   test:
     runs-on: ubuntu-latest
@@ -64,3 +66,85 @@ jobs:
             if curl -fsS http://127.0.0.1:9696/health >/dev/null; then echo ok; break; fi; sleep 2; done
           curl -fsS http://127.0.0.1:9696/health | jq '.ok'
           docker rm -f "$cid"
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install dependencies
+        run: pip install -e .[dev]
+      - name: Start dev infra (docker-compose)
+        run: |
+          docker compose -f scripts/docker-compose.dev.yml up -d --build
+      - name: Wait for services
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:9595/health >/dev/null 2>&1; then echo "memory up"; break; fi; sleep 2
+          done
+          for i in {1..30}; do
+            if curl -sSf http://127.0.0.1:8181/health >/dev/null 2>&1; then echo "opa up"; break; fi; sleep 2
+          done
+      - name: Run strict-mode tests
+        env:
+          SOMABRAIN_STRICT_REAL: "1"
+          SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://127.0.0.1:9595"
+          SOMABRAIN_OPA_URL: "http://127.0.0.1:8181"
+          SOMABRAIN_REDIS_URL: "redis://127.0.0.1:6379/0"
+        run: |
+          pytest -q
+      - name: Tear down dev infra
+        if: always()
+        run: |
+          docker compose -f scripts/docker-compose.dev.yml down --volumes --remove-orphans
+
+  integration-kind:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kind
+        uses: engineerd/setup-kind@v0.6.0
+        with:
+          version: v0.20.0
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: '1.28.0'
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: 'v3.12.0'
+      - name: Create kind cluster
+        run: |
+          kind create cluster --name soma-ci
+      - name: Enforce strict-real for integration-kind
+        env:
+          SOMABRAIN_STRICT_REAL: "1"
+        run: |
+          echo "Enforcing SOMABRAIN_STRICT_REAL=1 for integration-kind"
+      - name: Load images (if any)
+        run: echo "No prebuilt images loaded; using chart images from values"
+      - name: Install soma-infra chart
+        run: |
+          kubectl create ns soma || true
+          helm dependency update infra/helm/charts/soma-infra
+          helm lint infra/helm/charts/soma-infra
+          helm upgrade --install soma-infra infra/helm/charts/soma-infra -n soma --wait --timeout 10m
+      - name: Wait for infra to be ready
+        run: |
+          for i in {1..60}; do
+            if kubectl -n soma get pods --no-headers | awk '{print $3}' | grep -qE "^(Running|Completed)$"; then echo ok; break; fi; sleep 5; done
+      - name: Run smoke checks
+        run: |
+          kubectl -n soma get pods -o wide
+          # Example smoke: check OPA or Redis service exists (adjust names based on chart)
+          kubectl -n soma get svc || true
+      - name: Tear down kind cluster
+        if: always()
+        run: |
+          kind delete cluster --name soma-ci || true

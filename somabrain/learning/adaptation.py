@@ -11,6 +11,11 @@ if TYPE_CHECKING:
     from somabrain.context.builder import RetrievalWeights
     from somabrain.feedback import Feedback
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency
+    shared_settings = None  # type: ignore
+
 
 # Redis connection for state persistence
 def _get_redis():
@@ -22,7 +27,14 @@ def _get_redis():
     import os
     try:
         # First, try full Redis URL (e.g., ``redis://sb_redis:6379/0``)
-        redis_url = os.getenv("SOMABRAIN_REDIS_URL")
+        redis_url = None
+        if shared_settings is not None:
+            try:
+                redis_url = str(getattr(shared_settings, "redis_url", "")).strip() or None
+            except Exception:
+                redis_url = None
+        if not redis_url:
+            redis_url = os.getenv("SOMABRAIN_REDIS_URL")
         # Remove any accidental leading/trailing whitespace that can break parsing
         if redis_url:
             redis_url = redis_url.strip()

@@ -17,6 +17,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency during migration
+    shared_settings = None  # type: ignore
+
 Base = declarative_base()
 _ENGINE: Optional[Engine] = None
 _SESSION_FACTORY: Optional[sessionmaker] = None
@@ -31,7 +36,14 @@ def get_default_db_url() -> str:
     3. sqlite:///./data/somabrain.db (local fallback for tests/dev)
     """
 
-    url = os.getenv("SOMABRAIN_POSTGRES_DSN") or os.getenv("SOMABRAIN_DB_URL")
+    url = None
+    if shared_settings is not None:
+        try:
+            url = str(getattr(shared_settings, "postgres_dsn", "") or "").strip() or None
+        except Exception:
+            url = None
+    if not url:
+        url = os.getenv("SOMABRAIN_POSTGRES_DSN") or os.getenv("SOMABRAIN_DB_URL")
     if url:
         return url
     # Ensure data directory exists for SQLite fallback

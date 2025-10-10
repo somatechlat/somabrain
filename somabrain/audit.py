@@ -22,6 +22,11 @@ try:
 except Exception:  # pragma: no cover - optional runtime dependency
     Request = Any  # type: ignore
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency
+    shared_settings = None  # type: ignore
+
 LOGGER = logging.getLogger("somabrain.audit")
 
 
@@ -173,12 +178,42 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             return kurl[len("kafka://") :]
         return kurl
 
-    kafka_host = os.getenv("SOMABRAIN_KAFKA_HOST", "localhost")
-    kafka_port = os.getenv("SOMABRAIN_KAFKA_PORT", "9092")
-    # Use the correct environment variable name for the Kafka URL.
-    kafka_url = _parse_kafka_url(
-        os.getenv("SOMABRAIN_KAFKA_URL", f"kafka://{kafka_host}:{kafka_port}")
-    )
+    kafka_url: Optional[str] = None
+    if shared_settings is not None:
+        try:
+            raw_bootstrap = getattr(shared_settings, "kafka_bootstrap_servers", None)
+            if raw_bootstrap:
+                kafka_url = _parse_kafka_url(str(raw_bootstrap))
+        except Exception:
+            kafka_url = None
+    if not kafka_url:
+        kafka_host = os.getenv("SOMABRAIN_KAFKA_HOST", "localhost")
+        kafka_port = os.getenv("SOMABRAIN_KAFKA_PORT", "9092")
+        kafka_url = _parse_kafka_url(
+            os.getenv("SOMABRAIN_KAFKA_URL", f"kafka://{kafka_host}:{kafka_port}")
+        )
+    if not kafka_url:
+        LOGGER.warning(
+            "Kafka bootstrap servers not configured; falling back to journal-only audit logging."
+        )
+        try:
+            from . import journal as _journal, metrics as _mx
+
+            _journal.append_event(
+                str(_audit_journal_dir()), "audit", {"kafka_topic": topic, "event": ev}
+            )
+            try:
+                _mx.AUDIT_JOURNAL_FALLBACK.inc()
+            except Exception:
+                pass
+            return True
+        except Exception:
+            LOGGER.exception("Failed to append audit event to journal")
+            try:
+                _mx.JOURNAL_SKIP.inc()
+            except Exception:
+                pass
+            return False
     use_idempotent = os.getenv("SOMA_KAFKA_IDEMPOTENT", "0") == "1"
     prefer_confluent = os.getenv("SOMA_KAFKA_PREFER_CONFLUENT", "0") == "1"
 

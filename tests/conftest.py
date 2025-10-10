@@ -1,10 +1,27 @@
+from __future__ import annotations
+
+import os
+import asyncio
+import builtins as _builtins
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import httpx
+import pytest
+
+# NOTE: Do NOT set an automatic strict-real bypass here. Tests must opt-in to
+# any bypasses explicitly via environment variables so CI can enforce
+# strict-real behavior. If a developer needs to bypass strict-real for local
+# experimentation, export SOMABRAIN_STRICT_REAL_BYPASS=1 in their shell.
+
 """Test fixtures for live‑server integration.
 
 These fixtures assume a **real** SomaBrain instance is running on port 9797
 (`http://localhost:9797`).  The production server on 9696 is left untouched.
 """
-
-from __future__ import annotations
 
 import asyncio
 import builtins as _builtins
@@ -299,6 +316,10 @@ def start_fastapi_server():
     """
     # Allow callers to bypass the automatic server start (e.g., when using
     # ``TestClient`` or when the external service is already running).
+    # To explicitly request the test harness to NOT start in-process servers,
+    # set DISABLE_START_SERVER=1. To explicitly request the test harness to
+    # start local support servers even when strict mode is active, set
+    # SOMABRAIN_STRICT_REAL_BYPASS=1 (developer override).
     if os.getenv("DISABLE_START_SERVER", "0").lower() in ("1", "true", "yes"):
         print("[tests.conftest] DISABLE_START_SERVER set – skipping FastAPI server launch.")
         yield
@@ -318,8 +339,12 @@ def start_fastapi_server():
 
     soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9797")
 
-    # Respect bypass flag: caller promises a live endpoint is running.
-    if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") in ("1", "true", "yes"):
+    # Respect bypass flag: caller promises a live endpoint is running. When
+    # strict mode is enabled, the explicit environment variable
+    # SOMABRAIN_STRICT_REAL_BYPASS=1 is required to override behavior.
+    strict_bypass = os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS", "0").lower() in ("1", "true", "yes")
+    auto_bypass = os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS_AUTOMATIC", "0").lower() in ("1", "true", "yes")
+    if os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0").lower() in ("1", "true", "yes") or (strict_bypass and not auto_bypass):
         print(
             f"[tests.conftest] Bypass enabled; trusting external SOMA_API_URL={soma_url}"
         )
@@ -346,34 +371,31 @@ def start_fastapi_server():
 
     os.environ.pop("SOMABRAIN_MINIMAL_PUBLIC_API", None)
 
-    # Ensure memory stub is online (only needed for local test harness)
-    try:
-        from tests.support.memory_service import run_memory_server  # type: ignore
+    # Ensure the real memory service is reachable when required
+    mem_required = os.environ.get("SOMABRAIN_REQUIRE_MEMORY", "1") in (
+        "1",
+        "true",
+        "True",
+        "",
+    ) and os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS", "0") in ("1", "true", "yes")
+    if mem_required:
+        import requests
 
-        mem_required = os.environ.get("SOMABRAIN_REQUIRE_MEMORY", "1") in (
-            "1",
-            "true",
-            "True",
-            "",
-        )
-        if mem_required:
-            import requests
-
+        healthy = False
+        for _ in range(20):
             try:
-                r = requests.get("http://127.0.0.1:9595/health", timeout=0.4)
-                if r.status_code != 200:
-                    raise RuntimeError("memory not healthy yet")
+                resp = requests.get("http://127.0.0.1:9595/health", timeout=0.4)
+                if resp.status_code == 200:
+                    healthy = True
+                    break
             except Exception:
-                run_memory_server()
-                for _ in range(20):
-                    try:
-                        rr = requests.get("http://127.0.0.1:9595/health", timeout=0.25)
-                        if rr.status_code == 200:
-                            break
-                    except Exception:
-                        time.sleep(0.1)
-    except Exception:
-        pass
+                time.sleep(0.25)
+        if not healthy:
+            raise RuntimeError(
+                "Memory service not reachable on http://127.0.0.1:9595. "
+                "Start the real stack with scripts/start_dev_infra.sh or point "
+                "SOMABRAIN_MEMORY_HTTP_ENDPOINT at a running instance."
+            )
 
     import socket as _socket
 
@@ -524,12 +546,24 @@ def fake_redis():
         try:
             s.settimeout(0.5)
             if s.connect_ex((host, port)) != 0:
-                raise RuntimeError(
-                    f"STRICT REAL MODE: Redis not reachable at {host}:{port}. Start Redis or bypass via SOMABRAIN_STRICT_REAL_BYPASS=1."
+                # Allow fakeredis only when explicitly enabled by the developer via
+                # SOMABRAIN_ALLOW_FAKEREDIS. CI must not set this variable.
+                if _os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                ):
+                    print(
+                        "[tests.conftest] STRICT REAL MODE: developer allowed fakeredis via SOMABRAIN_ALLOW_FAKEREDIS"
+                    )
+                else:
+                    raise RuntimeError(
+                        f"STRICT REAL MODE: Redis not reachable at {host}:{port}. Start Redis or enable fakeredis via SOMABRAIN_ALLOW_FAKEREDIS=1."
+                    )
+            else:
+                print(
+                    f"[tests.conftest] STRICT REAL MODE: Redis reachable at {host}:{port}"
                 )
-            print(
-                f"[tests.conftest] STRICT REAL MODE: Redis reachable at {host}:{port}"
-            )
         finally:
             try:
                 s.close()

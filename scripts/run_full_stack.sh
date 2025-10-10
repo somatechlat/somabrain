@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-trap 'echo "[run_full_stack] Shutting down..."; (kill ${API_PID:-} ${MEM_PID:-} ${OPA_PID:-} 2>/dev/null || true)' EXIT
+trap 'echo "[run_full_stack] Shutting down..."; (kill ${API_PID:-} 2>/dev/null || true)' EXIT
 
 # Determine python interpreter (prefer project venv)
 if [ -x ./.cleanup-venv/bin/python ]; then
@@ -15,19 +15,12 @@ else
 fi
 echo "[run_full_stack] Using interpreter: $PY_BIN"
 
-# Launch durable memory service via uvicorn (non-ephemeral) on port 9595 if not running
+# Ensure memory service is running on 9595
 MEM_HEALTH="http://127.0.0.1:9595/health"
 if ! curl -sf -m 0.5 "$MEM_HEALTH" >/dev/null 2>&1; then
-  echo "[run_full_stack] Starting local memory service (uvicorn) on 9595..."
-  $PY_BIN -m uvicorn tests.support.memory_service:app --host 127.0.0.1 --port 9595 --log-level warning &
-  MEM_PID=$!
-  for i in {1..40}; do
-    if curl -sf -m 0.5 "$MEM_HEALTH" >/dev/null 2>&1; then
-      echo "[run_full_stack] Memory service ready (pid=$MEM_PID)."; break
-    fi
-    sleep 0.25
-    if [ $i -eq 40 ]; then echo "[run_full_stack] ERROR: Memory service failed to start" >&2; exit 90; fi
-  done
+  echo "[run_full_stack] ERROR: memory HTTP service not found on $MEM_HEALTH"
+  echo "[run_full_stack] Start the shared infra stack (scripts/start_dev_infra.sh) or point SOMABRAIN_MEMORY_HTTP_ENDPOINT to an existing deployment."
+  exit 90
 fi
 
 export SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://127.0.0.1:9595"
@@ -66,17 +59,11 @@ echo "[run_full_stack] Launching Somabrain API (uvicorn) on :9696"
 $PY_BIN -m uvicorn somabrain.app:app --host 0.0.0.0 --port 9696 --log-level warning &
 API_PID=$!
 
-# Launch OPA stub via uvicorn (durable)
+# Ensure OPA is running locally
 if ! curl -sf -m 0.4 http://127.0.0.1:8181/health >/dev/null 2>&1; then
-  echo "[run_full_stack] Starting local OPA allow-all stub on 8181..."
-  $PY_BIN -m uvicorn tests.support.opa_stub:app --host 127.0.0.1 --port 8181 --log-level warning &
-  OPA_PID=$!
-  for i in {1..40}; do
-    if curl -sf -m 0.5 http://127.0.0.1:8181/health >/dev/null 2>&1; then
-      echo "[run_full_stack] OPA stub ready (pid=$OPA_PID)."; break
-    fi
-    sleep 0.2
-  done
+  echo "[run_full_stack] ERROR: OPA server not reachable on http://127.0.0.1:8181/health"
+  echo "[run_full_stack] Launch the real OPA deployment (e.g. via scripts/start_dev_infra.sh or Helm) before running the brain stack."
+  exit 91
 fi
 
 # Wait for health ready

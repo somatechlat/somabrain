@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  opa:
+    image: openpolicyagent/opa:0.48.0
+    command: ["run", "--server", "--addr=0.0.0.0:8181"]
+    ports:
+      - "8181:8181"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8181/health?plugins=false"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  somabrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: >
+      uvicorn somabrain.app:app --host 0.0.0.0 --port 9595 --log-level info
+    environment:
+      SOMABRAIN_PORT: "9595"
+      SOMABRAIN_HOST: "0.0.0.0"
+      SOMABRAIN_DISABLE_AUTH: "1"
+      SOMABRAIN_REQUIRE_MEMORY: "1"
+      SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
+      SOMABRAIN_OPA_URL: "http://opa:8181"
+      SOMABRAIN_FORCE_FULL_STACK: "1"
+    depends_on:
+      - redis
+      - opa
+    ports:
+      - "9595:9595"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9595/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+
+networks:
+  default:
+    external: false

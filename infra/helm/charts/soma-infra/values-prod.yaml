@@ -1,0 +1,56 @@
+## Production overrides for soma-infra
+
+auth:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: "200m"
+      memory: 256Mi
+
+opa:
+  replicaCount: 3
+
+kafka:
+  replicaCount: 5
+  persistence:
+    enabled: true
+    size: 100Gi
+
+redis:
+  architecture: replication
+  replica:
+    replicaCount: 2
+    persistence:
+      enabled: true
+      size: 20Gi
+  master:
+    persistence:
+      enabled: true
+      size: 20Gi
+
+etcd:
+  replicaCount: 5
+  persistence:
+    enabled: true
+    size: 50Gi
+
+vault:
+  server:
+    ha:
+      enabled: true
+      replicas: 3
+    dataStorage:
+      enabled: true
+      size: 50Gi
+
+kube-prometheus-stack:
+  grafana:
+    adminPassword: change-me-prod
+  prometheus:
+    prometheusSpec:
+      retention: 60d
+
+configHash: "prod"
