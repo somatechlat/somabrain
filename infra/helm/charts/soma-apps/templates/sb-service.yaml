@@ -1,0 +1,18 @@
+{{- if .Values.sb.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "sb") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sb") | indent 4 }}
+spec:
+  type: {{ .Values.sb.service.type }}
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sb") | indent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.sb.service.port }}
+      targetPort: {{ .Values.sb.service.targetPort | default .Values.sb.containerPort }}
+{{- end }}

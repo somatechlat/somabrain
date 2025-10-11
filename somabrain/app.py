@@ -1,14 +1,18 @@
 """SomaBrain Cognitive AI System
 =============================
-
-This module implements the main application logic for SomaBrain, a brain‑inspired cognitive architecture for AI. It provides API endpoints, memory management, advanced mathematical and quantum cognition, and emergent pattern recognition.
-
-Key Features:
-- Multi‑tenant memory and working‑memory systems
-- Fractal and oscillatory memory models
-- Quantum cognition and superposition‑based processing
-- Auto‑scaling intelligence and emergent pattern recognition
-- Sphinx‑ready docstrings and comments for all major classes and functions
+        require_memory = True
+        try:
+            env_raw = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
+            if env_raw is not None:
+                require_memory = env_raw.strip().lower() in ("1", "true", "yes", "on")
+            elif shared_settings is not None:
+                require_memory = bool(getattr(shared_settings, "require_memory", True))
+        except Exception:
+            if shared_settings is not None:
+                try:
+                    require_memory = bool(getattr(shared_settings, "require_memory", True))
+                except Exception:
+                    require_memory = True
 
 Usage:
     uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
@@ -806,22 +810,19 @@ try:
 except Exception:
     pass
 # Minimal public API mode: publish only essential endpoints for external use.
-# Enabled if cfg.minimal_public_api is True or env SOMABRAIN_MINIMAL_PUBLIC_API in (1,true,yes,on).
-_MINIMAL_API = False
-try:
-    env_flag = (os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API", "").strip() or "").lower()
-    if env_flag in ("1", "true", "yes", "on"):
-        _MINIMAL_API = True
-except Exception:
-    pass
-try:
-    if bool(getattr(cfg, "minimal_public_api", False)):
-        _MINIMAL_API = True
-except Exception:
-    pass
+_MINIMAL_API = bool(getattr(cfg, "minimal_public_api", False))
 if shared_settings is not None:
     try:
+        if getattr(shared_settings, "minimal_public_api", False):
+            _MINIMAL_API = True
         if str(getattr(shared_settings, "mode", "")).strip().lower() == "minimal":
+            _MINIMAL_API = True
+    except Exception:
+        pass
+elif os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API"):
+    try:
+        env_flag = (os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API", "").strip() or "").lower()
+        if env_flag in ("1", "true", "yes", "on"):
             _MINIMAL_API = True
     except Exception:
         pass
@@ -1178,19 +1179,22 @@ async def _outbox_poller():
     import asyncio as _asyncio
     import os as _os
 
-    require_memory = True
-    try:
-        env_raw = _os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-        if env_raw is not None:
-            require_memory = env_raw.strip().lower() in ("1", "true", "yes", "on")
-        elif shared_settings is not None:
-            require_memory = bool(getattr(shared_settings, "require_memory", True))
-    except Exception:
-        if shared_settings is not None:
-            try:
-                require_memory = bool(getattr(shared_settings, "require_memory", True))
-            except Exception:
-                require_memory = True
+    require_memory = bool(getattr(cfg, "require_memory", True))
+    if shared_settings is not None:
+        try:
+            require_memory = bool(
+                getattr(shared_settings, "require_memory", require_memory)
+            )
+        except Exception:
+            pass
+    elif _os.getenv("SOMABRAIN_REQUIRE_MEMORY") is not None:
+        try:
+            env_raw = _os.getenv("SOMABRAIN_REQUIRE_MEMORY")
+            require_memory = bool(
+                env_raw and env_raw.strip().lower() in ("1", "true", "yes", "on")
+            )
+        except Exception:
+            require_memory = True
     if not require_memory:
         return
     # Acquire a MemoryService bound to default namespace so we can invoke its internal
@@ -1256,24 +1260,35 @@ def _make_predictor():
     # use top-level STRICT_REAL imported earlier
     __SR = STRICT_REAL
 
-    env_provider = os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower()
-    provider = (env_provider or (cfg.predictor_provider or "stub")).lower()
+    if shared_settings is not None:
+        try:
+            provider = (
+                getattr(shared_settings, "predictor_provider", "") or "stub"
+            ).lower()
+        except Exception:
+            provider = "stub"
+    else:
+        provider = (
+            os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower()
+            or (cfg.predictor_provider or "stub")
+        )
+        provider = (provider or "stub").lower()
     global _PREDICTOR_PROVIDER
     _PREDICTOR_PROVIDER = provider
     # Dynamic strict read so tests that set env per-import still take effect
     sr_env = False
-    try:
-        sr_raw = os.getenv("SOMABRAIN_STRICT_REAL")
-        if sr_raw is not None:
-            sr_env = sr_raw.strip().lower() in ("1", "true", "yes", "on")
-        elif shared_settings is not None:
+    if shared_settings is not None:
+        try:
             sr_env = bool(getattr(shared_settings, "strict_real", False))
-    except Exception:
-        if shared_settings is not None:
-            try:
-                sr_env = bool(getattr(shared_settings, "strict_real", False))
-            except Exception:
-                sr_env = False
+        except Exception:
+            sr_env = False
+    else:
+        try:
+            sr_raw = os.getenv("SOMABRAIN_STRICT_REAL")
+            if sr_raw is not None:
+                sr_env = sr_raw.strip().lower() in ("1", "true", "yes", "on")
+        except Exception:
+            sr_env = False
     if (sr_env or __SR) and provider in ("stub", "baseline"):
         raise RuntimeError(
             "STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
@@ -1405,7 +1420,20 @@ if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
 if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
     missing.append("mc_wm")
 # Also allow bypass via explicit env flag (useful for test imports)
-_bypass = bool(os.getenv("SOMABRAIN_STRICT_REAL_BYPASS", "0").lower() in ("1", "true", "yes")) or bool(os.getenv("PYTEST_CURRENT_TEST"))
+_bypass = bool(os.getenv("PYTEST_CURRENT_TEST"))
+if shared_settings is not None:
+    try:
+        if getattr(shared_settings, "strict_real_bypass", False) or getattr(
+            shared_settings, "strict_real_bypass_automatic", False
+        ):
+            _bypass = True
+    except Exception:
+        pass
+elif os.getenv("SOMABRAIN_STRICT_REAL_BYPASS"):
+    try:
+        _bypass = True if os.getenv("SOMABRAIN_STRICT_REAL_BYPASS", "0").lower() in ("1", "true", "yes") else _bypass
+    except Exception:
+        pass
 if __SR and missing and not _is_test and not _bypass:
     raise RuntimeError(
         f"STRICT REAL MODE: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
@@ -1863,16 +1891,22 @@ async def health(request: Request) -> S.HealthResponse:
         resp["strict_real"] = strict_real_flag
         resp["predictor_provider"] = _PREDICTOR_PROVIDER
         # Full-stack mode flag (forces external memory presence & embedder)
-        full_stack_env = os.getenv("SOMABRAIN_FORCE_FULL_STACK")
-        if full_stack_env is not None:
-            full_stack = full_stack_env.strip().lower() in ("1", "true", "yes", "on")
-        elif shared_settings is not None:
+        if shared_settings is not None:
             try:
                 full_stack = bool(getattr(shared_settings, "force_full_stack", False))
             except Exception:
                 full_stack = False
         else:
-            full_stack = False
+            full_stack_env = os.getenv("SOMABRAIN_FORCE_FULL_STACK")
+            if full_stack_env is not None:
+                full_stack = full_stack_env.strip().lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                    "on",
+                )
+            else:
+                full_stack = False
         resp["full_stack"] = bool(full_stack)
         try:
             edim = None
@@ -1909,8 +1943,20 @@ async def health(request: Request) -> S.HealthResponse:
             pass
         predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or not __SR
         # Allow ops override to relax predictor requirement for readiness while keeping strict memory/embedder
-        relax_env = os.getenv("SOMABRAIN_RELAX_PREDICTOR_READY")
-        if relax_env is not None and relax_env.strip().lower() in ("1", "true", "yes", "on"):
+        relax_overrides = False
+        if shared_settings is not None:
+            try:
+                relax_overrides = bool(
+                    getattr(shared_settings, "relax_predictor_ready", False)
+                )
+            except Exception:
+                relax_overrides = False
+        elif os.getenv("SOMABRAIN_RELAX_PREDICTOR_READY") is not None:
+            relax_env = os.getenv("SOMABRAIN_RELAX_PREDICTOR_READY")
+            relax_overrides = bool(
+                relax_env and relax_env.strip().lower() in ("1", "true", "yes", "on")
+            )
+        if relax_overrides:
             predictor_ok = True
         memory_ok = True  # base assumption; refined below
         try:
@@ -1921,11 +1967,17 @@ async def health(request: Request) -> S.HealthResponse:
             memory_ok = mem_items > 0
         embedder_ok = embedder is not None
         # OPA readiness (only required if fail-closed posture is enabled)
-        opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-            "1",
-            "true",
-            "yes",
-        )
+        if shared_settings is not None:
+            try:
+                opa_required = bool(getattr(shared_settings, "opa_fail_closed", False))
+            except Exception:
+                opa_required = False
+        else:
+            opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+                "1",
+                "true",
+                "yes",
+            )
         opa_ok = True
         if opa_required:
             try:
@@ -2626,15 +2678,21 @@ async def remember(body: dict, request: Request):
         # Previously this silently succeeded which hid real backend outages.
         # In enterprise/full-stack mode (memory required) surface a 503 so callers
         # know the write is only queued and not yet persisted remotely.
-        try:
-            require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in (
-                "1",
-                "true",
-                "True",
-                None,
-            )
-        except Exception:
-            require_memory = True
+        if shared_settings is not None:
+            try:
+                require_memory = bool(getattr(shared_settings, "require_memory", True))
+            except Exception:
+                require_memory = True
+        else:
+            try:
+                require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in (
+                    "1",
+                    "true",
+                    "True",
+                    None,
+                )
+            except Exception:
+                require_memory = True
         if require_memory:
             raise HTTPException(
                 status_code=503, detail="memory backend unavailable; write queued"

@@ -10,15 +10,16 @@ Scope
 
 Component map (as shipped in `k8s/full-stack.yaml`)
 
-| Component        | Workload        | Service name     | Ports (container → svc) | Notes |
-|------------------|-----------------|------------------|-------------------------|-------|
-| Somabrain API    | `Deployment`    | `somabrain`      | 9696 → 9696             | Primary API traffic |
-| Somabrain test   | — (shares pods) | `somabrain-test` | 9696 → 9797             | Alternate port for learning/tests |
-| SomaMemory       | `Deployment`    | `somamemory`     | 9595 → 9595             | In-memory recall/write service |
-| Redis cache      | `Deployment`    | `sb-redis`       | 6379 → 6379             | Cache + coordination |
-| OPA policy       | `Deployment`    | `sb-opa`         | 8181 → 8181             | Optional policy checks |
-| Postgres         | `StatefulSet`   | `postgres`       | 5432 → 5432             | Feedback/token persistence |
-| Migration job    | `Job`           | —                | —                       | Applies Alembic migrations |
+| Component        | Workload        | Service name     | Ports (container → svc) | External Access | Notes |
+|------------------|-----------------|------------------|-------------------------|-----------------|-------|
+| Somabrain API    | `Deployment`    | `somabrain`      | 9696 → 9696             | Internal only   | Primary API traffic |
+| Somabrain Public | — (shares pods) | `somabrain-public` | 9696 → 9999           | LoadBalancer    | Production external access |
+| Somabrain Test   | — (shares pods) | `somabrain-test` | 9696 → 9797             | Internal only   | Alternate port for learning/tests |
+| Nginx Ingress    | `Deployment`    | `ingress-nginx-controller` | 80/443 → 80/443 | LoadBalancer | HTTPS termination, routing |
+| SomaMemory       | `Deployment`    | `somamemory`     | 9595 → 9595             | Internal only   | In-memory recall/write service |
+| Redis cache      | `Deployment`    | `sb-redis`       | 6379 → 6379             | Internal only   | Cache + coordination |
+| OPA policy       | `Deployment`    | `sb-opa`         | 8181 → 8181             | Internal only   | Optional policy checks |
+| Postgres         | `StatefulSet`   | `postgres`       | 5432 → 5432             | Internal only   | Feedback/token persistence |
 
 All objects live in namespace `somabrain-prod` by default; adjust manifests or use `kubectl -n <ns>` overrides for other environments.
 

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: soma-apps
+description: Deploy SomaBrain application services (SB, SA01, SAH, SMF) with shared infra integration.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - soma
+  - apps
+  - brain
+maintainers:
+  - name: soma-team
+    email: infra@soma.tech

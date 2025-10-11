@@ -12,6 +12,11 @@ from starlette.responses import Response
 import somabrain.metrics as app_metrics
 from somabrain.opa.client import opa_client
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency in legacy layouts
+    shared_settings = None  # type: ignore
+
 LOGGER = logging.getLogger("somabrain.api.middleware.opa")
 
 
@@ -24,7 +29,15 @@ class OpaMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        opa_url = os.getenv("SOMA_OPA_URL")
+        if shared_settings is not None:
+            try:
+                opa_url = getattr(shared_settings, "opa_url", None)
+            except Exception:
+                opa_url = None
+        else:
+            opa_url = None
+        if not opa_url:
+            opa_url = os.getenv("SOMA_OPA_URL")
         # Build minimal input payload for OPA – include request method, path and JSON body if any
         input_payload = {
             "method": request.method,
@@ -67,11 +80,17 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     return await call_next(request)
             except Exception as exc:
                 # Respect fail-closed posture if configured
-                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                    "1",
-                    "true",
-                    "yes",
-                )
+                if shared_settings is not None:
+                    try:
+                        fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                    except Exception:
+                        fail_closed = False
+                else:
+                    fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+                        "1",
+                        "true",
+                        "yes",
+                    )
                 if fail_closed:
                     LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
                     app_metrics.OPA_DENY_TOTAL.inc()
@@ -89,7 +108,15 @@ class OpaMiddleware(BaseHTTPMiddleware):
         try:
             import httpx
 
-            async with httpx.AsyncClient(timeout=2.0) as client:
+            timeout_seconds = 2.0
+            if shared_settings is not None:
+                try:
+                    timeout_seconds = float(
+                        getattr(shared_settings, "opa_timeout_seconds", 2.0)
+                    )
+                except Exception:
+                    timeout_seconds = 2.0
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 resp = await client.post(query_url, json={"input": input_payload})
             if resp.status_code == 200:
                 result = resp.json().get("result", {})
@@ -111,11 +138,17 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 app_metrics.OPA_ALLOW_TOTAL.inc()
         except Exception as exc:
             # Failure to contact OPA – honor fail-closed posture if enabled
-            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                "1",
-                "true",
-                "yes",
-            )
+            if shared_settings is not None:
+                try:
+                    fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                except Exception:
+                    fail_closed = False
+            else:
+                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
             if fail_closed:
                 LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
                 app_metrics.OPA_DENY_TOTAL.inc()

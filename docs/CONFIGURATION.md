@@ -6,6 +6,11 @@ may also be supplied explicitly when launching the container via `docker run -e 
 runtime simply reads the environment variables when they are needed; if a variable is absent the code
 behaves according to its own internal defaults.
 
+> **New:** All services now import `common.config.settings.Settings`.  The fields listed below are
+> loaded once at process start (from `.env.local` or the real environment) and exposed via the
+> `shared_settings` singleton.  New code should depend on those attributes instead of calling
+> `os.getenv` directly.
+
 The flags that are typically set for a full‑stack, strict‑real deployment are:
 
 * `SOMABRAIN_FORCE_FULL_STACK` – require external memory, a real embedder and a non‑stub predictor for readiness.

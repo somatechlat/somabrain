@@ -16,10 +16,23 @@ try:
 except Exception:  # pragma: no cover - optional
     redis = None  # type: ignore
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency
+    shared_settings = None  # type: ignore
+
 
 class Memstore:
     def __init__(self, url: Optional[str] = None):
-        self.url = url or os.getenv("SOMABRAIN_REDIS_URL", "redis://redis:6379/0")
+        if url is not None:
+            self.url = url
+        elif shared_settings is not None:
+            try:
+                self.url = str(getattr(shared_settings, "redis_url", "")).strip() or "redis://redis:6379/0"
+            except Exception:
+                self.url = "redis://redis:6379/0"
+        else:
+            self.url = os.getenv("SOMABRAIN_REDIS_URL", "redis://redis:6379/0")
         self._client = None
         if redis is not None:
             try:

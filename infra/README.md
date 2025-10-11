@@ -13,6 +13,10 @@ for the Soma Auth API:
 * **Vault** – secret injection (dev mode runs an in‑memory Vault).
 * **Observability stack** – kube-prometheus-stack (Prometheus + Grafana).
 
+> Looking for the application layer? See `infra/helm/charts/soma-apps/` for the
+> companion chart that deploys SomaBrain (SB), SomaAgent01, SomaAgentHub, and
+> SomaFractalMemory on top of the shared namespace provisioned here.
+
 All services are **cluster‑internal only**; they are reachable via DNS such as
 `auth.soma‑infra.svc.cluster.local`.  The chart is version‑controlled and
 intended to be installed **once per cluster**.  Applications (e.g. SomaBrain)

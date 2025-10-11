@@ -135,6 +135,9 @@ jobs:
           helm dependency update infra/helm/charts/soma-infra
           helm lint infra/helm/charts/soma-infra
           helm upgrade --install soma-infra infra/helm/charts/soma-infra -n soma --wait --timeout 10m
+      - name: Helm lint soma-apps
+        run: |
+          helm lint infra/helm/charts/soma-apps
       - name: Wait for infra to be ready
         run: |
           for i in {1..60}; do

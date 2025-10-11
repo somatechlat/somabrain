@@ -6,6 +6,11 @@ import requests
 
 LOGGER = logging.getLogger("somabrain.opa")
 
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency in legacy layouts
+    shared_settings = None  # type: ignore
+
 
 class OPAClient:
     """Simple OPA HTTP client.
@@ -19,11 +24,22 @@ class OPAClient:
     """
 
     def __init__(self, policy_path: str = "somabrain/auth/allow") -> None:
-        self.base_url = os.getenv("SOMA_OPA_URL", "http://localhost:8181")
+        if shared_settings is not None:
+            try:
+                self.base_url = getattr(shared_settings, "opa_url", None) or "http://localhost:8181"
+            except Exception:
+                self.base_url = "http://localhost:8181"
+            try:
+                self.timeout = float(
+                    getattr(shared_settings, "opa_timeout_seconds", 2.0) or 2.0
+                )
+            except Exception:
+                self.timeout = 2.0
+        else:
+            self.base_url = os.getenv("SOMA_OPA_URL", "http://localhost:8181")
+            self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
         self.policy_path = policy_path.rstrip("/")
         self.session = requests.Session()
-        # Optional: configure timeouts globally
-        self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
         LOGGER.debug(
             "OPA client initialized: %s (policy %s)", self.base_url, self.policy_path
         )
@@ -48,11 +64,17 @@ class OPAClient:
             return bool(result)
         except Exception as e:
             # Respect fail-open vs fail-closed posture via SOMA_OPA_FAIL_CLOSED
-            fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                "1",
-                "true",
-                "yes",
-            )
+            if shared_settings is not None:
+                try:
+                    fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                except Exception:
+                    fail_closed = False
+            else:
+                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
             if fail_closed:
                 LOGGER.error("OPA evaluation failed (fail-closed deny): %s", e)
                 return False

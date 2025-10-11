@@ -1,0 +1,46 @@
+{{- if .Values.sa01.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "sa01") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sa01") | indent 4 }}
+spec:
+  replicas: {{ .Values.sa01.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sa01") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sa01") | indent 8 }}
+    spec:
+      containers:
+        - name: sa01
+          image: "{{ .Values.sa01.image.repository }}:{{ .Values.sa01.image.tag }}"
+          imagePullPolicy: {{ .Values.sa01.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.sa01.containerPort }}
+              name: grpc
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.sa01.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.sa01.containerPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.sa01.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+{{- end }}

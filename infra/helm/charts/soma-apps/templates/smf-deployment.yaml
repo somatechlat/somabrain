@@ -1,0 +1,48 @@
+{{- if .Values.smf.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "smf") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "smf") | indent 4 }}
+spec:
+  replicas: {{ .Values.smf.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "smf") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "smf") | indent 8 }}
+    spec:
+      containers:
+        - name: smf
+          image: "{{ .Values.smf.image.repository }}:{{ .Values.smf.image.tag }}"
+          imagePullPolicy: {{ .Values.smf.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.smf.containerPort }}
+              name: http
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.smf.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: {{ .Values.smf.containerPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: {{ .Values.smf.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+{{- end }}

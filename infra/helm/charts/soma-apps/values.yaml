@@ -1,0 +1,65 @@
+global:
+  imagePullPolicy: IfNotPresent
+  namespace: "somabrain"
+  sharedInfraNamespace: "soma"
+
+sb:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 9696
+    targetPort: 9696
+  containerPort: 9696
+  ingress:
+    enabled: false
+  env: {}
+
+sa01:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/sa01
+    tag: latest
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 50051
+    targetPort: 50051
+  containerPort: 50051
+  env: {}
+
+sah:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/sah
+    tag: latest
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  containerPort: 8081
+  env: {}
+
+smf:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/smf
+    tag: latest
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8082
+    targetPort: 8082
+  containerPort: 8082
+  env: {}
+
+envCommon:
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somabrain-memory.soma.svc.cluster.local:9595"
+  SOMABRAIN_REDIS_URL: "redis://soma-infra-redis-master.soma.svc.cluster.local:6379/0"
+  SOMABRAIN_KAFKA_URL: "kafka://soma-infra-kafka:9092"
+  SOMABRAIN_POSTGRES_DSN: "postgresql://postgres:postgres@soma-postgres.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_OPA_URL: "http://soma-infra-opa.soma.svc.cluster.local:8181"

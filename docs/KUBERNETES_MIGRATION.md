@@ -42,7 +42,8 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
   - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://somamemory:9595
 - To reach services from the host (for running `.venv`-based tests):
   - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696/9797, memory 9595, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
-  - Option B: expose Somabrain via LoadBalancer/Ingress if your cluster provides it (not configured in `full-stack.yaml`).
+  - Option B: Use production ingress via `somabrain-public` LoadBalancer service on port 9999 with nginx ingress controller and TLS termination (configured in `k8s/full-stack.yaml`).
+  - Option C: Access via HTTPS ingress at `https://somabrain.internal:9999` after port-forwarding the ingress controller and adding host entry.
 
 ### Storage and stateful considerations
 - For development, you can run Redis and Qdrant with ephemeral storage. For persistence and integration testing that checks persistence to Postgres/Qdrant:
@@ -84,19 +85,25 @@ Build image and load into kind:
 
 ```bash
 # build the image locally (from repo root)
-docker build -t somatechlat/somabrain:dev .
+docker build -t somabrain:latest .
 # create cluster named 'somabrain'
 kind create cluster --name somabrain
 # load image into kind
-kind load docker-image somatechlat/somabrain:dev --name somabrain
+kind load docker-image somabrain:latest --name somabrain
 # apply manifests (namespace is created by the manifest)
 kubectl apply -f k8s/full-stack.yaml
+# install ingress controller for production-grade exposure
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
+# generate and install TLS certificates
+./scripts/setup_ingress_tls.sh
 # port-forward services needed for host tests
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
 kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
+# access via production ingress path (port 9999)
+kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 9999:80 &
 # then run prechecks from host
 python scripts/sb_precheck.py
 ```

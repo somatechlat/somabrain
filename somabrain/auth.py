@@ -16,7 +16,28 @@ import os
 
 from .config import Config
 
+try:  # optional: legacy deployments may not ship shared settings yet
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - backwards compatibility
+    shared_settings = None  # type: ignore
+
 _JWT_PUBLIC_CACHE: Optional[str] = None
+_TRUE_VALUES = ("1", "true", "yes", "on")
+
+
+def _auth_disabled() -> bool:
+    if shared_settings is not None:
+        try:
+            return bool(getattr(shared_settings, "disable_auth", False))
+        except Exception:
+            return False
+    env_flag = os.getenv("SOMABRAIN_DISABLE_AUTH")
+    if env_flag is not None:
+        try:
+            return env_flag.strip().lower() in _TRUE_VALUES
+        except Exception:
+            return False
+    return False
 
 
 def _get_jwt_key(cfg: Config) -> Optional[str]:
@@ -43,8 +64,8 @@ def _jwt_algorithms(cfg: Config) -> list[str]:
 
 def require_auth(request: Request, cfg: Config) -> None:
     """Validate authentication for API requests."""
-    # Allow tests/dev to disable auth by setting SOMABRAIN_DISABLE_AUTH=1/true
-    if os.getenv("SOMABRAIN_DISABLE_AUTH", "").lower() in ("1", "true", "yes"):
+    # Allow tests/dev to disable auth via env or consolidated settings.
+    if _auth_disabled():
         return
     auth = request.headers.get("Authorization", "")
 
@@ -86,7 +107,7 @@ def require_auth(request: Request, cfg: Config) -> None:
 
 def require_admin_auth(request: Request, cfg: Config) -> None:
     # Allow tests/dev to disable admin auth as well
-    if os.getenv("SOMABRAIN_DISABLE_AUTH", "").lower() in ("1", "true", "yes"):
+    if _auth_disabled():
         return
     if not cfg.api_token:
         return

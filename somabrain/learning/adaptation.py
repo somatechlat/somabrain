@@ -104,9 +104,17 @@ class AdaptationEngine:
         self._tenant_id = tenant_id or "default"
         self._redis = _get_redis()
         # Ensure the dynamic LR flag is a proper boolean. Environment variable overrides if set.
-        self._enable_dynamic_lr = bool(enable_dynamic_lr) or bool(
-            os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1"
-        )
+        dyn_lr = bool(enable_dynamic_lr)
+        if shared_settings is not None:
+            try:
+                dyn_lr = dyn_lr or bool(
+                    getattr(shared_settings, "learning_rate_dynamic", False)
+                )
+            except Exception:
+                pass
+        elif os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1":
+            dyn_lr = True
+        self._enable_dynamic_lr = dyn_lr
         
         # Initialize per-tenant tau gauge with a small deterministic offset
         try:

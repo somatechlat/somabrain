@@ -32,6 +32,16 @@ from threading import RLock
 from typing import Any, Dict, Iterable, List, Tuple, cast
 
 from .config import Config
+# Stub audit is handled via the internal helper `_audit_stub_usage` which
+# raises in strict‑real mode. Direct import of `record_stub` is no longer needed.
+
+try:  # optional dependency, older deployments may not ship shared settings yet
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - legacy layout
+    shared_settings = None  # type: ignore
+
+# Import the settings object under a distinct name for strict‑real checks.
+from common.config.settings import settings as _shared_settings
 
 _BUILTINS_KEY = "_SOMABRAIN_GLOBAL_PAYLOADS"
 if not hasattr(_builtins, _BUILTINS_KEY):
@@ -52,7 +62,17 @@ _GLOBAL_LINKS: Dict[str, List[dict]] = getattr(_builtins, _BUILTINS_LINKS_KEY)
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
-if os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1":
+debug_memory_client = False
+if shared_settings is not None:
+    try:
+        debug_memory_client = bool(
+            getattr(shared_settings, "debug_memory_client", False)
+        )
+    except Exception:
+        debug_memory_client = False
+else:
+    debug_memory_client = os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1"
+if debug_memory_client:
     # ensure a stderr handler exists for quick interactive debugging
     if not logger.handlers:
         h = logging.StreamHandler()
@@ -61,6 +81,37 @@ if os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1":
         )
         logger.addHandler(h)
     logger.setLevel(logging.DEBUG)
+
+_TRUE_VALUES = ("1", "true", "yes", "on")
+
+
+def _require_memory_enabled() -> bool:
+    if shared_settings is not None:
+        try:
+            return bool(getattr(shared_settings, "require_memory", True))
+        except Exception:
+            return True
+    env_flag = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
+    if env_flag is not None:
+        try:
+            return env_flag.strip().lower() in _TRUE_VALUES
+        except Exception:
+            return True
+    return True
+
+
+def _http_setting(attr: str, fallback: int) -> int:
+    """Fetch HTTP client tuning knobs from shared settings with sane fallback."""
+
+    if shared_settings is not None:
+        try:
+            value = getattr(shared_settings, attr)
+            if value is None:
+                raise ValueError("empty")
+            return int(value)
+        except Exception:
+            pass
+    return fallback
 
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:
@@ -71,6 +122,18 @@ def _stable_coord(key: str) -> Tuple[float, float, float]:
     c = int.from_bytes(h[8:12], "big") / 2**32
     # spread over [-1, 1]
     return (2 * a - 1, 2 * b - 1, 2 * c - 1)
+
+
+def _audit_stub_usage(reason: str = "memory_client.stub_usage") -> None:
+    """Central point to record a stub usage. In strict mode this will raise.
+
+    All call sites that append/extend or read from the in-process `_stub_store`
+    must call this helper first to ensure strict mode fails fast.
+    """
+    # In strict‑real mode any stub usage is prohibited. Raise an informative error.
+    if getattr(_shared_settings, "strict_real", False):
+        raise RuntimeError(f"Stub usage prohibited: {reason}")
+    # In non‑strict mode we simply ignore the stub usage (no operation).
 
 
 def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
@@ -286,7 +349,13 @@ class MemoryClient:
             pass
         # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
-        db_path = os.getenv("MEMORY_DB_PATH", "./data/memory.db")
+        if shared_settings is not None:
+            try:
+                db_path = str(getattr(shared_settings, "memory_db_path", "./data/memory.db"))
+            except Exception:
+                db_path = "./data/memory.db"
+        else:
+            db_path = os.getenv("MEMORY_DB_PATH", "./data/memory.db")
         try:
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
         except Exception:
@@ -329,18 +398,21 @@ class MemoryClient:
                 pass
 
         # Allow tuning via environment variables for production/dev use
+        default_max = _http_setting("http_max_connections", 64)
         try:
-            max_conns = int(os.getenv("SOMABRAIN_HTTP_MAX_CONNS", "64"))
+            max_conns = int(os.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max)))
         except Exception:
-            max_conns = 64
+            max_conns = default_max
+        default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
-            keepalive = int(os.getenv("SOMABRAIN_HTTP_KEEPALIVE", "32"))
+            keepalive = int(os.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive)))
         except Exception:
-            keepalive = 32
+            keepalive = default_keepalive
+        default_retries = _http_setting("http_retries", 1)
         try:
-            retries = int(os.getenv("SOMABRAIN_HTTP_RETRIES", "1"))
+            retries = int(os.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries)))
         except Exception:
-            retries = 1
+            retries = default_retries
 
         limits = None
         try:
@@ -354,11 +426,21 @@ class MemoryClient:
         # Useful for tests or local development where a memory service runs on
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
+        shared_base = None
+        if shared_settings is not None:
+            try:
+                candidate = getattr(shared_settings, "memory_http_endpoint", None)
+                if candidate:
+                    shared_base = str(candidate)
+            except Exception:
+                shared_base = None
         env_base = (
             os.getenv("SOMABRAIN_HTTP_ENDPOINT")
             or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
             or os.getenv("MEMORY_SERVICE_URL")
         )
+        if not env_base and shared_base:
+            env_base = shared_base
         if env_base:
             try:
                 # Clean any surrounding whitespace/newlines that may be injected by tests
@@ -377,11 +459,9 @@ class MemoryClient:
         base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
         if not base_url and env_base:
             base_url = env_base
-        # Hard requirement: if SOMABRAIN_REQUIRE_MEMORY unset or ==1 force default endpoint
-        require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-        if (
-            require_memory is None or require_memory in ("1", "true", "True")
-        ) and not base_url:
+        # Hard requirement: if memory is required ensure an endpoint exists.
+        require_memory_enabled = _require_memory_enabled()
+        if require_memory_enabled and not base_url:
             base_url = "http://localhost:9595"
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
@@ -400,10 +480,17 @@ class MemoryClient:
             in_docker = False
         if not base_url and in_docker:
             try:
-                base_url = (
-                    os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
-                    or "http://host.docker.internal:9595"
+                fallback = (
+                    getattr(shared_settings, "docker_memory_fallback", None)
+                    if shared_settings is not None
+                    else None
                 )
+            except Exception:
+                fallback = None
+            try:
+                base_url = fallback or os.getenv(
+                    "SOMABRAIN_DOCKER_MEMORY_FALLBACK"
+                ) or "http://host.docker.internal:9595"
                 logger.debug(
                     "MemoryClient running in Docker, defaulting base_url to %r",
                     base_url,
@@ -449,9 +536,7 @@ class MemoryClient:
         except Exception:
             pass
         # If memory is required and client not initialized, raise immediately to fail fast.
-        if (require_memory is None or require_memory in ("1", "true", "True")) and (
-            self._http is None
-        ):
+        if require_memory_enabled and (self._http is None):
             raise RuntimeError(
                 "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Expected http://localhost:9595 or configured URL."
             )
@@ -1143,15 +1228,32 @@ class MemoryClient:
     def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
         if not hits:
             return
-        if os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") not in (
-            "1",
-            "true",
-            "True",
-        ):
+        weighting_enabled = False
+        priors_env = ""
+        quality_exp = 1.0
+        if shared_settings is not None:
+            try:
+                weighting_enabled = bool(
+                    getattr(shared_settings, "memory_enable_weighting", False)
+                )
+                priors_env = getattr(shared_settings, "memory_phase_priors", "") or ""
+                quality_exp = float(
+                    getattr(shared_settings, "memory_quality_exp", 1.0) or 1.0
+                )
+            except Exception:
+                weighting_enabled = False
+        else:
+            env_toggle = os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING")
+            if env_toggle is not None and env_toggle.lower() in ("1", "true", "yes"):
+                weighting_enabled = True
+                priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
+                try:
+                    quality_exp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
+                except Exception:
+                    quality_exp = 1.0
+        if not weighting_enabled:
             return
         try:
-            priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
-            qexp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
             priors: dict[str, float] = {}
             if priors_env:
                 for part in priors_env.split(","):
@@ -1179,7 +1281,7 @@ class MemoryClient:
                             qs = 0.0
                         if qs > 1:
                             qs = 1.0
-                        quality_factor = (qs**qexp) if qs > 0 else 0.0
+                        quality_factor = (qs**quality_exp) if qs > 0 else 0.0
                 except Exception:
                     quality_factor = 1.0
                 try:
@@ -1196,6 +1298,9 @@ class MemoryClient:
             uni = str(universe or "real")
             local: list[dict] = []
             with self._lock:
+                # Audit any use of the in-process stub store so STRICT_REAL
+                # mode can prevent accidental fallback to local-only data.
+                _audit_stub_usage("memory_client.local_recall_use")
                 local.extend(self._stub_store)
             try:
                 ns = getattr(self.cfg, "namespace", None)
@@ -1371,7 +1476,19 @@ class MemoryClient:
             p2 = dict(payload)
             p2["coordinate"] = coord
             with self._lock:
+                _audit_stub_usage("memory_client.remember_stub_append")
                 self._stub_store.append(p2)
+            try:
+                # Audit any write to the in-process stub/mirror. In strict mode
+                # `record_stub` will raise and prevent the mirror write.
+                from somabrain.stub_audit import record_stub
+
+                record_stub("memory_client.remember.stub_mirror")
+            except Exception:
+                # In non-strict mode record_stub increments counters; if it
+                # raised (strict mode) this except block will not run because
+                # the exception should propagate. Keep append guarded.
+                pass
             _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
         except Exception:
             p2 = None
@@ -1413,7 +1530,17 @@ class MemoryClient:
         # Synchronous callers: default is blocking persist, but allow an opt-in
         # fast-ack mode which writes to the local outbox and schedules background
         # persistence to improve client latency under load.
-        fast_ack = os.getenv("SOMABRAIN_MEMORY_FAST_ACK", "0") in ("1", "true", "True")
+        if shared_settings is not None:
+            try:
+                fast_ack = bool(getattr(shared_settings, "memory_fast_ack", False))
+            except Exception:
+                fast_ack = False
+        else:
+            fast_ack = os.getenv("SOMABRAIN_MEMORY_FAST_ACK", "0") in (
+                "1",
+                "true",
+                "True",
+            )
         if fast_ack:
             # record to outbox immediately and schedule a background persist
             try:
@@ -1507,6 +1634,7 @@ class MemoryClient:
 
         # Mirror into in-process stores before hitting HTTP for read-your-writes
         with self._lock:
+            _audit_stub_usage("memory_client.remember_bulk_stub_extend")
             self._stub_store.extend(local_payloads)
         try:
             ns = getattr(self.cfg, "namespace", None)
@@ -1628,10 +1756,17 @@ class MemoryClient:
             p2 = dict(enriched)
             p2["coordinate"] = coord
             with self._lock:
+                _audit_stub_usage("memory_client.aremember_stub_append")
                 self._stub_store.append(p2)
             try:
                 ns = getattr(self.cfg, "namespace", None)
                 if ns is not None:
+                    try:
+                        from somabrain.stub_audit import record_stub
+
+                        record_stub("memory_client.recall.stub_mirror")
+                    except Exception:
+                        pass
                     _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
             except Exception:
                 pass
@@ -1724,6 +1859,7 @@ class MemoryClient:
             )
 
         with self._lock:
+            _audit_stub_usage("memory_client.aremember_bulk_stub_extend")
             self._stub_store.extend(local_payloads)
         try:
             ns = getattr(self.cfg, "namespace", None)
@@ -1816,10 +1952,7 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Retrieve memories relevant to the query. Stub returns recent payloads."""
         # Enforce memory requirement: do not allow fallback when required
-        require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-        memory_required = (require_memory is None) or (
-            require_memory in ("1", "true", "True")
-        )
+        memory_required = _require_memory_enabled()
         if memory_required and self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED: HTTP memory backend not available (expected on port 9595)."
@@ -1837,125 +1970,11 @@ class MemoryClient:
             if hits:
                 return hits
             return self._local_recall_hits(query, universe)
-        # In-process deterministic recall only if memory not required or HTTP absent and allowed.
-        from somabrain.stub_audit import (
-            STRICT_REAL as __SR,
-            record_stub as __record_stub,
+        # No HTTP backend is available. In strict‑real mode we do **not** fall back to any in‑process stub.
+        # The caller must ensure an HTTP memory service is reachable; otherwise we raise an explicit error.
+        raise RuntimeError(
+            "MEMORY SERVICE UNAVAILABLE: No HTTP backend configured and stub fallback disabled."
         )
-
-        # If memory required but we are here (HTTP failed mid-flight), escalate error.
-        if memory_required:
-            raise RuntimeError(
-                "MEMORY SERVICE REQUIRED: HTTP recall path failed unexpectedly."
-            )
-        # Try real in-process recall if we have any payloads stored and memory not required.
-        if self._stub_store:
-            try:
-                # Lazy import embedder from runtime to avoid heavy deps at import time
-                from somabrain import runtime as _rt  # type: ignore
-
-                embedder = getattr(_rt, "embedder", None)
-                if embedder is not None and hasattr(embedder, "embed"):
-                    import numpy as _np
-
-                    qv = _np.array(embedder.embed(query), dtype=_np.float32)
-                    if _np.linalg.norm(qv) > 0:
-                        qv = qv / (float(_np.linalg.norm(qv)) + 1e-8)
-                    scored: list[tuple[float, dict]] = []
-                    uni = str(universe or "real")
-                    for p in self._stub_store:
-                        if universe is not None:
-                            if str(p.get("universe") or "real") != uni:
-                                continue
-                        txt = None
-                        if isinstance(p, dict):
-                            for k in ("task", "content", "text", "description"):
-                                v = p.get(k)
-                                if isinstance(v, str) and v.strip():
-                                    txt = v
-                                    break
-                        if not txt:
-                            txt = str(p)
-                        try:
-                            pv = _np.array(embedder.embed(txt), dtype=_np.float32)
-                            n = float(_np.linalg.norm(pv))
-                            if n > 0:
-                                pv = pv / (n + 1e-8)
-                            sim = float(_np.dot(qv, pv))
-                            # --- Optional weighting hook ---
-                            # Controlled by env SOMABRAIN_MEMORY_ENABLE_WEIGHTING
-                            # final_sim = sim * phase_factor * quality_factor
-                            if os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING") in (
-                                "1",
-                                "true",
-                                "True",
-                            ):
-                                phase_factor = 1.0
-                                quality_factor = 1.0
-                                # Phase prior multiplier
-                                try:
-                                    phase = (
-                                        p.get("phase") if isinstance(p, dict) else None
-                                    )
-                                    priors_env = os.getenv(
-                                        "SOMABRAIN_MEMORY_PHASE_PRIORS", ""
-                                    )
-                                    if phase and priors_env:
-                                        # parse once per recall? (cheap, small string) -> acceptable
-                                        priors: dict[str, float] = {}
-                                        for part in priors_env.split(","):
-                                            if not part.strip():
-                                                continue
-                                            if ":" in part:
-                                                k, val = part.split(":", 1)
-                                                try:
-                                                    priors[k.strip().lower()] = float(
-                                                        val
-                                                    )
-                                                except Exception:
-                                                    pass
-                                        phase_factor = float(
-                                            priors.get(str(phase).lower(), 1.0)
-                                        )
-                                except Exception:
-                                    phase_factor = 1.0
-                                # Quality score exponent weighting
-                                try:
-                                    if isinstance(p, dict) and "quality_score" in p:
-                                        qs = float(p.get("quality_score") or 0.0)
-                                        if qs < 0:
-                                            qs = 0.0
-                                        if qs > 1:
-                                            qs = 1.0
-                                        qexp = float(
-                                            os.getenv(
-                                                "SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"
-                                            )
-                                        )
-                                        quality_factor = (qs**qexp) if qs > 0 else 0.0
-                                except Exception:
-                                    quality_factor = 1.0
-                                sim *= phase_factor * quality_factor
-                        except Exception:
-                            sim = 0.0
-                        scored.append((sim, p))
-                    scored.sort(key=lambda t: t[0], reverse=True)
-                    hits = [
-                        RecallHit(payload=p) for _, p in scored[: int(max(0, top_k))]
-                    ]
-                    if hits:
-                        return hits
-            except Exception:
-                # fall through to stub path logic
-                pass
-        # If strict mode and no in-process path succeeded, raise instead of silent stub
-        if __SR:
-            raise RuntimeError(
-                "STRICT REAL MODE: no HTTP memory backend and in-process recall yielded no results. Configure service or insert memories first."
-            )
-        # Non-strict: simple recent-payload fallback
-        __record_stub("memory_client.recall.stub_fallback")
-        return [RecallHit(payload=p) for p in self._stub_store[-int(max(0, top_k)) :]]
 
     def recall_with_scores(
         self,
@@ -2701,6 +2720,7 @@ class MemoryClient:
             # Gather candidates from stub store and global mirror.
             candidates: List[dict] = []
             try:
+                _audit_stub_usage("memory_client.payloads_for_coords_read")
                 candidates.extend(self._stub_store)
             except Exception:
                 pass
@@ -2780,12 +2800,19 @@ class MemoryClient:
                     p2["coordinate"] = c
                 with self._lock:
                     try:
+                        _audit_stub_usage("memory_client.store_from_payload_append")
                         self._stub_store.append(p2)
                     except Exception:
                         pass
                 try:
                     ns = getattr(self.cfg, "namespace", None)
                     if ns is not None:
+                        try:
+                            from somabrain.stub_audit import record_stub
+
+                            record_stub("memory_client.recall_fallback.stub_mirror")
+                        except Exception:
+                            pass
                         _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
                 except Exception:
                     pass

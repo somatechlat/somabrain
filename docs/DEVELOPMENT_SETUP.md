@@ -50,7 +50,7 @@ Follow this checklist every time you need the full development cluster:
   ```bash
   ./scripts/dev_up.sh
   ```
-  The script removes any stale containers, rebuilds the Somabrain image, and starts Redis, Kafka, Postgres, Prometheus, Somabrain, the external memory service, and the OPA stub. It emits:
+  The script removes any stale containers, rebuilds the SomaBrain image, and starts Redis, OPA, the application container, **and a real memory service container**. Use this only for quick local iteration; for production-like validation prefer the Helm charts below. The script emits:
   - `.env.local` – environment variables with host port mappings.
   - `ports.json` – the same information in JSON for tooling/tests.
 
@@ -64,7 +64,7 @@ Follow this checklist every time you need the full development cluster:
   uv run alembic upgrade head
   ```
 
-4. **Full-stack smoke verification** – run these commands in order to ensure every dependency is reachable:
+4. **Full-stack smoke verification** – run these commands in order to ensure every dependency is reachable (point them at your real infra when available):
   ```bash
   # Memory service
   curl -fsS http://localhost:9595/health
@@ -128,7 +128,7 @@ Whenever you change application code or dependencies, rebuild the image and rest
   ./scripts/dev_up.sh --rebuild
   ```
   The `--rebuild` flag forces a clean Docker image rebuild before containers start. If omitted, the script still detects most changes, but using the flag guarantees a fresh image.
-  
+
   By default, `scripts/dev_up.sh` writes production-like flags into `.env.local` so every run uses a strict, full-stack posture:
   - `SOMABRAIN_FORCE_FULL_STACK=1`
   - `SOMABRAIN_STRICT_REAL=1`
@@ -156,6 +156,53 @@ docker run --rm -p 9696:9696 \
   -e SOMABRAIN_FORCE_FULL_STACK=0 \
   -e SOMABRAIN_STRICT_REAL=0 \
   somabrain:latest
+
+## 3. Kubernetes Deployment (shared infra + apps)
+
+For a full cluster setup, use the Helm charts under `infra/helm/charts/`:
+
+```bash
+# Install shared infra once per cluster
+helm dependency update infra/helm/charts/soma-infra
+helm upgrade --install soma-infra infra/helm/charts/soma-infra \
+  -n soma --create-namespace
+
+# Install application services (after images are available)
+helm upgrade --install soma-apps infra/helm/charts/soma-apps \
+  -n somabrain --create-namespace \
+  -f infra/helm/charts/soma-apps/values.yaml
+```
+
+`soma-infra` hosts cross-cutting services (Auth, OPA, Kafka, Redis, Vault, Etcd,
+Prometheus/Grafana) in the `soma` namespace. `soma-apps` deploys the four core
+services (SB, SA01, SAH, SMF) and points them at the shared DNS endpoints.
+
+### Smoke-test the cluster
+
+After both charts are installed, confirm readiness:
+
+```bash
+kubectl get pods -n soma
+kubectl get pods -n somabrain
+
+# Forward the public API (adjust namespace if needed)
+kubectl port-forward svc/soma-apps-sb -n somabrain 9696:9696 &
+curl -fsS http://127.0.0.1:9696/health | jq
+
+# SA01 gRPC smoke (requires grpcurl)
+grpcurl -plaintext 127.0.0.1:50051 list 2>/dev/null
+
+# SAH health
+kubectl port-forward svc/soma-apps-sah -n somabrain 8081:8081 &
+curl -fsS http://127.0.0.1:8081/api/healthz | jq
+
+# SMF health
+kubectl port-forward svc/soma-apps-smf -n somabrain 8082:8082 &
+curl -fsS http://127.0.0.1:8082/api/healthz | jq
+```
+
+Use overrides to supply real image repositories/tags, secrets, and resource
+limits before deploying to shared environments.
 ```
 3. Wait for the script to report a healthy `/health` check and review the generated `.env.local`/`ports.json`.
 4. Run the smoke checks from step 4 above or the condensed helper:
