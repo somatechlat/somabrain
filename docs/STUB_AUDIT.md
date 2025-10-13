@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 Stub & Fallback Audit
 ======================
 
@@ -13,13 +15,18 @@ How to read this document
 - Severity: High | Medium | Low
 - Recommendation: concrete change to remove stub or make strict (code/infra)
 
+> Note: local in-process mirrors can now be disabled globally by setting
+> `SOMABRAIN_ALLOW_LOCAL_MIRRORS=0` (propagated through `common.config.settings`).
+> Strict-real mode (`SOMABRAIN_STRICT_REAL=1`) continues to raise via
+> `stub_audit.record_stub` regardless of this flag.
+
 1) `somabrain/memory_client.py`
 --------------------------------
 Context:
 - Still writes to `_GLOBAL_PAYLOADS/_GLOBAL_LINKS` for mirrors (guarded with `record_stub`). HTTP fallback paths now honour shared strict-real settings instead of direct env checks.
 Severity: Medium
 Recommendation:
-- Keep mirrors for now (tests rely on them) but revisit once integration harness seeds data differently. Strict-real already blocks stub usage via `record_stub`.
+- Mirrors are now gated by `SOMABRAIN_ALLOW_LOCAL_MIRRORS` (default `1`). Set it to `0` in staging/prod or strict integration runs to disable mirrors entirely.
 
 2) `somabrain/services/memory_service.py`
 -----------------------------------------

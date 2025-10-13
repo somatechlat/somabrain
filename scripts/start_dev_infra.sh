@@ -16,10 +16,10 @@ for i in {1..30}; do
   sleep 1
 done
 
-# Wait for SomaBrain (memory HTTP surface)
+# Wait for SomaBrain API
 for i in {1..30}; do
   if curl -sSf http://127.0.0.1:9595/health >/dev/null 2>&1; then
-    echo "SomaBrain memory API is up"
+    echo "SomaBrain API is up"
     break
   fi
   sleep 1

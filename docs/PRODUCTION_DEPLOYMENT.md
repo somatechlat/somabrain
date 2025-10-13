@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain Production Deployment Guide
 
 This document provides comprehensive documentation for the production-grade deployment of SomaBrain, covering both Docker Compose development stacks and Kubernetes production environments with proper TLS termination, ingress, and shared infrastructure alignment.
@@ -22,7 +24,6 @@ Based on the current architecture design, the following shared services are stan
 | **OPA** | `openpolicyagent/opa:0.48.0` | `8181` | `sb-opa.somabrain-prod.svc.cluster.local` | `8181` | Policy enforcement engine |
 | **Prometheus** | `prom/prometheus:v2.49.0` | `9090` | External (monitoring stack) | `9090` | Metrics collection |
 | **Postgres** | `postgres:15-alpine` | `5432` | `postgres.somabrain-prod.svc.cluster.local` | `5432` | Persistent data storage |
-| **SomaMemory** | `python:3.13-slim` (runtime) | `9595` | `somamemory.somabrain-prod.svc.cluster.local` | `9595` | External memory service |
 
 ### Network Connectivity Matrix
 
@@ -33,7 +34,7 @@ SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
 SOMABRAIN_KAFKA_URL: "kafka://kafka:9092" 
 SOMABRAIN_OPA_URL: "http://sb_opa:8181"
 SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
-SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"  # point at your existing memory API
 ```
 
 #### Kubernetes Cluster DNS Configuration
@@ -42,7 +43,6 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
 SOMABRAIN_REDIS_URL: "redis://sb-redis.somabrain-prod.svc.cluster.local:6379/0"
 SOMABRAIN_OPA_URL: "http://sb-opa.somabrain-prod.svc.cluster.local:8181"
 SOMABRAIN_POSTGRES_DSN: "postgresql://somabrain:somabrain-dev-password@postgres.somabrain-prod.svc.cluster.local:5432/somabrain"
-SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory.somabrain-prod.svc.cluster.local:9595"
 ```
 
 ## Docker Compose Development Stack
@@ -235,7 +235,6 @@ echo "127.0.0.1 somabrain.internal" >> /etc/hosts
 ```bash
 # Forward all services for integration testing
 kubectl port-forward -n somabrain-prod svc/somabrain 9696:9696 &
-kubectl port-forward -n somabrain-prod svc/somamemory 9595:9595 &  
 kubectl port-forward -n somabrain-prod svc/sb-redis 6379:6379 &
 kubectl port-forward -n somabrain-prod svc/postgres 55432:5432 &
 kubectl port-forward -n somabrain-prod svc/sb-opa 8181:8181 &
@@ -247,9 +246,6 @@ kubectl port-forward -n somabrain-prod svc/sb-opa 8181:8181 &
 ```bash
 # Primary health check
 curl http://localhost:9696/health
-
-# Memory service health  
-curl http://localhost:9595/health
 
 # Expected health response
 {
@@ -266,7 +262,7 @@ curl http://localhost:9595/health
 
 ### Readiness Requirements
 - Non-stub predictor provider (`mahal` not `stub`)
-- External memory service reachable
+- External memory endpoint reachable
 - Database connectivity established
 - Redis cache operational
 - OPA policy engine responsive (if fail-closed mode)
@@ -385,13 +381,6 @@ kubectl exec -it deployment/somabrain -n somabrain-prod -- \
 
 # Verify service endpoints
 kubectl get endpoints -n somabrain-prod
-```
-
-#### Memory Service Connectivity
-```bash
-# Test memory service from somabrain pod
-kubectl exec -it deployment/somabrain -n somabrain-prod -- \
-  curl http://somamemory.somabrain-prod.svc.cluster.local:9595/health
 ```
 
 #### TLS Certificate Issues  

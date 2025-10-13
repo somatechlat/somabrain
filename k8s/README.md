@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 Kubernetes full-stack run instructions (dev/staging parity)
 
 These steps mirror `k8s/full-stack.yaml`, which targets the `somabrain-prod` namespace by default. Adjust the namespace if you are testing in a sandbox (e.g. `somabrain-dev`).
@@ -13,7 +15,6 @@ docker build -t somatechlat/somabrain:dev .
 kind load docker-image somatechlat/somabrain:dev --name somabrain
 
 # optional: pre-build other service images and load them if you customize manifests
-# kind load docker-image somatechlat/somamemory:dev --name somabrain
 ```
 
 2) Apply the manifests:
@@ -33,7 +34,6 @@ Option A (port-forward, recommended for parity with CI and strict-real tests):
 ```bash
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
-kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 kubectl -n somabrain-prod port-forward svc/sb-opa 8181:8181 &
@@ -52,7 +52,6 @@ python scripts/sb_precheck.py
 SOMABRAIN_KAFKA_URL=kafka://localhost:9092 \
 SOMABRAIN_OPA_URL=http://localhost:8181 \
 SOMABRAIN_REDIS_URL=redis://localhost:6379/0 \
-SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \
 python -m pytest -m integration -q -r a --maxfail=5
 ```
 

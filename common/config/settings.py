@@ -175,6 +175,9 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
+    allow_local_mirrors: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_LOCAL_MIRRORS", True)
+    )
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep

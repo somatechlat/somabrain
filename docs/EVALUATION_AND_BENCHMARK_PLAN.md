@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain — Math, Evaluation & Benchmark Plan
 
 Last updated: 2025-09-27
@@ -153,14 +155,12 @@ Goal: demonstrate that the deployed brain updates memory, feedback stores, and s
 
 1. Prepare connectivity via `kubectl port-forward`:
   - `somabrain-test` → `127.0.0.1:9797`
-  - `somamemory` → `127.0.0.1:9595`
   - `sb-redis` → `127.0.0.1:6379`
   - `postgres` → `127.0.0.1:55432`
 2. Export live endpoint variables (pytest skips automatically if any health probe fails):
 
   ```bash
   export SOMA_API_URL=http://127.0.0.1:9797
-  export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
   export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
   export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
   ```
@@ -172,7 +172,7 @@ Goal: demonstrate that the deployed brain updates memory, feedback stores, and s
   ```
 
 Success criteria:
-- Memory `/health` reports an increased `items` count after `/remember`, and `/recall` returns at least one entry.
+- `/recall` responses include the freshly written entry when driven through the API.
 - `/context/feedback` writes rows into `feedback_events` and `token_usage` in Postgres (validated via SQL queries inside the test).
 - Session `working_memory` lengths grow monotonically across repeated evaluate/feedback cycles.
 

@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # soma-apps Helm chart
 
 This chart deploys the application layer of the Soma stack—SomaBrain (SB),

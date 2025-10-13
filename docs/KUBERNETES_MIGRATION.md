@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 ## Kubernetes migration impact analysis
 
 This document summarizes the impact and recommended steps to migrate the current Docker Compose DEV stack for Somabrain to Kubernetes. It focuses on the developer/dev cluster migration (kind/minikube) and provides pointers for production-ready choices.
@@ -10,7 +12,6 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
   - somabrain (FastAPI / Uvicorn) -> Deployment + Service (+Ingress/NodePort for host access)
   - redis -> StatefulSet (or Deployment for dev) + Service
   - opa -> Deployment + Service
-  - memory service (SFM) -> Deployment + Service
   - kafka (Redpanda/Strimzi) -> Operator-backed StatefulSet (Strimzi or Redpanda operator is recommended) or use a simple single-node broker for dev
   - postgres -> StatefulSet / managed DB or Postgres operator
   - qdrant -> StatefulSet or Helm chart for Qdrant
@@ -26,11 +27,9 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
 - For development namespaces, set `SOMABRAIN_DISABLE_AUTH=1` in the API ConfigMap so you can hit
   `/remember` and `/recall` without provisioning JWT keys. Remove the flag (or set to `0`) before
   promoting manifests to staging/production.
-- Point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at the in-cluster DNS name
-  `http://somamemory.<namespace>.svc.cluster.local:9595` so the API uses the deployed memory
-  service instead of localhost defaults.
+- Provide `SOMABRAIN_MEMORY_HTTP_ENDPOINT` pointing at your existing memory API endpoint so the application does not fall back to localhost defaults.
 - PersistentVolumeClaims for Postgres/Qdrant/Redis if you need durable storage
-- Probes (readiness & liveness) for Somabrain and memory service
+- Probes (readiness & liveness) for Somabrain and supporting services
 - RBAC if using operators that require it
 - NetworkPolicy if you need isolation (optional for dev)
 
@@ -39,9 +38,8 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
   - SOMABRAIN_KAFKA_URL=kafka://sb-kafka:9092
   - SOMABRAIN_OPA_URL=http://sb-opa:8181
   - SOMABRAIN_REDIS_URL=redis://sb-redis:6379/0
-  - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://somamemory:9595
 - To reach services from the host (for running `.venv`-based tests):
-  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696/9797, memory 9595, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
+  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696/9797, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
   - Option B: Use production ingress via `somabrain-public` LoadBalancer service on port 9999 with nginx ingress controller and TLS termination (configured in `k8s/full-stack.yaml`).
   - Option C: Access via HTTPS ingress at `https://somabrain.internal:9999` after port-forwarding the ingress controller and adding host entry.
 
@@ -99,7 +97,6 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main
 # port-forward services needed for host tests
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
-kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 # access via production ingress path (port 9999)
@@ -116,7 +113,7 @@ python scripts/sb_precheck.py
 5. Update CI to run integration tests inside a cluster-run job to reduce host/cluster networking mismatches.
 
 ### Notes & tradeoffs
-- For strict NO_MOCKS testing you will want the memory service (SFM), Postgres and Qdrant running in-cluster with PVCs. If that is difficult, run the memory service out-of-cluster and expose it to the cluster (not recommended for production parity).
+- For strict NO_MOCKS testing you will want Postgres and Qdrant running in-cluster with PVCs. If external services are required (e.g., memory), expose them securely and configure the endpoint accordingly.
 
 ---
 

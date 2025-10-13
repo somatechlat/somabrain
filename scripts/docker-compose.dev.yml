@@ -35,27 +35,12 @@ services:
       SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
       SOMABRAIN_OPA_URL: "http://opa:8181"
       SOMABRAIN_FORCE_FULL_STACK: "1"
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://memory:9595"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
     depends_on:
       - redis
       - opa
-      - memory
     ports:
       - "9595:9595"
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9595/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 6
-
-  memory:
-    image: ghcr.io/somatech/somabrain-memory:latest
-    environment:
-      SOMABRAIN_REDIS_URL: "redis://redis:6379/0"
-    ports:
-      - "9596:9595"
-    depends_on:
-      - redis
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:9595/health"]
       interval: 5s

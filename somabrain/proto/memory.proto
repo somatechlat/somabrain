@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package memory;
+
+// Simple request for a memory payload
+message MemoryPayload {
+  string coord_key = 1; // tenant‑scoped key
+  string content = 2;   // arbitrary JSON string (encoded as string)
+  double quality_score = 3;
+}
+
+// Request sent to the Remember RPC
+message RememberRequest {
+  MemoryPayload payload = 1;
+}
+
+// Empty response for Remember (acknowledgement)
+message RememberResponse {
+  bool ok = 1;
+}
+
+// Request for a recall operation
+message RecallRequest {
+  string query = 1;
+  int32 top_k = 2;
+}
+
+// Single memory item returned by Recall
+message RecallItem {
+  string coord_key = 1;
+  string content = 2;
+  double quality_score = 3;
+}
+
+// Response containing a list of recalled items
+message RecallResponse {
+  repeated RecallItem items = 1;
+}
+
+// The Memory service – only two RPCs needed for SB
+service MemoryService {
+  rpc Remember(RememberRequest) returns (RememberResponse);
+  rpc Recall(RecallRequest) returns (RecallResponse);
+}

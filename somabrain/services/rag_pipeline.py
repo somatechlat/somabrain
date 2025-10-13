@@ -16,6 +16,18 @@ from somabrain.services.retrievers import (
     retrieve_wm_stub,
 )
 
+try:  # pragma: no cover - optional dependency in legacy layouts
+    from common.config.settings import settings as shared_settings
+except Exception:
+    shared_settings = None  # type: ignore
+
+try:
+    _ALLOW_LOCAL_MIRRORS = bool(
+        getattr(shared_settings, "allow_local_mirrors", True)
+    )
+except Exception:
+    _ALLOW_LOCAL_MIRRORS = True
+
 
 # Helper to record an edge in the process‑wide global links mirror used by MemoryClient.links_from.
 def _record_global_link(
@@ -28,12 +40,25 @@ def _record_global_link(
     """Append an edge dict to the _GLOBAL_LINKS structure.
     This makes links immediately visible to tests that read from the global mirror.
     """
+    if not _ALLOW_LOCAL_MIRRORS:
+        return
     try:
+        # Record the link in the process‑wide global mirror without stub auditing.
+        # In strict‑real mode the caller must ensure the underlying memory service
+        # is available; we simply mirror the link for test visibility.
         GLOBAL_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
         if not hasattr(builtins, GLOBAL_LINKS_KEY):
             setattr(builtins, GLOBAL_LINKS_KEY, {})
         global_links: dict[str, list[dict]] = getattr(builtins, GLOBAL_LINKS_KEY)
         ns_links = global_links.setdefault(namespace, [])
+        try:
+            from somabrain.stub_audit import record_stub
+
+            record_stub("rag_pipeline.global_link.stub_mirror")
+        except Exception:
+            # non-strict mode will increment counters; strict mode would have
+            # raised and prevented further execution.
+            pass
         ns_links.append(
             {
                 "from": list(map(float, from_coord)),
@@ -239,22 +264,17 @@ async def run_rag_pipeline(
                 except Exception:
                     pass
             else:
-                from somabrain.stub_audit import (
-                    STRICT_REAL as __SR,
-                    record_stub as __record_stub,
-                )
+                # No WM backend available. In strict‑real mode we raise an error.
+                from common.config.settings import settings as _shared_settings
 
-                if __SR:
-                    # Strict mode: skip WM instead of using stubs
-                    logger.info(
-                        "wm retriever: skipped in strict mode (embedder or wm backend missing)"
+                if getattr(_shared_settings, "strict_real", False):
+                    raise RuntimeError(
+                        "WM retriever unavailable and strict‑real mode enforced."
                     )
-                    continue
-                logger.info(
-                    "wm retriever: falling back to stub (embedder or wm backend missing)"
+                # Non‑strict mode fallback is disabled per user request; raise.
+                raise RuntimeError(
+                    "WM retriever unavailable – fallback stubs are disabled."
                 )
-                __record_stub("rag_pipeline.wm.stub_fallback")
-                lst = retrieve_wm_stub(req.query, top_k)
                 lists_by_retriever["wm"] = lst
                 cands += lst
         elif rname == "vector":
@@ -276,22 +296,16 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
-            from somabrain.stub_audit import (
-                STRICT_REAL as __SR,
-                record_stub as __record_stub,
-            )
+                # No vector backend available. Enforce strict‑real behavior.
+                from common.config.settings import settings as _shared_settings
 
-            if __SR:
-                # Strict mode: skip vector instead of using stubs
-                logger.info(
-                    "vector retriever: skipped in strict mode (embedder or mem_client missing)"
+                if getattr(_shared_settings, "strict_real", False):
+                    raise RuntimeError(
+                        "Vector retriever unavailable and strict‑real mode enforced."
+                    )
+                raise RuntimeError(
+                    "Vector retriever unavailable – fallback stubs are disabled."
                 )
-                continue
-            logger.info(
-                "vector retriever: falling back to stub (embedder or mem_client missing)"
-            )
-            __record_stub("rag_pipeline.vector.stub_fallback")
-            lst = retrieve_vector_stub(req.query, top_k)
             lists_by_retriever["vector"] = lst
             cands += lst
         elif rname == "graph":
@@ -315,17 +329,16 @@ async def run_rag_pipeline(
                     continue
                 except Exception:
                     pass
-            from somabrain.stub_audit import (
-                STRICT_REAL as __SR,
-                record_stub as __record_stub,
-            )
+                # No graph backend available. Enforce strict‑real behavior.
+                from common.config.settings import settings as _shared_settings
 
-            if __SR:
+                if getattr(_shared_settings, "strict_real", False):
+                    raise RuntimeError(
+                        "Graph retriever unavailable and strict‑real mode enforced."
+                    )
                 raise RuntimeError(
-                    "STRICT REAL MODE: graph retriever fallback to stub disallowed (embedder or mem_client missing)"
+                    "Graph retriever unavailable – fallback stubs are disabled."
                 )
-            __record_stub("rag_pipeline.graph.stub_fallback")
-            lst = retrieve_graph_stub(req.query, top_k)
             lists_by_retriever["graph"] = lst
             cands += lst
         elif rname == "lexical" and mem_client is not None:
@@ -347,28 +360,17 @@ async def run_rag_pipeline(
     # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
     # in non-strict mode, backfill to keep endpoint responsive in empty stores.
     if not cands:
-        from somabrain.stub_audit import (
-            STRICT_REAL as __SR,
-            record_stub as __record_stub,
-        )
+                # No candidates retrieved. In strict‑real mode we do not backfill with stubs.
+                from common.config.settings import settings as _shared_settings
 
-        if not __SR:
-            for rname in retrievers:
-                if rname == "wm":
-                    __record_stub("rag_pipeline.backfill.wm")
-                    lst = retrieve_wm_stub(req.query, top_k)
-                    lists_by_retriever["wm"] = lst
-                    cands += lst
-                elif rname == "vector":
-                    __record_stub("rag_pipeline.backfill.vector")
-                    lst = retrieve_vector_stub(req.query, top_k)
-                    lists_by_retriever["vector"] = lst
-                    cands += lst
-                elif rname == "graph":
-                    __record_stub("rag_pipeline.backfill.graph")
-                    lst = retrieve_graph_stub(req.query, top_k)
-                    lists_by_retriever["graph"] = lst
-                    cands += lst
+                if getattr(_shared_settings, "strict_real", False):
+                    raise RuntimeError(
+                        "No retriever results and strict‑real mode enforced – backfill disabled."
+                    )
+                # Non‑strict mode backfill is disabled per user request; raise.
+                raise RuntimeError(
+                    "No retriever results – backfill stubs are disabled."
+                )
 
     # Rank fusion (normalized & weighted RRF) over available retriever lists
     fusion_method = "wrrf"

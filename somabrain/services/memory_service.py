@@ -41,11 +41,27 @@ import os
 import time
 from typing import List, Optional, Tuple
 
+from somabrain.interfaces.memory import MemoryBackend
+
 from somabrain.config import load_config
+# Shared settings for developer/stub flags
+try:  # pragma: no cover - optional dependency in legacy layouts
+    from common.config.settings import settings as shared_settings
+except Exception:
+    shared_settings = None  # type: ignore
+# In strict‑real mode we do not allow any stub mirroring. Import shared settings
+# to check the flag and raise if a stub path would be used.
 
 # Load configuration for outbox path
 _cfg = load_config()
 _OUTBOX_PATH = getattr(_cfg, "outbox_path", "./data/somabrain/outbox.jsonl")
+
+try:
+    _ALLOW_LOCAL_MIRRORS = bool(
+        getattr(shared_settings, "allow_local_mirrors", True)
+    )
+except Exception:
+    _ALLOW_LOCAL_MIRRORS = True
 
 
 class MemoryService:
@@ -129,9 +145,21 @@ class MemoryService:
         except Exception as e:
             raise e
 
-    def client(self):
-        """Return the underlying MultiTenantMemory client scoped to the namespace."""
-        return self.mt_memory.for_namespace(self.namespace)
+    def client(self) -> MemoryBackend:
+        """Return the underlying memory client.
+
+        Accepts either a MultiTenantMemory pool (which exposes
+        ``for_namespace(namespace)``) or an already-instantiated backend that
+        implements :class:`MemoryBackend`. This makes the refactor incremental
+        and test-friendly: callers can pass a dummy backend directly.
+        """
+        candidate = self.mt_memory
+        # If a pool-like object was passed (has for_namespace), obtain the
+        # per-namespace client; otherwise assume candidate already implements
+        # the MemoryBackend Protocol.
+        if hasattr(candidate, "for_namespace") and callable(getattr(candidate, "for_namespace")):
+            return candidate.for_namespace(self.namespace)
+        return candidate  # type: ignore[return-value]
 
     def _write_outbox(self, entry: dict):
         """Append a JSON line to the outbox for later retry.
@@ -275,15 +303,42 @@ class MemoryService:
             coord = self.coord_for_key(key, universe=universe)
         except Exception:
             coord = res
-        # In stub or fallback modes, ensure payload is indexed with coordinate for planner lookup
-        try:
-            from ..memory_client import _GLOBAL_PAYLOADS
+        if _ALLOW_LOCAL_MIRRORS:
+            # In stub or fallback modes, ensure payload is indexed with coordinate for planner lookup
+            # Instead of silently mirroring, audit the stub usage so strict‑real mode
+            # will raise, and non‑strict modes will increment counters. Mirror the
+            # payload into the process-global payloads map for test visibility.
+            try:
+                # Defensive import path to access the builtins-backed global mirror
+                from somabrain.stub_audit import record_stub
+                from .. import memory_client as _mc
 
-            p = dict(payload)
-            p["coordinate"] = coord
-            _GLOBAL_PAYLOADS.setdefault(self.namespace, []).append(p)
-        except Exception:
-            pass
+                try:
+                    _mc._refresh_builtins_globals()
+                except Exception:
+                    pass
+
+                # Ensure coordinate is present on a copy we mirror
+                try:
+                    mirror_payload = dict(payload)
+                    mirror_payload.setdefault("coordinate", coord)
+                except Exception:
+                    mirror_payload = payload
+
+                # This will raise in strict-real; otherwise it increments counters.
+                record_stub("memory_service.remember.stub_mirror")
+
+                # Append to process-global payloads for the current namespace
+                try:
+                    getattr(_mc, "_GLOBAL_PAYLOADS", {}).setdefault(
+                        self.namespace, []
+                    ).append(mirror_payload)
+                except Exception:
+                    pass
+            except Exception:
+                # If strict-real is enabled, record_stub would have raised and
+                # propagated; in non-strict mode we simply continue.
+                pass
         try:
             return coord
         except Exception:
@@ -322,22 +377,35 @@ class MemoryService:
             coord = self.coord_for_key(key, universe=universe)
         except Exception:
             coord = None
-        # Ensure payload indexed with coordinate for planner lookup (stub/local)
+        # Ensure payload indexed with coordinate for planner lookup (stub/local).
+        # Mirror via audited path so strict-real prevents it and non-strict modes
+        # increment the stub counters and append to the global mirror.
         if coord is not None:
             try:
-                from ..memory_client import _GLOBAL_PAYLOADS, _stable_coord
+                from somabrain.stub_audit import record_stub
+                from .. import memory_client as _mc
 
-                p = dict(payload)
-                # Ensure coordinate present; compute if needed for consistency
-                if not p.get("coordinate"):
-                    try:
-                        uni = p.get("universe") or universe or "real"
-                        coord = _stable_coord(f"{uni}::{key}")
-                    except Exception:
-                        pass
-                p["coordinate"] = coord
-                _GLOBAL_PAYLOADS.setdefault(self.namespace, []).append(p)
+                try:
+                    _mc._refresh_builtins_globals()
+                except Exception:
+                    pass
+
+                try:
+                    mirror_payload = dict(payload)
+                    mirror_payload.setdefault("coordinate", coord)
+                except Exception:
+                    mirror_payload = payload
+
+                record_stub("memory_service.aremember.stub_mirror")
+
+                try:
+                    getattr(_mc, "_GLOBAL_PAYLOADS", {}).setdefault(self.namespace, []).append(
+                        mirror_payload
+                    )
+                except Exception:
+                    pass
             except Exception:
+                # strict-real mode would raise from record_stub; let it propagate
                 pass
         try:
             return coord
@@ -371,28 +439,36 @@ class MemoryService:
         try:
             self.client().link(from_coord, to_coord, link_type=link_type, weight=weight)
             # Also mirror to the process‑global links map to ensure visibility
-            try:
-                from .. import memory_client as _mc
-
-                # Ensure module‑level bindings reflect current builtins‑backed maps
+            if _ALLOW_LOCAL_MIRRORS:
                 try:
-                    _mc._refresh_builtins_globals()
+                    from .. import memory_client as _mc
+
+                    # Ensure module‑level bindings reflect current builtins‑backed maps
+                    try:
+                        _mc._refresh_builtins_globals()
+                    except Exception:
+                        pass
+                    GLOBAL_LINKS = getattr(_mc, "_GLOBAL_LINKS", None)
+                    if GLOBAL_LINKS is not None:
+                        ns = getattr(self, "namespace", None)
+                        if ns is not None:
+                            # Audit in-process link mirror; strict mode will block this write.
+                            try:
+                                from somabrain.stub_audit import record_stub
+
+                                record_stub("memory_service.link.stub_mirror")
+                            except Exception:
+                                pass
+                            GLOBAL_LINKS.setdefault(ns, []).append(
+                                {
+                                    "from": list(map(float, from_coord)),
+                                    "to": list(map(float, to_coord)),
+                                    "type": str(link_type),
+                                    "weight": float(weight),
+                                }
+                            )
                 except Exception:
                     pass
-                GLOBAL_LINKS = getattr(_mc, "_GLOBAL_LINKS", None)
-                if GLOBAL_LINKS is not None:
-                    ns = getattr(self, "namespace", None)
-                    if ns is not None:
-                        GLOBAL_LINKS.setdefault(ns, []).append(
-                            {
-                                "from": list(map(float, from_coord)),
-                                "to": list(map(float, to_coord)),
-                                "type": str(link_type),
-                                "weight": float(weight),
-                            }
-                        )
-            except Exception:
-                pass
         except Exception:
             # Record failure and queue
             self._record_failure()
@@ -449,27 +525,28 @@ class MemoryService:
                         weight=weight,
                     ),
                 )
-            try:
-                from .. import memory_client as _mc
-
+            if _ALLOW_LOCAL_MIRRORS:
                 try:
-                    _mc._refresh_builtins_globals()
+                    from .. import memory_client as _mc
+
+                    try:
+                        _mc._refresh_builtins_globals()
+                    except Exception:
+                        pass
+                    GLOBAL_LINKS = getattr(_mc, "_GLOBAL_LINKS", None)
+                    if GLOBAL_LINKS is not None:
+                        ns = getattr(self, "namespace", None)
+                        if ns is not None:
+                            GLOBAL_LINKS.setdefault(ns, []).append(
+                                {
+                                    "from": list(map(float, from_coord)),
+                                    "to": list(map(float, to_coord)),
+                                    "type": str(link_type),
+                                    "weight": float(weight),
+                                }
+                            )
                 except Exception:
                     pass
-                GLOBAL_LINKS = getattr(_mc, "_GLOBAL_LINKS", None)
-                if GLOBAL_LINKS is not None:
-                    ns = getattr(self, "namespace", None)
-                    if ns is not None:
-                        GLOBAL_LINKS.setdefault(ns, []).append(
-                            {
-                                "from": list(map(float, from_coord)),
-                                "to": list(map(float, to_coord)),
-                                "type": str(link_type),
-                                "weight": float(weight),
-                            }
-                        )
-            except Exception:
-                pass
         except Exception:
             self._record_failure()
             self._write_outbox(

@@ -112,7 +112,6 @@ services:
       SOMABRAIN_MODE: "enterprise"
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:9696"
-      - "9797:9696"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
       interval: 30s

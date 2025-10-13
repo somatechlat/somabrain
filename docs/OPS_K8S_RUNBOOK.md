@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 ## SomaBrain Kubernetes Operations Runbook
 
 This runbook documents the cluster-level changes applied to the `k8s/full-stack.yaml` manifest and how to operate, harden, and keep the full infra running reliably for development and staging/production parity.
@@ -16,7 +18,6 @@ Component map (as shipped in `k8s/full-stack.yaml`)
 | Somabrain Public | — (shares pods) | `somabrain-public` | 9696 → 9999           | LoadBalancer    | Production external access |
 | Somabrain Test   | — (shares pods) | `somabrain-test` | 9696 → 9797             | Internal only   | Alternate port for learning/tests |
 | Nginx Ingress    | `Deployment`    | `ingress-nginx-controller` | 80/443 → 80/443 | LoadBalancer | HTTPS termination, routing |
-| SomaMemory       | `Deployment`    | `somamemory`     | 9595 → 9595             | Internal only   | In-memory recall/write service |
 | Redis cache      | `Deployment`    | `sb-redis`       | 6379 → 6379             | Internal only   | Cache + coordination |
 | OPA policy       | `Deployment`    | `sb-opa`         | 8181 → 8181             | Internal only   | Optional policy checks |
 | Postgres         | `StatefulSet`   | `postgres`       | 5432 → 5432             | Internal only   | Feedback/token persistence |
@@ -38,6 +39,12 @@ What I changed
   - `apply-overrides` init container that copies files from a `ConfigMap` named `somabrain-overrides` into the app tree (used to hot-fix or stage local changes without rebuilding images).
   - env references to `somabrain-postgres` secret so runtime has DB credentials.
 - Added `somabrain-overrides` `ConfigMap` to carry local code patches (for emergency fixes / staged overrides).
+
+Ingress & TLS provisioning
+- Run `scripts/setup_ingress_tls.sh` to provision the `somabrain-tls` secret (Let's Encrypt via cert-manager) and apply ingress resources.
+- Validate DNS resolution: `dig somabrain.internal` should point at the ingress IP (or `/etc/hosts` entry for local).
+- Test TLS handshake: `curl -sk --resolve somabrain.internal:9999:127.0.0.1 https://somabrain.internal:9999/health`.
+- Inspect ingress status: `kubectl -n ingress-nginx get ingress somabrain-ingress -o wide`.
 
 How to make these changes permanent (recommended workflow)
 1. Build and publish a production image (CI):
@@ -70,7 +77,7 @@ Verification & daily checks
   1. Wait for `somabrain-migrate` Job to complete: `kubectl -n somabrain-prod wait --for=condition=complete job/somabrain-migrate --timeout=300s`.
   2. Confirm Postgres readiness: `kubectl -n somabrain-prod get sts/postgres` and `kubectl -n somabrain-prod exec sts/postgres-0 -- pg_isready -U $POSTGRES_USER`.
   3. Check somabrain pods: `kubectl -n somabrain-prod get pods -l app=somabrain` and `kubectl -n somabrain-prod logs deploy/somabrain --tail=200`.
-4. Port-forward for local test access (API 9696/9797, memory 9595, Redis 6379, Postgres 55432) and run prechecks.
+4. Port-forward for local test access (API 9696/9797, Redis 6379, Postgres 55432) and run prechecks.
 
 Running the learning test locally (host)
 1. Forward ports from the cluster to your host (recommended):
@@ -79,7 +86,6 @@ Running the learning test locally (host)
 # Example, run in separate shells (or use the background/nohup pattern in docs):
 ./scripts/port_forward_api.sh &
 kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
-kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 ```
@@ -89,14 +95,12 @@ kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 ```bash
 curl -s http://127.0.0.1:9696/health | jq
 curl -s http://127.0.0.1:9797/health | jq
-curl -s http://127.0.0.1:9595/health | jq
 ```
 
 3. Run the cognition learning suite (from repo root using your venv):
 
 ```bash
 export SOMA_API_URL=http://127.0.0.1:9797
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
 export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
 export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
 .venv/bin/pytest -vv tests/test_cognition_learning.py

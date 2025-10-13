@@ -1347,11 +1347,28 @@ _spec = importlib.util.spec_from_file_location(
     "somabrain.runtime_module", _runtime_path
 )
 assert _spec and _spec.loader  # sanity check
-_rt = importlib.util.module_from_spec(_spec)  # type: ignore
-# Register the module in ``sys.modules`` so that the code inside ``runtime.py``
-# (which accesses ``sys.modules[__name__]``) can find its own entry.
-sys.modules[_spec.name] = _rt
-_spec.loader.exec_module(_rt)  # load the module so its globals are available
+# If an initializer already loaded the runtime module into sys.modules, reuse it
+if _spec.name in sys.modules:
+    _rt = sys.modules[_spec.name]
+else:
+    _rt = importlib.util.module_from_spec(_spec)  # type: ignore
+    # Register the module in ``sys.modules`` so that the code inside ``runtime.py``
+    # (which accesses ``sys.modules[__name__]``) can find its own entry.
+    sys.modules[_spec.name] = _rt
+    _spec.loader.exec_module(_rt)  # load the module so its globals are available
+
+# Robustness: if the initializer loaded runtime under a different key, try to
+# find any loaded module whose __file__ points to runtime.py and reuse it so
+# set_singletons side-effects are observed.
+if not getattr(_rt, "embedder", None):
+    for m in list(sys.modules.values()):
+        try:
+            mf = getattr(m, "__file__", "") or ""
+            if mf.endswith(os.path.join("somabrain", "runtime.py")):
+                _rt = m
+                break
+        except Exception:
+            continue
 
 if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
     mt_memory = MultiTenantMemory(cfg)

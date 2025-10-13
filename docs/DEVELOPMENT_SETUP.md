@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain Development Setup
 
 This guide provides a comprehensive, step-by-step workflow for preparing a development environment,
@@ -50,7 +52,7 @@ Follow this checklist every time you need the full development cluster:
   ```bash
   ./scripts/dev_up.sh
   ```
-  The script removes any stale containers, rebuilds the SomaBrain image, and starts Redis, OPA, the application container, **and a real memory service container**. Use this only for quick local iteration; for production-like validation prefer the Helm charts below. The script emits:
+  The script removes any stale containers, rebuilds the SomaBrain image, and starts Redis, OPA, and the application container. Ensure your external memory endpoint is reachable before running tests. Use this only for quick local iteration; for production-like validation prefer the Helm charts below. The script emits:
   - `.env.local` – environment variables with host port mappings.
   - `ports.json` – the same information in JSON for tooling/tests.
 
@@ -66,9 +68,6 @@ Follow this checklist every time you need the full development cluster:
 
 4. **Full-stack smoke verification** – run these commands in order to ensure every dependency is reachable (point them at your real infra when available):
   ```bash
-  # Memory service
-  curl -fsS http://localhost:9595/health
-
   # OPA stub & Prometheus metrics
   curl -fsS http://localhost:8181/health
   curl -fsS http://localhost:9090/metrics | head -n 5
@@ -111,9 +110,10 @@ Follow this checklist every time you need the full development cluster:
 ### 2.1 Posture knobs for local vs. production parity
 
 - **Single worker with read-your-writes:** the compose profile sets `SOMABRAIN_WORKERS=1` so `/remember` writes are visible immediately to `/recall`.
-- **Force full-stack readiness:** `SOMABRAIN_FORCE_FULL_STACK=1` (now written to `.env.local` by `scripts/dev_up.sh`) requires a real predictor, embedder, and reachable memory service. Disabling it relaxes readiness for isolated development.
+- **Force full-stack readiness:** `SOMABRAIN_FORCE_FULL_STACK=1` (now written to `.env.local` by `scripts/dev_up.sh`) requires a real predictor, embedder, and reachable external memory endpoint. Disabling it relaxes readiness for isolated development.
 - **OPA fail-closed simulation:** set `SOMA_OPA_FAIL_CLOSED=1` to make `/health` depend on the OPA stub (`opa_required=true`).
 - **devprod smoke script:** `python scripts/devprod_smoke.py --url http://127.0.0.1:9696` runs the same remember/recall loop with additional assertions if you prefer a Python-based check.
+- **Disable local mirrors:** set `SOMABRAIN_ALLOW_LOCAL_MIRRORS=0` to prevent the in-process memory/link mirrors from being populated (strict-real already enforces this automatically).
 
 ### 2.2 Rebuild image & redeploy the full stack
 
@@ -215,7 +215,6 @@ limits before deploying to shared environments.
 
 ```bash
 source .env.local
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}
 export SOMABRAIN_OTLP_ENDPOINT=http://localhost:4317  # if OTEL collector running
 ```
 
@@ -278,16 +277,14 @@ the strict pytest scenario to validate the live services:
 # Optional: clear any lingering forwards from previous sessions
 pkill -f "kubectl -n somabrain-prod port-forward" || true
 
-# 1. Forward the production API on 9696 using the helper script, then forward test/memory/redis (detach + log to /tmp)
+# 1. Forward the production API on 9696 using the helper script, then forward test/redis (detach + log to /tmp)
 ./scripts/port_forward_api.sh
 nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   > /tmp/pf-somabrain-test.log 2>&1 &
-nohup kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595       > /tmp/pf-somamemory.log     2>&1 &
 nohup kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379         > /tmp/pf-redis.log          2>&1 &
 
 # 2. Sanity-check health once the tunnels are up
 curl -s http://127.0.0.1:9696/health | jq '.ok'
 curl -s http://127.0.0.1:9797/health | jq '.ok'
-curl -s http://127.0.0.1:9595/health | jq '.ok'
 
 # 3. Run the strict memory integration against the forwarded endpoint
 SOMA_API_URL=http://127.0.0.1:9797 uv run --active pytest \
@@ -308,7 +305,6 @@ checks fail.
 
 1. Ensure port-forwards (or direct connections) exist for:
   - Somabrain API: `http://127.0.0.1:9797`
-  - Somabrain memory service: `http://127.0.0.1:9595`
   - Redis: `redis://127.0.0.1:6379/0`
   - Postgres (forward `svc/postgres` → `55432`):
     ```bash
@@ -319,7 +315,6 @@ checks fail.
 2. Export the environment so pytest hits the live endpoints:
   ```bash
   export SOMA_API_URL=http://127.0.0.1:9797
-  export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
   export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
   export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
   ```

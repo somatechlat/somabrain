@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 ## Production-like Defaults (code reality)
 
 The **code base does not embed any hard‑coded defaults** for the production‑like flags.  Those flags are
@@ -15,7 +17,7 @@ The flags that are typically set for a full‑stack, strict‑real deployment ar
 
 * `SOMABRAIN_FORCE_FULL_STACK` – require external memory, a real embedder and a non‑stub predictor for readiness.
 * `SOMABRAIN_STRICT_REAL` – enforce the “no‑stubs” policy (predictor, embedder, recall).
-* `SOMABRAIN_REQUIRE_MEMORY` – abort start‑up if the memory service cannot be reached.
+* `SOMABRAIN_REQUIRE_MEMORY` – abort start‑up if the external memory endpoint cannot be reached.
 * `SOMABRAIN_MODE` – optional mode identifier (e.g., `enterprise`).
 
 These values can be overridden at runtime with `-e VAR=value` or by editing `.env.local` before invoking
@@ -53,7 +55,7 @@ All runtime configuration is controlled via environment variables. This document
 | `SOMABRAIN_HOST` | `0.0.0.0` | Bind address for FastAPI. | `somabrain/app.py` |
 | `SOMABRAIN_PORT` | `9696` | Port for the API server. | `somabrain/app.py` |
 | `SOMABRAIN_WORKERS` | `1` | Uvicorn worker count. | `docker-entrypoint.sh` |
-| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | **required** – e.g. `http://host.docker.internal:9595` | URL of the external memory service. In Kubernetes this is `http://somamemory.<ns>.svc.cluster.local:9595`. | `somabrain/memory_client.py` |
+| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | **required** – e.g. `http://host.docker.internal:9595` | URL of the external memory API (provisioned outside this stack). | `somabrain/memory_client.py` |
 | `SOMABRAIN_REDIS_URL` | `redis://redis:6379/0` | Redis connection string. | Various cache and rate‑limit components |
 | `SOMABRAIN_POSTGRES_DSN` | **required** | Postgres DSN for ledger, constitution, etc. | `somabrain/storage/db.py` |
 | `SOMABRAIN_KAFKA_URL` | `kafka://kafka:9092` | Kafka bootstrap address. | Audit pipeline |
@@ -64,11 +66,12 @@ All runtime configuration is controlled via environment variables. This document
 | `SOMABRAIN_FORCE_FULL_STACK` | `0` | Require external memory, real embedder, and non‑stub predictor for readiness. | `somabrain/app.py` |
 | `SOMABRAIN_CONSOLIDATION_TIMEOUT_S` | `1.0` | Max seconds per NREM/REM phase during `/sleep/run` to avoid long requests. | `somabrain/consolidation.py` |
 | `SOMABRAIN_ENABLE_BEST` | `0` | Shortcut that enables full stack + weighting defaults. | `somabrain/app.py` |
-| `SOMABRAIN_REQUIRE_MEMORY` | `1` | When `1` the memory service must be reachable; otherwise the process fails on startup. | `somabrain/memory_client.py` |
-| `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | `0` | Enable phase‑based weighting for recall results. | `somabrain/memory_client.py` |
-| `SOMABRAIN_MEMORY_PHASE_PRIORS` | — | Comma‑separated `phase:multiplier` list (e.g. `bootstrap:1.05,general:1.0`). | `somabrain/memory_client.py` |
+| `SOMABRAIN_REQUIRE_MEMORY` | `1` | When `1` the external memory endpoint must be reachable; otherwise the process fails on startup. | `somabrain/memory_client.py` |
+| `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | `0` | Enable phase-based weighting for recall results. | `somabrain/memory_client.py` |
+| `SOMABRAIN_MEMORY_PHASE_PRIORS` | — | Comma-separated `phase:multiplier` list (e.g. `bootstrap:1.05,general:1.0`). | `somabrain/memory_client.py` |
 | `SOMABRAIN_MEMORY_QUALITY_EXP` | `1.0` | Exponent applied to `quality_score` before weighting. | `somabrain/memory_client.py` |
-| `SOMABRAIN_HTTP_MAX_CONNS` | `64` | Max concurrent httpx connections to the memory service. | `somabrain/memory_client.py` |
+| `SOMABRAIN_ALLOW_LOCAL_MIRRORS` | `1` | Permit in-process memory/link mirrors for developer workflows. Set to `0` to disable mirrors even when strict-real is off. | `common/config/settings.py` |
+| `SOMABRAIN_HTTP_MAX_CONNS` | `64` | Max concurrent httpx connections to the memory endpoint. | `somabrain/memory_client.py` |
 | `SOMABRAIN_HTTP_KEEPALIVE` | `32` | Max keep‑alive connections. | `somabrain/memory_client.py` |
 | `SOMABRAIN_HTTP_RETRIES` | `1` | Transport‑level retry count. | `somabrain/memory_client.py` |
 | `SOMABRAIN_OTLP_ENDPOINT` | — | OTLP collector for traces/metrics. | `observability/provider.py` |
@@ -111,7 +114,6 @@ Key services:
 * `prometheus` – metrics on `9090`.
 * `postgres` – database on host port `15432` (container `5432`).
 * `somabrain` – API on host port `9696` (container `9696`).
-* `somamemory` – external memory service on host port `9595` (container `9595`).
 
 All services share the `somabrain_somabrain_net` network.
 
@@ -127,7 +129,6 @@ All services share the `somabrain_somabrain_net` network.
 
 Integration tests read `ports.json` to discover service endpoints. The test harness expects:
 * API at `http://localhost:${SOMABRAIN_HOST_PORT}` (default `9696`).
-* Memory at `http://localhost:${SOMAMEMORY_HOST_PORT}` (default `9595`).
 * Redis, Kafka, Postgres, OPA reachable on their default ports.
 
 When running against a remote cluster, port‑forward the services and set `SOMA_API_URL` accordingly.
@@ -149,7 +150,7 @@ When running against a remote cluster, port‑forward the services and set `SOMA
   "stub_counts": {}
 }
 ```
-Readiness requires a non‑stub predictor, a working embedder, and a reachable memory service (or deterministic in‑process recall when memory is unavailable).
+Readiness requires a non‑stub predictor, a working embedder, and a reachable memory endpoint (or deterministic in-process recall when memory is unavailable).
 
 Dev‑mode notes:
 - Docker profile uses a single worker (SOMABRAIN_WORKERS=1) to preserve in‑process WM read‑your‑writes across requests.
@@ -173,7 +174,7 @@ These modules are gated behind environment flags and are monitored for stability
 ---
 ## 9. Outbox (offline writes)
 
-Failed writes to the memory service are stored in `./data/somabrain/outbox.jsonl` (configurable via `outbox_path` in `config.yaml`). A background worker retries these entries and updates the `OUTBOX_PENDING` metric.
+Failed writes to the memory endpoint are stored in `./data/somabrain/outbox.jsonl` (configurable via `outbox_path` in `config.yaml`). A background worker retries these entries and updates the `OUTBOX_PENDING` metric.
 
 ## 10. Recall Ranking Controls
 
@@ -196,7 +197,7 @@ The following variables are no longer used and have no effect:
   uv run pytest              # test suite
   ```
 - **CI workflow (`.github/workflows/ci.yml`)**: Updated to run on **Python 3.13**, install dependencies via `uv`, execute linting (`ruff`), formatting (`black`), the full test suite (`pytest`), build the Docker image, and perform a health‑check smoke test against the running container.
-- **Development stack script (`scripts/dev_up.sh`)**: Builds and starts the full Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory service, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for the `/health` endpoint before completing.
+- **Development stack script (`scripts/dev_up.sh`)**: Builds and starts the full Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory endpoint integration, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for the `/health` endpoint before completing.
 - **Health endpoint (`/health`)**: Now returns detailed component readiness, predictor provider, strict‑real mode, embedder details, and memory item counts, matching the updated configuration documentation.
 - **Feature flags**: New flags such as `SOMABRAIN_ENABLE_REWARD_GATE`, `SOMABRAIN_ENABLE_TRACING`, and `SOMABRAIN_DISABLE_CONSTITUTION_ENFORCEMENT` are documented here for future use.
 

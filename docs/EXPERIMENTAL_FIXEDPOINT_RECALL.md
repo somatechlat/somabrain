@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Experimental: Fixed-Point Recall Mode for SomaBrain
 
 This document records the analysis and rationale for optionally including a fixed-point recall mode in SomaBrain.

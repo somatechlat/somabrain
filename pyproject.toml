@@ -44,6 +44,8 @@ dev = [
   "pyinstrument>=0.4",
   "scalene>=1.5",
   "py-spy>=0.3"
+  ,"pytest-asyncio>=0.23"
+  ,"PyYAML>=6.0"
 ]
 
 [project.scripts]

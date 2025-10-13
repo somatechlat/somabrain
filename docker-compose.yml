@@ -1,0 +1,48 @@
+services:
+  somabrain:
+    # Build from the local Dockerfile to keep code + image in sync
+    build: .
+    image: somabrain:latest
+    container_name: somabrain
+    restart: unless-stopped
+    ports:
+      # Expose API on host port 9669 (maps to container 9696). Do NOT touch 9595 (external memory).
+      - "9669:9696"
+    environment:
+      # Bind API to container 0.0.0.0:9696
+      SOMABRAIN_HOST: "0.0.0.0"
+      SOMABRAIN_PORT: "9696"
+
+      # Strict real mode and hard requirement on external memory
+      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_REQUIRE_MEMORY: "1"
+
+      # Point to the EXISTING external memory service on host port 9595
+      # NOTE: We do not map or modify 9595 here.
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+
+      # Use host Redis if available; adjust if you run Redis elsewhere
+      SOMABRAIN_REDIS_URL: "redis://host.docker.internal:6379/0"
+
+      # Enforce non-stub predictor for strict-real mode
+      SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
+
+      # Optional: default tenant and mode for local dev
+      SOMABRAIN_MODE: "enterprise"
+
+    # Ensure host.docker.internal resolves for Linux/other setups
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9696/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    # No dependency on memory here; memory is external and must already be running on 9595
+
+networks:
+  default:
+    name: somabrain_default

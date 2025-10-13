@@ -333,6 +333,11 @@ class RecallResponse(BaseModel):
     reality: Optional[Dict[str, Any]] = None
     drift: Optional[Dict[str, Any]] = None
     hrr_cleanup: Optional[Dict[str, Any]] = None
+    # Compatibility field: older clients (including our test suite) expect a
+    # top‑level ``results`` list containing the recalled memory payloads. The
+    # ``memory`` field remains the canonical source; ``results`` mirrors it for
+    # backward compatibility.
+    results: List[Dict[str, Any]] = []
 
 
 # ----- RAG/RAF request and response models -----

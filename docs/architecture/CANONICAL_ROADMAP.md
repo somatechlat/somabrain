@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain Canonical Roadmap (Sprint-Based)
 
 **Status Note (2025-09-26):**

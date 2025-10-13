@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain — Math-Powered Memory & Reasoning Engine (GitHub-ready overview)
 
 **SomaBrain** is a deterministic, float-precision, hyperdimensional memory + transport engine that **learns from use**, **recalls under heavy superposition**, and **routes knowledge like a living network**. It plugs into your apps as a set of small, composable modules.
@@ -16,9 +18,22 @@ docker run --rm \
 ```
 
 Then open:
-- Health: http://localhost:8000/health
-- OpenAPI: http://localhost:8000/docs
-- Metrics: http://localhost:8000/metrics
+ - Health: http://localhost:8000/health
+ - OpenAPI: http://localhost:8000/docs
+ - Metrics: http://localhost:8000/metrics
+
+### ⚙️ Quickstart (docker compose)
+
+Bring up the minimal `somabrain` service with the repository's compose file:
+
+```bash
+docker compose -p somabrain up -d somabrain
+```
+
+Then open (compose):
+ - Health: http://localhost:9669/health  # host 9669 -> container 9696
+ - OpenAPI: http://localhost:9669/docs
+ - Metrics: http://localhost:9669/metrics
 
 ### 🔐 Auth & Tenancy
 Enable token auth (recommended for non-local):
@@ -26,6 +41,12 @@ Enable token auth (recommended for non-local):
 ```bash
 docker run --rm \
   -p 8000:9696 \
+
+## Development Workflow
+
+- Run `scripts/ci/run_ci.sh` before pushing. The script executes Ruff, MyPy, the full pytest suite, and the canonical smoke test so local results match CI.
+- Keep `SOMABRAIN_STRICT_REAL=1` in your shell to mirror production behavior.
+- Follow `docs/DEVELOPMENT_SETUP.md` for environment details and `docs/sprints/` for active backlog items.
   -e SOMABRAIN_DISABLE_AUTH=false \
   -e SOMABRAIN_API_TOKEN=yourtoken \
   ghcr.io/somatechlat/somabrain:latest

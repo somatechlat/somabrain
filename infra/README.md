@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Shared‑Infra Helm Chart (soma‑infra)
 
 This directory contains the **Helm chart** that deploys the common infrastructure

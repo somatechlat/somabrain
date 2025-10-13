@@ -5,7 +5,7 @@ import sys
 
 # Ensure we use the project root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-# Set env var to point at the host docker memory service
+# Set env var to point at the host memory endpoint
 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = os.environ.get(
     "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://host.docker.internal:9595"
 )

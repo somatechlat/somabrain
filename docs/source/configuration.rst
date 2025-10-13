@@ -21,7 +21,7 @@ These flags harden the application to run only with real services:
 Service endpoints and ports can be customized, but the canonical defaults are:
 
 - API: ``http://127.0.0.1:9696`` (developer mapping ``9797->9696`` supported)
-- Memory: ``http://127.0.0.1:9595``
+- Memory endpoint: ``http://127.0.0.1:9595``
 - Redis: ``redis://127.0.0.1:6379/0``
 - Postgres: ``postgresql://localhost:15432/postgres`` (or forwarded ``55432``)
 
@@ -57,8 +57,8 @@ For Docker volumes use an ephemeral container to write/read from the volume:
 
 .. code-block:: bash
 
-	docker run --rm -v memory_api_redis_data:/data busybox sh -c "printf '%s\n' ${marker} > /data/${marker}.txt"
-	docker run --rm -v memory_api_redis_data:/data:ro busybox cat /data/${marker}.txt
+	docker run --rm -v somabrain_redis_data:/data busybox sh -c "printf '%s\n' ${marker} > /data/${marker}.txt"
+	docker run --rm -v somabrain_redis_data:/data:ro busybox cat /data/${marker}.txt
 
 If you see Redis errors about failing to open temp RDB files after confirming
 the host path exists, the container may need a restart so the bind-mount is

@@ -10,6 +10,7 @@ with the memory service directly.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 
 # Process-global in-memory mirror for recently stored payloads per-namespace.
 # The previous implementation used a plain module-global dict which could
@@ -29,9 +30,10 @@ import time
 import uuid
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Dict, Iterable, List, Tuple, cast
+from typing import Any, Dict, Iterable, List, Tuple, cast, Optional
 
 from .config import Config
+from somabrain.interfaces.memory import MemoryBackend  # new import for typing
 # Stub audit is handled via the internal helper `_audit_stub_usage` which
 # raises in strict‑real mode. Direct import of `record_stub` is no longer needed.
 
@@ -83,6 +85,13 @@ if debug_memory_client:
     logger.setLevel(logging.DEBUG)
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
+
+try:
+    _ALLOW_LOCAL_MIRRORS = bool(
+        getattr(_shared_settings, "allow_local_mirrors", True)
+    )
+except Exception:
+    _ALLOW_LOCAL_MIRRORS = True
 
 
 def _require_memory_enabled() -> bool:
@@ -335,8 +344,11 @@ class MemoryClient:
         # Keep a _mode attribute for compatibility but it is informational only.
         self._mode = "http"
         self._local = None
-        self._http = None
-        self._http_async = None
+        # Annotate http clients to help static checkers; actual httpx types
+        # are imported locally inside _init_http to avoid heavy top-level
+        # imports in some runtime contexts.
+        self._http: Optional[Any] = None
+        self._http_async: Optional[Any] = None
         self._stub_store: list[dict] = []
         self._graph: Dict[Any, Any] = {}
         self._lock = RLock()
@@ -497,7 +509,7 @@ class MemoryClient:
                 )
             except Exception:
                 pass
-        client_kwargs = {
+        client_kwargs: dict[str, Any] = {
             "base_url": base_url,
             "headers": headers,
             "timeout": 10.0,
@@ -700,9 +712,9 @@ class MemoryClient:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit] | None:
+    ) -> List[RecallHit]:
         if self._http is None:
-            return None
+            return []
         compat_payload, _, compat_hdr = self._compat_enrich_payload(
             {"query": query, "universe": universe or "real"}, query
         )
@@ -741,8 +753,8 @@ class MemoryClient:
                     self._apply_weighting_to_hits(hits)
                     return hits
         except Exception:
-            return None
-        return None
+            return []
+        return []
 
     async def _http_recall_async(
         self,
@@ -751,9 +763,9 @@ class MemoryClient:
         top_k: int,
         universe: str,
         request_id: str,
-    ) -> List[RecallHit] | None:
+    ) -> List[RecallHit]:
         if self._http_async is None:
-            return None
+            return []
         _, _, compat_hdr = self._compat_enrich_payload(
             {"query": query, "universe": universe or "real"}, query
         )
@@ -792,8 +804,8 @@ class MemoryClient:
                     self._apply_weighting_to_hits(hits)
                     return hits
         except Exception:
-            return None
-        return None
+            return []
+        return []
 
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
         hits: List[RecallHit] = []
@@ -915,16 +927,108 @@ class MemoryClient:
         except Exception:
             return f"obj:{id(hit)}"
 
+    def _hit_score(self, hit: RecallHit) -> float | None:
+        score = hit.score
+        if isinstance(score, (int, float)) and not math.isnan(score):
+            return float(score)
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        if isinstance(payload, dict):
+            alt = payload.get("_score")
+            if isinstance(alt, (int, float)) and not math.isnan(alt):
+                return float(alt)
+        return None
+
+    def _coerce_timestamp_value(self, value: Any) -> float | None:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            try:
+                if math.isnan(float(value)):
+                    return None
+            except Exception:
+                return None
+            return float(value)
+        if isinstance(value, str):
+            text = value.strip()
+            if not text:
+                return None
+            try:
+                # ISO8601 handling; account for trailing Z
+                if text.endswith("Z"):
+                    dt = datetime.fromisoformat(text[:-1] + "+00:00")
+                else:
+                    dt = datetime.fromisoformat(text)
+                return dt.timestamp()
+            except Exception:
+                try:
+                    return float(text)
+                except Exception:
+                    return None
+        if isinstance(value, datetime):
+            if value.tzinfo is None:
+                value = value.replace(tzinfo=timezone.utc)
+            return value.timestamp()
+        return None
+
+    def _hit_timestamp(self, hit: RecallHit) -> float | None:
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        candidate_keys = (
+            "timestamp",
+            "created_at",
+            "updated_at",
+            "ts",
+            "time",
+        )
+        if isinstance(payload, dict):
+            for key in candidate_keys:
+                value = payload.get(key)
+                ts = self._coerce_timestamp_value(value)
+                if ts is not None:
+                    return ts
+        raw = hit.raw
+        if isinstance(raw, dict):
+            meta = raw.get("metadata")
+            if isinstance(meta, dict):
+                for key in candidate_keys:
+                    ts = self._coerce_timestamp_value(meta.get(key))
+                    if ts is not None:
+                        return ts
+        return None
+
+    def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> bool:
+        curr_score = self._hit_score(current)
+        cand_score = self._hit_score(candidate)
+        if cand_score is not None or curr_score is not None:
+            curr_metric = curr_score if curr_score is not None else float("-inf")
+            cand_metric = cand_score if cand_score is not None else float("-inf")
+            if cand_metric > curr_metric + 1e-9:
+                return True
+            if cand_metric < curr_metric - 1e-9:
+                return False
+        curr_ts = self._hit_timestamp(current)
+        cand_ts = self._hit_timestamp(candidate)
+        if cand_ts is not None and curr_ts is not None:
+            if cand_ts > curr_ts + 1e-6:
+                return True
+            if cand_ts < curr_ts - 1e-6:
+                return False
+        elif cand_ts is not None:
+            return True
+        return False
+
     def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
-        deduped: List[RecallHit] = []
-        seen: set[str] = set()
+        winners: dict[str, RecallHit] = {}
+        order: List[str] = []
         for hit in hits:
             ident = self._hit_identity(hit)
-            if ident in seen:
+            existing = winners.get(ident)
+            if existing is None:
+                winners[ident] = hit
+                order.append(ident)
                 continue
-            seen.add(ident)
-            deduped.append(hit)
-        return deduped
+            if self._prefer_candidate_hit(existing, hit):
+                winners[ident] = hit
+        return [winners[idx] for idx in order]
 
     def _lexical_bonus(self, payload: dict, query: str) -> float:
         q = str(query or "").strip()
@@ -1294,6 +1398,8 @@ class MemoryClient:
     def _local_recall_hits(
         self, query: str, universe: str | None
     ) -> List[RecallHit]:
+        if not _ALLOW_LOCAL_MIRRORS:
+            return []
         try:
             uni = str(universe or "real")
             local: list[dict] = []
@@ -1390,7 +1496,7 @@ class MemoryClient:
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> None:
+    ) -> Tuple[float, float, float]:
         """Store a memory using a stable coordinate derived from coord_key.
 
         Ensures required structural keys, and normalizes optional metadata if
@@ -1472,26 +1578,27 @@ class MemoryClient:
 
         p2: dict[str, Any] | None = None
         # Mirror locally for quick reads and visibility
-        try:
-            p2 = dict(payload)
-            p2["coordinate"] = coord
-            with self._lock:
-                _audit_stub_usage("memory_client.remember_stub_append")
-                self._stub_store.append(p2)
+        if _ALLOW_LOCAL_MIRRORS:
             try:
-                # Audit any write to the in-process stub/mirror. In strict mode
-                # `record_stub` will raise and prevent the mirror write.
-                from somabrain.stub_audit import record_stub
+                p2 = dict(payload)
+                p2["coordinate"] = coord
+                with self._lock:
+                    _audit_stub_usage("memory_client.remember_stub_append")
+                    self._stub_store.append(p2)
+                try:
+                    # Audit any write to the in-process stub/mirror. In strict mode
+                    # `record_stub` will raise and prevent the mirror write.
+                    from somabrain.stub_audit import record_stub
 
-                record_stub("memory_client.remember.stub_mirror")
+                    record_stub("memory_client.remember.stub_mirror")
+                except Exception:
+                    # In non-strict mode record_stub increments counters; if it
+                    # raised (strict mode) this except block will not run because
+                    # the exception should propagate. Keep append guarded.
+                    pass
+                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
             except Exception:
-                # In non-strict mode record_stub increments counters; if it
-                # raised (strict mode) this except block will not run because
-                # the exception should propagate. Keep append guarded.
-                pass
-            _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
-        except Exception:
-            p2 = None
+                p2 = None
 
         try:
             payload.setdefault("coordinate", coord)
@@ -1740,38 +1847,41 @@ class MemoryClient:
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> None:
+    ) -> Tuple[float, float, float]:
         """Async variant of remember for HTTP mode; falls back to thread executor.
 
         Returns the chosen 3‑tuple coord (server‑preferred if configured), or the
         locally computed coord. On failure, falls back to running the sync remember
         in a thread executor.
         """
-        # Mirror locally first for read-your-writes semantics
+        # Mirror locally first for read-your-writes semantics (optional)
         p2: dict[str, Any] | None = None
-        try:
-            _refresh_builtins_globals()
-            enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
-            coord = _stable_coord(f"{universe}::{coord_key}")
-            p2 = dict(enriched)
-            p2["coordinate"] = coord
-            with self._lock:
-                _audit_stub_usage("memory_client.aremember_stub_append")
-                self._stub_store.append(p2)
+        if _ALLOW_LOCAL_MIRRORS:
             try:
-                ns = getattr(self.cfg, "namespace", None)
-                if ns is not None:
-                    try:
-                        from somabrain.stub_audit import record_stub
+                _refresh_builtins_globals()
+                enriched, universe, _hdr = self._compat_enrich_payload(
+                    payload, coord_key
+                )
+                coord = _stable_coord(f"{universe}::{coord_key}")
+                p2 = dict(enriched)
+                p2["coordinate"] = coord
+                with self._lock:
+                    _audit_stub_usage("memory_client.aremember_stub_append")
+                    self._stub_store.append(p2)
+                try:
+                    ns = getattr(self.cfg, "namespace", None)
+                    if ns is not None:
+                        try:
+                            from somabrain.stub_audit import record_stub
 
-                        record_stub("memory_client.recall.stub_mirror")
-                    except Exception:
-                        pass
-                    _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
+                            record_stub("memory_client.recall.stub_mirror")
+                        except Exception:
+                            pass
+                        _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
+                except Exception:
+                    pass
             except Exception:
                 pass
-        except Exception:
-            pass
         if self._http_async is not None:
             try:
                 enriched, universe, compat_hdr = self._compat_enrich_payload(
@@ -2203,13 +2313,25 @@ class MemoryClient:
                 r = self._http.post("/neighbors", json=body)
                 data = r.json() if hasattr(r, "json") else None
                 edges = (data or {}).get("edges", []) if isinstance(data, dict) else []
-                # normalize
+                # normalize into strict 3-tuples
                 for e in edges:
                     try:
+                        ef_raw = e.get("from") or start
+                        if isinstance(ef_raw, (list, tuple)) and len(ef_raw) >= 3:
+                            ef_t = (float(ef_raw[0]), float(ef_raw[1]), float(ef_raw[2]))
+                        else:
+                            ef_t = (float(start[0]), float(start[1]), float(start[2]))
+
+                        to_raw = e.get("to") or start
+                        if isinstance(to_raw, (list, tuple)) and len(to_raw) >= 3:
+                            to_t = (float(to_raw[0]), float(to_raw[1]), float(to_raw[2]))
+                        else:
+                            to_t = (float(start[0]), float(start[1]), float(start[2]))
+
                         out.append(
                             {
-                                "from": tuple(e.get("from") or start),
-                                "to": tuple(e.get("to") or start),
+                                "from": ef_t,
+                                "to": to_t,
                                 "type": e.get("type"),
                                 "weight": float(e.get("weight", 1.0)),
                             }
@@ -2240,7 +2362,7 @@ class MemoryClient:
                             "weight": float(meta.get("weight", 1.0)),
                         }
                     )
-                    if not unlimited and len(out) >= max_items:
+                    if not unlimited and max_items is not None and len(out) >= max_items:
                         break
                 except Exception:
                     pass
@@ -2271,18 +2393,23 @@ class MemoryClient:
                         ef = e.get("from")
                         if not isinstance(ef, (list, tuple)) or len(ef) != 3:
                             continue
-                        ef_t = tuple(map(float, ef))
+                        ef_t = (float(ef[0]), float(ef[1]), float(ef[2]))
                         if not _close(ef_t, key_from):
                             continue
+                        to_raw = e.get("to") or start
+                        if isinstance(to_raw, (list, tuple)) and len(to_raw) >= 3:
+                            to_t = (float(to_raw[0]), float(to_raw[1]), float(to_raw[2]))
+                        else:
+                            to_t = key_from
                         out.append(
                             {
                                 "from": ef_t,
-                                "to": tuple(map(float, e.get("to") or [])),
+                                "to": to_t,
                                 "type": e.get("type"),
                                 "weight": float(e.get("weight", 1.0)),
                             }
                         )
-                        if not unlimited and len(out) >= max_items:
+                        if not unlimited and max_items is not None and len(out) >= max_items:
                             break
                     except Exception:
                         pass
@@ -2351,8 +2478,8 @@ class MemoryClient:
                     if not (isinstance(frm, (list, tuple)) and isinstance(to, (list, tuple))):
                         retained.append(edge)
                         continue
-                    frm_t = tuple(map(float, frm[:3]))
-                    to_t = tuple(map(float, to[:3]))
+                    frm_t = (float(frm[0]), float(frm[1]), float(frm[2]))
+                    to_t = (float(to[0]), float(to[1]), float(to[2]))
                     if _close(frm_t, key_from) and _close(to_t, key_to):
                         if link_type is not None and edge.get("type") != link_type:
                             retained.append(edge)
@@ -2487,7 +2614,7 @@ class MemoryClient:
                     if not (isinstance(frm, (list, tuple)) and isinstance(to, (list, tuple))):
                         retained.append(edge)
                         continue
-                    frm_t = tuple(map(float, frm[:3]))
+                    frm_t = (float(frm[0]), float(frm[1]), float(frm[2]))
                     if not _close(frm_t, key_from):
                         retained.append(edge)
                         continue
@@ -2602,9 +2729,9 @@ class MemoryClient:
                         f = e.get("from")
                         t = e.get("to")
                         if isinstance(f, (list, tuple)) and len(f) == 3:
-                            nodes.add(tuple(map(float, f)))
+                            nodes.add((float(f[0]), float(f[1]), float(f[2])))
                         if isinstance(t, (list, tuple)) and len(t) == 3:
-                            nodes.add(tuple(map(float, t)))
+                            nodes.add((float(t[0]), float(t[1]), float(t[2])))
             total = len(nodes)
             if total <= 1:
                 return 0.0
@@ -2646,7 +2773,10 @@ class MemoryClient:
             if not starts:
                 return []
             seen: set[Tuple[float, float, float]] = set()
-            frontier = [tuple(float(s[i]) for i in range(3)) for s in starts]
+            # build explicit 3-tuples for static typing
+            frontier = [
+                (float(s[0]), float(s[1]), float(s[2])) for s in starts
+            ]
             out: list[Tuple[float, float, float]] = []
             for d in range(max(1, int(depth))):
                 new_frontier: list[Tuple[float, float, float]] = []
@@ -2790,32 +2920,35 @@ class MemoryClient:
         try:
             coord = payload.get("coordinate")
             if coord:
-                # normalize coordinate to tuple
+                # normalize coordinate to explicit 3-tuple
                 try:
-                    c = tuple(float(coord[i]) for i in range(3))
+                    c = (float(coord[0]), float(coord[1]), float(coord[2]))
                 except Exception:
                     c = None
-                p2 = dict(payload)
-                if c is not None:
-                    p2["coordinate"] = c
-                with self._lock:
-                    try:
-                        _audit_stub_usage("memory_client.store_from_payload_append")
-                        self._stub_store.append(p2)
-                    except Exception:
-                        pass
-                try:
-                    ns = getattr(self.cfg, "namespace", None)
-                    if ns is not None:
+                if _ALLOW_LOCAL_MIRRORS:
+                    p2 = dict(payload)
+                    if c is not None:
+                        p2["coordinate"] = c
+                    with self._lock:
                         try:
-                            from somabrain.stub_audit import record_stub
-
-                            record_stub("memory_client.recall_fallback.stub_mirror")
+                            _audit_stub_usage(
+                                "memory_client.store_from_payload_append"
+                            )
+                            self._stub_store.append(p2)
                         except Exception:
                             pass
-                        _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
-                except Exception:
-                    pass
+                    try:
+                        ns = getattr(self.cfg, "namespace", None)
+                        if ns is not None:
+                            try:
+                                from somabrain.stub_audit import record_stub
+
+                                record_stub("memory_client.recall_fallback.stub_mirror")
+                            except Exception:
+                                pass
+                            _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
+                    except Exception:
+                        pass
                 return True
             # No coordinate: fall back to remember with a stable key
             key = payload.get("task") or f"autokey:{int(time.time()*1000)}"
@@ -2829,7 +2962,7 @@ class MemoryClient:
 
     def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> None:
+    ) -> Tuple[float, float, float] | None:
         """Synchronous persistence implementation used by both sync callers and run_in_executor.
 
         This mirrors the original HTTP remember logic but centralizes retries and outbox fallback.
@@ -2848,7 +2981,7 @@ class MemoryClient:
                 )
             except Exception:
                 pass
-            return
+            return None
 
         # Enrich payload and compute coord string once
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
@@ -2924,3 +3057,7 @@ class MemoryClient:
                 )
             except Exception:
                 pass
+
+# NOTE: MemoryClient already implements the required methods used by MemoryService.
+# Adding a Protocol-based alias for type checkers helps during the refactor.
+MemoryClientType: type = MemoryBackend  # type: ignore[misc]

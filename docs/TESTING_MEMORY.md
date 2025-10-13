@@ -1,16 +1,17 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Memory Recall Regression Test
 
 This guide explains how to validate the real Somabrain deployment to ensure the
-public API (port 9696) and SomaMemory service (port 9595) store and recall
-persona records correctly.
+public API (port 9696) stores and recalls persona records correctly.
 
 ## Overview
 
 - **Live-only workflow** – there are no mocks or local simulators. All checks
   run against the genuine services exposed by your environment.
 - **Regression test** – `tests/test_synthetic_memory_recall.py` writes a
-  temporary persona through the REST API, fetches it back, verifies SomaMemory
-  can recall it, and finally deletes the record.
+  temporary persona through the REST API, fetches it back, verifies recall
+  responses, and finally deletes the record.
 - **SFM response shapes** – HTTP recalls now return
   `{"matches": [...]}` or `{"results": [...]}` depending on the endpoint
   (`/recall_with_scores`, `/hybrid_recall_with_scores`, `/keyword_search`). The memory
@@ -35,9 +36,7 @@ persona records correctly.
 
 1. `sb-api` listening on `http://localhost:9696` (set `SOMA_API_URL` if using a
    different host).
-2. SomaMemory HTTP service on `http://localhost:9595` (override with
-   `SOMABRAIN_MEMORY_HTTP_ENDPOINT` if needed).
-3. Redis reachable at `REDIS_HOST:REDIS_PORT` (defaults to `127.0.0.1:6379`).
+2. Redis reachable at `REDIS_HOST:REDIS_PORT` (defaults to `127.0.0.1:6379`).
 
 If you are developing against a remote cluster, create the necessary
 port-forwards before running the test.
@@ -50,11 +49,11 @@ pytest tests/test_synthetic_memory_recall.py
 
 The test flow:
 
-1. Confirm Redis and both HTTP services are reachable; otherwise pytest marks
+1. Confirm Redis and the API endpoint are reachable; otherwise pytest marks
    the scenario as skipped.
 2. PUT a new persona with a unique identifier via the Somabrain API.
 3. GET the persona and check the persisted payload matches the request.
-4. POST a recall query to SomaMemory and assert the persona identifier appears
+4. POST a recall query to Somabrain and assert the persona identifier appears
    in the returned memories.
 5. DELETE the persona to leave no residue.
 
@@ -64,7 +63,5 @@ The test flow:
   succeeds or update `REDIS_HOST`/`REDIS_PORT` in the environment.
 - **Skip: API service unavailable** – port-forward `sb-api` or adjust
   `SOMA_API_URL` to point at a reachable instance.
-- **Skip: Memory service unavailable** – port-forward `sb-memory-http` or set
-  `SOMABRAIN_MEMORY_HTTP_ENDPOINT` appropriately.
 - **HTTP 5xx responses** – inspect the respective service logs; the regression
   test surfaces the response body for quick diagnostics.

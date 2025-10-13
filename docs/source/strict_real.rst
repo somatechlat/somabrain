@@ -8,7 +8,7 @@ is used for live development, CI, and production.
 What strict-real enforces
 -------------------------
 
-- External memory HTTP service only (no in-process or stub memory).
+- External memory HTTP endpoint only (no in-process or stub memory).
 - Real metrics only (no synthetic/shim increments); Prometheus exposes counters
   produced by real middleware paths.
 - Consolidation (/sleep) uses a bounded time budget to avoid long request hangs.
@@ -19,7 +19,7 @@ Canonical ports
 ---------------
 
 - Somabrain API: 9696 (developer host mapping to 9797 available)
-- Memory service: 9595
+- Memory endpoint: 9595
 - Redis: 6379
 - Postgres: 15432 (or forwarded 55432 when tunneling)
 - Kafka: 9092
@@ -53,7 +53,7 @@ The test harness can target a live API instead of spawning its own server. To do
 
 Notes:
 
-- Live tests assume the memory service and Redis are healthy; health checks will
+- Live tests assume the external memory endpoint and Redis are healthy; health checks will
   skip tests if dependencies are unavailable.
 - In dev Docker, the API runs with a single worker; production deployments use
   multiple workers as configured by the orchestrator.

@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Test Server Strategy
 
 This project uses a real FastAPI server (no mocks) for integration tests.

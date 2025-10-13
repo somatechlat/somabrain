@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 ## Dynamic Port Discovery and Usage
 
 SomaBrain now supports dynamic port assignment for all major services (Kafka, Redis, Prometheus, etc.).

@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Strict Real Mode (No-Stubs Contract)
 
 Strict mode guarantees that every cognitive path exercised in tests or production uses **real, deterministic implementations**—never silent fallbacks or placeholder stubs. It is activated by setting:
@@ -23,7 +25,7 @@ clear error to force explicit configuration.
 | Predictor | Reject `stub|baseline` provider | Process startup raises | Set `SOMABRAIN_PREDICTOR_PROVIDER=mahal` or `llm` |
 | Embedder | No dummy embedder injection | Import raises if missing | Ensure `make_embedder` succeeds (defaults to deterministic tiny) |
 | Working Memory | No dummy WM | Import raises if WM absent | Allow initialization or configure capacity appropriately |
-| Recall | Disallow pure stub recent-payload fallback | Runtime error if no HTTP and no local data | Run memory service or seed memories (in-process real similarity used if payloads exist) |
+| Recall | Disallow pure stub recent-payload fallback | Runtime error if no HTTP and no local data | Expose a real memory endpoint or seed memories (in-process real similarity used if payloads exist) |
 | RAG pipeline | Stub retrievers blocked | Runtime error | Configure real retriever backends / indices |
 | Stub Usage | `record_stub(path)` raises | Any attempt to count stub | Remove or replace code using stub fallback |
 
@@ -47,7 +49,7 @@ A strict-mode deployment is considered **ready** when:
 Agents MUST gate task consumption on `ready=true`.
 
 ## In-Process Recall (Deterministic Path)
-If the external memory service is not configured, strict mode uses real deterministic similarity:
+If the external memory endpoint is not configured, strict mode uses real deterministic similarity:
 1. Embed query with active embedder.
 2. Embed each locally mirrored payload (task/content/text/description heuristic).
 3. Rank via cosine; return top_k.
@@ -63,7 +65,7 @@ If the external memory service is not configured, strict mode uses real determin
 |-------|-------|-----|
 | `STRICT REAL MODE: predictor provider 'stub' not permitted` | Env/config left at default | Export `SOMABRAIN_PREDICTOR_PROVIDER=mahal` |
 | `STRICT REAL MODE: embedder missing` | Early import ordering / failed dependency | Ensure `somabrain.embeddings` loads (has no external requirements) |
-| Recall runtime error about stub path | No memory service & empty local payload set | Seed at least one `remember` or start memory service |
+| Recall runtime error about stub path | No memory endpoint & empty local payload set | Seed at least one `remember` or configure the external memory API |
 | RAG strict failure | Stub retriever branch executed | Configure real retriever OR feature-flag route off |
 
 ## Migration Checklist

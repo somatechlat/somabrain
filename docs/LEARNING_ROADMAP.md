@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain Learning Excellence Roadmap
 
 **Mission**: Transform SomaBrain into the world's best self-learning cognitive system through mathematical rigor, observable adaptation, and production-grade infrastructure.

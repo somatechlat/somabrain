@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain V2.0.2 – Live‑Testing & Benchmark Roadmap
 
 This document captures the **canonical sprint plan** for building a full‑stack, live‑testing harness that runs against the real server on port **9696**.  The plan is organized into **parallel sprints** that can be executed simultaneously.

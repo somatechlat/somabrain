@@ -1,7 +1,7 @@
 Memory modes and backend policy
 ===============================
 
-Somabrain integrates with an external memory service over HTTP in production.
+Somabrain integrates with an external memory API over HTTP in production.
 Historically, multiple modes existed (e.g., in-process "local" memory, Redis-only
 maps, and HTTP). As of the strict-real policy, the application operates with
 "external HTTP memory only" in all real deployments.
@@ -21,7 +21,7 @@ Summary
 
 - redis-direct (legacy)
 	- Description: Direct use of Redis data structures instead of the memory API.
-	- Status: Not supported under strict-real; use the memory service which may
+	- Status: Not supported under strict-real; use the memory API which may
 		manage Redis internally.
 
 Read-your-writes under dev
@@ -38,7 +38,7 @@ Configuration
 Key environment variables:
 
 - SOMABRAIN_REQUIRE_MEMORY=1
-	- Enforces that the external memory service must be available at startup.
+	- Enforces that the external memory API must be available at startup.
 
 - SOMABRAIN_MEMORY_HTTP_ENDPOINT
 	- The base URL for the external memory API, e.g., http://127.0.0.1:9595

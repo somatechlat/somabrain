@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 ## 11. Math Brain: Core Mathematical Functions (Code Reality)
 
 This version reflects only what exists in the current codebase. Planned or aspirational items are explicitly marked.
@@ -84,7 +86,7 @@ These capabilities complete the autonomous learning loop: experiments are launch
 ---
 ## 1. Service Topology (Code Reality)
 - Brain API: `somabrain/app.py`.
-- Memory Service: External HTTP service only (default port 9595). The brain keeps a small in‑process mirror for read-your-writes visibility, persists failures to an outbox, and now mirrors every link operation through both sync `link()` and async `alink()` helpers so FastAPI handlers stay non-blocking. There is still no full local memory backend.
+- Memory API: External HTTP endpoint (default port 9595). The brain keeps a small in‑process mirror for read-your-writes visibility, persists failures to an outbox, and now mirrors every link operation through both sync `link()` and async `alink()` helpers so FastAPI handlers stay non-blocking. There is still no full local memory backend.
 - OPA: Optional middleware; full Rego policies not bundled.
 - Background Workers: Outbox + circuit breaker loop only.
 - Constitution Engine: `somabrain/constitution/__init__.py` (no `cloud.py`). Multi-sig verify partial.
@@ -145,7 +147,7 @@ This document intentionally matches current code state; update only after code c
 - **Brain API (FastAPI/uvicorn)** – primary entry point; exposes REST/gRPC endpoints for agent
   requests, memory operations, and health checks. Auto-discovers host ports via `scripts/dev_up.sh`
   during local deploys and via config maps in production.
-- **Memory Service** – External HTTP service on port 9595 (backed by the live SomaBrain deployment; no in‑process fallback). The brain keeps a process‑global mirror (for read‑your‑writes) and an outbox to replay queued writes if the service is temporarily unavailable.
+- **Memory API** – External HTTP endpoint on port 9595 (backed by the live SomaBrain deployment; no in‑process fallback). The brain keeps a process‑global mirror (for read‑your‑writes) and an outbox to replay queued writes if the service is temporarily unavailable.
 - **OPA Service** – Real OPA policy engine exposed on port 8181. Production deployments point the brain at `opa.soma-infra.svc.cluster.local:8181`; local development should run the same container via Helm or docker-compose.
 - **Background Workers** – Outbox processing and circuit-breaker recovery via `start_background_workers()` in app.py
 - **Constitution Engine** – `somabrain/constitution/cloud.py` orchestrates reads/writes to managed
@@ -339,7 +341,7 @@ This document is living; update it whenever architecture decisions are made or c
 
 ## 12. Recent Infrastructure Updates (2025)
 
-- **Full dev stack restart**: `scripts/dev_up.sh` now builds and starts the complete Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory service, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for `/health` before completing.
+- **Full dev stack restart**: `scripts/dev_up.sh` now builds and starts the complete Docker compose stack (Somabrain API, Redis, Kafka, Prometheus, Postgres, external memory endpoint integration, OPA stub). It writes `.env.local` and `ports.json` for test harnesses and waits for `/health` before completing.
 - **Python environment**: The project now uses **uv** for dependency management and command execution (`uv pip install -e .[dev]`, `uv run ruff`, `uv run black`, `uv run pytest`). This speeds up installs and ensures reproducible builds.
 - **CI workflow**: `.github/workflows/ci.yml` has been modernised to run on **Python 3.13**, install dependencies with `uv`, execute linting (`ruff`), formatting (`black`), the full test suite (`pytest`), build the Docker image, and perform a health‑check smoke test against the running container.
 - **Docstring coverage**: Comprehensive one‑line and parameter docstrings have been added to many functions across the `somabrain` package (e.g., `memory_service.py`, helpers in `app.py`). Remaining gaps are tracked in the todo list.

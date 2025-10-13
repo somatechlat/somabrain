@@ -1,6 +1,8 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain v0.1.0
 
-Observable memory service (HRR + typed links) with multi-tenancy and Prometheus metrics.
+Observable memory API (HRR + typed links) with multi-tenancy and Prometheus metrics.
 
 ## Quickstart
 

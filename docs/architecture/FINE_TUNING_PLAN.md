@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # SomaBrain Adaptive Tuning Plan
 
 This note captures the autonomous tuning loop referenced across the roadmap

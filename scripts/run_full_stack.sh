@@ -15,7 +15,7 @@ else
 fi
 echo "[run_full_stack] Using interpreter: $PY_BIN"
 
-# Ensure memory service is running on 9595
+# Ensure memory endpoint is running on 9595
 MEM_HEALTH="http://127.0.0.1:9595/health"
 if ! curl -sf -m 0.5 "$MEM_HEALTH" >/dev/null 2>&1; then
   echo "[run_full_stack] ERROR: memory HTTP service not found on $MEM_HEALTH"

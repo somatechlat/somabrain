@@ -5,13 +5,13 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import Any, Callable, Generator, Optional
 
+# Track import error for optional dependency
+_import_error: Exception | None = None
 try:  # pragma: no cover - optional dependency
     import etcd3
 except Exception as exc:  # pragma: no cover
     etcd3 = None  # type: ignore
     _import_error = exc
-else:
-    _import_error = None
 
 
 class EtcdClient:

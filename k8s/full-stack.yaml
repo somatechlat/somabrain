@@ -5,7 +5,6 @@
 # - ConfigMap with base env (STRICT + BEST + required memory)
 # - Secrets placeholders (jwt, db, kafka) -- create real secrets before apply
 # - Somabrain Deployment + Service (port 9696)
-# - Memory Service (SomaFractalMemory) Deployment + Service (port 9595)
 # - Redis (cache) Deployment + Service
 # - OPA (policy) Deployment + Service
 # - PersistentVolumeClaim for somabrain outbox/logs
@@ -40,8 +39,6 @@ data:
   SOMABRAIN_HTTP_RETRIES: "1"
   SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
   SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
-  # Endpoint for fractal memory inside cluster
-  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://somamemory.somabrain-prod.svc.cluster.local:9595"
   SOMABRAIN_REDIS_URL: "redis://sb-redis.somabrain-prod.svc.cluster.local:6379/0"
   SOMABRAIN_REDIS_HOST: "sb-redis.somabrain-prod.svc.cluster.local"
   SOMABRAIN_REDIS_PORT: "6379"
@@ -354,121 +351,6 @@ spec:
         - name: overrides-vol
           configMap:
             name: somabrain-overrides
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: somamemory
-  namespace: somabrain-prod
-spec:
-  selector:
-    app: somamemory
-  ports:
-    - port: 9595
-      targetPort: 9595
-  type: ClusterIP
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: somamemory
-  namespace: somabrain-prod
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: somamemory
-  template:
-    metadata:
-      labels:
-        app: somamemory
-    spec:
-      containers:
-        - name: somamemory
-          image: python:3.13-slim
-          command:
-            - "sh"
-            - "-c"
-            - |
-              pip install fastapi uvicorn && \
-              python - <<'PY'
-              import os
-              import time
-              import hashlib
-              from threading import RLock
-              from fastapi import FastAPI, Request
-              import uvicorn
-
-              app = FastAPI()
-              _STORE = []
-              _LOCK = RLock()
-
-              def _coord(key: str):
-                  h = hashlib.blake2b(key.encode(), digest_size=12).digest()
-                  a = int.from_bytes(h[0:4], 'big')/2**32
-                  b = int.from_bytes(h[4:8], 'big')/2**32
-                  c = int.from_bytes(h[8:12], 'big')/2**32
-                  return f"{2*a-1:.6f},{2*b-1:.6f},{2*c-1:.6f}"
-
-              @app.get('/health')
-              def health():
-                  with _LOCK:
-                    return {'ok': True, 'items': len(_STORE)}
-
-              @app.post('/remember')
-              async def remember(body: dict, request: Request):
-                  payload = body.get('payload') or {}
-                  coord = body.get('coord') or _coord(str(payload.get('id') or time.time()))
-                  record = {'coord': coord, 'payload': payload}
-                  with _LOCK:
-                      _STORE.append(record)
-                  return {'coord': coord, 'payload': payload}
-
-              @app.post('/recall')
-              async def recall(body: dict):
-                  top_k = int(body.get('top_k') or 5)
-                  with _LOCK:
-                      return [rec['payload'] for rec in _STORE[-top_k:]][::-1]
-
-              host = os.getenv('SOMAMEMORY_HOST', '0.0.0.0')
-              port = int(os.getenv('SOMAMEMORY_PORT', '9595'))
-              uvicorn.run(app, host=host, port=port)
-              PY
-          ports:
-            - containerPort: 9595
-          env:
-            - name: SOMAMEMORY_HOST
-              value: "0.0.0.0"
-            - name: SOMAMEMORY_PORT
-              value: "9595"
-          envFrom:
-            - configMapRef:
-                name: somabrain-env
-            - secretRef:
-                name: somabrain-secrets
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 9595
-            initialDelaySeconds: 5
-            periodSeconds: 8
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 9595
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          resources:
-            requests:
-              cpu: "10m"
-              memory: "64Mi"
-            limits:
-              cpu: "200m"
-              memory: "256Mi"
-
----
 apiVersion: v1
 kind: Service
 metadata:

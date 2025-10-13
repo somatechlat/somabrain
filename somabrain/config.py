@@ -14,7 +14,7 @@ Key Features:
 
 Classes:
     MemoryHTTPConfig: Configuration for HTTP-based memory backends.
-    Config: Main configuration class with all system parameters.
+    Config: Main c  onfiguration class with all system parameters.
 
 Functions:
     load_config: Load configuration from files and environment variables.
@@ -24,6 +24,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field  # add field import
 from typing import List, Optional, Any
+
+try:
+    # Shared BaseSettings instance exported from common/config.
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency in legacy layouts
+    shared_settings = None
 
 # dynaconf is optional; we don't require it at runtime. Configuration is loaded
 # via `load_config()` using dataclass defaults and a YAML + environment override.
@@ -412,6 +418,41 @@ def load_config() -> Config:
                     setattr(cfg, attr, env_val)
             except Exception:
                 setattr(cfg, attr, env_val)
+
+    if shared_settings is not None:
+        # Promote shared infrastructure endpoints into the runtime config.
+        try:
+            if getattr(shared_settings, "redis_url", None):
+                cfg.redis_url = str(shared_settings.redis_url)
+        except Exception:
+            pass
+        try:
+            endpoint = getattr(shared_settings, "memory_http_endpoint", None)
+            if endpoint:
+                cfg.http.endpoint = str(endpoint)
+            token = getattr(shared_settings, "memory_http_token", None)
+            if token:
+                cfg.http.token = str(token)
+        except Exception:
+            pass
+        try:
+            if shared_settings.jwt_secret:
+                cfg.jwt_secret = shared_settings.jwt_secret
+                cfg.auth_required = True
+            if shared_settings.jwt_public_key_path:
+                cfg.jwt_public_key_path = str(shared_settings.jwt_public_key_path)
+        except Exception:
+            pass
+        try:
+            if shared_settings.postgres_dsn:
+                # Consumers expect DSN via SOMABRAIN_POSTGRES_DSN env normally;
+                # this mapping keeps parity while centralising the source.
+                os.environ.setdefault(
+                    "SOMABRAIN_POSTGRES_DSN", str(shared_settings.postgres_dsn)
+                )
+        except Exception:
+            pass
+
     return cfg
 
 

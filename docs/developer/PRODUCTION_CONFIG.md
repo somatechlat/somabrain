@@ -1,3 +1,5 @@
+> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
 # Production Configuration (Canonical Baseline)
 
 Only high-impact settings that materially affect correctness, throughput, or large-scale reliability are listed.

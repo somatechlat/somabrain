@@ -19,23 +19,14 @@ import pytest
 
 """Test fixtures for live‑server integration.
 
-These fixtures assume a **real** SomaBrain instance is running on port 9797
-(`http://localhost:9797`).  The production server on 9696 is left untouched.
+These fixtures assume a **real** SomaBrain instance is running on the canonical
+Docker port 9696 (`http://localhost:9696`) or the Kubernetes test service at
+9999 when running inside a cluster. The test harness will prefer the local
+Docker port (9696) for in-process runs and will use the cluster test service
+address (port 9999) when `KUBERNETES_SERVICE_HOST` is present.
 """
 
-import asyncio
-import builtins as _builtins
-import json
-import os
-import subprocess
-import sys
-import time
-from pathlib import Path
-
-import httpx
-import pytest
-
-BASE_URL = os.getenv("TEST_SERVER_URL", "http://localhost:9797")
+BASE_URL = os.getenv("TEST_SERVER_URL", "http://localhost:9696")
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -145,8 +136,7 @@ def pytest_configure(config):
     _reset_globals()
     use_live_stack = _use_live_stack()
 
-    # In live-stack mode we intentionally target the canonical serving port (9696) and
-    # skip the strict override that forces 9797. Honour any user-provided SOMA_API_URL
+    # In live-stack mode we intentionally target the canonical serving port (9696)
     # so that port-forwards or remote endpoints keep working.
     if use_live_stack:
         desired = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9696")
@@ -154,20 +144,20 @@ def pytest_configure(config):
         os.environ.setdefault("SOMA_API_URL_LOCK_BYPASS", "1")
         print(f"[pytest_configure] Live stack mode enabled; SOMA_API_URL={desired}")
     elif os.environ.get("SOMA_API_URL_LOCK_BYPASS", "0") not in ("1", "true", "yes"):
-        # HARD LOCK: Always point tests at dedicated integration server port 9797.
-        # The user requested we never hit 9696 because a different version may be
-        # running there. We override any pre-set SOMA_API_URL (unless explicitly
-        # exported SOMA_API_URL_LOCK_BYPASS=1 for an advanced/manual scenario).
+        # HARD LOCK: When not explicitly bypassed, normalise tests to a dedicated
+        # endpoint. If running in Kubernetes, prefer the cluster-internal test
+        # service on port 9999; otherwise default to the local Docker canonical
+        # port 9696 for in-process testing.
         prev = os.environ.get("SOMA_API_URL")
         if prev and not _is_local_url(prev):
             desired = prev
         elif os.environ.get("KUBERNETES_SERVICE_HOST"):
             desired = os.environ.get(
                 "SOMA_API_URL",
-                "http://somabrain.somabrain-prod.svc.cluster.local:9696",
+                "http://somabrain.somabrain-prod.svc.cluster.local:9999",
             )
         else:
-            desired = "http://127.0.0.1:9797"
+            desired = "http://127.0.0.1:9696"
         os.environ["SOMA_API_URL"] = desired
         if prev and prev != desired:
             print(
@@ -224,28 +214,52 @@ def ensure_runtime_backend_and_clear_mirror():
             rt.mt_memory = preferred
             app.mt_memory = preferred
 
-        # Patch runtime with stub embedder and other required singletons if missing
-        if rt.embedder is None:
+        # Under STRICT_REAL we must not inject dummy/stub components.
+        # If the runtime singletons are missing, fail fast with an instructive
+        # error so developers bring up the real stack instead of allowing tests
+        # to silently proceed with in-process dummies.
+        strict_real = os.getenv("SOMABRAIN_STRICT_REAL", "0").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if strict_real:
+            missing = []
+            if rt.embedder is None:
+                missing.append("embedder")
+            if rt.mt_wm is None:
+                missing.append("mt_wm")
+            if rt.mc_wm is None:
+                missing.append("mc_wm")
+            if missing:
+                raise RuntimeError(
+                    f"STRICT REAL: tests require real runtime singletons (missing: {', '.join(missing)}). "
+                    "Start the full dev stack (scripts/start_dev_infra.sh or docker compose) "
+                    "or explicitly set SOMABRAIN_STRICT_REAL=0 for local experimentation."
+                )
+        else:
+            # Non-strict mode: keep previous behavior for convenience in dev.
+            if rt.embedder is None:
 
-            class DummyEmbedder:
-                def embed(self, x):
-                    return [0.0]
+                class DummyEmbedder:
+                    def embed(self, x):
+                        return [0.0]
 
-            rt.embedder = DummyEmbedder()
-        if rt.mt_wm is None:
+                rt.embedder = DummyEmbedder()
+            if rt.mt_wm is None:
 
-            class DummyWM:
-                def __init__(self):
-                    pass
+                class DummyWM:
+                    def __init__(self):
+                        pass
 
-            rt.mt_wm = DummyWM()
-        if rt.mc_wm is None:
+                rt.mt_wm = DummyWM()
+            if rt.mc_wm is None:
 
-            class DummyMCWM:
-                def __init__(self):
-                    pass
+                class DummyMCWM:
+                    def __init__(self):
+                        pass
 
-            rt.mc_wm = DummyMCWM()
+                rt.mc_wm = DummyMCWM()
 
         # Clear any existing client pool to ensure a clean slate for tests
         try:
@@ -337,7 +351,9 @@ def start_fastapi_server():
         yield
         return
 
-    soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9797")
+    # Default to the local Docker canonical port 9696 for in-process runs.
+    # Kubernetes cluster tests should use the cluster-internal test service on port 9999.
+    soma_url = os.environ.get("SOMA_API_URL", "http://127.0.0.1:9696")
 
     # Respect bypass flag: caller promises a live endpoint is running. When
     # strict mode is enabled, the explicit environment variable
@@ -352,9 +368,9 @@ def start_fastapi_server():
         yield
         return
 
-    # Local fallback: ensure we run on dedicated loopback port 9797
+    # Local fallback: ensure we run on canonical Docker port 9696 for local in-process server
     host = "127.0.0.1"
-    port = 9797
+    port = 9696
     desired = f"http://{host}:{port}"
     if soma_url != desired:
         parsed = urlparse(soma_url)
@@ -570,30 +586,28 @@ def fake_redis():
             except Exception:
                 pass
     else:
-        # Legacy relaxed path: allow fakeredis unless explicitly disabled.
-        if _os.getenv("SOMABRAIN_TEST_REAL_REDIS", "").lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        ):
-            print("[tests.conftest] REAL Redis requested (no fakeredis patch)")
-            return
-        try:
-            import fakeredis  # type: ignore
-            import redis  # type: ignore
+        # Non-strict mode: only patch to fakeredis when explicitly requested by the
+        # developer via SOMABRAIN_ALLOW_FAKEREDIS=1. This prevents accidental
+        # test flakiness when a real Redis is available but not desired.
+        if _os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0").lower() in ("1", "true", "yes"):
+            try:
+                import fakeredis  # type: ignore
+                import redis  # type: ignore
 
-            redis.Redis = fakeredis.FakeRedis  # type: ignore[attr-defined]
-            if hasattr(redis, "connection"):
-                try:
-                    redis.connection.disconnect_all()
-                except Exception:
-                    pass
-            print("[tests.conftest] fakeredis patched for Redis client (relaxed mode)")
-        except Exception:
-            print(
-                "[tests.conftest] fakeredis unavailable; proceeding without patch (relaxed mode)"
-            )
+                redis.Redis = fakeredis.FakeRedis  # type: ignore[attr-defined]
+                if hasattr(redis, "connection"):
+                    try:
+                        redis.connection.disconnect_all()
+                    except Exception:
+                        pass
+                print("[tests.conftest] fakeredis patched for Redis client (developer opt-in)")
+            except Exception:
+                print(
+                    "[tests.conftest] fakeredis unavailable; proceeding without patch (developer opt-in)"
+                )
+        else:
+            # No patching; tests will use real Redis client behavior.
+            print("[tests.conftest] fakeredis not enabled (SOMABRAIN_ALLOW_FAKEREDIS not set) — using real Redis client")
     return
 
 # ---------------------------------------------------------------------------

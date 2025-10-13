@@ -15,6 +15,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md /build/
 COPY somabrain /build/somabrain
+COPY common /build/common
 COPY scripts /build/scripts
 COPY arc_cache.py /build/
 
@@ -46,6 +47,8 @@ RUN pip install --no-cache-dir "PyJWT[crypto]"
 # integration and production images. Installing via pip will build against
 # librdkafka-dev installed above.
 RUN pip install --no-cache-dir confluent-kafka kafka-python || echo "kafka client install failed; continuing without it"
+# Install pydantic-settings package required by config shared package (pydantic v2 split)
+RUN pip install --no-cache-dir pydantic-settings
 
 # Copy docs, scripts, and memory (for runtime import)
 COPY docs /app/docs
@@ -57,6 +60,11 @@ COPY observability /app/observability
 
 # Add memory package back for runtime imports
 COPY memory /app/memory
+# Copy shared `common` helpers so imports like `from common...` work at runtime
+COPY common /app/common
+
+# Ensure runtime imports from /app are visible
+ENV PYTHONPATH=/app:${PYTHONPATH:-}
 
 # Create non-root user
 RUN useradd --create-home --shell /sbin/nologin appuser \

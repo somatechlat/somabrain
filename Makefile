@@ -8,7 +8,7 @@ PYTEST:=$(VENV)/bin/pytest
 RUFF:=$(VENV)/bin/ruff
 MYPY:=$(VENV)/bin/mypy
 
-.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push
+.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean
 
 help:
 	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean"
@@ -109,3 +109,46 @@ local-up:
 .PHONY: clean
 clean:
 	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__
+
+# ---------------------------------------------------------------------------
+# Docker Compose (single API service on 9696; external memory on 9595)
+# ---------------------------------------------------------------------------
+PROJECT?=somabrain
+COMPOSE?=docker compose -p $(PROJECT)
+
+.PHONY: compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean
+
+compose-build:
+	$(COMPOSE) build somabrain
+
+compose-up:
+	$(COMPOSE) up -d somabrain
+	@echo "Waiting for API health..."
+	@for i in $$(seq 1 20); do \
+		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
+			echo "API healthy on http://127.0.0.1:9696"; \
+			exit 0; \
+		fi; \
+		sleep 1; \
+	 done; \
+	 echo "API did not become healthy in time"; exit 1
+
+compose-down:
+	$(COMPOSE) down --remove-orphans
+
+compose-restart:
+	$(COMPOSE) restart somabrain
+
+compose-logs:
+	$(COMPOSE) logs -f --tail=200 somabrain
+
+compose-ps:
+	$(COMPOSE) ps
+
+compose-health:
+	curl -fsS http://127.0.0.1:9696/health | jq . || curl -fsS http://127.0.0.1:9696/health || true
+
+compose-clean:
+	$(COMPOSE) down --remove-orphans
+	- docker network rm $(PROJECT)_default 2>/dev/null || true
+	@echo "Compose project cleaned."
