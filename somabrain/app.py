@@ -2689,6 +2689,8 @@ async def remember(body: dict, request: Request):
     import time as _t
 
     _s0 = _t.perf_counter()
+    breaker_open = False
+    queued = False
     try:
         await memsvc.aremember(key, payload)
     except RuntimeError as e:
@@ -2710,9 +2712,21 @@ async def remember(body: dict, request: Request):
                 )
             except Exception:
                 require_memory = True
+        # Mark operational state flags before deciding response behavior
+        try:
+            breaker_open = True
+            queued = True
+        except Exception:
+            pass
         if require_memory:
+            # Include operational flags in the error payload for clients that want to react.
             raise HTTPException(
-                status_code=503, detail="memory backend unavailable; write queued"
+                status_code=503,
+                detail={
+                    "message": "memory backend unavailable; write queued",
+                    "breaker_open": True,
+                    "queued": True,
+                },
             ) from e
         # If memory not strictly required we degrade to previous soft behavior.
         pass
@@ -2791,6 +2805,8 @@ async def remember(body: dict, request: Request):
         "trace_id": trace_id,
         "deadline_ms": deadline_ms,
         "idempotency_key": idempotency_key,
+        "breaker_open": breaker_open or None,
+        "queued": queued or None,
     }
 
 

@@ -1202,6 +1202,7 @@ class MemoryClient:
                 "top_k": fetch_limit,
                 "exact": False,
                 "case_sensitive": False,
+                "universe": universe,
             }
             aggregated.extend(
                 self._http_post_hits_sync(
@@ -1218,6 +1219,7 @@ class MemoryClient:
                 "exact": False,
                 "case_sensitive": False,
                 "top_k": fetch_limit,
+                "universe": universe,
             }
             aggregated.extend(
                 self._http_post_hits_sync(
@@ -1284,6 +1286,7 @@ class MemoryClient:
                 "top_k": fetch_limit,
                 "exact": False,
                 "case_sensitive": False,
+                "universe": universe,
             }
             aggregated.extend(
                 await self._http_post_hits_async(
@@ -1300,6 +1303,7 @@ class MemoryClient:
                 "exact": False,
                 "case_sensitive": False,
                 "top_k": fetch_limit,
+                "universe": universe,
             }
             aggregated.extend(
                 await self._http_post_hits_async(

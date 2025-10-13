@@ -2,6 +2,12 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: sb_redis
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 16M
     networks:
       - somabrain_net
     ports:
@@ -12,10 +18,16 @@ services:
       timeout: 5s
       retries: 3
 
-  # Kafka in KRaft (no Zookeeper)
+  # Kafka - Core messaging infrastructure for SomaBrain
   kafka:
     image: bitnami/kafka:latest
     container_name: sb_kafka
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
       - KAFKA_CFG_NODE_ID=1
@@ -26,19 +38,34 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_CFG_LOG_DIRS=/bitnami/kafka/data
+      # Production configuration with proper heap allocation
+      - KAFKA_HEAP_OPTS=-Xmx384m -Xms256m
+      - KAFKA_CFG_LOG_RETENTION_MS=604800000
+      - KAFKA_CFG_LOG_SEGMENT_BYTES=52428800
+      - KAFKA_CFG_LOG_RETENTION_BYTES=536870912
+      - KAFKA_CFG_NUM_PARTITIONS=2
+      - KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+      - KAFKA_CFG_COMPRESSION_TYPE=snappy
+      - KAFKA_CFG_LOG_CLEANUP_POLICY=delete
     ports:
       - "${KAFKA_HOST_PORT:-9092}:9092"
     healthcheck:
       test: ["CMD", "bash", "-c", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
-      interval: 10s
-      timeout: 5s
-      retries: 8
+      interval: 15s
+      timeout: 10s
+      retries: 6
     networks:
       - somabrain_net
 
   opa:
     image: openpolicyagent/opa:0.48.0
     container_name: sb_opa
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
     command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies"]
     networks:
       - somabrain_net
@@ -50,6 +77,12 @@ services:
   prometheus:
     image: prom/prometheus:v2.49.0
     container_name: sb_prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
     networks:
       - somabrain_net
     ports:
@@ -57,10 +90,16 @@ services:
     volumes:
       - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
-  # Postgres for development
+  # Postgres for production
   postgres:
     image: postgres:15-alpine
     container_name: sb_postgres
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
     environment:
       - POSTGRES_USER=soma
       - POSTGRES_PASSWORD=soma_pass
@@ -79,6 +118,12 @@ services:
       dockerfile: Dockerfile
     image: somabrain:latest
     container_name: sb_somabrain
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 96M
     depends_on:
       redis:
         condition: service_started
@@ -92,6 +137,7 @@ services:
       - somabrain_net
     environment:
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token}"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
       # Use a single worker in dev to ensure in-process WM read-your-writes across requests

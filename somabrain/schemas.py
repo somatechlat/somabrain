@@ -380,6 +380,11 @@ class RememberResponse(BaseModel):
     trace_id: str
     deadline_ms: Optional[str] = None
     idempotency_key: Optional[str] = None
+    # Optional operational signals (not strictly required by older clients):
+    # - breaker_open: true when memory backend circuit is open
+    # - queued: true when the write was queued locally (e.g., backend down)
+    breaker_open: Optional[bool] = None
+    queued: Optional[bool] = None
 
 
 # Compact request/response models for previously-dynamic endpoints
