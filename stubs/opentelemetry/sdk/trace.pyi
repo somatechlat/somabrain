@@ -1,0 +1,6 @@
+from typing import Optional
+
+class TracerProvider: ...
+
+def get_tracer_provider() -> Optional[TracerProvider]: ...
+
