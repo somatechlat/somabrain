@@ -14,8 +14,8 @@ Raise the baseline for reproducible builds and shared configuration so every dow
 | Item | Owner | Status | Notes |
 |------|-------|--------|-------|
 | Inventory current dependency graph (`pyproject`, `requirements-dev.txt`, Docker) | Platform | In progress | Pyproject core deps (FastAPI, numpy, sql stack), dev req pins (pytest 8.4.2, black 25.1.0, numpy 1.26.4), Docker installs confluent-kafka, pydantic-settings. Next: capture Makefile/tooling extras. |
-| Establish reproducible `uv` lockfile and document bootstrap steps | Platform | In progress | Existing `uv.lock` present (revision 3); verify alignment with pyproject/requirements and document refresh workflow (`uv pip compile` → commit). |
-| Normalize `load_config` usage across modules | Platform | In progress | Added cached `get_config()` / `reload_config()` helpers; next step is migrating call-sites to use shared accessor. |
+| Establish reproducible `uv` lockfile and document bootstrap steps | Platform | Complete | `DEVELOPMENT_GUIDE.md` now documents the `uv pip install/compile/sync` workflow; lockfile committed and treated as canonical. |
+| Normalize `load_config` usage across modules | Platform | Complete | Cached `get_config()` helper landed and all call-sites now use the shared accessor (`chore: adopt cached config helper`). |
 | Draft ADR for environment parity & configuration | Architecture | Planned | Outline lockfile strategy + config loader; to file under `docs/adr/`. |
 | Update developer quickstart (`DEVELOPMENT_GUIDE.md`) | Docs | Planned | Include lockfile install command, config loader notes. |
 | Baseline monitoring of dependency build times | Observability | Planned | Add metric from CI during lockfile adoption. |
@@ -51,6 +51,8 @@ Raise the baseline for reproducible builds and shared configuration so every dow
 |------|--------|--------|
 | 2025-10-13 | AI assistant | Created Sprint A0 canonical log. |
 | 2025-10-13 | AI assistant | Added dependency inventory notes and introduced cached config helpers. |
+| 2025-10-13 | AI assistant | Documented `uv` lock maintenance flow in `DEVELOPMENT_GUIDE.md`. |
+| 2025-10-13 | AI assistant | Completed repository-wide migration to the cached config accessor. |
 
 ---
 

@@ -32,8 +32,28 @@ This guide provides canonical, up-to-date instructions for developing, building,
 ## 1. Prerequisites
 - Docker and Docker Compose (latest stable)
 - Python 3.10+ (for local development)
+- [uv](https://github.com/astral-sh/uv) 0.8+ (dependency locking & runner)
 - GNU Make (optional, for convenience)
 - Recommended: VS Code with Python and Docker extensions
+
+### 1.1 Dependency locking with `uv`
+
+- Install `uv` via `pipx install uv` (or `pip install --user uv`).
+- Install editable deps and write the lock file in one command:
+
+    ```sh
+    uv pip install --editable .[dev]
+    ```
+
+- When dependency metadata changes, regenerate and commit the lock:
+
+    ```sh
+    uv pip compile pyproject.toml --extra dev --lockfile uv.lock
+    uv pip sync uv.lock
+    ```
+
+- `uv pip sync` guarantees CI/local envs resolve exactly to the versions pinned in `uv.lock`.
+- See `docs/DEVELOPMENT_SETUP.md` § 1 for the full environment bootstrap walkthrough.
 
 ---
 
