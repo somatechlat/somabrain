@@ -1,100 +1,108 @@
-> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+> :warning: SomaBrain 3.0 must stay mathematically exact on the hot path. All upgrades preserve deterministic Composer binding, PSD salience, and flag-gated rollout.
 
-# SomaBrain 3.0 — Canonical Roadmap
+# SomaBrain 3.0 — Refactored Roadmap (2025 Q4)
 
-SomaBrain 3.0 unifies math, memory, and cognition behind a single deterministic core. The roadmap below is the canonical source for scope, sequencing, and rollout. All workstreams adhere to five principles: **simple hot paths, exact algebra, PSD salience, unified scoring, and flag-gated rollout with rollback**.
+This roadmap merges the latest architectural analysis (tunable math surfaces, cognition benchmark gaps, optional micro-preconditioner) with launch execution. Work is organized into **lanes** that can run in parallel once dependencies are satisfied. Each sprint is two weeks.
 
 ---
 
 ## Vision Snapshot
 
-| Pillar | Outcome |
-|--------|---------|
-| **Composer Math Stack** | FFT-free binding/unbinding via deterministic Rademacher masks and permutations; O(D) hot path. |
-| **Vectorizer & Salience** | Fused surface/deep embeddings with Frequent-Directions sketches for PSD low-rank salience. |
-| **Unified Retrieval** | Single scorer combining cosine, subspace, and recency with bounded weights; observable end-to-end. |
-| **Brain Architecture** | BrainState aggregate, lifecycle hooks, modular app entry, strict domain/application/infrastructure layering. |
-| **Observability & Ops** | Benchmarks, dashboards, CI gates, rollout telemetry, safe feature toggles per tenant. |
-
-All deliverables are grouped into quarter-long **Epics** with two-week **Sprints**. Parallel teams can progress within an epic once dependencies are met.
+| Pillar | 3.0 Outcome |
+|--------|-------------|
+| **Immutable Math Core** | Composer bind/unbind (O(D)), FD salience sketch, Unified scorer; exact and auditable. |
+| **Tunable Surfaces** | Fusion, cue strengths, scorer weights, FD rank, diversification gate; per-tenant knobs with EMA + clamps. |
+| **Adaptive Learning Loop** | Optional Q/W micro-preconditioner trained on clicks; gradient updates out of band with safe rollback. |
+| **Observability & Ops** | Precision/latency dashboards, FD energy health, cue confidence, gradient drift alerts, benchmark CI. |
+| **Tenant Isolation & Safety** | Feature flags, checkpoint governance, per-tenant BrainState, A/B rollout with reversible defaults. |
 
 ---
 
-## Epic A – Foundations & Infrastructure (Weeks 1-6)
+## Lane Overview
 
-| Sprint | Focus | Deliverables |
-|--------|-------|--------------|
-| **[A0 – Dependency Cleanup](docs/sprints/Sprint_A0.md)** | Environment parity | `pyproject` sanity sweep, Docker cache tweaks, reproducible `uv` lock, unified config loader. |
-| **[A1 – Architecture Baseline](docs/sprints/Sprint_A1.md)** | Layer separation | ADR: domain/application/infrastructure boundaries, skeleton `BrainState`, top-level factory wiring. |
-| **[A2 – Observability Bedrock](docs/sprints/Sprint_A2.md)** | Metrics & tracing | Prometheus upgrades, log context propagation, benchmark CI pipeline (nightly + per-PR smoke). |
-
-**Exit criteria**: Clean Architecture scaffolding merged, monitoring stack emitting baseline metrics, nightly benchmarks running.
-
----
-
-## Epic B – Math & Vectorizer Modernization (Weeks 7-12)
-
-| Sprint | Focus | Deliverables |
-|--------|-------|--------------|
-| **[B0 – MathService Facade](docs/sprints/Sprint_B0.md)** | Shared numerics | `MathService` interface, Composer/Vectorizer prototypes, property-based tests. |
-| **[B1 – Composer Rollout](docs/sprints/Sprint_B1.md)** | Binding/unbinding | Deterministic masks & permutations, drop-in wrappers, feature flag `math.composer.v1`, benchmarks validating O(D) throughput. |
-| **[B2 – Vectorizer Fusion](docs/sprints/Sprint_B2.md)** | Embedding pipeline | Hashed sparse -> JL projection, deep embed projector, fused normalization, tenant alpha/beta config. |
-
-**Exit criteria**: Composer & Vectorizer ready behind flags, golden math tests passing, documentation of “math playbook” published in `docs/`.
+| Lane | Objective | Dependencies | Parallelization |
+|------|-----------|--------------|-----------------|
+| **Lane α – Core Hardening** | Finish math invariants, cognition/RAG regression fixes. | Existing Composer/FD/scorer shipped. | Blocks others only where noted. |
+| **Lane β – Tunable Surfaces** | Operationalize fusion, cue, scorer, FD auto-rank knobs per tenant. | Lane α baseline. | Can start once α.1 completes. |
+| **Lane γ – Adaptive Learning Loop** | Introduce Q/W preconditioner, gradient trainer, checkpoint ops. | Lanes α, β instrumentation. | Starts after α.2 + β.1. |
+| **Lane δ – Observability & Governance** | Metrics, alerts, data governance, benchmark automation. | α.1 | Runs parallel with β, γ. |
+| **Lane ε – Rollout & Launch** | Benchmarks, launch report, comms, tenant rollout. | α–δ deliverables. | Sequenced near end. |
 
 ---
 
-## Epic C – Salience & Retrieval (Weeks 13-18)
+## Lane α – Core Hardening (Weeks 1-4)
 
-| Sprint | Focus | Deliverables |
-|--------|-------|--------------|
-| **[C0 – FD Salience Core](docs/sprints/Sprint_C0.md)** | Low-rank sketch | Frequent-Directions sketch service, subspace versioning, per-item projection cache. |
-| **[C1 – Unified Scorer](docs/sprints/Sprint_C1.md)** | Strategy + metrics | Single scorer implementation (cosine + subspace + recency), weight configuration with safe bounds, Prometheus instrumentation. |
-| **[C2 – Retrieval Pipeline](docs/sprints/Sprint_C2.md)** | Orchestration | MemoryClient adapters (HTTP, mirror, outbox), pipeline orchestrator with stage-level metrics, cache warming strategy. |
-
-**Exit criteria**: Unified scorer powering retrieval in shadow mode, salience sketch stable under load, latency targets met in benchmarks.
+| Sprint | Focus | Key Deliverables | Notes |
+|--------|-------|------------------|-------|
+| **α.1 – Cognition Benchmark Rehab** | Resolve Gate2 (k=1) precision drop and Gate3 latency warn. | Parameter sweeps for cue γ and scorer weights; rerun `cognition_core_bench.py`; publish PASS gating checklist. | Enables β lane. |
+| **α.2 – RAG Benchmark Restoration** | Fix retriever auth/backfill, re-run `rag_bench.py` with hit-rate targets. | Auth tokens or stub toggles, rerun with SOMABRAIN_STRICT_REAL_BYPASS=0, capture latency/hit improvements. | Must complete before γ and ε. |
+| **α.3 – Stress & Numerics Sign-off** | Confirm `run_stress.py` and numerics suite under new parameters. | Annotated `results_stress.json`, unitary numerics delta documentation, alert thresholds confirmed. | Parallel with β.1 once α.1 done. |
 
 ---
 
-## Epic D – Brain Architecture & Execution (Weeks 19-24)
+## Lane β – Tunable Surfaces (Weeks 3-8)
 
-| Sprint | Focus | Deliverables |
-|--------|-------|--------------|
-| **[D0 – BrainState Integration](docs/sprints/Sprint_D0.md)** | State aggregation | Tenant-scoped BrainState, lifecycle hooks (init/before/after/background), dependency injection container. |
-| **[D1 – App Modularization](docs/sprints/Sprint_D1.md)** | Clean entry point | Split `somabrain.app` into bootstrapping, routers, and services; enforce domain/application boundaries. |
-| **[D2 – Cognitive Loop Harmonization](docs/sprints/Sprint_D2.md)** | Policy alignment | Centralize novelty/admission policies, update hippocampus/consolidation flows, document runbooks. |
-
-**Exit criteria**: SomaBrain app serves through modular startup, all cognitive services read from BrainState, policy configs unified.
+| Sprint | Focus | Key Deliverables | Parallel |
+|--------|-------|------------------|----------|
+| **β.1 – Tenant Config Surfaces** | Expose fusion α/β, cue γ, scorer weights, half-life, FD rank in config + BrainState. | Config schema, clamps, audit logging; tenant defaults from research doc. | Parallel with α.3, δ lane. |
+| **β.2 – Adaptive Rules & Auto-Rank** | Implement FD energy ratio monitoring with rank bump rule; diversification gate logic. | Energy ratio metrics + alerts; diversification gate with η control + tests. | Parallel with δ.2. |
+| **β.3 – Pattern Completion & Fast Path** | Cue confidence metric, fast-path promotion rules, A/B hooks. | Confidence calculation spec, gating thresholds, unit tests. | Requires δ.1 telemetry. |
 
 ---
 
-## Epic E – Rollout, Migration & Excellence (Weeks 25-32)
+## Lane γ – Adaptive Learning Loop (Weeks 7-12)
 
-| Sprint | Focus | Deliverables |
-|--------|-------|--------------|
-| **[E0 – Feature Flag & Rollback](docs/sprints/Sprint_E0.md)** | Safe migration | Dynamic per-tenant toggles, rollback playbooks, migration dashboards. |
-| **[E1 – Tenant Onboarding](docs/sprints/Sprint_E1.md)** | Controlled rollout | Pilot tenant conversions, feedback loop, performance regression tracking. |
-| **[E2 – World-Class Benchmarking](docs/sprints/Sprint_E2.md)** | External validation | Publish benchmark suite results, author roadmap review, finalize 3.0 launch report. |
+| Sprint | Focus | Key Deliverables | Dependencies |
+|--------|-------|------------------|--------------|
+| **γ.0 – Data Plumbing** | Capture query-positive-negative tuples, tenant tags, click signals. | Retrieval event bus, PII-safe storage, replay harness. | α.2, β.1, δ.1 |
+| **γ.1 – Trainer Architecture** | Householder-based Q, diagonal(+low-rank) W, InfoNCE/hinge trainer, regularizers, checkpoint writer. | Trainer design doc, unit tests for orthogonality, config clamps. | Requires γ.0. |
+| **γ.2 – Inference Integration** | Load checkpoints, apply Q/W before Composer, inverse for unbind path, flag `retrieval.preconditioner.v1`. | Hot path adapter, health checks, fallback-to-identity flow. | After γ.1 + β.2. |
+| **γ.3 – Guardrails & Rollback** | Drift detection (`||Q-I||`, `||W^{-1}||`), precision delta alerts, automated rollback. | Alert wiring, runbook updates, test rollback drills. | Parallel with δ.3. |
 
-**Exit criteria**: Composer/Vectorizer/Salience/Scorer enabled for all target tenants, KPIs met, launch report signed off.
+---
+
+## Lane δ – Observability & Governance (Weeks 3-12)
+
+| Sprint | Focus | Key Deliverables |
+|--------|-------|------------------|
+| **δ.1 – Metrics Baseline** | Prometheus exporters for precision@{1,3,5}, latency p95/p99, FD energy ratio, cue confidence, weight saturation, NaN/Inf counts. |
+| **δ.2 – Gradient Telemetry** | Loss trending, checkpoint hashes, EMA vs gradient deltas, per-tenant drift dashboards. |
+| **δ.3 – Benchmark Automation** | Nightly cognition, RAG, stress runs; artifact upload; alert on regression >5%. |
+| **δ.4 – Governance & Compliance** | Checkpoint signing, feature flag governance, audit trail for parameter updates, data retention policy. |
+
+Lane δ sprints can overlap with β and γ as soon as α.1 completes.
+
+---
+
+## Lane ε – Rollout & Launch Readiness (Weeks 11-16)
+
+| Sprint | Focus | Exit Criteria |
+|--------|-------|---------------|
+| **ε.1 – Benchmark Synthesis** | Aggregate numerics, cognition, RAG, stress results with Q/W off and on; finalize charts. |
+| **ε.2 – Launch Report & Comms** | Produce SomaBrain 3.0 launch report, customer brief, internal comms; document mitigation for any residual warnings. |
+| **ε.3 – Tenant Pilot & A/B** | Enable `math.composer.v1`, `salience.fd.sketch`, `scorer.unified`, `retrieval.preconditioner.v1` for pilot tenants; ensure precision ≥ baseline or latency ≤60 ms p95. |
+| **ε.4 – Global Readiness Review** | Steering committee sign-off, rollback drills complete, roadmap archived. |
+
+ε.1 requires α–γ data closed; ε.3 waits for γ.3 safeguards and δ.4 governance.
 
 ---
 
 ## Cross-Cutting Streams
 
-- **Documentation & Enablement**: Update `DEVELOPMENT_GUIDE.md`, create subsystem READMEs, record math walkthrough videos.
-- **Quality Gates**: Property tests for math, integration tests for retrieval, load tests for salience, chaos drills for rollback.
-- **Security & Compliance**: Enforce non-root containers, OPA bundles, mTLS options, audit trails in MemoryClient adapters.
+- **Documentation & Enablement**: Update math playbook, sprint logs, developer guides; add gradient training FAQ.
+- **Quality Gates**: Property tests for math core, retrieval integration tests, regression tests for Q/W identity fallback, chaos drills for feature flag rollback.
+- **Security & Compliance**: Non-root containers, OPA bundles, checkpoint audit logging, per-tenant data isolation in gradient store.
 
 ---
 
 ## Execution Checklist
 
-1. Kickoff (Week 1): Align teams, assign epic leads, baseline metrics.
-2. Bi-weekly roadmap reviews synchronized with sprint demos.
-3. Rollout board tracks flag status, pilot tenant feedback, regression metrics.
-4. Final readiness review before enabling SomaBrain 3.0 globally.
+1. Kickoff (Week 1): align lane leads, confirm cognition Gate2/3 + RAG auth issues.
+2. Week 2 review: ensure Lane α progress unblocks β, δ.1.
+3. Bi-weekly lane syncs manage cross-dependencies (β ↔ γ ↔ δ).
+4. Pre-ε entry gate: alerts green, benchmarks PASS, Q/W flag ready.
+5. Final readiness: complete Sprint ε.4, archive roadmap, seed 3.1 backlog.
 
 ---
 
-*Prepared by the AI-assisted development team. This document is the canonical roadmap—update in-place as progress is made.*
+*Prepared by GitHub Copilot. This is the canonical roadmap; update in place as execution progresses.*
