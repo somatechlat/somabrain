@@ -7,6 +7,8 @@ __pycache__/
 .venv/
 .conda/
 .env
+*.env
+.env.*
 
 # Build artefacts
 build/
@@ -15,6 +17,7 @@ build/
 
 # Logs and temporary files
 *.log
+somabrain.log
 *.tmp
 *.swp
 
