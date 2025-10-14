@@ -25,12 +25,40 @@ try:
         try:
             from somabrain.quantum import make_quantum_layer, HRRConfig as _HRRConfig
 
-            quantum = make_quantum_layer(_HRRConfig(dim=cfg.hrr_dim, seed=cfg.hrr_seed))
+            quantum = make_quantum_layer(
+                _HRRConfig(
+                    dim=cfg.hrr_dim,
+                    seed=cfg.hrr_seed,
+                    binding_method=getattr(cfg, "math_binding_method", "bhdc"),
+                    sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
+                    binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
+                    mix=getattr(cfg, "math_bhdc_mix", "none"),
+                    binding_seed=getattr(cfg, "math_binding_seed", None),
+                    binding_tenant=getattr(cfg, "default_tenant", None),
+                    binding_model_version=getattr(
+                        cfg, "math_binding_model_version", None
+                    ),
+                )
+            )
         except Exception:
             try:
                 from somabrain.quantum import QuantumLayer, HRRConfig
 
-                quantum = QuantumLayer(HRRConfig(dim=cfg.hrr_dim, seed=cfg.hrr_seed))
+                quantum = QuantumLayer(
+                    HRRConfig(
+                        dim=cfg.hrr_dim,
+                        seed=cfg.hrr_seed,
+                        binding_method=getattr(cfg, "math_binding_method", "bhdc"),
+                        sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
+                        binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
+                        mix=getattr(cfg, "math_bhdc_mix", "none"),
+                        binding_seed=getattr(cfg, "math_binding_seed", None),
+                        binding_tenant=getattr(cfg, "default_tenant", None),
+                        binding_model_version=getattr(
+                            cfg, "math_binding_model_version", None
+                        ),
+                    )
+                )
             except Exception:
                 quantum = None
 

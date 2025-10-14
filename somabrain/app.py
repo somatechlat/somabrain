@@ -91,11 +91,6 @@ from somabrain.prediction import (
 )
 from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
-
-try:
-    from somabrain.quantum_hybrid import HybridQuantumLayer
-except Exception:
-    HybridQuantumLayer = None
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
 from somabrain.sdr import LSHIndex, SDREncoder
@@ -1232,11 +1227,36 @@ if cfg.use_hrr:
     try:
         from somabrain.quantum import make_quantum_layer, HRRConfig as _HRRConfig
 
-        quantum = make_quantum_layer(_HRRConfig(dim=cfg.hrr_dim, seed=cfg.hrr_seed))
+        q_cfg = _HRRConfig(
+            dim=cfg.hrr_dim,
+            seed=cfg.hrr_seed,
+            binding_method=getattr(cfg, "math_binding_method", "bhdc"),
+            sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
+            binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
+            mix=getattr(cfg, "math_bhdc_mix", "none"),
+            binding_seed=getattr(cfg, "math_binding_seed", None),
+            binding_tenant=getattr(cfg, "default_tenant", None),
+            binding_model_version=getattr(cfg, "math_binding_model_version", None),
+        )
+        quantum = make_quantum_layer(q_cfg)
     except Exception:
         # fallback: best-effort instantiation of canonical QuantumLayer
         try:
-            quantum = QuantumLayer(HRRConfig(dim=cfg.hrr_dim, seed=cfg.hrr_seed))
+            quantum = QuantumLayer(
+                HRRConfig(
+                    dim=cfg.hrr_dim,
+                    seed=cfg.hrr_seed,
+                    binding_method=getattr(cfg, "math_binding_method", "bhdc"),
+                    sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
+                    binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
+                    mix=getattr(cfg, "math_bhdc_mix", "none"),
+                    binding_seed=getattr(cfg, "math_binding_seed", None),
+                    binding_tenant=getattr(cfg, "default_tenant", None),
+                    binding_model_version=getattr(
+                        cfg, "math_binding_model_version", None
+                    ),
+                )
+            )
         except Exception:
             quantum = None
 embedder = make_embedder(cfg, quantum)

@@ -25,7 +25,8 @@ from typing import Dict, Tuple
 import numpy as np
 
 from somabrain.numerics import normalize_array
-from somabrain.quantum import HRRConfig, _seed64
+from somabrain.quantum import HRRConfig
+from somabrain.seed import seed_to_uint64
 
 
 class PureQuantumLayer:
@@ -67,14 +68,15 @@ class PureQuantumLayer:
     def _renorm(self, v: np.ndarray) -> np.ndarray:
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
-        return normalize_array(v, axis=self.cfg.dim, dtype=self.cfg.dtype)
+        return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
 
     def random_vector(self) -> np.ndarray:
         v = self._rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 
     def encode_text(self, text: str) -> np.ndarray:
-        rng = np.random.default_rng(_seed64(text) ^ self.cfg.seed)
+        seed64 = seed_to_uint64(text) ^ int(self.cfg.seed)
+        rng = np.random.default_rng(np.uint64(seed64))
         v = rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 

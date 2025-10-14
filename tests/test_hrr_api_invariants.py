@@ -20,7 +20,7 @@ def test_hrr_rejects_wrong_length_vector():
 
 
 def test_unbind_regularization_floor():
-    cfg = HRRConfig(dim=128, seed=1, fft_eps=1e-20)
+    cfg = HRRConfig(dim=128, seed=1)
     q = QuantumLayer(cfg)
 
     # Create random anchors and bind

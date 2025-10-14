@@ -77,6 +77,13 @@ class Config:
     hrr_dim: int = 8192
     hrr_seed: int = 42
     hrr_anchors_max: int = 10000
+    # BHDC math stack configuration
+    math_binding_method: str = "bhdc"
+    math_binding_seed: Optional[str] = None
+    math_binding_model_version: Optional[str] = None
+    math_bhdc_sparsity: float = 0.1
+    math_bhdc_binary_mode: str = "pm_one"
+    math_bhdc_mix: str = "none"
 
     # Salience and Attention
     salience_w_novelty: float = 0.6

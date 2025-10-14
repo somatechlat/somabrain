@@ -6,10 +6,8 @@ Defines default dimensions, types, quotas, and deterministic settings for minima
 HRR_DIM = 8192  # Global HRR dimensionality (production canonical default)
 HRR_DTYPE = "float32"  # Global HRR dtype (must match everywhere)
 HRR_RENORM = True  # Always unit-norm after every op
-HRR_VECTOR_FAMILY = "gaussian"  # All base vectors are Gaussian, then unit-norm
-# Updated global FFT epsilon documented as conservative default; per-dtype
-# runtime clamps will still apply where needed.
-HRR_FFT_EPSILON = 1e-6  # Small epsilon for FFT numerical stability (float32 path)
+HRR_VECTOR_FAMILY = "bhdc"  # Binary hypervectors with deterministic permutation binding
+BHDC_SPARSITY = 0.1  # Fraction of active dimensions for role/payload vectors
 SDR_BITS = 2048
 SDR_DENSITY = 0.03  # ~3%
 CONTEXT_BUDGET_TOKENS = 2048

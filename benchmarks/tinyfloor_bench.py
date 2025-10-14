@@ -57,8 +57,6 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         seed=42,
         dtype=np.dtype(dtype).name,
         renorm=True,
-        fft_eps=1e-8,
-        beta=1e-6,
     )
     q = QuantumLayer(cfg)
     p = PureQuantumLayer(cfg)
