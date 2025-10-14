@@ -35,14 +35,14 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 from .config import Config
 from somabrain.interfaces.memory import MemoryBackend  # new import for typing
 # Stub audit is handled via the internal helper `_audit_stub_usage` which
-# raises in strict‑real mode. Direct import of `record_stub` is no longer needed.
+# raises when strict mode is active. Direct import of `record_stub` is no longer needed.
 
 try:  # optional dependency, older deployments may not ship shared settings yet
     from common.config.settings import settings as shared_settings
 except Exception:  # pragma: no cover - legacy layout
     shared_settings = None  # type: ignore
 
-try:  # Import the settings object under a distinct name for strict-real checks.
+try:  # Import the settings object under a distinct name for strict-mode checks.
     from common.config.settings import settings as _shared_settings
 except Exception:  # pragma: no cover - not always available in local runs
     _shared_settings = None  # type: ignore
@@ -141,7 +141,7 @@ def _audit_stub_usage(reason: str = "memory_client.stub_usage") -> None:
     All call sites that append/extend or read from the in-process `_stub_store`
     must call this helper first to ensure strict mode fails fast.
     """
-    # In strict‑real mode any stub usage is prohibited. Raise an informative error.
+    # When strict mode is active any stub usage is prohibited. Raise an informative error.
     if getattr(_shared_settings, "strict_real", False):
         raise RuntimeError(f"Stub usage prohibited: {reason}")
     # In non‑strict mode we simply ignore the stub usage (no operation).

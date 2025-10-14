@@ -44,15 +44,20 @@ class MTWMConfig:
 
 
 class MultiTenantWM:
-    def __init__(self, dim: int, cfg: MTWMConfig):
+    def __init__(self, dim: int, cfg: MTWMConfig | None = None, scorer=None):
         self.dim = int(dim)
-        self.cfg = cfg
+        self.cfg = cfg or MTWMConfig()
         self._wms: OrderedDict[str, WorkingMemory] = OrderedDict()
+        self._scorer = scorer
 
     def _ensure(self, tenant_id: str) -> WorkingMemory:
         wm = self._wms.get(tenant_id)
         if wm is None:
-            wm = WorkingMemory(capacity=self.cfg.per_tenant_capacity, dim=self.dim)
+            wm = WorkingMemory(
+                capacity=self.cfg.per_tenant_capacity,
+                dim=self.dim,
+                scorer=self._scorer,
+            )
             self._wms[tenant_id] = wm
         # LRU update
         self._wms.move_to_end(tenant_id)

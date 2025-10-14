@@ -624,8 +624,8 @@ async def run_rag_pipeline(
             except Exception:
                 _app_mt_memory = None
 
-            print(
-                "pipeline mem ids",
+            logger.debug(
+                "pipeline mem ids backend=%s app=%s",
                 id(mem_backend),
                 id(_app_mt_memory) if _app_mt_memory else None,
             )

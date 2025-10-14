@@ -420,8 +420,8 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         from . import metrics as _mx
 
         # Debug print to verify fallback path
-        print(
-            "DEBUG: entering final journal fallback with dir", str(_audit_journal_dir())
+        LOGGER.debug(
+            "Entering final journal fallback with dir %s", str(_audit_journal_dir())
         )
         # Use direct append to avoid potential monkey‑patched journal.append_event
         _direct_append_event(

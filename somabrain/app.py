@@ -2,7 +2,7 @@
 =================================
 
 This module exposes the production FastAPI surface for SomaBrain. It wires
-real transports, memory clients, neuromodulators, and control systems together
+production transports, memory clients, neuromodulators, and control systems together
 so that the runtime interacts with live infrastructure instead of mocks.
 
 Main responsibilities:
@@ -779,7 +779,7 @@ except Exception:
 
 app = FastAPI(
     title="SomaBrain - Cognitive AI System",
-    description="Real-time cognitive services with strict real-mode enforcement.",
+    description="Low-latency cognitive services with strict production-mode enforcement.",
     version=str(API_VERSION),
 )
 
@@ -1037,7 +1037,7 @@ def _make_predictor() -> BudgetedPredictor:
     __SR = bool(sr_env and sr_env.lower() in ("1", "true", "yes"))
     if (sr_env or __SR) and provider in ("stub", "baseline"):
         raise RuntimeError(
-            "STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
+            "STRICT MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
         )
     if provider in ("stub", "baseline"):
         base = StubPredictor()
@@ -1223,7 +1223,7 @@ elif os.getenv("SOMABRAIN_STRICT_REAL_BYPASS"):
         pass
 if __SR and missing and not _is_test and not _bypass:
     raise RuntimeError(
-        f"STRICT REAL MODE: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
+    f"STRICT MODE: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
     )
 
 _rt.set_singletons(
@@ -2538,7 +2538,7 @@ async def remember(body: dict, request: Request):
     try:
         await memsvc.aremember(key, payload)
     except RuntimeError as e:
-        # Previously this silently succeeded which hid real backend outages.
+        # Previously this silently succeeded which hid actual backend outages.
         # In enterprise/full-stack mode (memory required) surface a 503 so callers
         # know the write is only queued and not yet persisted remotely.
         if shared_settings is not None:

@@ -14,6 +14,7 @@ import numpy as np
 
 from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
 from somabrain.numerics import normalize_array
+from somabrain import roles as _roles
 from somabrain.seed import seed_to_uint64
 
 try:
@@ -65,6 +66,9 @@ class QuantumLayer:
     def __init__(self, cfg: HRRConfig):
         self.cfg = cfg
         self._role_cache: Dict[str, np.ndarray] = {}
+        # Compatibility caches expected by legacy numerics tests
+        self._role_fft_cache: Dict[str, np.ndarray] = {}
+        self._rng = np.random.default_rng(int(cfg.seed))
         self._encoder = BHDCEncoder(
             dim=cfg.dim,
             sparsity=cfg.sparsity,
@@ -142,7 +146,14 @@ class QuantumLayer:
         if token in self._role_cache:
             return self._role_cache[token]
         if self.cfg.roles_unitary:
-            role = self._encoder.vector_for_token(token)
+            seed_val = int(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
+            role_time, role_spec = _roles.make_unitary_role(
+                self.cfg.dim,
+                seed=seed_val,
+                dtype=np.float32 if self.cfg.dtype == "float32" else np.float64,
+            )
+            role = role_time.astype(self.cfg.dtype, copy=False)
+            self._role_fft_cache[token] = role_spec.astype(np.complex64 if self.cfg.dtype == "float32" else np.complex128)
         else:
             seed64 = np.uint64(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
             rng = np.random.default_rng(seed64)
@@ -157,7 +168,7 @@ class QuantumLayer:
         return self._renorm(self._binder.bind(a_vec, role_vec))
 
     # ------------------------------------------------------------------
-    # Exact / Wiener aliases (mask composer is perfectly invertible)
+    # Exact / Wiener aliases (BHDC binder is perfectly invertible)
     # ------------------------------------------------------------------
     def unbind_exact(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         return self.unbind(c, b)

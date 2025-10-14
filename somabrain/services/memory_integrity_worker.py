@@ -146,7 +146,7 @@ class MemoryIntegrityWorker:
                 list(missing_in_vector)[:20],
             )
 
-        # Emit a short report to stdout for CI/dev usage
+    # Emit a short report via logging for CI/dev usage
         report = {
             "redis_count": len(redis_keys),
             "pg_count": len(pg_keys),
@@ -156,10 +156,15 @@ class MemoryIntegrityWorker:
             "missing_in_vector": list(missing_in_vector)[:50],
         }
         try:
-            print(json.dumps(report))
+            serialized = json.dumps(report)
         except Exception:
-            LOGGER.debug("Could not print JSON report")
+            serialized = None
+        if serialized is not None:
+            LOGGER.info("Memory integrity report: %s", serialized)
+        else:
+            LOGGER.info("Memory integrity report: %s", report)
         # TODO: Add reconciliation logic if desired
+        return report
 
     def run(self):
         LOGGER.info("Starting Memory Integrity Worker...")

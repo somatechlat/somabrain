@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Generate a Kubernetes ConfigMap from docs/CONFIGURATION.md.
+"""Generate a Kubernetes ConfigMap from docs/operations/configuration.md.
 
-The CONFIGURATION.md file contains a fenced ````env```` block with all
+The configuration document contains a fenced ````env```` block with all
 environment variables used by the Somabrain service. This script extracts that
 block and writes a ``ConfigMap`` YAML file under ``k8s/base`` which can be
 included in the Kustomize overlay.
@@ -12,17 +12,17 @@ import re
 import sys
 import yaml
 
-CONFIG_MD = pathlib.Path("docs/CONFIGURATION.md")
+CONFIG_MD = pathlib.Path("docs/operations/configuration.md")
 OUTPUT = pathlib.Path("k8s/base/somabrain-configmap.yaml")
 
 if not CONFIG_MD.is_file():
-    sys.exit("CONFIGURATION.md not found")
+    sys.exit("configuration.md not found")
 
 content = CONFIG_MD.read_text()
 # Find a fenced env block (```env ... ```). If not present, fall back to any code block.
-match = re.search(r"```(?:env)?\n(.*?)\n```", content, re.S)
+match = re.search(r"```env\n(.*?)\n```", content, re.S)
 if not match:
-    sys.exit("No env code block found in CONFIGURATION.md")
+    sys.exit("No env code block found in configuration.md")
 
 env_vars = {}
 for line in match.group(1).splitlines():

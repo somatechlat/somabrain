@@ -38,16 +38,15 @@ def make_unitary_role(
     U = U / np.abs(U)
     # Synthesize back to time domain using unitary inverse
     u_time = _num.irfft_norm(U, n=dim, axis=-1).astype(dtype)
-    # Ensure returned time-domain vector is unit L2-norm (tests expect unit norm)
-    nrm = float(np.linalg.norm(u_time))
-    if nrm == 0.0:
-        # deterministic fallback: set first element to 1
-        u_time = u_time.astype(dtype)
-        u_time[0] = 1.0
-        nrm = float(np.linalg.norm(u_time)) or 1.0
-    u_time = (u_time / nrm).astype(dtype)
-    # Recompute spectrum to return canonical rfft representation
+    # Recompute spectrum to return canonical rfft representation with unit magnitude.
     U_canon = _num.rfft_norm(u_time, n=dim, axis=-1)
+    mag = np.abs(U_canon)
+    mag_safe = np.where(mag == 0.0, 1.0, mag)
+    U_canon = U_canon / mag_safe
+    # Ensure exact unit magnitude (and avoid NaNs from zero divisions) by resetting non-finite bins.
+    U_canon = np.where(np.isfinite(U_canon), U_canon, 1.0 + 0.0j)
+    # Regenerate time-domain vector so it aligns with the adjusted spectrum.
+    u_time = _num.irfft_norm(U_canon, n=dim, axis=-1).astype(dtype)
     return u_time, U_canon
 
 

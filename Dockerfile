@@ -34,7 +34,7 @@ WORKDIR /app
 
 # System packages for healthcheck
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl librdkafka-dev build-essential \
+    && apt-get install -y --no-install-recommends curl librdkafka-dev libsnappy-dev libsnappy1v5 build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheel from builder stage and install
@@ -46,7 +46,7 @@ RUN pip install --no-cache-dir "PyJWT[crypto]"
 # Ensure confluent-kafka (librdkafka) is available for stronger Kafka semantics in
 # integration and production images. Installing via pip will build against
 # librdkafka-dev installed above.
-RUN pip install --no-cache-dir confluent-kafka kafka-python || echo "kafka client install failed; continuing without it"
+RUN pip install --no-cache-dir confluent-kafka kafka-python python-snappy || echo "kafka client install failed; continuing without it"
 # Install pydantic-settings package required by config shared package (pydantic v2 split)
 RUN pip install --no-cache-dir pydantic-settings
 

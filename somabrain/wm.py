@@ -20,9 +20,13 @@ Classes:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
+
+
+if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from .scoring import UnifiedScorer
 
 
 @dataclass
@@ -45,6 +49,7 @@ class WMItem:
 
     vector: np.ndarray
     payload: dict
+    tick: int = 0
 
 
 class WorkingMemory:
@@ -86,6 +91,7 @@ class WorkingMemory:
         gamma: float = 0.1,
         min_capacity: int | None = None,
         max_capacity: int | None = None,
+        scorer: "UnifiedScorer | None" = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -107,6 +113,7 @@ class WorkingMemory:
         self._min_cap = int(min_capacity) if min_capacity is not None else int(capacity)
         self._max_cap = int(max_capacity) if max_capacity is not None else int(capacity)
         self._t = 0  # simple timestep for recency
+        self._scorer = scorer
 
     @staticmethod
     def _cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -153,12 +160,16 @@ class WorkingMemory:
         n = float(np.linalg.norm(vector))
         if n > 0:
             vector = vector / n
+        self._t += 1
         self._items.append(
-            WMItem(vector=vector.astype("float32"), payload=dict(payload))
+            WMItem(
+                vector=vector.astype("float32"),
+                payload=dict(payload),
+                tick=self._t,
+            )
         )
         if len(self._items) > self.capacity:
             self._items = self._items[-self.capacity :]
-        self._t += 1
 
     def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
         """Compute salience = alpha·novelty + beta·reward + gamma·recency.
@@ -222,8 +233,18 @@ class WorkingMemory:
         """
         scored: List[Tuple[float, dict]] = []
         for it in self._items:
-            s = self._cosine(query_vec, it.vector)
-            scored.append((s, it.payload))
+            cos = self._cosine(query_vec, it.vector)
+            if self._scorer is not None:
+                age = max(0, int(self._t - it.tick))
+                s = self._scorer.score(
+                    query_vec,
+                    it.vector,
+                    recency_steps=age,
+                    cosine=cos,
+                )
+            else:
+                s = cos
+            scored.append((float(s), it.payload))
         scored.sort(key=lambda x: x[0], reverse=True)
         return scored[: max(0, int(top_k))]
 

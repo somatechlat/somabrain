@@ -100,4 +100,4 @@ The `tests/conftest.py` fixture respects this and will *not* auto-set strict mod
 **A:** Prevents green health when retrieval would otherwise always return empty, masking integration gaps.
 
 ---
-For the authoritative env variable list see: `../CONFIGURATION.md`.
+For the authoritative env variable list see: `../operations/configuration.md`.

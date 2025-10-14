@@ -89,7 +89,7 @@ test:
 # Keep the original docker build/run targets for backward compatibility
 .PHONY: docker-build docker-run docker-build-prod docker-run-prod docker-push
 
-# Generate Kubernetes ConfigMap from CONFIGURATION.md
+# Generate Kubernetes ConfigMap from docs/operations/configuration.md
 .PHONY: configmap
 configmap:
 	@python scripts/generate_configmap.py

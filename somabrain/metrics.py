@@ -35,7 +35,8 @@ Functions:
 from __future__ import annotations
 
 import time
-from typing import Any, Awaitable, Callable
+from threading import Lock
+from typing import Any, Awaitable, Callable, Iterable
 import builtins as _builtins
 
 try:
@@ -180,6 +181,11 @@ def get_histogram(
     return _histogram(name, documentation, registry=registry, **kwargs)
 
 
+_external_metrics_lock = Lock()
+_external_metrics_scraped: dict[str, float] = {}
+_DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
+
+
 # Rebind public constructors to safe wrappers for in-module usage.
 Counter = _counter
 Gauge = _gauge
@@ -255,6 +261,52 @@ SALIENCE_HIST = _Hist(
     "Salience score distribution",
     buckets=[i / 20.0 for i in range(0, 21)],
     registry=registry,
+)
+FD_ENERGY_CAPTURE = Gauge(
+    "somabrain_fd_energy_capture_ratio",
+    "FD salience sketch energy capture ratio",
+    registry=registry,
+)
+FD_RESIDUAL = _Hist(
+    "somabrain_fd_residual_ratio",
+    "Residual energy ratio per vector for FD salience",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    registry=registry,
+)
+FD_TRACE_ERROR = Gauge(
+    "somabrain_fd_trace_norm_error",
+    "Trace normalization error for FD sketch",
+    registry=registry,
+)
+FD_PSD_INVARIANT = Gauge(
+    "somabrain_fd_psd_invariant",
+    "PSD invariant flag for FD sketch (1=ok, 0=violation)",
+    registry=registry,
+)
+SCORER_COMPONENT = _Hist(
+    "somabrain_scorer_component",
+    "Unified scorer component values",
+    ["component"],
+    buckets=[i / 10.0 for i in range(-10, 11)],
+    registry=registry,
+)
+SCORER_FINAL = _Hist(
+    "somabrain_scorer_final",
+    "Unified scorer combined score",
+    buckets=[i / 20.0 for i in range(0, 21)],
+    registry=registry,
+)
+SCORER_WEIGHT_CLAMPED = Counter(
+    "somabrain_scorer_weight_clamped_total",
+    "Unified scorer weight clamp events",
+    ["component", "bound"],
+    registry=registry,
+)
+
+EXTERNAL_METRICS_SCRAPE_STATUS = get_gauge(
+    "somabrain_external_metrics_scraped",
+    "Flag indicating that an external exporter has been scraped at least once",
+    ["source"],
 )
 
 # WM admissions and attention level
@@ -933,6 +985,68 @@ else:
         ["tenant_id"],
         registry=REGISTRY,
     )
+
+
+def mark_external_metric_scraped(source: str) -> None:
+    """Mark an external exporter as scraped for readiness gating."""
+
+    if not source:
+        return
+    label = str(source).strip().lower()
+    if not label:
+        return
+    now = time.time()
+    with _external_metrics_lock:
+        _external_metrics_scraped[label] = now
+    try:
+        EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(1)
+    except Exception:
+        pass
+
+
+def external_metrics_ready(
+    required: Iterable[str] | None = None, freshness_seconds: float | None = None
+) -> bool:
+    """Return True if all required exporters have reported a recent scrape."""
+
+    targets = (
+        [str(s).strip().lower() for s in required]
+        if required is not None
+        else list(_DEFAULT_EXTERNAL_METRICS)
+    )
+    now = time.time()
+    with _external_metrics_lock:
+        snapshot = dict(_external_metrics_scraped)
+    for label in targets:
+        if not label:
+            continue
+        ts = snapshot.get(label)
+        if ts is None:
+            return False
+        if freshness_seconds is not None and now - ts > freshness_seconds:
+            return False
+    return True
+
+
+def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
+    """Reset tracked scrape state for the provided sources (or all)."""
+
+    if sources is None:
+        with _external_metrics_lock:
+            targets = list(_external_metrics_scraped.keys())
+            _external_metrics_scraped.clear()
+    else:
+        targets = [str(s).strip().lower() for s in sources if str(s).strip()]
+        with _external_metrics_lock:
+            for label in targets:
+                _external_metrics_scraped.pop(label, None)
+    for label in targets:
+        if not label:
+            continue
+        try:
+            EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
+        except Exception:
+            pass
 
 
 async def metrics_endpoint() -> Any:

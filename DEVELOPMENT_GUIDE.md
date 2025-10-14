@@ -157,7 +157,8 @@ Execution Order (lean): HRR → Numerics → Determinism → Wiener → Sinkhorn
 | Component | Recommendation | Rationale |
 |-----------|----------------|-----------|
 | HRR Dim | 8192 (baseline), 16384 for richer semantic density | Balance memory vs binding accuracy |
-| FFT Epsilon | `HRR_FFT_EPSILON=1e-6` (float32 path) | Stable unbinding without oversmoothing |
+| Permutation Seed | `HRR_BIND_SEED` aligned with role seed | Deterministic binding/unbinding |
+| FD Rank | `FD_SALIENCE_RANK=64` (tune per dim) | Captures ≥90% spectral energy without O(D) cost |
 | Wiener SNR Default | 40 dB | Good trade-off robustness vs fidelity |
 | Redis | Dedicated instance, maxclients ≥ 10k, latency monitor enabled | Predictable low-latency store |
 | Uvicorn/Gunicorn | Gunicorn w/ Uvicorn workers: `workers = 2 * cores`, `--loop uvloop` | Throughput + lower overhead |

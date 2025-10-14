@@ -91,6 +91,17 @@ class Config:
     salience_threshold_store: float = 0.5
     salience_threshold_act: float = 0.7
     salience_hysteresis: float = 0.05
+    salience_method: str = "dense"
+    salience_fd_weight: float = 0.25
+    salience_fd_rank: int = 16
+    salience_fd_decay: float = 0.98
+    salience_fd_energy_floor: float = 0.9
+    scorer_w_cosine: float = 0.6
+    scorer_w_fd: float = 0.25
+    scorer_w_recency: float = 0.15
+    scorer_weight_min: float = 0.0
+    scorer_weight_max: float = 1.0
+    scorer_recency_tau: float = 32.0
 
     # Memory Backend
     # Runtime memory access is performed exclusively through the external HTTP

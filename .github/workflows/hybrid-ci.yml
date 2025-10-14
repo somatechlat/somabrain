@@ -1,4 +1,4 @@
-name: Mask Composer CI
+name: Math Core CI
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  mask-tests:
+  math-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +20,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt || true
           pip install numpy pytest
-      - name: Run mask composer unit tests
+      - name: Run BHDC/FD unit tests
         run: |
-          pytest tests/test_mask_composer.py -q
+          pytest \
+            tests/test_bhdc_binding.py \
+            tests/test_fd_salience.py \
+            tests/test_unified_scorer.py \
+            tests/test_legacy_purge.py \
+            -q

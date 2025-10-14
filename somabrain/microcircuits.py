@@ -57,16 +57,21 @@ class MultiColumnWM:
     - Novelty: 1 - max cosine across all columns.
     """
 
-    def __init__(self, dim: int, cfg: MCConfig):
+    def __init__(self, dim: int, cfg: MCConfig, scorer=None):
         self.dim = int(dim)
         self.cfg = cfg
         self._tenants: OrderedDict[str, List[WorkingMemory]] = OrderedDict()
+        self._scorer = scorer
 
     def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
         cols = self._tenants.get(tenant_id)
         if cols is None:
             cols = [
-                WorkingMemory(capacity=self.cfg.per_col_capacity, dim=self.dim)
+                WorkingMemory(
+                    capacity=self.cfg.per_col_capacity,
+                    dim=self.dim,
+                    scorer=self._scorer,
+                )
                 for _ in range(max(1, int(self.cfg.columns)))
             ]
             self._tenants[tenant_id] = cols

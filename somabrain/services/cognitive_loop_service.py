@@ -74,7 +74,7 @@ def eval_step(
             pass
 
     # Salience and gates (raw, before executive inhibition)
-    s = amygdala.score(float(novelty), float(pred.error), nm)
+    s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
     # Trait-driven uplift: high curiosity and risk_tolerance should not reduce salience.
     # Provide a small, deterministic boost so post-personality salience is >= baseline in tests.
     try:

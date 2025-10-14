@@ -1,48 +1,252 @@
 services:
-  somabrain:
-    # Build from the local Dockerfile to keep code + image in sync
-    build: .
-    image: somabrain:latest
-    container_name: somabrain
-    restart: unless-stopped
+  redis:
+    image: redis:7.2-alpine
+    container_name: sb_redis
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+        reservations:
+          memory: 16M
+    networks:
+      - somabrain_net
     ports:
-      # Expose API on host port 9669 (maps to container 9696). Do NOT touch 9595 (external memory).
-      - "9669:9696"
+      - "${REDIS_HOST_PORT:-0}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - redis_data:/data
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: sb_kafka
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     environment:
-      # Bind API to container 0.0.0.0:9696
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: 2
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_CFG_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_CFG_LOG_RETENTION_MS: 604800000
+      KAFKA_CFG_LOG_SEGMENT_BYTES: 52428800
+      KAFKA_CFG_LOG_RETENTION_BYTES: 536870912
+      KAFKA_CFG_COMPRESSION_TYPE: snappy
+      KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
+      KAFKA_CLUSTER_ID: "${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew}"
+    volumes:
+      - kafka_data:/var/lib/kafka
+    command:
+      - bash
+      - -c
+      - |
+          set -e
+          mkdir -p /var/lib/kafka/data
+          CONFIG_PATH=/tmp/kafka-server.properties
+          cp /opt/kafka/config/kraft/server.properties "$${CONFIG_PATH}"
+          {
+            echo "process.roles=$${KAFKA_CFG_PROCESS_ROLES}"
+            echo "node.id=$${KAFKA_CFG_NODE_ID}"
+            echo "controller.listener.names=$${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}"
+            echo "controller.quorum.voters=$${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}"
+            echo "listeners=$${KAFKA_CFG_LISTENERS}"
+            echo "advertised.listeners=$${KAFKA_CFG_ADVERTISED_LISTENERS}"
+            echo "listener.security.protocol.map=$${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}"
+            echo "inter.broker.listener.name=$${KAFKA_CFG_INTER_BROKER_LISTENER_NAME}"
+            echo "log.dirs=$${KAFKA_CFG_LOG_DIRS}"
+            echo "auto.create.topics.enable=$${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE}"
+            echo "num.partitions=$${KAFKA_CFG_NUM_PARTITIONS}"
+            echo "default.replication.factor=$${KAFKA_CFG_DEFAULT_REPLICATION_FACTOR}"
+            echo "offsets.topic.replication.factor=$${KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR}"
+            echo "transaction.state.log.replication.factor=$${KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}"
+            echo "transaction.state.log.min.isr=$${KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR}"
+            echo "compression.type=$${KAFKA_CFG_COMPRESSION_TYPE}"
+            echo "log.retention.ms=$${KAFKA_CFG_LOG_RETENTION_MS}"
+            echo "log.segment.bytes=$${KAFKA_CFG_LOG_SEGMENT_BYTES}"
+            echo "log.retention.bytes=$${KAFKA_CFG_LOG_RETENTION_BYTES}"
+          } >> "$${CONFIG_PATH}"
+          if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+            /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew} --config "$${CONFIG_PATH}"
+          fi
+          exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
+    ports:
+      - "${KAFKA_HOST_PORT:-0}:9092"
+      - "${KAFKA_CONTROLLER_HOST_PORT:-0}:9093"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 6
+    networks:
+      - somabrain_net
+
+  kafka_exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    container_name: sb_kafka_exporter
+    command:
+      - --kafka.server=kafka:9092
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    depends_on:
+      kafka:
+        condition: service_started
+    ports:
+      - "${KAFKA_EXPORTER_HOST_PORT:-0}:9308"
+    networks:
+      - somabrain_net
+
+  opa:
+    image: openpolicyagent/opa:0.48.0
+    container_name: sb_opa
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--prometheus", "/policies"]
+    networks:
+      - somabrain_net
+    ports:
+      - "${OPA_HOST_PORT:-0}:8181"
+    volumes:
+      - ./ops/opa/policies:/policies:ro
+
+  prometheus:
+    image: prom/prometheus:v2.49.0
+    container_name: sb_prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    networks:
+      - somabrain_net
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-0}:9090"
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: sb_postgres
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    environment:
+      - POSTGRES_USER=soma
+      - POSTGRES_PASSWORD=soma_pass
+      - POSTGRES_DB=somabrain
+    ports:
+      - "${POSTGRES_HOST_PORT:-0}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - somabrain_net
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: sb_postgres_exporter
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    environment:
+      - DATA_SOURCE_NAME=postgresql://soma:soma_pass@sb_postgres:5432/somabrain?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_started
+    ports:
+      - "${POSTGRES_EXPORTER_HOST_PORT:-0}:9187"
+    networks:
+      - somabrain_net
+
+  somabrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_somabrain
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 96M
+    depends_on:
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      opa:
+        condition: service_started
+      postgres:
+        condition: service_started
+    networks:
+      - somabrain_net
+    environment:
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token}"
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
-
-      # Strict real mode and hard requirement on external memory
+      SOMABRAIN_WORKERS: "1"
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
+      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
       SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_FORCE_FULL_STACK: "1"
       SOMABRAIN_REQUIRE_MEMORY: "1"
-
-      # Point to the EXISTING external memory service on host port 9595
-      # NOTE: We do not map or modify 9595 here.
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
-
-      # Use host Redis if available; adjust if you run Redis elsewhere
-      SOMABRAIN_REDIS_URL: "redis://host.docker.internal:6379/0"
-
-      # Enforce non-stub predictor for strict-real mode
+      SOMABRAIN_ENABLE_BEST: "1"
       SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
-
-      # Optional: default tenant and mode for local dev
+      SOMABRAIN_MEMORY_ENABLE_WEIGHTING: "1"
+      SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
+      SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
+      SOMABRAIN_DEFAULT_TENANT: "sandbox"
       SOMABRAIN_MODE: "enterprise"
-
-    # Ensure host.docker.internal resolves for Linux/other setups
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
+    ports:
+      - "${SOMABRAIN_HOST_PORT:-9696}:9696"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9696/health"]
-      interval: 15s
+      test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
+      interval: 30s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 3
 
-    # No dependency on memory here; memory is external and must already be running on 9595
+volumes:
+  kafka_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
 
 networks:
-  default:
-    name: somabrain_default
+  somabrain_net:
+    driver: bridge

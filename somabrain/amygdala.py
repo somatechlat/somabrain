@@ -6,8 +6,12 @@ Scores inputs with neuromod modulation and emits store/act gates (hard/soft).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
+
+import numpy as np
 
 from .neuromodulators import NeuromodState
+from .salience import FDSalienceSketch
 
 
 @dataclass
@@ -31,6 +35,12 @@ class SalienceConfig:
         Whether to use soft gating (default: False).
     soft_temperature : float, optional
         Temperature for soft gating sigmoid (default: 0.15).
+        method : str, optional
+            Salience pathway to use: ``"dense"`` (default) or ``"fd"``.
+        w_fd : float, optional
+            Weight for FD residual energy when ``method="fd"``.
+        fd_energy_floor : float, optional
+            Minimum acceptable energy capture before adding corrective boost.
     """
 
     w_novelty: float
@@ -40,6 +50,9 @@ class SalienceConfig:
     hysteresis: float
     use_soft: bool = False
     soft_temperature: float = 0.15
+    method: str = "dense"
+    w_fd: float = 0.0
+    fd_energy_floor: float = 0.9
 
 
 class AmygdalaSalience:
@@ -50,7 +63,11 @@ class AmygdalaSalience:
     Provides hard or soft gating for store and act decisions.
     """
 
-    def __init__(self, cfg: SalienceConfig):
+    def __init__(
+        self,
+        cfg: SalienceConfig,
+        fd_backend: Optional[FDSalienceSketch] = None,
+    ):
         """
         Initialize the AmygdalaSalience component.
 
@@ -62,9 +79,24 @@ class AmygdalaSalience:
         self.cfg = cfg
         self._last_store = False
         self._last_act = False
+        self._method = (cfg.method or "dense").lower()
+        if self._method not in {"dense", "fd"}:
+            raise ValueError(f"Unknown salience method: {cfg.method}")
+        if self._method == "fd":
+            if fd_backend is None:
+                raise ValueError("FD salience requires an FDSalienceSketch backend")
+            self._fd = fd_backend
+        else:
+            self._fd = None
+        self._last_fd_residual = 0.0
+        self._last_fd_capture = 1.0
 
     def score(
-        self, novelty: float, pred_error: float, neuromod: NeuromodState
+        self,
+        novelty: float,
+        pred_error: float,
+        neuromod: NeuromodState,
+        wm_vector: Optional[np.ndarray] = None,
     ) -> float:
         """
         Compute salience score from novelty and prediction error.
@@ -77,6 +109,9 @@ class AmygdalaSalience:
             Prediction error value [0, 1].
         neuromod : NeuromodState
             Current neuromodulator state.
+        wm_vector : Optional[np.ndarray]
+            Working-memory vector providing FD energy signals when the FD
+            salience pathway is enabled. Ignored for dense salience.
 
         Returns
         -------
@@ -85,7 +120,35 @@ class AmygdalaSalience:
         """
         # modulate error weight by dopamine
         w_err = max(0.2, min(0.8, neuromod.dopamine))
-        s = (self.cfg.w_novelty * float(novelty)) + (w_err * float(pred_error))
+        s = (
+            (self.cfg.w_novelty * float(novelty))
+            + (self.cfg.w_error * float(pred_error))
+        )
+        s += (w_err - self.cfg.w_error) * float(pred_error)
+        fd_boost = 0.0
+        if self._method == "fd" and self._fd is not None:
+            if wm_vector is None:
+                raise ValueError("FD salience requires wm_vector for scoring")
+            residual_ratio, capture_ratio = self._fd.observe(wm_vector)
+            self._last_fd_residual = residual_ratio
+            self._last_fd_capture = capture_ratio
+            fd_boost = self.cfg.w_fd * max(0.0, residual_ratio)
+            if capture_ratio < self.cfg.fd_energy_floor:
+                fd_boost += self.cfg.w_fd * (self.cfg.fd_energy_floor - capture_ratio)
+            try:  # metrics are optional at import time
+                from . import metrics as M
+
+                M.FD_ENERGY_CAPTURE.set(capture_ratio)
+                M.FD_RESIDUAL.observe(residual_ratio)
+                stats = self._fd.stats()
+                M.FD_TRACE_ERROR.set(stats["trace_norm_error"])
+                M.FD_PSD_INVARIANT.set(1.0 if stats["psd_ok"] else 0.0)
+            except Exception:
+                pass
+        else:
+            self._last_fd_residual = 0.0
+            self._last_fd_capture = 1.0
+        s += fd_boost
         # ACh increases focus -> require higher novelty
         s += float(neuromod.acetylcholine)
         # bound
@@ -118,6 +181,14 @@ class AmygdalaSalience:
         self._last_store = do_store
         self._last_act = do_act
         return do_store, do_act
+
+    @property
+    def last_fd_residual(self) -> float:
+        return float(self._last_fd_residual)
+
+    @property
+    def last_fd_capture(self) -> float:
+        return float(self._last_fd_capture)
 
     def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
         """
