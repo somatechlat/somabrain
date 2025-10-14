@@ -23,14 +23,14 @@ import hashlib
 import json
 import logging
 import math
-import os  # added for environment handling
+import os
 import random
 import re
 import time
 import uuid
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Dict, Iterable, List, Tuple, cast, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 
 from .config import Config
 from somabrain.interfaces.memory import MemoryBackend  # new import for typing
@@ -42,8 +42,10 @@ try:  # optional dependency, older deployments may not ship shared settings yet
 except Exception:  # pragma: no cover - legacy layout
     shared_settings = None  # type: ignore
 
-# Import the settings object under a distinct name for strict‑real checks.
-from common.config.settings import settings as _shared_settings
+try:  # Import the settings object under a distinct name for strict-real checks.
+    from common.config.settings import settings as _shared_settings
+except Exception:  # pragma: no cover - not always available in local runs
+    _shared_settings = None  # type: ignore
 
 _BUILTINS_KEY = "_SOMABRAIN_GLOBAL_PAYLOADS"
 if not hasattr(_builtins, _BUILTINS_KEY):
@@ -336,8 +338,10 @@ class MemoryClient:
     to preserve determinism and test invariants.
     """
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None):
         self.cfg = cfg
+        self._scorer = scorer
+        self._embedder = embedder
         # Always operate as an HTTP-first Memory client. Local/redis modes
         # and in-process memory service imports are disabled by default to
         # avoid heavy top-level imports and environment coupling.
@@ -1230,8 +1234,8 @@ class MemoryClient:
         deduped = self._deduplicate_hits(aggregated)
         if not deduped:
             return []
-        self._apply_weighting_to_hits(deduped)
-        ranked = self._rank_hits(deduped, query)
+        
+        ranked = self._rescore_and_rank_hits(deduped, query)
         limit = max(1, int(top_k))
         return ranked[:limit]
 
@@ -1314,8 +1318,7 @@ class MemoryClient:
         deduped = self._deduplicate_hits(aggregated)
         if not deduped:
             return []
-        self._apply_weighting_to_hits(deduped)
-        ranked = self._rank_hits(deduped, query)
+        ranked = self._rescore_and_rank_hits(deduped, query)
         limit = max(1, int(top_k))
         return ranked[:limit]
 
@@ -1332,6 +1335,51 @@ class MemoryClient:
             if narrowed:
                 return narrowed
         return hits
+
+    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+        if not self._scorer or not self._embedder:
+            # Fallback to old logic if scorer is not available
+            self._apply_weighting_to_hits(hits)
+            return self._rank_hits(hits, query)
+
+        query_vec = self._embedder.embed(query)
+
+        def _text_of(p: dict) -> str:
+            return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
+
+        scored_hits = []
+        for hit in hits:
+            payload = hit.payload or {}
+            text = _text_of(payload)
+            if not text:
+                # Cannot score without text to embed, assign a low score
+                new_score = 0.0
+            else:
+                candidate_vec = self._embedder.embed(text)
+                
+                # Calculate recency_steps from timestamp
+                recency_steps = 0
+                ts = payload.get("timestamp")
+                if ts:
+                    try:
+                        now = datetime.now(timezone.utc).timestamp()
+                        recency_steps = int(now - float(ts))
+                    except (ValueError, TypeError):
+                        recency_steps = 0 # default if timestamp is invalid
+
+                new_score = self._scorer.score(
+                    query_vec,
+                    candidate_vec,
+                    recency_steps=recency_steps,
+                    cosine=hit.score, # Pass original score as cosine hint
+                )
+            
+            hit.score = new_score
+            scored_hits.append(hit)
+
+        # Sort by the new score in descending order
+        scored_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
+        return scored_hits
 
     def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
         if not hits:

@@ -9,7 +9,7 @@ client's stub mirror.
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import Any, Dict, Optional
 
 from .config import Config
 from .journal import iter_events
@@ -17,9 +17,16 @@ from .memory_client import MemoryClient
 
 
 class MultiTenantMemory:
-    def __init__(self, cfg: Config):
+    def __init__(
+        self,
+        cfg: Config,
+        scorer: Optional[Any] = None,
+        embedder: Optional[Any] = None,
+    ):
         self.cfg = cfg
         self._pool: Dict[str, MemoryClient] = {}
+        self._scorer = scorer
+        self._embedder = embedder
 
     def for_namespace(self, namespace: str) -> MemoryClient:
         ns = str(namespace)
@@ -30,7 +37,7 @@ class MultiTenantMemory:
             cfg2 = replace(self.cfg)
             cfg2.namespace = ns
             try:
-                client = MemoryClient(cfg2)
+                client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
                 logging.getLogger(__name__).debug(
                     "create client in pool %s %s", ns, id(client)
                 )
@@ -78,7 +85,7 @@ class MultiTenantMemory:
                 logging.getLogger(__name__).exception(
                     "memory client creation failed, creating offline client"
                 )
-                client = MemoryClient(cfg2)
+                client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
                 # Replay journal in stub mode as well
                 if bool(getattr(cfg2, "persistent_journal_enabled", False)):
                     try:

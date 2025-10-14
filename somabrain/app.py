@@ -1,41 +1,29 @@
-"""SomaBrain Cognitive AI System
-=============================
-        require_memory = True
-        try:
-            env_raw = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-            if env_raw is not None:
-                require_memory = env_raw.strip().lower() in ("1", "true", "yes", "on")
-            elif shared_settings is not None:
-                require_memory = bool(getattr(shared_settings, "require_memory", True))
-        except Exception:
-            if shared_settings is not None:
-                try:
-                    require_memory = bool(getattr(shared_settings, "require_memory", True))
-                except Exception:
-                    require_memory = True
+"""SomaBrain Cognitive Application
+=================================
+
+This module exposes the production FastAPI surface for SomaBrain. It wires
+real transports, memory clients, neuromodulators, and control systems together
+so that the runtime interacts with live infrastructure instead of mocks.
+
+Main responsibilities:
+- bootstrap global singletons (memory pools, working memory, scorers, etc.)
+- expose REST endpoints for recalling, remembering, planning, and health
+- register background maintenance jobs and safety middleware
+- publish observability signals and readiness diagnostics
 
 Usage:
     uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
-
-Public FastAPI entry point:
-- ``/remember`` – store a new episodic or semantic memory.
-- ``/recall`` – retrieve relevant memories for a query.
-- ``/plan/suggest`` – generate a short plan based on the semantic graph.
-- ``/health`` – health‑check endpoint used by orchestration.
-
-The module also wires together core services (memory, planning, adaptation, etc.), sets up background workers (outbox processing, circuit‑breaker monitoring), and integrates optional components such as OPA authorization and the Constitution engine.
 """
 
 from __future__ import annotations
 
 import asyncio
-from contextlib import suppress as _suppress
+import importlib.util
 import logging
 import math
 import os
 import re
 import sys
-import importlib.util
 
 # Threading and time for sleep logic
 import threading as _thr
@@ -43,35 +31,26 @@ import time
 import time as _time
 import traceback
 
-# Standard library imports
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+import numpy as np
 from fastapi import FastAPI, HTTPException, Request
-# Import FastAPI exception/response classes with safe fallback when FastAPI is not installed.
-try:
-    from fastapi.exceptions import RequestValidationError
-    from fastapi.responses import JSONResponse
-except Exception:  # pragma: no cover
-    RequestValidationError = Exception  # type: ignore
-    class JSONResponse:  # Minimal stub
-        def __init__(self, *args, **kwargs):
-            pass
-
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from cachetools import TTLCache
+
 from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
-from somabrain.auth import require_admin_auth, require_auth  # import admin auth helper
+from somabrain.auth import require_admin_auth, require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
-
-# SomaBrain internal modules
 from somabrain.config import get_config
 from somabrain.context_hrr import HRRContextConfig
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 from somabrain.controls.reality_monitor import assess_reality
+from somabrain.datetime_utils import coerce_to_epoch_seconds
 from somabrain.embeddings import make_embedder
 from somabrain.events import extract_event_fields
-from somabrain.datetime_utils import coerce_to_epoch_seconds
 from somabrain.exec_controller import ExecConfig, ExecutiveController
 from somabrain.hippocampus import ConsolidationConfig, Hippocampus
 from somabrain.journal import append_event
@@ -93,108 +72,205 @@ from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
+from somabrain.salience import FDSalienceSketch
+from somabrain.scoring import UnifiedScorer
 from somabrain.sdr import LSHIndex, SDREncoder
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
 from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
-
-# from somabrain.anatomy import CerebellumPredictor  # unused; keep import commented for reference
 from somabrain.supervisor import Supervisor, SupervisorConfig
-from somabrain.tenant import get_tenant
 from somabrain.thalamus import ThalamusRouter
+from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
-from somabrain.stub_audit import STRICT_REAL
 
-try:
-    # Shared configuration sourced from common/config; optional in legacy installs.
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - optional dependency
-    shared_settings = None  # type: ignore
-
-# Constitution engine (runtime optional)
-try:
+try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
-except Exception:
-    ConstitutionEngine = None
+except Exception:  # pragma: no cover - optional dependency
+    ConstitutionEngine = None  # type: ignore[assignment]
 
-# Optional demo systems (FNOM/Fractal) removed from core; placeholders kept
-FourierNeuralOscillationMemory = None  # type: ignore
-FractalMemorySystem = None  # type: ignore
+try:  # Shared configuration pulled from the platform service when available.
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency during integration
+    shared_settings = None  # type: ignore[var-annotated]
 
 
-def _diversify(embed_func, query, candidates, method="mmr", k=10, lam=0.5):
-    """Re‑rank candidates for diversity using Maximal Marginal Relevance (MMR) or similar methods.
+def _score_memory_candidate(
+    payload: Any,
+    *,
+    query_lower: str,
+    query_tokens: list[str],
+    query_vec: np.ndarray | None = None,
+    embed_fn=None,
+    embed_cache: Optional[dict[str, np.ndarray]] = None,
+    scorer: "UnifiedScorer" | None = None,
+    wm_support: dict[tuple[str, Any], float],
+    now_ts: float,
+    quantum_layer: QuantumLayer | None,
+    query_hrr,
+    hrr_cache: dict[str, Any],
+    hrr_weight: float | None = None,
+) -> float:
+    embed_cache = embed_cache if embed_cache is not None else {}
+    scorer = scorer or unified_scorer
+    if embed_fn is None:
+        embed_fn = getattr(embedder, "embed", None)
 
-    Parameters
-    ----------
-    embed_func: Callable[[str], np.ndarray]
-        Function that produces an embedding vector for a given text.
-    query: str
-        The query string whose embedding is used as the relevance reference.
-    candidates: List[Dict]
-        List of memory payload dictionaries to be re‑ranked.
-    method: str, optional
-        Diversity method; currently supports ``"mmr"`` (default) and ``"diversify"``.
-    k: int, optional
-        Number of top candidates to return.
-    lam: float, optional
-        Trade‑off parameter between relevance and diversity (0 = all relevance, 1 = all diversity).
+    if query_vec is None and embed_fn is not None:
+        try:
+            query_vec = np.asarray(embed_fn(query_lower or ""), dtype=float).reshape(-1)
+        except Exception:
+            query_vec = None
 
-    Returns
-    -------
-    List[Dict]
-        Re‑ranked list of candidate payloads.
-    """
+    if query_vec is None or scorer is None or embed_fn is None:
+        return 0.0
+
+    payload_dict = payload if isinstance(payload, dict) else {"_raw": payload}
+
+    text = str(
+        payload_dict.get("task")
+        or payload_dict.get("fact")
+        or payload_dict.get("text")
+        or payload_dict.get("content")
+        or ""
+    ).strip()
+    if not text:
+        return 0.0
+
+    text_lower = text.lower()
     try:
-        query_emb = embed_func(query)
-        candidate_embs = []
-        valid_candidates = []
+        cand_vec = embed_cache[text]
+    except KeyError:
+        try:
+            cand_vec = np.asarray(embed_fn(text), dtype=float).reshape(-1)
+            embed_cache[text] = cand_vec
+        except Exception:
+            return 0.0
 
-        for cand in candidates:
-            text_content = _extract_text_from_candidate(cand)
-            if text_content:
-                try:
-                    emb = embed_func(text_content)
-                    candidate_embs.append(emb)
-                    valid_candidates.append(cand)
-                except Exception:
-                    continue
+    recency_steps: Optional[int] = None
+    ts_val = payload_dict.get("timestamp") or payload_dict.get("updated_at")
+    if ts_val is not None:
+        try:
+            ts = float(coerce_to_epoch_seconds(ts_val))
+            recency_steps = max(0, int((now_ts - ts) / 60.0))
+        except Exception:
+            recency_steps = None
 
-        if not valid_candidates:
-            return candidates[:k]
+    try:
+        base = scorer.score(query_vec, cand_vec, recency_steps=recency_steps)
+    except Exception:
+        base = 0.0
 
-        relevance_scores = []
-        for emb in candidate_embs:
-            sim = _cosine_similarity(query_emb, emb)
-            relevance_scores.append(sim)
+    # Lightweight lexical reinforcement for exact/partial matches and math domains
+    lex_bonus = 0.0
+    if query_lower and text_lower:
+        if query_lower == text_lower:
+            lex_bonus += 0.05
+        elif query_lower in text_lower or text_lower in query_lower:
+            lex_bonus += 0.02
+        if query_tokens:
+            seen_tokens = set()
+            for token in query_tokens:
+                if token and token not in seen_tokens and token in text_lower:
+                    lex_bonus += 0.01
+                    seen_tokens.add(token)
+    if any(k in text_lower for k in _MATH_DOMAIN_KEYWORDS):
+        lex_bonus += 0.02
 
-        selected = []
+    # Working-memory support boost based on shared keys
+    wm_bonus = 0.0
+    for key in _collect_candidate_keys(payload_dict):
+        support = wm_support.get(key)
+        if support is not None:
+            wm_bonus = max(wm_bonus, float(support))
+    if wm_bonus > 0.0:
+        lex_bonus += 0.05 * wm_bonus
+
+    score = max(0.0, base + lex_bonus)
+
+    # Optional HRR alignment blending
+    if quantum_layer is not None and query_hrr is not None:
+        try:
+            hv = hrr_cache.get(text)
+            if hv is None:
+                hv = quantum_layer.encode_text(text)
+                hrr_cache[text] = hv
+            hsim = max(0.0, min(1.0, float(QuantumLayer.cosine(query_hrr, hv))))
+            alpha = max(0.0, min(1.0, float(hrr_weight or 0.0)))
+            if alpha > 0.0:
+                score = (1.0 - alpha) * score + alpha * hsim
+        except Exception:
+            pass
+
+    return float(max(0.0, min(1.0, score)))
+
+
+def _apply_diversity_reranking(
+    candidates: List[Dict],
+    query_vec: np.ndarray,
+    embedder: Any,
+    k: int,
+    lam: float,
+    min_k: int,
+) -> List[Dict]:
+    """
+    Apply Maximal Marginal Relevance (MMR) re-ranking to a list of candidates.
+
+    Args:
+        candidates: The list of candidate items to re-rank.
+        query_vec: The embedding of the query.
+        embedder: The embedder instance to generate document embeddings.
+        k: The number of items to return.
+        lam: The lambda parameter for MMR, balancing relevance and diversity.
+        min_k: The minimum number of candidates required to apply re-ranking.
+
+    Returns:
+        The re-ranked list of candidates.
+    """
+    if not candidates or len(candidates) < min_k:
+        return candidates
+
+    try:
+        candidate_texts = [_extract_text_from_candidate(c) for c in candidates]
+        valid_indices = [i for i, text in enumerate(candidate_texts) if text]
+        if len(valid_indices) < min_k:
+            return candidates
+
+        valid_candidates = [candidates[i] for i in valid_indices]
+        doc_vecs = [embedder.embed(candidate_texts[i]) for i in valid_indices]
+
+        q_norm = np.linalg.norm(query_vec)
+        if q_norm == 0:
+            return candidates
+
+        doc_norms = [np.linalg.norm(v) for v in doc_vecs]
+        relevance_scores = [
+            np.dot(query_vec, doc_vecs[i]) / (q_norm * doc_norms[i])
+            if doc_norms[i] > 0
+            else 0.0
+            for i in range(len(valid_candidates))
+        ]
+
+        selected: List[int] = []
         remaining = list(range(len(valid_candidates)))
 
-        for _ in range(min(k, len(valid_candidates))):
-            if not remaining:
-                break
-
-            best_score = -float("inf")
-            best_idx = None
+        while len(selected) < k and remaining:
+            best_score = -np.inf
+            best_idx = -1
 
             for idx in remaining:
                 rel_score = relevance_scores[idx]
-
-                if selected:
+                if not selected:
+                    max_sim = 0.0
+                else:
                     similarities = [
-                        _cosine_similarity_vectors(
-                            candidate_embs[idx], candidate_embs[sel_idx]
-                        )
+                        np.dot(doc_vecs[idx], doc_vecs[sel_idx])
+                        / (doc_norms[idx] * doc_norms[sel_idx])
+                        if doc_norms[idx] > 0 and doc_norms[sel_idx] > 0
+                        else 0.0
                         for sel_idx in selected
                     ]
-                    filtered_similarities = [s for s in similarities if s is not None]
-                    max_sim = (
-                        max(filtered_similarities) if filtered_similarities else 0.0
-                    )
-                else:
-                    max_sim = 0.0
+                    max_sim = max(similarities) if similarities else 0.0
 
                 mmr_score = lam * rel_score - (1 - lam) * max_sim
 
@@ -202,14 +278,18 @@ def _diversify(embed_func, query, candidates, method="mmr", k=10, lam=0.5):
                     best_score = mmr_score
                     best_idx = idx
 
-            if best_idx is not None:
+            if best_idx != -1:
                 selected.append(best_idx)
                 remaining.remove(best_idx)
+            else:
+                # No suitable candidate found, break the loop
+                break
 
         return [valid_candidates[idx] for idx in selected]
 
     except Exception as e:
-        print(f"Diversity re-ranking failed: {e}")
+        active_logger = globals().get("logger") or module_logger
+        active_logger.debug("Diversity re-ranking failed: %s", e, exc_info=True)
         return candidates[:k]
 
 
@@ -347,124 +427,6 @@ def _build_wm_support_index(
     return index
 
 
-def _score_memory_candidate(
-    payload: Any,
-    *,
-    query_lower: str,
-    query_tokens: list[str],
-    wm_support: dict[tuple[str, Any], float],
-    now_ts: float,
-    quantum_layer: QuantumLayer | None,
-    query_hrr,
-    hrr_cache: dict[str, Any],
-) -> float:
-    score = 0.0
-    payload_dict = payload if isinstance(payload, dict) else {"_raw": payload}
-
-    text = str(
-        payload_dict.get("task")
-        or payload_dict.get("fact")
-        or payload_dict.get("text")
-        or payload_dict.get("content")
-        or ""
-    ).strip()
-    text_lower = text.lower()
-
-    # Lexical evidence
-    if query_lower and text_lower:
-        if query_lower == text_lower:
-            score += 5.0
-        if query_lower in text_lower or text_lower in query_lower:
-            score += 2.0
-        if query_tokens:
-            for token in dict.fromkeys(query_tokens):
-                if token and token in text_lower:
-                    score += 0.75
-
-    # Math-focused evidence
-    if text_lower:
-        if any(k in text_lower for k in _MATH_DOMAIN_KEYWORDS):
-            score += 1.5
-    domains = payload_dict.get("domains")
-    domain_tokens: list[str] = []
-    if isinstance(domains, (list, tuple, set)):
-        domain_tokens = [str(d).strip().lower() for d in domains if isinstance(d, str)]
-    elif isinstance(domains, str) and domains.strip():
-        domain_tokens = [
-            d.strip().lower() for d in domains.replace(",", " ").split() if d.strip()
-        ]
-    if domain_tokens and any(d in _MATH_DOMAIN_KEYWORDS for d in domain_tokens):
-        score += 2.5
-    phase = payload_dict.get("phase")
-    if isinstance(phase, str):
-        pl = phase.strip().lower()
-        if pl:
-            if "learn" in pl:
-                score += 1.0
-            if any(k in pl for k in _MATH_DOMAIN_KEYWORDS):
-                score += 1.0
-
-    # Working memory reinforcement
-    wm_keys = _collect_candidate_keys(payload)
-    wm_boost = max((wm_support.get(k, 0.0) for k in wm_keys), default=0.0)
-    if wm_boost > 0:
-        score += 3.0 * wm_boost
-
-    # HRR similarity (cheap cleanup): optional
-    if quantum_layer is not None and query_hrr is not None and text_lower:
-        hv = hrr_cache.get(text_lower)
-        if hv is None:
-            try:
-                hv = quantum_layer.encode_text(text)
-            except Exception:
-                hv = None
-            if hv is not None:
-                hrr_cache[text_lower] = hv
-        if hv is not None:
-            try:
-                hsim = QuantumLayer.cosine(query_hrr, hv)
-                if isinstance(hsim, (int, float)):
-                    score += max(0.0, float(hsim)) * 1.5
-            except Exception:
-                pass
-
-    # Recency benefit: prefer fresher memories (decays over ~3 days)
-    ts = payload_dict.get("timestamp")
-    if ts is not None:
-        try:
-            tsf = float(ts)
-            age_hours = max(0.0, (now_ts - tsf) / 3600.0)
-            rec = max(0.0, 1.0 - min(age_hours / 72.0, 1.0))
-            score += rec * 1.5
-        except Exception:
-            pass
-
-    # Quality / weighting metadata
-    quality = payload_dict.get("quality_score")
-    quality_factor = 1.0
-    if quality is not None:
-        try:
-            q = float(quality)
-            if q < 0:
-                q = 0.0
-            if q > 1:
-                q = 1.0
-            score += q * 2.0
-            quality_factor = 0.5 + 0.5 * q
-        except Exception:
-            pass
-    weight_factor = payload_dict.get("_weight_factor")
-    wf = 1.0
-    if isinstance(weight_factor, (int, float)):
-        try:
-            wf = float(weight_factor)
-        except Exception:
-            wf = 1.0
-    wf = float(max(0.2, min(3.0, wf)))
-    combined = (score + 1e-3) * wf * quality_factor
-    return combined
-
-
 # Configure advanced logging for brain-like cognitive monitoring
 def setup_logging():
     """
@@ -510,6 +472,7 @@ def setup_logging():
 logger = None
 cognitive_logger = None
 error_logger = None
+module_logger = logging.getLogger(__name__)
 
 
 class CognitiveErrorHandler:
@@ -791,76 +754,35 @@ class SecurityMiddleware:
         return False
 
 
+#
+# Application bootstrap
+#
 cfg = get_config()
-try:
-    # If a truth budget loader exists prefer it for runtime config
-    from somabrain.config import load_truth_budget
 
-    try:
-        load_truth_budget(cfg)
-        if cfg.truth_budget and not getattr(cfg, "hybrid_math_enabled", False):
-            cfg.hybrid_math_enabled = True
-    except Exception:
-        pass
+_MINIMAL_API = False
+try:
+    env_flag = (os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API", "").strip() or "").lower()
+    if env_flag in ("1", "true", "yes", "on"):
+        _MINIMAL_API = True
 except Exception:
     pass
-# Minimal public API mode: publish only essential endpoints for external use.
-_MINIMAL_API = bool(getattr(cfg, "minimal_public_api", False))
-if shared_settings is not None:
-    try:
-        if getattr(shared_settings, "minimal_public_api", False):
-            _MINIMAL_API = True
-        if str(getattr(shared_settings, "mode", "")).strip().lower() == "minimal":
-            _MINIMAL_API = True
-    except Exception:
-        pass
-elif os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API"):
-    try:
-        env_flag = (os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API", "").strip() or "").lower()
-        if env_flag in ("1", "true", "yes", "on"):
-            _MINIMAL_API = True
-    except Exception:
-        pass
+try:
+    if bool(getattr(cfg, "minimal_public_api", False)):
+        _MINIMAL_API = True
+except Exception:
+    pass
 
-# Secondary flag for demo endpoints (FNOM/Fractal/experimental brain routes)
 try:
     _EXPOSE_DEMOS = bool(getattr(cfg, "expose_brain_demos", False))
 except Exception:
     _EXPOSE_DEMOS = False
 
-
-async def _background_maintenance():
-    """Periodically process outbox queues and attempt circuit resets for all namespaces."""
-    while True:
-        await asyncio.sleep(5)  # run every 5 seconds
-        # Process outbox for each known namespace
-        try:
-            for ns in list(mt_memory._pool.keys()):
-                try:
-                    memsvc = MemoryService(mt_memory, ns)
-                    # Process pending outbox entries
-                    await memsvc._process_outbox()
-                    # Reset circuit if needed (calls health check internally)
-                    memsvc._reset_circuit_if_needed()
-                except Exception:
-                    # continue with other namespaces
-                    pass
-        except Exception:
-            pass
-
-
-# Main FastAPI application instance
 app = FastAPI(
     title="SomaBrain - Cognitive AI System",
-    description="Advanced brain-like cognitive architecture for AI processing with real-time neural processing",
-    version="1.0.0",
+    description="Real-time cognitive services with strict real-mode enforcement.",
+    version=str(API_VERSION),
 )
 
-# Initialize logging. Avoid running full logging setup during Sphinx builds or
-# other documentation-time imports which import the package for introspection.
-# Sphinx sets the SPHINX_BUILD environment variable and may import modules; in
-# that case we skip calling setup_logging() to prevent side-effects (file
-# creation, complex handlers, etc.).
 try:
     _sphinx_build = os.environ.get("SPHINX_BUILD") or ("sphinx" in sys.modules)
 except Exception:
@@ -869,27 +791,60 @@ except Exception:
 if not _sphinx_build:
     setup_logging()
 
-# Initialize observability/tracing if available. This is safe to import and idempotent.
+# Initialize observability/tracing when available. Fail-open so the API still starts.
 try:
     from observability.provider import init_tracing
 
     @app.on_event("startup")
-    async def _init_observability():
+    async def _init_observability() -> None:
         try:
             init_tracing()
         except Exception:
-            # do not fail startup if tracing cannot be initialized
-            pass
+            # Tracing is optional; log at debug level and continue.
+            log = globals().get("logger")
+            if log:
+                log.debug("Tracing initialization failed", exc_info=True)
 
 except Exception:
-    # observability optional - continue without tracing
     pass
 
+app.add_middleware(SecurityMiddleware)
+try:
+    app.add_middleware(ControlsMiddleware)
+except Exception:
+    log = globals().get("logger")
+    if log:
+        log.debug("Controls middleware not registered", exc_info=True)
 
-# Initialize constitution engine during startup (optional but recommended).
+try:
+    app.add_middleware(CognitiveMiddleware)
+except Exception:
+    log = globals().get("logger")
+    if log:
+        log.debug("Cognitive middleware not registered", exc_info=True)
+
+try:
+    from somabrain.api.middleware.opa import OpaMiddleware
+
+    app.add_middleware(OpaMiddleware)
+except Exception:
+    log = globals().get("logger")
+    if log:
+        log.debug("OPA middleware not registered", exc_info=True)
+
+try:
+    from somabrain.api.middleware.reward_gate import RewardGateMiddleware
+
+    app.add_middleware(RewardGateMiddleware)
+except Exception:
+    log = globals().get("logger")
+    if log:
+        log.debug("Reward Gate middleware not registered", exc_info=True)
+
+
 @app.on_event("startup")
-async def _init_constitution():
-    # attach to app.state for routers to access
+async def _init_constitution() -> None:
+    """Load the constitution engine (if present) and publish metrics."""
     app.state.constitution_engine = None
     try:
         M.CONSTITUTION_VERIFIED.set(0.0)
@@ -900,67 +855,35 @@ async def _init_constitution():
     start = time.perf_counter()
     verified = False
     try:
-        # lazy connect using env vars; do not raise on failure to allow degraded startup
         engine = ConstitutionEngine()
         try:
             engine.load()
-            verified = engine.verify_signature()
-        except Exception as e:
-            # log and keep engine attached for later loading attempts
-            LOGGER = globals().get("logger")
-            if LOGGER:
-                LOGGER.warning("ConstitutionEngine load failed: %s", e)
+            verified = bool(engine.verify_signature())
+        except Exception as exc:
+            log = globals().get("logger")
+            if log:
+                log.warning("ConstitutionEngine load failed: %s", exc)
             verified = False
         app.state.constitution_engine = engine
     except Exception:
-        # be tolerant at startup
         app.state.constitution_engine = None
         verified = False
     duration = time.perf_counter() - start
     try:
         M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
-        from somabrain import metrics as _metrics
-
-        _metrics.CONSTITUTION_VERIFY_LATENCY.observe(duration)
+        M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
     except Exception:
         pass
 
 
-# Register OPA enforcement middleware (optional, runs before other middlewares)
-try:
-    # Use the BaseHTTPMiddleware wrapper class for proper response handling
-    from somabrain.api.middleware.opa import OpaMiddleware
-
-    app.add_middleware(OpaMiddleware)
-except Exception as e:
-    # Use the global logger (initialized by setup_logging) for debug output
-    logger = globals().get("logger")
-    if logger:
-        logger.debug("OPA middleware not registered: %s", e)
-# Register Rate Limiting middleware (after OPA, before Reward Gate)
-# app.add_middleware(RateLimitMiddleware)  # Removed: middleware not implemented
-# Register Reward Gate middleware (fails‑open, runs after OPA)
-try:
-    from somabrain.api.middleware.reward_gate import RewardGateMiddleware
-
-    app.add_middleware(RewardGateMiddleware)
-except Exception as e:
-    logger = globals().get("logger")
-    if logger:
-        logger.debug("Reward Gate middleware not registered: %s", e)
-
-
-# Include optional RAG router (PR‑1 skeleton)
+# Optional routers (fail-open if dependencies are missing).
 try:
     from somabrain.api.routers import rag as _rag_router
 
     app.include_router(_rag_router.router, prefix="/rag")
 except Exception:
-    # Router inclusion is optional; tests assert presence when files exist
     pass
 
-
-# Evaluate/Feedback router
 try:
     from somabrain.api import context_route as _context_route
 
@@ -968,8 +891,6 @@ try:
 except Exception:
     pass
 
-
-# Include persona router
 try:
     from somabrain.api.routers import persona as _persona_router
 
@@ -977,8 +898,6 @@ try:
 except Exception:
     pass
 
-
-# Include link router
 try:
     from somabrain.api.routers import link as _link_router
 
@@ -986,66 +905,32 @@ try:
 except Exception:
     pass
 
-
-# Include constitution router
 try:
     from somabrain.api.routers import constitution as _constitution_router
 
     app.include_router(_constitution_router.router, prefix="/constitution")
 except Exception:
-    # constitution router optional — expose a minimal /constitution/version endpoint
-    # so integration tests can probe constitution status even when full router
-    # or ConstitutionEngine dependencies aren't available.
-    try:
+    pass
 
-        @app.get("/constitution/version")
-        async def _constitution_version_minimal(request: Request):
-            # Mirror the behavior expected by tests: return 200 with status fields
-            cengine = getattr(request.app.state, "constitution_engine", None)
-            checksum = None
-            status = "disabled"
-            sigs = []
-            try:
-                if cengine:
-                    checksum = getattr(cengine, "get_checksum", lambda: None)()
-                    status = "loaded" if checksum else "not-loaded"
-                    sigs = getattr(cengine, "get_signatures", lambda: [])() or []
-            except Exception:
-                checksum = None
-                status = "disabled"
-                sigs = []
-            return {
-                "constitution_version": checksum,
-                "constitution_status": status,
-                "constitution_signatures": sigs,
-            }
-
-    except Exception:
-        # best-effort: if even the minimal route can't be registered, continue
-        pass
-# Include OPA router
 try:
     from somabrain.api.routers import opa as _opa_router
 
     app.include_router(_opa_router.router)
 except Exception:
-    # OPA router optional – may be unavailable in minimal environments
     pass
 
-# Include demo router (protected by utility_guard)
-try:
-    from somabrain.api.routers import demo as _demo_router
+if _EXPOSE_DEMOS:
+    try:
+        from somabrain.api.routers import demo as _demo_router
 
-    app.include_router(_demo_router.router)
-except Exception:
-    # Demo router optional – safe to ignore if import fails
-    pass
+        app.include_router(_demo_router.router)
+    except Exception:
+        pass
 
 
-# Validation error handler to surface 422 details and source context
 @app.exception_handler(RequestValidationError)
 async def _handle_validation_error(request: Request, exc: RequestValidationError):  # type: ignore[override]
-    # Capture light diagnostics without leaking sensitive payloads
+    """Surface validation errors with context for operators."""
     try:
         body = await request.body()
         body_preview = body[:256].decode("utf-8", errors="ignore") if body else ""
@@ -1054,10 +939,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
     ip = getattr(request.client, "host", None)
     ua = request.headers.get("user-agent", "")
     try:
-        # Log a concise structured line for forensic tracing
-        import logging as _lg
-
-        _lg.getLogger("somabrain").warning(
+        logging.getLogger("somabrain").warning(
             "422 validation on %s %s from %s UA=%s bodyPreview=%s",
             request.method,
             request.url.path,
@@ -1067,7 +949,6 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
         )
     except Exception:
         pass
-    # Build a helpful 422 body with a usage hint
     details = exc.errors() if hasattr(exc, "errors") else []
     hint = {
         "endpoint": "/remember",
@@ -1083,232 +964,77 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
         },
     }
     return JSONResponse(
-        status_code=422, content={"detail": details, "hint": hint, "client": ip}
+        status_code=422,
+        content={"detail": details, "hint": hint, "client": ip},
     )
 
 
-# Add cognitive middleware
-# --- Autonomous Coordinator integration ---
-try:
-    from somabrain.autonomous.coordinator import setup_coordinator
-    setup_coordinator(app)
-except Exception as e:
-    logger = globals().get('logger')
-    if logger:
-        logger.debug("Failed to set up autonomous coordinator: %s", e)
-
-app.add_middleware(CognitiveMiddleware)
-
-# Add existing middleware
-app.add_middleware(ControlsMiddleware)
-app.middleware("http")(M.timing_middleware)
-if not _MINIMAL_API:
-    app.add_api_route("/metrics", M.metrics_endpoint, methods=["GET"])
-
-# In minimal-public-API mode, hide nonessential endpoints from external callers.
-if _MINIMAL_API:
-
-    class MinimalAPIMiddleware:
-        """Return 404 for endpoints outside the minimal public allowlist.
-
-        Allowed endpoints (method/path):
-        - GET  /health
-        - POST /remember
-        - POST /recall
-        - POST /plan/suggest
-        - POST /sleep/run
-
-        Always allowed for developer convenience:
-        - GET /openapi.json, GET /docs, GET /redoc, GET /favicon.ico
-        - OPTIONS preflight requests
-        """
-
-        def __init__(self, app):
-            self.app = app
-            # method-specific allowlist
-            self.allow_map = {
-                "GET": {"/health", "/openapi.json", "/docs", "/redoc", "/favicon.ico"},
-                "POST": {
-                    "/remember",
-                    "/recall",
-                    "/plan/suggest",
-                    "/sleep/run",
-                    "/rag/retrieve",
-                },
-            }
-
-        def _is_allowed(self, method: str, path: str) -> bool:
-            # normalize: drop trailing slash (except root)
-            if path != "/" and path.endswith("/"):
-                path = path[:-1]
-            if method == "OPTIONS":
-                return True
-            allowed = self.allow_map.get(method, set())
-            return path in allowed
-
-        async def __call__(self, scope, receive, send):
-            if scope.get("type") != "http":
-                return await self.app(scope, receive, send)
-            path = scope.get("path", "")
-            method = scope.get("method", "GET").upper()
-            if not self._is_allowed(method, path):
-                # Hide existence with 404
-                resp = JSONResponse(status_code=404, content={"detail": "Not Found"})
-                await resp(scope, receive, send)
-                return
-            await self.app(scope, receive, send)
-
-    app.add_middleware(MinimalAPIMiddleware)
-
-# ---------------------------------------------------------------------------
-# Background Tasks: Outbox Processing
-# ---------------------------------------------------------------------------
-
-
-async def _outbox_poller():
-    """Periodic task that replays queued memory operations.
-
-    Only runs if SOMABRAIN_REQUIRE_MEMORY is set (default) so that in real
-    enterprise mode queued writes flush promptly once backend is healthy.
-    """
-    import asyncio as _asyncio
-    import os as _os
-
-    require_memory = bool(getattr(cfg, "require_memory", True))
-    if shared_settings is not None:
-        try:
-            require_memory = bool(
-                getattr(shared_settings, "require_memory", require_memory)
-            )
-        except Exception:
-            pass
-    elif _os.getenv("SOMABRAIN_REQUIRE_MEMORY") is not None:
-        try:
-            env_raw = _os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-            require_memory = bool(
-                env_raw and env_raw.strip().lower() in ("1", "true", "yes", "on")
-            )
-        except Exception:
-            require_memory = True
-    if not require_memory:
-        return
-    # Acquire a MemoryService bound to default namespace so we can invoke its internal
-    # outbox processor (namespace iteration happens inside service/mt pool usage).
+#
+# Core singletons
+#
+# The STRICT_REAL flag enforces production-like behavior by disabling stubs and
+# requiring external services like memory. It is enabled via environment variable
+# or the shared settings config.
+STRICT_REAL = False
+if shared_settings is not None:
     try:
-        ms = MemoryService(mt_memory, cfg.namespace)
+        STRICT_REAL = bool(getattr(shared_settings, "strict_real", False))
     except Exception:
-        return
-    while True:
-        with _suppress(Exception):
-            # Private method intentionally used; safe operationally.
-            _cb = getattr(ms, "_process_outbox", None)
-            if _cb:
-                # _process_outbox is async, so await it directly.
-                if _asyncio.iscoroutinefunction(_cb):
-                    await _cb()
-                else:
-                    _cb()
-        await _asyncio.sleep(5.0)
+        pass
+if not STRICT_REAL:
+    try:
+        strict_env = os.getenv("SOMABRAIN_STRICT_REAL")
+        if strict_env is not None:
+            STRICT_REAL = strict_env.strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        pass
 
-
-@app.on_event("startup")
-async def _start_outbox_poller():
-    import asyncio as _asyncio
-
-    _asyncio.create_task(_outbox_poller())
-
-
-# (dashboard and debug endpoints removed per user request)
-
-# Core components
-# Instantiate quantum layer via factory which handles hybrid/runtime selection
-quantum = None
+# Optional quantum layer (for HRR-based operations)
+quantum: Optional[QuantumLayer] = None
 if cfg.use_hrr:
     try:
-        from somabrain.quantum import make_quantum_layer, HRRConfig as _HRRConfig
-
-        q_cfg = _HRRConfig(
+        hrr_cfg = HRRConfig(
             dim=cfg.hrr_dim,
             seed=cfg.hrr_seed,
-            binding_method=getattr(cfg, "math_binding_method", "bhdc"),
-            sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
-            binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
-            mix=getattr(cfg, "math_bhdc_mix", "none"),
-            binding_seed=getattr(cfg, "math_binding_seed", None),
-            binding_tenant=getattr(cfg, "default_tenant", None),
-            binding_model_version=getattr(cfg, "math_binding_model_version", None),
+            binding_method=cfg.math_binding_method,
+            sparsity=cfg.math_bhdc_sparsity,
+            binary_mode=cfg.math_bhdc_binary_mode,
+            mix=cfg.math_bhdc_mix,
+            binding_seed=cfg.math_binding_seed,
+            binding_model_version=cfg.math_binding_model_version,
         )
-        quantum = make_quantum_layer(q_cfg)
+        quantum = QuantumLayer(hrr_cfg)
     except Exception:
-        # fallback: best-effort instantiation of canonical QuantumLayer
-        try:
-            quantum = QuantumLayer(
-                HRRConfig(
-                    dim=cfg.hrr_dim,
-                    seed=cfg.hrr_seed,
-                    binding_method=getattr(cfg, "math_binding_method", "bhdc"),
-                    sparsity=getattr(cfg, "math_bhdc_sparsity", 0.1),
-                    binary_mode=getattr(cfg, "math_bhdc_binary_mode", "pm_one"),
-                    mix=getattr(cfg, "math_bhdc_mix", "none"),
-                    binding_seed=getattr(cfg, "math_binding_seed", None),
-                    binding_tenant=getattr(cfg, "default_tenant", None),
-                    binding_model_version=getattr(
-                        cfg, "math_binding_model_version", None
-                    ),
-                )
-            )
-        except Exception:
-            quantum = None
-embedder = make_embedder(cfg, quantum)
-_EMBED_PROVIDER = (getattr(cfg, "embed_provider", None) or "tiny").lower()
+        logger.exception("Failed to initialize quantum layer; HRR disabled.")
+        quantum = None
 
-# Track chosen predictor provider for diagnostics/health
-_PREDICTOR_PROVIDER: str = "stub"
+#
+# App-level singletons
+#
+_EMBED_PROVIDER = getattr(cfg, "embed_provider", "tiny")
+_PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "stub")
+embedder = make_embedder(cfg, quantum=quantum)
+try:
+    _EMBED_DIM = int(getattr(embedder, "dim"))
+except Exception:
+    try:
+        _EMBED_DIM = int(np.asarray(embedder.embed("___dim_probe___"), dtype=float).size)
+    except Exception as exc:
+        raise RuntimeError("embedder failed to produce vector dimension") from exc
+# Ensure config reflects the actual embedder dimension at runtime
+if cfg.embed_dim != _EMBED_DIM:
+    logger.warning(
+        "config embed_dim=%s mismatch with provider dim=%s; overriding",
+        cfg.embed_dim,
+        _EMBED_DIM,
+    )
+    cfg.embed_dim = _EMBED_DIM
 
 
-def _make_predictor():
-    """Factory for predictor honoring environment override and strict mode.
-
-    Precedence:
-      1. SOMABRAIN_PREDICTOR_PROVIDER env var
-      2. cfg.predictor_provider
-      3. fallback 'stub'
-
-    In STRICT_REAL mode, usage of 'stub'/'baseline' raises immediately so tests /
-    runtime cannot silently degrade cognitive quality.
-    """
-    # use top-level STRICT_REAL imported earlier
-    __SR = STRICT_REAL
-
-    if shared_settings is not None:
-        try:
-            provider = (
-                getattr(shared_settings, "predictor_provider", "") or "stub"
-            ).lower()
-        except Exception:
-            provider = "stub"
-    else:
-        provider = (
-            os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower()
-            or (cfg.predictor_provider or "stub")
-        )
-        provider = (provider or "stub").lower()
-    global _PREDICTOR_PROVIDER
-    _PREDICTOR_PROVIDER = provider
-    # Dynamic strict read so tests that set env per-import still take effect
-    sr_env = False
-    if shared_settings is not None:
-        try:
-            sr_env = bool(getattr(shared_settings, "strict_real", False))
-        except Exception:
-            sr_env = False
-    else:
-        try:
-            sr_raw = os.getenv("SOMABRAIN_STRICT_REAL")
-            if sr_raw is not None:
-                sr_env = sr_raw.strip().lower() in ("1", "true", "yes", "on")
-        except Exception:
-            sr_env = False
+def _make_predictor() -> BudgetedPredictor:
+    provider = str(getattr(cfg, "predictor_provider", "stub") or "stub").lower()
+    sr_env = os.getenv("SOMABRAIN_STRICT_REAL")
+    __SR = bool(sr_env and sr_env.lower() in ("1", "true", "yes"))
     if (sr_env or __SR) and provider in ("stub", "baseline"):
         raise RuntimeError(
             "STRICT REAL MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
@@ -1331,9 +1057,28 @@ def _make_predictor():
 
 
 predictor = _make_predictor()
+fd_sketch = None
+if getattr(cfg, "salience_method", "dense").lower() == "fd":
+    fd_sketch = FDSalienceSketch(
+        dim=int(cfg.embed_dim),
+        rank=max(1, min(int(cfg.salience_fd_rank), int(cfg.embed_dim))),
+        decay=float(cfg.salience_fd_decay),
+    )
+
+unified_scorer = UnifiedScorer(
+    w_cosine=cfg.scorer_w_cosine,
+    w_fd=cfg.scorer_w_fd,
+    w_recency=cfg.scorer_w_recency,
+    weight_min=cfg.scorer_weight_min,
+    weight_max=cfg.scorer_weight_max,
+    recency_tau=cfg.scorer_recency_tau,
+    fd_backend=fd_sketch,
+)
+
 mt_wm = MultiTenantWM(
     dim=cfg.embed_dim,
     cfg=MTWMConfig(per_tenant_capacity=max(64, cfg.wm_size), max_tenants=1000),
+    scorer=unified_scorer,
 )
 mc_wm = MultiColumnWM(
     dim=cfg.embed_dim,
@@ -1352,6 +1097,7 @@ mc_wm = MultiColumnWM(
         ),
         vote_temperature=cfg.micro_vote_temperature,
     ),
+    scorer=unified_scorer,
 )
 # The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
 # and a ``runtime.py`` module that defines the core singleton utilities
@@ -1391,7 +1137,7 @@ if not getattr(_rt, "embedder", None):
             continue
 
 if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
-    mt_memory = MultiTenantMemory(cfg)
+    mt_memory = MultiTenantMemory(cfg, scorer=unified_scorer, embedder=embedder)
     _rt.mt_memory = mt_memory
     # Also patch this module's global for test visibility
     import sys
@@ -1423,8 +1169,12 @@ amygdala = AmygdalaSalience(
         threshold_act=cfg.salience_threshold_act,
         hysteresis=cfg.salience_hysteresis,
         use_soft=cfg.use_soft_salience,
-        soft_temperature=cfg.soft_salience_temperature,
-    )
+        soft_temperature=cfg.use_soft_salience,
+        method=cfg.salience_method,
+        w_fd=cfg.salience_fd_weight,
+        fd_energy_floor=cfg.salience_fd_energy_floor,
+    ),
+    fd_backend=fd_sketch,
 )
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
@@ -1484,13 +1234,6 @@ _rt.set_singletons(
     _mt_memory=mt_memory or getattr(_rt, "mt_memory", None),
     _cfg=cfg,
 )
-
-try:
-    from somabrain.api.dependencies import auth as _auth_dep
-
-    _auth_dep.set_auth_config(cfg)
-except Exception:
-    pass
 
 
 # PHASE 2: UNIFIED PROCESSING CORE - SIMPLIFIED ARCHITECTURE
@@ -1696,7 +1439,12 @@ class AutoScalingFractalIntelligence:
         if new_level == self.current_level:
             return
 
-        print(f"🧠 Auto-scaling intelligence: {self.current_level} → {new_level}")
+        active_logger = globals().get("logger") or module_logger
+        active_logger.info(
+            "Auto-scaling intelligence: %s -> %s",
+            self.current_level,
+            new_level,
+        )
 
         # Update current level
         self.current_level = new_level
@@ -1726,13 +1474,18 @@ class AutoScalingFractalIntelligence:
         if hasattr(self.unified_brain.fnom, "target_ensemble_sizes"):
             self.unified_brain.fnom.target_ensemble_sizes = target_sizes
 
-        print(f"🎯 Target ensemble sizes updated: {target_sizes}")
+        active_logger = globals().get("logger") or module_logger
+        active_logger.debug(
+            "Target ensemble sizes updated: %s",
+            target_sizes,
+        )
 
     def _scale_fractal_scales(self, num_scales: int):
         """Scale fractal processing scales"""
         # For now, we'll note the target scale count
         # The actual scaling will be handled by the fractal system
-        print(f"🎯 Target fractal scales: {num_scales}")
+        active_logger = globals().get("logger") or module_logger
+        active_logger.debug("Target fractal scales: %s", num_scales)
 
     def _estimate_processing_time(self, level: str, complexity: float) -> float:
         """Estimate processing time for a given level and complexity"""
@@ -1915,6 +1668,8 @@ async def health(request: Request) -> S.HealthResponse:
     except Exception:
         resp["minimal_public_api"] = None
     # Strict mode & predictor/embedder diagnostics
+    fd_violation = False
+    scorer_stats: Optional[Dict[str, Any]] = None
     try:
         from somabrain.stub_audit import STRICT_REAL as __SR, stub_stats as __stub_stats
         from somabrain.opa.client import opa_client as __opa
@@ -2046,9 +1801,68 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_ok"] = bool(memory_ok)
         resp["embedder_ok"] = bool(embedder_ok)
         resp["opa_required"] = bool(opa_required)
+        # Unified scorer & FD health invariants
+        try:
+            scorer_stats = unified_scorer.stats()
+        except Exception:
+            scorer_stats = None
+        resp["scorer"] = scorer_stats
+        if isinstance(scorer_stats, dict):
+            fd_stats = scorer_stats.get("fd") if "fd" in scorer_stats else None
+            if isinstance(fd_stats, dict):
+                trace_err = float(fd_stats.get("trace_norm_error", 0.0) or 0.0)
+                psd_ok = bool(fd_stats.get("psd_ok", False))
+                capture_ratio = fd_stats.get("capture_ratio")
+                resp["fd_trace_norm_error"] = trace_err
+                resp["fd_psd_ok"] = psd_ok
+                if capture_ratio is not None:
+                    resp["fd_capture_ratio"] = float(capture_ratio)
+                if not psd_ok or trace_err > 1e-4:
+                    fd_violation = True
+                    resp.setdefault("alerts", []).append("fd_scorer_invariant")
     except Exception:
         resp["strict_real"] = False
         resp["ready"] = True
+        scorer_stats = None
+
+    if "scorer" not in resp:
+        resp["scorer"] = scorer_stats
+
+    if (
+        fd_violation
+        and resp.get("ok", True)
+        and resp.get("ready", True)
+    ):
+        resp["ok"] = False
+        resp["ready"] = False
+
+    required_raw = getattr(
+        cfg,
+        "external_metrics_required",
+        ("kafka", "postgres", "opa"),
+    )
+    if isinstance(required_raw, str):
+        required_metrics = tuple(
+            part.strip() for part in required_raw.split(",") if part.strip()
+        )
+    else:
+        try:
+            required_metrics = tuple(
+                str(item).strip() for item in required_raw if str(item).strip()
+            )
+        except TypeError:
+            required_metrics = ()
+    if not required_metrics:
+        required_metrics = ("kafka", "postgres", "opa")
+    metrics_ready = M.external_metrics_ready(required_metrics)
+    resp["metrics_ready"] = bool(metrics_ready)
+    resp["metrics_required"] = list(required_metrics)
+    if resp.get("ok", True) and resp.get("ready", True) and not metrics_ready:
+        resp["ok"] = False
+        resp["ready"] = False
+        alerts = resp.setdefault("alerts", [])
+        if "observability_metrics_missing" not in alerts:
+            alerts.append("observability_metrics_missing")
     return resp
 
 
@@ -2140,6 +1954,8 @@ async def recall(req: S.RecallRequest, request: Request):
     M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(
         max(0.0, _t.perf_counter() - _e0)
     )
+    query_vec = np.asarray(wm_qv, dtype=float).reshape(-1)
+    embed_cache: dict[str, np.ndarray] = {}
     hrr_qv = quantum.encode_text(text) if quantum else None
     _t0 = _t.perf_counter()
     wm_hits = (mc_wm if cfg.use_microcircuits else mt_wm).recall(
@@ -2497,11 +2313,16 @@ async def recall(req: S.RecallRequest, request: Request):
                             p,
                             query_lower=ql,
                             query_tokens=qtokens,
+                            query_vec=query_vec,
+                            embed_fn=embedder.embed,
+                            embed_cache=embed_cache,
+                            scorer=unified_scorer,
                             wm_support=wm_support,
                             now_ts=now_ts,
                             quantum_layer=quantum,
                             query_hrr=hrr_qv,
                             hrr_cache=hrr_cache,
+                            hrr_weight=getattr(cfg, "hrr_rerank_weight", 0.0),
                         )
                     except Exception:
                         comp_score = 0.0
@@ -2515,13 +2336,16 @@ async def recall(req: S.RecallRequest, request: Request):
         # Optional diversity pass (MMR)
         if getattr(cfg, "use_diversity", False):
             try:
-                mem_payloads = _diversify(
-                    embedder.embed,
-                    text,
-                    mem_payloads,
-                    method=str(getattr(cfg, "diversity_method", "mmr")),
-                    k=int(getattr(cfg, "diversity_k", 10) or 10),
-                    lam=float(getattr(cfg, "diversity_lambda", 0.5) or 0.5),
+                k = int(getattr(cfg, "diversity_k", 10) or 10)
+                lam = float(getattr(cfg, "diversity_lambda", 0.5) or 0.5)
+                min_k = int(getattr(cfg, "diversity_min_k", 3) or 3)
+                mem_payloads = _apply_diversity_reranking(
+                    candidates=mem_payloads,
+                    query_vec=query_vec,
+                    embedder=embedder,
+                    k=max(1, k),
+                    lam=max(0.0, min(1.0, lam)),
+                    min_k=max(2, min_k),
                 )
                 # Measure realized diversity (pairwise cosine distance mean) over first N items
                 try:
@@ -3175,33 +2999,35 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
 
             from somabrain import memory_client as _mc
 
-            print(
-                "DEBUG graph_links: namespace=",
+            active_logger = globals().get("logger") or module_logger
+            active_logger.debug(
+                "graph_links namespace=%s pool_keys=%s",
                 memsvc.namespace,
-                "pool_keys=",
                 list(getattr(mt_memory, "_pool", {}).keys()),
             )
-            print(
-                "DEBUG graph_links: sys.modules contains somabrain.memory_client?",
+            active_logger.debug(
+                "graph_links memory_client_loaded=%s",
                 "somabrain.memory_client" in _sys.modules,
             )
-            print("DEBUG graph_links: module id", id(_mc), "module repr", repr(_mc))
-            print(
-                "DEBUG graph_links: _mc._GLOBAL_LINKS id",
-                id(getattr(_mc, "_GLOBAL_LINKS", None)),
+            active_logger.debug(
+                "graph_links memory_client id=%s repr=%s",
+                id(_mc),
+                repr(_mc),
             )
-            print(
-                "DEBUG graph_links: builtins key id",
+            active_logger.debug(
+                "graph_links global_links_id=%s builtins_key_id=%s",
+                id(getattr(_mc, "_GLOBAL_LINKS", None)),
                 id(getattr(_builtins, "_SOMABRAIN_GLOBAL_LINKS", None)),
             )
             try:
-                print(
-                    "DEBUG graph_links: global_links_keys=",
-                    list(getattr(_mc, "_GLOBAL_LINKS", {}).keys()),
+                global_links = getattr(_mc, "_GLOBAL_LINKS", {})
+                active_logger.debug(
+                    "graph_links global_links_keys=%s",
+                    list(global_links.keys()),
                 )
-                print(
-                    "DEBUG graph_links: global_links_ns=",
-                    _mc._GLOBAL_LINKS.get(memsvc.namespace),
+                active_logger.debug(
+                    "graph_links global_links_namespace=%s",
+                    global_links.get(memsvc.namespace),
                 )
             except Exception:
                 pass
