@@ -18,7 +18,7 @@ What strict-real enforces
 Canonical ports
 ---------------
 
-- Somabrain API: 9696 (developer host mapping to 9797 available)
+- Somabrain API: 9696
 - Memory endpoint: 9595
 - Redis: 6379
 - Postgres: 15432 (or forwarded 55432 when tunneling)
@@ -48,7 +48,7 @@ The test harness can target a live API instead of spawning its own server. To do
 .. code-block:: bash
 
    export SOMA_API_URL_LOCK_BYPASS=1
-   export SOMA_API_URL=http://127.0.0.1:9696   # or http://127.0.0.1:9797 if mapped
+  export SOMA_API_URL=http://127.0.0.1:9696
    pytest -q
 
 Notes:

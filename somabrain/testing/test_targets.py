@@ -129,7 +129,7 @@ def _env_truthy(value: str | None) -> bool:
 def _default_target() -> TargetConfig:
     return TargetConfig(
         label="local",
-    api_base=os.getenv("SOMA_API_URL", "http://127.0.0.1:9797"),
+        api_base=os.getenv("SOMA_API_URL", "http://127.0.0.1:9696"),
         memory_base=os.getenv(
             "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:9595"
         ),

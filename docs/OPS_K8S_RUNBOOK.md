@@ -16,7 +16,7 @@ Component map (as shipped in `k8s/full-stack.yaml`)
 |------------------|-----------------|------------------|-------------------------|-----------------|-------|
 | Somabrain API    | `Deployment`    | `somabrain`      | 9696 → 9696             | Internal only   | Primary API traffic |
 | Somabrain Public | — (shares pods) | `somabrain-public` | 9696 → 9999           | LoadBalancer    | Production external access |
-| Somabrain Test   | — (shares pods) | `somabrain-test` | 9696 → 9797             | Internal only   | Alternate port for learning/tests |
+| Somabrain Test   | — (shares pods) | `somabrain-test` | 9696 → 9696             | Internal only   | Alternate service for learning/tests |
 | Nginx Ingress    | `Deployment`    | `ingress-nginx-controller` | 80/443 → 80/443 | LoadBalancer | HTTPS termination, routing |
 | Redis cache      | `Deployment`    | `sb-redis`       | 6379 → 6379             | Internal only   | Cache + coordination |
 | OPA policy       | `Deployment`    | `sb-opa`         | 8181 → 8181             | Internal only   | Optional policy checks |
@@ -77,7 +77,7 @@ Verification & daily checks
   1. Wait for `somabrain-migrate` Job to complete: `kubectl -n somabrain-prod wait --for=condition=complete job/somabrain-migrate --timeout=300s`.
   2. Confirm Postgres readiness: `kubectl -n somabrain-prod get sts/postgres` and `kubectl -n somabrain-prod exec sts/postgres-0 -- pg_isready -U $POSTGRES_USER`.
   3. Check somabrain pods: `kubectl -n somabrain-prod get pods -l app=somabrain` and `kubectl -n somabrain-prod logs deploy/somabrain --tail=200`.
-4. Port-forward for local test access (API 9696/9797, Redis 6379, Postgres 55432) and run prechecks.
+4. Port-forward for local test access (API 9696, Redis 6379, Postgres 55432) and run prechecks.
 
 Running the learning test locally (host)
 1. Forward ports from the cluster to your host (recommended):
@@ -85,7 +85,7 @@ Running the learning test locally (host)
 ```bash
 # Example, run in separate shells (or use the background/nohup pattern in docs):
 ./scripts/port_forward_api.sh &
-kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 ```
@@ -94,13 +94,13 @@ kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 
 ```bash
 curl -s http://127.0.0.1:9696/health | jq
-curl -s http://127.0.0.1:9797/health | jq
+curl -s http://127.0.0.1:9696/health | jq  # via somabrain-test service
 ```
 
 3. Run the cognition learning suite (from repo root using your venv):
 
 ```bash
-export SOMA_API_URL=http://127.0.0.1:9797
+export SOMA_API_URL=http://127.0.0.1:9696
 export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
 export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
 .venv/bin/pytest -vv tests/test_cognition_learning.py
@@ -122,4 +122,4 @@ Follow-ups (recommended)
 2. Add a simple GitHub Actions workflow to: build image, run migrations (job), and `kubectl apply` to the cluster for each promoted tag.
 3. Create Kustomize overlays and a Helm chart for safe environment-specific overrides.
 
-If you'd like, I can now update the repository docs to point to this runbook and create the CI skeleton for image promotion and automatic deployments. Also I can run the learning pytest now and report results — say the word and I'll run it next (it will target the forwarded local port 9797 by default).
+If you'd like, I can now update the repository docs to point to this runbook and create the CI skeleton for image promotion and automatic deployments. Also I can run the learning pytest now and report results — say the word and I'll run it next (it will target the forwarded local port 9696 by default).

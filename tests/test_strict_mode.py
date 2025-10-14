@@ -7,7 +7,7 @@ def test_strict_mode_health_and_no_stub_backfill(monkeypatch):
     monkeypatch.setenv("SOMABRAIN_STRICT_REAL", "1")
     monkeypatch.setenv("SOMABRAIN_PREDICTOR_PROVIDER", "mahal")
     # Ensure SOMA_API_URL fixed
-    monkeypatch.setenv("SOMA_API_URL", "http://127.0.0.1:9797")
+    monkeypatch.setenv("SOMA_API_URL", "http://127.0.0.1:9696")
     # Import fresh app module
     if "somabrain.app" in importlib.sys.modules:
         importlib.reload(importlib.import_module("somabrain.app"))

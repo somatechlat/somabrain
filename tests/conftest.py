@@ -29,6 +29,9 @@ address (port 9999) when `KUBERNETES_SERVICE_HOST` is present.
 
 BASE_URL = os.getenv("TEST_SERVER_URL", "http://localhost:9696")
 
+# Ensure pytest import paths see the sentinel so somabrain.app treats imports as test context.
+os.environ.setdefault("PYTEST_CURRENT_TEST", "bootstrap::collection")
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Create a single asyncio loop for the entire session (required by async fixtures)."""
@@ -164,6 +167,8 @@ def pytest_configure(config):
             print(
                 f"[pytest_configure] Overriding SOMA_API_URL {prev} -> {desired} (locked)"
             )
+    # Ensure STRICT_REAL mode uses an in-process Mahalanobis predictor instead of the stub.
+    os.environ.setdefault("SOMABRAIN_PREDICTOR_PROVIDER", "mahal")
     # Force strict real mode for the entire test session unless explicitly bypassed.
     # This disables silent stub fallbacks (see somabrain.stub_audit) and forbids fakeredis.
     if os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS", "0") not in ("1", "true", "yes"):

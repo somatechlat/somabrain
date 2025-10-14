@@ -4,10 +4,10 @@
 
 This project uses a real FastAPI server (no mocks) for integration tests.
 
-## Port Selection (9797)
-We reserve `127.0.0.1:9797` for the integration test server to avoid collisions with any developer instance that may already be using the conventional port (9696). The test fixture in `tests/conftest.py`:
+## Port Selection (9696)
+We run the integration test server on `127.0.0.1:9696` so the fixture matches the production port wiring. The test fixture in `tests/conftest.py`:
 
-- Sets `SOMA_API_URL` to `http://127.0.0.1:9797` if not already defined.
+- Sets `SOMA_API_URL` to `http://127.0.0.1:9696` if not already defined.
 - Starts a real `uvicorn somabrain.app:app` subprocess (no in-process TestClient shim) so behavior matches production wiring.
 - Forces `SOMABRAIN_MINIMAL_PUBLIC_API=0` so the full public API (including `/constitution/version`) is available.
 
@@ -47,14 +47,14 @@ pytest -q
 
 ## Troubleshooting 404 on /constitution/version
 If you see a 404:
-- Confirm test logs show a line like: `[tests.conftest] SOMA_API_URL=http://127.0.0.1:9797`.
+- Confirm test logs show a line like: `[tests.conftest] SOMA_API_URL=http://127.0.0.1:9696`.
 - Curl the endpoint manually: `curl -i $SOMA_API_URL/constitution/version`.
 - Check `/health` for `minimal_public_api`.
-- Ensure another process isn’t binding the port (use `lsof -i TCP:9797`).
+- Ensure another process isn’t binding the port (use `lsof -i TCP:9696`).
 
 ## Rationale
 - Real subprocess uvicorn ensures lifecycle, middleware ordering, and import-time side effects match production.
-- Fixed port (9797) with explicit override reduces port collision flakiness.
+- Using the canonical port (9696) with explicit override keeps dev/test alignment and surfaces collisions early.
 - Strict realism surfaces hidden dependencies early instead of masking them with stubs.
 
 ## Future Enhancements

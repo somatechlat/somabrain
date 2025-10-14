@@ -241,7 +241,7 @@ spec:
       secretName: somabrain-tls # provide cert or remove TLS block if terminating elsewhere
 
 ---
-# Dedicated test ClusterIP service exposing port 9797 internally mapping to same pods.
+# Dedicated test ClusterIP service exposing port 9696 internally mapping to the same pods.
 # Useful for segregating monitoring or test traffic without altering primary service.
 apiVersion: v1
 kind: Service
@@ -256,7 +256,7 @@ spec:
     app: somabrain
   ports:
     - name: http-test
-      port: 9797
+      port: 9696
       targetPort: 9696
   type: ClusterIP
 

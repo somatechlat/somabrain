@@ -88,7 +88,7 @@ Health payload fields:
 
 * **Unit-norm Hyperdimensional Embeddings (HRR)**
 
-  * 8,192-D (configurable), deterministic seeds, FFT binding/unbinding (exact + Wiener).
+  * 8,192-D (configurable), deterministic seeds, mask composer binding/unbinding (exact + Wiener aliases).
   * Safe invariants everywhere: pad/truncate → L2-normalize → guard NaNs/zeros.
 
 * **Superposition that Actually Works**
@@ -129,7 +129,7 @@ Health payload fields:
 
 ## 🧩 Core Math (clean, production-ready)
 
-* **HRR:** circular convolution/correlation (FFT), exact & Wiener unbinding, unitary roles.
+* **HRR:** permutation + Rademacher mask composer, exact & Wiener aliases, deterministic unitary roles.
 
 * **Density Matrix ρ:** PSD, trace-normalized memory of co-occurrence:
 
@@ -192,7 +192,7 @@ eta_pred = expected_arrival_time(P)
 ## 📦 Modules (drop-in)
 
 * `somabrain/embeddings.py` – TinyDeterministicEmbedder (unit-norm)
-* `somabrain/quantum.py` – HRR/QuantumLayer (FFT bind/unbind, Wiener)
+* `somabrain/quantum.py` – HRR/QuantumLayer (mask composer bind/unbind, Wiener aliases)
 * `memory/density.py` – ρ update + scoring (PSD/trace) *[root directory]*
 * `somabrain/math/bridge.py` – heat-kernel Sinkhorn planning
 * `somabrain/math/sinkhorn.py` – Sinkhorn scaling operations  
@@ -237,14 +237,14 @@ uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
 curl -s localhost:9696/health | jq
 ```
 
-If running the integration harness a dedicated port `9797` is used to avoid collisions. Production containers still expose internal port `9696`.
+The integration harness uses the canonical port `9696`. Production containers also expose internal port `9696`.
 
 ### ✅ Live Cognition Verification (real services)
 
 When the Kubernetes stack is port-forwarded back to localhost, run the cognition suite to prove the brain learns from real interactions:
 
 ```bash
-export SOMA_API_URL=http://127.0.0.1:9797
+export SOMA_API_URL=http://127.0.0.1:9696
 export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
 export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
 export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
@@ -259,8 +259,8 @@ The tests confirm three signals:
 
 If any check fails, inspect the port-forward logs (e.g. `/tmp/pf-*.log`) and re-run once the services return `{"ok": true}` from their `/health` probes.
 
-### Kubernetes Test Port (9797)
-The full-stack manifest includes an additional ClusterIP service `somabrain-test` exposing port **9797** mapped to the primary pod container port 9696. This lets you:
+### Kubernetes Test Port (9696)
+The full-stack manifest includes an additional ClusterIP service `somabrain-test` exposing port **9696** mapped to the primary pod container port 9696. This lets you:
 
 - Isolate test / load / learning verification traffic
 - Keep dashboards and alert routes pointed at the canonical `somabrain` service on 9696
@@ -268,14 +268,14 @@ The full-stack manifest includes an additional ClusterIP service `somabrain-test
 Port-forward for local validation and run a quick learning probe directly from the repo:
 
 ```bash
-kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797
-export SOMA_API_URL=http://127.0.0.1:9797
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696
+export SOMA_API_URL=http://127.0.0.1:9696
 python - <<'PY'
 import os
 import time
 import requests
 
-BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9797")
+BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
 SESSION = "doc-check"
 HEADERS = {"X-Model-Confidence": "2.0"}
 
@@ -358,7 +358,7 @@ endpoints.
 ## Full‑stack Kubernetes deployment
 
 - **API service** – `somabrain` (ClusterIP) exposing container port **9696**. A sibling service,
-  `somabrain-test`, maps **9797 → 9696** for load or soak tests without touching dashboards.
+  `somabrain-test`, mirrors **9696** for load or soak tests without touching dashboards.
 - **Memory service** – `somamemory` (ClusterIP) on **9595**. The API points at the DNS name
   `http://somamemory.somabrain-prod.svc.cluster.local:9595` by default.
 - **Redis** – `sb-redis` on **6379** and **OPA** – `sb-opa` on **8181**.
@@ -375,7 +375,7 @@ kubectl apply -f k8s/full-stack.yaml
 Port‑forward the services for local validation:
 ```bash
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696   # primary API
-kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   # optional test port
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696   # optional test port
 kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595  # memory service (optional)
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432   # Postgres (feedback + token ledger)
 ```
@@ -384,7 +384,7 @@ Need the forwards to survive a shell restart? Run them in the background and log
 
 ```bash
 nohup kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696         > /tmp/pf-somabrain.log      2>&1 &
-nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   > /tmp/pf-somabrain-test.log 2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696   > /tmp/pf-somabrain-test.log 2>&1 &
 nohup kubectl -n somabrain-prod port-forward svc/somamemory 9595:9595       > /tmp/pf-somamemory.log     2>&1 &
 nohup kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379         > /tmp/pf-redis.log          2>&1 &
 nohup kubectl -n somabrain-prod port-forward svc/postgres 55432:5432        > /tmp/pf-postgres.log        2>&1 &
@@ -395,7 +395,7 @@ Tail the corresponding log file if a forward drops unexpectedly. When finished, 
 Health probes:
 ```bash
 curl http://127.0.0.1:9696/health
-curl http://127.0.0.1:9797/health  # same pod, test service
+curl http://127.0.0.1:9696/health  # same pod, test service
 curl http://127.0.0.1:9595/health  # memory service
 PGPASSWORD=somabrain-dev-password psql "host=127.0.0.1 port=55432 user=somabrain dbname=somabrain" -c 'select 1;'
 ```
@@ -417,7 +417,7 @@ After forwarding the test service (`somabrain-test`), you can force the pytest r
 forwarded address explicitly:
 
 ```bash
-SOMA_API_URL=http://127.0.0.1:9797 .venv/bin/pytest \
+SOMA_API_URL=http://127.0.0.1:9696 .venv/bin/pytest \
   tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
 ```
 

@@ -84,7 +84,7 @@ Prometheus scrape interval: 5s (fast) or 15s (cost-conscious).
 
 - In local Docker, run the API with a single worker (SOMABRAIN_WORKERS=1) to keep in‑process WM read‑your‑writes
   for smoke/tests. In production, scale workers as needed.
-- To run tests against the live Docker API on 9696 instead of the test harness’s 9797, export:
+- To run tests against the live Docker API on 9696, export:
   ```bash
   export SOMA_API_URL_LOCK_BYPASS=1
   export SOMA_API_URL=http://127.0.0.1:9696

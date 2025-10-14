@@ -22,6 +22,9 @@ alembic==1.16.5
 sqlalchemy==2.0.43
 psycopg[binary]==3.2.10
 PyJWT[crypto]==2.9.0
+pydantic-settings==2.4.0
+scipy==1.16.2
+grpcio==1.75.0
 
 # Plotting and profiling for benchmarks
 # matplotlib==3.7.5  # downgraded to avoid build issues on Python 3.13

@@ -2,7 +2,7 @@
 
 The :func:`client` fixture (defined in ``tests/conftest.py``) provides an
 ``httpx.AsyncClient`` that is already configured to target the test server
-running on ``http://localhost:9797`` (or whatever ``SOMA_API_URL`` is set to
+running on ``http://localhost:9696`` (or whatever ``SOMA_API_URL`` is set to
 by the fixtures).  These tests verify that the server starts correctly and
 exposes the expected health endpoint.
 """

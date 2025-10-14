@@ -43,6 +43,11 @@ uv run pytest -q
   ```
   or simply rerun `uv pip install -e .[dev]` and commit the updated lock that `uv` produces.
 - If you intentionally discard the lock file (e.g., to test fresh resolution), delete it and rerun the install command; the new file should be committed with the change.
+- Capture baseline install metrics locally (mirrors CI) by running:
+  ```bash
+  uv run python scripts/ci/record_dependency_install_metrics.py
+  ```
+  The script logs duration + package count to `artifacts/bench_logs/dependency_install_metrics.json`.
 
 ## 2. Launch the Canonical Stack
 
@@ -254,8 +259,7 @@ The test clears the in-process store, encodes a memory, and asserts it can be re
 
 ### 4.1 Running tests against an already running API (port 9696)
 
-Most live tests default to a dedicated port 9797 to avoid clobbering dev services. To target the Docker API at
-9696 instead, export the lock bypass and the URL explicitly:
+Most live tests now target the canonical API port 9696. Ensure the Docker stack is running and export the lock bypass explicitly:
 
 ```bash
 export SOMA_API_URL_LOCK_BYPASS=1
@@ -279,15 +283,15 @@ pkill -f "kubectl -n somabrain-prod port-forward" || true
 
 # 1. Forward the production API on 9696 using the helper script, then forward test/redis (detach + log to /tmp)
 ./scripts/port_forward_api.sh
-nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797   > /tmp/pf-somabrain-test.log 2>&1 &
+nohup kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696   > /tmp/pf-somabrain-test.log 2>&1 &
 nohup kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379         > /tmp/pf-redis.log          2>&1 &
 
 # 2. Sanity-check health once the tunnels are up
 curl -s http://127.0.0.1:9696/health | jq '.ok'
-curl -s http://127.0.0.1:9797/health | jq '.ok'
+curl -s http://127.0.0.1:9696/health | jq '.ok'
 
 # 3. Run the strict memory integration against the forwarded endpoint
-SOMA_API_URL=http://127.0.0.1:9797 uv run --active pytest \
+SOMA_API_URL=http://127.0.0.1:9696 uv run --active pytest \
   tests/test_agent_memory_module.py::test_encode_and_recall_happy -q
 
 # 4. Stop the port-forwards when finished
@@ -304,7 +308,7 @@ or docker-compose shortcuts — and will be skipped automatically if the API, me
 checks fail.
 
 1. Ensure port-forwards (or direct connections) exist for:
-  - Somabrain API: `http://127.0.0.1:9797`
+  - Somabrain API: `http://127.0.0.1:9696`
   - Redis: `redis://127.0.0.1:6379/0`
   - Postgres (forward `svc/postgres` → `55432`):
     ```bash
@@ -314,7 +318,7 @@ checks fail.
 
 2. Export the environment so pytest hits the live endpoints:
   ```bash
-  export SOMA_API_URL=http://127.0.0.1:9797
+  export SOMA_API_URL=http://127.0.0.1:9696
   export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
   export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
   ```

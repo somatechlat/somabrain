@@ -20,7 +20,7 @@ These flags harden the application to run only with real services:
 
 Service endpoints and ports can be customized, but the canonical defaults are:
 
-- API: ``http://127.0.0.1:9696`` (developer mapping ``9797->9696`` supported)
+- API: ``http://127.0.0.1:9696``
 - Memory endpoint: ``http://127.0.0.1:9595``
 - Redis: ``redis://127.0.0.1:6379/0``
 - Postgres: ``postgresql://localhost:15432/postgres`` (or forwarded ``55432``)

@@ -20,6 +20,7 @@ dependencies = [
   "fastapi>=0.103",
   "uvicorn>=0.22",
   "numpy>=1.24",
+  "scipy>=1.14",
   "prometheus-client>=0.17",
   "httpx>=0.24",
   "requests>=2.31",
@@ -27,11 +28,13 @@ dependencies = [
   "psutil>=5.9",
   "redis>=4.6",
   "kafka-python>=2.0",
+  "grpcio>=1.75",
   "sqlalchemy>=2.0",
   "psycopg[binary]>=3.1",
   "psycopg2-binary>=2.9",
   "cryptography>=41",
   "PyJWT[crypto]>=2.9",
+  "pydantic-settings>=2.1",
 ]
 
 [project.optional-dependencies]

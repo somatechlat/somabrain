@@ -13,12 +13,12 @@ Raise the baseline for reproducible builds and shared configuration so every dow
 
 | Item | Owner | Status | Notes |
 |------|-------|--------|-------|
-| Inventory current dependency graph (`pyproject`, `requirements-dev.txt`, Docker) | Platform | In progress | Pyproject core deps (FastAPI, numpy, sql stack), dev req pins (pytest 8.4.2, black 25.1.0, numpy 1.26.4), Docker installs confluent-kafka, pydantic-settings. Next: capture Makefile/tooling extras. |
+| Inventory current dependency graph (`pyproject`, `requirements-dev.txt`, Docker) | Platform | Complete | Canonical inventory captured in `docs/developer/DEPENDENCY_INVENTORY.md`; includes Makefile tooling + Docker layers. |
 | Establish reproducible `uv` lockfile and document bootstrap steps | Platform | Complete | `DEVELOPMENT_GUIDE.md` now documents the `uv pip install/compile/sync` workflow; lockfile committed and treated as canonical. |
 | Normalize `load_config` usage across modules | Platform | Complete | Cached `get_config()` helper landed and all call-sites now use the shared accessor (`chore: adopt cached config helper`). |
-| Draft ADR for environment parity & configuration | Architecture | Planned | Outline lockfile strategy + config loader; to file under `docs/adr/`. |
-| Update developer quickstart (`DEVELOPMENT_GUIDE.md`) | Docs | Planned | Include lockfile install command, config loader notes. |
-| Baseline monitoring of dependency build times | Observability | Planned | Add metric from CI during lockfile adoption. |
+| Draft ADR for environment parity & configuration | Architecture | Complete | `docs/adr/ADR-002-environment-parity-config.md` accepted (Sprint A0). |
+| Update developer quickstart (`DEVELOPMENT_GUIDE.md`) | Docs | Complete | New §0 Quickstart covers `uv` sync + cached config usage. |
+| Baseline monitoring of dependency build times | Observability | Complete | `scripts/ci/record_dependency_install_metrics.py` + Grafana panel log metrics to `artifacts/bench_logs/`. |
 
 ## Deliverables
 - Dependency audit report
@@ -28,6 +28,8 @@ Raise the baseline for reproducible builds and shared configuration so every dow
 - Dashboard panel capturing dependency install duration
 
 ## Dependency Inventory Notes (2025-10-13)
+
+Full matrix lives in `docs/developer/DEPENDENCY_INVENTORY.md`; highlights remain here for quick reference.
 
 - `pyproject.toml` runtime deps: FastAPI, uvicorn, numpy >=1.24, Prometheus client, httpx/requests, cachetools, Redis, Kafka-python, SQLAlchemy + psycopg (both new `psycopg[binary]` and legacy `psycopg2-binary`), cryptography, PyJWT.
 - Dev extras pinned via `requirements-dev.txt`: formatting (black 25.1.0, isort 6.0.1), linting (ruff 0.13.0), testing (pytest 8.4.2, pytest-asyncio 0.23), docs (Sphinx 7.2.6, myst-parser), profiling (pyinstrument 5.1.1, scalene 1.5, py-spy 0.3.14), numpy pinned to 1.26.4 for CI compatibility.
@@ -53,6 +55,7 @@ Raise the baseline for reproducible builds and shared configuration so every dow
 | 2025-10-13 | AI assistant | Added dependency inventory notes and introduced cached config helpers. |
 | 2025-10-13 | AI assistant | Documented `uv` lock maintenance flow in `DEVELOPMENT_GUIDE.md`. |
 | 2025-10-13 | AI assistant | Completed repository-wide migration to the cached config accessor. |
+| 2025-10-13 | AI assistant | Finalized dependency inventory, ADR-002, Quickstart, and install metrics instrumentation. |
 
 ---
 

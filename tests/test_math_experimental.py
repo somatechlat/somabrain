@@ -1,22 +1,17 @@
 import numpy as np
-from somabrain.math import (
-    LearnedUnitaryRoles,
-    FrequentDirections,
-    estimate_spectral_interval,
-)
+from somabrain.math import FrequentDirections, estimate_spectral_interval
+from somabrain.quantum import HRRConfig, QuantumLayer
 
 
-def test_learned_roles_roundtrip():
-    d = 128
-    lr = LearnedUnitaryRoles(d)
-    lr.init_role("r1", seed=0)
-    x = np.random.RandomState(1).randn(d)
-    y = lr.bind("r1", x)
-    xhat = lr.unbind("r1", y)
-    err = np.linalg.norm(x - xhat) / np.linalg.norm(x)
-    # FFT-based phase binding/unbinding is numerically invertible up to
-    # floating point error; allow a small tolerance.
-    assert err < 1e-4
+def test_mask_roles_roundtrip():
+    cfg = HRRConfig(dim=128, seed=0, dtype="float32")
+    q = QuantumLayer(cfg)
+    a = q.random_vector()
+    token = "mask:role"
+    bound = q.bind_unitary(a, token)
+    recovered = q.unbind_exact_unitary(bound, token)
+    err = np.linalg.norm(a - recovered) / max(np.linalg.norm(a), 1e-9)
+    assert err < 1e-5
 
 
 def test_fd_rho_basic():

@@ -1,4 +1,4 @@
-9797Benchmarks
+Benchmarks
 =================
 
 .. note::

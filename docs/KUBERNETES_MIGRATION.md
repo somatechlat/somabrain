@@ -39,7 +39,7 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
   - SOMABRAIN_OPA_URL=http://sb-opa:8181
   - SOMABRAIN_REDIS_URL=redis://sb-redis:6379/0
 - To reach services from the host (for running `.venv`-based tests):
-  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696/9797, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
+  - Option A (recommended for dev): use `kubectl port-forward` for each service you need reachable on localhost (API 9696, Redis 6379, Postgres 55432, OPA 8181). The helper script `scripts/port_forward_api.sh` handles the primary API tunnel.
   - Option B: Use production ingress via `somabrain-public` LoadBalancer service on port 9999 with nginx ingress controller and TLS termination (configured in `k8s/full-stack.yaml`).
   - Option C: Access via HTTPS ingress at `https://somabrain.internal:9999` after port-forwarding the ingress controller and adding host entry.
 
@@ -73,7 +73,7 @@ Run the full DEV_FULL stack in Kubernetes so Somabrain connects to real Kafka/OP
 ### Full-stack validation checklist
 - [ ] Create the target namespace (e.g. `somabrain-dev` or `somabrain-prod`)
 - [ ] Apply `k8s/full-stack.yaml` (or your environment-specific overlay)
-- [ ] Port-forward Somabrain service to localhost:9696 (and optional 9797) and verify `/health`
+- [ ] Port-forward Somabrain service to localhost:9696 and verify `/health`
 - [ ] Run `scripts/sb_precheck.py` against forwarded services
 - [ ] Execute integration test suite from `.venv` (or in-cluster job) against the stack
 
@@ -96,7 +96,7 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main
 ./scripts/setup_ingress_tls.sh
 # port-forward services needed for host tests
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
-kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 # access via production ingress path (port 9999)

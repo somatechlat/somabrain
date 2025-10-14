@@ -154,13 +154,13 @@ Notes on environment:
 Goal: demonstrate that the deployed brain updates memory, feedback stores, and session history when driven through public endpoints.
 
 1. Prepare connectivity via `kubectl port-forward`:
-  - `somabrain-test` → `127.0.0.1:9797`
+  - `somabrain-test` → `127.0.0.1:9696`
   - `sb-redis` → `127.0.0.1:6379`
   - `postgres` → `127.0.0.1:55432`
 2. Export live endpoint variables (pytest skips automatically if any health probe fails):
 
   ```bash
-  export SOMA_API_URL=http://127.0.0.1:9797
+  export SOMA_API_URL=http://127.0.0.1:9696
   export SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
   export SOMABRAIN_POSTGRES_LOCAL_PORT=55432
   ```

@@ -141,7 +141,7 @@
         "default": "somabrain_dev",
         "options": [
           { "text": "dev (9696)", "value": "somabrain_dev" },
-          { "text": "prod (9797)", "value": "somabrain_prod" }
+          { "text": "prod (9696)", "value": "somabrain_prod" }
         ],
         "current": { "text": "dev (9696)", "value": "somabrain_dev" },
         "includeAll": false,

@@ -3,9 +3,8 @@
 # ---------------------------------------------------------------------------
 # start_test_server.sh
 # ---------------------------------------------------------------------------
-# Starts a *second* SomaBrain FastAPI instance on port 9797 for the live test
-# suite.  The production server (port 9696) is left untouched – this script
-# respects any existing process on that port.
+# Starts a SomaBrain FastAPI instance on port 9696 for the live test
+# suite. Override SOMABRAIN_PORT to pick a different port if needed.
 #
 # Usage:
 #   BRAIN_MODE=dev scripts/start_test_server.sh &
@@ -15,9 +14,9 @@
 
 set -euo pipefail
 
-# Export a distinct port for the test instance.  The app reads SOMABRAIN_PORT
-# from the environment, so we only need to set it here.
-export SOMABRAIN_PORT=9797
+# Export the port for the test instance.  Override SOMABRAIN_PORT to pick an
+# alternate value before invoking the script.
+export SOMABRAIN_PORT=${SOMABRAIN_PORT:-9696}
 export SOMABRAIN_HOST=0.0.0.0
 
 # Allow the caller to pass additional uvicorn arguments (e.g. reload).

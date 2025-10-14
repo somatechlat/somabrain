@@ -33,7 +33,7 @@ Option A (port-forward, recommended for parity with CI and strict-real tests):
 
 ```bash
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &
-kubectl -n somabrain-prod port-forward svc/somabrain-test 9797:9797 &
+kubectl -n somabrain-prod port-forward svc/somabrain-test 9696:9696 &
 kubectl -n somabrain-prod port-forward svc/sb-redis 6379:6379 &
 kubectl -n somabrain-prod port-forward svc/postgres 55432:5432 &
 kubectl -n somabrain-prod port-forward svc/sb-opa 8181:8181 &
