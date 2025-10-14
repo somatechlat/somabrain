@@ -1,7 +1,8 @@
+import copy
 import os
 
 from somabrain.config import (
-    load_config,
+    get_config,
     load_truth_budget,
     _validate_and_map_truth_budget,
     TruthBudget,
@@ -11,7 +12,7 @@ from somabrain.config import (
 def test_truth_budget_example_loads():
     path = os.path.join(os.getcwd(), "docs", "truth_budget_example.yaml")
     assert os.path.isfile(path), "example YAML missing"
-    cfg = load_config()
+    cfg = copy.deepcopy(get_config())
     cfg.truth_budget_path = path
     load_truth_budget(cfg)
     assert cfg.truth_budget is not None

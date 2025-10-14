@@ -148,21 +148,21 @@ def create_server(
         deployments set this to match CPU availability.
     memory_client:
         Pre-configured ``MemoryClient``. When omitted we instantiate one using
-        ``somabrain.config.load_config`` so the server mirrors the behaviour of
+        ``somabrain.config.get_config`` so the server mirrors the behaviour of
         the HTTP API.
     """
 
     if memory_client is None:
         try:
-            from .config import load_config
+            from .config import get_config
 
-            cfg = load_config()
+            cfg = get_config()
         except Exception:
             cfg = None
         if cfg is None:
-            from somabrain.config import load_config as _load_cfg
+            from somabrain.config import get_config as _get_cfg
 
-            cfg = _load_cfg()
+            cfg = _get_cfg()
         memory_client = MemoryClient(cfg)
 
     listen_port = port if port is not None else _resolve_port()

@@ -43,7 +43,7 @@ from typing import List, Optional, Tuple
 
 from somabrain.interfaces.memory import MemoryBackend
 
-from somabrain.config import load_config
+from somabrain.config import get_config
 # Shared settings for developer/stub flags
 try:  # pragma: no cover - optional dependency in legacy layouts
     from common.config.settings import settings as shared_settings
@@ -53,7 +53,7 @@ except Exception:
 # to check the flag and raise if a stub path would be used.
 
 # Load configuration for outbox path
-_cfg = load_config()
+_cfg = get_config()
 _OUTBOX_PATH = getattr(_cfg, "outbox_path", "./data/somabrain/outbox.jsonl")
 
 try:

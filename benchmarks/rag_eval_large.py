@@ -30,7 +30,7 @@ from fastapi.testclient import TestClient
 
 from somabrain import runtime as rt
 from somabrain.app import app
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.services.memory_service import MemoryService
 
 
@@ -124,7 +124,7 @@ def run(
     docs, labels = _mk_docs(n_docs, n_topics)
     topics = sorted(set(labels))
     # Prefer direct memory service to avoid rate limiting during bulk ingest
-    cfg = load_config()
+    cfg = get_config()
     ns = f"{cfg.namespace}:{tenant}"
     memsvc = MemoryService(rt.mt_memory, ns) if rt.mt_memory is not None else None
     for d in docs:

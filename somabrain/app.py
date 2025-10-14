@@ -64,7 +64,7 @@ from somabrain.auth import require_admin_auth, require_auth  # import admin auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
 
 # SomaBrain internal modules
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.context_hrr import HRRContextConfig
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
@@ -796,7 +796,7 @@ class SecurityMiddleware:
         return False
 
 
-cfg = load_config()
+cfg = get_config()
 try:
     # If a truth budget loader exists prefer it for runtime config
     from somabrain.config import load_truth_budget

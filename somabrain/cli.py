@@ -22,7 +22,7 @@ import argparse
 import os
 import sys
 
-from .config import load_config
+from .config import get_config
 from .journal import compact_journal, rotate_journal
 
 
@@ -106,7 +106,7 @@ def journal_cli(argv: list[str] | None = None) -> int:
     p_cmp.add_argument("--namespace", default="public")
     args = parser.parse_args(argv)
 
-    cfg = load_config()
+    cfg = get_config()
     base_dir = str(getattr(cfg, "journal_dir", "./data/somabrain"))
     ns = str(getattr(args, "namespace", "public"))
     if args.cmd == "rotate":

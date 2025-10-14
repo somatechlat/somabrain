@@ -40,7 +40,7 @@ from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from ..config import load_config
+from ..config import get_config
 from .audit import AuditLogger
 from .metrics import POLICY_DECISIONS
 from .policy import PolicyEngine
@@ -67,8 +67,8 @@ class ControlsMiddleware(BaseHTTPMiddleware):
         except Exception:
             raw_body = b""
         headers = dict(request.headers)
-        # Load fresh configuration for this request
-        cfg = load_config()
+        # Load configuration once per request using cached helper
+        cfg = get_config()
         ctx = {
             "path": request.url.path,
             "method": request.method,

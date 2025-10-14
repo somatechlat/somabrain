@@ -23,6 +23,7 @@ Functions:
 from __future__ import annotations
 
 from dataclasses import dataclass, field  # add field import
+from functools import lru_cache
 from typing import List, Optional, Any
 
 try:
@@ -703,3 +704,22 @@ def load_config_and_truth() -> Config:
         # swallow errors; leave cfg as-is
         pass
     return cfg
+
+
+@lru_cache(maxsize=1)
+def get_config() -> Config:
+    """Return a cached process-wide Config instance.
+
+    This calls :func:`load_config` on first access and memoizes the result so hot paths
+    avoid repeated YAML and environment parsing. Use :func:`reload_config` when
+    configuration changes need to be observed within the same process.
+    """
+
+    return load_config()
+
+
+def reload_config() -> Config:
+    """Clear the cached Config and reload it from disk/environment."""
+
+    get_config.cache_clear()
+    return get_config()

@@ -19,7 +19,7 @@ def test_neuromodulators_admin_auth_and_audit(tmp_path, monkeypatch):
 
     # Remove any existing audit file
     audit_path = getattr(
-        _cfg_mod.load_config(), "audit_log_path", "./data/somabrain/audit.log"
+        _cfg_mod.get_config(), "audit_log_path", "./data/somabrain/audit.log"
     )
     try:
         os.remove(audit_path)

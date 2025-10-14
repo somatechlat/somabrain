@@ -290,9 +290,9 @@ class QuantumLayer:
         # If the project-level hybrid math feature is enabled, prefer the
         # learned-unitary phases if available in the experimental math package.
         try:
-            from somabrain.config import load_config
+            from somabrain.config import get_config
 
-            cfg = load_config()
+            cfg = get_config()
             if getattr(cfg, "hybrid_math_enabled", False):
                 # Attempt to use learned phases from somabrain.math (best-effort)
                 try:
@@ -750,9 +750,9 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
         else:
             # Best-effort: inspect global runtime config if available
             try:
-                from somabrain.config import load_config
+                from somabrain.config import get_config
 
-                runtime_cfg = load_config()
+                runtime_cfg = get_config()
                 hybrid_enabled = bool(
                     getattr(runtime_cfg, "hybrid_math_enabled", False)
                 )

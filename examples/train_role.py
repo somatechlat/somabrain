@@ -11,9 +11,12 @@ This is intentionally small, self-contained, and uses only repository internal A
 simple gradient that encourages correct unbinding.
 """
 
-from somabrain.config import load_config
-from somabrain.quantum import HRRConfig, make_quantum_layer
+import copy
+
 import numpy as np
+
+from somabrain.config import get_config
+from somabrain.quantum import HRRConfig, make_quantum_layer
 
 
 def simple_reconstruction_gradient(theta, qlayer, token, target_vector):
@@ -43,7 +46,7 @@ def simple_reconstruction_gradient(theta, qlayer, token, target_vector):
 
 
 def main():
-    cfg = load_config()
+    cfg = copy.deepcopy(get_config())
     # enable hybrid for example runtime if not already
     cfg.hybrid_math_enabled = True
     hrr = HRRConfig(dim=256, seed=123, dtype="float32")

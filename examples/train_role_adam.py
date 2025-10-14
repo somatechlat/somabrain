@@ -11,6 +11,7 @@ Usage:
 
 # ruff: noqa: E402,F841  # allow imports after sys.path manipulation & ignore unused variable
 
+import copy
 import os
 import sys
 
@@ -19,7 +20,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.quantum import HRRConfig, make_quantum_layer
 import numpy as np
 
@@ -77,7 +78,7 @@ def analytic_phase_gradient(theta, layer, token, x):
 
 
 def main():
-    cfg = load_config()
+    cfg = copy.deepcopy(get_config())
     cfg.hybrid_math_enabled = True
     hrr = HRRConfig(dim=256, seed=1337, dtype="float32")
     # signal to factory to prefer HybridQuantumLayer

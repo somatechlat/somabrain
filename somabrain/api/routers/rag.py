@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Request
 
 from somabrain.auth import require_auth
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.schemas import RAGRequest, RAGResponse
 from somabrain.tenant import get_tenant
 
@@ -33,7 +33,7 @@ async def rag_retrieve(
 
     Returns the pipeline's RAGResponse on success.
     """
-    cfg = load_config()
+    cfg = get_config()
     ctx = get_tenant(request, cfg.namespace)
     require_auth(request, cfg)
     # namespace header is part of ctx; universe can be in body or header

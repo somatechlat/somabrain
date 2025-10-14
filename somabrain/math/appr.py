@@ -8,7 +8,7 @@ algorithm suitable for unit tests and small graphs.
 from typing import Dict, Iterable, Tuple, Optional
 
 # lazy import of runtime config to avoid circular imports
-from somabrain.config import load_config
+from somabrain.config import get_config
 
 
 def appr_push(
@@ -28,7 +28,7 @@ def appr_push(
     # Use dictionaries for sparse vectors
     # resolve eps from truth-budget if not provided
     if eps is None:
-        cfg = load_config()
+        cfg = get_config()
         eps = getattr(cfg, "truth_appr_eps", 1e-4)
 
     r = {seed: 1.0}

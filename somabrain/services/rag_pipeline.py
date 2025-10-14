@@ -644,10 +644,10 @@ async def run_rag_pipeline(
             if mem_backend is None:
                 try:
                     # Last-resort local backend to ensure persistence in tests/dev
-                    from somabrain.config import load_config as _load
+                    from somabrain.config import get_config as _get_config
                     from somabrain.memory_pool import MultiTenantMemory
 
-                    mem_backend = MultiTenantMemory(_load())
+                    mem_backend = MultiTenantMemory(_get_config())
                     try:
                         import somabrain.app as _app_mod
 

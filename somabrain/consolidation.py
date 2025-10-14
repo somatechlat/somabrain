@@ -36,11 +36,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import random
 from typing import List, Tuple
 import time as _time
 
-from .config import Config, load_config
+from .config import Config, get_config
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
 from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH
@@ -166,7 +167,7 @@ def main():
     args = parser.parse_args()
 
     tenant = args.tenant
-    cfg = load_config()
+    cfg = copy.deepcopy(get_config())
     mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)  # type: ignore
     mtmem = MultiTenantMemory(cfg)
     if args.nrem:

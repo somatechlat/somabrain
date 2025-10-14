@@ -11,11 +11,12 @@ Usage:
 If NUM_LINKS is omitted, defaults to 10,000 links.
 """
 
+import copy
 import random
 import time
 from typing import List, Tuple
 
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.memory_pool import MultiTenantMemory
 
 
@@ -29,7 +30,7 @@ def _random_coord() -> Tuple[float, float, float]:
 
 
 def run_benchmark(num_links: int = 10_000) -> None:
-    cfg = load_config()
+    cfg = copy.deepcopy(get_config())
     # Memory modes removed. Ensure HTTP endpoint configured for the memory service
     cfg.http.endpoint = cfg.http.endpoint or "http://localhost:9595"
     pool = MultiTenantMemory(cfg)

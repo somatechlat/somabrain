@@ -4,11 +4,12 @@
 Usage:
     python -m scripts.print_hrr_config
 """
-from somabrain.quantum import HRRConfig
-from somabrain.config import load_config
 import json
 
-cfg = load_config()
+from somabrain.config import get_config
+from somabrain.quantum import HRRConfig
+
+cfg = get_config()
 if not getattr(cfg, "use_hrr", False):
     print(json.dumps({"hrr_enabled": False}, indent=2))
 else:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from somabrain.auth import require_auth
-from somabrain.config import load_config
+from somabrain.config import get_config
 from somabrain.schemas import Persona
 from somabrain.tenant import get_tenant
 
@@ -37,7 +37,7 @@ async def put_persona(
     Uses optimistic CAS if the client supplies an If-Match header containing the
     current ETag. Returns an ETag header for the newly stored representation.
     """
-    cfg = load_config()
+    cfg = get_config()
     ctx = get_tenant(request, cfg.namespace)
     require_auth(request, cfg)
 
@@ -56,10 +56,10 @@ async def put_persona(
             mem_backend = None
     if mem_backend is None:
         try:
-            from somabrain.config import load_config as _load
+            from somabrain.config import get_config as _get_cfg
             from somabrain.memory_pool import MultiTenantMemory
 
-            mem_backend = MultiTenantMemory(_load())
+            mem_backend = MultiTenantMemory(_get_cfg())
             try:
                 setattr(_rt, "mt_memory", mem_backend)
             except Exception:
@@ -122,7 +122,7 @@ async def put_persona(
 @router.get("/{pid}")
 async def get_persona(pid: str, request: Request, response: Response):
     """Retrieve the latest Persona record for pid. Returns 404 if not found."""
-    cfg = load_config()
+    cfg = get_config()
     ctx = get_tenant(request, cfg.namespace)
     require_auth(request, cfg)
 
@@ -158,7 +158,7 @@ async def get_persona(pid: str, request: Request, response: Response):
 @router.delete("/{pid}")
 async def delete_persona(pid: str, request: Request):
     """Append a persona tombstone for pid. Best-effort delete for Phase 1."""
-    cfg = load_config()
+    cfg = get_config()
     ctx = get_tenant(request, cfg.namespace)
     require_auth(request, cfg)
 

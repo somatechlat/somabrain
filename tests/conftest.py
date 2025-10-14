@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import os
 import asyncio
 import builtins as _builtins
+import copy
 import json
+import os
 import subprocess
 import sys
 import time
@@ -197,7 +198,7 @@ def ensure_runtime_backend_and_clear_mirror():
     try:
         from somabrain import runtime as rt
         from somabrain.app import app
-        from somabrain.config import load_config as _load
+        from somabrain.config import get_config as _get_config
         from somabrain.memory_pool import MultiTenantMemory
 
         # Create a single MultiTenantMemory instance for the test session and
@@ -205,7 +206,7 @@ def ensure_runtime_backend_and_clear_mirror():
         # object. This avoids races where different parts of the pipeline use
         # different memory instances and persistence is not visible to readers.
         if rt.mt_memory is None and getattr(app, "mt_memory", None) is None:
-            shared = MultiTenantMemory(_load())
+            shared = MultiTenantMemory(copy.deepcopy(_get_config()))
             rt.mt_memory = shared
             app.mt_memory = shared
         else:
