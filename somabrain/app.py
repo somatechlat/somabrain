@@ -77,6 +77,7 @@ from somabrain.scoring import UnifiedScorer
 from somabrain.sdr import LSHIndex, SDREncoder
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
+from somabrain.services.memory_sync_worker import setup_memory_sync_worker
 from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
@@ -808,6 +809,13 @@ try:
 except Exception:
     pass
 
+# Add timing middleware for request instrumentation
+try:
+    from somabrain.metrics import timing_middleware
+    app.middleware("http")(timing_middleware)
+except Exception:
+    pass
+
 app.add_middleware(SecurityMiddleware)
 try:
     app.add_middleware(ControlsMiddleware)
@@ -822,6 +830,13 @@ except Exception:
     log = globals().get("logger")
     if log:
         log.debug("Cognitive middleware not registered", exc_info=True)
+
+# Add timing middleware for request instrumentation
+try:
+    from somabrain.metrics import timing_middleware
+    app.middleware("http")(timing_middleware)
+except Exception:
+    pass
 
 try:
     from somabrain.api.middleware.opa import OpaMiddleware
@@ -1750,13 +1765,25 @@ async def health(request: Request) -> S.HealthResponse:
             )
         if relax_overrides:
             predictor_ok = True
-        memory_ok = True  # base assumption; refined below
+        # Strict real mode: memory service must be reachable for readiness
+        memory_ok = False
         try:
             mhealth = ns_mem.health()  # type: ignore[name-defined]
-            if isinstance(mhealth, dict) and "http" in mhealth:
-                memory_ok = bool(mhealth.get("http")) or mem_items > 0
+            if isinstance(mhealth, dict):
+                # In strict real mode, require HTTP endpoint to be healthy
+                memory_ok = bool(mhealth.get("http", False))
+            else:
+                memory_ok = bool(mhealth.get("ok", False)) if isinstance(mhealth, dict) else False
         except Exception:
-            memory_ok = mem_items > 0
+            memory_ok = False
+            
+        # Add circuit breaker state to health response
+        try:
+            from somabrain.services.memory_service import MemoryService
+            circuit_open = getattr(MemoryService, '_circuit_open', False)
+            resp["memory_circuit_open"] = bool(circuit_open)
+        except Exception:
+            resp["memory_circuit_open"] = None
         embedder_ok = embedder is not None
         # OPA readiness (only required if fail-closed posture is enabled)
         if shared_settings is not None:
@@ -1865,6 +1892,12 @@ async def health(request: Request) -> S.HealthResponse:
             alerts.append("observability_metrics_missing")
     return resp
 
+
+# Metrics endpoint for Prometheus scraping
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    return await M.metrics_endpoint()
 
 # Alias endpoint for legacy health check used in tests
 @app.get("/healthz", include_in_schema=False)
@@ -3074,7 +3107,7 @@ _background_task = None
 
 
 @app.on_event("startup")
-async def start_background_workers():
+async def start_memory_sync_worker():
     """Start a periodic worker that processes the outbox for all tenants
     and attempts circuit‑breaker recovery via health checks.
     """
@@ -3107,7 +3140,7 @@ async def start_background_workers():
 
 
 @app.on_event("shutdown")
-async def stop_background_workers():
+async def stop_memory_sync_worker():
     """Cancel the background outbox worker on application shutdown."""
     global _background_task
     if _background_task:

@@ -17,6 +17,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
+from somabrain.db.models.outbox import OutboxEvent
+
 try:
     from common.config.settings import settings as shared_settings
 except Exception:  # pragma: no cover - optional dependency during migration

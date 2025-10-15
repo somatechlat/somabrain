@@ -1116,3 +1116,20 @@ async def timing_middleware(
             response, "status_code", 500 if response is None else response.status_code
         )
         HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
+
+CIRCUIT_BREAKER_STATE = Gauge(
+    "somabrain_memory_circuit_breaker_state",
+    "The state of the memory service circuit breaker (1=open, 0=closed).",
+    registry=registry,
+)
+MEMORY_OUTBOX_PENDING_ITEMS = Gauge(
+    "somabrain_memory_outbox_pending_items",
+    "Number of memory operations waiting in the outbox to be synced.",
+    registry=registry,
+)
+MEMORY_OUTBOX_SYNC_TOTAL = Counter(
+    "somabrain_memory_outbox_sync_total",
+    "Total number of memory sync operations from the outbox.",
+    ["status"],
+    registry=registry,
+)

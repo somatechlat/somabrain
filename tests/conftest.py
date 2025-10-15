@@ -169,13 +169,10 @@ def pytest_configure(config):
             )
     # Ensure STRICT_REAL mode uses an in-process Mahalanobis predictor instead of the stub.
     os.environ.setdefault("SOMABRAIN_PREDICTOR_PROVIDER", "mahal")
-    # Force strict real mode for the entire test session unless explicitly bypassed.
+    # Force strict real mode for the entire test session.
     # This disables silent stub fallbacks (see somabrain.stub_audit) and forbids fakeredis.
-    if os.environ.get("SOMABRAIN_STRICT_REAL_BYPASS", "0") not in ("1", "true", "yes"):
-        os.environ["SOMABRAIN_STRICT_REAL"] = "1"
-        print("[pytest_configure] STRICT REAL MODE enabled (SOMABRAIN_STRICT_REAL=1)")
-    else:
-        print("[pytest_configure] STRICT REAL MODE bypassed by user request")
+    os.environ["SOMABRAIN_STRICT_REAL"] = "1"
+    print("[pytest_configure] STRICT REAL MODE enabled (SOMABRAIN_STRICT_REAL=1)")
 
 
 # Autouse fixture to reset state before each test function

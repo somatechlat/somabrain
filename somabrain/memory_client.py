@@ -353,7 +353,7 @@ class MemoryClient:
         # imports in some runtime contexts.
         self._http: Optional[Any] = None
         self._http_async: Optional[Any] = None
-        self._stub_store: list[dict] = []
+        # Strict real mode: no local stub storage
         self._graph: Dict[Any, Any] = {}
         self._lock = RLock()
         # New: path for outbox persistence (default within data dir)
@@ -1628,29 +1628,8 @@ class MemoryClient:
         except Exception:
             in_async = False
 
+        # Strict real mode: no local mirroring, only use real HTTP service + outbox for failures
         p2: dict[str, Any] | None = None
-        # Mirror locally for quick reads and visibility
-        if _ALLOW_LOCAL_MIRRORS:
-            try:
-                p2 = dict(payload)
-                p2["coordinate"] = coord
-                with self._lock:
-                    _audit_stub_usage("memory_client.remember_stub_append")
-                    self._stub_store.append(p2)
-                try:
-                    # Audit any write to the in-process stub/mirror. In strict mode
-                    # `record_stub` will raise and prevent the mirror write.
-                    from somabrain.stub_audit import record_stub
-
-                    record_stub("memory_client.remember.stub_mirror")
-                except Exception:
-                    # In non-strict mode record_stub increments counters; if it
-                    # raised (strict mode) this except block will not run because
-                    # the exception should propagate. Keep append guarded.
-                    pass
-                _GLOBAL_PAYLOADS.setdefault(self.cfg.namespace, []).append(p2)
-            except Exception:
-                p2 = None
 
         try:
             payload.setdefault("coordinate", coord)
@@ -1907,33 +1886,8 @@ class MemoryClient:
         in a thread executor.
         """
         # Mirror locally first for read-your-writes semantics (optional)
+        # Strict real mode: no local mirroring, only HTTP service
         p2: dict[str, Any] | None = None
-        if _ALLOW_LOCAL_MIRRORS:
-            try:
-                _refresh_builtins_globals()
-                enriched, universe, _hdr = self._compat_enrich_payload(
-                    payload, coord_key
-                )
-                coord = _stable_coord(f"{universe}::{coord_key}")
-                p2 = dict(enriched)
-                p2["coordinate"] = coord
-                with self._lock:
-                    _audit_stub_usage("memory_client.aremember_stub_append")
-                    self._stub_store.append(p2)
-                try:
-                    ns = getattr(self.cfg, "namespace", None)
-                    if ns is not None:
-                        try:
-                            from somabrain.stub_audit import record_stub
-
-                            record_stub("memory_client.recall.stub_mirror")
-                        except Exception:
-                            pass
-                        _GLOBAL_PAYLOADS.setdefault(ns, []).append(p2)
-                except Exception:
-                    pass
-            except Exception:
-                pass
         if self._http_async is not None:
             try:
                 enriched, universe, compat_hdr = self._compat_enrich_payload(

@@ -2,6 +2,7 @@ services:
   redis:
     image: redis:7.2-alpine
     container_name: sb_redis
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -19,10 +20,12 @@ services:
       retries: 3
     volumes:
       - redis_data:/data
+    command: ["sh", "-c", "rm -f /data/dump.rdb && redis-server"]
 
   kafka:
     image: apache/kafka:3.7.0
     container_name: sb_kafka
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -100,6 +103,7 @@ services:
   kafka_exporter:
     image: danielqsj/kafka-exporter:v1.7.0
     container_name: sb_kafka_exporter
+    restart: unless-stopped
     command:
       - --kafka.server=kafka:9092
     deploy:
@@ -110,32 +114,44 @@ services:
           memory: 32M
     depends_on:
       kafka:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${KAFKA_EXPORTER_HOST_PORT:-0}:9308"
     networks:
       - somabrain_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:9308/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   opa:
-    image: openpolicyagent/opa:0.48.0
+    image: openpolicyagent/opa:0.48.0-debug
     container_name: sb_opa
+    restart: unless-stopped
     deploy:
       resources:
         limits:
           memory: 64M
         reservations:
           memory: 32M
-    command: ["run", "--server", "--addr=0.0.0.0:8181", "--prometheus", "/policies"]
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "--diagnostic-addr=0.0.0.0:8282", "/policies"]
     networks:
       - somabrain_net
     ports:
       - "${OPA_HOST_PORT:-0}:8181"
     volumes:
       - ./ops/opa/policies:/policies:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8181/health?plugins"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   prometheus:
     image: prom/prometheus:v2.49.0
     container_name: sb_prometheus
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -152,6 +168,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: sb_postgres
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -168,10 +185,16 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - somabrain_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soma -d somabrain"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: sb_postgres_exporter
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -182,11 +205,16 @@ services:
       - DATA_SOURCE_NAME=postgresql://soma:soma_pass@sb_postgres:5432/somabrain?sslmode=disable
     depends_on:
       postgres:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${POSTGRES_EXPORTER_HOST_PORT:-0}:9187"
     networks:
       - somabrain_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:9187/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   somabrain:
     build:
@@ -194,6 +222,7 @@ services:
       dockerfile: Dockerfile
     image: somabrain:latest
     container_name: sb_somabrain
+    restart: unless-stopped
     deploy:
       resources:
         limits:
@@ -202,13 +231,13 @@ services:
           memory: 96M
     depends_on:
       redis:
-        condition: service_started
+        condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
       opa:
-        condition: service_started
+        condition: service_healthy
       postgres:
-        condition: service_started
+        condition: service_healthy
     networks:
       - somabrain_net
     environment:
@@ -238,6 +267,33 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  outbox_publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: sb_outbox_publisher
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.workers.outbox_publisher"]
+    environment:
+      SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
+      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_FORCE_FULL_STACK: "1"
+      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
+      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
+      SOMABRAIN_OUTBOX_BATCH_SIZE: "100"
+      SOMABRAIN_OUTBOX_MAX_DELAY: "5.0"
+      SOMABRAIN_JOURNAL_DIR: "/var/lib/somabrain/journal"
 
 volumes:
   kafka_data:

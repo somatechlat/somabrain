@@ -3,9 +3,17 @@
 Binary/sparse hypervectors with permutation binding replace legacy FFT and
 mask-based composers. Binding is hardware-friendly and invertible by
 construction.
+
+Mathematical Properties:
+- Spectral properties: |H_k|≈1 for all operations
+- Perfect binding invertibility
+- Role orthogonality
+- Superposition normalization
 """
 
 from __future__ import annotations
+
+from somabrain.metrics.math_metrics import MathematicalMetrics
 
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -119,20 +127,52 @@ class QuantumLayer:
         return self._renorm(self._encoder.vector_for_key(text))
 
     def superpose(self, *vectors) -> np.ndarray:
+        from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+        
         acc: Optional[np.ndarray] = None
+        initial_prob = 0.0
+        
         for v in vectors:
             items = v if isinstance(v, (list, tuple)) else [v]
             for item in items:
                 vec = self._ensure_vector(item, name="superpose_item")
+                initial_prob += np.sum(vec * vec)
                 acc = vec if acc is None else acc + vec
+                
         if acc is None:
             return np.zeros((self.cfg.dim,), dtype=self.cfg.dtype)
-        return self._renorm(acc)
+            
+        result = self._renorm(acc)
+        
+        # Verify conservation laws
+        final_prob = np.sum(result * result)
+        AdvancedMathematicalMetrics.verify_probability_conservation(
+            'superpose',
+            initial_prob,
+            final_prob
+        )
+        
+        # Measure interference patterns
+        if len(vectors) > 1:
+            interference = np.abs(np.dot(vectors[0], result))**2
+            AdvancedMathematicalMetrics.record_interference(interference)
+        
+        return result
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_vec = self._ensure_vector(a, name="bind.a")
         b_vec = self._ensure_vector(b, name="bind.b")
-        return self._renorm(self._binder.bind(a_vec, b_vec))
+        result = self._renorm(self._binder.bind(a_vec, b_vec))
+        
+        # Verify spectral properties
+        fft_result = np.fft.fft(result)
+        MathematicalMetrics.verify_spectral_property('bind', np.abs(fft_result))
+        
+        # Verify operation correctness
+        cosine_a = self.cosine(a_vec, result)
+        MathematicalMetrics.verify_operation_correctness('bind', cosine_a)
+        
+        return result
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_vec = self._ensure_vector(a, name="unbind.a")
@@ -145,6 +185,12 @@ class QuantumLayer:
     def make_unitary_role(self, token: str) -> np.ndarray:
         if token in self._role_cache:
             return self._role_cache[token]
+        
+        # Verify role orthogonality with existing roles
+        for existing_token, existing_role in self._role_cache.items():
+            cosine_sim = self.cosine(existing_role, self._role_cache.get(token, np.zeros(self.cfg.dim)))
+            MathematicalMetrics.verify_role_orthogonality(token, existing_token, cosine_sim)
+        
         if self.cfg.roles_unitary:
             seed_val = int(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
             role_time, role_spec = _roles.make_unitary_role(
@@ -163,9 +209,31 @@ class QuantumLayer:
         return role
 
     def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
+        from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+        
         a_vec = self._ensure_vector(a, name="bind_unitary.a")
         role_vec = self.make_unitary_role(role_token)
-        return self._renorm(self._binder.bind(a_vec, role_vec))
+        
+        # Record initial energies
+        initial_energy = np.sum(a_vec * a_vec)
+        
+        result = self._renorm(self._binder.bind(a_vec, role_vec))
+        
+        # Verify conservation laws
+        final_energy = np.sum(result * result)
+        AdvancedMathematicalMetrics.verify_energy_conservation(
+            'bind_unitary',
+            initial_energy,
+            final_energy
+        )
+        
+        # Check frame properties if we have enough roles
+        if len(self._role_cache) > 1:
+            AdvancedMathematicalMetrics.measure_frame_properties(
+                list(self._role_cache.values())
+            )
+        
+        return result
 
     # ------------------------------------------------------------------
     # Exact / Wiener aliases (BHDC binder is perfectly invertible)

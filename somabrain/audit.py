@@ -16,6 +16,8 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from somabrain.db.outbox import enqueue_event
+
 # Import FastAPI Request only if available to avoid hard dependency at import time
 try:
     from fastapi import Request  # type: ignore
@@ -106,6 +108,14 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     ev.setdefault("ts", time.time())
     ev.setdefault("event_id", str(uuid.uuid4()))
     ev.setdefault("schema_version", "audit_event_v1")
+
+    if os.getenv("SOMABRAIN_STRICT_REAL") == "1":
+        try:
+            enqueue_event(topic=topic, payload=ev, dedupe_key=ev["event_id"])
+            return True
+        except Exception:
+            LOGGER.exception("Failed to enqueue audit event to outbox")
+            return False
 
     # Optional: validate against schema if jsonschema is available and schema exists.
     try:
