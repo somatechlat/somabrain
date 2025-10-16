@@ -56,7 +56,11 @@ class DensityMatrix:
         MathematicalMetrics.verify_density_matrix(np.trace(self.rho), min_eigenval)
         
         eigvals = np.clip(eigvals, 0, None)
+        if np.all(eigvals <= 1e-12):
+            floor = 1e-6
+            eigvals = np.full_like(eigvals, floor)
         self.rho = (eigvecs * eigvals) @ eigvecs.T
+        self.rho = (self.rho + self.rho.T) * 0.5
         
         # Verify mathematical invariant
         MathematicalMetrics.verify_mathematical_invariant('density_matrix_psd', float(self.is_psd()))

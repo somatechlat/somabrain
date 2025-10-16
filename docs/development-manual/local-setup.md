@@ -32,12 +32,12 @@ uv pip sync uv.lock
 
 ### 3. Start Development Stack
 ```bash
-# Start all services with Docker port mapping (30000+)
-./scripts/assign_ports.sh  # Finds free ports from 30000 onward
+# Start all services with standard container ports
+./scripts/assign_ports.sh  # Creates .env with standard port mapping
 docker compose up -d
 
 # Verify services are running
-curl -fsS http://localhost:30000/health | jq
+curl -fsS http://localhost:9696/health | jq
 ```
 
 ### 4. Verify Installation
@@ -84,7 +84,7 @@ pip install -e .[dev]
 ### Docker Stack Configuration
 
 #### Environment Variables
-The Docker stack uses the following port mapping:
+The Docker stack uses direct port access (standard container ports):
 ```bash
 # Core settings for local development
 SOMABRAIN_STRICT_REAL=1              # Enforce production code paths
@@ -93,12 +93,12 @@ SOMABRAIN_REQUIRE_MEMORY=1           # Memory service must be available
 SOMABRAIN_DISABLE_AUTH=1             # Skip auth for local development
 SOMABRAIN_MODE=development           # Development mode identifier
 
-# Service endpoints (Docker 30000+ range, configured in .env)
-SOMABRAIN_HOST_PORT=30000            # SomaBrain API (host)
-REDIS_HOST_PORT=30001                # Redis (host)
-KAFKA_HOST_PORT=30002                # Kafka (host)
-OPA_HOST_PORT=30004                  # OPA (host)
-POSTGRES_HOST_PORT=30006             # Postgres (host)
+# Service access (standard container ports, direct to localhost)
+SOMABRAIN_HOST_PORT=9696             # SomaBrain API
+REDIS_HOST_PORT=6379                 # Redis
+KAFKA_HOST_PORT=9092                 # Kafka
+OPA_HOST_PORT=8181                   # OPA
+POSTGRES_HOST_PORT=5432              # Postgres
 
 # Container-internal URLs (used within compose network)
 SOMABRAIN_REDIS_HOST=somabrain_redis

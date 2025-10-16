@@ -84,8 +84,9 @@ mkdir somabrain && cd somabrain
 curl -sSL https://raw.githubusercontent.com/somatechlat/somabrain/main/docker-compose.yml -o docker-compose.yml
 curl -sSL https://raw.githubusercontent.com/somatechlat/somabrain/main/.env.example -o .env
 
+```bash
 # 3. Configure environment (optional)
-# Edit .env file to customize ports (default 30000-30007 for Docker), memory limits, etc.
+# Edit .env file to customize ports (standard container ports), memory limits, etc.
 
 # 4. Start services
 docker compose up -d
@@ -95,12 +96,10 @@ docker compose logs -f
 ```
 
 #### Service Access Points
-- **API**: http://localhost:30000
-- **Health Check**: http://localhost:30000/health  
-- **API Documentation**: http://localhost:30000/docs
-- **Metrics**: http://localhost:30000/metrics
-
-**Note**: Docker host ports start at 30000 (SomaBrain API), with backing services at 30001–30007.
+- **API**: http://localhost:9696
+- **Health Check**: http://localhost:9696/health  
+- **API Documentation**: http://localhost:9696/docs
+- **Metrics**: http://localhost:9696/metrics
 
 ### Kubernetes Deployment
 
@@ -143,8 +142,8 @@ pip install somabrain
 # 2. Start required services (Redis, PostgreSQL)
 # Using Docker for simplicity:
 ```bash
-docker run -d --name redis -p 30001:6379 redis:7-alpine
-docker run -d --name postgres -p 30006:5432 \
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+docker run -d --name postgres -p 5432:5432 \
   -e POSTGRES_DB=somabrain \
   -e POSTGRES_USER=somabrain \
   -e POSTGRES_PASSWORD=password \
@@ -153,8 +152,8 @@ docker run -d --name postgres -p 30006:5432 \
 
 **Environment Configuration**:
 ```bash
-export SOMABRAIN_REDIS_URL="redis://localhost:30001/0"
-export SOMABRAIN_POSTGRES_URL="postgresql://somabrain:password@localhost:30006/somabrain"
+export SOMABRAIN_REDIS_URL="redis://localhost:6379/0"
+export SOMABRAIN_POSTGRES_URL="postgresql://somabrain:password@localhost:5432/somabrain"
 ```
 
 # 3. Configure environment
@@ -175,9 +174,9 @@ The most commonly configured settings:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SOMABRAIN_PORT` | `9696` (internal container) | HTTP server bind port (container only; published as 30000 via Docker) |
+| `SOMABRAIN_PORT` | `9696` | HTTP server port (Docker/direct access) |
 | `SOMABRAIN_HOST` | `0.0.0.0` | Server bind address |
-| `SOMABRAIN_REDIS_URL` | `redis://somabrain_redis:6379/0` (container), or `redis://localhost:30001/0` (host) | Redis connection URL |
+| `SOMABRAIN_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL |
 | `SOMABRAIN_POSTGRES_URL` | Auto-configured | PostgreSQL connection URL |
 | `SOMABRAIN_LOG_LEVEL` | `INFO` | Logging verbosity (DEBUG, INFO, WARNING, ERROR) |
 | `SOMABRAIN_AUTH_DISABLED` | `false` | Disable authentication (development only) |

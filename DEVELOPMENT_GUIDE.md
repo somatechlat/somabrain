@@ -1,32 +1,28 @@
 > :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
 
-## Dynamic Port Discovery and Usage
+## Direct Port Access
 
-SomaBrain uses a standardized Docker host port mapping and optional dynamic port assignment:
+SomaBrain uses standard container ports for direct access:
 
-**Docker Port Scheme (30000–30007)**:
-- SomaBrain API: 30000
-- Redis: 30001
-- Kafka: 30002
-- Kafka Exporter: 30003
-- OPA: 30004
-- Prometheus: 30005
-- Postgres: 30006
-- Postgres Exporter: 30007
+**Docker Port Scheme (direct container ports)**:
+- SomaBrain API: **9696** (direct access via localhost:9696)
+- Redis: **6379** (localhost:6379)
+- Kafka: **9092** (localhost:9092)
+- Kafka Exporter: **9308** (localhost:9308)
+- OPA: **8181** (localhost:8181)
+- Prometheus: **9090** (localhost:9090)
+- Postgres: **5432** (localhost:5432)
+- Postgres Exporter: **9187** (localhost:9187)
 
-- All code and services use internal container hostnames/ports (e.g., `redis://somabrain_redis:6379/0`).
-- The `scripts/assign_ports.sh` script can find free ports starting from 30000 and write them to `.env` for Docker Compose.
-- If you run the stack with dynamic ports, check `.env` for the actual host/port mappings.
-- You can override these variables manually in `.env` if needed.
+- All services expose their container ports directly to localhost without offset.
+- Internal container-to-container communication uses service hostnames (e.g., `redis://somabrain_redis:6379/0`).
 
-**Example – Override for local development**:
+**Example – Local development**:
 ```sh
-export SOMABRAIN_REDIS_URL=redis://127.0.0.1:30001/0
-export SOMABRAIN_KAFKA_URL=kafka://127.0.0.1:30002
-python somabrain/app.py
+# Access directly on standard ports
+curl http://localhost:9696/health
+redis-cli -h localhost -p 6379
 ```
-
-All code, scripts, and documentation use the container names or environment variables to stay portable.
 # DEVELOPMENT_GUIDE.md
 
 ## Overview
@@ -95,16 +91,16 @@ docker build -t somabrain:latest .
 
 ## 3. Running the Stack
 
-To run the full stack with automated port assignment:
+To run the full stack with standard port mapping:
 
 ```sh
 ./scripts/assign_ports.sh
 docker compose up -d
 ```
 
-- The `assign_ports.sh` script will find available ports starting from 30000 and create a `.env` file.
-- `docker-compose` will use the `.env` file to launch the services with the assigned Docker ports (30000–30007).
-- You can view the assigned ports in the `.env` file.
+- The `assign_ports.sh` script will create a `.env` file with standard container ports.
+- `docker-compose` will use the `.env` file to launch the services with direct port access.
+- Services are accessible at `localhost:PORT` (e.g., `localhost:9696` for SomaBrain API).
 
 ---
 

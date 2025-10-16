@@ -128,35 +128,37 @@ class QuantumLayer:
 
     def superpose(self, *vectors) -> np.ndarray:
         from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
-        
+
         acc: Optional[np.ndarray] = None
-        initial_prob = 0.0
-        
+
+        first_component: Optional[np.ndarray] = None
+
         for v in vectors:
             items = v if isinstance(v, (list, tuple)) else [v]
             for item in items:
                 vec = self._ensure_vector(item, name="superpose_item")
-                initial_prob += np.sum(vec * vec)
+                if first_component is None:
+                    first_component = vec
                 acc = vec if acc is None else acc + vec
-                
+
         if acc is None:
             return np.zeros((self.cfg.dim,), dtype=self.cfg.dtype)
-            
+
         result = self._renorm(acc)
-        
-        # Verify conservation laws
-        final_prob = np.sum(result * result)
+
+        # Verify conservation laws against the unit-norm invariant
+        final_prob = float(np.dot(result, result))
         AdvancedMathematicalMetrics.verify_probability_conservation(
-            'superpose',
-            initial_prob,
-            final_prob
+            "superpose",
+            1.0,
+            final_prob,
         )
-        
+
         # Measure interference patterns
-        if len(vectors) > 1:
-            interference = np.abs(np.dot(vectors[0], result))**2
+        if len(vectors) > 1 and first_component is not None:
+            interference = float(np.abs(np.dot(first_component, result)) ** 2)
             AdvancedMathematicalMetrics.record_interference(interference)
-        
+
         return result
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -171,6 +173,16 @@ class QuantumLayer:
         # Verify operation correctness
         cosine_a = self.cosine(a_vec, result)
         MathematicalMetrics.verify_operation_correctness('bind', cosine_a)
+
+        # Record binder condition number for diagnostics
+        from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+
+        denom_abs = np.abs(b_vec)
+        min_val = float(np.min(denom_abs)) if denom_abs.size else 0.0
+        max_val = float(np.max(denom_abs)) if denom_abs.size else 0.0
+        if max_val > 0.0:
+            cond = max_val / max(min_val, 1e-12)
+            AdvancedMathematicalMetrics.record_binder_condition(cond)
         
         return result
 
@@ -185,11 +197,6 @@ class QuantumLayer:
     def make_unitary_role(self, token: str) -> np.ndarray:
         if token in self._role_cache:
             return self._role_cache[token]
-        
-        # Verify role orthogonality with existing roles
-        for existing_token, existing_role in self._role_cache.items():
-            cosine_sim = self.cosine(existing_role, self._role_cache.get(token, np.zeros(self.cfg.dim)))
-            MathematicalMetrics.verify_role_orthogonality(token, existing_token, cosine_sim)
         
         if self.cfg.roles_unitary:
             seed_val = int(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
@@ -206,6 +213,16 @@ class QuantumLayer:
             rng = np.random.default_rng(seed64)
             role = rng.normal(0.0, 1.0, size=self.cfg.dim).astype(self.cfg.dtype)
             role = self._renorm(role)
+
+        # Verify orthogonality against existing roles before caching
+        if self._role_cache:
+            from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+
+            for existing_token, existing_role in self._role_cache.items():
+                cosine_sim = self.cosine(existing_role, role)
+                MathematicalMetrics.verify_role_orthogonality(token, existing_token, cosine_sim)
+                AdvancedMathematicalMetrics.check_orthogonality(cosine_sim)
+
         self._role_cache[token] = role
         return role
 

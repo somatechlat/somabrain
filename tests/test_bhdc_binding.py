@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from somabrain.quantum import HRRConfig, QuantumLayer
 
@@ -66,3 +67,12 @@ def test_bhdc_wiener_alias_returns_unbind():
     rec_w = q.unbind_wiener(bound, b, snr_db=20.0)
     rec = q.unbind(bound, b)
     assert np.allclose(rec, rec_w, atol=1e-7)
+
+
+def test_bhdc_unbind_rejects_zero_role_components():
+    q = _bhdc_layer(dim=64)
+    a = q.random_vector()
+    zero_role = np.zeros_like(a)
+    bound = q.bind(a, zero_role)
+    with pytest.raises(ValueError):
+        q.unbind(bound, zero_role)

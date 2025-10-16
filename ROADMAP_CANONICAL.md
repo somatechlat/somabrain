@@ -1,6 +1,6 @@
 # Roadmap Canonical — Brain 3.0
 
-Last updated: 2025-10-15
+Last updated: 2025-10-16
 
 This document is the single canonical roadmap for evolving SomaBrain into Brain 3.0: a mathematically rigorous, production-grade system built on truth and elegance. NO mocking, NO bypasses, NO approximations - only pure mathematical implementation backed by Kafka, Postgres, Redis, OPA and observed by Prometheus/Grafana.
 
@@ -108,6 +108,38 @@ Ongoing Sprints (week 6+)
 - Redis optimization: key strategy, TTLs, cache hit/miss metrics.
 - OPA hardening and policies; fail-closed default for strict-real.
 - Security: TLS for services, secret management, production config templates.
+
+## Roadmap Addendum — Learning Brain Stability (Oct 2025)
+
+This addendum captures the focused plan to harden the learning brain, preserve mathematical guarantees, and validate long-horizon recall behaviour. All work adheres to strict-real policies and leverages real services only.
+
+### Objectives
+- Preserve graceful recall degradation (≥70% top-1 accuracy at 5k memories) under BHDC math.
+- Stabilize unified scoring, FD sketches, and density matrices with full invariant telemetry.
+- Ship benchmark + dashboard tooling to continuously verify learning brain performance.
+
+### Sprint 1 — Mathematical Foundations (1.5 weeks)
+- Fix unitary-role orthogonality checks and probability metrics in `somabrain/quantum.py`.
+- Harden `PermutationBinder` division semantics and expand BHDC property tests.
+- Improve density matrix projection resilience and add corresponding tests/metrics.
+- Extend mathematical metrics (orthogonality, conservation, binder conditioning) and update docs (`docs/architecture/math/*`).
+
+### Sprint 2 — Unified Recall Stability (2 weeks)
+- Redesign recency damping in `memory_client._rescore_and_rank_hits` with bounded age semantics surfaced via `Config`.
+- Blend density-aware cleanup back into WM (`somabrain/wm.py`) and surface margin metrics.
+- Tune HRR context management (`context_hrr.py`) to mitigate interference at scale.
+- Upgrade learning/recall benchmarks to emit memory-count vs accuracy curves for Grafana parity; add integration tests for ≥0.7 accuracy at target load.
+
+### Sprint 3 — Learning Brain Validation (2.5 weeks)
+- Integrate end-to-end learning soak into CI/nightly (`run_learning_test.py`, cognition benches) with artifact retention.
+- Expand strict-real enforcement across memory client paths and ensure no stub fallbacks during tests.
+- Update Prometheus/Grafana assets with new metrics (FD health, recall vs capacity, recency clamps).
+- Document configuration knobs and release guidance; validate full test suite + stress benches.
+
+### Guiding Guardrails
+- Deterministic BHDC/HRR operations with instrumentation for every invariant.
+- No mock/stub fallbacks; strict-real enforcement end-to-end.
+- Telemetry-first validation: dashboards must surface invariant violations before accuracy regresses.
 
 ## Parallel sprint assignments (who/what)
 

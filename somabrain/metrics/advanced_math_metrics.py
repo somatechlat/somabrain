@@ -37,6 +37,11 @@ frame_condition_number = Gauge(
     'Condition number of the role frame'
 )
 
+binding_condition_number = Gauge(
+    'binding_condition_number',
+    'Condition number of binding operands'
+)
+
 permutation_cycle_length = Histogram(
     'permutation_cycle_length',
     'Distribution of permutation cycle lengths',
@@ -133,7 +138,10 @@ class AdvancedMathematicalMetrics:
         final_prob: float
     ) -> None:
         """Verify and record probability conservation."""
-        relative_error = abs(final_prob - initial_prob) / initial_prob
+        if abs(initial_prob) <= 1e-12:
+            relative_error = abs(final_prob - initial_prob)
+        else:
+            relative_error = abs(final_prob - initial_prob) / initial_prob
         probability_conservation.labels(operation=operation).set(relative_error)
 
     @staticmethod
@@ -146,3 +154,8 @@ class AdvancedMathematicalMetrics:
         """Check and record orthogonality violations."""
         if abs(cosine_sim) > threshold:
             orthogonality_violation.inc()
+
+    @staticmethod
+    def record_binder_condition(condition_number: float) -> None:
+        """Record binding condition number for diagnostics."""
+        binding_condition_number.set(max(0.0, float(condition_number)))

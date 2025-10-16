@@ -161,6 +161,7 @@ class PermutationBinder:
         if mix_mode not in {"none", "hadamard"}:
             raise ValueError("mix must be 'none' or 'hadamard'")
         self._mix = mix_mode
+        self._eps = 1e-8
 
     # ------------------------------------------------------------------
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -171,6 +172,9 @@ class PermutationBinder:
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         c_arr = np.asarray(c, dtype=self._dtype)
         b_arr = np.asarray(b, dtype=self._dtype)
+        denom_abs = np.abs(b_arr)
+        if np.any(denom_abs < self._eps):
+            raise ValueError("PermutationBinder cannot unbind with zero-valued role components")
         return c_arr / b_arr
 
     # ------------------------------------------------------------------
