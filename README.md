@@ -1,4 +1,4 @@
-# SomaBrain — Math-Powered Memory & Reasoning Engine (GitHub-ready overview)
+# SomaBrain — Math-Powered Memory & Reasoning Engine
 
 **SomaBrain** is a deterministic, float-precision, hyperdimensional memory + transport engine that **learns from use**, **recalls under heavy superposition**, and **routes knowledge like a living network**. It plugs into your apps as a set of small, composable modules.
 
