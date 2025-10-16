@@ -1,7 +1,9 @@
+name: somabrain
+
 services:
-  redis:
+  somabrain_redis:
     image: redis:7.2-alpine
-    container_name: sb_redis
+    container_name: somabrain_redis
     restart: unless-stopped
     deploy:
       resources:
@@ -12,7 +14,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${REDIS_HOST_PORT}:${REDIS_HOST_PORT}"
+      - "${REDIS_HOST_PORT:-30001}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -22,9 +24,9 @@ services:
       - redis_data:/data
     command: ["sh", "-c", "rm -f /data/dump.rdb && redis-server"]
 
-  kafka:
+  somabrain_kafka:
     image: apache/kafka:3.7.0
-    container_name: sb_kafka
+    container_name: somabrain_kafka
     restart: unless-stopped
     deploy:
       resources:
@@ -35,9 +37,9 @@ services:
     environment:
       KAFKA_CFG_NODE_ID: 1
       KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@somabrain_kafka:9093"
       KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://somabrain_kafka:9092"
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
@@ -90,7 +92,7 @@ services:
           fi
           exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
     ports:
-      - "${KAFKA_HOST_PORT}:${KAFKA_HOST_PORT}"
+      - "${KAFKA_HOST_PORT:-30002}:9092"
     healthcheck:
       test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
       interval: 15s
@@ -99,12 +101,12 @@ services:
     networks:
       - somabrain_net
 
-  kafka_exporter:
+  somabrain_kafka_exporter:
     image: danielqsj/kafka-exporter:v1.7.0
-    container_name: sb_kafka_exporter
+    container_name: somabrain_kafka_exporter
     restart: unless-stopped
     command:
-      - --kafka.server=kafka:9092
+      - --kafka.server=somabrain_kafka:9092
     deploy:
       resources:
         limits:
@@ -112,10 +114,10 @@ services:
         reservations:
           memory: 32M
     depends_on:
-      kafka:
+      somabrain_kafka:
         condition: service_healthy
     ports:
-      - "${KAFKA_EXPORTER_HOST_PORT}:${KAFKA_EXPORTER_HOST_PORT}"
+      - "${KAFKA_EXPORTER_HOST_PORT:-30003}:9308"
     networks:
       - somabrain_net
     healthcheck:
@@ -124,9 +126,9 @@ services:
       timeout: 5s
       retries: 3
 
-  opa:
+  somabrain_opa:
     image: openpolicyagent/opa:0.48.0-debug
-    container_name: sb_opa
+    container_name: somabrain_opa
     restart: unless-stopped
     deploy:
       resources:
@@ -138,7 +140,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${OPA_HOST_PORT}:${OPA_HOST_PORT}"
+      - "${OPA_HOST_PORT:-30004}:8181"
     volumes:
       - ./ops/opa/policies:/policies:ro
     healthcheck:
@@ -147,9 +149,9 @@ services:
       timeout: 5s
       retries: 3
 
-  prometheus:
+  somabrain_prometheus:
     image: prom/prometheus:v2.49.0
-    container_name: sb_prometheus
+    container_name: somabrain_prometheus
     restart: unless-stopped
     deploy:
       resources:
@@ -160,13 +162,13 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${PROMETHEUS_HOST_PORT}:${PROMETHEUS_HOST_PORT}"
+      - "${PROMETHEUS_HOST_PORT:-30005}:9090"
     volumes:
       - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
-  postgres:
+  somabrain_postgres:
     image: postgres:15-alpine
-    container_name: sb_postgres
+    container_name: somabrain_postgres
     restart: unless-stopped
     deploy:
       resources:
@@ -179,7 +181,7 @@ services:
       - POSTGRES_PASSWORD=soma_pass
       - POSTGRES_DB=somabrain
     ports:
-      - "${POSTGRES_HOST_PORT}:${POSTGRES_HOST_PORT}"
+      - "${POSTGRES_HOST_PORT:-30006}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -190,9 +192,9 @@ services:
       timeout: 5s
       retries: 3
 
-  postgres_exporter:
+  somabrain_postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: sb_postgres_exporter
+    container_name: somabrain_postgres_exporter
     restart: unless-stopped
     deploy:
       resources:
@@ -201,12 +203,12 @@ services:
         reservations:
           memory: 32M
     environment:
-      - DATA_SOURCE_NAME=postgresql://soma:soma_pass@sb_postgres:5432/somabrain?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain?sslmode=disable
     depends_on:
-      postgres:
+      somabrain_postgres:
         condition: service_healthy
     ports:
-      - "${POSTGRES_EXPORTER_HOST_PORT}:${POSTGRES_EXPORTER_HOST_PORT}"
+      - "${POSTGRES_EXPORTER_HOST_PORT:-30007}:9187"
     networks:
       - somabrain_net
     healthcheck:
@@ -215,12 +217,12 @@ services:
       timeout: 5s
       retries: 3
 
-  somabrain:
+  somabrain_app:
     build:
       context: .
       dockerfile: Dockerfile
     image: somabrain:latest
-    container_name: sb_somabrain
+    container_name: somabrain_app
     restart: unless-stopped
     deploy:
       resources:
@@ -229,13 +231,13 @@ services:
         reservations:
           memory: 96M
     depends_on:
-      redis:
+      somabrain_redis:
         condition: service_healthy
-      kafka:
+      somabrain_kafka:
         condition: service_healthy
-      opa:
+      somabrain_opa:
         condition: service_healthy
-      postgres:
+      somabrain_postgres:
         condition: service_healthy
     networks:
       - somabrain_net
@@ -245,10 +247,10 @@ services:
       SOMABRAIN_HOST: "0.0.0.0"
       SOMABRAIN_PORT: "9696"
       SOMABRAIN_WORKERS: "1"
-      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
-      SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
-      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
-      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
+      SOMABRAIN_REDIS_URL: "redis://somabrain_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://somabrain_kafka:9092"
+      SOMABRAIN_OPA_URL: "http://somabrain_opa:8181"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_FORCE_FULL_STACK: "1"
       SOMABRAIN_REQUIRE_MEMORY: "1"
@@ -260,24 +262,24 @@ services:
       SOMABRAIN_DEFAULT_TENANT: "sandbox"
       SOMABRAIN_MODE: "enterprise"
     ports:
-      - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_HOST_PORT}"
+      - "${SOMABRAIN_HOST_PORT:-30000}:9696"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-  outbox_publisher:
+  somabrain_outbox_publisher:
     build:
       context: .
       dockerfile: Dockerfile
     image: somabrain:latest
-    container_name: sb_outbox_publisher
+    container_name: somabrain_outbox_publisher
     restart: unless-stopped
     depends_on:
-      kafka:
+      somabrain_kafka:
         condition: service_healthy
-      postgres:
+      somabrain_postgres:
         condition: service_healthy
     networks:
       - somabrain_net
@@ -286,10 +288,10 @@ services:
       SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_FORCE_FULL_STACK: "1"
-      SOMABRAIN_REDIS_URL: "redis://sb_redis:6379/0"
-      SOMABRAIN_KAFKA_URL: "kafka://kafka:9092"
-      SOMABRAIN_OPA_URL: "http://sb_opa:8181"
-      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@sb_postgres:5432/somabrain"
+      SOMABRAIN_REDIS_URL: "redis://somabrain_redis:6379/0"
+      SOMABRAIN_KAFKA_URL: "kafka://somabrain_kafka:9092"
+      SOMABRAIN_OPA_URL: "http://somabrain_opa:8181"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain"
       SOMABRAIN_OUTBOX_BATCH_SIZE: "100"
       SOMABRAIN_OUTBOX_MAX_DELAY: "5.0"
       SOMABRAIN_JOURNAL_DIR: "/var/lib/somabrain/journal"
