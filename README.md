@@ -80,9 +80,11 @@ docker compose up -d
 ```
 
 **✅ Ready!** Access your cognitive system:
-- **API Documentation**: http://localhost:9696/docs (Interactive OpenAPI interface)
-- **Health Monitoring**: http://localhost:9696/health (System status)
-- **Metrics Dashboard**: http://localhost:9696/metrics (Prometheus metrics)
+- **API Documentation**: http://localhost:30000/docs (Interactive OpenAPI interface)
+- **Health Monitoring**: http://localhost:30000/health (System status)
+- **Metrics Dashboard**: http://localhost:30000/metrics (Prometheus metrics)
+
+**Note**: SomaBrain publishes on host port 30000 by default; the container internally binds to 9696.
 
 ### Option 2: Local Development
 ```bash
@@ -107,7 +109,7 @@ uvicorn somabrain.app:app --host 127.0.0.1 --port 9696
 import requests
 
 # 1. Store a memory
-requests.post("http://localhost:9696/remember", json={
+requests.post("http://localhost:30000/remember", json={
     "coord": None,
     "payload": {
         "content": "Paris is the capital of France",
@@ -117,7 +119,7 @@ requests.post("http://localhost:9696/remember", json={
 })
 
 # 2. Intelligent recall with cognitive scoring
-response = requests.post("http://localhost:9696/recall", json={
+response = requests.post("http://localhost:30000/recall", json={
     "query": "capital of France",
     "top_k": 5
 })
@@ -246,8 +248,8 @@ SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595
 SOMABRAIN_MEMORY_HTTP_TOKEN=dev-token
 
 # Infrastructure Dependencies
-SOMABRAIN_REDIS_URL=redis://localhost:6379/0
-SOMABRAIN_KAFKA_URL=kafka://localhost:9092
+SOMABRAIN_REDIS_URL=redis://localhost:30001/0
+SOMABRAIN_KAFKA_URL=kafka://localhost:30002
 SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
 
 # Production Controls

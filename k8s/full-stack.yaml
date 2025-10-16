@@ -207,13 +207,13 @@ spec:
     app: somabrain
   ports:
     - name: http-external
-      port: 9999
+      port: 30020
       targetPort: 9696
   type: LoadBalancer
   externalTrafficPolicy: Cluster
 
 ---
-# External ingress for production traffic binding to somabrain-public on port 9999 via the ingress controller.
+# External ingress for production traffic binding to somabrain-public on port 30020 via the ingress controller.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

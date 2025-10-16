@@ -32,11 +32,12 @@ uv pip sync uv.lock
 
 ### 3. Start Development Stack
 ```bash
-# Start all services with dynamic port assignment
-./scripts/dev_up.sh --rebuild
+# Start all services with Docker port mapping (30000+)
+./scripts/assign_ports.sh  # Finds free ports from 30000 onward
+docker compose up -d
 
 # Verify services are running
-curl -fsS http://localhost:9696/health | jq
+curl -fsS http://localhost:30000/health | jq
 ```
 
 ### 4. Verify Installation
@@ -83,7 +84,7 @@ pip install -e .[dev]
 ### Docker Stack Configuration
 
 #### Environment Variables
-The `scripts/dev_up.sh` script creates `.env.local` with these settings:
+The Docker stack uses the following port mapping:
 ```bash
 # Core settings for local development
 SOMABRAIN_STRICT_REAL=1              # Enforce production code paths
@@ -92,22 +93,29 @@ SOMABRAIN_REQUIRE_MEMORY=1           # Memory service must be available
 SOMABRAIN_DISABLE_AUTH=1             # Skip auth for local development
 SOMABRAIN_MODE=development           # Development mode identifier
 
-# Service endpoints (auto-assigned ports)
-SOMABRAIN_REDIS_HOST=127.0.0.1
-SOMABRAIN_REDIS_PORT=6379            # Dynamic port in ports.json
-SOMABRAIN_KAFKA_HOST=127.0.0.1
-SOMABRAIN_KAFKA_PORT=9092           # Dynamic port in ports.json
+# Service endpoints (Docker 30000+ range, configured in .env)
+SOMABRAIN_HOST_PORT=30000            # SomaBrain API (host)
+REDIS_HOST_PORT=30001                # Redis (host)
+KAFKA_HOST_PORT=30002                # Kafka (host)
+OPA_HOST_PORT=30004                  # OPA (host)
+POSTGRES_HOST_PORT=30006             # Postgres (host)
+
+# Container-internal URLs (used within compose network)
+SOMABRAIN_REDIS_HOST=somabrain_redis
+SOMABRAIN_REDIS_PORT=6379            # Container internal
+SOMABRAIN_KAFKA_HOST=somabrain_kafka
+SOMABRAIN_KAFKA_PORT=9092            # Container internal
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
 ```
 
 #### Manual Docker Compose
 ```bash
-# If dev_up.sh doesn't work, manual docker setup:
-docker compose up -d redis postgres kafka opa
+# If assign_ports.sh doesn't work, manual docker setup:
+docker compose up -d somabrain_redis somabrain_postgres somabrain_kafka somabrain_opa
 
 # Check service health
 docker compose ps
-docker compose logs somabrain
+docker compose logs somabrain_app
 ```
 
 ### IDE Configuration

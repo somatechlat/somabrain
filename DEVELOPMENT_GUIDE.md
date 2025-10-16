@@ -2,26 +2,31 @@
 
 ## Dynamic Port Discovery and Usage
 
-SomaBrain now supports dynamic port assignment for all major services (Kafka, Redis, Prometheus, etc.).
+SomaBrain uses a standardized Docker host port mapping and optional dynamic port assignment:
 
-- The startup script (`scripts/dev_up.sh`) will detect free ports and write them to `.env.local` and `ports.json`.
-- All code and scripts use the following environment variables to connect to services:
-	- `SOMABRAIN_REDIS_HOST` / `SOMABRAIN_REDIS_PORT`
-	- `SOMABRAIN_KAFKA_HOST` / `SOMABRAIN_KAFKA_PORT`
-	- `SOMABRAIN_PROMETHEUS_HOST` / `SOMABRAIN_PROMETHEUS_PORT`
-	- etc.
-- If you run the stack with dynamic ports, always check `.env.local` or `ports.json` for the actual host/port mappings.
-- You can override these variables manually if needed.
+**Docker Port Scheme (30000–30007)**:
+- SomaBrain API: 30000
+- Redis: 30001
+- Kafka: 30002
+- Kafka Exporter: 30003
+- OPA: 30004
+- Prometheus: 30005
+- Postgres: 30006
+- Postgres Exporter: 30007
 
-**Example:**
+- All code and services use internal container hostnames/ports (e.g., `redis://somabrain_redis:6379/0`).
+- The `scripts/assign_ports.sh` script can find free ports starting from 30000 and write them to `.env` for Docker Compose.
+- If you run the stack with dynamic ports, check `.env` for the actual host/port mappings.
+- You can override these variables manually in `.env` if needed.
 
+**Example – Override for local development**:
 ```sh
-export SOMABRAIN_REDIS_HOST=127.0.0.1
-export SOMABRAIN_REDIS_PORT=6380
+export SOMABRAIN_REDIS_URL=redis://127.0.0.1:30001/0
+export SOMABRAIN_KAFKA_URL=kafka://127.0.0.1:30002
 python somabrain/app.py
 ```
 
-All code, scripts, and documentation have been updated to use this pattern.
+All code, scripts, and documentation use the container names or environment variables to stay portable.
 # DEVELOPMENT_GUIDE.md
 
 ## Overview
@@ -97,8 +102,8 @@ To run the full stack with automated port assignment:
 docker compose up -d
 ```
 
-- The `assign_ports.sh` script will find available ports and create a `.env` file.
-- `docker-compose` will use the `.env` file to launch the services with the assigned ports.
+- The `assign_ports.sh` script will find available ports starting from 30000 and create a `.env` file.
+- `docker-compose` will use the `.env` file to launch the services with the assigned Docker ports (30000–30007).
 - You can view the assigned ports in the `.env` file.
 
 ---

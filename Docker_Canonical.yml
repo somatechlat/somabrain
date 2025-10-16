@@ -1,7 +1,7 @@
 services:
-  redis:
+  somabrain_redis:
     image: redis:7.2-alpine
-    container_name: sb_redis
+    container_name: somabrain_redis
     deploy:
       resources:
         limits:
@@ -11,7 +11,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${REDIS_HOST_PORT:-6379}:6379"
+      - "${REDIS_HOST_PORT:-30001}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
