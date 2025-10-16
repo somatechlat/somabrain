@@ -3,7 +3,13 @@ import uuid
 import time
 import requests
 
-BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
+# Use centralized configuration for consistent testing
+try:
+    from tests.test_config import SOMABRAIN_API_URL
+    BASE = SOMABRAIN_API_URL
+except ImportError:
+    # Fallback for standalone usage
+    BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
 
 
 def _api_get(path):
