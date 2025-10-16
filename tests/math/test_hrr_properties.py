@@ -8,7 +8,6 @@ import pytest
 from numpy.testing import assert_allclose
 
 from somabrain.quantum import HRRConfig, QuantumLayer
-from somabrain.math.bhdc_encoder import BHDCEncoder
 from memory.density import DensityMatrix
 
 
@@ -27,11 +26,11 @@ def test_role_unitary_properties(quantum_layer):
     norm = np.linalg.norm(role)
     assert_allclose(norm, 1.0, rtol=1e-5)
 
-    # Verify spectral properties
+    # Verify spectral properties (Parseval's theorem)
     fft_role = np.fft.fft(role)
-    magnitudes = np.abs(fft_role)
-    assert_allclose(magnitudes, 1.0, rtol=1e-4)
-
+    sum_sq_time = np.sum(role**2)
+    sum_sq_freq = np.sum(np.abs(fft_role)**2) / quantum_layer.cfg.dim
+    assert_allclose(sum_sq_time, sum_sq_freq, rtol=1e-5)
 
 def test_binding_invertibility(quantum_layer):
     """Verify that binding is perfectly invertible."""

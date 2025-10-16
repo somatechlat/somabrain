@@ -12,7 +12,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${REDIS_HOST_PORT:-0}:6379"
+      - "${REDIS_HOST_PORT}:${REDIS_HOST_PORT}"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -90,8 +90,7 @@ services:
           fi
           exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
     ports:
-      - "${KAFKA_HOST_PORT:-0}:9092"
-      - "${KAFKA_CONTROLLER_HOST_PORT:-0}:9093"
+      - "${KAFKA_HOST_PORT}:${KAFKA_HOST_PORT}"
     healthcheck:
       test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
       interval: 15s
@@ -116,7 +115,7 @@ services:
       kafka:
         condition: service_healthy
     ports:
-      - "${KAFKA_EXPORTER_HOST_PORT:-0}:9308"
+      - "${KAFKA_EXPORTER_HOST_PORT}:${KAFKA_EXPORTER_HOST_PORT}"
     networks:
       - somabrain_net
     healthcheck:
@@ -139,7 +138,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${OPA_HOST_PORT:-0}:8181"
+      - "${OPA_HOST_PORT}:${OPA_HOST_PORT}"
     volumes:
       - ./ops/opa/policies:/policies:ro
     healthcheck:
@@ -161,7 +160,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${PROMETHEUS_HOST_PORT:-0}:9090"
+      - "${PROMETHEUS_HOST_PORT}:${PROMETHEUS_HOST_PORT}"
     volumes:
       - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
@@ -180,7 +179,7 @@ services:
       - POSTGRES_PASSWORD=soma_pass
       - POSTGRES_DB=somabrain
     ports:
-      - "${POSTGRES_HOST_PORT:-0}:5432"
+      - "${POSTGRES_HOST_PORT}:${POSTGRES_HOST_PORT}"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -207,7 +206,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${POSTGRES_EXPORTER_HOST_PORT:-0}:9187"
+      - "${POSTGRES_EXPORTER_HOST_PORT}:${POSTGRES_EXPORTER_HOST_PORT}"
     networks:
       - somabrain_net
     healthcheck:
@@ -261,7 +260,7 @@ services:
       SOMABRAIN_DEFAULT_TENANT: "sandbox"
       SOMABRAIN_MODE: "enterprise"
     ports:
-      - "${SOMABRAIN_HOST_PORT:-9696}:9696"
+      - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_HOST_PORT}"
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
       interval: 30s

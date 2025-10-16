@@ -52,4 +52,5 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
             except Exception:
                 pass
             # Continue with request processing.
-            return await call_next(request)
+            from starlette.responses import JSONResponse
+            return JSONResponse(status_code=500, content={"message": "Internal Server Error"})

@@ -199,6 +199,7 @@ class QuantumLayer:
                 dtype=np.float32 if self.cfg.dtype == "float32" else np.float64,
             )
             role = role_time.astype(self.cfg.dtype, copy=False)
+            role = self._renorm(role)
             self._role_fft_cache[token] = role_spec.astype(np.complex64 if self.cfg.dtype == "float32" else np.complex128)
         else:
             seed64 = np.uint64(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))

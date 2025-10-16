@@ -20,66 +20,64 @@ def high_dim_quantum():
 
 
 def test_spectral_heat_diffusion(high_dim_quantum):
-    """Verify spectral heat diffusion properties using Chebyshev approximation."""
-    # Create test vector
-    v = high_dim_quantum.random_vector()
+        """Verify spectral heat diffusion properties using Chebyshev approximat
+ion."""                                                                                # Create test vector
+        v = high_dim_quantum.random_vector()
     
-    # Create Laplacian matrix
-    L = np.eye(high_dim_quantum.cfg.dim) - np.roll(np.eye(high_dim_quantum.cfg.dim), 1, axis=1)
-    L = L @ L.T
+        # Create Laplacian matrix
+        L = np.eye(high_dim_quantum.cfg.dim) - np.roll(np.eye(high_dim_quantum.cfg.dim), 1, axis=1)
+        L = L @ L.T
     
-    # Time parameter
-    t = 0.1
+        # Time parameter
+        t = 0.1
     
-    # Exact heat diffusion
-    exact = expm(-t * L) @ v
+        # Exact heat diffusion
+        exact = expm(-t * L) @ v
     
-    # Chebyshev approximation (as would be used in practice)
-    k = 10  # Chebyshev order
-    cheb = np.zeros_like(v)
-    x = v.copy()
-    cheb += x
-    x_prev = x.copy()
-    x = -2*t*L @ x
-    cheb += x
+        # Chebyshev approximation (as would be used in practice)
+        k = 30  # Chebyshev order
+        cheb = np.zeros_like(v)
+        x = v.copy()
+        cheb += x
+        x_prev = x.copy()
+        x = -2*t*L @ x
+        cheb += x
     
-    for i in range(2, k):
-        x_new = -2*t*L @ x - x_prev
-        cheb += x_new
-        x_prev = x
-        x = x_new
-        
-    # Verify approximation quality
-    error = np.linalg.norm(exact - cheb)
-    assert error < 0.1, f"Heat diffusion error too large: {error}"
-
+        for i in range(2, k):
+            x_new = -2*t*L @ x - x_prev
+            cheb += x_new
+            x_prev = x
+            x = x_new
+    
+        # Verify approximation quality
+        error = np.linalg.norm(exact - cheb)
+        assert error < 0.1, f"Heat diffusion error too large: {error}"
 
 def test_density_matrix_entropy(high_dim_quantum):
     """Verify von Neumann entropy properties of density matrix."""
     dim = 1024
     rho = DensityMatrix(dim)
-    
+
     # Create pure state
     pure_state = np.zeros(dim)
     pure_state[0] = 1
-    rho.update([pure_state])
-    
+    rho.update(np.array([pure_state]))
+
     # Pure state should have zero entropy
     eigvals = np.linalg.eigvalsh(rho.rho)
     eigvals = eigvals[eigvals > 1e-10]  # Remove numerical noise
-    entropy = -np.sum(eigvals * np.log2(eigvals))
+    entropy = -np.sum(eigvals * np.log(eigvals))
     assert entropy < 1e-5, f"Pure state entropy should be zero, got {entropy}"
-    
+
     # Maximally mixed state should have maximum entropy
     mixed_states = np.eye(dim)
     rho.update(mixed_states)
-    
+
     eigvals = np.linalg.eigvalsh(rho.rho)
     eigvals = eigvals[eigvals > 1e-10]
     entropy = -np.sum(eigvals * np.log2(eigvals))
     max_entropy = np.log2(dim)
     assert entropy < max_entropy, f"Mixed state entropy exceeds maximum: {entropy} > {max_entropy}"
-
 
 def test_role_frame_properties(high_dim_quantum):
     """Verify properties of the role frame (approximately tight frame)."""
@@ -135,15 +133,15 @@ def test_density_matrix_monotonicity(high_dim_quantum):
     """Verify monotonicity of density matrix updates."""
     dim = 1024
     rho = DensityMatrix(dim)
-    
+
     # Create sequence of states
-    states = [high_dim_quantum.random_vector() for _ in range(5)]
-    
+    states = [np.random.randn(dim) for _ in range(5)]
+    for i in range(len(states)):
+        states[i] /= np.linalg.norm(states[i])
+
     prev_entropy = float('-inf')
     for state in states:
-        rho.update([state])
-        
-        # Calculate von Neumann entropy
+        rho.update(np.array([state]))        # Calculate von Neumann entropy
         eigvals = np.linalg.eigvalsh(rho.rho)
         eigvals = eigvals[eigvals > 1e-10]
         entropy = -np.sum(eigvals * np.log2(eigvals))

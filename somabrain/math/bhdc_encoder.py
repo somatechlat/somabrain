@@ -165,34 +165,18 @@ class PermutationBinder:
     # ------------------------------------------------------------------
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_arr = np.asarray(a, dtype=self._dtype)
-        perm_b = self._permute_operand(b, expected_shape=a_arr.shape)
-        return (a_arr * perm_b).astype(self._dtype, copy=False)
+        b_arr = np.asarray(b, dtype=self._dtype)
+        return a_arr * b_arr
 
     def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         c_arr = np.asarray(c, dtype=self._dtype)
-        perm_b = self._permute_operand(b, expected_shape=c_arr.shape)
-        out = np.empty_like(c_arr)
-        tol = 1e-12 if self._dtype == np.float64 else 1e-6
-        mask = np.abs(perm_b) > tol
-        np.divide(c_arr, perm_b, out=out, where=mask)
-        if not np.all(mask):
-            out[~mask] = 0.0
-        return out.astype(self._dtype, copy=False)
+        b_arr = np.asarray(b, dtype=self._dtype)
+        return c_arr / b_arr
 
     # ------------------------------------------------------------------
     def permute(self, vec: np.ndarray, times: int = 1) -> np.ndarray:
         arr = np.asarray(vec, dtype=self._dtype)
-        if times == 0:
-            return arr
-        if times > 0:
-            idx = self._perm
-            for _ in range(times):
-                arr = arr[idx]
-            return arr
-        idx = self._perm_inv
-        for _ in range(-times):
-            arr = arr[idx]
-        return arr
+        return np.roll(arr, times)
 
     # ------------------------------------------------------------------
     def _permute_operand(self, operand: np.ndarray, *, expected_shape: Tuple[int, ...]) -> np.ndarray:

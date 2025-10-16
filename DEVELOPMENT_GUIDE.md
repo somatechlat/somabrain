@@ -90,15 +90,16 @@ docker build -t somabrain:latest .
 
 ## 3. Running the Stack
 
-To run the full stack in DEV_FULL mode (all services):
+To run the full stack with automated port assignment:
 
 ```sh
-./scripts/dev_up.sh DEV_FULL
+./scripts/assign_ports.sh
+docker compose up -d
 ```
 
-- This script brings up all required services (API, memory, DB, Kafka, etc.)
-- **Dynamic port mapping:** If a default port (e.g., 9092 for Kafka) is already in use, Docker will automatically assign a free host port. You can find the mapped port using `docker ps` or `docker compose ps`.
-- Update your client or environment variables to use the dynamically assigned host port if needed.
+- The `assign_ports.sh` script will find available ports and create a `.env` file.
+- `docker-compose` will use the `.env` file to launch the services with the assigned ports.
+- You can view the assigned ports in the `.env` file.
 
 ---
 

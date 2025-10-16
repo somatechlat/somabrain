@@ -25,28 +25,19 @@ def make_unitary_role(
     (dim//2+1,).
     """
     rng = _seed.rng_from_seed(seed)
-    # Start from gaussian and transform to spectrum
-    v = rng.standard_normal(size=(dim,)).astype(dtype)
-    # Compute unitary spectrum
-    V = _num.rfft_norm(v, n=dim, axis=-1)
-    # Normalize magnitude to 1 (preserve phase)
-    mag = np.abs(V)
-    # Avoid division by zero: replace zeros with 1 before dividing
-    mag_safe = np.where(mag == 0.0, 1.0, mag)
-    U = V / mag_safe
-    # Enforce exact unit magnitude
-    U = U / np.abs(U)
-    # Synthesize back to time domain using unitary inverse
-    u_time = _num.irfft_norm(U, n=dim, axis=-1).astype(dtype)
-    # Recompute spectrum to return canonical rfft representation with unit magnitude.
-    U_canon = _num.rfft_norm(u_time, n=dim, axis=-1)
-    mag = np.abs(U_canon)
-    mag_safe = np.where(mag == 0.0, 1.0, mag)
-    U_canon = U_canon / mag_safe
-    # Ensure exact unit magnitude (and avoid NaNs from zero divisions) by resetting non-finite bins.
-    U_canon = np.where(np.isfinite(U_canon), U_canon, 1.0 + 0.0j)
-    # Regenerate time-domain vector so it aligns with the adjusted spectrum.
+    
+    # Create a random phase spectrum
+    phase = rng.uniform(-np.pi, np.pi, size=(dim // 2 + 1,))
+    
+    # Create a unitary spectrum with unit magnitude
+    U_canon = np.exp(1j * phase).astype(np.complex64)
+    
+    # Synthesize to time domain
     u_time = _num.irfft_norm(U_canon, n=dim, axis=-1).astype(dtype)
+    
+    # Renormalize in time domain to ensure unit norm
+    u_time = _num.normalize_array(u_time)
+    
     return u_time, U_canon
 
 

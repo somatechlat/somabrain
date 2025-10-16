@@ -35,40 +35,40 @@ Functions:
 
 from __future__ import annotations
 
-from .. import metrics as app_metrics
+import somabrain.metrics as metrics
 
 
 def use_registry(r):
     # kept for compatibility; main code should use central somabrain.metrics
-    app_metrics.registry = r
+    metrics.registry = r
 
 
-POLICY_DECISIONS = app_metrics.get_counter(
+POLICY_DECISIONS = metrics.get_counter(
     "somabrain_policy_decisions_total",
     "Policy decisions",
     labelnames=["decision"],
 )
-AUDIT_WRITES = app_metrics.get_counter(
+AUDIT_WRITES = metrics.get_counter(
     "somabrain_audit_writes_total",
     "Audit log write events",
 )
 
 # Reality monitor
-REALITY_OK = app_metrics.get_counter(
+REALITY_OK = metrics.get_counter(
     "somabrain_reality_ok_total",
     "Reality checks that passed",
 )
-REALITY_LOW = app_metrics.get_counter(
+REALITY_LOW = metrics.get_counter(
     "somabrain_reality_low_total",
     "Reality checks that failed (low sources/confidence)",
 )
 
-DRIFT_SCORE = app_metrics.get_histogram(
+DRIFT_SCORE = metrics.get_histogram(
     "somabrain_drift_score",
     "Drift score (z-distance) of inputs",
     buckets=[i for i in range(0, 21)],
 )
-DRIFT_ALERT = app_metrics.get_counter(
+DRIFT_ALERT = metrics.get_counter(
     "somabrain_drift_alert_total",
     "Drift alerts over threshold",
 )
