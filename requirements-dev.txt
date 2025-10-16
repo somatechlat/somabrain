@@ -3,6 +3,8 @@ ruff==0.13.0
 isort==6.0.1
 pre-commit==4.3.0
 pytest==8.4.2
+pytest-asyncio==0.24.0
+pytest-env==1.1.5
 pytest-forked==1.5.0
 # Sphinx 8.2.x requires Python >=3.11; CI uses 3.10, pin to 7.2.x
 sphinx==7.2.6
