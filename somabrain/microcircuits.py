@@ -46,6 +46,8 @@ class MCConfig:
     per_col_capacity: int = 64
     vote_temperature: float = 0.25
     max_tenants: int = 1000
+    recency_time_scale: float = 60.0
+    recency_max_steps: float = 4096.0
 
 
 class MultiColumnWM:
@@ -71,6 +73,8 @@ class MultiColumnWM:
                     capacity=self.cfg.per_col_capacity,
                     dim=self.dim,
                     scorer=self._scorer,
+                    recency_time_scale=self.cfg.recency_time_scale,
+                    recency_max_steps=self.cfg.recency_max_steps,
                 )
                 for _ in range(max(1, int(self.cfg.columns)))
             ]

@@ -77,6 +77,8 @@ class Config:
     hrr_dim: int = 8192
     hrr_seed: int = 42
     hrr_anchors_max: int = 10000
+    hrr_decay_lambda: float = 0.0
+    hrr_cleanup_min_confidence: float = 0.0
     # BHDC math stack configuration
     math_binding_method: str = "bhdc"
     math_binding_seed: Optional[str] = None
@@ -102,6 +104,10 @@ class Config:
     scorer_weight_min: float = 0.0
     scorer_weight_max: float = 1.0
     scorer_recency_tau: float = 32.0
+    recall_recency_time_scale: float = 60.0
+    recall_recency_max_steps: float = 4096.0
+    wm_recency_time_scale: float = 60.0
+    wm_recency_max_steps: float = 4096.0
 
     # Memory Backend
     # Runtime memory access is performed exclusively through the external HTTP

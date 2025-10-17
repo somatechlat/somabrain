@@ -1092,7 +1092,12 @@ unified_scorer = UnifiedScorer(
 
 mt_wm = MultiTenantWM(
     dim=cfg.embed_dim,
-    cfg=MTWMConfig(per_tenant_capacity=max(64, cfg.wm_size), max_tenants=1000),
+    cfg=MTWMConfig(
+        per_tenant_capacity=max(64, cfg.wm_size),
+        max_tenants=1000,
+        recency_time_scale=cfg.wm_recency_time_scale,
+        recency_max_steps=cfg.wm_recency_max_steps,
+    ),
     scorer=unified_scorer,
 )
 mc_wm = MultiColumnWM(
@@ -1111,6 +1116,8 @@ mc_wm = MultiColumnWM(
             )
         ),
         vote_temperature=cfg.micro_vote_temperature,
+        recency_time_scale=cfg.wm_recency_time_scale,
+        recency_max_steps=cfg.wm_recency_max_steps,
     ),
     scorer=unified_scorer,
 )
@@ -1165,7 +1172,13 @@ rate_limiter = RateLimiter(RateConfig(rps=cfg.rate_rps, burst=cfg.rate_burst))
 _recall_cache: dict[str, TTLCache] = {}
 mt_ctx = (
     MultiTenantHRRContext(
-        quantum, HRRContextConfig(max_anchors=cfg.hrr_anchors_max), max_tenants=1000
+        quantum,
+        HRRContextConfig(
+            max_anchors=cfg.hrr_anchors_max,
+            decay_lambda=cfg.hrr_decay_lambda,
+            min_confidence=cfg.hrr_cleanup_min_confidence,
+        ),
+        max_tenants=1000,
     )
     if quantum
     else None

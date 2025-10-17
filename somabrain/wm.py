@@ -19,8 +19,10 @@ Classes:
 
 from __future__ import annotations
 
+import math
+import time
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 
@@ -50,6 +52,7 @@ class WMItem:
     vector: np.ndarray
     payload: dict
     tick: int = 0
+    admitted_at: float = 0.0
 
 
 class WorkingMemory:
@@ -92,6 +95,9 @@ class WorkingMemory:
         min_capacity: int | None = None,
         max_capacity: int | None = None,
         scorer: "UnifiedScorer | None" = None,
+        recency_time_scale: float = 60.0,
+        recency_max_steps: float = 4096.0,
+        now_fn: Callable[[], float] | None = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -114,6 +120,19 @@ class WorkingMemory:
         self._max_cap = int(max_capacity) if max_capacity is not None else int(capacity)
         self._t = 0  # simple timestep for recency
         self._scorer = scorer
+        self._now: Callable[[], float] = now_fn or time.time
+        self._recency_scale = self._validate_scale(recency_time_scale, 60.0)
+        self._recency_cap = self._validate_scale(recency_max_steps, 4096.0)
+
+    @staticmethod
+    def _validate_scale(value: float, default: float) -> float:
+        try:
+            v = float(value)
+        except Exception:
+            return float(default)
+        if not math.isfinite(v) or v <= 0:
+            return float(default)
+        return v
 
     @staticmethod
     def _cosine(a: np.ndarray, b: np.ndarray) -> float:
@@ -161,11 +180,13 @@ class WorkingMemory:
         if n > 0:
             vector = vector / n
         self._t += 1
+        now = self._now()
         self._items.append(
             WMItem(
                 vector=vector.astype("float32"),
                 payload=dict(payload),
                 tick=self._t,
+                admitted_at=float(now),
             )
         )
         if len(self._items) > self.capacity:
@@ -232,14 +253,15 @@ class WorkingMemory:
             ...     print(f"Similarity: {score:.3f}, Data: {payload}")
         """
         scored: List[Tuple[float, dict]] = []
+        now = self._now()
         for it in self._items:
             cos = self._cosine(query_vec, it.vector)
             if self._scorer is not None:
-                age = max(0, int(self._t - it.tick))
+                steps = self._recency_steps(now, it.admitted_at)
                 s = self._scorer.score(
                     query_vec,
                     it.vector,
-                    recency_steps=age,
+                    recency_steps=steps,
                     cosine=cos,
                 )
             else:
@@ -274,3 +296,12 @@ class WorkingMemory:
         for it in self._items:
             best = max(best, self._cosine(query_vec, it.vector))
         return max(0.0, 1.0 - best)
+
+    def _recency_steps(self, now: float, admitted_at: float) -> float:
+        age = max(0.0, float(now) - float(admitted_at))
+        if age <= 0.0:
+            return 0.0
+        steps = age / self._recency_scale
+        if steps <= 0.0:
+            return 0.0
+        return min(steps, self._recency_cap)

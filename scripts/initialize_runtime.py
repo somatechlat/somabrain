@@ -75,14 +75,28 @@ try:
         embedder = None
 
     try:
-        mt_wm = MultiTenantWM(dim=cfg.embed_dim, cfg=MTWMConfig(per_tenant_capacity=max(64, cfg.wm_size), max_tenants=1000))
+        mt_wm = MultiTenantWM(
+            dim=cfg.embed_dim,
+            cfg=MTWMConfig(
+                per_tenant_capacity=max(64, cfg.wm_size),
+                max_tenants=1000,
+                recency_time_scale=cfg.wm_recency_time_scale,
+                recency_max_steps=cfg.wm_recency_max_steps,
+            ),
+        )
     except Exception:
         mt_wm = None
 
     try:
         mc_wm = MultiColumnWM(
             dim=cfg.embed_dim,
-            cfg=MCConfig(columns=max(1, int(cfg.micro_circuits)), per_col_capacity=max(16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))), vote_temperature=cfg.micro_vote_temperature,),
+            cfg=MCConfig(
+                columns=max(1, int(cfg.micro_circuits)),
+                per_col_capacity=max(16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))),
+                vote_temperature=cfg.micro_vote_temperature,
+                recency_time_scale=cfg.wm_recency_time_scale,
+                recency_max_steps=cfg.wm_recency_max_steps,
+            ),
         )
     except Exception:
         mc_wm = None

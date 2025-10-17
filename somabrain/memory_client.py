@@ -1336,6 +1336,50 @@ class MemoryClient:
                 return narrowed
         return hits
 
+    def _recency_normalisation(self) -> tuple[float, float]:
+        scale = getattr(self.cfg, "recall_recency_time_scale", 60.0)
+        if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
+            scale = 60.0
+        cap = getattr(self.cfg, "recall_recency_max_steps", 4096.0)
+        if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
+            cap = 4096.0
+        return float(scale), float(cap)
+
+    @staticmethod
+    def _parse_payload_timestamp(raw: Any) -> float | None:
+        if raw is None:
+            return None
+        try:
+            if isinstance(raw, (int, float)):
+                value = float(raw)
+            elif isinstance(raw, str):
+                txt = raw.strip()
+                if not txt:
+                    return None
+                try:
+                    value = float(txt)
+                except ValueError:
+                    try:
+                        txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
+                        dt = datetime.fromisoformat(txt_norm)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        else:
+                            dt = dt.astimezone(timezone.utc)
+                        return float(dt.timestamp())
+                    except Exception:
+                        return None
+            else:
+                return None
+        except Exception:
+            return None
+        if not math.isfinite(value):
+            return None
+        # Accept millisecond epoch values transparently
+        if value > 1e12:
+            value /= 1000.0
+        return value
+
     def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
             # Fallback to old logic if scorer is not available
@@ -1343,6 +1387,8 @@ class MemoryClient:
             return self._rank_hits(hits, query)
 
         query_vec = self._embedder.embed(query)
+        scale, cap = self._recency_normalisation()
+        now_ts = datetime.now(timezone.utc).timestamp()
 
         def _text_of(p: dict) -> str:
             return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
@@ -1358,14 +1404,20 @@ class MemoryClient:
                 candidate_vec = self._embedder.embed(text)
                 
                 # Calculate recency_steps from timestamp
-                recency_steps = 0
-                ts = payload.get("timestamp")
-                if ts:
-                    try:
-                        now = datetime.now(timezone.utc).timestamp()
-                        recency_steps = int(now - float(ts))
-                    except (ValueError, TypeError):
-                        recency_steps = 0 # default if timestamp is invalid
+                recency_steps: float | None = None
+                ts_epoch = None
+                for key in ("timestamp", "ts", "created_at"):
+                    if key in payload:
+                        ts_epoch = self._parse_payload_timestamp(payload.get(key))
+                        if ts_epoch is not None:
+                            break
+                if ts_epoch is not None:
+                    age_seconds = max(0.0, now_ts - ts_epoch)
+                    normalised = age_seconds / scale
+                    if normalised > 0.0:
+                        recency_steps = min(normalised, cap)
+                    else:
+                        recency_steps = 0.0
 
                 new_score = self._scorer.score(
                     query_vec,

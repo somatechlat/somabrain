@@ -47,7 +47,7 @@ class MultiTenantHRRContext:
     def _ensure(self, tenant_id: str) -> HRRContext:
         ctx = self._ctxs.get(tenant_id)
         if ctx is None:
-            ctx = HRRContext(self.q, self.cfg)
+            ctx = HRRContext(self.q, self.cfg, context_id=tenant_id)
             self._ctxs[tenant_id] = ctx
         self._ctxs.move_to_end(tenant_id)
         while len(self._ctxs) > self.max_tenants:

@@ -12,6 +12,12 @@ use_hrr_cleanup: false
 hrr_dim: 8192
 hrr_seed: 42
 
+# Recency damping (seconds -> scorer steps)
+recall_recency_time_scale: 60.0
+recall_recency_max_steps: 4096.0
+wm_recency_time_scale: 60.0
+wm_recency_max_steps: 4096.0
+
 # Predictor
 predictor_provider: mahal      # stub|mahal|slow
 predictor_timeout_ms: 250

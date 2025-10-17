@@ -41,6 +41,8 @@ from .wm import WorkingMemory
 class MTWMConfig:
     per_tenant_capacity: int = 128
     max_tenants: int = 1000
+    recency_time_scale: float = 60.0
+    recency_max_steps: float = 4096.0
 
 
 class MultiTenantWM:
@@ -57,6 +59,8 @@ class MultiTenantWM:
                 capacity=self.cfg.per_tenant_capacity,
                 dim=self.dim,
                 scorer=self._scorer,
+                recency_time_scale=self.cfg.recency_time_scale,
+                recency_max_steps=self.cfg.recency_max_steps,
             )
             self._wms[tenant_id] = wm
         # LRU update
