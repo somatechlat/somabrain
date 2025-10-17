@@ -216,6 +216,7 @@ In-place dimension changes discouraged; prefer versioned cutovers.
 
 **Milestone A — Governance Core (2–3 weeks)**
 - Implement decay/rotation/cleanup, ANN integration, scorer parameters, unit + property tests.
+- Sprint A1 (in progress): Added `somabrain/memory/superposed_trace.py` with exponential decay, orthogonal rotation, and cleanup anchors plus unit tests (`tests/test_superposed_trace.py`).
 
 **Milestone B — WM/LTM Split & Hierarchical Recall (1–2 weeks)**
 - Namespace separation, promotion policies, integration tests.
