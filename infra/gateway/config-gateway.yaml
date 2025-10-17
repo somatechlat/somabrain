@@ -1,0 +1,70 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: somabrain-config-service
+    url: {{ env "SOMABRAIN_CONFIG_UPSTREAM" | default "http://somabrain-config.default.svc.cluster.local:8080" }}
+    routes:
+      - name: somabrain-config-route
+        paths:
+          - /memory/config
+        strip_path: false
+        methods: ["GET", "PATCH"]
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - config-admins
+          - name: request-validator
+            config:
+              version: draft4
+              parameter_schema:
+                body:
+                  - name: payload
+                    required: false
+                    schema:
+                      type: object
+                      properties:
+                        eta:
+                          type: number
+                        cleanup:
+                          type: object
+                      additionalProperties: true
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              header_names:
+                - Authorization
+              run_on_preflight: true
+      - name: somabrain-cutover-route
+        paths:
+          - /memory/cutover
+        strip_path: false
+        methods: ["POST"]
+        plugins:
+          - name: acl
+            config:
+              allow:
+                - config-admins
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              header_names:
+                - Authorization
+              run_on_preflight: true
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - X-Gateway-Route:config-cutover
+
+plugins:
+  - name: prometheus
+  - name: file-log
+    config:
+      path: {{ env "SOMABRAIN_GATEWAY_LOG_PATH" | default "/var/log/kong/config-edge.log" }}
+      reopen: true

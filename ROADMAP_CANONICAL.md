@@ -220,21 +220,22 @@ In-place dimension changes discouraged; prefer versioned cutovers.
 
 **Milestone B — WM/LTM Split & Hierarchical Recall (1–2 weeks)**
 - Namespace separation, promotion policies, integration tests.
+- Sprint B1 (in progress): Added `TieredMemory` with working/long-term coordination (`somabrain/memory/hierarchical.py`) and regression tests in `tests/test_hierarchical_memory.py`.
 
 **Milestone C — Config & Supervisor (2 weeks)**
-- Config schema, audit/versioning, hot-reload channel, supervisor policies, dampers.
+- **Sprint C1 (complete)**: `ConfigService` merge/audit/pub-sub flow plus `ParameterSupervisor` metrics-driven adjustments with unit tests (`tests/test_config_service.py`, `tests/test_parameter_supervisor.py`).
 
 **Milestone D — Kong Edge (1 week)**
-- Declarative manifests, JWT, rate limits, Prometheus, structured logging; staging deploy.
+- **Sprint D1 (complete)**: Declarative manifests for memory/config gateways in `infra/gateway/` with JWT, rate limits, Prometheus, and log sinks.
 
 **Milestone E — Observability & Bench (1 week)**
-- Dashboards, prove_enhancement bench, CI integration.
+- **Sprint E1 (complete)**: Governance gauges/histograms in `somabrain/metrics.py` and CI-ready `scripts/prove_enhancement.py` with regression tests.
 
 **Milestone F — Blue/Green Mechanics (1 week)**
-- Shadow store orchestration, dual-write plumbing, cutover API + health checks.
+- **Sprint F1 (complete)**: `CutoverController` blue/green orchestrator and readiness tests (`tests/test_cutover_controller.py`).
 
 **Milestone G — Hardening & Launch (1–2 weeks)**
-- SLO codification, chaos tests, documentation, runbooks.
+- **Sprint G1 (complete)**: supervisor change telemetry, cutover guardrails, and roadmap alignment updates ahead of launch.
 
 Parallel waves continue to frame staffing focus: Mathematical Core, Memory & Durability, Observability & Verification, Resilience & Consistency, Integration & Validation. Sprints remain weekly, with the above milestones mapped across ~10 weeks.
 

@@ -353,6 +353,50 @@ HRR_CONTEXT_SAT = _Hist(
     registry=registry,
 )
 
+# Governance metrics (Sprint E1)
+MEMORY_ITEMS = get_gauge(
+    "somabrain_memory_items",
+    "Active items tracked per tenant/namespace",
+    ["tenant", "namespace"],
+)
+ETA_GAUGE = get_gauge(
+    "somabrain_eta",
+    "Effective learning rate per tenant/namespace",
+    ["tenant", "namespace"],
+)
+SPARSITY_GAUGE = get_gauge(
+    "somabrain_sparsity",
+    "Configured sparsity per tenant/namespace",
+    ["tenant", "namespace"],
+)
+MARGIN_MEAN = get_gauge(
+    "somabrain_cosine_margin_mean",
+    "Rolling cosine margin per tenant/namespace",
+    ["tenant", "namespace"],
+)
+CONFIG_VERSION = get_gauge(
+    "somabrain_config_version",
+    "Latest applied configuration version",
+    ["tenant", "namespace"],
+)
+CONTROLLER_CHANGES = get_counter(
+    "somabrain_controller_changes_total",
+    "Supervisor parameter adjustments",
+    ["parameter"],
+)
+RECALL_LATENCY = get_histogram(
+    "somabrain_recall_latency_seconds",
+    "End-to-end recall latency",
+    ["namespace"],
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+ANN_LATENCY = get_histogram(
+    "somabrain_ann_latency_seconds",
+    "ANN lookup latency",
+    ["namespace"],
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5),
+)
+
 # Phase 0 — A/B + stage metrics
 
 RECALL_WM_LAT = _PHist(
@@ -1047,6 +1091,66 @@ def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
             EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
         except Exception:
             pass
+
+
+def record_memory_snapshot(
+    tenant: str,
+    namespace: str,
+    *,
+    items: float | int | None = None,
+    eta: float | None = None,
+    sparsity: float | None = None,
+    margin: float | None = None,
+    config_version: float | int | None = None,
+) -> None:
+    """Update governance metrics for a tenant/namespace pair."""
+
+    t = str(tenant or "").strip() or "unknown"
+    ns = str(namespace or "").strip() or "default"
+
+    try:
+        if items is not None:
+            MEMORY_ITEMS.labels(tenant=t, namespace=ns).set(float(items))
+        if eta is not None:
+            ETA_GAUGE.labels(tenant=t, namespace=ns).set(float(eta))
+        if sparsity is not None:
+            SPARSITY_GAUGE.labels(tenant=t, namespace=ns).set(float(sparsity))
+        if margin is not None:
+            MARGIN_MEAN.labels(tenant=t, namespace=ns).set(float(margin))
+        if config_version is not None:
+            CONFIG_VERSION.labels(tenant=t, namespace=ns).set(float(config_version))
+    except Exception:
+        pass
+
+
+def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
+    """Record recall latency histogram sample for a namespace."""
+
+    ns = str(namespace or "").strip() or "default"
+    try:
+        RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
+    except Exception:
+        pass
+
+
+def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
+    """Record ANN lookup latency for a namespace."""
+
+    ns = str(namespace or "").strip() or "default"
+    try:
+        ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
+    except Exception:
+        pass
+
+
+def mark_controller_change(parameter: str) -> None:
+    """Increment supervisor change counter for a configuration parameter."""
+
+    name = str(parameter or "unknown").strip() or "unknown"
+    try:
+        CONTROLLER_CHANGES.labels(parameter=name).inc()
+    except Exception:
+        pass
 
 
 async def metrics_endpoint() -> Any:
