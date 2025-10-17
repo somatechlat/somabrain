@@ -8,6 +8,27 @@
 
 ---
 
+## 🌟 **Stop Building AI That Forgets Everything**
+
+**SomaBrain gives your AI the memory it deserves.** Imagine ChatGPT that remembers your entire conversation history, recommendation engines that learn your preferences over months, or AI assistants that build relationships with users. That's the power of cognitive memory.
+
+**What is SomaBrain?**  
+The world's first production-ready cognitive memory system that thinks like a human brain but operates at digital speed. Instead of dumb keyword searches, SomaBrain understands meaning, builds connections, and learns from every interaction—turning any AI application into an intelligent, learning companion.
+
+## 🚀 **Transform Any AI Application in Minutes**
+
+### **Before SomaBrain:** 
+❌ AI forgets everything between conversations  
+❌ Keyword-based search misses important context  
+❌ No learning from user interactions  
+❌ Complex setup and maintenance  
+
+### **After SomaBrain:**
+✅ **Persistent Intelligence**: Remembers every interaction, builds lasting relationships  
+✅ **Contextual Understanding**: Finds "Tesla Model 3" when you search for "electric car"  
+✅ **Continuous Learning**: Adapts to user preferences and behavior patterns  
+✅ **One-Line Setup**: `docker compose up` and you're running production-grade cognitive memory  
+
 ## Quick Navigation
 
 - [Installation](installation.md) - Simple setup for end-users
@@ -20,14 +41,6 @@
 - [FAQ](faq.md) - Common questions and troubleshooting
 
 ---
-
-## What is SomaBrain?
-
-SomaBrain is a hyperdimensional cognitive memory system that enables:
-- **Semantic Memory Storage**: Store and recall information with contextual understanding
-- **Cognitive Reasoning**: Plan and infer relationships between stored memories  
-- **Multi-tenant Architecture**: Isolated memory spaces for different users/applications
-- **Real-time Performance**: Sub-second recall and reasoning operations
 
 ## Getting Started
 

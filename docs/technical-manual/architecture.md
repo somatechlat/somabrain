@@ -11,87 +11,64 @@
 ## System Topology
 
 ```mermaid
-flowchart TD
-    subgraph Clients
-        Agents[Agents / Tools]
-        Bench[Bench Harnesses]
+graph TD
+    subgraph Client Edge
+        Agents[Agents / Tooling]
     end
 
-    Agents -->|HTTPS| API{{somabrain.app}}
-    Bench -->|gRPC| GRPC[gRPC MemoryService]
+    Agents -->|HTTPS| API
 
     subgraph Runtime
-        API --> WM[MultiTenantWM]
-        API --> MC[MemoryClient]
-        API --> Control[ControlsMiddleware]
-        WM --> Scorer[UnifiedScorer + DensityMatrix]
-        MC --> SMF[SomaFractalMemory HTTP]
-        Scorer --> Metrics[Metrics Export]
+        API[SomaBrain FastAPI]
+        WM[Working Memory (MultiTenantWM)]
+        LTM[MemoryClient + HTTP memory service]
+        Scorer[UnifiedScorer + DensityMatrix]
+        Quantum[QuantumLayer (BHDC HRR)]
+        Control[Neuromodulators & Policy Gates]
     end
 
-    subgraph Infrastructure
-        Redis[(Redis Cache)]
-        Postgres[(PostgreSQL)]
-        Kafka[(Kafka Broker)]
-        OPA[OPA Policy Engine]
-        Prometheus[Prometheus Metrics]
+    API -->|Recall / Remember| WM
+    API -->|Recall / Remember| LTM
+    API -->|Scoring| Scorer
+    API -->|HRR Encode| Quantum
+    API -->|Safety Gates| Control
+
+    subgraph Auxiliary Services
+        SMF[SomaFractalMemory Gateway]
+        GRPC[gRPC MemoryService]
     end
 
-    subgraph Math Core
-        Quantum[QuantumLayer]
-        Salience[FDSalienceSketch]
-    end
-
-    API --> Redis
-    API --> Postgres
-    API --> Kafka
-    API --> OPA
-    WM --> Quantum
-    Quantum --> WM
-    WM --> Salience
-    Metrics --> Prometheus
+    LTM -->|Vector IO| SMF
+    API -->|Optional Transport| GRPC
 ```
 
 ## Core Components
 
-### SomaBrain API (`somabrain.app`)
-- **Purpose**: FastAPI service exposing cognitive memory and reasoning endpoints
-- **Responsibilities**: 
-  - HTTP request handling for `/remember`, `/recall`, `/health`, `/metrics`
-  - Authentication and authorization via OPA middleware
-  - Request routing to appropriate memory subsystems
-  - Metrics emission and audit logging
-- **Dependencies**: Redis, Postgres, Kafka (optional), OPA
-- **Scaling**: Stateless, horizontal scaling via load balancer
+### 🧩 The Brain Behind The Magic:
 
-### Memory Client (`somabrain/memory_client.py`)
-- **Purpose**: HTTP connector to long-term memory services with strict-mode auditing
-- **Responsibilities**:
-  - Write mirroring to ensure data consistency
-  - Strict-mode enforcement (no stub usage in production)
-  - Circuit breaker pattern for resilience
-  - Audit trail generation
-- **Dependencies**: SomaFractalMemory HTTP service
-- **Scaling**: Connection pooling, configurable timeouts
+**🌐 Neural Gateway** (`somabrain.app`)  
+*Human Impact:* Your apps get a simple, powerful interface to cognitive superpowers  
+*The Science:* Production FastAPI with cognitive middleware and strict mathematical validation
 
-### Working Memory (`somabrain/mt_wm.py`)
-- **Purpose**: Multi-tenant in-memory cache for active cognitive state
-- **Responsibilities**:
-  - Fast recall for recently accessed memories
-  - Tenant isolation and resource management
-  - Neuromodulator state tracking
-  - Cache eviction policies
-- **Dependencies**: Redis for persistence
-- **Scaling**: Tenant-based sharding, memory limits per tenant
+**🧠 Lightning Memory** (`somabrain/mt_wm.py`)  
+*Human Impact:* Instant access to the most important memories - no waiting  
+*The Science:* Multi-tenant working memory with Redis backing and intelligent LRU eviction
 
-### Quantum Layer (`somabrain/quantum.py`)
-- **Purpose**: Binary hyperdimensional computing (BHDC) operations
-- **Responsibilities**:
-  - Hypervector binding and unbinding
-  - Deterministic role generation
-  - Mathematical invariant maintenance
-- **Dependencies**: None (pure math)
-- **Scaling**: CPU-bound, benefits from vectorized operations
+**⚛️ Meaning Engine** (`somabrain/quantum.py`)  
+*Human Impact:* Understands that "car" and "automobile" mean the same thing  
+*The Science:* Binary Hyperdimensional Computing with 2048-8192D vector spaces and permutation binding
+
+**📊 Relevance Oracle** (`somabrain/scoring.py`)  
+*Human Impact:* Finds exactly what you need, even when you ask imperfectly  
+*The Science:* Unified similarity combining cosine, frequency-domain, and temporal weighting
+
+**🔗 Memory Vault** (`somabrain/memory_client.py`)  
+*Human Impact:* Never loses anything, remembers everything, proves what happened  
+*The Science:* HTTP-first persistence with cryptographic audit trails and strict-mode validation
+
+**📈 Health Guardian**  
+*Human Impact:* Self-monitoring system that prevents problems before you notice them  
+*The Science:* Prometheus metrics, structured logging, and real-time health diagnostics
 
 ## Infrastructure Components
 

@@ -12,6 +12,16 @@
 
 ### Endpoint Summary
 
+| Endpoint | What Magic Happens | Business Impact | Developer Joy |
+|----------|-------------------|-----------------|---------------|
+| `/remember` | **🧠 Learns Everything** - Stores facts with deep context understanding | Turn every interaction into lasting knowledge | Simple POST request = permanent AI memory |
+| `/recall` | **🔍 Finds Anything** - Semantic search that reads your mind | Customers get perfect answers instantly | Smart search that actually works |
+| `/act` | **🎯 Takes Smart Action** - Does things using everything it knows | AI that acts like it has years of experience | Context-aware automation built-in |
+| `/plan/suggest` | **🗺️ Makes Intelligent Plans** - Multi-step reasoning with memory | Complex workflows become simple conversations | Planning AI that remembers constraints |
+| `/health` | **❤️ Self-Monitors** - Knows when something's wrong before you do | Zero-downtime production deployments | Peace of mind in your sleep |
+| `/metrics` | **📊 Optimizes Itself** - Real-time performance insights | Data-driven scaling and cost optimization | Built-in observability without setup |
+| `/neuromodulators` | **⚙️ Tunes Personality** - Adjust cognitive behavior in real-time | Customize AI behavior for different use cases | Fine-tune intelligence with simple parameters |
+
 FastAPI lives in `somabrain/app.py`. The table below lists the stable strict-real endpoints.
 
 | Method | Path | Purpose | Request Model | Response Model |

@@ -188,6 +188,66 @@ python run_learning_test.py             # Canonical numerics validation
 
 ---
 
+## ⚙️ Configuration & Environment
+
+### 🔧 Essential Settings:
+```bash
+# Core API Configuration
+SOMABRAIN_HOST=127.0.0.1
+SOMABRAIN_PORT=9696
+SOMABRAIN_WORKERS=1
+
+# Memory Integration
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595
+SOMABRAIN_MEMORY_HTTP_TOKEN=dev-token
+
+# Infrastructure Dependencies
+SOMABRAIN_REDIS_URL=redis://localhost:6379/0
+SOMABRAIN_KAFKA_URL=kafka://localhost:9092
+SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
+
+# Production Controls
+SOMABRAIN_STRICT_REAL=1          # Enable mathematical validation
+SOMABRAIN_FORCE_FULL_STACK=1     # Require all services  
+SOMABRAIN_REQUIRE_MEMORY=1       # Require memory backend
+SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)
+```
+
+### 🐳 Docker Infrastructure:
+The `docker-compose.yml` provides a complete stack:
+- **Redis**: Working memory cache and session storage
+- **Kafka**: Event streaming for audit and monitoring  
+- **Postgres**: System state and configuration storage
+- **Prometheus**: Metrics collection and monitoring
+- **OPA**: Policy engine for governance (optional)
+
+---
+
+## 🧪 Development & Testing
+
+### Quality Assurance:
+```bash
+# Code quality and type checking
+ruff check .                    # Linting
+mypy somabrain                 # Type validation
+
+# Test suite  
+pytest                         # Unit and integration tests
+python run_learning_test.py    # Cognitive functionality validation
+
+# Performance benchmarking
+python benchmarks/run_benchmarks.py
+```
+
+### 🔄 Development Workflow:
+```bash
+# Quick development setup
+scripts/dev_up.sh              # Start full stack
+scripts/export_openapi.py      # Generate API docs
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Setup Issues

@@ -94,6 +94,20 @@ def store_memory(content: str, metadata: dict) -> str:
 
 ---
 
+## 🔬 Mathematical Foundations & Validation
+
+| Invariant | Description | Enforcement |
+| --- | --- | --- |
+| Density matrix trace | `abs(trace(ρ) - 1) < 1e-4` | `somabrain/memory/density.py` renormalizes after each update. |
+| PSD stability | Negative eigenvalues are clipped so ρ stays PSD | `DensityMatrix.project_psd()` trims the spectrum. |
+| Scorer bounds | Component weights stay within configured bounds | `somabrain/scoring.py` clamps weights and exports metrics. |
+| Strict-mode audit | Stub usage raises `RuntimeError` | `_audit_stub_usage` inside `somabrain/memory_client.py`. |
+| Governance | Rate limits, OPA policy, neuromodulator feedback | Middleware stack inside `somabrain.app` and controls modules. |
+
+All mathematical invariants are monitored through `/metrics` with Prometheus integration.
+
+---
+
 ## Vector Encoding Architecture
 
 ### Transformer Models

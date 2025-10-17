@@ -42,6 +42,11 @@ somabrain/
 
 ## Development Workflow
 
+- Make code changes in feature branches (unless main-only is required).
+- Use `pytest` for tests: `pytest tests/`
+- Use `make lint` and `make format` for code quality (if Makefile present).
+- Update this guide as you improve the workflow.
+
 1. **Environment Setup**: Follow [Local Setup](local-setup.md) for development environment
 2. **Code Style**: Adhere to [Coding Standards](coding-standards.md) (ruff, mypy)
 3. **Testing**: Write tests per [Testing Guidelines](testing-guidelines.md)
