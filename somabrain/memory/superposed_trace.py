@@ -122,6 +122,11 @@ class SuperposedTrace:
 
         return dict(self._anchors)
 
+    def anchors_snapshot(self) -> List[Tuple[str, np.ndarray]]:
+        """Return a snapshot list of (anchor_id, vector) pairs."""
+
+        return [(anchor_id, vec.copy()) for anchor_id, vec in self._anchors.items()]
+
     @property
     def quantum(self) -> QuantumLayer:
         """Expose the underlying :class:`QuantumLayer` for diagnostics/tests."""
@@ -213,6 +218,22 @@ class SuperposedTrace:
                 )
             except Exception:
                 pass
+
+    def rebuild_cleanup_index(self, cleanup_index: Optional["CleanupIndex"] = None) -> int:
+        """Rebuild the cleanup index from current anchors."""
+
+        if cleanup_index is not None:
+            self._cleanup_index = cleanup_index
+        if self._cleanup_index is None:
+            return 0
+        count = 0
+        for anchor_id, vec in self._anchors.items():
+            try:
+                self._cleanup_index.upsert(anchor_id, vec)
+                count += 1
+            except Exception:
+                continue
+        return count
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -1,0 +1,8 @@
+{
+  "commands": [
+    "export SOMABRAIN_STRICT_REAL=1",
+    "export SOMABRAIN_KAFKA_PORT=9092",
+    "export SOMABRAIN_REDIS_PORT=6379",
+    "python -m pytest tests/test_config_api.py tests/test_memory_api.py tests/test_tiered_memory_registry.py tests/test_journal_to_outbox.py"
+  ]
+}

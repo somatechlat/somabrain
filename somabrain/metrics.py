@@ -397,6 +397,18 @@ ANN_LATENCY = get_histogram(
     buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5),
 )
 
+ANN_REBUILD_TOTAL = get_counter(
+    "somabrain_ann_rebuild_total",
+    "Number of ANN rebuild operations",
+    ["tenant", "namespace", "backend"],
+)
+ANN_REBUILD_SECONDS = get_histogram(
+    "somabrain_ann_rebuild_seconds",
+    "Duration of ANN rebuild operations",
+    ["tenant", "namespace"],
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
+)
+
 # Phase 0 — A/B + stage metrics
 
 RECALL_WM_LAT = _PHist(

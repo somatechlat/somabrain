@@ -22,12 +22,6 @@ services:
                 - Authorization
               secret_is_base64: false
               run_on_preflight: true
-          - name: jwt-claims-headers
-            config:
-              run_on_preflight: false
-              claims_to_include:
-                tenant: X-Tenant-Id
-                sub: X-Subject
           - name: request-validator
             config:
               version: draft7
@@ -56,6 +50,11 @@ services:
               add:
                 headers:
                   - X-Gateway-Route:memory-edge
+                  - X-Requested-Tenant:$(jwt_claim_sub)
+                  - X-Tenant-Id:$(jwt_claim_tenant)
+              remove:
+                headers:
+                  - X-Anonymous-Consumer
           - name: prometheus
           - name: file-log
             config:
@@ -67,6 +66,9 @@ services:
               method: POST
               timeout: 1000
               keepalive: 60000
+              headers:
+                Tenant: "$(jwt_claim_tenant)"
+                Route: "memory"
 
 plugins:
   - name: correlation-id

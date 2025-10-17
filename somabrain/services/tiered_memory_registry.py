@@ -6,11 +6,13 @@ import copy
 import math
 import os
 import threading
+import time
 from dataclasses import dataclass, replace
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, List
 
 import numpy as np
 
+from somabrain import metrics as M
 from somabrain.memory.hierarchical import LayerPolicy, RecallContext, TieredMemory
 from somabrain.memory.superposed_trace import TraceConfig
 from somabrain.services.ann import AnnConfig, create_cleanup_index
@@ -27,6 +29,7 @@ class _TieredBundle:
     ltm_cfg: TraceConfig
     wm_policy: LayerPolicy
     sparsity: float
+    ann_cfg: AnnConfig
 
 
 @dataclass
@@ -39,6 +42,7 @@ class TieredRecallResult:
     eta: float
     tau: float
     sparsity: float
+    backend: str
 
 
 class TieredMemoryRegistry:
@@ -103,6 +107,7 @@ class TieredMemoryRegistry:
                 eta=bundle.wm_cfg.eta,
                 tau=bundle.wm_policy.threshold,
                 sparsity=bundle.sparsity,
+                backend=bundle.ann_cfg.backend,
             )
 
     def _ensure_bundle(self, tenant: str, namespace: str, *, dim: int) -> _TieredBundle:
@@ -128,6 +133,7 @@ class TieredMemoryRegistry:
                     ltm_cfg=ltm_cfg,
                     wm_policy=tiered.wm_policy,
                     sparsity=1.0,
+                    ann_cfg=ann_cfg,
                 )
                 self._bundles[key] = bundle
             return bundle
@@ -170,11 +176,59 @@ class TieredMemoryRegistry:
                     ).validate()
                 except Exception:
                     pass
+            ann_cfg = bundle.ann_cfg
+            if cleanup_topk is not None and cleanup_topk > 0:
+                ann_cfg = ann_cfg.with_updates(top_k=cleanup_topk)
+            if ef_search is not None:
+                ann_cfg = ann_cfg.with_updates(hnsw_ef_search=ef_search)
+            bundle.ann_cfg = ann_cfg
             return {
                 "eta": bundle.wm_cfg.eta,
                 "sparsity": bundle.sparsity,
                 "tau": bundle.wm_policy.threshold,
+                "backend": bundle.ann_cfg.backend,
             }
+
+    def rebuild(self, tenant: str, namespace: Optional[str] = None) -> List[Dict[str, float]]:
+        selected: List[Tuple[str, str, _TieredBundle]] = []
+        with self._lock:
+            for (t, ns), bundle in self._bundles.items():
+                if t != tenant:
+                    continue
+                if namespace is not None and ns != namespace:
+                    continue
+                selected.append((t, ns, bundle))
+        results: List[Dict[str, float]] = []
+        for t, ns, bundle in selected:
+            start = time.perf_counter()
+            with bundle.lock:
+                wm_index = create_cleanup_index(bundle.wm_cfg.dim, bundle.ann_cfg)
+                ltm_index = create_cleanup_index(bundle.ltm_cfg.dim, bundle.ann_cfg)
+                wm_count, ltm_count = bundle.memory.rebuild_cleanup_indexes(
+                    wm_cleanup_index=wm_index,
+                    ltm_cleanup_index=ltm_index,
+                )
+            duration = time.perf_counter() - start
+            try:
+                M.ANN_REBUILD_TOTAL.labels(
+                    tenant=t,
+                    namespace=ns,
+                    backend=bundle.ann_cfg.backend,
+                ).inc(wm_count + ltm_count)
+                M.ANN_REBUILD_SECONDS.labels(tenant=t, namespace=ns).observe(duration)
+            except Exception:
+                pass
+            results.append(
+                {
+                    "tenant": t,
+                    "namespace": ns,
+                    "backend": bundle.ann_cfg.backend,
+                    "wm_rebuilt": float(wm_count),
+                    "ltm_rebuilt": float(ltm_count),
+                    "duration_seconds": float(duration),
+                }
+            )
+        return results
 
 
 def _as_vector(arr: np.ndarray | list[float] | tuple[float, ...]) -> np.ndarray:

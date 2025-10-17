@@ -38,6 +38,12 @@ services:
               header_names:
                 - Authorization
               run_on_preflight: true
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - X-Gateway-Route:config-edge
+                  - X-Requested-Tenant:$(jwt_claim_tenant)
       - name: somabrain-cutover-route
         paths:
           - /memory/cutover
@@ -61,6 +67,7 @@ services:
               add:
                 headers:
                   - X-Gateway-Route:config-cutover
+                  - X-Requested-Tenant:$(jwt_claim_tenant)
 
 plugins:
   - name: prometheus
@@ -68,3 +75,9 @@ plugins:
     config:
       path: {{ env "SOMABRAIN_GATEWAY_LOG_PATH" | default "/var/log/kong/config-edge.log" }}
       reopen: true
+  - name: http-log
+    config:
+      http_endpoint: {{ env "SOMABRAIN_GATEWAY_AUDIT_ENDPOINT" | default "http://audit.default.svc.cluster.local:9000/logs" }}
+      method: POST
+      timeout: 1000
+      keepalive: 60000

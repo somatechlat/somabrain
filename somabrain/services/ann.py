@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -18,6 +18,9 @@ class AnnConfig:
     hnsw_m: int = 32
     hnsw_ef_construction: int = 200
     hnsw_ef_search: int = 128
+
+    def with_updates(self, **kwargs: object) -> "AnnConfig":
+        return replace(self, **kwargs)
 
 
 class SimpleAnnIndex(CleanupIndex):

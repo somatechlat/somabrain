@@ -62,6 +62,12 @@ def test_tiered_memory_registry_roundtrip():
     assert metrics["eta"] == pytest.approx(0.12)
     assert metrics["sparsity"] == pytest.approx(0.5)
     assert metrics["tau"] == pytest.approx(0.7)
+    assert metrics["backend"] == "simple"
+
+    rebuild = registry.rebuild(tenant)
+    assert rebuild
+    assert rebuild[0]["backend"] == "simple"
+    assert rebuild[0]["wm_rebuilt"] >= 1.0
 
     updated = registry.recall(tenant, namespace, vector)
     assert updated is not None

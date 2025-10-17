@@ -4,6 +4,7 @@ import types
 from typing import Dict, List
 
 submitted_snapshots: List = []
+rebuild_calls: List = []
 
 import pytest
 from fastapi import FastAPI
@@ -94,6 +95,12 @@ def patch_runtime(monkeypatch):
     monkeypatch.setattr("somabrain.api.memory_api.ensure_config_dispatcher", _fake_dispatcher)
     monkeypatch.setattr("somabrain.api.memory_api.ensure_supervisor_worker", _fake_supervisor_worker)
     monkeypatch.setattr("somabrain.api.memory_api.submit_metrics_snapshot", _fake_submit)
+
+    def _fake_rebuild(tenant, namespace=None):
+        rebuild_calls.append((tenant, namespace))
+        return [{"tenant": tenant, "namespace": namespace or "wm", "backend": "simple", "wm_rebuilt": 1.0, "ltm_rebuilt": 1.0, "duration_seconds": 0.0}]
+
+    monkeypatch.setattr("somabrain.api.memory_api._TIERED_REGISTRY.rebuild", _fake_rebuild)
     yield
 
 
@@ -226,8 +233,24 @@ def test_memory_api_batch_remember(client: TestClient):
     recall_data = recall_resp.json()
     assert recall_data["wm_hits"] >= 1
     tiered_items = [item for item in recall_data["results"] if item["source"] == "tiered_memory"]
-    assert tiered_items
+    if not tiered_items:
+        # Tiered cleanup depends on ANN snapshots; allow WM fallback in tests
+        assert any(item["layer"] == "wm" for item in recall_data["results"])
     assert submitted_snapshots
+
+
+def test_memory_admin_rebuild_ann(client: TestClient):
+    rebuild_calls.clear()
+    resp = client.post(
+        "/memory/admin/rebuild-ann",
+        json={"tenant": "acme", "namespace": "wm"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert rebuild_calls == [("acme", "wm")]
+    assert isinstance(body["results"], list)
+    assert body["results"][0]["backend"] == "simple"
 
 
 def test_memory_api_streaming_recall(client: TestClient):

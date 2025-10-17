@@ -1,5 +1,10 @@
-"""Adaptive learning utilities for SomaBrain."""
+"""Learning utilities for SomaBrain."""
 
-from .adaptation import AdaptationEngine, UtilityWeights
+from .dataset import TrainingExample, build_examples, tokenize_examples, export_examples
 
-__all__ = ["AdaptationEngine", "UtilityWeights"]
+__all__ = [
+    "TrainingExample",
+    "build_examples",
+    "tokenize_examples",
+    "export_examples",
+]

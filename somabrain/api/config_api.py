@@ -137,7 +137,7 @@ async def execute_cutover(payload: CutoverTenantRequest):
 async def cancel_cutover(payload: CutoverTenantRequest):
     try:
         await ensure_config_dispatcher()
-    await _cutover_controller.cancel(payload.tenant, reason=payload.reason or "")
+        await _cutover_controller.cancel(payload.tenant, reason=payload.reason or "")
     except CutoverError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"ok": True}

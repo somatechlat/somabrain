@@ -10,7 +10,7 @@ recall path with optional promotion hooks.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 
@@ -183,6 +183,15 @@ class TieredMemory:
                 self._wm_policy = new_policy
             except Exception:
                 pass
+
+    def rebuild_cleanup_indexes(
+        self,
+        wm_cleanup_index: Optional[CleanupIndex] = None,
+        ltm_cleanup_index: Optional[CleanupIndex] = None,
+    ) -> Tuple[int, int]:
+        wm_count = self.wm.rebuild_cleanup_index(wm_cleanup_index)
+        ltm_count = self.ltm.rebuild_cleanup_index(ltm_cleanup_index)
+        return wm_count, ltm_count
 
 
 __all__ = ["LayerPolicy", "RecallContext", "TieredMemory"]

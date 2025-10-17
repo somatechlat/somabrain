@@ -161,9 +161,9 @@ Gaps:
 - ✅ *Sprint 2C:* Added `scripts/journal_to_outbox.py`, disabled journal fallback by default (`allow_journal_fallback`), and wired strict-real documentation.
 
 **Wave 3 — Edge & Learning Integrations (Weeks 5–6)**
-- *Sprint 3A:* Harden Kong manifests (tenant injection, schema validation, audit logging).
-- *Sprint 3B:* Stand up ANN-backed cleanup with FAISS/HNSW in WM/LTM, including rebuild job.
-- *Sprint 3C:* Draft “SomaBrain Learning Loop” design and PoC dataset/tokenizer alignment (nanochat-inspired), gated behind feature flag.
+- ✅ *Sprint 3A:* Hardened Kong manifests (tenant headers, schema validation, audit streaming) in `infra/gateway/`.
+- ✅ *Sprint 3B:* Pluggable ANN backend now tunable with rebuild job + admin endpoint (`somabrain/services/ann.py`, `tiered_memory_registry.py`, `/memory/admin/rebuild-ann`).
+- ✅ *Sprint 3C:* Drafted learning-loop design (`docs/development-manual/learning-loop.md`), shipped dataset builder (`somabrain/learning/dataset.py`) and export CLI.
 
 Each sprint ships independently, keeps interfaces minimal, and updates this roadmap with results and metrics.
 

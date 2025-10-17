@@ -946,6 +946,7 @@ async def _perform_recall(
         if tiered_hit is not None and tiered_hit.payload is not None:
             payload_copy = copy.deepcopy(tiered_hit.payload)
             payload_copy.setdefault("governed_margin", tiered_hit.context.margin)
+            payload_copy.setdefault("cleanup_backend", tiered_hit.backend)
             coord_obj = tiered_hit.coordinate or payload_copy.get("coordinate")
             item = _decorated_item(
                 tiered_hit.context.layer,
@@ -1126,3 +1127,13 @@ async def memory_metrics(
         circuit_open=memsvc._is_circuit_open(),
         outbox_pending=outbox_pending,
     )
+
+
+@router.post("/admin/rebuild-ann")
+async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
+    await _ensure_config_runtime_started()
+    results = _TIERED_REGISTRY.rebuild(payload.tenant, namespace=payload.namespace)
+    return {"ok": True, "results": results}
+class AnnRebuildRequest(BaseModel):
+    tenant: str
+    namespace: Optional[str] = None
