@@ -69,20 +69,20 @@ class Settings(BaseSettings):
         )
     )
     redis_url: str = Field(
-        default_factory=lambda: os.getenv(
-            "SOMABRAIN_REDIS_URL", "redis://localhost:6379/0"
-        )
+        default_factory=lambda: os.getenv("SOMABRAIN_REDIS_URL")
+        or os.getenv("REDIS_URL")
+        or ""
     )
     kafka_bootstrap_servers: str = Field(
-        default_factory=lambda: os.getenv(
-            "SOMABRAIN_KAFKA_URL", "kafka://localhost:9092"
-        )
+        default_factory=lambda: os.getenv("SOMABRAIN_KAFKA_URL")
+        or os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+        or ""
     )
 
     memory_http_endpoint: str = Field(
-        default_factory=lambda: os.getenv(
-            "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595"
-        )
+        default_factory=lambda: os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+        or os.getenv("MEMORY_SERVICE_URL")
+        or ""
     )
     memory_http_token: Optional[str] = Field(
         default=os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN")
@@ -141,7 +141,11 @@ class Settings(BaseSettings):
     )
 
     # OPA -----------------------------------------------------------------------------
-    opa_url: str = Field(default=os.getenv("SOMA_OPA_URL", "http://opa:8181"))
+    opa_url: str = Field(
+        default=os.getenv("SOMABRAIN_OPA_URL")
+        or os.getenv("SOMA_OPA_URL")
+        or ""
+    )
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
     )

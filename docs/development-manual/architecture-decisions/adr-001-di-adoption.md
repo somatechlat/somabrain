@@ -2,9 +2,9 @@
 
 # ADR-001: Adopt Dependency Injection for Runtime Construction
 
-- **Status:** Proposed (Sprint 1)
-- **Deciders:** Architecture Guild, Platform Engineering
-- **Date:** 2025-10-11
+- **Status**: Proposed (Sprint 1)
+- **Deciders**: Architecture Guild, Platform Engineering
+- **Date**: 2025-10-11
 
 ## Context
 
@@ -16,12 +16,12 @@ Adopt an application container that provides runtime dependencies via explicit p
 
 ## Consequences
 
-- **Positive:**
+- **Positive**
   - Clear wiring of services, easier unit/integration tests.
   - Eliminates global mutation and dummy fallbacks.
   - Enables per-request overrides (multi-tenant, test doubles when explicitly allowed).
-- **Negative:**
-  - Requires refactoring large portions of `somabrain/app.py` and dependent modules.
+- **Negative**
+  - Refactoring large portions of `somabrain/app.py` and dependent modules.
   - Tests must be updated to initialize the container before using clients.
 
 ## Implementation Plan
@@ -30,12 +30,12 @@ Adopt an application container that provides runtime dependencies via explicit p
 2. Extract domain routers into `somabrain/api/` packages referencing DI dependencies.
 3. Update `tests/conftest.py` to bootstrap the container once per session.
 4. Remove `_patch_runtime_singletons` and dummy classes from `somabrain/app.py`.
-5. Document usage in `docs/ARCHITECTURE_REFACTOR_PLAN.md` and update CI scripts.
+5. Document usage in the development manual and update CI scripts.
 
 ## Alternatives Considered
 
-- **Keep runtime singletons:** Rejected; violates strict-real contract and continues global state issues.
-- **Introduce service locator pattern:** Rejected; obscures dependencies and retains global lookups.
+- **Keep runtime singletons**: Rejected; violates strict-real contract and preserves global state issues.
+- **Service locator pattern**: Rejected; obscures dependencies and retains global lookups.
 
 ## Follow-up Tasks
 

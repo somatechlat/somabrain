@@ -14,29 +14,22 @@ from typing import Optional, Tuple
 
 from common.utils import RedisCache
 
-try:  # pragma: no cover - optional dependency
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover
-    shared_settings = None  # type: ignore
+from somabrain.infrastructure import get_redis_url
 
 LOGGER = logging.getLogger("somabrain.opa.policy_manager")
 
 
-def _resolve_redis_url() -> str:
-    env_url = os.getenv("SOMA_REDIS_URL") or os.getenv("SOMABRAIN_REDIS_URL")
-    if env_url:
-        return env_url
-    if shared_settings is not None:
-        try:
-            return str(getattr(shared_settings, "redis_url", "redis://127.0.0.1:6379/0"))
-        except Exception:
-            return "redis://127.0.0.1:6379/0"
-    return "redis://127.0.0.1:6379/0"
+def _resolve_redis_url() -> Optional[str]:
+    return get_redis_url()
 
 
 def _redis_cache() -> Optional[RedisCache]:
     try:
-        return RedisCache(_resolve_redis_url(), namespace="")
+        url = _resolve_redis_url()
+        if not url:
+            LOGGER.debug("Redis URL not configured for OPA policy manager")
+            return None
+        return RedisCache(url, namespace="")
     except Exception as exc:
         LOGGER.debug("Redis cache unavailable in policy manager: %s", exc)
         return None

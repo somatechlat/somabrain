@@ -10,6 +10,36 @@
 
 ## API Overview
 
+### Endpoint Summary
+
+FastAPI lives in `somabrain/app.py`. The table below lists the stable strict-real endpoints.
+
+| Method | Path | Purpose | Request Model | Response Model |
+| --- | --- | --- | --- | --- |
+| GET | `/health` | Readiness + dependency status | – | `schemas.HealthResponse` |
+| GET | `/healthz` | Alias of `/health` for probes | – | Same as `/health` |
+| POST | `/recall` | Retrieve memories ranked by scorer | `schemas.RecallRequest` | `schemas.RecallResponse` |
+| POST | `/remember` | Persist memory payloads | `schemas.RememberRequest` | `schemas.RememberResponse` |
+| POST | `/delete` | Delete long-term memory items | `schemas.DeleteRequest` | `schemas.DeleteResponse` |
+| POST | `/recall/delete` | Delete working-memory rows | `schemas.DeleteRequest` | `schemas.DeleteResponse` |
+| POST | `/plan/suggest` | Transport-aware planning query | `schemas.PlanSuggestRequest` | `schemas.PlanSuggestResponse` |
+| POST | `/sleep/run` | Trigger offline consolidation | `schemas.SleepRunRequest` | `schemas.SleepRunResponse` |
+| GET | `/sleep/status` | Status for current tenant | – | `schemas.SleepStatusResponse` |
+| GET | `/sleep/status/all` | Status for all tenants | – | `schemas.SleepStatusAllResponse` |
+| POST | `/personality` | Update personality parameters | `schemas.PersonalityState` | `schemas.PersonalityState` |
+| POST | `/act` | Execute an action via policy | `schemas.ActRequest` | `schemas.ActResponse` |
+| GET | `/neuromodulators` | Fetch neuromodulator state | – | `schemas.NeuromodStateModel` |
+| POST | `/neuromodulators` | Adjust neuromodulator state | `schemas.NeuromodStateModel` | `schemas.NeuromodStateModel` |
+| POST | `/graph/links` | Query graph edges for transport | `schemas.GraphLinksRequest` | `schemas.GraphLinksResponse` |
+| POST | `/reflect` | Trigger reflective update cycle | `schemas.ReflectRequest` | `schemas.ReflectResponse` |
+| POST | `/migrate/export` | Export memory payloads | `schemas.MigrateExportRequest` | `schemas.MigrateExportResponse` |
+
+**Usage notes**:
+- Write endpoints honour strict mode—requests fail if backing services are unreachable.
+- Tenancy is selected via the `X-Soma-Tenant` header; defaults to the configured tenant when absent.
+- Authentication is disabled only when `SOMABRAIN_DISABLE_AUTH=1`.
+- Regenerate OpenAPI artifacts with `./scripts/export_openapi.py`.
+
 ### Base Information
 
 **Base URL**: `https://api.somabrain.com` (Production) / `http://localhost:9696` (Development)

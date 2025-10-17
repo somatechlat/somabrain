@@ -16,6 +16,8 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     shared_settings = None  # type: ignore
 
+from somabrain.infrastructure import get_redis_url
+
 
 # Redis connection for state persistence
 def _get_redis():
@@ -26,27 +28,21 @@ def _get_redis():
     """
     import os
     try:
-        # First, try full Redis URL (e.g., ``redis://sb_redis:6379/0``)
-        redis_url = None
-        if shared_settings is not None:
-            try:
-                redis_url = str(getattr(shared_settings, "redis_url", "")).strip() or None
-            except Exception:
-                redis_url = None
-        if not redis_url:
-            redis_url = os.getenv("SOMABRAIN_REDIS_URL")
-        # Remove any accidental leading/trailing whitespace that can break parsing
+        redis_url = get_redis_url()
         if redis_url:
             redis_url = redis_url.strip()
         import redis
         if redis_url:
             return redis.from_url(redis_url)
-        # Legacy fallback to host/port variables
-        redis_host = os.getenv("REDIS_HOST", "localhost")
-        redis_port = int(os.getenv("REDIS_PORT", "6379"))
-        return redis.Redis(host=redis_host, port=redis_port, decode_responses=True)
+        # Legacy fallback to host/port variables without hard-coded defaults
+        redis_host = os.getenv("SOMABRAIN_REDIS_HOST") or os.getenv("REDIS_HOST")
+        redis_port = os.getenv("SOMABRAIN_REDIS_PORT") or os.getenv("REDIS_PORT")
+        redis_db = os.getenv("SOMABRAIN_REDIS_DB") or os.getenv("REDIS_DB", "0")
+        if redis_host and redis_port:
+            return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
     except Exception:
-        return None
+        pass
+    return None
 
 
 @dataclass

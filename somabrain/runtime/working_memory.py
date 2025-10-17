@@ -5,13 +5,14 @@ from __future__ import annotations
 import collections
 import json
 
-import os
 from typing import Deque, Dict, List, Optional
 
 try:  # pragma: no cover - optional dependency
     import redis  # type: ignore
 except Exception:  # pragma: no cover
     redis = None  # type: ignore
+
+from somabrain.infrastructure import get_redis_url
 
 
 class WorkingMemoryBuffer:
@@ -28,14 +29,15 @@ class WorkingMemoryBuffer:
         self._use_redis = False
         self._local: Dict[str, Deque[Dict]] = {}
         if redis is not None:
-            host = os.getenv("SOMABRAIN_REDIS_HOST", "localhost")
-            port = os.getenv("SOMABRAIN_REDIS_PORT", "6379")
-            url = redis_url or f"redis://{host}:{port}/0"
+            url = redis_url or get_redis_url()
             try:
-                self._redis = redis.from_url(url)
-                # lightweight ping to ensure connectivity
-                self._redis.ping()
-                self._use_redis = True
+                if url:
+                    self._redis = redis.from_url(url)
+                    # lightweight ping to ensure connectivity
+                    self._redis.ping()
+                    self._use_redis = True
+                else:
+                    self._redis = None
             except Exception:
                 self._redis = None
         else:

@@ -24,6 +24,7 @@ This guide will take you from zero to productive contributor in the SomaBrain co
   - [Useful Links](resources/useful-links.md) - External references
   - [Troubleshooting](resources/troubleshooting.md) - Common issues and solutions
   - [Glossary](resources/glossary.md) - Technical terminology
+  - [Roadmap](resources/roadmap.md) - Canonical Brain 3.0 plan
 - [Checklists](checklists/) - Verification and quality gates
   - [Setup Checklist](checklists/setup-checklist.md) - Environment verification
   - [Pre-commit Checklist](checklists/pre-commit-checklist.md) - Code quality checks

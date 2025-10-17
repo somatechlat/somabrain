@@ -35,6 +35,8 @@ uv pip sync uv.lock
 # Start all services with standard container ports
 ./scripts/assign_ports.sh  # Creates .env with standard port mapping
 docker compose up -d
+# Or bootstrap everything in one shot
+./scripts/dev_up.sh --rebuild
 
 # Verify services are running
 curl -fsS http://localhost:9696/health | jq
@@ -48,6 +50,8 @@ mypy somabrain
 
 # Run test suite
 pytest
+# Canonical smoke (mirrors CI strict-real run)
+uv run pytest -q
 
 # Check development environment
 python -c "import somabrain; print('✅ SomaBrain imported successfully')"

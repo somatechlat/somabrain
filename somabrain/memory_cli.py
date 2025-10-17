@@ -10,16 +10,20 @@ Usage examples:
 
 import argparse
 import json
-import os
 import sys
 from urllib.parse import urljoin
 
 import requests  # type: ignore
 
+from somabrain.infrastructure import get_api_base_url, require
+
 # ----------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------
-BASE_URL = os.getenv("SOMABRAIN_API_URL", "http://localhost:9696")
+BASE_URL = require(
+    get_api_base_url(),
+    message="SOMABRAIN_API_URL is not configured; update your environment (.env).",
+)
 HEADERS = {"Content-Type": "application/json"}
 
 

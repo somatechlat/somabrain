@@ -27,7 +27,30 @@ Docker port (9696) for in-process runs and will use the cluster test service
 address (port 9999) when `KUBERNETES_SERVICE_HOST` is present.
 """
 
-BASE_URL = os.getenv("TEST_SERVER_URL", "http://localhost:9696")
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _load_env_file(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = os.path.expandvars(value.strip())
+
+
+for candidate in (_REPO_ROOT / ".env.local", _REPO_ROOT / ".env"):
+    _load_env_file(candidate)
+
+
+BASE_URL = os.getenv("TEST_SERVER_URL") or os.getenv("SOMABRAIN_API_URL") or "http://localhost:9696"
 
 # Ensure pytest import paths see the sentinel so somabrain.app treats imports as test context.
 os.environ.setdefault("PYTEST_CURRENT_TEST", "bootstrap::collection")

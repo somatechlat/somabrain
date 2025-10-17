@@ -47,6 +47,8 @@ try:  # Import the settings object under a distinct name for strict-mode checks.
 except Exception:  # pragma: no cover - not always available in local runs
     _shared_settings = None  # type: ignore
 
+from somabrain.infrastructure import get_memory_http_endpoint
+
 _BUILTINS_KEY = "_SOMABRAIN_GLOBAL_PAYLOADS"
 if not hasattr(_builtins, _BUILTINS_KEY):
     setattr(_builtins, _BUILTINS_KEY, {})
@@ -442,32 +444,20 @@ class MemoryClient:
         # Useful for tests or local development where a memory service runs on
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
-        shared_base = None
-        if shared_settings is not None:
-            try:
-                candidate = getattr(shared_settings, "memory_http_endpoint", None)
-                if candidate:
-                    shared_base = str(candidate)
-            except Exception:
-                shared_base = None
+        candidate_base = get_memory_http_endpoint()
         env_base = (
             os.getenv("SOMABRAIN_HTTP_ENDPOINT")
-            or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
             or os.getenv("MEMORY_SERVICE_URL")
         )
-        if not env_base and shared_base:
-            env_base = shared_base
+        if not env_base:
+            env_base = candidate_base
         if env_base:
             try:
-                # Clean any surrounding whitespace/newlines that may be injected by tests
                 env_base = str(env_base).strip()
-                # If missing scheme, default to http://
                 if "://" not in env_base and env_base.startswith('/'):
-                    # likely a path; leave as‑is
                     pass
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
-                # Strip trailing openapi.json if present
                 if env_base.endswith('/openapi.json'):
                     env_base = env_base[:-len('/openapi.json')]
             except Exception:
@@ -478,7 +468,7 @@ class MemoryClient:
         # Hard requirement: if memory is required ensure an endpoint exists.
         require_memory_enabled = _require_memory_enabled()
         if require_memory_enabled and not base_url:
-            base_url = "http://localhost:9595"
+            base_url = get_memory_http_endpoint()
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
         if base_url:
@@ -486,10 +476,11 @@ class MemoryClient:
                 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
             except Exception:
                 pass
-        # If running inside Docker and no endpoint provided, default to the
-        # host gateway which is commonly reachable as host.docker.internal on
-        # macOS/Windows. This helps tests running inside containers talk to
-        # a memory service running on the host machine (port 9595 by default).
+    # If running inside Docker and no endpoint provided, default to the
+    # host gateway which is commonly reachable as host.docker.internal on
+    # macOS/Windows. This helps tests running inside containers talk to
+    # a memory service running on the host machine (configure via
+    # SOMABRAIN_DOCKER_MEMORY_FALLBACK).
         try:
             in_docker = os.path.exists("/.dockerenv")
         except Exception:
@@ -504,13 +495,12 @@ class MemoryClient:
             except Exception:
                 fallback = None
             try:
-                base_url = fallback or os.getenv(
-                    "SOMABRAIN_DOCKER_MEMORY_FALLBACK"
-                ) or "http://host.docker.internal:9595"
-                logger.debug(
-                    "MemoryClient running in Docker, defaulting base_url to %r",
-                    base_url,
-                )
+                base_url = fallback or os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
+                if base_url:
+                    logger.debug(
+                        "MemoryClient running in Docker, defaulting base_url to %r",
+                        base_url,
+                    )
             except Exception:
                 pass
         client_kwargs: dict[str, Any] = {
@@ -554,7 +544,7 @@ class MemoryClient:
         # If memory is required and client not initialized, raise immediately to fail fast.
         if require_memory_enabled and (self._http is None):
             raise RuntimeError(
-                "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Expected http://localhost:9595 or configured URL."
+                "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
             )
 
     def _init_redis(self) -> None:
@@ -2123,7 +2113,7 @@ class MemoryClient:
         memory_required = _require_memory_enabled()
         if memory_required and self._http is None:
             raise RuntimeError(
-                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (expected on port 9595)."
+                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (set SOMABRAIN_MEMORY_HTTP_ENDPOINT)."
             )
         # Prefer HTTP recall if available
         if self._http is not None:

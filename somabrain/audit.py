@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from somabrain.db.outbox import enqueue_event
+from somabrain.infrastructure import get_kafka_bootstrap
 
 # Import FastAPI Request only if available to avoid hard dependency at import time
 try:
@@ -50,6 +51,12 @@ if _DEFAULT_KAFKA_CLIENT == "none":
     )
 else:
     LOGGER.info("Kafka Python client detected: %s", _DEFAULT_KAFKA_CLIENT)
+
+_KAFKA_PORT_FALLBACK = (
+    os.getenv("SOMABRAIN_KAFKA_PORT")
+    or os.getenv("KAFKA_PORT")
+    or "9092"
+)
 
 
 def _audit_journal_dir() -> Path:
@@ -188,20 +195,8 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             return kurl[len("kafka://") :]
         return kurl
 
-    kafka_url: Optional[str] = None
-    if shared_settings is not None:
-        try:
-            raw_bootstrap = getattr(shared_settings, "kafka_bootstrap_servers", None)
-            if raw_bootstrap:
-                kafka_url = _parse_kafka_url(str(raw_bootstrap))
-        except Exception:
-            kafka_url = None
-    if not kafka_url:
-        kafka_host = os.getenv("SOMABRAIN_KAFKA_HOST", "localhost")
-        kafka_port = os.getenv("SOMABRAIN_KAFKA_PORT", "9092")
-        kafka_url = _parse_kafka_url(
-            os.getenv("SOMABRAIN_KAFKA_URL", f"kafka://{kafka_host}:{kafka_port}")
-        )
+    kafka_bootstrap = get_kafka_bootstrap()
+    kafka_url: Optional[str] = _parse_kafka_url(kafka_bootstrap) if kafka_bootstrap else None
     if not kafka_url:
         LOGGER.warning(
             "Kafka bootstrap servers not configured; falling back to journal-only audit logging."
@@ -259,7 +254,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                 import socket
 
                 first_bs = kafka_url.split(",")[0]
-                host, port = (first_bs.split(":", 1) + ["9092"])[:2]
+                host, port = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
                 port = int(port)
                 reachable = False
                 for _ in range(3):
@@ -353,7 +348,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             import socket
 
             first_bs = kafka_url.split(",")[0]
-            host, port = (first_bs.split(":", 1) + ["9092"])[:2]
+            host, port = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
             port = int(port)
             with socket.create_connection((host, port), timeout=1):
                 pass

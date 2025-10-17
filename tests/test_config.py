@@ -3,39 +3,85 @@
 # to ensure consistency with actual running services.
 
 import os
+from urllib.parse import urlparse
+
+from somabrain.infrastructure import (
+    get_api_base_url,
+    get_kafka_bootstrap,
+    get_memory_http_endpoint,
+    get_opa_url,
+    get_postgres_dsn,
+    get_redis_url,
+    require,
+)
 
 # === Core Infrastructure Ports ===
 # These should match ports.json and actual running services
 
 # SomaBrain API Service
-SOMABRAIN_HOST = os.getenv("SOMABRAIN_HOST", "127.0.0.1")
-SOMABRAIN_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
-SOMABRAIN_API_URL = os.getenv("SOMA_API_URL", f"http://{SOMABRAIN_HOST}:{SOMABRAIN_PORT}")
+SOMABRAIN_API_URL = require(
+    get_api_base_url() or os.getenv("SOMA_API_URL"),
+    message="Set SOMABRAIN_API_URL (see .env) for test infrastructure.",
+)
+_api_parts = urlparse(SOMABRAIN_API_URL)
+SOMABRAIN_HOST = _api_parts.hostname or os.getenv("SOMABRAIN_HOST", "127.0.0.1")
+SOMABRAIN_PORT = _api_parts.port or int(os.getenv("SOMABRAIN_HOST_PORT", "9696"))
 
 # SomaBrain Memory Service 
-MEMORY_HOST = os.getenv("SOMABRAIN_MEMORY_HOST", "127.0.0.1")
-MEMORY_PORT = int(os.getenv("SOMABRAIN_MEMORY_PORT", "9596"))  # Updated from 9595 to match ports.json
-MEMORY_HTTP_ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", f"http://{MEMORY_HOST}:{MEMORY_PORT}")
+MEMORY_HTTP_ENDPOINT = require(
+    get_memory_http_endpoint()
+    or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+    or os.getenv("MEMORY_SERVICE_URL"),
+    message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT for test infrastructure.",
+)
+_memory_parts = urlparse(MEMORY_HTTP_ENDPOINT)
+MEMORY_HOST = _memory_parts.hostname or os.getenv("SOMABRAIN_MEMORY_HOST", "127.0.0.1")
+MEMORY_PORT = _memory_parts.port or int(os.getenv("SOMABRAIN_MEMORY_HTTP_PORT", "9595"))
 
 # Redis Cache
-REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")  
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))  # Updated from 55077 to match ports.json
-REDIS_URL = os.getenv("SOMABRAIN_REDIS_URL", f"redis://{REDIS_HOST}:{REDIS_PORT}/0")
+REDIS_URL = require(
+    get_redis_url()
+    or os.getenv("SOMABRAIN_REDIS_URL")
+    or os.getenv("REDIS_URL"),
+    message="Set SOMABRAIN_REDIS_URL for test infrastructure.",
+)
+_redis_parts = urlparse(REDIS_URL)
+REDIS_HOST = _redis_parts.hostname or os.getenv("SOMABRAIN_REDIS_HOST", "127.0.0.1")
+REDIS_PORT = _redis_parts.port or int(os.getenv("SOMABRAIN_REDIS_PORT", "6379"))
 
 # Kafka Message Broker
-KAFKA_HOST = os.getenv("KAFKA_HOST", "127.0.0.1")
-KAFKA_PORT = int(os.getenv("KAFKA_PORT", "9092"))
-KAFKA_URL = os.getenv("SOMABRAIN_KAFKA_URL", f"kafka://{KAFKA_HOST}:{KAFKA_PORT}")
+KAFKA_URL = require(
+    get_kafka_bootstrap()
+    or os.getenv("SOMABRAIN_KAFKA_URL")
+    or os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
+    message="Set SOMABRAIN_KAFKA_URL for test infrastructure.",
+)
+_kafka_url = KAFKA_URL
+if "://" not in _kafka_url:
+    _kafka_url = f"kafka://{_kafka_url}"
+_kafka_parts = urlparse(_kafka_url)
+KAFKA_HOST = _kafka_parts.hostname or os.getenv("KAFKA_HOST", "127.0.0.1")
+KAFKA_PORT = _kafka_parts.port or int(os.getenv("SOMABRAIN_KAFKA_PORT", "9092"))
 
 # PostgreSQL Database  
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "15432"))  # Custom port from ports.json
-POSTGRES_DSN = os.getenv("SOMABRAIN_POSTGRES_DSN", f"postgresql://soma:soma_pass@{POSTGRES_HOST}:{POSTGRES_PORT}/somabrain")
+POSTGRES_DSN = require(
+    get_postgres_dsn() or os.getenv("SOMABRAIN_POSTGRES_DSN"),
+    message="Set SOMABRAIN_POSTGRES_DSN for test infrastructure.",
+)
+_pg_parts = urlparse(POSTGRES_DSN)
+POSTGRES_HOST = _pg_parts.hostname or os.getenv("POSTGRES_HOST", "127.0.0.1")
+POSTGRES_PORT = _pg_parts.port or int(os.getenv("POSTGRES_PORT", "5432"))
 
 # OPA Policy Engine
-OPA_HOST = os.getenv("OPA_HOST", "127.0.0.1")
-OPA_PORT = int(os.getenv("OPA_PORT", "8181"))
-OPA_URL = os.getenv("SOMABRAIN_OPA_URL", f"http://{OPA_HOST}:{OPA_PORT}")
+OPA_URL = require(
+    get_opa_url()
+    or os.getenv("SOMABRAIN_OPA_URL")
+    or os.getenv("SOMA_OPA_URL"),
+    message="Set SOMABRAIN_OPA_URL for test infrastructure.",
+)
+_opa_parts = urlparse(OPA_URL)
+OPA_HOST = _opa_parts.hostname or os.getenv("OPA_HOST", "127.0.0.1")
+OPA_PORT = _opa_parts.port or int(os.getenv("SOMABRAIN_OPA_PORT", "8181"))
 
 # Prometheus Monitoring
 PROMETHEUS_HOST = os.getenv("PROMETHEUS_HOST", "127.0.0.1")  

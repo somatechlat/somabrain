@@ -965,6 +965,87 @@ class SecurityManager:
         return processed_content, redaction_map
 ```
 
+## Learning Algorithm Diagnostics
+
+SomaBrain's current adaptation engine lives in `somabrain/learning/adaptation.py`. Two internal analyses documented the same core flaw: **parameter coupling that creates the illusion of learning**. Preserve these findings while implementing fixes.
+
+### Coupled Parameter Updates
+
+```python
+def apply_feedback(self, utility: float, reward: Optional[float] = None) -> bool:
+    signal = reward if reward is not None else utility
+
+    # Learning rate manipulation
+    self._lr = self._base_lr * (1.0 + float(signal))
+    delta = self._lr * float(signal)
+
+    # Identical deltas across parameters
+    self._retrieval.alpha = self._constrain("alpha", self._retrieval.alpha + delta)
+    self._retrieval.gamma = self._constrain("gamma", self._retrieval.gamma - 0.5 * delta)
+    self._utility.lambda_ = self._constrain("lambda_", self._utility.lambda_ + delta)
+    self._utility.mu = self._constrain("mu", self._utility.mu - 0.25 * delta)
+    self._utility.nu = self._constrain("nu", self._utility.nu - 0.25 * delta)
+    return True
+```
+
+- `alpha` and `lambda_` move together because they share the same `+delta` updates.
+- `gamma` starts at 0.1 and the `-0.5 * delta` term drives it to the floor (`0.0`) quickly.
+- Learning rate becomes effectively constant for repeated positive feedback (`0.05 * (1.0 + 0.9) = 0.095`).
+
+### Evidence from Telemetry and Tests
+
+| Observation | Source |
+| --- | --- |
+| Linear growth for `alpha`/`lambda_` (`[1.0, 1.045, 1.09, …]`) | `run_learning_test.py` output |
+| `gamma` hits 0.0 and remains clamped | Redis persistence of adaptation state |
+| Tests expect `alpha` and `lambda_` to increase together | `tests/test_learning_progress.py` |
+| State snapshot shows constant learning rate `0.095` | `somabrain/learning/adaptation.py` telemetry |
+
+### Diagnosis Summary
+
+- The engine simulates learning by deterministic coupling rather than independent cognitive signals.
+- Strict mode ensures no stubs hide the behaviour—failures are observable in Redis state and audit logs.
+- Infrastructure (Redis, Kafka, metrics) is production ready; only the algorithm needs redesign.
+
+### Recommended Fix Strategy
+
+1. **Decouple parameters**: introduce independent deltas per signal (semantic quality, utility improvement, temporal relevance).
+2. **Dynamic learning rates**: derive `alpha_lr`, `lambda_lr`, `gamma_lr` from neuromodulator state instead of a single `_base_lr` multiplier.
+3. **True cognitive signals**: feed semantic relevance, cost/benefit ratios, and temporal freshness into the adaptation step.
+4. **Guardrails**: add property tests verifying parameters diverge when signals differ; export dedicated metrics to confirm.
+
+### Migration Checklist
+
+- [ ] Refactor `apply_feedback` with independent learning channels.
+- [ ] Update tests to assert decorrelated parameter movement.
+- [ ] Extend metrics (`somabrain_learning_alpha_delta`, etc.) for visibility.
+- [ ] Document the new behaviour in this manual and update benchmarks.
+
+## Mathematical Appendices
+
+### Density Matrix Maintenance
+
+`somabrain/memory/density.py` maintains the ρ matrix used by the unified scorer. Keep code and math synchronized.
+
+- Representation: ρ is a real symmetric matrix with shape `(dim, dim)`.
+- Updates: `DensityMatrix.observe(vec, alpha)` normalizes `vec`, applies the rank-1 update `ρ' = (1 - alpha) * ρ + alpha * (v vᵀ)`, then reprojects.
+- Projection steps:
+    1. Trace normalization via `normalize_trace()` so `trace(ρ) = 1`.
+    2. PSD projection via `project_psd()` to clip negative eigenvalues.
+    3. Symmetrization with `(ρ + ρᵀ) / 2` to counter floating point drift.
+- Metrics: `somabrain_density_trace_error_total`, `somabrain_density_psd_clip_total`, `somabrain_density_condition_number`.
+- Tests: `tests/test_fd_salience.py`, `tests/test_unified_scorer.py`, and `tests/test_legacy_purge.py` guard PSD, weight bounds, and stub regressions.
+
+### BHDC Binding Cheat Sheet
+
+`somabrain/quantum.py` implements binary hyperdimensional computing (BHDC). Key reminders:
+
+- Hypervector construction: dimension from `HRRConfig.dim` (default 2048); RNG seeded with `HRRConfig.seed`; sparsity controls ones vs minus ones.
+- Role generation: `QuantumLayer.make_unitary_role(role)` hashes the role, seeds a temporary RNG, and produces a permutation vector that is its own inverse.
+- Binding & unbinding: `bind_unitary(vec, role)` performs circular convolution; `unbind_unitary(bound, role)` applies the conjugate to reverse the operation.
+- Superposition & cleanup: `superpose` averages bound vectors and renormalizes to ±1; `cleanup` selects the stored vector with maximum cosine similarity.
+- Tests: `tests/test_bhdc_binding.py` checks bind/unbind symmetry; `benchmarks/numerics_bench.py` validates numerical stability.
+
 **Verification**: Domain knowledge is comprehensive when you understand the mathematical foundations, can explain architectural decisions, and can implement new cognitive features.
 
 ---

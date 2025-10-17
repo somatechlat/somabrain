@@ -112,6 +112,35 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - **CI/CD Pipeline**: Automated testing, linting, and quality gates
 - **Monitoring Stack**: Prometheus metrics, Grafana dashboards, and alerting rules
 
+### Launch Snapshot
+
+```bash
+docker run --rm \
+  -p 8000:9696 \
+  -e SOMABRAIN_DISABLE_AUTH=true \
+  ghcr.io/somatechlat/somabrain:latest
+```
+
+- Health: `curl -s http://localhost:8000/health`
+- OpenAPI: `http://localhost:8000/docs`
+- Metrics: `http://localhost:8000/metrics`
+
+**Endpoints**: `/remember`, `/recall`, `/link`, `/docs`, `/metrics`
+
+**Security**: Token auth via `Authorization: Bearer <token>` (set `SOMABRAIN_API_TOKEN` to enable). Tenancy via `X-Tenant-ID`. For demos you may keep `SOMABRAIN_DISABLE_AUTH=true`; enable auth for real deployments.
+
+**Observability**:
+
+```bash
+docker compose -f docker-compose.observability.yml up
+```
+
+- Prometheus UI: `http://localhost:9090`
+
+**Known Limits**:
+- Bounded working memory; tune dimensions through environment variables.
+- Apply rate/size limits at the edge proxy for public deployments.
+
 ---
 
 ## [v0.0.1] - 2024-12-01 (Initial Research Release)

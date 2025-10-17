@@ -26,6 +26,8 @@ from dataclasses import dataclass, field  # add field import
 from functools import lru_cache
 from typing import List, Optional, Any
 
+from somabrain.infrastructure import get_memory_http_endpoint, get_redis_url
+
 try:
     # Shared BaseSettings instance exported from common/config.
     from common.config.settings import settings as shared_settings
@@ -114,12 +116,14 @@ class Config:
     # memory service. Legacy "memory_mode" toggles have been removed.
     namespace: str = "somabrain_ns"
     http: MemoryHTTPConfig = field(
-        default_factory=lambda: MemoryHTTPConfig(endpoint="http://localhost:9595")
+        default_factory=lambda: MemoryHTTPConfig(
+            endpoint=get_memory_http_endpoint() or ""
+        )
     )
     outbox_path: str = "./data/somabrain/outbox.jsonl"
     # Redis backend configuration (optional)
     # Redis connection string is now dynamically constructed from SOMABRAIN_REDIS_HOST and SOMABRAIN_REDIS_PORT
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = field(default_factory=lambda: get_redis_url() or "")
 
     # Security and Limits
     api_token: Optional[str] = None

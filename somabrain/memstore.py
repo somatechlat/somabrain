@@ -6,7 +6,6 @@ This scaffold backs retrieval integrations and roadmap experiments.
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any, Dict, Optional
 
 LOGGER = logging.getLogger("somabrain.memstore")
@@ -16,25 +15,14 @@ try:
 except Exception:  # pragma: no cover - optional
     redis = None  # type: ignore
 
-try:
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - optional dependency
-    shared_settings = None  # type: ignore
+from somabrain.infrastructure import get_redis_url
 
 
 class Memstore:
     def __init__(self, url: Optional[str] = None):
-        if url is not None:
-            self.url = url
-        elif shared_settings is not None:
-            try:
-                self.url = str(getattr(shared_settings, "redis_url", "")).strip() or "redis://redis:6379/0"
-            except Exception:
-                self.url = "redis://redis:6379/0"
-        else:
-            self.url = os.getenv("SOMABRAIN_REDIS_URL", "redis://redis:6379/0")
+        self.url = url or get_redis_url()
         self._client = None
-        if redis is not None:
+        if self.url and redis is not None:
             try:
                 self._client = redis.from_url(self.url)
             except Exception:

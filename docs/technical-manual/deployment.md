@@ -29,6 +29,30 @@ cp .env.example .env.local
 curl -fsS http://localhost:9696/health | jq
 ```
 
+#### Direct Port Access (Local Parity)
+
+The compose stack binds container ports directly to localhost for strict-real parity:
+
+| Service | Host Port | Notes |
+| --- | --- | --- |
+| SomaBrain API | 9696 | `http://localhost:9696` for health, metrics, OpenAPI |
+| Redis | 6379 | `redis://localhost:6379/0` working-memory cache |
+| Kafka | 9092 | Local bootstrap for audit/event streaming |
+| Kafka Exporter | 9308 | Metrics endpoint for Kafka observability |
+| OPA | 8181 | Policy decisions (`http://localhost:8181`) |
+| Prometheus | 9090 | Monitoring UI and scrape target |
+| Postgres | 5432 | Primary database access |
+| Postgres Exporter | 9187 | Database metrics |
+
+Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env.local` and `ports.json` with available values.
+
+#### Docker Image Hardening Notes
+
+- Multi-stage Dockerfile builds wheels and copies only runtime artefacts into a slim image.
+- `.dockerignore` excludes tests, examples, build artefacts, and secrets to keep the context minimal.
+- Runtime image includes `somabrain/`, `scripts/`, `arc_cache.py`, and documentation required at runtime.
+- Containers run as a non-root user; ensure volumes and Kubernetes security contexts respect this constraint.
+
 #### Production Docker Compose
 ```yaml
 # docker-compose.prod.yml

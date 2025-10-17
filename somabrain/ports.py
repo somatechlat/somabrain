@@ -2,17 +2,28 @@
 
 from __future__ import annotations
 
+import os
 import socket
 from typing import Dict
 
+def _env_port(name: str, fallback: int) -> int:
+    try:
+        raw = os.getenv(name)
+        if not raw:
+            return fallback
+        return int(raw)
+    except Exception:
+        return fallback
+
+
 DEFAULT_SERVICE_PORTS: Dict[str, int] = {
-    "SOMABRAIN_HOST_PORT": 9696,
+    "SOMABRAIN_HOST_PORT": _env_port("SOMABRAIN_HOST_PORT", 9696),
     # canonical host port for local somabrain API
-    "REDIS_HOST_PORT": 6379,
-    "KAFKA_HOST_PORT": 9092,
-    "PROMETHEUS_HOST_PORT": 9090,
-    "POSTGRES_HOST_PORT": 15432,
-    "SOMAMEMORY_HOST_PORT": 9595,
+    "REDIS_HOST_PORT": _env_port("REDIS_HOST_PORT", 6379),
+    "KAFKA_HOST_PORT": _env_port("KAFKA_BROKER_HOST_PORT", 9092),
+    "PROMETHEUS_HOST_PORT": _env_port("PROMETHEUS_HOST_PORT", 9090),
+    "POSTGRES_HOST_PORT": _env_port("POSTGRES_HOST_PORT", 15432),
+    "SOMAMEMORY_HOST_PORT": _env_port("SOMABRAIN_MEMORY_HTTP_PORT", 9595),
 }
 
 

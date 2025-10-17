@@ -221,6 +221,43 @@ flowchart TD
 - **Warning Alerts**: Performance degradation, resource utilization thresholds
 - **Informational**: Deployment notifications, configuration changes
 
+## Recall Lifecycle (Strict Mode)
+
+1. Request enters FastAPI handlers (`somabrain.app`).
+2. Strict-real middleware verifies `SOMABRAIN_STRICT_REAL`, `SOMABRAIN_FORCE_FULL_STACK`, and `SOMABRAIN_REQUIRE_MEMORY`.
+3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache and neuromodulator state.
+4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines cosine, frequency-domain, and recency terms.
+5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) expands to the HTTP memory service when required.
+6. Density matrix update (`somabrain/memory/density.py::DensityMatrix.observe`) folds evidence back into state and exports metrics.
+7. Response returns scored items plus audit metadata; structured logs emit via `somabrain/audit.py`.
+
+Strict-real deployments abort the request if any stage fails—there are no silent fallbacks.
+
+## Core Invariants
+
+| Invariant | Code Reference | Enforcement |
+| --- | --- | --- |
+| `abs(trace(ρ) - 1) < 1e-4` | `DensityMatrix.normalize_trace` | Called after every observe/update cycle |
+| PSD spectrum | `DensityMatrix.project_psd` | Clips negative eigenvalues before persistence |
+| Weight bounds | `UnifiedScorer._clamp_weight` | Keeps component weights within configured bounds |
+| Stub usage = 0 | `_audit_stub_usage` in `MemoryClient` | Raises immediately if a stub path executes |
+| Health realism | `somabrain/metrics.py::emit_health` | `/health` reports ready only when all deps respond |
+
+Expose these guarantees through Prometheus metrics (`somabrain_density_trace_error_total`, `somabrain_stub_usage_total`, `somabrain_recall_latency_seconds`).
+
+## Configuration Touchpoints
+
+- Environment flags are sourced via `common.config.settings.Settings`—see `configuration.md`.
+- Compose and Kubernetes manifests supply the same flags; strict mode must be enabled in every promoted environment.
+- Optional components (Kafka, Postgres) are auto-detected. If endpoints exist they are used; strict mode keeps readiness false when dependencies are offline.
+
+## Extending the System
+
+1. Implement new math in a dedicated module (for example `somabrain/math/new_component.py`).
+2. Add integration points inside `MultiTenantWM` or `UnifiedScorer` guarded by explicit feature flags.
+3. Cover invariants with property tests and expose new metrics.
+4. Update the architecture manual and linked diagrams within the same change.
+
 ---
 
 **Verification**: System health can be validated via `/health` endpoint and Prometheus metrics dashboard.

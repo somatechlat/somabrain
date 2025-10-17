@@ -26,21 +26,22 @@ except ImportError:
 
 LOGGER = logging.getLogger("somabrain.services.memory_integrity_worker")
 
+from somabrain.infrastructure import get_redis_url
+
 
 class MemoryIntegrityWorker:
     def __init__(self, redis_url: Optional[str] = None, poll_interval: int = 60):
         self.poll_interval = poll_interval
         self._use_redis = False
         if redis is not None:
-            host = os.getenv("SOMABRAIN_REDIS_HOST", "localhost")
-            port = os.getenv("SOMABRAIN_REDIS_PORT", "6379")
-            url = redis_url or os.getenv(
-                "SOMABRAIN_REDIS_URL", f"redis://{host}:{port}/0"
-            )
+            url = redis_url or get_redis_url()
             try:
-                self._redis = redis.from_url(url)
-                self._redis.ping()
-                self._use_redis = True
+                if url:
+                    self._redis = redis.from_url(url)
+                    self._redis.ping()
+                    self._use_redis = True
+                else:
+                    self._redis = None
             except Exception as e:
                 LOGGER.warning(f"Redis unavailable: {e}")
                 self._redis = None

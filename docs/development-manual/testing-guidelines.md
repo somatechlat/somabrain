@@ -1499,6 +1499,23 @@ addopts =
     -ra
     -q 
     --strict-markers
+
+    Golden truth samples live under `tests/data/golden/` and must reflect **real** service interactions—no mocks, no synthetic stand-ins.
+
+    | File | Description | SHA256 |
+    | --- | --- | --- |
+    | `memories.jsonl` | Canonical episodic memory captures from the live memory endpoint. | `8ca145c78cc8f414674a92ded255636b732a46d1542d1771aa518d7b4da70459` |
+
+    ### Update Procedure
+    1. Run the live stack (docker-compose, Kind, or shared infra) with strict-real mode and confirm the external memory endpoint is reachable.
+    2. Export the dataset via `scripts/data/capture_memory_golden.py`.
+    3. Overwrite the JSONL file and recompute `shasum -a 256 memories.jsonl`.
+    4. Update the checksum table and commit both the data and documentation together.
+
+    ### Usage
+
+    Tests load these datasets via `tests/support/golden_data.py`. Keep consumption read-only and deterministic.
+
     --strict-config
     --cov=somabrain
     --cov-report=term-missing

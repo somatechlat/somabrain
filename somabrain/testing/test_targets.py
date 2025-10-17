@@ -16,6 +16,13 @@ from urllib.parse import urlparse
 
 import requests
 
+from somabrain.infrastructure import (
+    get_api_base_url,
+    get_memory_http_endpoint,
+    get_redis_url,
+    require,
+)
+
 try:  # Optional dependency in some environments.
     import redis
 except Exception:  # pragma: no cover - redis not always installed.
@@ -127,13 +134,26 @@ def _env_truthy(value: str | None) -> bool:
 
 
 def _default_target() -> TargetConfig:
+    api_base = require(
+        get_api_base_url() or os.getenv("SOMA_API_URL"),
+        message="Set SOMABRAIN_API_URL (see .env) before running tests.",
+    )
+    memory_base = require(
+        get_memory_http_endpoint()
+        or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+        or os.getenv("MEMORY_SERVICE_URL"),
+        message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.",
+    )
+    redis_url = (
+        get_redis_url()
+        or os.getenv("SOMABRAIN_REDIS_URL")
+        or os.getenv("REDIS_URL")
+    )
     return TargetConfig(
         label="local",
-        api_base=os.getenv("SOMA_API_URL", "http://127.0.0.1:9696"),
-        memory_base=os.getenv(
-            "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:9595"
-        ),
-        redis_url=os.getenv("SOMABRAIN_REDIS_URL", "redis://127.0.0.1:6379/0"),
+        api_base=api_base,
+        memory_base=memory_base,
+        redis_url=redis_url,
         tenant=os.getenv("SOMABRAIN_DEFAULT_TENANT"),
         postgres_dsn=os.getenv("SOMABRAIN_POSTGRES_DSN"),
         bypass_lock_checks=_env_truthy(os.getenv("SOMA_API_URL_LOCK_BYPASS")),

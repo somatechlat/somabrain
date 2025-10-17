@@ -17,6 +17,7 @@ import httpx
 
 from somabrain import journal, metrics as M
 from somabrain.memory_pool import MultiTenantMemory
+from somabrain.infrastructure import get_memory_http_endpoint, require
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,7 +38,12 @@ class MemorySyncWorker:
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._memory_service_healthy = False
         
-        endpoint = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://host.docker.internal:9595")
+        endpoint = require(
+            get_memory_http_endpoint()
+            or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+            or os.getenv("MEMORY_SERVICE_URL"),
+            message="Configure SOMABRAIN_MEMORY_HTTP_ENDPOINT for MemorySyncWorker.",
+        )
         self._http_client = httpx.Client(base_url=endpoint, timeout=5.0)
 
     def start(self):

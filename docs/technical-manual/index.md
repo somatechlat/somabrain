@@ -12,17 +12,23 @@
 
 - [Architecture](architecture.md) - System design and component interactions
 - [Deployment](deployment.md) - Production deployment procedures
+- [Configuration](configuration.md) - Environment variables and runtime settings
 - [Monitoring](monitoring.md) - Dashboards, alerts, and observability
 - [Runbooks](runbooks/) - Operational procedures
+  - [Operations Overview](runbooks/operations-overview.md) - Day-two checklist
   - [SomaBrain API](runbooks/somabrain-api.md) - Main service operations
   - [Redis Operations](runbooks/redis-operations.md) - Cache management
   - [Kafka Operations](runbooks/kafka-operations.md) - Message broker troubleshooting
   - [Postgres Operations](runbooks/postgres-operations.md) - Database operations
+  - [Disaster Recovery](runbooks/disaster-recovery.md) - Backups and constitution restore
+  - [Release & Health Gating](runbooks/release-health-gating.md) - Controlled rollouts
   - [Incident Response](runbooks/incident-response.md) - General incident procedures
 - [Backup & Recovery](backup-and-recovery.md) - Disaster recovery procedures
 - [Security](security/) - Security policies and controls
+  - [Strict Real Mode](security/strict-mode.md) - Enforces no-stub execution
   - [Secrets Policy](security/secrets-policy.md) - Secrets management
   - [RBAC Matrix](security/rbac-matrix.md) - Access control
+  - [Compliance & Proofs](security/compliance-and-proofs.md) - Audit artefacts
 
 ---
 
@@ -55,4 +61,4 @@ For production deployment:
 **References**:
 - [User Manual](../user-manual/index.md) for feature usage
 - [Development Manual](../development-manual/index.md) for code contributions
-- [Configuration Reference](../development-manual/api-reference.md) for environment variables
+- [Runtime Configuration](configuration.md) for environment variables

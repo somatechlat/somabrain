@@ -11,6 +11,8 @@ try:
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     shared_settings = None  # type: ignore
 
+from somabrain.infrastructure import get_opa_url
+
 
 class OPAClient:
     """Simple OPA HTTP client.
@@ -26,18 +28,22 @@ class OPAClient:
     def __init__(self, policy_path: str = "somabrain/auth/allow") -> None:
         if shared_settings is not None:
             try:
-                self.base_url = getattr(shared_settings, "opa_url", None) or "http://localhost:8181"
-            except Exception:
-                self.base_url = "http://localhost:8181"
-            try:
                 self.timeout = float(
                     getattr(shared_settings, "opa_timeout_seconds", 2.0) or 2.0
                 )
             except Exception:
                 self.timeout = 2.0
         else:
-            self.base_url = os.getenv("SOMA_OPA_URL", "http://localhost:8181")
             self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
+
+        self.base_url = get_opa_url()
+        if not self.base_url:
+            # Legacy fallback for dev shells without explicit configuration
+            self.base_url = (
+                os.getenv("SOMA_OPA_URL")
+                or os.getenv("SOMABRAIN_OPA_FALLBACK")
+                or "http://localhost:8181"
+            )
         self.policy_path = policy_path.rstrip("/")
         self.session = requests.Session()
         LOGGER.debug(

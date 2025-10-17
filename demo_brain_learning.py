@@ -25,6 +25,13 @@ import requests
 import matplotlib.pyplot as plt
 import numpy as np
 
+from somabrain.infrastructure import (
+    get_api_base_url,
+    get_memory_http_endpoint,
+    get_redis_url,
+    require,
+)
+
 # Import centralized test configuration
 try:
     from tests.test_config import (
@@ -33,9 +40,18 @@ try:
     )
 except ImportError:
     # Fallback for standalone usage
-    SOMABRAIN_API_URL = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
-    REDIS_URL = os.getenv("SOMABRAIN_REDIS_URL", "redis://127.0.0.1:6379/0")
-    MEMORY_HTTP_ENDPOINT = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://127.0.0.1:9595")
+    SOMABRAIN_API_URL = require(
+        get_api_base_url() or os.getenv("SOMA_API_URL"),
+        message="Configure SOMABRAIN_API_URL (see .env) before running demo_brain_learning.py.",
+    )
+    REDIS_URL = require(
+        get_redis_url() or os.getenv("REDIS_URL"),
+        message="Configure SOMABRAIN_REDIS_URL (see .env) before running demo_brain_learning.py.",
+    )
+    MEMORY_HTTP_ENDPOINT = require(
+        get_memory_http_endpoint() or os.getenv("MEMORY_SERVICE_URL"),
+        message="Configure SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running demo_brain_learning.py.",
+    )
     
     def get_test_headers(session_id=None, **kwargs):
         headers = {"Content-Type": "application/json", "X-Model-Confidence": "8.5"}
