@@ -108,6 +108,11 @@ class Config:
     scorer_recency_tau: float = 32.0
     recall_recency_time_scale: float = 60.0
     recall_recency_max_steps: float = 4096.0
+    recall_recency_sharpness: float = 1.2
+    recall_recency_floor: float = 0.05
+    recall_density_margin_target: float = 0.2
+    recall_density_margin_floor: float = 0.6
+    recall_density_margin_weight: float = 0.35
     wm_recency_time_scale: float = 60.0
     wm_recency_max_steps: float = 4096.0
 
@@ -274,6 +279,7 @@ class Config:
     # Persistence
     persistent_journal_enabled: bool = False
     journal_dir: str = "./data/somabrain"
+    allow_journal_fallback: bool = False
     journal_redact_fields: list[str] = field(default_factory=list)
 
     # Public API

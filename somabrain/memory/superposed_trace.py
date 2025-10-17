@@ -12,8 +12,8 @@ it can slot into the upcoming memory service refactor.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional, Tuple
+from dataclasses import dataclass, replace
+from typing import Callable, Dict, Optional, Tuple, Protocol, Iterable, List
 
 import numpy as np
 
@@ -93,6 +93,7 @@ class SuperposedTrace:
         *,
         quantum: Optional[QuantumLayer] = None,
         rotation_matrix_factory: Optional[Callable[[int, int], np.ndarray]] = None,
+        cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
         self.cfg = cfg.validate()
         self._q = quantum or QuantumLayer(HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed))
@@ -104,6 +105,7 @@ class SuperposedTrace:
             self._rotation = factory(self.cfg.dim, self.cfg.rotation_seed).astype("float32", copy=False)
         self._eta = self.cfg.eta
         self._eps = self.cfg.epsilon
+        self._cleanup_index = cleanup_index
 
     # ------------------------------------------------------------------
     # Public API
@@ -142,6 +144,8 @@ class SuperposedTrace:
         binding = self._q.bind(key_vec, val_vec)
         self._state = self._decayed_update(binding)
         self._anchors[anchor_id] = val_vec
+        if self._cleanup_index is not None:
+            self._cleanup_index.upsert(anchor_id, val_vec)
 
     def recall_raw(self, key: np.ndarray) -> np.ndarray:
         """Return the unbound vector without cleanup."""
@@ -159,12 +163,56 @@ class SuperposedTrace:
     def register_anchor(self, anchor_id: str, vector: np.ndarray) -> None:
         """Register or replace an anchor used for cleanup."""
 
-        self._anchors[anchor_id] = self._ensure_vector(vector, "anchor")
+        norm_vec = self._ensure_vector(vector, "anchor")
+        self._anchors[anchor_id] = norm_vec
+        if self._cleanup_index is not None:
+            self._cleanup_index.upsert(anchor_id, norm_vec)
 
     def remove_anchor(self, anchor_id: str) -> None:
         """Remove an anchor from the cleanup index if it exists."""
 
         self._anchors.pop(anchor_id, None)
+        if self._cleanup_index is not None:
+            self._cleanup_index.remove(anchor_id)
+
+    def update_parameters(
+        self,
+        *,
+        eta: Optional[float] = None,
+        cleanup_topk: Optional[int] = None,
+        cleanup_params: Optional[Dict[str, float]] = None,
+    ) -> None:
+        """Adjust runtime parameters (decay, cleanup) without rebuilding the trace."""
+
+        cfg = self.cfg
+        updated = False
+        if eta is not None:
+            try:
+                new_eta = float(eta)
+            except Exception:
+                new_eta = self._eta
+            if math.isfinite(new_eta) and 0.0 < new_eta <= 1.0:
+                self._eta = new_eta
+                cfg = replace(cfg, eta=new_eta)
+                updated = True
+        if cleanup_topk is not None:
+            try:
+                topk = int(cleanup_topk)
+            except Exception:
+                topk = cfg.cleanup_topk
+            if topk > 0 and topk != cfg.cleanup_topk:
+                cfg = replace(cfg, cleanup_topk=topk)
+                updated = True
+        if updated:
+            self.cfg = cfg
+        if self._cleanup_index is not None and cleanup_params:
+            try:
+                self._cleanup_index.configure(
+                    top_k=cleanup_topk,
+                    ef_search=cleanup_params.get("ef_search"),
+                )
+            except Exception:
+                pass
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -189,9 +237,15 @@ class SuperposedTrace:
         best_id = ""
         best_score = -1.0
         second_score = -1.0
-        # Evaluate up to cleanup_topk anchors. Deterministic order to aid tests.
-        for anchor_id, anchor_vec in list(self._anchors.items())[: self.cfg.cleanup_topk]:
-            score = self._q.cosine(query_vec, anchor_vec)
+        candidates: Iterable[Tuple[str, float]]
+        if self._cleanup_index is not None:
+            candidates = self._cleanup_index.search(query_vec, self.cfg.cleanup_topk)
+        else:
+            candidates = [
+                (anchor_id, float(self._q.cosine(query_vec, anchor_vec)))
+                for anchor_id, anchor_vec in list(self._anchors.items())[: self.cfg.cleanup_topk]
+            ]
+        for anchor_id, score in candidates:
             if score > best_score:
                 second_score = best_score
                 best_score = score
@@ -228,4 +282,14 @@ def _make_orthogonal_matrix(dim: int, seed: int) -> np.ndarray:
     return q.astype(np.float32)
 
 
-__all__ = ["TraceConfig", "SuperposedTrace"]
+__all__ = ["TraceConfig", "SuperposedTrace", "CleanupIndex"]
+
+
+class CleanupIndex(Protocol):
+    def upsert(self, anchor_id: str, vector: np.ndarray) -> None: ...
+
+    def remove(self, anchor_id: str) -> None: ...
+
+    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]: ...
+
+    def configure(self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None) -> None: ...

@@ -21,11 +21,11 @@ class _StaticEmbedder:
         return vec
 
 
-def _mk_client(cfg: Config) -> MemoryClient:
+def _mk_client(cfg: Config, *, w_cosine: float = 0.0, w_recency: float = 1.0) -> MemoryClient:
     scorer = UnifiedScorer(
-        w_cosine=0.0,
+        w_cosine=w_cosine,
         w_fd=0.0,
-        w_recency=1.0,
+        w_recency=w_recency,
         weight_min=0.0,
         weight_max=1.0,
         recency_tau=cfg.scorer_recency_tau,
@@ -41,6 +41,8 @@ def test_rescore_bounds_recency_by_configured_cap() -> None:
     cfg = Config()
     cfg.recall_recency_time_scale = 2.0
     cfg.recall_recency_max_steps = 4.0
+    cfg.recall_recency_sharpness = 1.0
+    cfg.recall_recency_floor = 0.2
     cfg.scorer_recency_tau = 1.0
     client = _mk_client(cfg)
 
@@ -54,14 +56,27 @@ def test_rescore_bounds_recency_by_configured_cap() -> None:
     assert ranked[0].payload["content"] == "fresh"
 
     aged = next(hit for hit in ranked if hit.payload["content"] == "aged")
-    expected = math.exp(-4.0 / cfg.scorer_recency_tau)
-    assert math.isclose(aged.score or 0.0, expected, rel_tol=1e-6)
+    age_seconds = 20.0
+    steps = min(
+        math.log1p(age_seconds / cfg.recall_recency_time_scale)
+        * cfg.recall_recency_sharpness,
+        cfg.recall_recency_max_steps,
+    )
+    recency_component = math.exp(-steps / cfg.scorer_recency_tau)
+    boost = max(
+        cfg.recall_recency_floor,
+        math.exp(-(age_seconds / cfg.recall_recency_time_scale) ** cfg.recall_recency_sharpness),
+    )
+    expected = recency_component * boost
+    assert math.isclose(aged.score or 0.0, expected, rel_tol=1e-6, abs_tol=1e-7)
 
 
 def test_rescore_accepts_iso8601_timestamps() -> None:
     cfg = Config()
     cfg.recall_recency_time_scale = 5.0
     cfg.recall_recency_max_steps = 32.0
+    cfg.recall_recency_sharpness = 1.0
+    cfg.recall_recency_floor = 0.05
     cfg.scorer_recency_tau = 2.0
     client = _mk_client(cfg)
 
@@ -71,6 +86,22 @@ def test_rescore_accepts_iso8601_timestamps() -> None:
 
     ranked = client._rescore_and_rank_hits([hit], "iso query")
     assert ranked[0].payload["content"] == "iso"
-    steps = min(5.0 / cfg.recall_recency_time_scale, cfg.recall_recency_max_steps)
-    expected = math.exp(-steps / cfg.scorer_recency_tau)
-    assert math.isclose(ranked[0].score or 0.0, expected, rel_tol=1e-5)
+    steps = math.log1p(5.0 / cfg.recall_recency_time_scale) * cfg.recall_recency_sharpness
+    recency_component = math.exp(-steps / cfg.scorer_recency_tau)
+    boost = math.exp(-(5.0 / cfg.recall_recency_time_scale) ** cfg.recall_recency_sharpness)
+    expected = recency_component * boost
+    assert math.isclose(ranked[0].score or 0.0, expected, rel_tol=3e-5, abs_tol=5e-6)
+
+
+def test_density_factor_applies_floor_when_margin_low() -> None:
+    cfg = Config()
+    cfg.scorer_recency_tau = 1.0
+    cfg.recall_density_margin_target = 0.3
+    cfg.recall_density_margin_floor = 0.4
+    cfg.recall_density_margin_weight = 0.8
+    client = _mk_client(cfg, w_cosine=1.0, w_recency=0.0)
+
+    hit = RecallHit(payload={"content": "dense", "_cleanup_margin": 0.05}, score=None)
+    ranked = client._rescore_and_rank_hits([hit], "dense")
+    assert ranked[0].payload["content"] == "dense"
+    assert math.isclose(ranked[0].score or 0.0, cfg.recall_density_margin_floor, rel_tol=1e-6)

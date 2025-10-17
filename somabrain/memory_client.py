@@ -1335,6 +1335,57 @@ class MemoryClient:
             cap = 4096.0
         return float(scale), float(cap)
 
+    def _recency_profile(self) -> tuple[float, float, float, float]:
+        scale, cap = self._recency_normalisation()
+        sharpness = getattr(self.cfg, "recall_recency_sharpness", 1.2)
+        try:
+            sharpness = float(sharpness)
+        except Exception:
+            sharpness = 1.2
+        if not math.isfinite(sharpness) or sharpness <= 0:
+            sharpness = 1.0
+        floor = getattr(self.cfg, "recall_recency_floor", 0.05)
+        try:
+            floor = float(floor)
+        except Exception:
+            floor = 0.05
+        if not math.isfinite(floor) or floor < 0:
+            floor = 0.0
+        if floor >= 1.0:
+            floor = 0.99
+        return scale, cap, sharpness, floor
+
+    def _recency_features(
+        self, ts_epoch: float | None, now_ts: float
+    ) -> tuple[float | None, float]:
+        if ts_epoch is None:
+            return None, 1.0
+        scale, cap, sharpness, floor = self._recency_profile()
+        age_seconds = max(0.0, now_ts - ts_epoch)
+        if age_seconds <= 0:
+            return 0.0, 1.0
+        normalised = age_seconds / max(scale, 1e-6)
+        damp_steps = math.log1p(normalised) * sharpness
+        recency_steps = min(damp_steps, cap)
+        try:
+            damp = math.exp(-(normalised**sharpness))
+        except Exception:
+            damp = 0.0
+        boost = max(floor, min(1.0, damp))
+        return recency_steps, boost
+
+    @staticmethod
+    def _coerce_float(value: Any) -> float | None:
+        if value is None:
+            return None
+        try:
+            numeric = float(value)
+        except Exception:
+            return None
+        if not math.isfinite(numeric):
+            return None
+        return numeric
+
     @staticmethod
     def _parse_payload_timestamp(raw: Any) -> float | None:
         if raw is None:
@@ -1370,6 +1421,51 @@ class MemoryClient:
             value /= 1000.0
         return value
 
+    def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
+        payload = hit.payload if isinstance(hit.payload, dict) else {}
+        margin = None
+        if isinstance(payload, dict):
+            margin = payload.get("_cleanup_margin")
+            if margin is None:
+                margin = payload.get("cleanup_margin")
+        if margin is None and isinstance(hit.raw, dict):
+            metadata = hit.raw.get("metadata")
+            if isinstance(metadata, dict):
+                margin = metadata.get("cleanup_margin")
+        return self._coerce_float(margin)
+
+    def _density_factor(self, margin: float | None) -> float:
+        if margin is None:
+            return 1.0
+        target = getattr(self.cfg, "recall_density_margin_target", 0.2)
+        floor = getattr(self.cfg, "recall_density_margin_floor", 0.6)
+        weight = getattr(self.cfg, "recall_density_margin_weight", 0.35)
+        try:
+            target = float(target)
+        except Exception:
+            target = 0.2
+        if not math.isfinite(target) or target <= 0:
+            target = 0.2
+        try:
+            floor = float(floor)
+        except Exception:
+            floor = 0.6
+        if not math.isfinite(floor) or floor < 0:
+            floor = 0.0
+        if floor > 1.0:
+            floor = 1.0
+        try:
+            weight = float(weight)
+        except Exception:
+            weight = 0.35
+        if not math.isfinite(weight) or weight < 0:
+            weight = 0.0
+        if margin >= target:
+            return 1.0
+        deficit = (target - margin) / target
+        penalty = 1.0 - (weight * deficit)
+        return max(floor, min(1.0, penalty))
+
     def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
             # Fallback to old logic if scorer is not available
@@ -1377,7 +1473,6 @@ class MemoryClient:
             return self._rank_hits(hits, query)
 
         query_vec = self._embedder.embed(query)
-        scale, cap = self._recency_normalisation()
         now_ts = datetime.now(timezone.utc).timestamp()
 
         def _text_of(p: dict) -> str:
@@ -1395,6 +1490,7 @@ class MemoryClient:
                 
                 # Calculate recency_steps from timestamp
                 recency_steps: float | None = None
+                recency_boost = 1.0
                 ts_epoch = None
                 for key in ("timestamp", "ts", "created_at"):
                     if key in payload:
@@ -1402,12 +1498,9 @@ class MemoryClient:
                         if ts_epoch is not None:
                             break
                 if ts_epoch is not None:
-                    age_seconds = max(0.0, now_ts - ts_epoch)
-                    normalised = age_seconds / scale
-                    if normalised > 0.0:
-                        recency_steps = min(normalised, cap)
-                    else:
-                        recency_steps = 0.0
+                    recency_steps, recency_boost = self._recency_features(
+                        ts_epoch, now_ts
+                    )
 
                 new_score = self._scorer.score(
                     query_vec,
@@ -1415,6 +1508,22 @@ class MemoryClient:
                     recency_steps=recency_steps,
                     cosine=hit.score, # Pass original score as cosine hint
                 )
+                new_score *= recency_boost
+                try:
+                    payload.setdefault("_recency_steps", recency_steps)
+                    payload.setdefault("_recency_boost", recency_boost)
+                except Exception:
+                    pass
+
+            margin = self._extract_cleanup_margin(hit)
+            density_factor = self._density_factor(margin)
+            new_score *= density_factor
+            if density_factor != 1.0:
+                try:
+                    payload.setdefault("_density_factor", density_factor)
+                except Exception:
+                    pass
+            new_score = max(0.0, min(1.0, float(new_score)))
             
             hit.score = new_score
             scored_hits.append(hit)

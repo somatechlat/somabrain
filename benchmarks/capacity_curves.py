@@ -17,10 +17,21 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def run(
-    out: Path, Ds=(256, 1024), ks=(1, 2, 4, 8, 16, 32, 64), trials=64, dtype="float32"
+    out: Path,
+    Ds=(256, 1024),
+    ks=(1, 2, 4, 8, 16, 32, 64),
+    trials=64,
+    dtype="float32",
+    accuracy_thresholds=(0.7, 0.8, 0.9),
 ):
     results = {
-        "meta": {"D": list(Ds), "ks": list(ks), "trials": int(trials), "dtype": dtype},
+        "meta": {
+            "D": list(Ds),
+            "ks": list(ks),
+            "trials": int(trials),
+            "dtype": dtype,
+            "accuracy_thresholds": [float(t) for t in accuracy_thresholds],
+        },
         "data": [],
     }
     for D in Ds:
@@ -28,6 +39,7 @@ def run(
         q = QuantumLayer(cfg)
         for k in ks:
             cosines = []
+            margins = []
             for _ in range(int(trials)):
                 # Create k random items and a random role; superpose items and bind with role
                 items = [q.random_vector() for _ in range(int(k))]
@@ -36,16 +48,26 @@ def run(
                 bound = q.bind(superposed, role)
                 # Unbind and cleanup by selecting best cosine against items
                 est = q.unbind(bound, role)
-                best = max(
+                scores = [
                     float(np.dot(est, it) / (np.linalg.norm(est) * np.linalg.norm(it)))
                     for it in items
-                )
+                ]
+                scores.sort(reverse=True)
+                best = scores[0]
+                second = scores[1] if len(scores) > 1 else best
                 cosines.append(best)
+                margins.append(max(0.0, best - second))
+            accuracy = {
+                f"{thr:.2f}": float(np.mean([c >= thr for c in cosines]))
+                for thr in accuracy_thresholds
+            }
             entry = {
                 "D": int(D),
                 "k": int(k),
                 "mean_cosine": float(np.mean(cosines)),
                 "std_cosine": float(np.std(cosines)),
+                "median_margin": float(np.median(margins)) if margins else 0.0,
+                "accuracy": accuracy,
             }
             results["data"].append(entry)
     out.parent.mkdir(parents=True, exist_ok=True)

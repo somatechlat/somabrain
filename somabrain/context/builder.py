@@ -6,6 +6,7 @@ structured bundles that the agent can feed into its SLM.
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional
@@ -13,6 +14,11 @@ from typing import Callable, Dict, Iterable, List, Optional
 import numpy as np
 
 from brain.adapters.memstore_adapter import MemstoreAdapter
+
+try:  # optional import; falls back to defaults during lightweight tests
+    from somabrain.config import get_config as _get_config
+except Exception:  # pragma: no cover - config module may not be loaded in some unit tests
+    _get_config = None
 
 
 @dataclass
@@ -57,6 +63,52 @@ class ContextBuilder:
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default placeholder)
         self._tenant_id: str = "default"
+        # Align temporal decay and density penalties with runtime configuration when available
+        self._recency_half_life = 60.0
+        self._recency_sharpness = 1.2
+        self._recency_floor = 0.05
+        self._density_target = 0.2
+        self._density_floor = 0.6
+        self._density_weight = 0.35
+        try:
+            cfg = _get_config() if _get_config else None
+            if cfg is not None:
+                self._recency_half_life = float(
+                    getattr(cfg, "recall_recency_time_scale", self._recency_half_life)
+                )
+                self._recency_sharpness = float(
+                    getattr(cfg, "recall_recency_sharpness", self._recency_sharpness)
+                )
+                self._recency_floor = float(
+                    getattr(cfg, "recall_recency_floor", self._recency_floor)
+                )
+                self._density_target = float(
+                    getattr(cfg, "recall_density_margin_target", self._density_target)
+                )
+                self._density_floor = float(
+                    getattr(cfg, "recall_density_margin_floor", self._density_floor)
+                )
+                self._density_weight = float(
+                    getattr(cfg, "recall_density_margin_weight", self._density_weight)
+                )
+        except Exception:
+            # Fallback to defaults when configuration cannot be loaded
+            pass
+        # Clamp derived parameters into safe ranges to avoid pathological curves
+        if not math.isfinite(self._recency_half_life) or self._recency_half_life <= 0:
+            self._recency_half_life = 60.0
+        if not math.isfinite(self._recency_sharpness) or self._recency_sharpness <= 0:
+            self._recency_sharpness = 1.2
+        if not math.isfinite(self._recency_floor) or self._recency_floor < 0:
+            self._recency_floor = 0.05
+        self._recency_floor = min(self._recency_floor, 0.99)
+        if not math.isfinite(self._density_target) or self._density_target <= 0:
+            self._density_target = 0.2
+        if not math.isfinite(self._density_floor) or self._density_floor < 0:
+            self._density_floor = 0.6
+        self._density_floor = min(self._density_floor, 1.0)
+        if not math.isfinite(self._density_weight) or self._density_weight < 0:
+            self._density_weight = 0.35
 
     # New method to set the tenant for the current request
     def set_tenant(self, tenant_id: str) -> None:
@@ -141,7 +193,13 @@ class ContextBuilder:
             g_score = float(mem.metadata.get("graph_score", 0.0))
             ts = float(mem.metadata.get("timestamp", 0.0))
             age_penalty = self._temporal_decay(ts)
-            combined = alpha * cos + beta * g_score + gamma * age_penalty
+            density_factor = self._density_factor(mem.metadata)
+            combined = (alpha * cos + beta * g_score + gamma * age_penalty) * density_factor
+            if density_factor != 1.0:
+                try:
+                    mem.metadata.setdefault("_density_factor", density_factor)
+                except Exception:
+                    pass
             raw_scores.append(combined)
         if not raw_scores:
             return []
@@ -227,14 +285,40 @@ class ContextBuilder:
             return 0.0
         return float(np.dot(a, b) / denom)
 
-    @staticmethod
-    def _temporal_decay(ts: float) -> float:
+    def _temporal_decay(self, ts: float) -> float:
         if ts <= 0:
-            return 0.0
+            return max(self._recency_floor, 0.0)
         age = max(time.time() - ts, 0.0)
-        # Simple exponential decay; half‑life of 60 s
-        half_life = 60.0
-        return np.exp(-age / half_life)
+        half_life = max(self._recency_half_life, 1e-6)
+        try:
+            normalised = age / half_life
+            if normalised <= 0:
+                return 1.0
+            damp = math.exp(-(normalised ** max(self._recency_sharpness, 1e-3)))
+        except Exception:
+            damp = 0.0
+        return float(max(self._recency_floor, min(1.0, damp)))
+
+    def _density_factor(self, metadata: Dict) -> float:
+        if not isinstance(metadata, dict):
+            return 1.0
+        margin = metadata.get("_cleanup_margin")
+        if margin is None:
+            margin = metadata.get("cleanup_margin")
+        try:
+            margin_val = float(margin)
+        except Exception:
+            return 1.0
+        if not math.isfinite(margin_val) or margin_val < 0:
+            return 1.0
+        target = max(self._density_target, 1e-6)
+        if margin_val >= target:
+            return 1.0
+        floor = max(0.0, min(self._density_floor, 1.0))
+        weight = max(self._density_weight, 0.0)
+        deficit = (target - margin_val) / target
+        penalty = 1.0 - (weight * deficit)
+        return float(max(floor, min(1.0, penalty)))
 
 
 try:  # circular import guard

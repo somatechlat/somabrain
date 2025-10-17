@@ -3,6 +3,8 @@ from __future__ import annotations
 import types
 from typing import Dict, List
 
+submitted_snapshots: List = []
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -78,6 +80,20 @@ def patch_runtime(monkeypatch):
     monkeypatch.setattr(rt, "mt_wm", DummyWM(), raising=False)
     monkeypatch.setattr(rt, "mt_memory", DummyMultiTenantMemory(), raising=False)
     monkeypatch.setattr(rt, "cfg", types.SimpleNamespace(namespace="base_ns"), raising=False)
+    submitted_snapshots.clear()
+
+    async def _fake_dispatcher():
+        return None
+
+    async def _fake_supervisor_worker():
+        return None
+
+    async def _fake_submit(snapshot):
+        submitted_snapshots.append(snapshot)
+
+    monkeypatch.setattr("somabrain.api.memory_api.ensure_config_dispatcher", _fake_dispatcher)
+    monkeypatch.setattr("somabrain.api.memory_api.ensure_supervisor_worker", _fake_supervisor_worker)
+    monkeypatch.setattr("somabrain.api.memory_api.submit_metrics_snapshot", _fake_submit)
     yield
 
 
@@ -133,6 +149,10 @@ def test_memory_api_roundtrip(client: TestClient):
     assert recall_data["namespace"] == namespace
     assert recall_data["wm_hits"] >= 1
     assert any(item["layer"] == "wm" for item in recall_data["results"])
+    tiered_items = [item for item in recall_data["results"] if item["source"] == "tiered_memory"]
+    assert tiered_items, "tiered_memory result expected"
+    assert tiered_items[0]["payload"].get("governed_margin") is not None
+    assert tiered_items[0]["confidence"] is not None
     assert recall_data["session_id"]
     assert recall_data["total_results"] >= 1
     ctx_resp = client.get(f"/memory/context/{recall_data['session_id']}")
@@ -152,6 +172,11 @@ def test_memory_api_roundtrip(client: TestClient):
     assert metrics_data["wm_items"] >= 1
     assert "circuit_open" in metrics_data
     assert "outbox_pending" in metrics_data
+    assert submitted_snapshots
+    latest_snapshot = submitted_snapshots[-1]
+    assert latest_snapshot.tenant == tenant
+    assert latest_snapshot.namespace == namespace
+    assert latest_snapshot.top1_accuracy >= 0.0
 
 
 def test_memory_api_batch_remember(client: TestClient):
@@ -200,6 +225,9 @@ def test_memory_api_batch_remember(client: TestClient):
     assert recall_resp.status_code == 200
     recall_data = recall_resp.json()
     assert recall_data["wm_hits"] >= 1
+    tiered_items = [item for item in recall_data["results"] if item["source"] == "tiered_memory"]
+    assert tiered_items
+    assert submitted_snapshots
 
 
 def test_memory_api_streaming_recall(client: TestClient):

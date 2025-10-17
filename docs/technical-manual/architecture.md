@@ -125,7 +125,7 @@ graph TD
 2. OPA middleware validates access permissions
 3. MultiTenantWM checked for cached results
 4. If miss, MemoryClient queries long-term storage
-5. UnifiedScorer ranks results using cosine similarity, FD projection, and recency
+5. UnifiedScorer ranks results using cosine similarity, FD projection, a log-damped recency curve with configurable floor, and density-aware cleanup penalties
 6. Results filtered and formatted for response
 7. Working memory updated with recalled items
 8. Metrics and audit events recorded
@@ -203,7 +203,7 @@ graph TD
 1. Request enters FastAPI handlers (`somabrain.app`).
 2. Strict-real middleware verifies `SOMABRAIN_STRICT_REAL`, `SOMABRAIN_FORCE_FULL_STACK`, and `SOMABRAIN_REQUIRE_MEMORY`.
 3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache and neuromodulator state.
-4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines cosine, frequency-domain, and recency terms.
+4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines cosine, frequency-domain, and log-damped recency terms while MemoryClient applies density-aware cleanup penalties before final ranking.
 5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) expands to the HTTP memory service when required.
 6. Density matrix update (`somabrain/memory/density.py::DensityMatrix.observe`) folds evidence back into state and exports metrics.
 7. Response returns scored items plus audit metadata; structured logs emit via `somabrain/audit.py`.
@@ -225,6 +225,7 @@ Expose these guarantees through Prometheus metrics (`somabrain_density_trace_err
 ## Configuration Touchpoints
 
 - Environment flags are sourced via `common.config.settings.Settings`—see `configuration.md`.
+- Temporal damping is governed by `recall_recency_time_scale`, `recall_recency_sharpness`, and `recall_recency_floor`; density penalties are tuned via `recall_density_margin_*` fields in `Config`.
 - Compose and Kubernetes manifests supply the same flags; strict mode must be enabled in every promoted environment.
 - Optional components (Kafka, Postgres) are auto-detected. If endpoints exist they are used; strict mode keeps readiness false when dependencies are offline.
 

@@ -8,11 +8,12 @@ so they stay in sync with the main application surface.
 
 from __future__ import annotations
 
+import copy
 import os
 import time
 import uuid
 from threading import RLock
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -23,12 +24,48 @@ from somabrain.metrics import (
     record_memory_snapshot,
 )
 from somabrain.services.memory_service import MemoryService
+from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
+from somabrain.services.parameter_supervisor import MetricsSnapshot
+from somabrain.runtime.config_runtime import (
+    ensure_config_dispatcher,
+    ensure_supervisor_worker,
+    register_config_listener,
+    submit_metrics_snapshot,
+)
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
 _RECALL_SESSIONS: Dict[str, Dict[str, Any]] = {}
 _RECALL_SESSION_LOCK = RLock()
 _RECALL_SESSION_TTL_SECONDS = 900
+
+_TIERED_REGISTRY = TieredMemoryRegistry()
+
+
+def _handle_config_event(event) -> None:
+    metrics = _TIERED_REGISTRY.apply_effective_config(event)
+    if not metrics:
+        return
+    tenant = event.tenant or "unknown"
+    namespace = event.namespace or "default"
+    try:
+        record_memory_snapshot(
+            tenant,
+            namespace,
+            eta=metrics.get("eta"),
+            sparsity=metrics.get("sparsity"),
+            config_version=event.version,
+        )
+    except Exception:
+        pass
+
+
+register_config_listener(_handle_config_event)
+
+
+async def _ensure_config_runtime_started() -> None:
+    await ensure_config_dispatcher()
+    await ensure_supervisor_worker()
 
 
 class MemoryAttachment(BaseModel):
@@ -447,6 +484,7 @@ def _store_recall_session(
 
 @router.post("/remember", response_model=MemoryWriteResponse)
 async def remember_memory(payload: MemoryWriteRequest, request: Request) -> MemoryWriteResponse:
+    await _ensure_config_runtime_started()
     pool = _get_memory_pool()
     wm = _get_wm()
     embedder = _get_embedder()
@@ -490,12 +528,18 @@ async def remember_memory(payload: MemoryWriteRequest, request: Request) -> Memo
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
+    coordinate_list = _serialize_coord(coord)
+    if coordinate_list is not None:
+        stored_payload["coordinate"] = coordinate_list
+
     promoted_to_wm = False
     warnings: List[str] = []
+    tiered_vector: Optional[np.ndarray] = None
     try:
         vec = np.asarray(embedder.embed(seed_text), dtype=np.float32)
         wm.admit(payload.tenant, vec, stored_payload)
         promoted_to_wm = True
+        tiered_vector = vec
     except Exception as exc:
         warnings.append(f"working-memory-admit-failed:{exc}")
 
@@ -518,11 +562,24 @@ async def remember_memory(payload: MemoryWriteRequest, request: Request) -> Memo
         persisted_to_ltm=persisted_to_ltm,
     )
 
+    anchor_id = payload.key or request_id
+    if tiered_vector is not None:
+        snapshot = copy.deepcopy(stored_payload)
+        _TIERED_REGISTRY.remember(
+            payload.tenant,
+            payload.namespace,
+            anchor_id=anchor_id,
+            key_vector=tiered_vector,
+            value_vector=tiered_vector,
+            payload=snapshot,
+            coordinate=coordinate_list,
+        )
+
     return MemoryWriteResponse(
         ok=True,
         tenant=payload.tenant,
         namespace=payload.namespace,
-        coordinate=_serialize_coord(coord),
+        coordinate=coordinate_list,
         queued=False,
         breaker_open=breaker_state,
         promoted_to_wm=promoted_to_wm,
@@ -542,6 +599,7 @@ async def remember_memory(payload: MemoryWriteRequest, request: Request) -> Memo
 async def remember_memory_batch(
     payload: MemoryBatchWriteRequest, request: Request
 ) -> MemoryBatchWriteResponse:
+    await _ensure_config_runtime_started()
     pool = _get_memory_pool()
     wm = _get_wm()
     embedder = _get_embedder()
@@ -623,9 +681,9 @@ async def remember_memory_batch(
     for idx, ctx in enumerate(item_contexts):
         raw_coord = coords[idx] if idx < len(coords) else None
         coordinate = _serialize_coord(raw_coord)
-        if raw_coord is not None:
+        if coordinate is not None:
             try:
-                ctx["payload"]["coordinate"] = raw_coord
+                ctx["payload"]["coordinate"] = coordinate
             except Exception:
                 pass
 
@@ -636,6 +694,18 @@ async def remember_memory_batch(
                 promoted_to_wm = True
             except Exception as exc:
                 ctx["warnings"].append(f"working-memory-admit-failed:{exc}")
+
+        if ctx["vector"] is not None:
+            snapshot = copy.deepcopy(ctx["payload"])
+            _TIERED_REGISTRY.remember(
+                payload.tenant,
+                payload.namespace,
+                anchor_id=ctx["key"],
+                key_vector=ctx["vector"],
+                value_vector=ctx["vector"],
+                payload=snapshot,
+                coordinate=coordinate,
+            )
 
         signal_feedback = MemorySignalFeedback(
             importance=ctx["signal_data"].get("importance"),
@@ -686,6 +756,7 @@ async def remember_memory_batch(
 async def _perform_recall(
     payload: MemoryRecallRequest,*, default_chunk_size: Optional[int] = None
 ) -> MemoryRecallResponse:
+    await _ensure_config_runtime_started()
     layer = (payload.layer or "all").lower()
     if layer not in {"wm", "ltm", "all"}:
         raise HTTPException(status_code=400, detail="layer must be wm, ltm, or omitted")
@@ -696,6 +767,18 @@ async def _perform_recall(
     wm_hits: List[MemoryRecallItem] = []
     ltm_hits: List[MemoryRecallItem] = []
     start = time.perf_counter()
+
+    embedder = None
+    query_vec: Optional[np.ndarray] = None
+    try:
+        embedder = _get_embedder()
+        query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
+    except HTTPException:
+        if layer in {"wm", "all"}:
+            raise
+    except Exception:
+        embedder = None
+        query_vec = None
 
     def _match_tags(candidate: Dict[str, Any]) -> bool:
         if not payload.tags:
@@ -774,13 +857,11 @@ async def _perform_recall(
             affinity=affinity if affinity is not None else importance,
         )
 
-    if layer in {"wm", "all"}:
+    if layer in {"wm", "all"} and query_vec is not None:
         try:
-            embedder = _get_embedder()
-            vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
             wm = _get_wm()
             stage_start = time.perf_counter()
-            hits = wm.recall(payload.tenant, vec, top_k=payload.top_k)
+            hits = wm.recall(payload.tenant, query_vec, top_k=payload.top_k)
             stage_dur = time.perf_counter() - stage_start
             try:
                 from somabrain import metrics as M
@@ -849,7 +930,59 @@ async def _perform_recall(
             if item is not None:
                 ltm_hits.append(item)
 
-    all_results = wm_hits + ltm_hits
+    tiered_item: Optional[MemoryRecallItem] = None
+    tiered_margin_value: Optional[float] = None
+    tiered_eta_value: Optional[float] = None
+    tiered_sparsity_value: Optional[float] = None
+    if query_vec is not None:
+        try:
+            tiered_hit = _TIERED_REGISTRY.recall(
+                payload.tenant,
+                payload.namespace,
+                query_vector=query_vec,
+            )
+        except Exception:
+            tiered_hit = None
+        if tiered_hit is not None and tiered_hit.payload is not None:
+            payload_copy = copy.deepcopy(tiered_hit.payload)
+            payload_copy.setdefault("governed_margin", tiered_hit.context.margin)
+            coord_obj = tiered_hit.coordinate or payload_copy.get("coordinate")
+            item = _decorated_item(
+                tiered_hit.context.layer,
+                "tiered_memory",
+                tiered_hit.context.score,
+                payload_copy,
+                coord_obj,
+            )
+            if item is not None:
+                tiered_item = item
+                tiered_margin_value = tiered_hit.context.margin
+                tiered_eta_value = tiered_hit.eta
+                tiered_sparsity_value = tiered_hit.sparsity
+
+    all_results: List[MemoryRecallItem] = []
+    seen: set[Tuple[Optional[Tuple[float, ...]], str, str]] = set()
+
+    def _append(item: Optional[MemoryRecallItem]) -> None:
+        if item is None:
+            return
+        coord_key: Optional[Tuple[float, ...]]
+        if item.coordinate is not None:
+            coord_key = tuple(item.coordinate)
+        else:
+            coord_key = None
+        key = (coord_key, item.layer, item.source or "")
+        if key in seen:
+            return
+        seen.add(key)
+        all_results.append(item)
+
+    _append(tiered_item)
+    for entry in wm_hits:
+        _append(entry)
+    for entry in ltm_hits:
+        _append(entry)
+
     total_results = len(all_results)
     if chunk_size is not None and chunk_size > 0:
         start_index = chunk_index * chunk_size
@@ -877,6 +1010,39 @@ async def _perform_recall(
             payload.scoring_mode,
             all_results,
         )
+    if tiered_margin_value is not None:
+        try:
+            record_memory_snapshot(
+                payload.tenant,
+                payload.namespace,
+                margin=tiered_margin_value,
+                eta=tiered_eta_value,
+                sparsity=tiered_sparsity_value,
+            )
+        except Exception:
+            pass
+
+    top_confidence = 0.0
+    if all_results:
+        confidence = all_results[0].confidence
+        if confidence is not None:
+            try:
+                top_confidence = float(confidence)
+            except Exception:
+                top_confidence = 0.0
+
+    try:
+        await submit_metrics_snapshot(
+            MetricsSnapshot(
+                tenant=payload.tenant,
+                namespace=payload.namespace,
+                top1_accuracy=top_confidence,
+                margin=float(tiered_margin_value or 0.0),
+                latency_p95_ms=duration * 1000.0,
+            )
+        )
+    except Exception:
+        pass
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -931,6 +1097,7 @@ async def memory_metrics(
     tenant: str = Query(..., min_length=1),
     namespace: str = Query(..., min_length=1),
 ) -> MemoryMetricsResponse:
+    await _ensure_config_runtime_started()
     pool = _get_memory_pool()
     wm = _get_wm()
     resolved_ns = _resolve_namespace(tenant, namespace)

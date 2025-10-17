@@ -14,7 +14,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from .superposed_trace import SuperposedTrace, TraceConfig
+from .superposed_trace import CleanupIndex, SuperposedTrace, TraceConfig
 
 
 @dataclass(frozen=True)
@@ -60,9 +60,11 @@ class TieredMemory:
         wm_policy: LayerPolicy | None = None,
         ltm_policy: LayerPolicy | None = None,
         promotion_callback: Optional[Callable[[RecallContext], bool]] = None,
+        wm_cleanup_index: Optional["CleanupIndex"] = None,
+        ltm_cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
-        self.wm = SuperposedTrace(wm_cfg)
-        self.ltm = SuperposedTrace(ltm_cfg)
+        self.wm = SuperposedTrace(wm_cfg, cleanup_index=wm_cleanup_index)
+        self.ltm = SuperposedTrace(ltm_cfg, cleanup_index=ltm_cleanup_index)
         self._wm_policy = (wm_policy or LayerPolicy()).validate()
         self._ltm_policy = (ltm_policy or LayerPolicy(threshold=0.55, promote_margin=0.05)).validate()
         self._promotion_callback = promotion_callback
@@ -136,6 +138,51 @@ class TieredMemory:
         if norm <= 0.0:
             raise ValueError(f"{name} must have non-zero norm")
         return arr / norm
+
+    @property
+    def wm_config(self) -> TraceConfig:
+        return self.wm.cfg
+
+    @property
+    def ltm_config(self) -> TraceConfig:
+        return self.ltm.cfg
+
+    @property
+    def wm_policy(self) -> LayerPolicy:
+        return self._wm_policy
+
+    @property
+    def ltm_policy(self) -> LayerPolicy:
+        return self._ltm_policy
+
+    def configure(
+        self,
+        *,
+        wm_eta: Optional[float] = None,
+        ltm_eta: Optional[float] = None,
+        cleanup_topk: Optional[int] = None,
+        cleanup_params: Optional[dict] = None,
+        wm_tau: Optional[float] = None,
+    ) -> None:
+        self.wm.update_parameters(
+            eta=wm_eta,
+            cleanup_topk=cleanup_topk,
+            cleanup_params=cleanup_params,
+        )
+        self.ltm.update_parameters(
+            eta=ltm_eta if ltm_eta is not None else wm_eta,
+            cleanup_topk=cleanup_topk,
+            cleanup_params=cleanup_params,
+        )
+        if wm_tau is not None:
+            try:
+                new_policy = LayerPolicy(
+                    threshold=float(wm_tau),
+                    promote_margin=self._wm_policy.promote_margin,
+                ).validate()
+                self._wm_policy = new_policy
+            except Exception:
+                pass
 
 
 __all__ = ["LayerPolicy", "RecallContext", "TieredMemory"]

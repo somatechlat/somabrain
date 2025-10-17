@@ -144,6 +144,18 @@ class MemoryService:
         except Exception:
             pass
 
+    @staticmethod
+    def _journal_enabled() -> bool:
+        cfg = get_config()
+        allow = bool(getattr(cfg, "allow_journal_fallback", False))
+        override = os.getenv("ALLOW_JOURNAL_FALLBACK")
+        if override is not None:
+            allow = override.strip().lower() in ("1", "true", "yes", "on")
+        strict_real = os.getenv("SOMABRAIN_STRICT_REAL")
+        if strict_real and strict_real.strip().lower() in ("1", "true", "yes", "on"):
+            allow = False
+        return allow
+
     def remember(self, key: str, payload: dict, universe: str | None = None):
         """Stores a memory payload. In V3, this fails fast if the remote is down."""
         if universe and "universe" not in payload:
@@ -277,6 +289,10 @@ class MemoryService:
 
     def _journal_failure(self, op: str, data: dict):
         """Writes a failed operation to the journal for the sync worker to pick up."""
+        if not self._journal_enabled():
+            raise RuntimeError(
+                "Journal fallback disabled; configure allow_journal_fallback to enable migration."
+            )
         try:
             from somabrain import journal
             journal_dir = getattr(get_config(), "journal_dir", "./data/somabrain")
