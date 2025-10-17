@@ -88,7 +88,7 @@ jobs:
           set -a
           source .env
           set +a
-          MEMORY_URL=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://127.0.0.1:9595}
+          MEMORY_URL="http://127.0.0.1:${SOMAMEMORY_HOST_PORT:-9595}"
           MEMORY_READY=0
           OPA_PORT=${OPA_HOST_PORT:-30004}
           API_PORT=${SOMABRAIN_HOST_PORT:-9696}
@@ -109,7 +109,7 @@ jobs:
           set -a
           source .env
           set +a
-          export SOMABRAIN_MEMORY_HTTP_ENDPOINT
+          export SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://127.0.0.1:${SOMAMEMORY_HOST_PORT:-9595}"
           export SOMABRAIN_OPA_URL="http://127.0.0.1:${OPA_HOST_PORT:-30004}"
           export SOMABRAIN_REDIS_URL="redis://127.0.0.1:${REDIS_HOST_PORT:-30000}/0"
           export SOMABRAIN_HOST_PORT

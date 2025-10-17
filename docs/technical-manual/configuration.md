@@ -15,7 +15,7 @@
 | `SOMABRAIN_STRICT_REAL` | unset (false) | Enforce no-stub execution paths | `somabrain.app` startup guard |
 | `SOMABRAIN_FORCE_FULL_STACK` | 0 | Require external services before readiness | `common/config/settings.py` |
 | `SOMABRAIN_REQUIRE_MEMORY` | 0 | Fail startup if memory HTTP endpoint is absent | `common/config/settings.py` |
-| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | unset | URL of the long-term memory service | `somabrain/memory_client.py` |
+| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | unset (Docker stack sets `http://host.docker.internal:9595`) | URL of the long-term memory service | `somabrain/memory_client.py` |
 | `SOMABRAIN_DISABLE_AUTH` | 0 | Allow unauthenticated requests (dev only) | `somabrain/app.py` |
 | `SOMABRAIN_PREDICTOR_PROVIDER` | `mahal` | Select predictor backend | `common/config/settings.py` |
 | `SOMABRAIN_MODE` | unset | Labels the deployment (dev, staging, prod) | Surfaced in `/health` |
@@ -52,6 +52,10 @@ SOMABRAIN_PREDICTOR_PROVIDER=mahal
 SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
 SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@127.0.0.1:5432/somabrain
 ```
+
+> The bundled Docker Compose stack expects a real memory service reachable at
+> `http://host.docker.internal:9595`; update the value if your deployment runs
+> the service elsewhere.
 
 Reload the process or run `scripts/dev_up.sh --rebuild` after editing the file so the stack picks up the new values.
 

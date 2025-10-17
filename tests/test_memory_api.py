@@ -124,6 +124,7 @@ def test_memory_api_roundtrip(client: TestClient):
             "namespace": namespace,
             "query": key,
             "top_k": 3,
+            "pin_results": True,
         },
     )
     assert recall_resp.status_code == 200
@@ -132,6 +133,13 @@ def test_memory_api_roundtrip(client: TestClient):
     assert recall_data["namespace"] == namespace
     assert recall_data["wm_hits"] >= 1
     assert any(item["layer"] == "wm" for item in recall_data["results"])
+    assert recall_data["session_id"]
+    assert recall_data["total_results"] >= 1
+    ctx_resp = client.get(f"/memory/context/{recall_data['session_id']}")
+    assert ctx_resp.status_code == 200
+    ctx_data = ctx_resp.json()
+    assert ctx_data["session_id"] == recall_data["session_id"]
+    assert len(ctx_data["results"]) >= 1
 
     metrics_resp = client.get(
         "/memory/metrics",
@@ -186,8 +194,62 @@ def test_memory_api_batch_remember(client: TestClient):
             "namespace": namespace,
             "query": "episode:1",
             "top_k": 2,
+            "tags": ["dialogue"],
         },
     )
     assert recall_resp.status_code == 200
     recall_data = recall_resp.json()
     assert recall_data["wm_hits"] >= 1
+
+
+def test_memory_api_streaming_recall(client: TestClient):
+    tenant = "acme"
+    namespace = "wm"
+
+    # ensure baseline memories exist
+    client.post(
+        "/memory/remember/batch",
+        json={
+            "tenant": tenant,
+            "namespace": namespace,
+            "items": [
+                {"key": "stream:1", "value": {"text": "stream one", "importance": 0.8}},
+                {"key": "stream:2", "value": {"text": "stream two", "importance": 0.7}},
+                {"key": "stream:3", "value": {"text": "stream three", "importance": 0.6}},
+            ],
+        },
+    )
+
+    stream_resp = client.post(
+        "/memory/recall/stream",
+        json={
+            "tenant": tenant,
+            "namespace": namespace,
+            "query": "stream",
+            "top_k": 3,
+            "chunk_size": 1,
+            "pin_results": True,
+        },
+    )
+    assert stream_resp.status_code == 200
+    stream_data = stream_resp.json()
+    assert stream_data["chunk_size"] == 1
+    assert stream_data["has_more"] is True
+    assert stream_data["session_id"]
+
+    next_resp = client.post(
+        "/memory/recall/stream",
+        json={
+            "tenant": tenant,
+            "namespace": namespace,
+            "query": "stream",
+            "top_k": 3,
+            "chunk_size": 1,
+            "chunk_index": 1,
+            "session_id": stream_data["session_id"],
+        },
+    )
+    assert next_resp.status_code == 200
+    next_data = next_resp.json()
+    assert next_data["chunk_index"] == 1
+    assert len(next_data["results"]) == 1

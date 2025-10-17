@@ -1,7 +1,8 @@
 """HTTP adapter for the external memory service.
 
 This adapter provides a minimal HTTP client to communicate with the memory
-service (dev) typically served at http://127.0.0.1:9595.
+service (dev) typically served at http://host.docker.internal:9595 from the
+container network.
 
 Assumptions (inferred):
 - Search endpoint: POST /search with JSON {"embedding": [...], "top_k": N}
@@ -32,7 +33,7 @@ class MemstoreError(RuntimeError):
 
 
 class MemstoreAdapter:
-    def __init__(self, base_url: str = "http://127.0.0.1:9595", timeout: float = 5.0):
+    def __init__(self, base_url: str = "http://host.docker.internal:9595", timeout: float = 5.0):
         self.base_url = base_url.rstrip("/")
         self.timeout = float(timeout)
 

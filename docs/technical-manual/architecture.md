@@ -56,7 +56,7 @@ graph TD
 
 **⚛️ Meaning Engine** (`somabrain/quantum.py`)  
 *Human Impact:* Understands that "car" and "automobile" mean the same thing  
-*The Science:* Binary Hyperdimensional Computing with 2048-8192D vector spaces and permutation binding
+*The Science:* Binary Hyperdimensional Computing with 2048-8192D vector spaces and permutation binding. Deterministic unitary roles now record spectral/orthogonality invariants so the system raises immediate telemetry if mathematical guarantees drift.
 
 **📊 Relevance Oracle** (`somabrain/scoring.py`)  
 *Human Impact:* Finds exactly what you need, even when you ask imperfectly  

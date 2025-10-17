@@ -78,7 +78,9 @@ Sizing guide: effective interferers `N_eff ≈ ŵ · T½ · ln 2`; dimension `D 
 **Memory API** (via Kong Memory Edge)
 - `POST /memory/remember` `{tenant, namespace, key, value, tags?, policy_tags?, attachments?, links?, signals?, ttl_seconds?, trace_id?}` → returns `{coordinate, promoted_to_wm, persisted_to_ltm, signals, warnings}`
 - `POST /memory/remember/batch` `{tenant, namespace, items:[...], universe?}` → single ACK for multi-item ingest with per-item feedback
-- `POST /memory/recall` `{tenant, namespace, key, topk?, layer?}` → recall results with provenance
+- `POST /memory/recall` `{tenant, namespace, key, topk?, layer?, tags?, min_score?, chunk_size?, session_id?, conversation_id?, pin_results?}` → recall results with provenance, filters, and session tokens
+- `POST /memory/recall/stream` `{tenant, namespace, key, topk?, chunk_size, chunk_index?, session_id?}` → incremental recall slices with has_more flag
+- `GET /memory/context/{sessionId}` → retrieve pinned session context for adaptive agents
 - `GET /metrics`
 
 **Config API** (via Kong Config Edge)
@@ -217,11 +219,11 @@ In-place dimension changes discouraged; prefer versioned cutovers.
 
 **Milestone A — Governance Core (2–3 weeks)**
 - Implement decay/rotation/cleanup, ANN integration, scorer parameters, unit + property tests.
-- Sprint A1 (in progress): Added `somabrain/memory/superposed_trace.py` with exponential decay, orthogonal rotation, and cleanup anchors plus unit tests (`tests/test_superposed_trace.py`).
+- Sprint A1 (complete): Delivered `somabrain/memory/superposed_trace.py` with exponential decay, orthogonal rotation, and cleanup anchors plus unit tests (`tests/test_superposed_trace.py`).
 
 **Milestone B — WM/LTM Split & Hierarchical Recall (1–2 weeks)**
 - Namespace separation, promotion policies, integration tests.
-- Sprint B1 (in progress): Added `TieredMemory` with working/long-term coordination (`somabrain/memory/hierarchical.py`) and regression tests in `tests/test_hierarchical_memory.py`.
+- Sprint B1 (complete): Shipped `TieredMemory` with working/long-term coordination (`somabrain/memory/hierarchical.py`) and regression tests in `tests/test_hierarchical_memory.py`.
 
 **Milestone C — Config & Supervisor (2 weeks)**
 - **Sprint C1 (complete)**: `ConfigService` merge/audit/pub-sub flow plus `ParameterSupervisor` metrics-driven adjustments with unit tests (`tests/test_config_service.py`, `tests/test_parameter_supervisor.py`).
@@ -247,7 +249,7 @@ Parallel waves continue to frame staffing focus: Mathematical Core, Memory & Dur
 Objective: maintain ≥70% top-1 at 5k memories while enforcing strict-real policies and invariants.
 
 **Sprint L1 — Foundations (1.5 weeks)**
-- Repair unitary-role checks in `somabrain/quantum.py`, expand BHDC property tests, update math docs.
+- Repair unitary-role checks in `somabrain/quantum.py`, expand BHDC property tests, update math docs. ✅ Completed via stricter unitary telemetry, new `tests/test_quantum_layer.py`, and architecture doc refresh.
 
 **Sprint L2 — Unified Recall Stability (2 weeks)**
 - Redesign recency damping in `memory_client._rescore_and_rank_hits`, restore density-aware cleanup, tune context management, extend benchmarks with accuracy vs capacity curves.

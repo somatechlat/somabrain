@@ -30,6 +30,10 @@ To launch the lightweight development stack (API + Redis + OPA):
 The API will be served on `http://localhost:9696` with health check
 `http://localhost:9696/health`.
 
+> Tip: you must run the external memory service yourself (default
+> `http://host.docker.internal:9595`) before starting the stack. SomaBrain will
+> refuse to start if the endpoint is unreachable.
+
 ## Project Structure
 
 ```

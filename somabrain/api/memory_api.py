@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
+from threading import RLock
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -24,6 +25,10 @@ from somabrain.metrics import (
 from somabrain.services.memory_service import MemoryService
 
 router = APIRouter(prefix="/memory", tags=["memory"])
+
+_RECALL_SESSIONS: Dict[str, Dict[str, Any]] = {}
+_RECALL_SESSION_LOCK = RLock()
+_RECALL_SESSION_TTL_SECONDS = 900
 
 
 class MemoryAttachment(BaseModel):
@@ -124,11 +129,40 @@ class MemoryRecallRequest(BaseModel):
     tenant: str = Field(..., min_length=1)
     namespace: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
-    top_k: int = Field(3, ge=1, le=20)
+    top_k: int = Field(3, ge=1, le=50)
     layer: Optional[str] = Field(
         None, description="Set to 'wm', 'ltm', or omit for both"
     )
     universe: Optional[str] = None
+    tags: List[str] = Field(default_factory=list, description="Filter hits containing these tags")
+    min_score: Optional[float] = Field(
+        None, ge=0.0, description="Drop hits with score below this threshold"
+    )
+    max_age_seconds: Optional[int] = Field(
+        None, ge=0, description="Exclude hits older than the specified age when payload timestamps exist"
+    )
+    scoring_mode: Optional[str] = Field(
+        None,
+        description="Preferred scoring strategy (explore, exploit, blended, recency, etc.)",
+    )
+    session_id: Optional[str] = Field(
+        None, description="Attach to existing recall session to accumulate context"
+    )
+    conversation_id: Optional[str] = Field(
+        None, description="Agent-provided conversation identifier"
+    )
+    pin_results: bool = Field(
+        False,
+        description="If true, persist results in the session registry for follow-up queries",
+    )
+    chunk_size: Optional[int] = Field(
+        None, ge=1, le=50, description="Limit number of hits returned per call for streaming"
+    )
+    chunk_index: int = Field(
+        0,
+        ge=0,
+        description="Chunk index when requesting paged/streamed recall segments",
+    )
 
 
 class MemoryRecallItem(BaseModel):
@@ -137,6 +171,15 @@ class MemoryRecallItem(BaseModel):
     payload: Dict[str, Any]
     coordinate: Optional[List[float]] = None
     source: str
+    confidence: Optional[float] = Field(
+        None, description="Confidence score derived from backend metrics"
+    )
+    novelty: Optional[float] = Field(
+        None, description="Novelty indicator relative to session history"
+    )
+    affinity: Optional[float] = Field(
+        None, description="Affinity to current conversation or goal state"
+    )
 
 
 class MemoryRecallResponse(BaseModel):
@@ -146,6 +189,13 @@ class MemoryRecallResponse(BaseModel):
     wm_hits: int
     ltm_hits: int
     duration_ms: float
+    session_id: str
+    scoring_mode: Optional[str] = None
+    chunk_index: int = 0
+    has_more: bool = False
+    total_results: int
+    chunk_size: Optional[int] = None
+    conversation_id: Optional[str] = None
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -206,6 +256,16 @@ class MemoryBatchWriteResponse(BaseModel):
     results: List[MemoryBatchWriteResult]
     breaker_open: bool = False
     queued: int = 0
+
+
+class MemoryRecallSessionResponse(BaseModel):
+    session_id: str
+    tenant: str
+    namespace: str
+    scoring_mode: Optional[str]
+    conversation_id: Optional[str]
+    created_at: float
+    results: List[MemoryRecallItem]
 
 
 def _runtime_module():
@@ -275,6 +335,18 @@ def _count_outbox_entries(memsvc: MemoryService) -> int:
             return sum(1 for line in handle if line.strip())
     except Exception:
         return 0
+
+
+def _prune_sessions() -> None:
+    now = time.time()
+    with _RECALL_SESSION_LOCK:
+        expired = [
+            session_id
+            for session_id, state in _RECALL_SESSIONS.items()
+            if now - state.get("created_at", 0.0) > _RECALL_SESSION_TTL_SECONDS
+        ]
+        for session_id in expired:
+            _RECALL_SESSIONS.pop(session_id, None)
 
 
 def _compose_memory_payload(
@@ -350,6 +422,27 @@ def _compose_memory_payload(
     )
 
     return stored_payload, signal_data, str(seed_text)
+
+
+def _store_recall_session(
+    session_id: str,
+    tenant: str,
+    namespace: str,
+    conversation_id: Optional[str],
+    scoring_mode: Optional[str],
+    results: List[MemoryRecallItem],
+) -> None:
+    payload = {
+        "session_id": session_id,
+        "tenant": tenant,
+        "namespace": namespace,
+        "conversation_id": conversation_id,
+        "scoring_mode": scoring_mode,
+        "created_at": time.time(),
+        "results": [item.dict() for item in results],
+    }
+    with _RECALL_SESSION_LOCK:
+        _RECALL_SESSIONS[session_id] = payload
 
 
 @router.post("/remember", response_model=MemoryWriteResponse)
@@ -590,15 +683,96 @@ async def remember_memory_batch(
     )
 
 
-@router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
+async def _perform_recall(
+    payload: MemoryRecallRequest,*, default_chunk_size: Optional[int] = None
+) -> MemoryRecallResponse:
     layer = (payload.layer or "all").lower()
     if layer not in {"wm", "ltm", "all"}:
         raise HTTPException(status_code=400, detail="layer must be wm, ltm, or omitted")
 
+    chunk_size = payload.chunk_size or default_chunk_size
+    chunk_index = payload.chunk_index if payload.chunk_index >= 0 else 0
+
     wm_hits: List[MemoryRecallItem] = []
     ltm_hits: List[MemoryRecallItem] = []
     start = time.perf_counter()
+
+    def _match_tags(candidate: Dict[str, Any]) -> bool:
+        if not payload.tags:
+            return True
+        candidate_tags = set()
+        for key in ("tags", "labels"):
+            value = candidate.get(key)
+            if isinstance(value, (list, tuple, set)):
+                candidate_tags.update(str(v) for v in value)
+        meta = candidate.get("meta")
+        if isinstance(meta, dict):
+            meta_tags = meta.get("tags")
+            if isinstance(meta_tags, (list, tuple, set)):
+                candidate_tags.update(str(v) for v in meta_tags)
+        return all(tag in candidate_tags for tag in payload.tags)
+
+    def _within_age(candidate: Dict[str, Any]) -> bool:
+        if payload.max_age_seconds is None:
+            return True
+        ts_keys = ("ts", "timestamp", "created_at", "time", "datetime")
+        for key in ts_keys:
+            value = candidate.get(key)
+            if value is None and isinstance(candidate.get("meta"), dict):
+                value = candidate["meta"].get(key)
+            if value is None:
+                continue
+            try:
+                if isinstance(value, (int, float)):
+                    ts = float(value)
+                elif isinstance(value, str):
+                    ts = float(value)
+                else:
+                    continue
+                return time.time() - ts <= payload.max_age_seconds
+            except Exception:
+                continue
+        return False
+
+    def _decorated_item(
+        layer_name: str,
+        source: str,
+        score_val: Optional[float],
+        candidate_payload: Dict[str, Any],
+        coord_obj: Any,
+    ) -> Optional[MemoryRecallItem]:
+        if not _match_tags(candidate_payload):
+            return None
+        if not _within_age(candidate_payload):
+            return None
+        if payload.min_score is not None and score_val is not None:
+            if score_val < payload.min_score:
+                return None
+        signals = candidate_payload.get("signals")
+        importance = None
+        novelty = None
+        affinity = None
+        if isinstance(signals, dict):
+            importance = signals.get("importance")
+            novelty = signals.get("novelty")
+            affinity = signals.get("recall_bias") or signals.get("reinforcement")
+        if importance is None:
+            importance = candidate_payload.get("importance")
+        if novelty is None:
+            novelty = candidate_payload.get("novelty")
+        if affinity is None:
+            affinity = candidate_payload.get("affinity")
+        confidence = float(score_val) if score_val is not None else importance
+        return MemoryRecallItem(
+            layer=layer_name,
+            score=float(score_val) if score_val is not None else None,
+            payload=candidate_payload,
+            coordinate=_serialize_coord(coord_obj),
+            source=source,
+            confidence=confidence,
+            novelty=novelty,
+            affinity=affinity if affinity is not None else importance,
+        )
 
     if layer in {"wm", "all"}:
         try:
@@ -617,15 +791,15 @@ async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
             for score, item_payload in hits:
                 if not isinstance(item_payload, dict):
                     continue
-                wm_hits.append(
-                    MemoryRecallItem(
-                        layer="wm",
-                        score=float(score) if score is not None else None,
-                        payload=item_payload,
-                        coordinate=_serialize_coord(item_payload.get("coordinate")),
-                        source="working_memory",
-                    )
+                item = _decorated_item(
+                    "wm",
+                    "working_memory",
+                    float(score) if score is not None else None,
+                    item_payload,
+                    item_payload.get("coordinate"),
                 )
+                if item is not None:
+                    wm_hits.append(item)
         except HTTPException:
             raise
         except Exception:
@@ -665,15 +839,26 @@ async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
                 continue
             coord = getattr(hit, "coordinate", None) or payload_obj.get("coordinate")
             score_val = getattr(hit, "score", None)
-            ltm_hits.append(
-                MemoryRecallItem(
-                    layer="ltm",
-                    score=float(score_val) if score_val is not None else None,
-                    payload=payload_obj,
-                    coordinate=_serialize_coord(coord),
-                    source="long_term_memory",
-                )
+            item = _decorated_item(
+                "ltm",
+                "long_term_memory",
+                float(score_val) if score_val is not None else None,
+                payload_obj,
+                coord,
             )
+            if item is not None:
+                ltm_hits.append(item)
+
+    all_results = wm_hits + ltm_hits
+    total_results = len(all_results)
+    if chunk_size is not None and chunk_size > 0:
+        start_index = chunk_index * chunk_size
+        end_index = start_index + chunk_size
+        chunk_results = all_results[start_index:end_index]
+        has_more = end_index < total_results
+    else:
+        chunk_results = all_results
+        has_more = False
 
     duration = time.perf_counter() - start
     try:
@@ -681,14 +866,63 @@ async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
     except Exception:
         pass
 
-    results = wm_hits + ltm_hits
+    current_session = payload.session_id or str(uuid.uuid4())
+    _prune_sessions()
+    if payload.pin_results or chunk_size is not None or payload.session_id:
+        _store_recall_session(
+            current_session,
+            payload.tenant,
+            payload.namespace,
+            payload.conversation_id,
+            payload.scoring_mode,
+            all_results,
+        )
+
     return MemoryRecallResponse(
         tenant=payload.tenant,
         namespace=payload.namespace,
-        results=results,
+        results=chunk_results,
         wm_hits=len(wm_hits),
         ltm_hits=len(ltm_hits),
         duration_ms=round(duration * 1000.0, 3),
+        session_id=current_session,
+        scoring_mode=payload.scoring_mode,
+        chunk_index=chunk_index,
+        has_more=has_more,
+        total_results=total_results,
+        chunk_size=chunk_size,
+        conversation_id=payload.conversation_id,
+    )
+
+
+@router.post("/recall", response_model=MemoryRecallResponse)
+async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
+    return await _perform_recall(payload)
+
+
+@router.post("/recall/stream", response_model=MemoryRecallResponse)
+async def recall_memory_stream(payload: MemoryRecallRequest) -> MemoryRecallResponse:
+    default_chunk_size = payload.chunk_size or min(payload.top_k, 5)
+    updated_payload = payload.copy(update={"chunk_size": default_chunk_size})
+    return await _perform_recall(updated_payload, default_chunk_size=default_chunk_size)
+
+
+@router.get("/context/{session_id}", response_model=MemoryRecallSessionResponse)
+async def get_recall_session(session_id: str) -> MemoryRecallSessionResponse:
+    _prune_sessions()
+    with _RECALL_SESSION_LOCK:
+        state = _RECALL_SESSIONS.get(session_id)
+    if state is None:
+        raise HTTPException(status_code=404, detail="session not found or expired")
+    results = [MemoryRecallItem(**item) for item in state.get("results", [])]
+    return MemoryRecallSessionResponse(
+        session_id=session_id,
+        tenant=state.get("tenant", ""),
+        namespace=state.get("namespace", ""),
+        scoring_mode=state.get("scoring_mode"),
+        conversation_id=state.get("conversation_id"),
+        created_at=state.get("created_at", 0.0),
+        results=results,
     )
 
 

@@ -42,6 +42,8 @@ done
 echo "Dev infra started. Key environment values:"
 echo "  SOMABRAIN_HOST_PORT=${HOST_PORT}"
 echo "  SOMABRAIN_MEMORY_HTTP_ENDPOINT=$(grep '^SOMABRAIN_MEMORY_HTTP_ENDPOINT=' "$ENV_FILE" | tail -n1 | cut -d= -f2)"
+echo "  SOMAMEMORY_HOST_PORT=$(grep '^SOMAMEMORY_HOST_PORT=' "$ENV_FILE" | tail -n1 | cut -d= -f2)"
+echo "  Memory stub (host access): http://127.0.0.1:$(grep '^SOMAMEMORY_HOST_PORT=' "$ENV_FILE" | tail -n1 | cut -d= -f2)/"
 echo "  SOMABRAIN_REDIS_URL=$(grep '^SOMABRAIN_REDIS_URL=' "$ENV_FILE" | tail -n1 | cut -d= -f2)"
 
 echo "To run tests in strict mode:"

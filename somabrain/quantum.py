@@ -207,7 +207,10 @@ class QuantumLayer:
             )
             role = role_time.astype(self.cfg.dtype, copy=False)
             role = self._renorm(role)
-            self._role_fft_cache[token] = role_spec.astype(np.complex64 if self.cfg.dtype == "float32" else np.complex128)
+            self._role_fft_cache[token] = role_spec.astype(
+                np.complex64 if self.cfg.dtype == "float32" else np.complex128
+            )
+            self._validate_unitary_role(role, self._role_fft_cache[token])
         else:
             seed64 = np.uint64(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
             rng = np.random.default_rng(seed64)
@@ -215,7 +218,7 @@ class QuantumLayer:
             role = self._renorm(role)
 
         # Verify orthogonality against existing roles before caching
-        if self._role_cache:
+        if self._role_cache and self.cfg.roles_unitary:
             from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
 
             for existing_token, existing_role in self._role_cache.items():
@@ -322,6 +325,25 @@ class QuantumLayer:
                 best_score = score
                 best_id = key
         return best_id, float(best_score)
+
+    # ------------------------------------------------------------------
+    # Validation helpers
+    # ------------------------------------------------------------------
+    def _validate_unitary_role(self, role: np.ndarray, spectrum: Optional[np.ndarray]) -> None:
+        """Record invariants that prove a role remains unitary."""
+
+        norm = float(np.linalg.norm(role))
+        MathematicalMetrics.verify_mathematical_invariant("unitary_role_norm", abs(norm - 1.0))
+
+        from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+
+        AdvancedMathematicalMetrics.record_numerical_error(abs(norm - 1.0))
+
+        magnitudes = np.abs(spectrum) if spectrum is not None else np.abs(np.fft.rfft(role))
+        MathematicalMetrics.verify_spectral_property("unitary_role", magnitudes)
+
+        # Track worst-case deviation for spectral gap diagnostics
+        AdvancedMathematicalMetrics.measure_spectral_properties(np.sort(magnitudes))
 
 
 def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:

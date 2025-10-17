@@ -109,7 +109,7 @@ SOMABRAIN_REDIS_HOST=somabrain_redis
 SOMABRAIN_REDIS_PORT=6379            # Container internal
 SOMABRAIN_KAFKA_HOST=somabrain_kafka
 SOMABRAIN_KAFKA_PORT=9092            # Container internal
-SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
 ```
 
 #### Manual Docker Compose
