@@ -921,6 +921,20 @@ except Exception:
     pass
 
 try:
+    from somabrain.api import config_api as _config_api
+
+    app.include_router(_config_api.router)
+except Exception:
+    pass
+
+try:
+    from somabrain.api import memory_api as _memory_api
+
+    app.include_router(_memory_api.router)
+except Exception:
+    pass
+
+try:
     from somabrain.api.routers import constitution as _constitution_router
 
     app.include_router(_constitution_router.router, prefix="/constitution")

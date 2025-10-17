@@ -70,7 +70,6 @@ sudo apt install -y build-essential libssl-dev libffi-dev
 python3.11 --version
 ```
 
-**Windows (using WSL2)**:
 ```bash
 # Update WSL2 Ubuntu
 sudo apt update && sudo apt upgrade -y
@@ -163,7 +162,6 @@ sudo apt install -y git make curl wget jq
 sudo apt install -y gcc g++ make libpq-dev
 ```
 
----
 
 ## Database Setup
 
@@ -171,39 +169,12 @@ sudo apt install -y gcc g++ make libpq-dev
 
 **Option 1: Docker (Recommended for Development)**:
 ```bash
-# Create docker-compose.yml for development databases
-cat << EOF > docker-compose.dev.yml
-version: '3.8'
-services:
-  postgres:
-    image: pgvector/pgvector:pg15
-    environment:
-      POSTGRES_DB: somabrain_dev
-      POSTGRES_USER: somabrain
-      POSTGRES_PASSWORD: development_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  postgres_data:
-  redis_data:
-EOF
-
-# Start development databases
-docker-compose -f docker-compose.dev.yml up -d
+# Use the canonical compose file (docker-compose.yml)
+cp .env .env.local  # optional: customize ports/credentials
+docker compose --env-file .env.local -f docker-compose.yml up -d somabrain_postgres somabrain_redis
 
 # Verify databases are running
-docker-compose -f docker-compose.dev.yml ps
+docker compose --env-file .env.local -f docker-compose.yml ps somabrain_postgres somabrain_redis
 ```
 
 **Option 2: Native Installation**:
@@ -249,7 +220,7 @@ sudo -u postgres psql somabrain_dev -c "CREATE EXTENSION vector;"
 
 ### Redis Setup
 
-**Docker (Included in docker-compose.dev.yml above)**:
+**Docker (via docker-compose.yml)**:
 ```bash
 # Redis is automatically started with PostgreSQL
 # Access Redis CLI
@@ -303,7 +274,6 @@ git remote -v
 
 ### 2. Python Environment Setup
 
-**Create Virtual Environment**:
 ```bash
 # Create virtual environment with Python 3.11
 python3.11 -m venv venv
@@ -343,10 +313,6 @@ cp .env.example .env
 # Edit configuration for development
 cat << EOF > .env
 # Database Configuration
-SOMABRAIN_DATABASE_URL=postgresql://somabrain:development_password@localhost/somabrain_dev
-
-# Redis Configuration  
-SOMABRAIN_REDIS_URL=redis://localhost:6379/0
 
 # Vector Model Configuration
 SOMABRAIN_VECTOR_MODEL=all-MiniLM-L6-v2
@@ -372,7 +338,6 @@ alembic current
 
 # Run all migrations to set up database schema
 alembic upgrade head
-
 # Verify tables were created
 psql $SOMABRAIN_DATABASE_URL -c "\dt"
 ```
@@ -472,7 +437,6 @@ mkdocs serve
 ### 1. Run Test Suite
 
 **Unit Tests**:
-```bash
 # Run all unit tests
 pytest tests/unit/ -v
 
@@ -486,7 +450,7 @@ open htmlcov/index.html
 **Integration Tests**:
 ```bash
 # Ensure databases are running
-docker-compose -f docker-compose.dev.yml ps
+docker compose --env-file .env.local -f docker-compose.yml ps
 
 # Run integration tests
 pytest tests/integration/ -v
@@ -559,7 +523,6 @@ isort somabrain/ tests/
 pytest benchmarks/ -v --benchmark-only
 
 # Profile memory usage
-python -m memory_profiler scripts/profile_memory_operations.py
 
 # Check vector encoding performance
 python benchmarks/test_vector_encoding.py
@@ -573,7 +536,7 @@ python benchmarks/test_vector_encoding.py
 
 ```bash
 # 1. Start development environment
-docker-compose -f docker-compose.dev.yml up -d
+docker compose --env-file .env.local -f docker-compose.yml up -d
 
 # 2. Activate Python environment
 source venv/bin/activate
@@ -641,7 +604,6 @@ import ipdb; ipdb.set_trace()
 # Connect to development database
 psql $SOMABRAIN_DATABASE_URL
 
-# Check memory table
 \d memories
 
 # Run test queries
@@ -653,10 +615,6 @@ SELECT * FROM pg_extension WHERE extname = 'vector';
 ```
 
 ---
-
-## Troubleshooting
-
-### Common Issues
 
 **1. Python Import Errors**:
 ```bash
@@ -673,7 +631,7 @@ python -c "import sys; print('\n'.join(sys.path))"
 **2. Database Connection Issues**:
 ```bash
 # Check PostgreSQL is running
-docker-compose -f docker-compose.dev.yml ps
+docker compose --env-file .env.local -f docker-compose.yml ps
 
 # Test connection manually
 psql postgresql://somabrain:development_password@localhost/somabrain_dev
@@ -714,10 +672,10 @@ pytest tests/integration/ --create-db
 tail -f logs/somabrain.log
 
 # Docker logs
-docker-compose -f docker-compose.dev.yml logs -f
+docker compose --env-file .env.local -f docker-compose.yml logs -f
 
 # Database logs
-docker-compose -f docker-compose.dev.yml logs postgres
+docker compose --env-file .env.local -f docker-compose.yml logs postgres
 ```
 
 **Performance Monitoring**:

@@ -80,29 +80,44 @@ jobs:
           python-version: "3.13"
       - name: Install dependencies
         run: pip install -e .[dev]
-      - name: Start dev infra (docker-compose)
+      - name: Start dev infra (docker compose)
         run: |
-          docker compose -f scripts/docker-compose.dev.yml up -d --build
+          docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
       - name: Wait for services
         run: |
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:9595/health >/dev/null 2>&1; then echo "memory up"; break; fi; sleep 2
+          set -a
+          source .env
+          set +a
+          MEMORY_URL=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://127.0.0.1:9595}
+          MEMORY_READY=0
+          OPA_PORT=${OPA_HOST_PORT:-30004}
+          API_PORT=${SOMABRAIN_HOST_PORT:-9696}
+          for i in {1..40}; do
+            if curl -sSf "${MEMORY_URL}/health" >/dev/null 2>&1; then echo "memory up"; MEMORY_READY=1; break; fi; sleep 2
           done
-          for i in {1..30}; do
-            if curl -sSf http://127.0.0.1:8181/health >/dev/null 2>&1; then echo "opa up"; break; fi; sleep 2
+          if [ "$MEMORY_READY" -eq 0 ]; then echo "memory endpoint not reachable (optional)"; fi
+          for i in {1..40}; do
+            if curl -sSf "http://127.0.0.1:${OPA_PORT}/health" >/dev/null 2>&1; then echo "opa up"; break; fi; sleep 2
+          done
+          for i in {1..40}; do
+            if curl -sSf "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1; then echo "somabrain up"; break; fi; sleep 2
           done
       - name: Run strict-mode tests
         env:
           SOMABRAIN_STRICT_REAL: "1"
-          SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://127.0.0.1:9595"
-          SOMABRAIN_OPA_URL: "http://127.0.0.1:8181"
-          SOMABRAIN_REDIS_URL: "redis://127.0.0.1:6379/0"
         run: |
+          set -a
+          source .env
+          set +a
+          export SOMABRAIN_MEMORY_HTTP_ENDPOINT
+          export SOMABRAIN_OPA_URL="http://127.0.0.1:${OPA_HOST_PORT:-30004}"
+          export SOMABRAIN_REDIS_URL="redis://127.0.0.1:${REDIS_HOST_PORT:-30000}/0"
+          export SOMABRAIN_HOST_PORT
           pytest -q
       - name: Tear down dev infra
         if: always()
         run: |
-          docker compose -f scripts/docker-compose.dev.yml down --volumes --remove-orphans
+          docker compose --env-file ./.env -f docker-compose.yml down --volumes --remove-orphans
 
   integration-kind:
     needs: test

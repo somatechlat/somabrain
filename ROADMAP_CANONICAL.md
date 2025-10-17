@@ -76,7 +76,8 @@ Sizing guide: effective interferers `N_eff ≈ ŵ · T½ · ln 2`; dimension `D 
 ## 4) APIs (External)
 
 **Memory API** (via Kong Memory Edge)
-- `POST /memory/remember` `{tenant, namespace, key, value, meta}`
+- `POST /memory/remember` `{tenant, namespace, key, value, tags?, policy_tags?, attachments?, links?, signals?, ttl_seconds?, trace_id?}` → returns `{coordinate, promoted_to_wm, persisted_to_ltm, signals, warnings}`
+- `POST /memory/remember/batch` `{tenant, namespace, items:[...], universe?}` → single ACK for multi-item ingest with per-item feedback
 - `POST /memory/recall` `{tenant, namespace, key, topk?, layer?}` → recall results with provenance
 - `GET /metrics`
 

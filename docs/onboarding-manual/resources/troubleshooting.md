@@ -94,7 +94,7 @@ sudo netstat -tulpn | grep :5432
 psql postgresql://somabrain:password@localhost/somabrain_dev
 
 # Check Docker containers
-docker-compose ps
+docker compose --env-file .env.local -f docker-compose.yml ps
 ```
 
 **Solutions**:
@@ -107,7 +107,7 @@ brew services start postgresql@15
 sudo systemctl start postgresql
 
 # Solution 2: Start Docker development environment
-docker-compose -f docker-compose.dev.yml up -d
+docker compose --env-file .env.local -f docker-compose.yml up -d somabrain_postgres somabrain_redis
 
 # Solution 3: Check environment variables
 echo $SOMABRAIN_DATABASE_URL

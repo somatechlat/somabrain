@@ -41,6 +41,7 @@ import os
 import time
 from pathlib import Path
 from threading import RLock
+from collections.abc import Iterable
 
 from somabrain.interfaces.memory import MemoryBackend
 from somabrain.config import get_config
@@ -185,6 +186,45 @@ class MemoryService:
             self._mark_failure()
             logger.warning(f"Async memory operation 'aremember' failed for key '{key}'. Journaling.")
             self._journal_failure("remember", {"key": key, "payload": payload, "universe": universe})
+            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+
+    async def aremember_bulk(
+        self,
+        items: Iterable[tuple[str, dict]],
+        universe: str | None = None,
+    ) -> list[tuple[float, float, float]]:
+        """Store multiple memory payloads in a single operation."""
+
+        prepared: list[tuple[str, dict]] = []
+        journal_payload: list[dict] = []
+        for key, payload in items:
+            body = dict(payload)
+            if universe and "universe" not in body:
+                body["universe"] = universe
+            prepared.append((key, body))
+            journal_payload.append({"key": key, "payload": body})
+
+        if not prepared:
+            return []
+
+        if self._is_circuit_open():
+            self._journal_failure(
+                "remember_bulk",
+                {"items": journal_payload, "universe": universe, "queued": True},
+            )
+            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+
+        try:
+            coords = await self.client().aremember_bulk(prepared)
+            self._mark_success()
+            return list(coords)
+        except Exception as e:
+            self._mark_failure()
+            logger.warning("Async memory operation 'aremember_bulk' failed. Journaling.")
+            self._journal_failure(
+                "remember_bulk",
+                {"items": journal_payload, "universe": universe},
+            )
             raise RuntimeError("Memory service unavailable; operation journaled.") from e
 
     def link(self, from_coord, to_coord, link_type="related", weight=1.0):
