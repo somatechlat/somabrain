@@ -63,3 +63,14 @@ def test_working_memory_recency_respects_cap() -> None:
     wm.recall(vec, top_k=1)
 
     assert math.isclose(scorer.last_steps or 0.0, 5.0, rel_tol=1e-9)
+
+
+def test_working_memory_density_penalizes_overlap() -> None:
+    wm = WorkingMemory(capacity=3, dim=2, scorer=None)
+    base = np.array([1.0, 0.0], dtype=np.float32)
+    wm.admit(base, {"id": "unique"}, cleanup_overlap=0.1)
+    wm.admit(base, {"id": "duplicate"}, cleanup_overlap=0.9)
+
+    hits = wm.recall(base, top_k=2)
+
+    assert hits[0][1]["id"] == "unique"

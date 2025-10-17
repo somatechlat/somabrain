@@ -96,10 +96,17 @@ class MultiColumnWM:
             h &= (1 << 64) - 1
         return int(h % max(1, columns))
 
-    def admit(self, tenant_id: str, vec: np.ndarray, payload: dict) -> None:
+    def admit(
+        self,
+        tenant_id: str,
+        vec: np.ndarray,
+        payload: dict,
+        *,
+        cleanup_overlap: float | None = None,
+    ) -> None:
         cols = self._ensure(tenant_id)
         idx = self._choose_column(payload, len(cols))
-        cols[idx].admit(vec, dict(payload))
+        cols[idx].admit(vec, dict(payload), cleanup_overlap=cleanup_overlap)
         try:
             MICRO_COLUMN_ADMIT.labels(column=str(idx)).inc()
         except Exception:

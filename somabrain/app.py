@@ -2078,10 +2078,17 @@ async def recall(req: S.RecallRequest, request: Request):
         from . import metrics as _mx
 
         _mx.HRR_CLEANUP_CALLS.inc()
-        anchor_id, score = mt_ctx.cleanup(ctx.tenant_id, hrr_qv)
+        cleanup_result = mt_ctx.cleanup(ctx.tenant_id, hrr_qv)
+        anchor_id = getattr(cleanup_result, "best_id", "")
+        score = getattr(cleanup_result, "best_score", 0.0)
         # Clamp score to [0,1] to avoid floating drift causing >1.0
         score_clamped = max(0.0, min(1.0, float(score)))
-        hrr_info = {"anchor_id": anchor_id, "score": score_clamped}
+        margin = getattr(cleanup_result, "margin", 0.0)
+        hrr_info = {
+            "anchor_id": anchor_id,
+            "score": score_clamped,
+            "margin": float(margin),
+        }
         M.HRR_CLEANUP_USED.inc()
         M.HRR_CLEANUP_SCORE.observe(score_clamped)
         try:
@@ -2644,7 +2651,24 @@ async def remember(body: dict, request: Request):
         max(0.0, _t.perf_counter() - _e1)
     )
     hrr_vec = quantum.encode_text(text) if quantum else None
-    (mc_wm if cfg.use_microcircuits else mt_wm).admit(ctx.tenant_id, wm_vec, payload)
+    cleanup_overlap = None
+    cleanup_margin = None
+    if mt_ctx is not None and hrr_vec is not None:
+        analysis = mt_ctx.analyze(ctx.tenant_id, hrr_vec)
+        cleanup_overlap = float(analysis.best_score)
+        cleanup_margin = float(analysis.margin)
+        try:
+            payload.setdefault("_cleanup_best", cleanup_overlap)
+            payload.setdefault("_cleanup_margin", cleanup_margin)
+        except Exception:
+            pass
+
+    (mc_wm if cfg.use_microcircuits else mt_wm).admit(
+        ctx.tenant_id,
+        wm_vec,
+        payload,
+        cleanup_overlap=cleanup_overlap,
+    )
     try:
         from . import metrics as _mx
 

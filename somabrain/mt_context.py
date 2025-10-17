@@ -33,7 +33,7 @@ from typing import Tuple
 
 import numpy as np
 
-from .context_hrr import HRRContext, HRRContextConfig
+from .context_hrr import CleanupResult, HRRContext, HRRContextConfig
 from .quantum import QuantumLayer
 
 
@@ -62,6 +62,10 @@ class MultiTenantHRRContext:
 
     def cleanup(self, tenant_id: str, query: np.ndarray) -> Tuple[str, float]:
         return self._ensure(tenant_id).cleanup(query)
+
+    def analyze(self, tenant_id: str, query: np.ndarray) -> CleanupResult:
+        """Return cleanup scores (best, second, margin) without thresholding."""
+        return self._ensure(tenant_id).analyze(query)
 
     def stats(self, tenant_id: str) -> tuple[int, int]:
         return self._ensure(tenant_id).stats()

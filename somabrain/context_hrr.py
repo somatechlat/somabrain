@@ -42,6 +42,23 @@ except Exception:  # pragma: no cover
 
 
 @dataclass
+class CleanupResult:
+    """Outcome of an HRR cleanup sweep with margin data."""
+
+    best_id: str
+    best_score: float
+    second_score: float
+
+    def __iter__(self):  # allow tuple unpacking for legacy callers
+        yield self.best_id
+        yield self.best_score
+
+    @property
+    def margin(self) -> float:
+        return max(0.0, float(self.best_score) - float(self.second_score))
+
+
+@dataclass
 class HRRContextConfig:
     """Configuration for an HRR context."""
 
@@ -151,11 +168,7 @@ class HRRContext:
         self._apply_decay(self._now())
         return max(0.0, 1.0 - self.q.cosine(vec, self.context))
 
-    def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
-        now = self._now()
-        self._apply_decay(now)
-
-        query_vec = query.astype("float32", copy=False)
+    def _evaluate_cleanup(self, query_vec: np.ndarray, now: float) -> CleanupResult:
         best_id = ""
         best_score = -1.0
         second_score = -1.0
@@ -177,15 +190,30 @@ class HRRContext:
             elif score > second_score:
                 second_score = score
 
-        threshold = self._min_confidence
-        if best_score < threshold:
-            best_id = ""
+        if best_score < 0.0:
             best_score = 0.0
+        if second_score < 0.0:
+            second_score = 0.0
+        return CleanupResult(best_id, float(best_score), float(second_score))
 
+    def analyze(self, query: np.ndarray) -> CleanupResult:
+        now = self._now()
+        self._apply_decay(now)
+        query_vec = query.astype("float32", copy=False)
+        result = self._evaluate_cleanup(query_vec, now)
         ContextMetrics.record_cleanup(
-            self._context_id, best_score, second_score, threshold
+            self._context_id,
+            result.best_score,
+            result.second_score,
+            self._min_confidence,
         )
-        return best_id, float(best_score)
+        return result
+
+    def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
+        result = self.analyze(query)
+        if result.best_score < self._min_confidence:
+            return CleanupResult("", 0.0, result.second_score)
+        return result
 
     def stats(self) -> tuple[int, int]:
         """Return (anchor_count, max_anchors)."""

@@ -53,6 +53,7 @@ class WMItem:
     payload: dict
     tick: int = 0
     admitted_at: float = 0.0
+    cleanup_overlap: float = 0.0
 
 
 class WorkingMemory:
@@ -156,7 +157,13 @@ class WorkingMemory:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-    def admit(self, vector: np.ndarray, payload: dict) -> None:
+    def admit(
+        self,
+        vector: np.ndarray,
+        payload: dict,
+        *,
+        cleanup_overlap: float | None = None,
+    ) -> None:
         """
         Admit a new item into working memory with dimension normalization and unit-norm.
         Enforces global HRR_DIM, HRR_DTYPE, and mathematical invariant: all vectors are unit-norm, reproducible.
@@ -166,6 +173,8 @@ class WorkingMemory:
         Args:
             vector (np.ndarray): Vector representation to store. Will be normalized to dim and unit-norm.
             payload (dict): Associated data payload to store with the vector.
+            cleanup_overlap (float | None): Optional HRR cleanup best-score (0-1) used to
+                down-weight dense/duplicated entries during recall.
         Note:
             Vectors are converted to float32 for memory efficiency and always unit-norm.
             Payload is deep-copied to prevent external modifications.
@@ -181,12 +190,23 @@ class WorkingMemory:
             vector = vector / n
         self._t += 1
         now = self._now()
+        overlap = 0.0
+        if cleanup_overlap is not None:
+            try:
+                overlap = float(cleanup_overlap)
+            except Exception:
+                overlap = 0.0
+            if not math.isfinite(overlap) or overlap < 0.0:
+                overlap = 0.0
+            overlap = min(overlap, 1.0)
+
         self._items.append(
             WMItem(
                 vector=vector.astype("float32"),
                 payload=dict(payload),
                 tick=self._t,
                 admitted_at=float(now),
+                cleanup_overlap=float(overlap),
             )
         )
         if len(self._items) > self.capacity:
@@ -215,6 +235,7 @@ class WorkingMemory:
         payload: dict,
         threshold: float = 0.4,
         reward: float = 0.0,
+        cleanup_overlap: float | None = None,
     ) -> bool:
         """Admit item only if salience exceeds threshold; adapt capacity slightly.
 
@@ -222,7 +243,7 @@ class WorkingMemory:
         """
         s = self.salience(vector, reward=reward)
         if s >= float(threshold):
-            self.admit(vector, payload)
+            self.admit(vector, payload, cleanup_overlap=cleanup_overlap)
             # adapt capacity towards max if many salient items; else shrink to min
             if self._max_cap > self.capacity and s > 0.8:
                 self.capacity = min(self._max_cap, self.capacity + 1)
@@ -266,7 +287,11 @@ class WorkingMemory:
                 )
             else:
                 s = cos
-            scored.append((float(s), it.payload))
+
+            overlap = max(0.0, min(1.0, float(it.cleanup_overlap)))
+            density_factor = max(0.1, 1.0 - overlap)
+            adjusted = float(s) * density_factor
+            scored.append((adjusted, it.payload))
         scored.sort(key=lambda x: x[0], reverse=True)
         return scored[: max(0, int(top_k))]
 

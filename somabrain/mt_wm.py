@@ -70,8 +70,15 @@ class MultiTenantWM:
             self._wms.popitem(last=False)
         return wm
 
-    def admit(self, tenant_id: str, vec: np.ndarray, payload: dict) -> None:
-        self._ensure(tenant_id).admit(vec, payload)
+    def admit(
+        self,
+        tenant_id: str,
+        vec: np.ndarray,
+        payload: dict,
+        *,
+        cleanup_overlap: float | None = None,
+    ) -> None:
+        self._ensure(tenant_id).admit(vec, payload, cleanup_overlap=cleanup_overlap)
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3

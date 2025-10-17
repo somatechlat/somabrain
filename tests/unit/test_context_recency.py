@@ -66,3 +66,19 @@ def test_capacity_metrics_update_after_admit():
     anchor_count, max_anchors = ctx.stats()
     assert anchor_count == 4
     assert max_anchors == 8
+
+
+def test_cleanup_analysis_exposes_margin():
+    ctx, layer, current = _make_context()
+    current[0] = 1.0
+    v1 = layer.random_vector()
+    v2 = layer.random_vector()
+    ctx.admit("a", v1, timestamp=current[0])
+    current[0] = 2.0
+    ctx.admit("b", v2, timestamp=current[0])
+
+    query = v1 + 0.1 * v2
+    result = ctx.cleanup(query)
+
+    assert hasattr(result, "margin")
+    assert result.margin >= 0.0
