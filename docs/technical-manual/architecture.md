@@ -56,11 +56,11 @@ graph TD
 
 **⚛️ Meaning Engine** (`somabrain/quantum.py`)  
 *Human Impact:* Understands that "car" and "automobile" mean the same thing  
-*The Science:* Binary Hyperdimensional Computing with 2048-8192D vector spaces and permutation binding. Deterministic unitary roles now record spectral/orthogonality invariants so the system raises immediate telemetry if mathematical guarantees drift.
+*The Science:* Binary Hyperdimensional Computing (BHDC) with 2048D vector spaces using permutation-based binding (PermutationBinder). Perfectly invertible by construction. Deterministic unitary roles with verified spectral properties (‖H_k‖≈1). Orthogonality and binding correctness verified via MathematicalMetrics on every operation.
 
 **📊 Relevance Oracle** (`somabrain/scoring.py`)  
 *Human Impact:* Finds exactly what you need, even when you ask imperfectly  
-*The Science:* Unified similarity combining cosine, frequency-domain, and temporal weighting
+*The Science:* UnifiedScorer combining cosine similarity, FD subspace projection (via FDSalienceSketch), and exponential recency decay (exp(-age/τ)) with configurable weight bounds
 
 **🔗 Memory Vault** (`somabrain/memory_client.py`)  
 *Human Impact:* Never loses anything, remembers everything, proves what happened  
@@ -123,12 +123,15 @@ graph TD
 ### Memory Recall Flow
 1. Client sends `/recall` request with query and context
 2. OPA middleware validates access permissions
-3. MultiTenantWM checked for cached results
-4. If miss, MemoryClient queries long-term storage
-5. UnifiedScorer ranks results using cosine similarity, FD projection, a log-damped recency curve with configurable floor, and density-aware cleanup penalties
+3. MultiTenantWM checked for cached results (cosine similarity in base space)
+4. If miss, MemoryClient queries long-term storage via HTTP
+5. UnifiedScorer ranks results:
+   - w_cosine * cosine_similarity(query, candidate)
+   - w_fd * fd_projection_similarity(query, candidate)
+   - w_recency * exp(-recency_steps / recency_tau)
 6. Results filtered and formatted for response
 7. Working memory updated with recalled items
-8. Metrics and audit events recorded
+8. Metrics emitted: SCORER_COMPONENT, SCORER_FINAL, memory_snapshot
 
 ### Health Check Flow
 1. `/health` endpoint receives request
@@ -185,7 +188,7 @@ graph TD
 - **Application Metrics**: Request latency, memory operations, error rates
 - **Infrastructure Metrics**: CPU, memory, disk, network utilization
 - **Business Metrics**: Tenant usage, cognitive performance measures
-- **Mathematical Invariants**: Density matrix trace, BHDC binding accuracy
+- **Mathematical Invariants**: BHDC spectral properties (‖H_k‖≈1), role orthogonality, binding correctness, trace normalization
 
 ### Logging Strategy
 - **Structured Logging**: JSON format with correlation IDs
@@ -198,36 +201,44 @@ graph TD
 - **Warning Alerts**: Performance degradation, resource utilization thresholds
 - **Informational**: Deployment notifications, configuration changes
 
-## Recall Lifecycle (Strict Mode)
+## Recall Lifecycle (Production Mode)
 
-1. Request enters FastAPI handlers (`somabrain.app`).
-2. Backend-enforcement middleware verifies `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`, `SOMABRAIN_FORCE_FULL_STACK`, and `SOMABRAIN_REQUIRE_MEMORY`.
-3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache and neuromodulator state.
-4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines cosine, frequency-domain, and log-damped recency terms while MemoryClient applies density-aware cleanup penalties before final ranking.
-5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) expands to the HTTP memory service when required.
-6. Density matrix update (`somabrain/memory/density.py::DensityMatrix.observe`) folds evidence back into state and exports metrics.
-7. Response returns scored items plus audit metadata; structured logs emit via `somabrain/audit.py`.
+1. Request enters FastAPI handlers (`somabrain/api/memory_api.py`).
+2. Backend-enforcement middleware verifies `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` if enabled.
+3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache.
+4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines:
+   - Cosine similarity in base space
+   - FD subspace projection (via FDSalienceSketch.project)
+   - Exponential recency: exp(-age/τ)
+5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) queries HTTP memory service.
+6. Circuit breaker (`somabrain/services/memory_service.py::MemoryService`) tracks failures and journals operations when backend is down (if `allow_journal_fallback=true`).
+7. Response returns scored items; metrics emitted via `somabrain/metrics.py`.
 
-Strict-real deployments abort the request if any stage fails—there are no silent fallbacks.
+Strict-mode deployments (backend enforcement enabled, journal disabled) fail fast when dependencies are unavailable.
 
 ## Core Invariants
 
 | Invariant | Code Reference | Enforcement |
 | --- | --- | --- |
-| `abs(trace(ρ) - 1) < 1e-4` | `DensityMatrix.normalize_trace` | Called after every observe/update cycle |
-| PSD spectrum | `DensityMatrix.project_psd` | Clips negative eigenvalues before persistence |
-| Weight bounds | `UnifiedScorer._clamp_weight` | Keeps component weights within configured bounds |
-| Stub usage = 0 | `_audit_stub_usage` in `MemoryClient` | Raises immediately if a stub path executes |
-| Health realism | `somabrain/metrics.py::emit_health` | `/health` reports ready only when all deps respond |
+| Spectral property: ‖H_k‖≈1 | `MathematicalMetrics.verify_spectral_property` | Called after every bind operation in QuantumLayer |
+| Role orthogonality | `MathematicalMetrics.verify_role_orthogonality` | Checked when caching new unitary roles |
+| Binding correctness | `MathematicalMetrics.verify_operation_correctness` | Validates cosine(a, bind(a,b)) is low |
+| Weight bounds | `UnifiedScorer._clamp` | Keeps scorer weights within [weight_min, weight_max] |
+| Trace normalization | `SuperposedTrace._decayed_update` | Renormalizes after every exponential decay step: (1-η)M_t + η·bind(k,v) |
+| Circuit breaker | `MemoryService._mark_failure` | Opens after failure_threshold consecutive errors |
 
-Expose these guarantees through Prometheus metrics (`somabrain_density_trace_error_total`, `somabrain_stub_usage_total`, `somabrain_recall_latency_seconds`).
+Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SCORER_COMPONENT`, `CIRCUIT_BREAKER_STATE`, `HTTP_FAILURES`).
 
 ## Configuration Touchpoints
 
-- Environment flags are sourced via `common.config.settings.Settings`—see `configuration.md`.
-- Temporal damping is governed by `recall_recency_time_scale`, `recall_recency_sharpness`, and `recall_recency_floor`; density penalties are tuned via `recall_density_margin_*` fields in `Config`.
-- Compose and Kubernetes manifests supply the same flags; backend enforcement must be enabled in every promoted environment.
-- Optional components (Kafka, Postgres) are auto-detected. If endpoints exist they are used; backend enforcement keeps readiness false when dependencies are offline.
+- Environment flags: `common.config.settings.Settings` and `somabrain.config.get_config()`
+- Scorer weights: `w_cosine`, `w_fd`, `w_recency` with bounds `weight_min`/`weight_max`
+- Recency decay: `recency_tau` controls exponential decay rate (exp(-age/τ))
+- Adaptation: `learning_rate_dynamic=true` enables dopamine-modulated learning rates
+- Circuit breaker: `failure_threshold` (default 3), `reset_interval` (default 60s)
+- Journal fallback: `allow_journal_fallback` (default false in strict mode)
+- Backend enforcement: `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` disables all fallbacks
+- Optional components (Kafka, Postgres) are auto-detected; backend enforcement keeps readiness false when dependencies are offline
 
 ## Extending the System
 
