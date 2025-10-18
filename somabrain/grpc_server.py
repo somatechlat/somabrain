@@ -70,8 +70,8 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
             self._mem.remember(coord_key, payload)
             return memory_pb2.RememberResponse(ok=True)
         except StubUsageError as e:
-            # Stub usage in strict mode – surface as UNAVAILABLE with clear message
-            LOGGER.error("Strict mode stub usage in Remember: %s", e)
+            # Stub usage while backend enforcement is active – surface as UNAVAILABLE with clear message
+            LOGGER.error("Backend enforcement stub usage in Remember: %s", e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNAVAILABLE)
             return memory_pb2.RememberResponse(ok=False)
@@ -97,7 +97,7 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
                 items.append(memory_pb2.RecallItem(coord_key=str(coord_key), content=content, quality_score=score))
             return memory_pb2.RecallResponse(items=items)
         except StubUsageError as e:
-            LOGGER.error("Strict mode stub usage in Recall: %s", e)
+            LOGGER.error("Backend enforcement stub usage in Recall: %s", e)
             context.set_details(str(e))
             context.set_code(grpc.StatusCode.UNAVAILABLE)
             return memory_pb2.RecallResponse(items=[])

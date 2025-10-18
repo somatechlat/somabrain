@@ -67,10 +67,10 @@ PORTS
 # Require an external memory service reachable from containers (default host gateway on macOS)
 echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}" >> $ENVFILE
 
-# Production-like defaults for development: strict-real and full stack
+# Production-like defaults for development: backend enforcement and full stack
 cat <<'FLAGS' >> $ENVFILE
 SOMABRAIN_FORCE_FULL_STACK=1
-SOMABRAIN_STRICT_REAL=1
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_MODE=enterprise
 SOMABRAIN_PREDICTOR_PROVIDER=mahal

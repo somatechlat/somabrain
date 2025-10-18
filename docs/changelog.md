@@ -66,7 +66,7 @@ All notable changes to SomaBrain are documented in this file. This project adher
   - BHDC binding/unbinding roundtrip accuracy validation
   - Scorer component weight bounds enforcement
 - **Strict Real Mode**: Production-grade execution enforcement
-  - `SOMABRAIN_STRICT_REAL=1` disables all stub/mock code paths
+  - `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` disables all stub/mock code paths
   - Runtime audit system detecting and preventing stub usage
   - Comprehensive environment validation requiring real backing services
 - **Multi-Service Architecture**: Containerized deployment with Docker Compose

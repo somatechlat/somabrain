@@ -37,7 +37,7 @@ This guide provides canonical, up-to-date instructions for developing, building,
     uv pip install --editable .[dev]
     uv pip sync uv.lock
     ```
-- Launch the strict-real stack: `./scripts/dev_up.sh --rebuild` (writes `.env.local` + `ports.json`).
+- Launch the backend-enforced stack: `./scripts/dev_up.sh --rebuild` (writes `.env.local` + `ports.json`).
 - Spot-check health: `curl -fsS http://localhost:9696/health | jq`.
 - Run the canonical smoke: `uv run pytest -q` (uses locked dependencies).
 - Access configuration exclusively via `somabrain.config.get_config()`; call `reload_config()` after changing YAML files.

@@ -22,7 +22,7 @@
 | `/metrics` | **📊 Optimizes Itself** - Real-time performance insights | Data-driven scaling and cost optimization | Built-in observability without setup |
 | `/neuromodulators` | **⚙️ Tunes Personality** - Adjust cognitive behavior in real-time | Customize AI behavior for different use cases | Fine-tune intelligence with simple parameters |
 
-FastAPI lives in `somabrain/app.py`. The table below lists the stable strict-real endpoints.
+FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-enforced endpoints.
 
 | Method | Path | Purpose | Request Model | Response Model |
 | --- | --- | --- | --- | --- |
@@ -45,7 +45,7 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable strict-rea
 | POST | `/migrate/export` | Export memory payloads | `schemas.MigrateExportRequest` | `schemas.MigrateExportResponse` |
 
 **Usage notes**:
-- Write endpoints honour strict mode—requests fail if backing services are unreachable.
+- Write endpoints honour backend enforcement—requests fail if backing services are unreachable.
 - Tenancy is selected via the `X-Soma-Tenant` header; defaults to the configured tenant when absent.
 - Authentication is disabled only when `SOMABRAIN_DISABLE_AUTH=1`.
 - Regenerate OpenAPI artifacts with `./scripts/export_openapi.py`.

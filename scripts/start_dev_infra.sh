@@ -46,7 +46,7 @@ echo "  SOMAMEMORY_HOST_PORT=$(grep '^SOMAMEMORY_HOST_PORT=' "$ENV_FILE" | tail 
 echo "  Memory stub (host access): http://127.0.0.1:$(grep '^SOMAMEMORY_HOST_PORT=' "$ENV_FILE" | tail -n1 | cut -d= -f2)/"
 echo "  SOMABRAIN_REDIS_URL=$(grep '^SOMABRAIN_REDIS_URL=' "$ENV_FILE" | tail -n1 | cut -d= -f2)"
 
-echo "To run tests in strict mode:"
-echo "  SOMABRAIN_STRICT_REAL=1 .cleanup-venv/bin/python -m pytest"
+echo "To run tests with backend enforcement:"
+echo "  SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1 .cleanup-venv/bin/python -m pytest"
 
 echo "Done."

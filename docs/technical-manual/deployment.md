@@ -31,7 +31,7 @@ curl -fsS http://localhost:9696/health | jq
 
 #### Direct Port Access (Local Parity)
 
-The compose stack binds container ports directly to localhost for strict-real parity:
+The compose stack binds container ports directly to localhost for backend-enforcement parity:
 
 | Service | Host Port | Notes |
 | --- | --- | --- |
@@ -62,7 +62,7 @@ services:
     image: somabrain:${SOMA_VERSION}
     restart: always
     environment:
-      - SOMABRAIN_STRICT_REAL=1
+      - SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
       - SOMABRAIN_FORCE_FULL_STACK=1
       - SOMABRAIN_REQUIRE_MEMORY=1
       - SOMABRAIN_REDIS_URL=redis://redis:6379/0
@@ -208,7 +208,7 @@ prometheus:
       size: 100Gi
 
 environment:
-  SOMABRAIN_STRICT_REAL: "1"
+  SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
   SOMABRAIN_FORCE_FULL_STACK: "1"
   SOMABRAIN_REQUIRE_MEMORY: "1"
   SOMABRAIN_MODE: "production"
@@ -219,7 +219,7 @@ environment:
 ### Required Environment Variables
 | Variable | Production Value | Description |
 |----------|-----------------|-------------|
-| `SOMABRAIN_STRICT_REAL` | `1` | Enforce production-grade execution |
+| `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | `1` | Enforce production-grade execution |
 | `SOMABRAIN_FORCE_FULL_STACK` | `1` | Require all backing services |
 | `SOMABRAIN_REQUIRE_MEMORY` | `1` | Memory service must be available |
 | `SOMABRAIN_MODE` | `production` | Deployment mode identifier |

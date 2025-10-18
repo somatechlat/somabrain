@@ -117,8 +117,8 @@ curl -f http://localhost:9696/health | jq '.status'  # Should return "healthy"
 
 - [ ] **Environment Variables**: Core variables set
   ```bash
-  echo $SOMABRAIN_STRICT_REAL $SOMABRAIN_FORCE_FULL_STACK
-  # Expected: "1 1" showing strict mode enabled
+  echo $SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS $SOMABRAIN_FORCE_FULL_STACK
+  # Expected: "1 1" showing backend enforcement enabled
   ```
 
 - [ ] **Configuration Loading**: Settings accessible

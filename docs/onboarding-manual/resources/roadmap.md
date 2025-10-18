@@ -1,6 +1,6 @@
 # Roadmap Canonical — Brain 3.0
 
-**Purpose**: Canonical plan for evolving SomaBrain into Brain 3.0 while preserving mathematical rigour and strict-real execution.
+**Purpose**: Canonical plan for evolving SomaBrain into Brain 3.0 while preserving mathematical rigour and backend-enforced execution.
 
 **Audience**: Product leads, roadmap owners, and engineers aligning long-term workstreams.
 
@@ -13,7 +13,7 @@
 - Implement a mathematically pure, elegant brain with rigorous HRR operations.
 - Ensure every operation is backed by proofs, property tests, and real infrastructure.
 - Guarantee durability, observability, and resilience with verifiable evidence.
-- Eliminate mocks, stubs, and approximations—strict-real throughout.
+- Eliminate mocks, stubs, and approximations—backend-enforced throughout.
 
 ## Principles
 
@@ -116,13 +116,13 @@ Objectives:
 
 ### Sprint 3 — Learning Brain Validation (2.5 weeks)
 - Integrate end-to-end learning soak into CI/nightly runs (`run_learning_test.py`).
-- Enforce strict-real across memory client paths in tests.
+- Enforce backend-enforced across memory client paths in tests.
 - Update Prometheus/Grafana assets with new metrics (FD health, capacity curves).
 - Document knobs and release guidance; run full stress suite.
 
 ### Guardrails
 - Deterministic BHDC/HRR operations with instrumentation for every invariant.
-- No mock or stub fallbacks; strict-real enforcement end-to-end.
+- No mock or stub fallbacks; backend-enforced enforcement end-to-end.
 - Telemetry-first validation with dashboards surfacing violations before regressions.
 
 ---
@@ -205,9 +205,9 @@ Objectives:
 
 1. Confirm go-ahead for Sprint 1 (Transactional Outbox):
    - Add Alembic migration and `somabrain/db/outbox.py` skeleton.
-   - Update `somabrain/audit.py` to enqueue into the outbox under strict-real.
+   - Update `somabrain/audit.py` to enqueue into the outbox under backend-enforced.
    - Add unit tests for outbox enqueue semantics.
-2. Once confirmed, prepare PRs and run the full strict-real test suite locally.
+2. Once confirmed, prepare PRs and run the full backend-enforced test suite locally.
 
 ---
 

@@ -34,7 +34,7 @@ Adopt an application container that provides runtime dependencies via explicit p
 
 ## Alternatives Considered
 
-- **Keep runtime singletons**: Rejected; violates strict-real contract and preserves global state issues.
+- **Keep runtime singletons**: Rejected; violates backend-enforcement contract and preserves global state issues.
 - **Service locator pattern**: Rejected; obscures dependencies and retains global lookups.
 
 ## Follow-up Tasks

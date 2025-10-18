@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import Tuple
 
 from somabrain.schemas import RAGCandidate
 from somabrain.services import rag_cache
@@ -398,49 +398,3 @@ def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate
                 )
             )
         return out_scored
-
-
-def _fake_payload(i: int) -> dict:
-    return {"task": f"stub_doc_{i}", "memory_type": "episodic", "importance": 1}
-
-
-def retrieve_wm_stub(query: str, top_k: int) -> List[RAGCandidate]:
-    """Return k canned WM candidates (stub)."""
-    return [
-        RAGCandidate(
-            coord=None,
-            key=f"wm::{i}",
-            score=max(0.0, 1.0 - 0.05 * i),
-            retriever="wm",
-            payload=_fake_payload(i),
-        )
-        for i in range(max(0, int(top_k)))
-    ]
-
-
-def retrieve_vector_stub(query: str, top_k: int) -> List[RAGCandidate]:
-    """Return k canned vector candidates (stub)."""
-    return [
-        RAGCandidate(
-            coord=None,
-            key=f"vec::{i}",
-            score=max(0.0, 0.9 - 0.04 * i),
-            retriever="vector",
-            payload=_fake_payload(100 + i),
-        )
-        for i in range(max(0, int(top_k)))
-    ]
-
-
-def retrieve_graph_stub(query: str, top_k: int) -> List[RAGCandidate]:
-    """Return k canned graph candidates (stub)."""
-    return [
-        RAGCandidate(
-            coord=None,
-            key=f"graph::{i}",
-            score=max(0.0, 0.8 - 0.03 * i),
-            retriever="graph",
-            payload=_fake_payload(200 + i),
-        )
-        for i in range(max(0, int(top_k)))
-    ]

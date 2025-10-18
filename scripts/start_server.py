@@ -2,7 +2,7 @@
 """Start Uvicorn after initializing SomaBrain runtime singletons in-process.
 
 This ensures that the same Python process that runs Uvicorn has the runtime
-singletons initialized, avoiding import-time strict-real failures.
+singletons initialized, avoiding import-time backend-enforcement failures.
 """
 import os
 import sys
@@ -29,7 +29,7 @@ except Exception as e:
 # Use programmatic Uvicorn run so imports happen in this process
 
 if WORKERS != 1:
-    print("Warning: WORKERS != 1. For strict-real mode, workers should be 1 so runtime singletons are initialized in-process. Overriding WORKERS=1.")
+    print("Warning: WORKERS != 1. For backend enforcement, workers should be 1 so runtime singletons are initialized in-process. Overriding WORKERS=1.")
 
 # Use programmatic Server to avoid uvicorn spawning worker subprocesses that
 # would not inherit the initialized singletons in this parent process.

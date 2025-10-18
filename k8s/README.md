@@ -29,7 +29,7 @@ kubectl get svc -n somabrain-prod
 
 3) Make Somabrain and other services reachable from your host for tests:
 
-Option A (port-forward, recommended for parity with CI and strict-real tests):
+Option A (port-forward, recommended for parity with CI and backend-enforced tests):
 
 ```bash
 kubectl -n somabrain-prod port-forward svc/somabrain 9696:9696 &

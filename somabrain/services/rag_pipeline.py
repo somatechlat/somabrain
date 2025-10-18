@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-import builtins
+import logging
 from typing import List, Optional
 
 from somabrain.schemas import RAGCandidate, RAGRequest, RAGResponse
-import logging
 from somabrain.services import rag_cache
 from somabrain.services.retrievers import (
     retrieve_graph,
-    retrieve_graph_stub,
     retrieve_lexical,
     retrieve_vector,
-    retrieve_vector_stub,
     retrieve_wm,
-    retrieve_wm_stub,
 )
 
 try:  # pragma: no cover - optional dependency in legacy layouts
@@ -21,15 +17,10 @@ try:  # pragma: no cover - optional dependency in legacy layouts
 except Exception:
     shared_settings = None  # type: ignore
 
-try:
-    _ALLOW_LOCAL_MIRRORS = bool(
-        getattr(shared_settings, "allow_local_mirrors", True)
-    )
-except Exception:
-    _ALLOW_LOCAL_MIRRORS = True
+
+logger = logging.getLogger(__name__)
 
 
-# Helper to record an edge in the process‑wide global links mirror used by MemoryClient.links_from.
 def _record_global_link(
     namespace: str,
     from_coord: tuple[float, float, float],
@@ -37,38 +28,17 @@ def _record_global_link(
     link_type: str = "related",
     weight: float = 1.0,
 ) -> None:
-    """Append an edge dict to the _GLOBAL_LINKS structure.
-    This makes links immediately visible to tests that read from the global mirror.
-    """
-    if not _ALLOW_LOCAL_MIRRORS:
-        return
-    try:
-        # Record the link in the process‑wide global mirror without stub auditing.
-        # In strict‑real mode the caller must ensure the underlying memory service
-        # is available; we simply mirror the link for test visibility.
-        GLOBAL_LINKS_KEY = "_SOMABRAIN_GLOBAL_LINKS"
-        if not hasattr(builtins, GLOBAL_LINKS_KEY):
-            setattr(builtins, GLOBAL_LINKS_KEY, {})
-        global_links: dict[str, list[dict]] = getattr(builtins, GLOBAL_LINKS_KEY)
-        ns_links = global_links.setdefault(namespace, [])
-        try:
-            from somabrain.stub_audit import record_stub
-
-            record_stub("rag_pipeline.global_link.stub_mirror")
-        except Exception:
-            # non-strict mode will increment counters; strict mode would have
-            # raised and prevented further execution.
-            pass
-        ns_links.append(
-            {
-                "from": list(map(float, from_coord)),
-                "to": list(map(float, to_coord)),
-                "type": str(link_type),
-                "weight": float(weight),
-            }
-        )
-    except Exception:
-        pass
+    """Compatibility shim kept for callers but now a no-op in strict mode."""
+    logger.debug(
+        "global link mirror disabled",
+        extra={
+            "namespace": namespace,
+            "from_coord": from_coord,
+            "to_coord": to_coord,
+            "link_type": link_type,
+            "link_weight": weight,
+        },
+    )
 
 
 def _extract_text(payload: dict) -> str:
@@ -124,7 +94,7 @@ async def run_rag_pipeline(
     lists_by_retriever: dict[str, List[RAGCandidate]] = {}
     if not retrievers:
         retrievers = ["vector", "wm"]
-    # Try real adapters first if runtime singletons are available; fallback to stubs
+    # Try real adapters first if runtime singletons are available; fallback logic removed
     from somabrain import runtime as _rt
 
     logger = logging.getLogger(__name__)
@@ -238,121 +208,90 @@ async def run_rag_pipeline(
         pass
     for rname in retrievers:
         if rname == "wm":
-            if rt_embedder is not None and (
-                getattr(_rt, "mt_wm", None) is not None
-                or getattr(_rt, "mc_wm", None) is not None
-            ):
-                try:
-                    lst_all: list[RAGCandidate] = []
-                    for qx in expansions:
-                        lst = retrieve_wm(
+            if rt_embedder is None:
+                raise RuntimeError("WM retriever unavailable (embedder not configured).")
+            mt_wm = getattr(_rt, "mt_wm", None)
+            mc_wm = getattr(_rt, "mc_wm", None)
+            if mt_wm is None and mc_wm is None:
+                raise RuntimeError("WM retriever unavailable (working memory backend missing).")
+            try:
+                lst_all: list[RAGCandidate] = []
+                for qx in expansions:
+                    lst_all.extend(
+                        retrieve_wm(
                             qx,
                             top_k,
                             tenant_id=ctx.tenant_id,
                             embedder=rt_embedder,
-                            mt_wm=getattr(_rt, "mt_wm", None),
-                            mc_wm=getattr(_rt, "mc_wm", None),
+                            mt_wm=mt_wm,
+                            mc_wm=mc_wm,
                             use_microcircuits=bool(
                                 getattr(_rt.cfg, "use_microcircuits", False)
                             ),
                         )
-                        lst_all.extend(lst)
-                    lst = lst_all
-                    lists_by_retriever["wm"] = lst
-                    cands += lst
-                    continue
-                except Exception:
-                    pass
-            else:
-                # No WM backend available. In strict‑real mode we raise an error.
-                from common.config.settings import settings as _shared_settings
-
-                if getattr(_shared_settings, "strict_real", False):
-                    raise RuntimeError(
-                        "WM retriever unavailable and strict‑real mode enforced."
                     )
-                # Non‑strict mode fallback is disabled per user request; raise.
-                raise RuntimeError(
-                    "WM retriever unavailable – fallback stubs are disabled."
-                )
-                lists_by_retriever["wm"] = lst
-                cands += lst
+                lists_by_retriever["wm"] = lst_all
+                cands += lst_all
+                continue
+            except Exception as exc:
+                raise RuntimeError("WM retriever execution failed.") from exc
         elif rname == "vector":
-            if rt_embedder is not None and mem_client is not None:
-                try:
-                    lst_all: list[RAGCandidate] = []
-                    for qx in expansions:
-                        lst = retrieve_vector(
+            if rt_embedder is None:
+                raise RuntimeError("Vector retriever unavailable (embedder not configured).")
+            if mem_client is None:
+                raise RuntimeError("Vector retriever unavailable (memory client missing).")
+            try:
+                lst_all: list[RAGCandidate] = []
+                for qx in expansions:
+                    lst_all.extend(
+                        retrieve_vector(
                             qx,
                             top_k,
                             mem_client=mem_client,
                             embedder=rt_embedder,
                             universe=universe,
                         )
-                        lst_all.extend(lst)
-                    lst = lst_all
-                    lists_by_retriever["vector"] = lst
-                    cands += lst
-                    continue
-                except Exception:
-                    pass
-                # No vector backend available. Enforce strict‑real behavior.
-                from common.config.settings import settings as _shared_settings
-
-                if getattr(_shared_settings, "strict_real", False):
-                    raise RuntimeError(
-                        "Vector retriever unavailable and strict‑real mode enforced."
                     )
-                raise RuntimeError(
-                    "Vector retriever unavailable – fallback stubs are disabled."
-                )
-            lists_by_retriever["vector"] = lst
-            cands += lst
+                lists_by_retriever["vector"] = lst_all
+                cands += lst_all
+                continue
+            except Exception as exc:
+                raise RuntimeError("Vector retriever execution failed.") from exc
         elif rname == "graph":
-            if rt_embedder is not None and mem_client is not None:
-                try:
-                    hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
-                    limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
-                    # For graph we do not expand queries; use original string
-                    lst = retrieve_graph(
-                        req.query,
-                        top_k,
-                        mem_client=mem_client,
-                        embedder=rt_embedder,
-                        hops=hops,
-                        limit=limit,
-                        universe=universe,
-                        namespace=ctx.namespace,
-                    )
-                    lists_by_retriever["graph"] = lst
-                    cands += lst
-                    continue
-                except Exception:
-                    pass
-                # No graph backend available. Enforce strict‑real behavior.
-                from common.config.settings import settings as _shared_settings
-
-                if getattr(_shared_settings, "strict_real", False):
-                    raise RuntimeError(
-                        "Graph retriever unavailable and strict‑real mode enforced."
-                    )
-                raise RuntimeError(
-                    "Graph retriever unavailable – fallback stubs are disabled."
+            if rt_embedder is None:
+                raise RuntimeError("Graph retriever unavailable (embedder not configured).")
+            if mem_client is None:
+                raise RuntimeError("Graph retriever unavailable (memory client missing).")
+            try:
+                hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
+                limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
+                lst = retrieve_graph(
+                    req.query,
+                    top_k,
+                    mem_client=mem_client,
+                    embedder=rt_embedder,
+                    hops=hops,
+                    limit=limit,
+                    universe=universe,
+                    namespace=ctx.namespace,
                 )
-            lists_by_retriever["graph"] = lst
-            cands += lst
-        elif rname == "lexical" and mem_client is not None:
+                lists_by_retriever["graph"] = lst
+                cands += lst
+                continue
+            except Exception as exc:
+                raise RuntimeError("Graph retriever execution failed.") from exc
+        elif rname == "lexical":
+            if mem_client is None:
+                raise RuntimeError("Lexical retriever unavailable (memory client missing).")
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
-                    lst = retrieve_lexical(qx, top_k, mem_client=mem_client)
-                    lst_all.extend(lst)
-                lst = lst_all
-                lists_by_retriever["lexical"] = lst
-                cands += lst
+                    lst_all.extend(retrieve_lexical(qx, top_k, mem_client=mem_client))
+                lists_by_retriever["lexical"] = lst_all
+                cands += lst_all
                 continue
-            except Exception:
-                pass
+            except Exception as exc:
+                raise RuntimeError("Lexical retriever execution failed.") from exc
         else:
             # Unknown retriever; skip
             continue
@@ -360,17 +299,11 @@ async def run_rag_pipeline(
     # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
     # in non-strict mode, backfill to keep endpoint responsive in empty stores.
     if not cands:
-                # No candidates retrieved. In strict‑real mode we do not backfill with stubs.
-                from common.config.settings import settings as _shared_settings
-
-                if getattr(_shared_settings, "strict_real", False):
-                    raise RuntimeError(
-                        "No retriever results and strict‑real mode enforced – backfill disabled."
-                    )
-                # Non‑strict mode backfill is disabled per user request; raise.
-                raise RuntimeError(
-                    "No retriever results – backfill stubs are disabled."
-                )
+        if shared_settings is not None and getattr(shared_settings, "require_external_backends", False):
+            raise RuntimeError(
+                "No retriever results and backend enforcement enabled – backfill disabled."
+            )
+        raise RuntimeError("No retriever results – external retrievers required.")
 
     # Rank fusion (normalized & weighted RRF) over available retriever lists
     fusion_method = "wrrf"
@@ -558,31 +491,6 @@ async def run_rag_pipeline(
     # Default: fused order is already desc by score
     out = out[:top_k]
 
-    # If fusion produced fewer than top_k results (possible when real adapters
-    # return limited items), backfill with retriever stubs to ensure a stable
-    # API response size for callers and tests.
-    try:
-        if len(out) < top_k:
-            need = int(top_k) - len(out)
-            # Prefer vector, then wm, then graph stubs
-            addons: list[RAGCandidate] = []
-            for fn in (retrieve_vector_stub, retrieve_wm_stub, retrieve_graph_stub):
-                if need <= 0:
-                    break
-                # request slightly more than needed to allow for dedupe
-                lst = fn(req.query, need + 2)
-                for c in lst:
-                    if len(addons) >= need:
-                        break
-                    # avoid duplicates by key
-                    keys = {str(x.key) for x in out + addons}
-                    if str(c.key) not in keys:
-                        addons.append(c)
-                need = int(top_k) - (len(out) + len(addons))
-            out.extend(addons[: max(0, int(top_k) - len(out))])
-    except Exception:
-        pass
-
     # Record latency and candidate count (safe instrumentation)
     try:
         import time as _time
@@ -699,38 +607,6 @@ async def run_rag_pipeline(
                 else:
                     sess_coord_t = memsvc.coord_for_key(sess_key, universe=universe)
                 session_coord_str = f"{float(sess_coord_t[0])},{float(sess_coord_t[1])},{float(sess_coord_t[2])}"
-                # Mirror into process-global payloads for immediate visibility across clients
-                try:
-                    # Existing mirroring logic
-                    import sys
-
-                    p2 = dict(sess_payload)
-                    p2["coordinate"] = sess_coord_t
-                    for m in list(sys.modules.values()):
-                        try:
-                            if m is None:
-                                continue
-                            if hasattr(m, "_GLOBAL_PAYLOADS"):
-                                try:
-                                    getattr(m, "_GLOBAL_PAYLOADS").setdefault(
-                                        ctx.namespace, []
-                                    ).append(p2)
-                                except Exception:
-                                    pass
-                        except Exception:
-                            continue
-                except Exception:
-                    pass
-                # Ensure the payload is also added to the built-in global payloads directly
-                try:
-                    import builtins as _builtins
-
-                    _GLOBAL_PAYLOADS = getattr(
-                        _builtins, "_SOMABRAIN_GLOBAL_PAYLOADS", {}
-                    )
-                    _GLOBAL_PAYLOADS.setdefault(ctx.namespace, []).append(p2)
-                except Exception:
-                    pass
                 # Ensure immediate visibility in the namespace client (avoids race in tests/dev)
                 try:
                     client_ns = mem_backend.for_namespace(ctx.namespace)

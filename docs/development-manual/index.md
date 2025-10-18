@@ -16,6 +16,7 @@
 - [API Reference](api-reference.md) - Complete endpoint documentation
 - [Architecture Decisions](architecture-decisions/) - Accepted ADRs guiding the codebase
 - [Contribution Process](contribution-process.md) - Pull request workflow and code review
+- [Documentation Guide](documentation-guide.md) - Standards for creating and maintaining docs
 
 ---
 
@@ -36,7 +37,7 @@ somabrain/
 
 **Key Design Principles**:
 - **Mathematical Correctness**: No mocking, all algorithms use real math
-- **Strict Mode Enforcement**: Production code paths require real backing services
+- **Backend Enforcement**: Production code paths require external backing services
 - **Observable**: Comprehensive metrics and structured logging
 - **Testable**: Property tests for mathematical invariants
 

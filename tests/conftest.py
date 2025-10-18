@@ -10,7 +10,7 @@ from somabrain.config import reload_config
 @pytest.fixture(scope="session", autouse=True)
 def configure_test_environment():
     defaults = {
-        "SOMABRAIN_STRICT_REAL": "1",
+        "SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS": "1",
         "SOMABRAIN_KAFKA_PORT": "9092",
         "SOMABRAIN_REDIS_PORT": "6379",
         "SOMABRAIN_LEARNING_LOOP_ENABLED": "1",

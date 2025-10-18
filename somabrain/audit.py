@@ -116,7 +116,8 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     ev.setdefault("event_id", str(uuid.uuid4()))
     ev.setdefault("schema_version", "audit_event_v1")
 
-    if os.getenv("SOMABRAIN_STRICT_REAL") == "1":
+    enforcement_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
+    if enforcement_env and enforcement_env.strip().lower() in ("1", "true", "yes", "on"):
         try:
             enqueue_event(topic=topic, payload=ev, dedupe_key=ev["event_id"])
             return True

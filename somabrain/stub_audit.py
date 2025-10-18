@@ -1,16 +1,16 @@
 """Central stub/fallback audit utilities.
 
-This module enforces a *strict real* policy when the environment variable
-`SOMABRAIN_STRICT_REAL=1` (or true-ish) is set. In strict real mode any call
-to `record_stub` raises an error, preventing silent fallback to stub or
-in‑process simulated components.
+This module enforces a strict backend policy when the environment variable
+``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`` (or a true-ish value) is set. In this
+mode any call to ``record_stub`` raises an error, preventing silent fallback to
+stub or in-process simulated components.
 
-Outside strict mode, we count stub usages for observability so tests or
+Outside enforcement mode, we count stub usages for observability so tests or
 runtime diagnostics can assert that *no* stub paths were exercised if that
 is desired. Counts are kept process-local.
 
 Usage:
-    from somabrain.stub_audit import record_stub, STRICT_REAL, stub_stats
+    from somabrain.stub_audit import record_stub, BACKEND_ENFORCED, stub_stats
     record_stub("predictor.stub")
 
 Expose minimal helper to fetch current counts.
@@ -33,24 +33,24 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return v in ("1", "true", "yes", "on")
 
 
-STRICT_REAL: bool = _env_bool("SOMABRAIN_STRICT_REAL", False)
+BACKEND_ENFORCED: bool = _env_bool("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", False)
 
 
 class StubUsageError(RuntimeError):
-    """Raised when a stub path is invoked under STRICT_REAL."""
+    """Raised when a stub path is invoked while external backends are required."""
 
 
 def record_stub(path: str) -> None:
     """Record that a stub/fallback path was invoked.
 
-    If STRICT_REAL is enabled this raises immediately with an explanatory
-    message instructing how to disable the stub path or configure the real
+    If backend enforcement is enabled this raises immediately with an explanatory
+    message instructing how to disable the stub path or configure the external
     component.
     """
-    if STRICT_REAL:
+    if BACKEND_ENFORCED:
         raise StubUsageError(
-            f"Stub/fallback path '{path}' invoked under strict real mode. "
-            "Configure the real component or unset SOMABRAIN_STRICT_REAL to allow stubs."
+            f"Stub/fallback path '{path}' invoked while external backends are required. "
+            "Configure the external component or unset SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS to allow stubs."
         )
     with _LOCK:
         _COUNTS[path] = _COUNTS.get(path, 0) + 1
@@ -62,4 +62,4 @@ def stub_stats() -> dict:
         return dict(_COUNTS)
 
 
-__all__ = ["record_stub", "stub_stats", "STRICT_REAL", "StubUsageError"]
+__all__ = ["record_stub", "stub_stats", "BACKEND_ENFORCED", "StubUsageError"]

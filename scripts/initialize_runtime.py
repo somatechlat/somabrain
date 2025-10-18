@@ -3,7 +3,7 @@
 
 This script mirrors the initialization logic used inside `somabrain.app`
 but runs early (from the container entrypoint) so imports of
-`somabrain.app` don't fail when `STRICT_REAL` requires initialized
+`somabrain.app` don't fail when backend enforcement requires initialized
 singletons.
 
 It is safe to run idempotently.

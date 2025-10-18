@@ -5,6 +5,14 @@
 import os
 from urllib.parse import urlparse
 
+# Default endpoints used when environment variables are not configured.
+DEFAULT_API_URL = "http://127.0.0.1:9696"
+DEFAULT_MEMORY_HTTP_ENDPOINT = "http://127.0.0.1:9595"
+DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
+DEFAULT_KAFKA_BOOTSTRAP = "127.0.0.1:9092"
+DEFAULT_POSTGRES_DSN = "sqlite:///./data/somabrain.db"
+DEFAULT_OPA_URL = "http://127.0.0.1:8181"
+
 from somabrain.infrastructure import (
     get_api_base_url,
     get_kafka_bootstrap,
@@ -20,7 +28,9 @@ from somabrain.infrastructure import (
 
 # SomaBrain API Service
 SOMABRAIN_API_URL = require(
-    get_api_base_url() or os.getenv("SOMA_API_URL"),
+    get_api_base_url(DEFAULT_API_URL)
+    or os.getenv("SOMA_API_URL")
+    or DEFAULT_API_URL,
     message="Set SOMABRAIN_API_URL (see .env) for test infrastructure.",
 )
 _api_parts = urlparse(SOMABRAIN_API_URL)
@@ -29,7 +39,7 @@ SOMABRAIN_PORT = _api_parts.port or int(os.getenv("SOMABRAIN_HOST_PORT", "9696")
 
 # SomaBrain Memory Service 
 MEMORY_HTTP_ENDPOINT = require(
-    get_memory_http_endpoint()
+    get_memory_http_endpoint(DEFAULT_MEMORY_HTTP_ENDPOINT)
     or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
     or os.getenv("MEMORY_SERVICE_URL"),
     message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT for test infrastructure.",
@@ -40,7 +50,7 @@ MEMORY_PORT = _memory_parts.port or int(os.getenv("SOMABRAIN_MEMORY_HTTP_PORT", 
 
 # Redis Cache
 REDIS_URL = require(
-    get_redis_url()
+    get_redis_url(DEFAULT_REDIS_URL)
     or os.getenv("SOMABRAIN_REDIS_URL")
     or os.getenv("REDIS_URL"),
     message="Set SOMABRAIN_REDIS_URL for test infrastructure.",
@@ -51,7 +61,7 @@ REDIS_PORT = _redis_parts.port or int(os.getenv("SOMABRAIN_REDIS_PORT", "6379"))
 
 # Kafka Message Broker
 KAFKA_URL = require(
-    get_kafka_bootstrap()
+    get_kafka_bootstrap(DEFAULT_KAFKA_BOOTSTRAP)
     or os.getenv("SOMABRAIN_KAFKA_URL")
     or os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
     message="Set SOMABRAIN_KAFKA_URL for test infrastructure.",
@@ -65,7 +75,7 @@ KAFKA_PORT = _kafka_parts.port or int(os.getenv("SOMABRAIN_KAFKA_PORT", "9092"))
 
 # PostgreSQL Database  
 POSTGRES_DSN = require(
-    get_postgres_dsn() or os.getenv("SOMABRAIN_POSTGRES_DSN"),
+    get_postgres_dsn(DEFAULT_POSTGRES_DSN) or os.getenv("SOMABRAIN_POSTGRES_DSN") or DEFAULT_POSTGRES_DSN,
     message="Set SOMABRAIN_POSTGRES_DSN for test infrastructure.",
 )
 _pg_parts = urlparse(POSTGRES_DSN)
@@ -74,7 +84,7 @@ POSTGRES_PORT = _pg_parts.port or int(os.getenv("POSTGRES_PORT", "5432"))
 
 # OPA Policy Engine
 OPA_URL = require(
-    get_opa_url()
+    get_opa_url(DEFAULT_OPA_URL)
     or os.getenv("SOMABRAIN_OPA_URL")
     or os.getenv("SOMA_OPA_URL"),
     message="Set SOMABRAIN_OPA_URL for test infrastructure.",
@@ -91,8 +101,8 @@ PROMETHEUS_URL = f"http://{PROMETHEUS_HOST}:{PROMETHEUS_PORT}"
 # === Test Configuration ===
 # Test-specific settings and flags
 
-# Strict real mode - no mocks/stubs allowed
-STRICT_REAL_MODE = os.getenv("SOMABRAIN_STRICT_REAL", "1").lower() in ("1", "true", "yes")
+# Backend enforcement mode - no stubs allowed
+BACKEND_ENFORCEMENT_MODE = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "1").lower() in ("1", "true", "yes")
 
 # Allow fakeredis only for development (never in CI)
 ALLOW_FAKEREDIS = os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0").lower() in ("1", "true", "yes")
@@ -211,7 +221,7 @@ CONFIG_SUMMARY = {
     "postgres": POSTGRES_DSN,
     "opa": OPA_URL,
     "prometheus": PROMETHEUS_URL,
-    "strict_real": STRICT_REAL_MODE,
+    "external_backends_required": BACKEND_ENFORCEMENT_MODE,
     "allow_fakeredis": ALLOW_FAKEREDIS,
     "default_tenant": DEFAULT_TENANT
 }

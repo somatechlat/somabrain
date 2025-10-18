@@ -1,4 +1,4 @@
-"""Regression suite for strict-real memory behavior.
+"""Regression suite for backend-enforced memory behavior.
 
 These tests target the live SomaBrain API (port 9696 or cluster ingress). They
 capture the current recall mismatch where `/recall` returns stale content even

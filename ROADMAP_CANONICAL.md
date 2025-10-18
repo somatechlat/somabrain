@@ -7,13 +7,13 @@ Source of truth: this document + repository state (tags: `bhce-core`, HEAD)
 
 ## 0) Executive Summary
 
-SomaBrain today runs on a **BHDC hyperdimensional core**, a **multi-tenant working-memory tier**, and an **HTTP long-term memory client**. The runtime already benefits from sparse permutation binding, a unified scoring stack, strict-real guardrails, and comprehensive metrics hooks. However, several roadmap promises (tiered SuperposedTrace recall, ANN cleanup, hot-reload supervisors, Kong enforcement, blue/green cutovers) remain scoped but **not wired into production paths**.
+SomaBrain today runs on a **BHDC hyperdimensional core**, a **multi-tenant working-memory tier**, and an **HTTP long-term memory client**. The runtime already benefits from sparse permutation binding, a unified scoring stack, backend-enforced guardrails, and comprehensive metrics hooks. However, several roadmap promises (tiered SuperposedTrace recall, ANN cleanup, hot-reload supervisors, Kong enforcement, blue/green cutovers) remain scoped but **not wired into production paths**.
 
 V3 success hinges on three fronts:
 
 1. **Productionise governance math:** move from legacy WM+HTTP recall to the SuperposedTrace/TieredMemory stack, backed by ANN cleanup and real interference metrics.
 2. **Close the control loop:** finish hot-reload plumbing (ConfigService events → memory plane), run the ParameterSupervisor against live telemetry, and expose `/memory/cutover`.
-3. **Operational hardening:** eliminate journal fallbacks in strict-real mode, deliver observability on η/τ/SNR, and complete Kong edge policies.
+3. **Operational hardening:** eliminate journal fallbacks in backend-enforced mode, deliver observability on η/τ/SNR, and complete Kong edge policies.
 
 This document supersedes prior narrative-only roadmaps. Every claim is backed by code in `somabrain/`. Deviations are explicit gaps with owners and milestones.
 
@@ -22,7 +22,7 @@ This document supersedes prior narrative-only roadmaps. Every claim is backed by
 ## 1) Guiding Principles (Code-Verified)
 
 - **Mathematical truth first:** BHDC permutation binding (`somabrain/quantum.py`) is the only production binding path. Numerical invariants are recorded via `MathematicalMetrics`.
-- **Strict-real default:** When `strict_real` is asserted (settings or env), stub fallbacks raise immediately. Journaling still exists in the memory service and is a critical gap (see §7).
+- **Backend-enforced default:** When `require_external_backends` is asserted (settings or env), stub fallbacks raise immediately. Journaling still exists in the memory service and is a critical gap (see §7).
 - **Configurability with guardrails:** ConfigService merges layers in-process; no external store yet. Supervisor is implemented but idle.
 - **No mock shortcuts:** Tests rely on real modules (`tests/test_superposed_trace.py`, `tests/test_hierarchical_memory.py`, `tests/unit/test_memory_client_recency.py`).
 
@@ -90,7 +90,7 @@ Gaps:
 
 - JWT/OIDC enforcement is expected via Kong; manifests include JWT + rate-limit plugins but lack tenant header injection, schema validation, or audit logging.
 - Within FastAPI, tenant IDs are trusted from request body; no RBAC hooks yet.
-- Strict-real switch disables local stub fallbacks but journal fallback still persists data locally when upstream fails.
+- Backend-enforced switch disables local stub fallbacks but journal fallback still persists data locally when upstream fails.
 
 ---
 
@@ -158,7 +158,7 @@ Gaps:
 **Wave 2 — Control Loop & Durability (Weeks 3–4)**
 - ✅ *Sprint 2A:* ConfigService now dispatches events via `config_runtime`, TieredMemory hot-reloads (`somabrain/api/memory_api.py`, `somabrain/services/tiered_memory_registry.py`), and `/config/cutover/*` endpoints drive the controller.
 - ✅ *Sprint 2B:* ParameterSupervisor runs from the runtime dispatcher, consumes recall telemetry, and patches config while emitting controller-change metrics.
-- ✅ *Sprint 2C:* Added `scripts/journal_to_outbox.py`, disabled journal fallback by default (`allow_journal_fallback`), and wired strict-real documentation.
+- ✅ *Sprint 2C:* Added `scripts/journal_to_outbox.py`, disabled journal fallback by default (`allow_journal_fallback`), and wired backend-enforced documentation.
 
 **Wave 3 — Edge & Learning Integrations (Weeks 5–6)**
 - ✅ *Sprint 3A:* Hardened Kong manifests (tenant headers, schema validation, audit streaming) in `infra/gateway/`.
@@ -186,7 +186,7 @@ Planned additions:
 
 1. **Design doc & spike:** Outline TieredMemory adoption plan (tenants, persistence strategy) and create integration tests.
 2. **Stand up ANN prototype:** Choose FAISS/HNSW binding, design anchor ingestion + async rebuild path. *(In progress via pluggable backend; finalize benchmark + config knobs.)*
-3. **Implement journal migration script** and flip strict-real default once validated. ✅ (Script shipped; strict-real mode now rejects journaling.)
+3. **Implement journal migration script** and flip backend-enforced default once validated. ✅ (Script shipped; backend-enforced mode now rejects journaling.)
 5. **Update Kong manifests** with tenant injection, schema validation, audit logging.
 6. **Wire telemetry emitters** for η/sparsity/margin/config_version and confirm dashboards.
 
@@ -199,7 +199,7 @@ Planned additions:
 - **Control Plane:** Control systems team (`somabrain/services/config_service.py`, `parameter_supervisor.py`, `cutover_controller.py`).
 - **Edge & Observability:** Infra/SRE (Kong manifests, Prometheus dashboards, journaling remediation).
 
-Track milestones via GitHub project **“Brain v3 – Implementation”**, using these labels: `math-governance`, `tiered-memory`, `ann-cleanup`, `control-plane`, `strict-real`, `edge`.
+Track milestones via GitHub project **“Brain v3 – Implementation”**, using these labels: `math-governance`, `tiered-memory`, `ann-cleanup`, `control-plane`, `backend-enforced`, `edge`.
 
 ---
 

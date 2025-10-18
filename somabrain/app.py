@@ -1001,20 +1001,22 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 #
 # Core singletons
 #
-# The STRICT_REAL flag enforces production-like behavior by disabling stubs and
-# requiring external services like memory. It is enabled via environment variable
-# or the shared settings config.
-STRICT_REAL = False
+# The BACKEND_ENFORCEMENT flag blocks stub usage and requires external services
+# such as the memory HTTP backend. It is enabled via environment variable or the
+# shared settings configuration.
+BACKEND_ENFORCEMENT = False
 if shared_settings is not None:
     try:
-        STRICT_REAL = bool(getattr(shared_settings, "strict_real", False))
+        BACKEND_ENFORCEMENT = bool(
+            getattr(shared_settings, "require_external_backends", False)
+        )
     except Exception:
         pass
-if not STRICT_REAL:
+if not BACKEND_ENFORCEMENT:
     try:
-        strict_env = os.getenv("SOMABRAIN_STRICT_REAL")
-        if strict_env is not None:
-            STRICT_REAL = strict_env.strip().lower() in ("1", "true", "yes", "on")
+        enforcement_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
+        if enforcement_env is not None:
+            BACKEND_ENFORCEMENT = enforcement_env.strip().lower() in ("1", "true", "yes", "on")
     except Exception:
         pass
 
@@ -1061,12 +1063,18 @@ if cfg.embed_dim != _EMBED_DIM:
 
 
 def _make_predictor() -> BudgetedPredictor:
-    provider = str(getattr(cfg, "predictor_provider", "stub") or "stub").lower()
-    sr_env = os.getenv("SOMABRAIN_STRICT_REAL")
-    __SR = bool(sr_env and sr_env.lower() in ("1", "true", "yes"))
-    if (sr_env or __SR) and provider in ("stub", "baseline"):
+    provider_override = os.getenv("SOMABRAIN_PREDICTOR_PROVIDER")
+    provider = str(
+        (provider_override or getattr(cfg, "predictor_provider", "stub") or "stub")
+    ).lower()
+    enforce_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
+    enforcement_active = BACKEND_ENFORCEMENT or bool(
+        enforce_env and enforce_env.lower() in ("1", "true", "yes", "on")
+    )
+    if enforcement_active and provider in ("stub", "baseline"):
         raise RuntimeError(
-            "STRICT MODE: predictor provider 'stub' not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
+            "BACKEND ENFORCEMENT: predictor provider 'stub' is not permitted. "
+            "Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm or disable SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS."
         )
     if provider in ("stub", "baseline"):
         base = StubPredictor()
@@ -1229,9 +1237,9 @@ fractal_memory: Any = None  # type: ignore[assignment]
 # Expose singletons for services that avoid importing this module directly
 # (imported earlier above; duplicate import removed to prevent circular import issues)
 
-# Enforce strict-mode: if critical runtime singletons are missing and STRICT_REAL
-# is enabled, raise an explicit error instead of silently patching in dummies.
-__SR = STRICT_REAL
+# Enforce backend requirements: if critical runtime singletons are missing and enforcement
+# is active, raise an explicit error instead of silently patching in dummies.
+__ENFORCEMENT = BACKEND_ENFORCEMENT
 
 # During test collection pytest sets the ``PYTEST_CURRENT_TEST`` environment
 # variable. Importing ``somabrain.app`` happens before fixtures (which create
@@ -1252,20 +1260,25 @@ if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
 _bypass = bool(os.getenv("PYTEST_CURRENT_TEST"))
 if shared_settings is not None:
     try:
-        if getattr(shared_settings, "strict_real_bypass", False) or getattr(
-            shared_settings, "strict_real_bypass_automatic", False
+        if getattr(shared_settings, "allow_backend_fallbacks", False) or getattr(
+            shared_settings, "allow_backend_auto_fallbacks", False
         ):
             _bypass = True
     except Exception:
         pass
-elif os.getenv("SOMABRAIN_STRICT_REAL_BYPASS"):
+else:
+    env_bypass = os.getenv("SOMABRAIN_ALLOW_BACKEND_FALLBACKS")
+    env_auto = os.getenv("SOMABRAIN_ALLOW_BACKEND_AUTO_FALLBACKS")
     try:
-        _bypass = True if os.getenv("SOMABRAIN_STRICT_REAL_BYPASS", "0").lower() in ("1", "true", "yes") else _bypass
+        if env_bypass and env_bypass.lower() in ("1", "true", "yes"):
+            _bypass = True
+        if env_auto and env_auto.lower() in ("1", "true", "yes"):
+            _bypass = True
     except Exception:
         pass
-if __SR and missing and not _is_test and not _bypass:
+if __ENFORCEMENT and missing and not _is_test and not _bypass:
     raise RuntimeError(
-    f"STRICT MODE: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
+        f"BACKEND ENFORCEMENT: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
     )
 
 _rt.set_singletons(
@@ -1709,20 +1722,23 @@ async def health(request: Request) -> S.HealthResponse:
         resp["minimal_public_api"] = bool(_MINIMAL_API)
     except Exception:
         resp["minimal_public_api"] = None
-    # Strict mode & predictor/embedder diagnostics
+    # Backend enforcement & predictor/embedder diagnostics
     fd_violation = False
     scorer_stats: Optional[Dict[str, Any]] = None
+    backend_enforced_flag = BACKEND_ENFORCEMENT
     try:
-        from somabrain.stub_audit import STRICT_REAL as __SR, stub_stats as __stub_stats
+        from somabrain.stub_audit import BACKEND_ENFORCED as __BACKEND_ENFORCED, stub_stats as __stub_stats
         from somabrain.opa.client import opa_client as __opa
 
-        strict_real_flag = bool(__SR)
-        if not strict_real_flag and shared_settings is not None:
+        backend_enforced_flag = bool(__BACKEND_ENFORCED)
+        if not backend_enforced_flag and shared_settings is not None:
             try:
-                strict_real_flag = bool(getattr(shared_settings, "strict_real", False))
+                backend_enforced_flag = bool(
+                    getattr(shared_settings, "require_external_backends", False)
+                )
             except Exception:
-                strict_real_flag = bool(__SR)
-        resp["strict_real"] = strict_real_flag
+                backend_enforced_flag = bool(__BACKEND_ENFORCED)
+        resp["external_backends_required"] = backend_enforced_flag
         resp["predictor_provider"] = _PREDICTOR_PROVIDER
         # Full-stack mode flag (forces external memory presence & embedder)
         if shared_settings is not None:
@@ -1775,7 +1791,7 @@ async def health(request: Request) -> S.HealthResponse:
             mem_items = int(getattr(ns_mem, "count", lambda: 0)() or 0)
         except Exception:
             pass
-        predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or not __SR
+        predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or not backend_enforced_flag
         # Allow ops override to relax predictor requirement for readiness while keeping strict memory/embedder
         relax_overrides = False
         if shared_settings is not None:
@@ -1792,12 +1808,12 @@ async def health(request: Request) -> S.HealthResponse:
             )
         if relax_overrides:
             predictor_ok = True
-        # Strict real mode: memory service must be reachable for readiness
+        # Backend enforcement requires the memory service to be reachable for readiness
         memory_ok = False
         try:
             mhealth = ns_mem.health()  # type: ignore[name-defined]
             if isinstance(mhealth, dict):
-                # In strict real mode, require HTTP endpoint to be healthy
+                # When enforcement is active, require HTTP endpoint to be healthy
                 memory_ok = bool(mhealth.get("http", False))
             else:
                 memory_ok = bool(mhealth.get("ok", False)) if isinstance(mhealth, dict) else False
@@ -1833,7 +1849,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["opa_ok"] = bool(opa_ok)
         # Enforce full-stack readiness if requested (and include OPA if required)
         if full_stack:
-            strict_ready = (
+            enforced_ready = (
                 predictor_ok
                 and memory_ok
                 and embedder_ok
@@ -1841,14 +1857,14 @@ async def health(request: Request) -> S.HealthResponse:
             )
         else:
             base_ok = predictor_ok and memory_ok and embedder_ok
-            strict_ready = (not __SR) or (
+            enforced_ready = (not backend_enforced_flag) or (
                 base_ok and (opa_ok if opa_required else True)
             )
         # If predictor still blocking readiness and override present, degrade message
-        if not strict_ready and predictor_ok and memory_ok and embedder_ok:
+        if not enforced_ready and predictor_ok and memory_ok and embedder_ok:
             # Should not happen, but safeguard: mark ready
-            strict_ready = True
-        resp["ready"] = bool(strict_ready)
+            enforced_ready = True
+        resp["ready"] = bool(enforced_ready)
         resp["memory_items"] = mem_items
         # Add factor visibility for debugging & ops
         resp["predictor_ok"] = bool(predictor_ok)
@@ -1875,7 +1891,7 @@ async def health(request: Request) -> S.HealthResponse:
                     fd_violation = True
                     resp.setdefault("alerts", []).append("fd_scorer_invariant")
     except Exception:
-        resp["strict_real"] = False
+        resp["external_backends_required"] = False
         resp["ready"] = True
         scorer_stats = None
 
@@ -2205,42 +2221,6 @@ async def recall(req: S.RecallRequest, request: Request):
                 mem_payloads = uniq
             except Exception:
                 pass
-        # Final safety: if still empty, consult process-global payload mirror
-        # to provide read-your-writes visibility within this API process.
-        if not mem_payloads:
-            try:
-                from somabrain import memory_client as _mc
-
-                # Refresh module-level globals in case tests swapped builtins maps
-                try:
-                    _mc._refresh_builtins_globals()
-                except Exception:
-                    pass
-                GP = getattr(_mc, "_GLOBAL_PAYLOADS", {}) or {}
-                ns_items = (
-                    list(GP.get(ctx.namespace, [])) if isinstance(GP, dict) else []
-                )
-                ql = str(text).strip().lower()
-                backfill = []
-                for p in ns_items[::-1]:  # search newest first
-                    try:
-                        if not isinstance(p, dict):
-                            continue
-                        if universe and str(p.get("universe") or "real") != str(
-                            universe
-                        ):
-                            continue
-                        t = str(p.get("task") or p.get("fact") or p.get("text") or "")
-                        if t and (ql in t.lower() or t.lower() in ql):
-                            backfill.append(p)
-                            if len(backfill) >= int(req.top_k):
-                                break
-                    except Exception:
-                        pass
-                if backfill:
-                    mem_payloads = backfill
-            except Exception:
-                pass
         # Ultimate fallback: lift matching items from WM into the memory list
         if not mem_payloads:
             try:
@@ -2468,24 +2448,6 @@ async def recall(req: S.RecallRequest, request: Request):
     }
     # Compatibility shim: expose a ``results`` list for older callers/tests.
     resp["results"] = resp["memory"]
-    # Ensure that the in‑process global payload mirror is consulted. This covers
-    # cases where the recall service did not return any payloads (e.g., when the
-    # external memory backend is unavailable). We merge any matching entries
-    # from the global store with the existing ``memory`` list.
-    try:
-        from .memory_client import _GLOBAL_PAYLOADS
-
-        ns_store = _GLOBAL_PAYLOADS.get(ctx.namespace, [])
-        extra = [
-            _normalize_payload_timestamps(p)
-            for p in ns_store
-            if isinstance(p, dict) and p.get("task") == req.query
-        ]
-        if extra:
-            resp["memory"] = resp["memory"] + extra
-            resp["results"] = resp["memory"]
-    except Exception:
-        pass
     if not resp["memory"] and isinstance(req.query, str) and req.query:
         try:
             memsvc = MemoryService(mt_memory, ctx.namespace)
@@ -3098,23 +3060,6 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
                 id(_mc),
                 repr(_mc),
             )
-            active_logger.debug(
-                "graph_links global_links_id=%s builtins_key_id=%s",
-                id(getattr(_mc, "_GLOBAL_LINKS", None)),
-                id(getattr(_builtins, "_SOMABRAIN_GLOBAL_LINKS", None)),
-            )
-            try:
-                global_links = getattr(_mc, "_GLOBAL_LINKS", {})
-                active_logger.debug(
-                    "graph_links global_links_keys=%s",
-                    list(global_links.keys()),
-                )
-                active_logger.debug(
-                    "graph_links global_links_namespace=%s",
-                    global_links.get(memsvc.namespace),
-                )
-            except Exception:
-                pass
         except Exception:
             pass
         edges = memsvc.links_from(

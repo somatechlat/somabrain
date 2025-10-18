@@ -114,8 +114,8 @@ class Settings(BaseSettings):
     force_full_stack: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_FORCE_FULL_STACK", False)
     )
-    strict_real: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_STRICT_REAL", False)
+    require_external_backends: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", False)
     )
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
@@ -130,11 +130,11 @@ class Settings(BaseSettings):
     predictor_provider: str = Field(
         default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "stub"
     )
-    strict_real_bypass: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_STRICT_REAL_BYPASS", False)
+    allow_backend_fallbacks: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_FALLBACKS", False)
     )
-    strict_real_bypass_automatic: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_STRICT_REAL_BYPASS_AUTOMATIC", False)
+    allow_backend_auto_fallbacks: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_AUTO_FALLBACKS", False)
     )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)

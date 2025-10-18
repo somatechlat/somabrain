@@ -164,7 +164,7 @@ services:
     ports:
       - "${PROMETHEUS_HOST_PORT:-30005}:${PROMETHEUS_CONTAINER_PORT:-9090}"
     volumes:
-      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
 
   somabrain_postgres:
     image: postgres:15-alpine
@@ -251,7 +251,7 @@ services:
       SOMABRAIN_KAFKA_URL: "kafka://somabrain_kafka:9092"
       SOMABRAIN_OPA_URL: "http://somabrain_opa:8181"
       SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain"
-      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
       SOMABRAIN_FORCE_FULL_STACK: "1"
       SOMABRAIN_REQUIRE_MEMORY: "1"
       SOMABRAIN_ENABLE_BEST: "1"
@@ -286,7 +286,7 @@ services:
     command: ["python", "-m", "somabrain.workers.outbox_publisher"]
     environment:
       SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
-      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
       SOMABRAIN_FORCE_FULL_STACK: "1"
       SOMABRAIN_REDIS_URL: "redis://somabrain_redis:6379/0"
       SOMABRAIN_KAFKA_URL: "kafka://somabrain_kafka:9092"

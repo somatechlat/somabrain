@@ -1,6 +1,6 @@
 # Runtime Configuration
 
-**Purpose**: Central reference for SomaBrain environment variables and configuration loading order in strict-real deployments.
+**Purpose**: Central reference for SomaBrain environment variables and configuration loading order when enforcing external backends.
 
 **Audience**: Operators and system administrators configuring SomaBrain in any environment.
 
@@ -12,7 +12,7 @@
 
 | Variable | Default | Purpose | Where Used |
 | --- | --- | --- | --- |
-| `SOMABRAIN_STRICT_REAL` | unset (false) | Enforce no-stub execution paths | `somabrain.app` startup guard |
+| `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | unset (false) | Enforce no-stub execution paths | `somabrain.app` startup guard |
 | `SOMABRAIN_FORCE_FULL_STACK` | 0 | Require external services before readiness | `common/config/settings.py` |
 | `SOMABRAIN_REQUIRE_MEMORY` | 0 | Fail startup if memory HTTP endpoint is absent | `common/config/settings.py` |
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | unset (Docker stack sets `http://host.docker.internal:9595`) | URL of the long-term memory service | `somabrain/memory_client.py` |
@@ -34,16 +34,16 @@ Update the table whenever new knobs are introduced or deprecated so operators ha
 2. Real environment variables provided by the shell, container, or orchestrator.
 3. Defaults inside `common.config.settings.Settings`.
 
-The `Settings` singleton is instantiated once at process start. Avoid direct `os.getenv` lookups in new code—import `shared_settings` from `common.config.settings` instead so changes propagate consistently.
+The `Settings` singleton is instantiated once at process start. Avoid direct `os.getenv` lookups in new code—import `shared_settings` from `common.config.settings` instead so changes propagate consistently. For local work, start from `config/env.example` and copy it to `.env.local`.
 
 ---
 
-## Local Strict-Real Template
+## Local Backend-Enforcement Template
 
 Use the following `.env.local` snippet to mirror production behaviour on a workstation:
 
 ```env
-SOMABRAIN_STRICT_REAL=1
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_FORCE_FULL_STACK=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595
@@ -63,6 +63,6 @@ Reload the process or run `scripts/dev_up.sh --rebuild` after editing the file s
 
 ## Operational Notes
 
-- Strict-real deployments remain unhealthy until all dependent services respond. Verify readiness with `curl -fsS http://localhost:9696/health | jq`.
+- Backend-enforced deployments remain unhealthy until all dependent services respond. Verify readiness with `curl -fsS http://localhost:9696/health | jq`.
 - Configuration toggles should be surfaced through Git-managed manifests (`docker-compose.yml`, Helm values, or ConfigMaps) rather than ad-hoc changes on running hosts.
 - When introducing new environment variables, add tests in `tests/test_config.py` to prevent drift and update this page alongside the code change.

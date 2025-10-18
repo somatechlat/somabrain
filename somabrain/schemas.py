@@ -583,7 +583,7 @@ class HealthResponse(BaseModel):
     constitution_version: Optional[str] = None
     constitution_status: Optional[str] = None
     minimal_public_api: Optional[bool] = None
-    strict_real: Optional[bool] = None
+    external_backends_required: Optional[bool] = None
     predictor_provider: Optional[str] = None
     full_stack: Optional[bool] = None
     embedder: Optional[Dict[str, Any]] = None

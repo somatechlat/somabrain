@@ -55,7 +55,7 @@ Standard section order for all documents:
 |------|---------------|-------|
 | SomaBrain | Always capitalize, no spaces | somabrain, Soma Brain, SOMABRAIN |
 | API endpoints | Backticks: `GET /health` | Bold or plain text |
-| Code variables | Backticks: `SOMABRAIN_STRICT_REAL` | ALL_CAPS without formatting |
+| Code variables | Backticks: `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | ALL_CAPS without formatting |
 | File paths | Backticks: `docs/user-manual/index.md` | Plain text paths |
 | UI elements | Bold: **Save** button | Quotes or plain text |
 

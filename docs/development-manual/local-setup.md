@@ -50,7 +50,7 @@ mypy somabrain
 
 # Run test suite
 pytest
-# Canonical smoke (mirrors CI strict-real run)
+# Canonical smoke (mirrors CI backend-enforcement run)
 uv run pytest -q
 
 # Check development environment
@@ -91,7 +91,7 @@ pip install -e .[dev]
 The Docker stack uses direct port access (standard container ports):
 ```bash
 # Core settings for local development
-SOMABRAIN_STRICT_REAL=1              # Enforce production code paths
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1              # Enforce external backend usage
 SOMABRAIN_FORCE_FULL_STACK=1         # Require all backing services
 SOMABRAIN_REQUIRE_MEMORY=1           # Memory service must be available
 SOMABRAIN_DISABLE_AUTH=1             # Skip auth for local development
@@ -179,8 +179,8 @@ pytest tests/test_memory_client.py      # Memory tests
 pytest tests/math/                      # Mathematical property tests
 pytest -k "not slow"                    # Skip slow integration tests
 
-# Test with strict mode validation
-SOMABRAIN_STRICT_REAL=1 pytest tests/test_remember_batch.py
+# Test with backend enforcement validation
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1 pytest tests/test_remember_batch.py
 
 # Performance testing
 python run_learning_test.py             # Canonical numerics validation
@@ -207,7 +207,7 @@ SOMABRAIN_KAFKA_URL=kafka://localhost:9092
 SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
 
 # Production Controls
-SOMABRAIN_STRICT_REAL=1          # Enable mathematical validation
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1          # Enable mathematical validation
 SOMABRAIN_FORCE_FULL_STACK=1     # Require all services  
 SOMABRAIN_REQUIRE_MEMORY=1       # Require memory backend
 SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)

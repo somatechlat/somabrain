@@ -201,7 +201,7 @@ graph TD
 ## Recall Lifecycle (Strict Mode)
 
 1. Request enters FastAPI handlers (`somabrain.app`).
-2. Strict-real middleware verifies `SOMABRAIN_STRICT_REAL`, `SOMABRAIN_FORCE_FULL_STACK`, and `SOMABRAIN_REQUIRE_MEMORY`.
+2. Backend-enforcement middleware verifies `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`, `SOMABRAIN_FORCE_FULL_STACK`, and `SOMABRAIN_REQUIRE_MEMORY`.
 3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache and neuromodulator state.
 4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines cosine, frequency-domain, and log-damped recency terms while MemoryClient applies density-aware cleanup penalties before final ranking.
 5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) expands to the HTTP memory service when required.
@@ -226,8 +226,8 @@ Expose these guarantees through Prometheus metrics (`somabrain_density_trace_err
 
 - Environment flags are sourced via `common.config.settings.Settings`—see `configuration.md`.
 - Temporal damping is governed by `recall_recency_time_scale`, `recall_recency_sharpness`, and `recall_recency_floor`; density penalties are tuned via `recall_density_margin_*` fields in `Config`.
-- Compose and Kubernetes manifests supply the same flags; strict mode must be enabled in every promoted environment.
-- Optional components (Kafka, Postgres) are auto-detected. If endpoints exist they are used; strict mode keeps readiness false when dependencies are offline.
+- Compose and Kubernetes manifests supply the same flags; backend enforcement must be enabled in every promoted environment.
+- Optional components (Kafka, Postgres) are auto-detected. If endpoints exist they are used; backend enforcement keeps readiness false when dependencies are offline.
 
 ## Extending the System
 

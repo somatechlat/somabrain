@@ -1,7 +1,7 @@
 import os
 
-# Do NOT set SOMABRAIN_STRICT_REAL_BYPASS here. Developers should opt-in
-# to bypassing strict-real mode explicitly when they understand the trade-offs.
+# Do NOT set SOMABRAIN_ALLOW_BACKEND_FALLBACKS here. Developers should opt-in
+# to bypassing backend enforcement explicitly when they understand the trade-offs.
 
 mem_endpoint = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
 if mem_endpoint is not None:

@@ -110,7 +110,7 @@
 ### Strict Real Mode
 **Definition**: Production configuration that enforces use of real services and disables all stub/mock implementations.
 
-**Usage**: "Strict real mode (`SOMABRAIN_STRICT_REAL=1`) ensures production code paths are identical to development testing."
+**Usage**: "Backend enforcement (`SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`) ensures production code paths are identical to development testing."
 
 **Technical Details**: Runtime validation prevents stub usage and requires real Redis, PostgreSQL, and other backing services.
 

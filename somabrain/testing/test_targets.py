@@ -23,6 +23,11 @@ from somabrain.infrastructure import (
     require,
 )
 
+# Default endpoints used when environment variables are absent.
+DEFAULT_API_URL = "http://127.0.0.1:9696"
+DEFAULT_MEMORY_HTTP_ENDPOINT = "http://127.0.0.1:9595"
+DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
+
 try:  # Optional dependency in some environments.
     import redis
 except Exception:  # pragma: no cover - redis not always installed.
@@ -135,19 +140,22 @@ def _env_truthy(value: str | None) -> bool:
 
 def _default_target() -> TargetConfig:
     api_base = require(
-        get_api_base_url() or os.getenv("SOMA_API_URL"),
+        get_api_base_url(DEFAULT_API_URL)
+        or os.getenv("SOMA_API_URL")
+        or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
     memory_base = require(
-        get_memory_http_endpoint()
+        get_memory_http_endpoint(DEFAULT_MEMORY_HTTP_ENDPOINT)
         or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or os.getenv("MEMORY_SERVICE_URL"),
         message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.",
     )
     redis_url = (
-        get_redis_url()
+        get_redis_url(DEFAULT_REDIS_URL)
         or os.getenv("SOMABRAIN_REDIS_URL")
         or os.getenv("REDIS_URL")
+        or DEFAULT_REDIS_URL
     )
     return TargetConfig(
         label="local",

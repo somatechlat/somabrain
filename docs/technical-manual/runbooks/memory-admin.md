@@ -1,6 +1,6 @@
 # Memory Operations Runbook
 
-**Purpose**: Guide operators through ANN rebuilds, cutover workflows, and enabling the learning loop in strict-real environments.
+**Purpose**: Guide operators through ANN rebuilds, cutover workflows, and enabling the learning loop in backend-enforced environments.
 
 **Audience**: Platform engineers and on-call responders.
 
@@ -99,4 +99,3 @@
 - [ ] Cutover plan transitions: `draft → ready → approved → executed`.
 - [ ] Learning loop exports succeed and metadata captures commit/config identifiers.
 - [ ] Alerts remain green (`SupervisorAdjustmentSpike`, `AnnRebuildDurationHigh`, `AnnRebuildBurst`).
-

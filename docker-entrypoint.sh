@@ -53,7 +53,7 @@ if [ "${SOMABRAIN_DEMO_SEED:-}" = "true" ] || [ "${SOMABRAIN_DEMO_SEED:-}" = "1"
   ) &
 fi
 
-# Initialize runtime singletons (idempotent). Important when STRICT_REAL is enabled.
+# Initialize runtime singletons (idempotent). Important when backend enforcement is enabled.
 if [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; then
   echo "Running initialize_runtime.py to prepare runtime singletons"
   python3 /app/scripts/initialize_runtime.py || echo "initialize_runtime.py exited with non-zero status"

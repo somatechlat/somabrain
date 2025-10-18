@@ -152,7 +152,7 @@ SomaBrain provides a **memory-as-a-service** platform that:
 #### 2. Strict Mode Enforcement
 > **"Production code must use real services - no stubs, no fallbacks"**
 
-- `SOMABRAIN_STRICT_REAL=1` enforces production-grade execution
+- `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` enforces production-grade execution
 - No silent degradation or stub usage in production environments
 - Fail-fast approach to surface configuration and integration issues
 - Comprehensive audit trails for all operations

@@ -151,8 +151,8 @@ class MemoryService:
         override = os.getenv("ALLOW_JOURNAL_FALLBACK")
         if override is not None:
             allow = override.strip().lower() in ("1", "true", "yes", "on")
-        strict_real = os.getenv("SOMABRAIN_STRICT_REAL")
-        if strict_real and strict_real.strip().lower() in ("1", "true", "yes", "on"):
+        enforcement = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
+        if enforcement and enforcement.strip().lower() in ("1", "true", "yes", "on"):
             allow = False
         return allow
 

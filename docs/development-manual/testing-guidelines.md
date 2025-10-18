@@ -1507,7 +1507,7 @@ addopts =
     | `memories.jsonl` | Canonical episodic memory captures from the live memory endpoint. | `8ca145c78cc8f414674a92ded255636b732a46d1542d1771aa518d7b4da70459` |
 
     ### Update Procedure
-    1. Run the live stack (docker-compose, Kind, or shared infra) with strict-real mode and confirm the external memory endpoint is reachable.
+    1. Run the live stack (docker-compose, Kind, or shared infra) with backend enforcement enabled and confirm the external memory endpoint is reachable.
     2. Export the dataset via `scripts/data/capture_memory_golden.py`.
     3. Overwrite the JSONL file and recompute `shasum -a 256 memories.jsonl`.
     4. Update the checksum table and commit both the data and documentation together.

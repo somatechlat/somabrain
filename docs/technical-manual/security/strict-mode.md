@@ -1,10 +1,10 @@
 > :warning: SomaBrain must run on real services. No mocks, no stubs, no fake data.
 
-# Strict Real Mode (No-Stubs Contract)
+# Backend Enforcement Mode (No-Stubs Contract)
 
 **Purpose**: Document the controls that keep SomaBrain from silently falling back to dummy implementations.
 
-**Audience**: Operators, SREs, and developers responsible for enforcing strict-real deployments.
+**Audience**: Operators, SREs, and developers responsible for enforcing backend-enforced deployments.
 
 **Prerequisites**: Understanding of the runtime configuration documented in `../configuration.md` and service dependencies described in `../architecture.md`.
 
@@ -15,7 +15,7 @@
 Set the environment variable and restart the process:
 
 ```bash
-export SOMABRAIN_STRICT_REAL=1
+export SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 ```
 
 When enabled, any attempt to invoke a stub, dummy, or placeholder path raises immediately with a clear error. This guarantees end-to-end realism in CI and production.
@@ -53,7 +53,7 @@ When enabled, any attempt to invoke a stub, dummy, or placeholder path raises im
 ```json
 {
   "predictor_provider": "mahal",
-  "strict_real": true,
+  "external_backends_required": true,
   "embedder": {"provider": "tiny", "dim": 256},
   "stub_counts": {},
   "ready": true,
@@ -61,7 +61,7 @@ When enabled, any attempt to invoke a stub, dummy, or placeholder path raises im
 }
 ```
 
-A strict-mode deployment is **ready** only when:
+An enforcement-enabled deployment is **ready** only when:
 1. Predictor is non-stub.
 2. Embedder initializes successfully.
 3. Memory HTTP service responds or at least one mirrored payload exists locally.
@@ -72,7 +72,7 @@ Agents must gate work on `ready: true` responses.
 
 ## In-Process Recall Path
 
-If the external memory endpoint is not configured, strict mode uses deterministic similarity:
+If the external memory endpoint is not configured, backend enforcement uses deterministic similarity:
 
 1. Embed the query with the active embedder.
 2. Embed each locally mirrored payload.
@@ -85,7 +85,7 @@ If the external memory endpoint is not configured, strict mode uses deterministi
 
 1. `SOMABRAIN_PREDICTOR_PROVIDER` environment variable.
 2. `config.yaml` `predictor_provider` entry.
-3. Fallback `stub` (blocked under strict mode).
+3. Fallback `stub` (blocked when enforcement is active).
 
 ---
 
@@ -93,10 +93,10 @@ If the external memory endpoint is not configured, strict mode uses deterministi
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `STRICT REAL MODE: predictor provider 'stub' not permitted` | Env/config left at default | Export `SOMABRAIN_PREDICTOR_PROVIDER=mahal` |
-| `STRICT REAL MODE: embedder missing` | Dependency failed to load | Ensure `somabrain.embeddings` initialises |
+| `BACKEND ENFORCEMENT: predictor provider 'stub' is not permitted` | Env/config left at default | Export `SOMABRAIN_PREDICTOR_PROVIDER=mahal` |
+| `BACKEND ENFORCEMENT: embedder missing` | Dependency failed to load | Ensure `somabrain.embeddings` initialises |
 | Recall runtime error about stub path | No memory endpoint and empty local payloads | Seed at least one `remember` call or configure the HTTP service |
-| RAG strict failure | Stub retriever branch executed | Configure real retriever or disable the route |
+| RAG enforcement failure | Stub retriever branch executed | Configure real retriever or disable the route |
 
 ---
 
@@ -105,10 +105,10 @@ If the external memory endpoint is not configured, strict mode uses deterministi
 Temporary bypass is allowed for isolated debugging—not CI or production:
 
 ```bash
-export SOMABRAIN_STRICT_REAL_BYPASS=1
+export SOMABRAIN_ALLOW_BACKEND_FALLBACKS=1
 ```
 
-The `tests/conftest.py` fixture respects this flag and will not auto-enable strict mode when set.
+The `tests/conftest.py` fixture respects this flag and will not auto-enable backend enforcement when set.
 
 ---
 
@@ -125,7 +125,7 @@ The `tests/conftest.py` fixture respects this flag and will not auto-enable stri
 ## Migration Checklist
 
 - [ ] Set `SOMABRAIN_PREDICTOR_PROVIDER` explicitly in every environment.
-- [ ] Export `SOMABRAIN_STRICT_REAL=1` in CI and production.
+- [ ] Export `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` in CI and production.
 - [ ] Gate consumers on `/health` `ready` status.
 - [ ] Verify `stub_counts` is empty after warm-up.
 - [ ] Add dashboard panels for strict-mode metrics.
