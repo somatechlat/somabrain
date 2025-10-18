@@ -10,8 +10,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from somabrain import metrics as M
 from somabrain import runtime as rt
 from somabrain.api.memory_api import router
+from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
 
 
 class DummyEmbedder:
@@ -251,6 +253,36 @@ def test_memory_admin_rebuild_ann(client: TestClient):
     assert rebuild_calls == [("acme", "wm")]
     assert isinstance(body["results"], list)
     assert body["results"][0]["backend"] == "simple"
+
+
+def test_memory_admin_rebuild_ann_records_metrics(monkeypatch, client: TestClient):
+    registry = TieredMemoryRegistry()
+    monkeypatch.setattr("somabrain.api.memory_api._TIERED_REGISTRY", registry)
+    registry.remember(
+        "acme",
+        "wm",
+        anchor_id="anchor-1",
+        key_vector=[1.0, 0.0, 0.0],
+        value_vector=[0.0, 1.0, 0.0],
+        payload={"text": "hello"},
+        coordinate=[0.0, 0.1, 0.2],
+    )
+
+    counter = M.ANN_REBUILD_TOTAL.labels(tenant="acme", namespace="wm", backend="simple")
+    histogram = M.ANN_REBUILD_SECONDS.labels(tenant="acme", namespace="wm")
+    before_total = counter._value.get()
+    before_sum = histogram._sum.get()
+
+    resp = client.post(
+        "/memory/admin/rebuild-ann",
+        json={"tenant": "acme", "namespace": "wm"},
+    )
+    assert resp.status_code == 200
+
+    after_total = counter._value.get()
+    after_sum = histogram._sum.get()
+    assert after_total > before_total
+    assert after_sum > before_sum
 
 
 def test_memory_api_streaming_recall(client: TestClient):

@@ -36,3 +36,30 @@ groups:
         annotations:
           summary: "Quota denies detected"
           description: "Quota denied requests occurring"
+
+      - alert: SupervisorAdjustmentSpike
+        expr: increase(somabrain_controller_changes_total[10m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Parameter supervisor adjusting frequently"
+          description: "Controller changes for {{ $labels.parameter }} exceeded 3 adjustments in 10m (value: {{ $value }}). Investigate metric drift."
+
+      - alert: AnnRebuildDurationHigh
+        expr: (sum by (tenant, namespace) (increase(somabrain_ann_rebuild_seconds_sum[15m])) / clamp_min(sum by (tenant, namespace) (increase(somabrain_ann_rebuild_seconds_count[15m])), 1)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ANN rebuild duration high"
+          description: "Average ANN rebuild time for tenant {{ $labels.tenant }} namespace {{ $labels.namespace }} exceeded 2s over 15m (value: {{ $value }}s)."
+
+      - alert: AnnRebuildBurst
+        expr: sum by (tenant, namespace, backend) (increase(somabrain_ann_rebuild_total[10m])) > 5
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "ANN rebuilds occurring frequently"
+          description: "ANN rebuild count for tenant {{ $labels.tenant }} namespace {{ $labels.namespace }} backend {{ $labels.backend }} exceeded 5 in 10m (value: {{ $value }}). Review rebuild scheduling."

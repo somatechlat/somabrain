@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from somabrain.config import Config
+from somabrain import metrics as M
 from somabrain.services.config_service import ConfigService
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
@@ -102,3 +103,28 @@ async def test_supervisor_respects_min_interval_and_targets_met() -> None:
         MetricsSnapshot("tenant-a", "wm", 0.94, 0.14, 90.0)
     )
     assert third is None  # metrics meet targets
+
+
+@pytest.mark.asyncio
+async def test_supervisor_marks_controller_changes() -> None:
+    service = _config_service()
+    await _seed_namespace(service)
+
+    policy = SupervisorPolicy(min_interval_seconds=0.0)
+    supervisor = ParameterSupervisor(service, policy)
+
+    eta_counter = M.CONTROLLER_CHANGES.labels(parameter="eta")
+    before_eta = eta_counter._value.get()
+
+    patch = await supervisor.evaluate(
+        MetricsSnapshot(
+            tenant="tenant-a",
+            namespace="wm",
+            top1_accuracy=0.70,
+            margin=0.05,
+            latency_p95_ms=120.0,
+        )
+    )
+    assert patch is not None
+    after_eta = eta_counter._value.get()
+    assert after_eta > before_eta

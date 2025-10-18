@@ -52,6 +52,11 @@ jobs:
       - name: Export OpenAPI
         run: |
           ./scripts/export_openapi.py
+      - name: Verify governance uplift
+        run: |
+          uv run python scripts/prove_enhancement.py \
+            --baseline benchmarks/governance/baseline.json \
+            --candidate benchmarks/governance/candidate.json
       - name: Upload OpenAPI artifact
         uses: actions/upload-artifact@v3
         with:

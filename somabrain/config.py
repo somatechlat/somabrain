@@ -282,6 +282,9 @@ class Config:
     allow_journal_fallback: bool = False
     journal_redact_fields: list[str] = field(default_factory=list)
 
+    # Learning loop feature flag
+    learning_loop_enabled: bool = False
+
     # Public API
     minimal_public_api: bool = False
 

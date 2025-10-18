@@ -27,10 +27,11 @@ inspect and run end-to-end.
 
 ## Workflow
 
-1. Enable the learning loop feature flag (planned): `cfg.learning_loop_enabled`.
+1. Enable the learning loop feature flag (`cfg.learning_loop_enabled` or `SOMABRAIN_LEARNING_LOOP_ENABLED=1`).
 2. Export memory records to JSONL (via API dump or journal migration).
-3. Run `scripts/export_learning_corpus.py input.jsonl output.jsonl`.
-4. Feed `output.jsonl` into nanochat/nanoGPT fine-tuning scripts.
+3. Run `scripts/export_learning_corpus.py input.jsonl output.jsonl --metadata-out run-metadata.json`.
+   - The CLI prints run metadata (UTC timestamp, git commit, config digest) and writes it to `run-metadata.json` for audit trails.
+4. Feed `output.jsonl` into nanochat/nanoGPT fine-tuning scripts and archive the metadata alongside the model artefacts.
 5. Record uplift in `scripts/prove_enhancement.py` and push back via config API.
 
 Future iterations will add tokenizer alignment and direct streaming into the
