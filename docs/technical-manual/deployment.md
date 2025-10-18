@@ -8,6 +8,41 @@
 
 ---
 
+## Centralized Configuration
+
+**All configuration variables are centralized in `.env` file for Docker and ConfigMap for Kubernetes.**
+
+### Development Credentials
+⚠️ **WARNING: The following credentials are for DEVELOPMENT ONLY**
+
+**MUST be changed before production deployment:**
+- PostgreSQL: `POSTGRES_USER=soma`, `POSTGRES_PASSWORD=soma_dev_pass_CHANGE_IN_PRODUCTION`
+- Memory Token: `SOMABRAIN_MEMORY_HTTP_TOKEN=dev-token-CHANGE_IN_PRODUCTION`
+- JWT Secret: `SOMABRAIN_JWT_SECRET=dev-jwt-secret-CHANGE_IN_PRODUCTION`
+- API Token: `SOMABRAIN_API_TOKEN=dev-api-token-CHANGE_IN_PRODUCTION`
+
+### Port Assignments
+
+**Docker Compose (localhost):**
+- API: `9696`
+- Redis: `20001`
+- Kafka: `20002`
+- Kafka Exporter: `20003`
+- OPA: `20004`
+- Prometheus: `20005`
+- PostgreSQL: `20006`
+- PostgreSQL Exporter: `20007`
+
+**Kubernetes (LoadBalancer):**
+- API: `20020`
+- Redis: `20021`
+- Kafka: `20022`
+- Kafka Exporter: `20023`
+- OPA: `20024`
+- Prometheus: `20025`
+- PostgreSQL: `20026`
+- PostgreSQL Exporter: `20027`
+
 ## Deployment Methods
 
 ### Docker Compose (Recommended for Development/Testing)
@@ -98,9 +133,49 @@ volumes:
 
 #### Prerequisites
 - Kubernetes cluster (v1.24+)
-- Helm 3.0+
 - kubectl configured for target cluster
-- Container registry access
+- Docker image built and loaded into cluster
+- External memory service running on port 9595
+
+#### Quick Deploy
+```bash
+# Build and load image
+docker build -t somabrain:latest .
+kind load docker-image somabrain:latest --name <cluster-name>
+
+# Deploy with centralized configuration
+kubectl apply -f k8s/somabrain-configmap.yaml
+kubectl apply -f k8s/somabrain-deployment.yaml
+
+# Check deployment status
+kubectl get pods -n somabrain
+kubectl get svc -n somabrain
+
+# Access API
+kubectl port-forward -n somabrain svc/somabrain-app 20020:9696
+curl http://localhost:20020/health
+```
+
+#### Configuration Files
+
+**ConfigMap** (`k8s/somabrain-configmap.yaml`):
+- Contains all non-sensitive configuration
+- Service URLs, ports, feature flags
+- Kafka, Redis, PostgreSQL settings
+- Resource limits and quotas
+
+**Secrets** (`k8s/somabrain-configmap.yaml`):
+- Database credentials (DEVELOPMENT ONLY)
+- API tokens and JWT secrets
+- ⚠️ **MUST be replaced with secure values in production**
+
+**Deployment** (`k8s/somabrain-deployment.yaml`):
+- All service deployments (Redis, Kafka, OPA, PostgreSQL, Prometheus)
+- StatefulSets for stateful services
+- LoadBalancer services for external access
+- Health checks and resource limits
+
+#### Helm Chart Deployment (Alternative)
 
 #### Helm Chart Deployment
 ```bash
@@ -216,16 +291,25 @@ environment:
 
 ## Environment Configuration
 
+### Centralized Configuration Location
+
+**Docker Compose**: `.env` file in project root
+**Kubernetes**: `somabrain-config` ConfigMap and `somabrain-secrets` Secret
+
 ### Required Environment Variables
-| Variable | Production Value | Description |
-|----------|-----------------|-------------|
-| `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | `1` | Enforce production-grade execution |
-| `SOMABRAIN_FORCE_FULL_STACK` | `1` | Require all backing services |
-| `SOMABRAIN_REQUIRE_MEMORY` | `1` | Memory service must be available |
-| `SOMABRAIN_MODE` | `production` | Deployment mode identifier |
-| `SOMABRAIN_REDIS_URL` | `redis://redis:6379/0` | Redis connection string |
-| `SOMABRAIN_POSTGRES_URL` | `postgresql://user:pass@host/db` | Database connection |
-| `SOMABRAIN_KAFKA_BROKERS` | `kafka:9092` | Kafka broker endpoints |
+| Variable | Development Value | Production Value | Description |
+|----------|------------------|------------------|-------------|
+| `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | `1` | `1` | Enforce production-grade execution |
+| `SOMABRAIN_FORCE_FULL_STACK` | `1` | `1` | Require all backing services |
+| `SOMABRAIN_REQUIRE_MEMORY` | `1` | `1` | Memory service must be available |
+| `SOMABRAIN_MODE` | `enterprise` | `production` | Deployment mode identifier |
+| `SOMABRAIN_REDIS_URL` | `redis://somabrain-redis:6379/0` | `redis://redis:6379/0` | Redis connection string |
+| `SOMABRAIN_POSTGRES_DSN` | `postgresql://soma:soma_dev_pass@somabrain-postgres:5432/somabrain` | `postgresql://user:CHANGE_ME@host/db` | Database connection |
+| `SOMABRAIN_KAFKA_URL` | `kafka://somabrain-kafka:9092` | `kafka://kafka:9092` | Kafka broker endpoints |
+| `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | `http://host.docker.internal:9595` | `http://memory-service:9595` | Memory service endpoint |
+| `POSTGRES_USER` | `soma` | **CHANGE IN PRODUCTION** | Database user |
+| `POSTGRES_PASSWORD` | `soma_dev_pass` | **CHANGE IN PRODUCTION** | Database password |
+| `SOMABRAIN_MEMORY_HTTP_TOKEN` | `dev-token` | **CHANGE IN PRODUCTION** | Memory service auth token |
 
 ### Security Configuration
 ```bash
@@ -496,6 +580,84 @@ curl -s http://api.somabrain.company.com/metrics | grep -E "latency|memory|cpu"
 # Adjust resource limits based on metrics
 kubectl patch deployment somabrain -n somabrain-prod -p '{"spec":{"template":{"spec":{"containers":[{"name":"somabrain","resources":{"limits":{"memory":"8Gi","cpu":"4000m"}}}]}}}}'
 ```
+
+## Deployment Summary
+
+### Current Deployment Status
+
+**Docker Compose Deployment** ✅
+- All 9 services running and healthy
+- Ports: 9696 (API), 20001-20007 (services)
+- Configuration: Centralized in `.env` file
+- Access: http://localhost:9696
+
+**Kubernetes Deployment** ✅
+- 6/8 services running (Kafka/Outbox need external memory)
+- LoadBalancers: 20020 (API), 20021-20027 (services)
+- Configuration: Centralized in ConfigMap/Secrets
+- Access: kubectl port-forward or LoadBalancer
+
+### Configuration Files
+
+**Docker:**
+- `.env` - All environment variables
+- `docker-compose.yml` - Service definitions
+
+**Kubernetes:**
+- `k8s/somabrain-configmap.yaml` - ConfigMap and Secrets
+- `k8s/somabrain-deployment.yaml` - All service deployments
+
+### Quick Access Commands
+
+**Docker:**
+```bash
+# Start cluster
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f somabrain_app
+
+# Access API
+curl http://localhost:9696/health
+```
+
+**Kubernetes:**
+```bash
+# Deploy
+kubectl apply -f k8s/somabrain-configmap.yaml
+kubectl apply -f k8s/somabrain-deployment.yaml
+
+# Check status
+kubectl get pods -n somabrain
+
+# View logs
+kubectl logs -f deployment/somabrain-app -n somabrain
+
+# Access API
+kubectl port-forward -n somabrain svc/somabrain-app 20020:9696
+curl http://localhost:20020/health
+```
+
+### Production Checklist
+
+Before deploying to production, ensure:
+
+- [ ] Change all development credentials in ConfigMap/Secrets
+- [ ] Update `POSTGRES_PASSWORD` from `soma_dev_pass`
+- [ ] Update `SOMABRAIN_MEMORY_HTTP_TOKEN` from `dev-token`
+- [ ] Update `SOMABRAIN_JWT_SECRET` from development value
+- [ ] Update `SOMABRAIN_API_TOKEN` from development value
+- [ ] Configure TLS certificates for external access
+- [ ] Set up monitoring and alerting
+- [ ] Configure backup procedures
+- [ ] Review and update resource limits
+- [ ] Enable authentication and authorization
+- [ ] Configure network policies
+- [ ] Set up log aggregation
+- [ ] Test disaster recovery procedures
 
 ---
 
