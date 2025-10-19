@@ -3,6 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -68,3 +70,32 @@ def test_dynamic_learning_rate_uses_dopamine_signal() -> None:
 
     expected_lr = baseline_lr * min(max(0.5 + 0.35, 0.5), 1.2)
     assert abs(engine._lr - expected_lr) < 1e-6
+
+
+def test_environment_overrides_gains(monkeypatch) -> None:
+    monkeypatch.setenv("SOMABRAIN_LEARNING_GAIN_ALPHA", "2.0")
+    monkeypatch.setenv("SOMABRAIN_LEARNING_GAIN_GAMMA", "-1.0")
+    retrieval = RetrievalWeights(alpha=1.0, beta=0.2, gamma=0.4, tau=0.7)
+    engine = AdaptationEngine(
+        retrieval=retrieval,
+        utility=UtilityWeights(lambda_=1.0, mu=0.3, nu=0.3),
+        learning_rate=0.05,
+    )
+    engine.apply_feedback(utility=1.0)
+    # alpha gain is doubled compared to default (0.05 -> 0.1 increment)
+    assert retrieval.alpha == pytest.approx(1.2, rel=1e-6)
+    # gamma gain is steeper (negative), so gamma should drop by 0.05
+    assert retrieval.gamma == pytest.approx(0.3, rel=1e-6)
+
+
+def test_constraints_respect_environment(monkeypatch) -> None:
+    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_ALPHA_MIN", "0.6")
+    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_GAMMA_MIN", "0.2")
+    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_LAMBDA_MIN", "0.8")
+    retrieval = RetrievalWeights(alpha=0.7, beta=0.2, gamma=0.3, tau=0.7)
+    utility = UtilityWeights(lambda_=0.9, mu=0.3, nu=0.3)
+    engine = AdaptationEngine(retrieval=retrieval, utility=utility, learning_rate=0.05)
+    engine.apply_feedback(utility=-1.0)
+    assert retrieval.alpha >= 0.6
+    assert retrieval.gamma >= 0.2
+    assert utility.lambda_ >= 0.8

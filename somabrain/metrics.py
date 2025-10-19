@@ -635,6 +635,11 @@ LTM_STORE_LAT = Histogram(
     "Latency of LTM store operations",
     registry=registry,
 )
+LTM_STORE_QUEUED = Counter(
+    "somabrain_ltm_store_queued_total",
+    "Count of LTM store operations queued due to backend unavailability",
+    registry=registry,
+)
 
 # Executive details
 EXEC_K_SELECTED = Histogram(
@@ -925,6 +930,16 @@ LEARNING_UTILITY_NU = get_gauge(
     "Recent utility weight (ν) per tenant",
     labelnames=["tenant_id"],
 )
+LEARNING_GAIN = get_gauge(
+    "somabrain_learning_gain",
+    "Configured adaptation gain per component",
+    labelnames=["tenant_id", "component"],
+)
+LEARNING_BOUND = get_gauge(
+    "somabrain_learning_bound",
+    "Adaptation bounds per component and side",
+    labelnames=["tenant_id", "component", "bound"],
+)
 
 # Feedback loop metrics
 LEARNING_FEEDBACK_APPLIED = get_counter(
@@ -998,6 +1013,29 @@ def update_learning_utility_weights(
     LEARNING_UTILITY_LAMBDA.labels(tenant_id=tenant_id).set(lambda_)
     LEARNING_UTILITY_MU.labels(tenant_id=tenant_id).set(mu)
     LEARNING_UTILITY_NU.labels(tenant_id=tenant_id).set(nu)
+
+
+def update_learning_gains(tenant_id: str, **gains: float) -> None:
+    """Record configured adaptation gains per component."""
+
+    for component, value in gains.items():
+        LEARNING_GAIN.labels(tenant_id=tenant_id, component=component).set(float(value))
+
+
+def update_learning_bounds(tenant_id: str, **bounds: float) -> None:
+    """Record adaptation bounds (min/max) for each component."""
+
+    for key, value in bounds.items():
+        if key.endswith("_min"):
+            component = key[:-4]
+            LEARNING_BOUND.labels(
+                tenant_id=tenant_id, component=component, bound="min"
+            ).set(float(value))
+        elif key.endswith("_max"):
+            component = key[:-4]
+            LEARNING_BOUND.labels(
+                tenant_id=tenant_id, component=component, bound="max"
+            ).set(float(value))
 
 
 def record_learning_feedback_applied(tenant_id: str):

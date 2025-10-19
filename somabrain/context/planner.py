@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import List
 
 from somabrain.learning import UtilityWeights
+
+try:
+    from common.config.settings import settings as shared_settings
+except Exception:  # pragma: no cover - optional dependency
+    shared_settings = None  # type: ignore
 
 
 @dataclass
@@ -25,6 +31,47 @@ class PlanResult:
 class ContextPlanner:
     def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
         self._utility = utility_weights or UtilityWeights()
+        self._length_penalty_scale = 1024.0
+        self._memory_penalty_scale = 10.0
+        if shared_settings is not None:
+            try:
+                self._length_penalty_scale = float(
+                    getattr(
+                        shared_settings,
+                        "planner_length_penalty_scale",
+                        self._length_penalty_scale,
+                    )
+                )
+                self._memory_penalty_scale = float(
+                    getattr(
+                        shared_settings,
+                        "planner_memory_penalty_scale",
+                        self._memory_penalty_scale,
+                    )
+                )
+            except Exception:
+                pass
+        def _env_float(name: str, current: float) -> float:
+            value = os.getenv(name)
+            if value is None:
+                return current
+            try:
+                return float(value)
+            except Exception:
+                return current
+
+        self._length_penalty_scale = _env_float(
+            "SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE",
+            self._length_penalty_scale,
+        )
+        self._memory_penalty_scale = _env_float(
+            "SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE",
+            self._memory_penalty_scale,
+        )
+        if self._length_penalty_scale <= 0:
+            self._length_penalty_scale = 1024.0
+        if self._memory_penalty_scale <= 0:
+            self._memory_penalty_scale = 10.0
 
     @property
     def utility_weights(self) -> UtilityWeights:
@@ -63,10 +110,11 @@ class ContextPlanner:
         return results
 
     def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:
-        length_penalty = len(prompt) / 1024.0
+        length_penalty = len(prompt) / max(self._length_penalty_scale, 1.0)
         context_gain = sum(bundle.weights) * emphasis
+        memory_penalty = len(bundle.memories) / max(self._memory_penalty_scale, 1.0)
         return (
             self._utility.lambda_ * context_gain
             - self._utility.mu * length_penalty
-            - self._utility.nu * (len(bundle.memories) / 10.0)
+            - self._utility.nu * memory_penalty
         )

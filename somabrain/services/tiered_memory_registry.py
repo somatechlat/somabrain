@@ -95,7 +95,7 @@ class TieredMemoryRegistry:
             if not bundle.payloads:
                 return None
             context = bundle.memory.recall(qvec)
-            if not context.anchor_id or context.score <= 0.0:
+            if context.anchor_id is None or context.score <= 0.0:
                 return None
             payload = bundle.payloads.get(context.anchor_id)
             coordinate = bundle.coordinates.get(context.anchor_id)

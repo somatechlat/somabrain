@@ -141,78 +141,69 @@ def _extract_memory_coord(
     resp: Any,
     idempotency_key: str | None = None,
 ) -> Tuple[float, float, float] | None:
-    """Try common shapes to extract a 3‑tuple coord from a remember response.
+    """Try to derive a coordinate tuple from the memory-service response."""
 
-    Known attempts (in order):
-    - top‑level 'coord' or 'coordinate' as comma string or list
-    - nested 'memory' object with 'coordinate' or 'id'
-    - top‑level 'id' (opaque) -> map via stable hash
-    - fallback: use idempotency_key (if provided) -> stable hash of 'idempotency:{key}'
-    Returns a 3‑tuple floats or None.
-    """
-    try:
-        if not resp:
-            return None
-        # if resp is a requests/HTTPX Response-like with .json(), prefer that
+    if not resp:
+        return None
+
+    data = resp
+    json_attr = getattr(resp, "json", None)
+    if callable(json_attr):
         try:
-            if hasattr(resp, "json") and callable(resp.json):
-                data = resp.json()
-            else:
-                data = resp
-        except Exception:
+            data = json_attr()
+        except (ValueError, TypeError):
             data = resp
-        # top‑level coord/coordinate
-        for k in ("coord", "coordinate"):
-            v = data.get(k) if isinstance(data, dict) else None
-            if isinstance(v, str):
-                parsed = _parse_coord_string(v)
+
+    data_dict = data if isinstance(data, dict) else None
+
+    if data_dict is not None:
+        for key in ("coord", "coordinate"):
+            value = data_dict.get(key)
+            parsed: Optional[Tuple[float, float, float]] = None
+            if isinstance(value, str):
+                parsed = _parse_coord_string(value)
+            elif isinstance(value, (list, tuple)) and len(value) >= 3:
+                try:
+                    parsed = (float(value[0]), float(value[1]), float(value[2]))
+                except (TypeError, ValueError):
+                    parsed = None
+            if parsed:
+                return parsed
+
+        mem_section = data_dict.get("memory")
+        if isinstance(mem_section, dict):
+            for key in ("coordinate", "coord", "location"):
+                value = mem_section.get(key)
+                parsed = None
+                if isinstance(value, str):
+                    parsed = _parse_coord_string(value)
+                elif isinstance(value, (list, tuple)) and len(value) >= 3:
+                    try:
+                        parsed = (float(value[0]), float(value[1]), float(value[2]))
+                    except (TypeError, ValueError):
+                        parsed = None
                 if parsed:
                     return parsed
-            if isinstance(v, (list, tuple)) and len(v) >= 3:
-                try:
-                    return (float(v[0]), float(v[1]), float(v[2]))
-                except Exception:
-                    pass
-        # nested memory
-        if (
-            isinstance(data, dict)
-            and "memory" in data
-            and isinstance(data["memory"], dict)
-        ):
-            mem = data["memory"]
-            for k in ("coordinate", "coord", "location"):
-                v = mem.get(k)
-                if isinstance(v, str):
-                    parsed = _parse_coord_string(v)
-                    if parsed:
-                        return parsed
-                if isinstance(v, (list, tuple)) and len(v) >= 3:
-                    try:
-                        return (float(v[0]), float(v[1]), float(v[2]))
-                    except Exception:
-                        pass
-            # try id field
-            mid = mem.get("id") or mem.get("memory_id")
-            if mid:
+
+            mid = mem_section.get("id") or mem_section.get("memory_id")
+            if mid is not None:
                 try:
                     return _stable_coord(str(mid))
-                except Exception:
+                except (TypeError, ValueError):
                     pass
-        # top‑level id
-        if isinstance(data, dict) and (data.get("id") or data.get("memory_id")):
-            mid = data.get("id") or data.get("memory_id")
+
+        mid = data_dict.get("id") or data_dict.get("memory_id")
+        if mid is not None:
             try:
                 return _stable_coord(str(mid))
-            except Exception:
+            except (TypeError, ValueError):
                 pass
-        # fallback to idempotency
-        if idempotency_key:
-            try:
-                return _stable_coord(f"idempotency:{idempotency_key}")
-            except Exception:
-                pass
-    except Exception:
-        return None
+
+    if idempotency_key:
+        try:
+            return _stable_coord(f"idempotency:{idempotency_key}")
+        except (TypeError, ValueError):
+            return None
     return None
 
 

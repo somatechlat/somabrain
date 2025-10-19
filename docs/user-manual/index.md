@@ -1,58 +1,55 @@
 # User Manual
 
-**Purpose**: This manual explains how to use SomaBrain to accomplish cognitive memory and reasoning tasks.
+**Purpose** Explain how to interact with SomaBrain’s public API to store memories, recall context, and drive cognitive workflows.
 
-**Audience**: End-users, product managers, and application developers integrating SomaBrain.
+**Audience** Product developers, application engineers, and operators who call the SomaBrain API directly.
 
-**Prerequisites**: Basic understanding of REST APIs and memory operations.
+**Prerequisites** A running SomaBrain stack (see [Installation](installation.md)), familiarity with HTTP/JSON, and a tenant credential issued by your platform administrator.
 
 ---
 
-## 🌟 **Stop Building AI That Forgets Everything**
+## What SomaBrain Provides
 
-**SomaBrain gives your AI the memory it deserves.** Imagine ChatGPT that remembers your entire conversation history, recommendation engines that learn your preferences over months, or AI assistants that build relationships with users. That's the power of cognitive memory.
+SomaBrain is a FastAPI service that exposes cognitive memory and planning primitives. The production binary defined in `somabrain/app.py` wires together:
 
-**What is SomaBrain?**
-The world's first production-ready cognitive memory system that thinks like a human brain but operates at digital speed. Instead of dumb keyword searches, SomaBrain understands meaning, builds connections, and learns from every interaction—turning any AI application into an intelligent, learning companion.
+- `/remember` and `/remember/batch` for episodic memory ingestion handled by `somabrain.services.memory_service.MemoryService`.
+- `/recall` for semantic retrieval backed by working memory (`somabrain.mt_wm.MultiTenantWM`) and long‑term storage via the external memory HTTP service.
+- `/context/evaluate` and `/context/feedback` for end‑to‑end reasoning loops that exercise the BHDC `QuantumLayer`, `ContextBuilder`, `ContextPlanner`, and `AdaptationEngine`.
+- Optional flows such as `/act`, `/plan/suggest`, `/sleep/run`, and `/graph/links` that are enabled when the full stack is running.
 
-## 🚀 **Transform Any AI Application in Minutes**
+All endpoints are authenticated, tenant‑scoped, and observable with Prometheus metrics emitted from the same runtime.
 
-### **Before SomaBrain:**
-❌ AI forgets everything between conversations
-❌ Keyword-based search misses important context
-❌ No learning from user interactions
-❌ Complex setup and maintenance
-
-### **After SomaBrain:**
-✅ **Persistent Intelligence**: Remembers every interaction, builds lasting relationships
-✅ **Contextual Understanding**: Finds "Tesla Model 3" when you search for "electric car"
-✅ **Continuous Learning**: Adapts to user preferences and behavior patterns
-✅ **One-Line Setup**: `docker compose up` and you're running production-grade cognitive memory
+---
 
 ## Quick Navigation
 
-- [Installation](installation.md) - Simple setup for end-users
-- [Quick Start Tutorial](quick-start-tutorial.md) - Your first SomaBrain workflow
-- [Features](features/) - Complete feature guides
-  - [Memory Operations](features/memory-operations.md) - Remember and recall
-  - [Cognitive Reasoning](features/cognitive-reasoning.md) - Planning and inference
-  - [API Integration](features/api-integration.md) - REST API usage patterns
-  - [Multi-tenant Usage](features/multi-tenant-usage.md) - Tenant management
-- [FAQ](faq.md) - Common questions and troubleshooting
+- [Installation](installation.md) – Bring up the Docker stack (API + Redis + Kafka + OPA + Prometheus + Postgres).
+- [Quick Start Tutorial](quick-start-tutorial.md) – Issue your first `remember → recall → feedback` sequence.
+- [Features](features/) – Detailed guides for each API:
+  - [Memory Operations](features/memory-operations.md) – `/remember`, `/recall`, cleanup and quotas.
+  - [Cognitive Reasoning](features/cognitive-reasoning.md) – `/context/evaluate`, `/context/feedback`, neuromodulators.
+  - [API Integration](features/api-integration.md) – Headers, error handling, rate limits.
+  - [Multi-tenant Usage](features/multi-tenant-usage.md) – Tenant isolation, namespaces, quotas.
+- [FAQ](faq.md) – Troubleshooting common client issues.
 
 ---
 
-## Getting Started
+## How to Use This Manual
 
-New to SomaBrain? Start with the [Quick Start Tutorial](quick-start-tutorial.md) for a guided walkthrough of core functionality.
+1. Confirm the stack is running (`docker compose ps` and `/health` response) using the [Installation](installation.md) checklist.
+2. Follow the [Quick Start Tutorial](quick-start-tutorial.md) to store a memory and verify retrieval with real JSON samples taken from the running API.
+3. Deep‑dive into the [Features](features/) section for specialised workflows:
+   - Memory ingestion & recall (payload schemas from `somabrain/schemas.py`).
+   - Planning and adaptation (grounded in `somabrain/context` and `somabrain/learning` modules).
+   - Multi‑tenant isolation and quotas.
+4. Keep the [FAQ](faq.md) and the [Technical Manual](../technical-manual/index.md) handy for operational and diagnostic tasks.
 
-Have specific questions? Check the [FAQ](faq.md) or browse feature-specific guides in the [Features](features/) section.
+Each page includes prerequisites, verification steps, and references so you can audit the behaviour you see against the live codebase.
 
 ---
 
-**Common Errors**: See [FAQ](faq.md) for troubleshooting user-facing issues.
+**Related Manuals**
 
-**References**:
-- [Technical Manual](../technical-manual/index.md) for system administration
-- [Development Manual](../development-manual/index.md) for contributing code
-- [API Reference](../development-manual/api-reference.md) for complete endpoint documentation
+- [Technical Manual](../technical-manual/index.md) – Deployment, observability, runbooks.
+- [Development Manual](../development-manual/index.md) – Contributing code and running tests.
+- [Onboarding Manual](../onboarding-manual/index.md) – Project orientation for new contributors.

@@ -199,7 +199,7 @@ class QuantumLayer:
             return self._role_cache[token]
 
         if self.cfg.roles_unitary:
-            seed_val = int(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
+            seed_val = int(seed_to_uint64(f"role|{token}")) ^ int(self.cfg.seed)
             role_time, role_spec = _roles.make_unitary_role(
                 self.cfg.dim,
                 seed=seed_val,
@@ -213,7 +213,7 @@ class QuantumLayer:
             self._validate_unitary_role(role, self._role_fft_cache[token])
         else:
             seed64 = np.uint64(
-                seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed)
+                int(seed_to_uint64(f"role|{token}")) ^ int(self.cfg.seed)
             )
             rng = np.random.default_rng(seed64)
             role = rng.normal(0.0, 1.0, size=self.cfg.dim).astype(self.cfg.dtype)

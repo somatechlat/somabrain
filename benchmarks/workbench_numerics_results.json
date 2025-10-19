@@ -1,37 +1,35 @@
 {
-  "env": {
-    "numpy": "2.3.3"
+  "provenance": {
+    "timestamp": "2025-10-19T05:59:39.537662+00:00",
+    "python": "3.11.6",
+    "platform": "macOS-15.6.1-x86_64-i386-64bit",
+    "numpy": "1.26.4",
+    "git_sha": "16f94cd9bdb48408d96c23a775f23e77a99d2188",
+    "cwd": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain",
+    "executable": "/Users/macbookpro201916i964gb1tb/.pyenv/versions/3.11.6/bin/python",
+    "phase": "workbench_core",
+    "D_list": [
+      128,
+      256
+    ],
+    "dtypes": [
+      "float32"
+    ]
   },
   "tiny_floor": {
     "float32:128": 1.3486991523486091e-06,
-    "float32:256": 1.9073486328125e-06,
-    "float32:1024": 3.814697265625e-06,
-    "float64:128": 1e-12,
-    "float64:256": 1e-12,
-    "float64:1024": 1e-12
+    "float32:256": 1.9073486328125e-06
   },
   "unitary_roundtrip": {
-    "float32:128": 1.43771899274725e-07,
-    "float32:256": 1.1566552160502397e-07,
-    "float32:1024": 1.483844869198947e-07,
-    "float64:128": 3.3695856575821614e-16,
-    "float64:256": 2.383123083151841e-16,
-    "float64:1024": 2.836258846722319e-16
+    "float32:128": 0.0,
+    "float32:256": 0.0
   },
   "role_norms": {
     "float32:128": 1.0,
-    "float32:256": 1.0,
-    "float32:1024": 1.0,
-    "float64:128": 1.0,
-    "float64:256": 1.0,
-    "float64:1024": 0.9999999999999999
+    "float32:256": 1.0
   },
   "bind_unbind": {
-    "float32:128": 1.0,
-    "float32:256": 1.0000001192092896,
-    "float32:1024": 1.0,
-    "float64:128": 1.0000000000000002,
-    "float64:256": 1.0,
-    "float64:1024": 1.0
+    "float32:128": 1.000000071648014,
+    "float32:256": 1.0000000709303012
   }
 }

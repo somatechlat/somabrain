@@ -1,91 +1,53 @@
 # SomaBrain Features
 
-**Purpose**: Provide a curated entry point to every SomaBrain feature area so users can quickly locate deeper guides.
+**Purpose** Orient users to the major feature areas documented in the User Manual.
 
-**Audience**: Product managers, application developers, and power users exploring SomaBrain's capabilities.
+**Audience** Product owners and developers who want a map of the available guides.
 
-**Prerequisites**: Complete the [Quick Start Tutorial](../quick-start-tutorial.md) and review the [Installation Guide](../installation.md).
-
----
-
-## Quick Navigation
-- [Core Concepts](#core-concepts)
-- [Feature Matrix](#feature-matrix)
-- [Why SomaBrain Changes Everything](#why-somabrain-changes-everything)
-- [Verification](#verification)
-- [Common Errors](#common-errors)
-- [References](#references)
+**Prerequisites** Complete the [Quick Start Tutorial](../quick-start-tutorial.md).
 
 ---
 
-## Core Concepts
+## Core Themes
 
-- **Cognitive Memory**: Understand how SomaBrain stores meaning-rich representations that outperform keyword search.
-- **Multi-tenancy**: Learn how isolated working-memory spaces keep tenant data separate without sacrificing performance.
-- **Cognitive Reasoning**: Explore higher-order reasoning workflows layered on top of memory recall.
-- **API Workflows**: See how REST, SDKs, and batch pipelines interact with the platform.
+- **Memory Operations** – `/remember`, `/remember/batch`, `/recall`, cleanup and quotas.
+- **Context & Feedback** – Evaluate prompts, submit feedback, inspect adaptation state.
+- **Integration Patterns** – Required headers, error handling, and examples using curl/httpx.
+- **Tenant Isolation** – How namespaces, quotas, and metrics remain tenant-aware.
 
 ---
 
 ## Feature Matrix
 
-| Feature | Description | Dive Deeper |
-|---------|-------------|-------------|
-| **Memory Operations** | Store, recall, update, and manage memories with semantic guarantees. | [Memory Operations Guide](memory-operations.md) |
-| **Cognitive Reasoning** | Chain memories, infer insights, and answer multi-hop questions. | [Cognitive Reasoning Guide](cognitive-reasoning.md) |
-| **API Integration** | Integrate SomaBrain workflows into any application stack. | [API Integration Guide](api-integration.md) |
-| **Multi-Tenant Usage** | Operate safely across customers, agents, or environments. | [Multi-Tenant Usage](multi-tenant-usage.md) |
-| **Use Cases & Scenarios** | Map real-world problems to the correct feature set. | [Use Cases](use-cases.md) |
+| Feature | What it Covers | Link |
+|---------|----------------|------|
+| Memory Operations | Payload schema, ingestion responses, recall output, deletion helpers. | [Memory Operations](memory-operations.md) |
+| Cognitive Reasoning | `/context/evaluate`, `/context/feedback`, neuromodulators, sleep cycles. | [Cognitive Reasoning](cognitive-reasoning.md) |
+| API Integration | Base URL, authentication, endpoint catalogue, httpx examples. | [API Integration](api-integration.md) |
+| Multi-Tenant Usage | Tenant headers, namespaces, quotas, monitoring per tenant. | [Multi-Tenant Usage](multi-tenant-usage.md) |
+| Use Cases | Reference scenarios lifted from the codebase and tests. | [Use Cases](use-cases.md) |
 
 ---
 
-## Why SomaBrain Changes Everything
-> *"The first AI memory system that thinks like Einstein but scales like the internet."*
+## Verification Checklist
 
-### 🧠 Memory Systems That Never Forget
-- **Multi-Tenant Working Memory**: Each user or agent receives an isolated memory space backed by Redis for sub-second recall.
-- **Long-Term Memory Integration**: Persistent HTTP-backed storage keeps conversations available weeks later with full audit trails.
-- **Salience Detection**: Frequency-domain analysis automatically elevates high-impact memories so relevant information surfaces first.
-- **Memory Consolidation**: Background optimisation keeps retrieval fast by reorganising memories during low-traffic windows.
-
-### ⚡ Breakthrough Mathematics That Just Works
-- **BHDC Encoding**: Binary hypervectors capture semantic relationships, recognising that “car” and “automobile” share meaning.
-- **Permutation Binding**: Role-based bindings connect facts ("Paris" + "capital of" + "France") for relational recall.
-- **Quantum Layer Operations**: Superposition and cleanup operators combine partial concepts into precise search targets.
-- **Deterministic Encoding**: Seeded randomness ensures consistent embeddings across sessions and environments.
-
-### 📊 Relevance That Reads Your Mind
-- **Unified Similarity**: Cosine, frequency, and recency signals combine to generate ranked, context-aware results.
-- **Adaptive Weighting**: Configure scoring weights at runtime to prioritise recency, importance, or semantic distance.
-- **Context Awareness**: Temporal metadata and task phase keep urgent memories ahead of stale ones.
-- **Density Matrix Operations**: Second-order recall finds indirect relationships via the ρ matrix.
-
-### 🏗️ Enterprise Without Compromise
-- **Multi-Tenancy**: Hard isolation keeps customers safe while sharing infrastructure.
-- **Rate Limiting**: Configurable quotas prevent noisy tenants from starving neighbours.
-- **Audit Pipeline**: Structured logs and Kafka topics capture every operation for compliance.
-- **Health Monitoring**: `/health`, `/metrics`, and dashboards highlight issues before users notice.
+1. Open each linked feature page and run at least one sample request against your environment.
+2. Confirm that response examples match the live API (schemas defined in `somabrain/schemas.py`).
+3. Re-run the documentation link checker before merging changes (`markdownlint` + link validation CI jobs).
 
 ---
 
-## Verification
-- Confirm each table link resolves by running the documentation link checker (`markdownlint` and link validation jobs in CI).
-- Follow at least one feature link and ensure the destination page contains working examples you can execute locally.
-- Refresh this page whenever new modules ship to keep the Feature Matrix in sync with the product roadmap.
+## Common Pitfalls
+
+| Issue | Why it Happens | Remedy |
+|-------|----------------|--------|
+| Feature links drift | Pages get renamed without updating the matrix. | Update this index whenever files move. |
+| Samples diverge from API | Code changes land without doc updates. | Compare docs to the relevant module (app, schemas, services) during reviews. |
+| Missing prerequisites | Feature pages assume Quick Start knowledge. | Keep prerequisites section accurate and cross-link to Quick Start. |
 
 ---
 
-## Common Errors
+**Further Reading**
 
-| Issue | Symptom | Resolution |
-|-------|---------|------------|
-| Stale links | Clicking a feature returns 404 | Update the Feature Matrix entry when files move or rename. |
-| Missing prerequisites | Readers lack setup context | Ensure installation and quick-start prerequisites remain accurate. |
-| Redundant terminology | Features reintroduce deprecated phrases | Align wording with the [Global Glossary](../../glossary.md). |
-
----
-
-## References
-- `docs/user-manual/quick-start-tutorial.md` to complete initial workflow.
-- `docs/technical-manual/index.md` for operational considerations behind the features.
-- `docs/development-manual/index.md` if you plan to extend or contribute new capabilities.
+- [Technical Manual](../../technical-manual/index.md) for operational and deployment guidance.
+- [Development Manual](../../development-manual/index.md) if you plan to modify or extend SomaBrain.

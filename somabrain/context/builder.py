@@ -7,6 +7,7 @@ structured bundles that the agent can feed into its SLM.
 from __future__ import annotations
 
 import math
+import os
 import time
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, List, Optional
@@ -72,6 +73,11 @@ class ContextBuilder:
         self._density_target = 0.2
         self._density_floor = 0.6
         self._density_weight = 0.35
+        self._tau_min = 0.4
+        self._tau_max = 1.2
+        self._tau_increment_up = 0.1
+        self._tau_increment_down = 0.05
+        self._dup_ratio_threshold = 0.5
         try:
             cfg = _get_config() if _get_config else None
             if cfg is not None:
@@ -93,9 +99,54 @@ class ContextBuilder:
                 self._density_weight = float(
                     getattr(cfg, "recall_density_margin_weight", self._density_weight)
                 )
+                self._tau_min = float(
+                    getattr(cfg, "recall_tau_min", self._tau_min)
+                )
+                self._tau_max = float(
+                    getattr(cfg, "recall_tau_max", self._tau_max)
+                )
+                self._tau_increment_up = float(
+                    getattr(
+                        cfg, "recall_tau_increment_up", self._tau_increment_up
+                    )
+                )
+                self._tau_increment_down = float(
+                    getattr(
+                        cfg, "recall_tau_increment_down", self._tau_increment_down
+                    )
+                )
+                self._dup_ratio_threshold = float(
+                    getattr(
+                        cfg,
+                        "recall_tau_dup_ratio_threshold",
+                        self._dup_ratio_threshold,
+                    )
+                )
         except Exception:
             # Fallback to defaults when configuration cannot be loaded
             pass
+        def _env_float(name: str, current: float) -> float:
+            value = os.getenv(name)
+            if value is None:
+                return current
+            try:
+                return float(value)
+            except Exception:
+                return current
+
+        # Environment overrides for tau tuning
+        self._tau_min = _env_float("SOMABRAIN_RECALL_TAU_MIN", self._tau_min)
+        self._tau_max = _env_float("SOMABRAIN_RECALL_TAU_MAX", self._tau_max)
+        self._tau_increment_up = _env_float(
+            "SOMABRAIN_RECALL_TAU_INCREMENT_UP", self._tau_increment_up
+        )
+        self._tau_increment_down = _env_float(
+            "SOMABRAIN_RECALL_TAU_INCREMENT_DOWN", self._tau_increment_down
+        )
+        self._dup_ratio_threshold = _env_float(
+            "SOMABRAIN_RECALL_TAU_DUP_RATIO_THRESHOLD",
+            self._dup_ratio_threshold,
+        )
         # Clamp derived parameters into safe ranges to avoid pathological curves
         if not math.isfinite(self._recency_half_life) or self._recency_half_life <= 0:
             self._recency_half_life = 60.0
@@ -111,6 +162,19 @@ class ContextBuilder:
         self._density_floor = min(self._density_floor, 1.0)
         if not math.isfinite(self._density_weight) or self._density_weight < 0:
             self._density_weight = 0.35
+        if not math.isfinite(self._tau_min):
+            self._tau_min = 0.4
+        if not math.isfinite(self._tau_max) or self._tau_max <= 0:
+            self._tau_max = 1.2
+        if self._tau_max < self._tau_min:
+            self._tau_max = max(self._tau_min, 1.2)
+        if not math.isfinite(self._tau_increment_up):
+            self._tau_increment_up = 0.1
+        if not math.isfinite(self._tau_increment_down):
+            self._tau_increment_down = 0.05
+        if not math.isfinite(self._dup_ratio_threshold):
+            self._dup_ratio_threshold = 0.5
+        self._dup_ratio_threshold = min(max(self._dup_ratio_threshold, 0.0), 1.0)
 
     # New method to set the tenant for the current request
     def set_tenant(self, tenant_id: str) -> None:
@@ -224,11 +288,15 @@ class ContextBuilder:
             dup_ratio = 1.0 - (unique / max(len(ids), 1))
         except Exception:
             dup_ratio = 0.0
-        # Adjust tau within the allowed range [0.4, 1.2]
-        if dup_ratio > 0.5:
-            new_tau = min(self._weights.tau + 0.1, 1.2)
+        # Adjust tau within the configured range.
+        if dup_ratio > self._dup_ratio_threshold:
+            excess = dup_ratio - self._dup_ratio_threshold
+            step = max(self._tau_increment_up, 0.0) * excess
+            new_tau = min(self._weights.tau + step, self._tau_max)
         else:
-            new_tau = max(self._weights.tau - 0.05, 0.4)
+            deficit = self._dup_ratio_threshold - dup_ratio
+            step = max(self._tau_increment_down, 0.0) * deficit
+            new_tau = max(self._weights.tau - step, self._tau_min)
         self._weights.tau = new_tau
         # Emit metric for the current tenant (import inside to respect monkeypatch)
         from somabrain.metrics import (

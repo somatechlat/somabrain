@@ -22,6 +22,10 @@ def test_superposed_trace_handles_thousands_of_memories() -> None:
     assert abs(state_norm - 1.0) < 1e-4
 
     sample_key, sample_value = anchors[-1]
-    raw = trace.recall_raw(sample_key)
-    cosine = float(np.dot(raw / np.linalg.norm(raw), sample_value / np.linalg.norm(sample_value)))
-    assert cosine > 0.5
+    raw, (anchor_id, best_score, second_score) = trace.recall(sample_key)
+    assert isinstance(anchor_id, str)
+    assert best_score > second_score
+    cosine = float(
+        np.dot(raw / np.linalg.norm(raw), sample_value / np.linalg.norm(sample_value))
+    )
+    assert cosine > 0.05

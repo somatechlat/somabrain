@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,9 +24,20 @@ def _get_redis():
     """Get Redis client for per-tenant state persistence.
     Prefer the full URL via ``SOMABRAIN_REDIS_URL`` if provided (as set in the
     Docker compose environment).  Fall back to ``REDIS_HOST``/``REDIS_PORT``
-    for compatibility with local development.
+    for compatibility with local development. If ``SOMABRAIN_ALLOW_FAKEREDIS``
+    is set to a truthy value, return an in-memory FakeRedis for tests.
     """
     import os
+
+    # First, honor an explicit request to use in-memory Redis for tests
+    try:
+        allow_fake = os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")
+        if str(allow_fake).strip() in {"1", "true", "True", "yes", "on"}:
+            import fakeredis  # type: ignore
+
+            return fakeredis.FakeRedis()
+    except Exception:
+        pass
 
     try:
         redis_url = get_redis_url()
@@ -53,10 +64,101 @@ class UtilityWeights:
     mu: float = 0.1
     nu: float = 0.05
 
-    def clamp(self, lower: float = 0.0, upper: float = 5.0) -> None:
-        self.lambda_ = min(max(self.lambda_, lower), upper)
-        self.mu = min(max(self.mu, lower), upper)
-        self.nu = min(max(self.nu, lower), upper)
+    def clamp(
+        self,
+        lambda_bounds: tuple[float, float] = (0.0, 5.0),
+        mu_bounds: tuple[float, float] = (0.0, 5.0),
+        nu_bounds: tuple[float, float] = (0.0, 5.0),
+    ) -> None:
+        self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
+        self.mu = min(max(self.mu, mu_bounds[0]), mu_bounds[1])
+        self.nu = min(max(self.nu, nu_bounds[0]), nu_bounds[1])
+
+
+@dataclass(frozen=True)
+class AdaptationGains:
+    """Per-parameter gains applied to the learning signal."""
+
+    alpha: float = 1.0
+    gamma: float = -0.5
+    lambda_: float = 1.0
+    mu: float = -0.25
+    nu: float = -0.25
+
+    @classmethod
+    def from_settings(cls) -> "AdaptationGains":
+        gains = cls()
+        source = None
+        if shared_settings is not None:
+            source = shared_settings
+        fields = ("alpha", "gamma", "lambda_", "mu", "nu")
+        for field in fields:
+            value = None
+            if source is not None:
+                try:
+                    value = getattr(source, f"learning_gain_{field}")
+                except Exception:
+                    value = None
+            if value is None:
+                env_name = f"SOMABRAIN_LEARNING_GAIN_{field.upper().replace('_', '')}"
+                env_val = os.getenv(env_name)
+                if env_val is not None:
+                    try:
+                        value = float(env_val)
+                    except Exception:
+                        value = None
+            if value is not None:
+                gains = replace(gains, **{field: float(value)})
+        return gains
+
+
+@dataclass(frozen=True)
+class AdaptationConstraints:
+    alpha_min: float = 0.1
+    alpha_max: float = 5.0
+    gamma_min: float = 0.0
+    gamma_max: float = 1.0
+    lambda_min: float = 0.1
+    lambda_max: float = 5.0
+    mu_min: float = 0.01
+    mu_max: float = 5.0
+    nu_min: float = 0.01
+    nu_max: float = 5.0
+
+    @classmethod
+    def from_settings(cls) -> "AdaptationConstraints":
+        constraints = cls()
+        source = shared_settings if shared_settings is not None else None
+        fields = (
+            ("alpha_min", "ALPHA_MIN"),
+            ("alpha_max", "ALPHA_MAX"),
+            ("gamma_min", "GAMMA_MIN"),
+            ("gamma_max", "GAMMA_MAX"),
+            ("lambda_min", "LAMBDA_MIN"),
+            ("lambda_max", "LAMBDA_MAX"),
+            ("mu_min", "MU_MIN"),
+            ("mu_max", "MU_MAX"),
+            ("nu_min", "NU_MIN"),
+            ("nu_max", "NU_MAX"),
+        )
+        for attr, suffix in fields:
+            value = None
+            if source is not None:
+                try:
+                    value = getattr(source, f"learning_bounds_{attr}")
+                except Exception:
+                    value = None
+            if value is None:
+                env_name = f"SOMABRAIN_LEARNING_BOUNDS_{suffix}"
+                env_val = os.getenv(env_name)
+                if env_val is not None:
+                    try:
+                        value = float(env_val)
+                    except Exception:
+                        value = None
+            if value is not None:
+                constraints = replace(constraints, **{attr: float(value)})
+        return constraints
 
 
 class AdaptationEngine:
@@ -74,9 +176,10 @@ class AdaptationEngine:
         utility: Optional[UtilityWeights] = None,
         learning_rate: float = 0.05,
         max_history: int = 1000,
-        constraints: Optional[dict] = None,
+        constraints: AdaptationConstraints | dict | None = None,
         tenant_id: Optional[str] = None,
         enable_dynamic_lr: bool = False,
+        gains: Optional[AdaptationGains] = None,
     ) -> None:
         # Lazy import to avoid circular dependency at module load time
         if retrieval is None:
@@ -89,12 +192,35 @@ class AdaptationEngine:
         self._base_lr = learning_rate  # Store base LR for dynamic scaling
         self._history = []  # Track (retrieval, utility) tuples for rollback
         self._max_history = max_history
-        self._constraints = constraints or {
-            "alpha": (0.1, 5.0),
-            "gamma": (0.0, 1.0),
-            "lambda_": (0.1, 5.0),
-            "mu": (0.01, 5.0),
-            "nu": (0.01, 5.0),
+        if isinstance(constraints, AdaptationConstraints):
+            constraint_bounds = constraints
+        elif isinstance(constraints, dict) and constraints:
+            constraint_bounds = AdaptationConstraints.from_settings()
+            for key, (lower, upper) in constraints.items():
+                attr_map = {
+                    "alpha": ("alpha_min", "alpha_max"),
+                    "gamma": ("gamma_min", "gamma_max"),
+                    "lambda_": ("lambda_min", "lambda_max"),
+                    "mu": ("mu_min", "mu_max"),
+                    "nu": ("nu_min", "nu_max"),
+                }
+                if key in attr_map:
+                    constraint_bounds = replace(
+                        constraint_bounds,
+                        **{
+                            attr_map[key][0]: float(lower),
+                            attr_map[key][1]: float(upper),
+                        },
+                    )
+        else:
+            constraint_bounds = AdaptationConstraints.from_settings()
+        self._constraint_bounds = constraint_bounds
+        self._constraints = {
+            "alpha": (constraint_bounds.alpha_min, constraint_bounds.alpha_max),
+            "gamma": (constraint_bounds.gamma_min, constraint_bounds.gamma_max),
+            "lambda_": (constraint_bounds.lambda_min, constraint_bounds.lambda_max),
+            "mu": (constraint_bounds.mu_min, constraint_bounds.mu_max),
+            "nu": (constraint_bounds.nu_min, constraint_bounds.nu_max),
         }
         # Counter for how many feedback applications have occurred – used for observability
         self._feedback_count = 0
@@ -114,6 +240,7 @@ class AdaptationEngine:
         elif os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1":
             dyn_lr = True
         self._enable_dynamic_lr = dyn_lr
+        self._gains = gains or AdaptationGains.from_settings()
 
         # Initialize per-tenant tau gauge with a small deterministic offset
         try:
@@ -235,20 +362,33 @@ class AdaptationEngine:
 
         # Save current state for rollback
         self._save_history()
-        delta = self._lr * float(signal)
-        # Update retrieval emphasis: positive reward boosts semantic weight,
-        # negative reward increases temporal penalty.
-        self._retrieval.alpha = self._constrain("alpha", self._retrieval.alpha + delta)
+        # Derive decoupled signals for retrieval vs utility updates.
+        semantic_signal = float(signal)
+        utility_signal = float(reward) if reward is not None else semantic_signal
+
+        alpha_delta = self._lr * self._gains.alpha * semantic_signal
+        gamma_delta = self._lr * self._gains.gamma * semantic_signal
+        lambda_delta = self._lr * self._gains.lambda_ * utility_signal
+        mu_delta = self._lr * self._gains.mu * utility_signal
+        nu_delta = self._lr * self._gains.nu * utility_signal
+
+        self._retrieval.alpha = self._constrain(
+            "alpha", self._retrieval.alpha + alpha_delta
+        )
         self._retrieval.gamma = self._constrain(
-            "gamma", self._retrieval.gamma - 0.5 * delta
+            "gamma", self._retrieval.gamma + gamma_delta
         )
         # Update utility trade-offs
         self._utility.lambda_ = self._constrain(
-            "lambda_", self._utility.lambda_ + delta
+            "lambda_", self._utility.lambda_ + lambda_delta
         )
-        self._utility.mu = self._constrain("mu", self._utility.mu - 0.25 * delta)
-        self._utility.nu = self._constrain("nu", self._utility.nu - 0.25 * delta)
-        self._utility.clamp()
+        self._utility.mu = self._constrain("mu", self._utility.mu + mu_delta)
+        self._utility.nu = self._constrain("nu", self._utility.nu + nu_delta)
+        self._utility.clamp(
+            lambda_bounds=self._constraints["lambda_"],
+            mu_bounds=self._constraints["mu"],
+            nu_bounds=self._constraints["nu"],
+        )
         # Track that a feedback event was applied
         try:
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
@@ -271,6 +411,23 @@ class AdaptationEngine:
                 gamma=self._retrieval.gamma,
                 tau=self._retrieval.tau,
             )
+            _metrics.update_learning_utility_weights(
+                tenant_id=self._tenant_id,
+                lambda_=self._utility.lambda_,
+                mu=self._utility.mu,
+                nu=self._utility.nu,
+            )
+            try:
+                _metrics.update_learning_gains(
+                    tenant_id=self._tenant_id,
+                    **asdict(self._gains),
+                )
+                _metrics.update_learning_bounds(
+                    tenant_id=self._tenant_id,
+                    **asdict(self._constraint_bounds),
+                )
+            except Exception:
+                pass
         except Exception:
             pass
         # Ensure state persisted even if metric update fails (duplicate call is safe)

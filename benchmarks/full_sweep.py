@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import os
 
 from benchmarks.numerics_workbench import extended_snr_capacity_run
 from benchmarks.run_stress import run_stress
@@ -42,14 +43,15 @@ def run_all():
     # attempt to plot using existing plot_results.py which expects results_numerics.json
     try:
         import subprocess
+        import sys
 
+        repo_root = Path(__file__).resolve().parent.parent
+        env = os.environ.copy()
+        env["PYTHONPATH"] = str(repo_root)
         subprocess.check_call(
-            [
-                "/bin/sh",
-                "-c",
-                "PYTHONPATH=. ./venv/bin/python benchmarks/plot_results.py",
-            ],
-            cwd=str(Path(__file__).resolve().parent.parent),
+            [sys.executable, str(repo_root / "benchmarks/plot_results.py")],
+            cwd=str(repo_root),
+            env=env,
         )
         print("Plots generated (see benchmarks/plots)")
     except Exception as e:

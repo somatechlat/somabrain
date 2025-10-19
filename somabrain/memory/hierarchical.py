@@ -39,7 +39,7 @@ class RecallContext:
     """Result of a hierarchical recall attempt."""
 
     layer: str
-    anchor_id: str
+    anchor_id: Optional[str]
     score: float
     second_score: float
     raw: np.ndarray

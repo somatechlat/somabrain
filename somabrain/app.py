@@ -2607,6 +2607,10 @@ async def remember(body: dict, request: Request):
             queued = True
         except Exception:
             pass
+        try:
+            M.LTM_STORE_QUEUED.inc()
+        except Exception:
+            pass
         if require_memory:
             # Include operational flags in the error payload for clients that want to react.
             raise HTTPException(

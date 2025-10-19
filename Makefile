@@ -67,7 +67,6 @@ docker-push:
 
 clean:
 	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__
-PY := .venv/bin/python
 
 # ---------------------------------------------------------------------------
 # Documentation

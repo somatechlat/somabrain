@@ -67,8 +67,31 @@ class UtilityWeightsState(BaseModel):  # type: ignore[misc]
     nu: float
 
 
+class AdaptationGainsState(BaseModel):  # type: ignore[misc]
+    alpha: float
+    gamma: float
+    lambda_: float
+    mu: float
+    nu: float
+
+
+class AdaptationConstraintsState(BaseModel):  # type: ignore[misc]
+    alpha_min: float
+    alpha_max: float
+    gamma_min: float
+    gamma_max: float
+    lambda_min: float
+    lambda_max: float
+    mu_min: float
+    mu_max: float
+    nu_min: float
+    nu_max: float
+
+
 class AdaptationStateResponse(BaseModel):  # type: ignore[misc]
     retrieval: RetrievalWeightsState
     utility: UtilityWeightsState
     history_len: int
     learning_rate: float
+    gains: AdaptationGainsState
+    constraints: AdaptationConstraintsState

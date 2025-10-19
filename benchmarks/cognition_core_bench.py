@@ -13,7 +13,7 @@ Latency:
 - Measure per-trial unbind latency and report p99 (ms); target <= 1.0 ms
 
 Usage:
-  PYTHONPATH=. .venv/bin/python benchmarks/cognition_core_bench.py
+    PYTHONPATH=. python benchmarks/cognition_core_bench.py --dim 8192 --dtype float32
 """
 
 from __future__ import annotations
@@ -22,6 +22,13 @@ import csv
 import statistics
 import time
 from pathlib import Path
+import argparse
+import json
+import os
+import platform
+import subprocess
+import sys
+from datetime import datetime, timezone
 from typing import Dict, List
 
 import numpy as np
@@ -258,6 +265,32 @@ def write_csv(rows: List[Dict[str, object]], path: Path) -> None:
             w.writerow(r)
 
 
+def _git_sha() -> str:
+    try:
+        root = Path(__file__).resolve().parents[1]
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(root))
+            .decode()
+            .strip()
+        )
+    except Exception:
+        return "unknown"
+
+
+def _provenance(extra: dict | None = None) -> dict:
+    prov = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "python": sys.version.split()[0],
+        "platform": platform.platform(),
+        "git_sha": _git_sha(),
+        "cwd": str(os.getcwd()),
+        "executable": sys.executable,
+    }
+    if extra:
+        prov.update(extra)
+    return prov
+
+
 def try_plots(
     quality: List[Dict[str, object]], latency: List[Dict[str, object]], out_dir: Path
 ) -> None:
@@ -328,13 +361,17 @@ def try_plots(
         print("Plotting skipped:", e)
 
 
-def main() -> None:
+def main(dim: int = 8192, dtype: str = "float32") -> None:
     out_dir = Path("benchmarks")
     out_dir.mkdir(parents=True, exist_ok=True)
-    quality = run_quality_bench(dim=8192, dtype="float32")
-    latency = run_latency_bench(dim=8192, dtype="float32")
+    quality = run_quality_bench(dim=dim, dtype=dtype)
+    latency = run_latency_bench(dim=dim, dtype=dtype)
     write_csv(quality, out_dir / "cognition_quality.csv")
     write_csv(latency, out_dir / "cognition_latency.csv")
+    # Write provenance sidecar
+    (out_dir / "cognition_provenance.json").write_text(
+        json.dumps(_provenance({"phase": "cognition_core", "dim": dim, "dtype": dtype}), indent=2)
+    )
 
     # Print gates
     # Gate 1: Unitary+Exact cosine@k=1 >= 0.70
@@ -376,4 +413,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Cognition core benchmark: quality and latency gates")
+    parser.add_argument("--dim", type=int, default=8192)
+    parser.add_argument("--dtype", choices=["float32", "float64"], default="float32")
+    args = parser.parse_args()
+    main(dim=args.dim, dtype=args.dtype)

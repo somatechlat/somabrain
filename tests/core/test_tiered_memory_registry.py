@@ -60,12 +60,10 @@ def test_apply_effective_config_updates_runtime() -> None:
         tenant=tenant,
         namespace=namespace,
         payload={
-            "memory": {
-                "eta": 0.2,
-                "sparsity": 0.6,
-                "cleanup": {"topk": 8, "hnsw": {"efSearch": 64}},
-                "gate": {"tau": 0.55},
-            }
+            "eta": 0.2,
+            "sparsity": 0.6,
+            "cleanup": {"topk": 8, "hnsw": {"efSearch": 64}},
+            "gate": {"tau": 0.55},
         },
     )
 

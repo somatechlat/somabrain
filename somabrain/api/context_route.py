@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from dataclasses import asdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +22,8 @@ from somabrain.api.schemas.context import (
     FeedbackResponse,
     MemoryItem,
     AdaptationStateResponse,
+    AdaptationGainsState,
+    AdaptationConstraintsState,
     RetrievalWeightsState,
     UtilityWeightsState,
 )
@@ -347,6 +350,8 @@ async def adaptation_state_endpoint(
         mu=adapter.utility_weights.mu,
         nu=adapter.utility_weights.nu,
     )
+    gains_state = AdaptationGainsState(**asdict(adapter._gains))
+    constraints_state = AdaptationConstraintsState(**asdict(adapter._constraint_bounds))
     # Access protected members for observability (history length, lr)
     # Use the module‑level feedback counter for a clean monotonic metric.
     # The counter is incremented on each successful feedback application.
@@ -363,4 +368,6 @@ async def adaptation_state_endpoint(
         utility=utility_state,
         history_len=history_len,
         learning_rate=learning_rate,
+        gains=gains_state,
+        constraints=constraints_state,
     )

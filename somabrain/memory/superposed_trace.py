@@ -12,12 +12,15 @@ it can slot into the upcoming memory service refactor.
 from __future__ import annotations
 
 import math
+import logging
 from dataclasses import dataclass, replace
 from typing import Callable, Dict, Optional, Tuple, Protocol, Iterable, List
 
 import numpy as np
 
 from somabrain.quantum import HRRConfig, QuantumLayer
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -162,7 +165,9 @@ class SuperposedTrace:
         key_vec = self._prepare_key(key)
         return self._q.unbind(self._state, key_vec)
 
-    def recall(self, key: np.ndarray) -> Tuple[np.ndarray, Tuple[str, float, float]]:
+    def recall(
+        self, key: np.ndarray
+    ) -> Tuple[np.ndarray, Tuple[Optional[str], float, float]]:
         """Recall a value by key with basic cleanup against managed anchors."""
 
         raw = self.recall_raw(key)
@@ -257,11 +262,12 @@ class SuperposedTrace:
             return np.zeros_like(self._state)
         return (new_state / norm).astype(np.float32, copy=False)
 
-    def _cleanup(self, query: np.ndarray) -> Tuple[str, float, float]:
+    def _cleanup(self, query: np.ndarray) -> Tuple[Optional[str], float, float]:
         if not self._anchors:
-            return "", 0.0, 0.0
+            logger.debug("SuperposedTrace.cleanup: no anchors registered")
+            return None, 0.0, 0.0
         query_vec = self._ensure_vector(query, "cleanup_query")
-        best_id = ""
+        best_id: Optional[str] = None
         best_score = -1.0
         second_score = -1.0
         candidates: Iterable[Tuple[str, float]]
@@ -281,7 +287,9 @@ class SuperposedTrace:
                 best_id = anchor_id
             elif score > second_score:
                 second_score = score
-        if best_score < 0.0:
+        if best_id is None or best_score < 0.0:
+            logger.debug("SuperposedTrace.cleanup: no candidate exceeded similarity threshold")
+            best_id = None
             best_score = 0.0
         if second_score < 0.0:
             second_score = 0.0

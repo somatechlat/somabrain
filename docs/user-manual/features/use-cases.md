@@ -1,81 +1,111 @@
-# Use Cases and Key Features
+# Use Cases
 
-**Purpose**: Provide real-world contexts that demonstrate how SomaBrain capabilities solve concrete problems.
+**Purpose** Map real SomaBrain features to practical scenarios you can reproduce with the published APIs.
 
-**Audience**: Product owners, solution architects, and developers deciding where SomaBrain fits into their roadmap.
+**Audience** Teams evaluating whether SomaBrain fits their product requirements.
 
-**Prerequisites**: Review the [Feature Index](index.md) and complete the [Quick Start Tutorial](../quick-start-tutorial.md) so you can reproduce the examples.
-
----
-
-## Quick Navigation
-- [High-Impact Use Cases](#high-impact-use-cases)
-- [Why SomaBrain Changes Everything](#why-somabrain-changes-everything)
-- [Verification](#verification)
-- [Common Errors](#common-errors)
-- [References](#references)
+**Prerequisites** Execute the [Quick Start Tutorial](../quick-start-tutorial.md) so you have a working environment.
 
 ---
 
-## High-Impact Use Cases
+## 1. Persistent Assistant Memory
 
-| Use Case | Before SomaBrain | With SomaBrain |
-|----------|------------------|----------------|
-| **AI Chatbots** | Conversations reset every session | Conversations remember preferences, tone, and goals across time |
-| **Knowledge Systems** | Keyword search misses context | Semantic recall understands intent and natural language queries |
-| **AI Agents** | Agents relearn facts repeatedly | Agents build persistent expertise that evolves with users |
-| **Enterprise AI** | "One-size" policies frustrate teams | Tenant isolation unlocks tailored experiences per department |
-| **Research Tools** | Static PDFs limit discovery | Cognitive memory links papers, notes, and experiments automatically |
+**Goal** Store user preferences during a conversation and recall them later.
 
----
+**Workflow**
 
-## ✨ Why SomaBrain Changes Everything
-> *"The first AI memory system that thinks like Einstein but scales like the internet."*
+1. Call `/remember` with `task="assistant.preferences"` whenever your assistant learns something durable (e.g., preferred language).
+2. On subsequent conversations, call `/recall` with a query such as `"user preferences"` and `top_k` set high enough to surface the stored entry.
+3. For better prompts, use `/context/evaluate` and feed the response’s `prompt` into your language model.
 
-### 🧠 Memory Systems That Never Forget
-- **Multi-Tenant Working Memory**: Dedicated Redis-backed namespaces prevent cross-tenant interference.
-- **Long-Term Memory Integration**: HTTP services persist strategic conversations with complete audit trails.
-- **Salience Detection**: Frequency analysis highlights high-value memories automatically.
-- **Memory Consolidation**: Background tasks optimise retrieval speed and relevance without manual tuning.
+**Code Points**
 
-### ⚡ Breakthrough Mathematics That Just Works
-- **BHDC Encoding**: Binary hypervectors capture nuanced semantic relationships between concepts.
-- **Permutation Binding**: Role-based binding keeps relationships ("Paris" and "France") intact during recall.
-- **Quantum Layer Operations**: Superposition enables composable queries across composite ideas.
-- **Deterministic Encoding**: Seeded randomness keeps test, staging, and production aligned.
-
-### 📊 Relevance That Reads Your Mind
-- **Unified Similarity**: Cosine, frequency-domain, and recency scores combine for precise ranking.
-- **Adaptive Weighting**: Tune component weights to prioritise recency, novelty, or semantic closeness.
-- **Context Awareness**: Temporal metadata influences recall so urgent items surface ahead of stale history.
-- **Density Matrix Operations**: Second-order recall uncovers indirect associations.
-
-### 🏗️ Enterprise Without Compromise
-- **Multi-Tenancy**: Tenant isolation enforces data governance by design.
-- **Rate Limiting**: Per-tenant quotas prevent abusive workloads from degrading shared capacity.
-- **Audit Pipeline**: Event streams document every memory mutation for compliance audits.
-- **Health Monitoring**: `/health` and Prometheus data expose issues before customers notice.
+- Memory payload schema: `somabrain/schemas.py::MemoryPayload`
+- Recall response parsing: `somabrain/schemas.py::RecallResponse`
+- Context building: `somabrain/context/builder.py`
 
 ---
 
-## Verification
-- Execute one scenario end-to-end (store → recall → reason) using the API snippets in the linked feature guides.
-- Confirm each bullet above maps to a documented feature or runbook referenced in this manual.
-- Update this page when new customer case studies or benchmark wins add to SomaBrain's portfolio.
+## 2. Retrieval-Augmented Generation (RAG)
+
+**Goal** Provide documents and summaries to a downstream model.
+
+**Workflow**
+
+1. Ingest knowledge base articles via `/remember/batch`.
+2. For each user question, call `/context/evaluate` to obtain:
+   - `prompt` – ready-to-send context string.
+   - `memories` – structured metadata you can use for citations.
+3. Invoke `/context/feedback` with the user rating to refine retrieval weights for future calls.
+
+**Code Points**
+
+- Planner scoring: `somabrain/context/planner.py`
+- Adaptation engine: `somabrain/learning/adaptation.py`
+- Feedback schema: `somabrain/api/schemas/context.py::FeedbackRequest`
 
 ---
 
-## Common Errors
+## 3. Multi-Tenant Platform
 
-| Issue | Symptom | Resolution |
-|-------|---------|------------|
-| Over-promising capabilities | Field teams repeat outdated claims | Sync copy with the latest release notes before demos. |
-| Missing prerequisites | Readers cannot reproduce scenarios | Verify Quick Start and installation steps are still accurate. |
-| Stale cross-links | Clicking a scenario returns 404 | Update links whenever feature docs move or rename. |
+**Goal** Serve multiple customers from one deployment while keeping data and metrics isolated.
+
+**Workflow**
+
+1. Issue each tenant a unique bearer token and pass `X-Tenant-ID` on every request.
+2. Monitor per-tenant metrics using the `tenant_id` label in Prometheus (e.g., `somabrain_feedback_total{tenant_id="org_acme"}`).
+3. Enforce daily write caps via `SOMABRAIN_QUOTA_DAILY_WRITES` or by extending `QuotaConfig`.
+
+**Code Points**
+
+- Tenant resolution: `somabrain/tenant.py`
+- Rate limiting: `somabrain/ratelimit.py`
+- Quotas: `somabrain/quotas.py`
 
 ---
 
-## References
-- `docs/user-manual/features/memory-operations.md` for hands-on memory workflows referenced above.
-- `docs/user-manual/features/cognitive-reasoning.md` for the reasoning capabilities highlighted in each use case.
-- `docs/technical-manual/runbooks/operations-overview.md` to connect enterprise promises (audit, health) to operational procedures.
+## 4. Offline Consolidation
+
+**Goal** Summarise or reorganise memories during low-traffic windows.
+
+**Workflow**
+
+1. Trigger `/sleep/run` with `{"nrem": true, "rem": true}` to run consolidation cycles.
+2. Inspect the response for generated summaries; the same information is logged by `somabrain.consolidation`.
+3. Schedule the call via a job runner or use the built-in cron worker if available in your deployment.
+
+**Code Points**
+
+- Consolidation routines: `somabrain/consolidation.py`
+- Hippocampus integration: `somabrain/hippocampus.py`
+- Sleep API handler: `somabrain/app.py::sleep_run`
+
+---
+
+## 5. Neuromodulator Experiments
+
+**Goal** Adjust learning speed dynamically in response to external signals (e.g., reinforcement signals from another system).
+
+**Workflow**
+
+1. Fetch the current neuromodulator state: `curl /neuromodulators`.
+2. Update dopamine (or other fields) using `POST /neuromodulators`.
+3. Submit feedback (`/context/feedback`) and observe how the learning rate changes (`learning_rate` in `/context/adaptation/state`).
+
+**Code Points**
+
+- Neuromodulator storage: `somabrain/neuromodulators.py`
+- Dynamic learning rate flag: `SOMABRAIN_LEARNING_RATE_DYNAMIC`
+- Adaptation gains and constraints: `somabrain/learning/adaptation.py`
+
+---
+
+## Verifying a Use Case
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Run the relevant API requests | HTTP 200 with payload matching the schemas. |
+| 2 | Inspect metrics (`/metrics`) | Tenant-labelled counters increase as expected. |
+| 3 | Check Redis or logs | Confirm working memory admissions, adaptation state changes, or consolidation summaries. |
+
+Update this page when new features are promoted from development or when code changes alter the recommended workflow.

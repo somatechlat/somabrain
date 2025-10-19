@@ -1,70 +1,108 @@
 # Installation Guide
 
-**Purpose**: Simple installation instructions for end-users wanting to use SomaBrain.
+**Purpose** Bring up a functioning SomaBrain stack for evaluation or development.
 
-**Audience**: End-users, application developers, and system integrators.
+**Audience** Engineers and operators who need the API running locally or in a lab environment.
 
-**Prerequisites**: Docker (for containerized deployment) or Python 3.10+ (for direct installation).
+**Prerequisites**
+- Docker Desktop **or** a host with Docker Engine + Compose Plugin.
+- Python 3.11 (optional, for running the API directly).
+- An HTTP memory backend listening on `http://localhost:9595` (the API refuses writes when `SOMABRAIN_REQUIRE_MEMORY=1` and the backend is unavailable).
 
 ---
 
-## 🚀 Quick Start — Up and Running in 60 Seconds
+## 1. Clone the Repository
 
-### Option 1: Docker Compose (Recommended)
 ```bash
 git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
+```
+
+Check out the branch/tag you intend to run, then copy `.env.example` to `.env` if you want to override defaults.
+
+---
+
+## 2. Start Required Dependencies
+
+The Docker Compose bundle in the repo launches the FastAPI runtime plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. It **does not** ship the external memory HTTP service – start your memory backend separately before booting SomaBrain.
+
+```bash
+# bring up SomaBrain services
 docker compose up -d
+
+# follow logs if you need to confirm startup
+docker compose logs -f somabrain_app
 ```
 
-**✅ Ready!** Access your cognitive system:
-- **API Documentation**: http://localhost:9696/docs (Interactive OpenAPI interface)
-- **Health Monitoring**: http://localhost:9696/health (System status)
-- **Metrics Dashboard**: http://localhost:9696/metrics (Prometheus metrics)
+Verify the stack:
 
-### Option 2: Local Development
 ```bash
-git clone https://github.com/somatechlat/somabrain.git
-cd somabrain
-python -m venv .venv && source .venv/bin/activate
-pip install -e .[dev]
-
-# Configure for local development
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595
-export SOMABRAIN_DISABLE_AUTH=1
-
-# Start the cognitive runtime
-uvicorn somabrain.app:app --host 127.0.0.1 --port 9696
+curl -s http://localhost:9696/health | jq
+curl -s http://localhost:9696/metrics | head
 ```
+
+A healthy response returns HTTP 200 with `memory_ok`, `embedder_ok`, and `predictor_ok` all `true`. If `ready` is `false`, the API is still booting or waiting for an external dependency (typically the memory service).
 
 ---
 
-## Uninstallation
+## 3. Running the API Without Docker (Optional)
 
-### Docker Compose Removal
+Use this mode only when you already have the dependencies (Redis, memory service, Kafka, OPA, Postgres) running elsewhere.
+
 ```bash
-# Stop and remove containers
-docker compose down --remove-orphans
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip && pip install -e .[dev]
 
-# Remove volumes (WARNING: deletes all data)
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595
+export SOMABRAIN_DISABLE_AUTH=1            # dev only
+export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
+
+uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reload
+```
+
+Disable the auth bypass (`SOMABRAIN_DISABLE_AUTH`) before deploying to any shared environment.
+
+---
+
+## 4. Shutdown & Cleanup
+
+```bash
+# stop services, keep volumes
+docker compose down
+
+# optional: remove persisted data
 docker compose down --volumes
 
-# Remove images
-docker rmi $(docker images "somabrain/*" -q)
+# optional: delete built images
+docker image prune -f --filter label=com.docker.compose.project=somabrain
 ```
 
 ---
 
-**Verification**: SomaBrain successfully installed when health check returns HTTP 200 and basic memory operations work.
+## Verification Checklist
 
-**Common Errors**:
-- Port conflicts → Change SOMABRAIN_PORT in .env file
-- Insufficient memory → Increase Docker memory limit or system RAM
-- Connection refused → Check firewall settings and Docker daemon status
-- Service startup failures → Review logs with `docker compose logs`
+| Step | Command | Expected |
+|------|---------|----------|
+| Health check | `curl -s http://localhost:9696/health` | JSON with `"memory_ok": true` (or descriptive error) |
+| Remember test | `curl -X POST http://localhost:9696/remember ...` | Response containing `"ok": true` |
+| Recall test | `curl -X POST http://localhost:9696/recall ...` | Results array (may be empty if memory backend ignored the write) |
 
-**References**:
-- [Quick Start Tutorial](quick-start-tutorial.md) for guided usage walkthrough
-- [API Integration Guide](features/api-integration.md) for development integration
-- [FAQ](faq.md) for troubleshooting common issues
-- [Technical Manual](../technical-manual/deployment.md) for production deployment
+If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
+
+---
+
+**Common Issues**
+
+- `503 memory backend unavailable` – the memory HTTP service on port 9595 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
+- Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
+- Kafka slow to start – wait for the broker healthcheck (`somabrain_kafka` container) before sending recall requests.
+- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`) or set `SOMABRAIN_DISABLE_AUTH=1` only for isolated dev environments.
+
+---
+
+**Next Steps**
+
+- Walk through the [Quick Start Tutorial](quick-start-tutorial.md) to validate memory ingestion and recall.
+- Review [features/api-integration.md](features/api-integration.md) for required headers and error handling.
+- For production hardening, follow the [Technical Manual – Deployment](../technical-manual/deployment.md).
