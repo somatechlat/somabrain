@@ -33,6 +33,8 @@ class OPAClient:
                 )
             except Exception:
                 self.timeout = 2.0
+            # TODO(Sprint3): honor settings.mode_opa_policy_bundle to choose
+            # the proper bundle path or params when OPA exposes multiple bundles.
         else:
             self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
 

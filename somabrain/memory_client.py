@@ -329,8 +329,10 @@ class MemoryClient:
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
-        if self.cfg.http and self.cfg.http.token:
-            headers["Authorization"] = f"Bearer {self.cfg.http.token}"
+        token_value = None
+        if self.cfg.http and getattr(self.cfg.http, "token", None):
+            token_value = self.cfg.http.token
+            headers["Authorization"] = f"Bearer {token_value}"
 
         # Propagate tenancy via standardized headers (best-effort)
         ns = str(getattr(self.cfg, "namespace", ""))
@@ -474,6 +476,28 @@ class MemoryClient:
             raise RuntimeError(
                 "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
             )
+        # Enforce token presence by mode policy
+        mem_auth_required = True
+        if shared_settings is not None:
+            try:
+                mem_auth_required = bool(
+                    getattr(shared_settings, "mode_memstore_auth_required", True)
+                )
+            except Exception:
+                mem_auth_required = True
+        if self._http is not None and mem_auth_required and not token_value:
+            # If memory is required, treat missing token as fatal; otherwise warn.
+            message = (
+                "MEMORY AUTH REQUIRED: missing SOMABRAIN_MEMORY_HTTP_TOKEN for HTTP memory backend. "
+                "Set a valid dev/staging/prod token to enable /memories and /memories/search."
+            )
+            if require_memory_enabled:
+                raise RuntimeError(message)
+            else:
+                try:
+                    logger.warning(message)
+                except Exception:
+                    pass
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
