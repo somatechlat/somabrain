@@ -9,11 +9,24 @@ __pycache__/
 .env
 *.env
 .env.*
+venv/
+
+# Python packaging/build
+dist/
+pip-wheel-metadata/
+*.egg-info/
 
 # Build artefacts
 build/
-*.egg-info/
 .dist/
+
+# Generated artifacts and reports
+artifacts/
+artifacts/**
+benchmarks/plots/*.html
+benchmarks/plots/*.png
+docs/build/
+docker-build.log
 
 # Logs and temporary files
 *.log

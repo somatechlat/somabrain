@@ -1,6 +1,0 @@
-Posting 100 /remember to http://127.0.0.1:9696/remember ...
-Remember results: 100/100 OK
-Latency ms: mean=1160.5 median=1164.1 p95=1899.2
-Waiting 0.5s for async persistence...
-Recall status=200 time_ms=117.2
-Recall wm hits: 10 memory hits: 0
