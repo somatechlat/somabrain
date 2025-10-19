@@ -858,6 +858,48 @@ except Exception:
         log.debug("Reward Gate middleware not registered", exc_info=True)
 
 
+# --- Startup self-check banner (Sprint 1) ---------------------------------------
+@app.on_event("startup")
+async def _startup_mode_banner() -> None:
+    """Log mode, derived flags, and deprecation notices on boot.
+
+    This is informational only and does not mutate existing behavior. It helps
+    operators verify that SOMABRAIN_MODE is respected and surfaces any legacy
+    envs slated for removal.
+    """
+    try:
+        from common.config.settings import settings as _shared
+    except Exception:  # pragma: no cover
+        _shared = None
+    lg = logging.getLogger("somabrain")
+    try:
+        mode = getattr(_shared, "mode", "prod") if _shared else "prod"
+        mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
+        api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+        mem_auth = bool(getattr(_shared, "mode_memstore_auth_required", True)) if _shared else True
+        opa_closed = bool(getattr(_shared, "mode_opa_fail_closed", True)) if _shared else True
+        log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
+        bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
+        lg.warning(
+            "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memstore_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
+            mode,
+            mode_norm,
+            api_auth,
+            mem_auth,
+            opa_closed,
+            log_level,
+            bundle,
+        )
+        if _shared is not None:
+            for note in getattr(_shared, "deprecation_notices", []) or []:
+                lg.warning("DEPRECATION: %s", note)
+    except Exception:
+        try:
+            lg.debug("Failed to emit startup mode banner", exc_info=True)
+        except Exception:
+            pass
+
+
 @app.on_event("startup")
 async def _init_constitution() -> None:
     """Load the constitution engine (if present) and publish metrics."""

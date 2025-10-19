@@ -183,6 +183,120 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_LOCAL_MIRRORS", True)
     )
 
+    # --- Mode-derived views (read-only, not sourced from env) ---------------------
+    # These computed properties provide a single source of truth for behavior
+    # by SOMABRAIN_MODE without mutating legacy flags. Existing code continues
+    # to read disable_auth/require_external_backends until migrated in Sprint 2.
+
+    @property
+    def mode_normalized(self) -> str:
+        """Normalized mode name in {dev, staging, prod}. Unknown maps to prod.
+
+        Historically, the default was "enterprise"; we treat that as prod.
+        """
+        try:
+            m = (self.mode or "").strip().lower()
+        except Exception:
+            m = ""
+        if m in ("dev", "development"):  # allow synonyms
+            return "dev"
+        if m in ("stage", "staging"):
+            return "staging"
+        # enterprise/main/prod/empty -> prod
+        return "prod"
+
+    @property
+    def mode_api_auth_enabled(self) -> bool:
+        """Whether API auth should be enabled under the current mode.
+
+        - dev: False (policy relaxations for local development)
+        - staging: True
+        - prod: True
+        """
+        m = self.mode_normalized
+        return m != "dev"
+
+    @property
+    def mode_require_external_backends(self) -> bool:
+        """Require real backends (no stubs) across all modes by policy.
+
+        This mirrors the "no mocks" requirement and prevents silent fallbacks.
+        """
+        return True
+
+    @property
+    def mode_memstore_auth_required(self) -> bool:
+        """Whether memstore HTTP calls must carry a token.
+
+        - dev: True (dev token or approved proxy)
+        - staging: True
+        - prod: True
+        """
+        return True
+
+    @property
+    def mode_opa_fail_closed(self) -> bool:
+        """Whether OPA evaluation should fail-closed by mode.
+
+        - dev: False (allow-dev bundle; permissive)
+        - staging: True
+        - prod: True
+        """
+        return self.mode_normalized != "dev"
+
+    @property
+    def mode_log_level(self) -> str:
+        """Recommended root log level by mode."""
+        m = self.mode_normalized
+        if m == "dev":
+            return "DEBUG"
+        if m == "staging":
+            return "INFO"
+        return "WARNING"
+
+    @property
+    def mode_opa_policy_bundle(self) -> str:
+        """Policy bundle name to use by mode."""
+        m = self.mode_normalized
+        if m == "dev":
+            return "allow-dev"
+        if m == "staging":
+            return "staging"
+        return "prod"
+
+    @property
+    def deprecation_notices(self) -> list[str]:
+        """List of deprecation notices derived from env usage.
+
+        We do not mutate legacy flags here; we only surface guidance so logs
+        can point developers to SOMABRAIN_MODE as the source of truth.
+        """
+        notes: list[str] = []
+        try:
+            if os.getenv("SOMABRAIN_FORCE_FULL_STACK") is not None:
+                notes.append(
+                    "SOMABRAIN_FORCE_FULL_STACK is deprecated; use SOMABRAIN_MODE with mode_require_external_backends policy."
+                )
+        except Exception:
+            pass
+        try:
+            if os.getenv("SOMABRAIN_DISABLE_AUTH") is not None:
+                notes.append(
+                    "SOMABRAIN_DISABLE_AUTH is deprecated; auth enablement is derived from SOMABRAIN_MODE (mode_api_auth_enabled)."
+                )
+        except Exception:
+            pass
+        # Warn on unknown modes
+        try:
+            raw = (self.mode or "").strip().lower()
+            if raw and raw not in ("dev", "development", "stage", "staging", "prod", "enterprise"):
+                notes.append(
+                    f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
+                )
+        except Exception:
+            pass
+        return notes
+
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep
     # case-insensitive env names. The `env_file` is preserved so `.env.local`
