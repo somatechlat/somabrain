@@ -1,56 +1,145 @@
 # SomaBrain
 
-SomaBrain is a research platform for exploring long-horizon cognitive agents. The
-project bundles the core FastAPI service, supporting infrastructure components
-such as Redis, Kafka, and OPA, plus a growing suite of benchmarks and
-observability tooling.
+**SomaBrain is an opinionated cognitive memory runtime that gives your AI systems long-term memory, contextual reasoning, and live adaptation—backed by real math, running code, and production-ready infrastructure.**  
+It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensional computing under the hood, and a full Docker stack (Redis, Kafka, OPA, Postgres, Prometheus) so you can test the whole brain locally.
 
-## Getting Started
+---
 
-1. Create a Python virtual environment and install dependencies:
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -U pip
-   pip install -e .[dev]
-   ```
-2. Run the unit test suite:
-   ```bash
-   pytest
-   ```
+## Highlights
 
-## Local Development Environment
+| Capability | What it actually does |
+|------------|------------------------|
+| **Binary Hyperdimensional Computing (BHDC)** | 2048‑D permutation binding, superposition, and cleanup with spectral verification (`somabrain/quantum.py`). |
+| **Tiered Memory** | Multi-tenant working memory + long-term storage coordinated by `TieredMemory`, powered by governed `SuperposedTrace` vectors and cleanup indexes. |
+| **Contextual Reasoning** | `/context/evaluate` builds prompts, weights memories, and returns residuals; `/context/feedback` updates tenant-specific retrieval and utility weights in Redis. |
+| **Adaptive Learning** | Decoupled gains and bounds per parameter, configurable via settings/env, surfaced in Prometheus metrics and the adaptation state API. |
+| **Observability Built-In** | `/health`, `/metrics`, structured logs, and journaling. Queued writes and adaptation behaviour emit explicit metrics so you can see when the brain deviates. |
+| **Hard Tenancy** | Each request resolves a tenant namespace (`somabrain/tenant.py`); quotas and rate limits are enforced before the memory service is called. |
+| **Complete Docs** | Four-manual documentation suite (User, Technical, Development, Onboarding) plus a canonical improvement log (`docs/CANONICAL_IMPROVEMENTS.md`). |
 
-To launch the lightweight development stack (API + Redis + OPA):
+---
+
+## Math & Systems at a Glance
+
+### Hyperdimensional Core
+- **QuantumLayer** (`somabrain/quantum.py`) implements BHDC operations (bind, unbind, superpose) with deterministic unitary roles and spectral invariants.
+- **Numerics** (`somabrain/numerics.py`) normalises vectors safely with dtype-aware tiny floors.
+- **SuperposedTrace** (`somabrain/memory/superposed_trace.py`) maintains a governed superposition with decay (\(\eta\)), deterministic rotations, cleanup indexes (cosine or HNSW), and now logs when no anchors match.
+
+### Retrieval & Scoring
+- **ContextBuilder** (`somabrain/context/builder.py`) embeds queries, computes per-memory weights, and adjusts the temperature parameter \(\tau\) based on observed duplicate ratios.
+- **UnifiedScorer** (`somabrain/scoring.py`) blends cosine, frequent-directions projections, and recency; weights and decay constants can be tuned via `scorer_*` settings and are exposed through diagnostics.
+- **TieredMemory** (`somabrain/memory/hierarchical.py`) orchestrates working and long-term traces with configurable promotion policies and safe handling when cleanup finds no anchor.
+
+### Learning & Neuromodulation
+- **AdaptationEngine** (`somabrain/learning/adaptation.py`) provides decoupled gains for retrieval (α, β, γ, τ) and utility (λ, μ, ν), driven by tenant-specific feedback. Configured gains/bounds are mirrored in metrics and the adaptation state API.
+- **Neuromodulators** (`somabrain/neuromodulators.py`) supply dopamine/serotonin/noradrenaline/acetylcholine levels that can modulate learning rate (enable with `SOMABRAIN_LEARNING_RATE_DYNAMIC`).
+- **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, feedback counts, and queue health (`somabrain_ltm_store_queued_total`).
+
+---
+
+## Runtime Topology
+
+```
+HTTP Client
+   │  /remember /recall /context/evaluate /context/feedback …
+   ▼
+FastAPI Runtime (somabrain/app.py)
+   │   ├─ Authentication & tenancy guards
+   │   ├─ ContextBuilder / Planner / AdaptationEngine
+   │   ├─ MemoryService (HTTP + journaling)
+   │   └─ Prometheus metrics, structured logs
+   ▼
+Working Memory (MultiTenantWM) ──► Redis
+Long-Term Memory ───────────────► External memory HTTP service
+OPA Policy Engine ──────────────► Authorization decisions
+Kafka ──────────────────────────► Audit & streaming
+Postgres ───────────────────────► Config & metadata
+Prometheus ─────────────────────► Metrics export
+```
+
+Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters on ports 9696 and 20001–20007. Bring your own memory HTTP backend (default `http://localhost:9595`).
+
+---
+
+## API Overview
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, and embedder.
+| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Journals if the backend is unavailable and sets `breaker_open`/`queued` flags.
+| `POST /remember/batch` | Bulk ingestion with per-item success/failure counts.
+| `POST /recall` | Retrieves working-memory and long-term matches with scores from `UnifiedScorer`.
+| `POST /context/evaluate` | Builds a prompt, returns weighted memories, residual vector, and working-memory snapshot.
+| `POST /context/feedback` | Updates tenant-specific retrieval/utility weights; emits gain/bound metrics.
+| `GET /context/adaptation/state` | Inspect current weights, effective learning rate, configured gains, and bounds.
+| `POST /plan/suggest`, `POST /act` | Planner/agent assist (enabled when full stack is running).
+| `POST /sleep/run` | Trigger NREM/REM consolidation cycles.
+| `GET/POST /neuromodulators` | Read or set neuromodulator levels (dopamine, serotonin, etc.).
+
+All endpoints require a Bearer token unless you set `SOMABRAIN_DISABLE_AUTH=1` for local experiments, and every call can be scoped with `X-Tenant-ID`.
+
+---
+
+## Quick Start
 
 ```bash
-./scripts/start_dev_infra.sh
+# Clone and launch the full stack
+$ git clone https://github.com/somatechlat/somabrain.git
+$ cd somabrain
+$ docker compose up -d
+# Ensure your memory backend is accessible at http://localhost:9595
+$ curl -s http://localhost:9696/health | jq
 ```
 
-The API will be served on `http://localhost:9696` with health check
-`http://localhost:9696/health`.
-
-> Tip: you must run the external memory service yourself (default
-> `http://host.docker.internal:9595`) before starting the stack. SomaBrain will
-> refuse to start if the endpoint is unreachable.
-
-## Project Structure
-
-```
-common/       Shared helpers used across services
-memory/       Memory subsystem powering recall/remember endpoints
-somabrain/    FastAPI application routers and runtime wiring
-tests/        Pytest suite covering core API flows
-```
-
-## Contributing
-
-Please run formatting and type checks before opening a pull request:
+Store and recall a memory:
 
 ```bash
-ruff check
-mypy
-pytest
+$ curl -s http://localhost:9696/remember \
+    -H "Content-Type: application/json" \
+    -d '{"payload": {"task": "kb.paris", "content": "Paris is the capital of France."}}'
+
+$ curl -s http://localhost:9696/recall \
+    -H "Content-Type: application/json" \
+    -d '{"query": "capital of France", "top_k": 3}' | jq '.results'
 ```
 
-Open an issue to discuss larger changes or architectural design questions.
+Close the loop with feedback:
+
+```bash
+$ curl -s http://localhost:9696/context/feedback \
+    -H "Content-Type: application/json" \
+    -d '`
+{"session_id":"demo","query":"capital of France","prompt":"Summarise the capital of France.","response_text":"Paris is the capital of France.","utility":0.9,"reward":0.9}
+`
+'
+```
+
+Inspect tenant learning state:
+
+```bash
+$ curl -s http://localhost:9696/context/adaptation/state | jq
+```
+
+Metrics are available at `http://localhost:9696/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
+
+---
+
+## Documentation & Roadmap
+
+- **User Manual** – Installation, quick start, feature guides, FAQ (`docs/user-manual/`).
+- **Technical Manual** – Architecture, deployment, monitoring, runbooks, security (`docs/technical-manual/`).
+- **Development Manual** – Repository layout, coding standards, testing strategy, contribution workflow (`docs/development-manual/`).
+- **Onboarding Manual** – Project context, code walkthroughs, checklists (`docs/onboarding-manual/`).
+- **Canonical Improvements** – Living record of all hardening and transparency work (`docs/CANONICAL_IMPROVEMENTS.md`).
+
+---
+
+## Contributing & Next Steps
+
+1. Read the [Development Manual](docs/development-manual/index.md) and follow the local setup + testing instructions (`pytest`, `ruff`, `mypy`).
+2. Extend the cognitive stack: plug in your own memory service, add new retrieval strategies, or integrate additional planning heuristics via `somabrain/planner`.
+3. Capture benchmarks with the scripts under `benchmarks/` (e.g., `learning_speed_interactive.ipynb`) to measure model retention and learning speed.
+4. File issues or update `docs/CANONICAL_IMPROVEMENTS.md` whenever you add a new capability or harden an assumption.
+
+**SomaBrain’s guiding philosophy is simple: make high-order memory and reasoning practical without relaxing the math. If something looks magical, you can find the code, metrics, and documentation that make it real.**
