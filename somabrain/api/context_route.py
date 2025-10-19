@@ -8,6 +8,7 @@ from dataclasses import asdict
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 
 from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import (
@@ -43,8 +44,32 @@ from somabrain.metrics import (
 )
 
 router = APIRouter()
-_feedback_store = FeedbackStore()
-_token_ledger = TokenLedger()
+
+# Lazily-tolerant store initialization: if databases are temporarily unavailable
+# during import, degrade to no-op stores so routes still register and the API
+# surface is exposed. Persistence will be attempted again on first use.
+try:
+    _feedback_store = FeedbackStore()
+    _token_ledger = TokenLedger()
+except Exception as _e:  # pragma: no cover - import-time resilience
+    import logging as _logging
+
+    _logging.getLogger("somabrain.api").warning(
+        "context_route: feedback/token stores unavailable at import: %s", _e
+    )
+
+    class _NoopStore:  # minimal no-op fallback
+        def record(self, *args, **kwargs):
+            return None
+
+        def total_count(self) -> int:
+            return 0
+
+        def list_for_session(self, session_id: str):  # type: ignore[override]
+            return []
+
+    _feedback_store = _NoopStore()
+    _token_ledger = _NoopStore()
 
 # Global counter for feedback applications across requests
 _feedback_counter = 0
@@ -371,3 +396,117 @@ async def adaptation_state_endpoint(
         gains=gains_state,
         constraints=constraints_state,
     )
+
+
+class ResetAdaptationRequest(BaseModel):  # type: ignore[misc]
+    tenant_id: Optional[str] = None
+    base_lr: Optional[float] = None
+    reset_history: bool = True
+    retrieval_defaults: Optional[RetrievalWeightsState] = None
+    utility_defaults: Optional[UtilityWeightsState] = None
+    gains: Optional[AdaptationGainsState] = None
+    constraints: Optional[AdaptationConstraintsState] = None
+
+
+@router.post("/adaptation/reset")
+async def adaptation_reset_endpoint(
+    payload: ResetAdaptationRequest,
+    request: Request,
+    auth=Depends(auth_guard),
+):
+    """Reset the per-tenant adaptation engine to defaults for clean benchmarks.
+
+    This endpoint is intended for operator/benchmark use. It does not return
+    a model and will simply respond with a JSON status on success.
+    """
+    # Gate reset to dev mode only to avoid misuse in staging/prod.
+    try:
+        from common.config.settings import settings as _shared
+        if getattr(_shared, "mode_normalized", "prod") != "dev":
+            raise HTTPException(status_code=403, detail="adaptation reset not allowed outside dev mode")
+    except HTTPException:
+        raise
+    except Exception:
+        # If settings cannot be imported, remain conservative and allow only when legacy disable_auth is true
+        try:
+            from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
+            if not _legacy_auth_disabled():
+                raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+        except Exception:
+            raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+    from pydantic import BaseModel as _BM  # local import to avoid global dependency
+    builder = get_context_builder()
+    planner = get_context_planner()
+    default_tenant = get_default_tenant()
+    tenant_id = payload.tenant_id or default_tenant
+    adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
+
+    # Optionally replace constraints/gains/base_lr
+    if payload.constraints is not None:
+        from somabrain.learning.adaptation import AdaptationConstraints
+
+        c = payload.constraints
+        adapter.set_constraints(
+            AdaptationConstraints(
+                alpha_min=c.alpha_min,
+                alpha_max=c.alpha_max,
+                gamma_min=c.gamma_min,
+                gamma_max=c.gamma_max,
+                lambda_min=c.lambda_min,
+                lambda_max=c.lambda_max,
+                mu_min=c.mu_min,
+                mu_max=c.mu_max,
+                nu_min=c.nu_min,
+                nu_max=c.nu_max,
+            )
+        )
+    if payload.gains is not None:
+        from somabrain.learning.adaptation import AdaptationGains
+
+        g = payload.gains
+        adapter.set_gains(
+            AdaptationGains(
+                alpha=g.alpha, gamma=g.gamma, lambda_=g.lambda_, mu=g.mu, nu=g.nu
+            )
+        )
+    if payload.base_lr is not None:
+        adapter.set_base_learning_rate(float(payload.base_lr))
+
+    # Build optional defaults structures
+    retrieval_defaults = None
+    if payload.retrieval_defaults is not None:
+        from somabrain.context.builder import RetrievalWeights
+
+        rd = payload.retrieval_defaults
+        retrieval_defaults = RetrievalWeights(
+            alpha=rd.alpha, beta=rd.beta, gamma=rd.gamma, tau=rd.tau
+        )
+    utility_defaults = None
+    if payload.utility_defaults is not None:
+        from somabrain.learning.adaptation import UtilityWeights
+
+        ud = payload.utility_defaults
+        utility_defaults = UtilityWeights(
+            lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu
+        )
+
+    adapter.reset(
+        retrieval_defaults=retrieval_defaults,
+        utility_defaults=utility_defaults,
+        base_lr=payload.base_lr,
+        clear_history=bool(payload.reset_history),
+    )
+
+    # Reset global counter view as well so state.history_len starts at 0
+    global _feedback_counter
+    _feedback_counter = 0
+
+    audit.publish_event(
+        {
+            "action": "context.adaptation_reset",
+            "tenant_id": tenant_id,
+            "base_lr": payload.base_lr,
+            "reset_history": payload.reset_history,
+        }
+    )
+    return {"ok": True, "tenant_id": tenant_id}

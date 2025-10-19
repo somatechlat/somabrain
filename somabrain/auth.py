@@ -26,7 +26,17 @@ _TRUE_VALUES = ("1", "true", "yes", "on")
 
 
 def _auth_disabled() -> bool:
+    # Prefer centralized mode policy when available
     if shared_settings is not None:
+        try:
+            # If mode declares API auth enabled, do not allow legacy disable flags
+            mode_enabled = bool(getattr(shared_settings, "mode_api_auth_enabled", True))
+            if not mode_enabled:
+                # Dev mode: auth disabled by policy
+                return True
+        except Exception:
+            pass
+        # Fall back to legacy flag only when mode policy isn't available
         try:
             return bool(getattr(shared_settings, "disable_auth", False))
         except Exception:

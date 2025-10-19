@@ -82,11 +82,17 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 # Respect fail-closed posture if configured
                 if shared_settings is not None:
                     try:
+                        # Prefer mode policy when available
                         fail_closed = bool(
-                            getattr(shared_settings, "opa_fail_closed", False)
+                            getattr(shared_settings, "mode_opa_fail_closed", False)
                         )
                     except Exception:
-                        fail_closed = False
+                        try:
+                            fail_closed = bool(
+                                getattr(shared_settings, "opa_fail_closed", False)
+                            )
+                        except Exception:
+                            fail_closed = False
                 else:
                     fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
                         "1",
@@ -143,10 +149,15 @@ class OpaMiddleware(BaseHTTPMiddleware):
             if shared_settings is not None:
                 try:
                     fail_closed = bool(
-                        getattr(shared_settings, "opa_fail_closed", False)
+                        getattr(shared_settings, "mode_opa_fail_closed", False)
                     )
                 except Exception:
-                    fail_closed = False
+                    try:
+                        fail_closed = bool(
+                            getattr(shared_settings, "opa_fail_closed", False)
+                        )
+                    except Exception:
+                        fail_closed = False
             else:
                 fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
                     "1",
