@@ -165,14 +165,14 @@ class QuantumLayer:
         a_vec = self._ensure_vector(a, name="bind.a")
         b_vec = self._ensure_vector(b, name="bind.b")
         result = self._renorm(self._binder.bind(a_vec, b_vec))
-        
+
         # Verify spectral properties
         fft_result = np.fft.fft(result)
-        MathematicalMetrics.verify_spectral_property('bind', np.abs(fft_result))
-        
+        MathematicalMetrics.verify_spectral_property("bind", np.abs(fft_result))
+
         # Verify operation correctness
         cosine_a = self.cosine(a_vec, result)
-        MathematicalMetrics.verify_operation_correctness('bind', cosine_a)
+        MathematicalMetrics.verify_operation_correctness("bind", cosine_a)
 
         # Record binder condition number for diagnostics
         from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
@@ -183,7 +183,7 @@ class QuantumLayer:
         if max_val > 0.0:
             cond = max_val / max(min_val, 1e-12)
             AdvancedMathematicalMetrics.record_binder_condition(cond)
-        
+
         return result
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -197,7 +197,7 @@ class QuantumLayer:
     def make_unitary_role(self, token: str) -> np.ndarray:
         if token in self._role_cache:
             return self._role_cache[token]
-        
+
         if self.cfg.roles_unitary:
             seed_val = int(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
             role_time, role_spec = _roles.make_unitary_role(
@@ -212,18 +212,24 @@ class QuantumLayer:
             )
             self._validate_unitary_role(role, self._role_fft_cache[token])
         else:
-            seed64 = np.uint64(seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed))
+            seed64 = np.uint64(
+                seed_to_uint64(f"role|{token}") ^ np.uint64(self.cfg.seed)
+            )
             rng = np.random.default_rng(seed64)
             role = rng.normal(0.0, 1.0, size=self.cfg.dim).astype(self.cfg.dtype)
             role = self._renorm(role)
 
         # Verify orthogonality against existing roles before caching
         if self._role_cache and self.cfg.roles_unitary:
-            from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
+            from somabrain.metrics.advanced_math_metrics import (
+                AdvancedMathematicalMetrics,
+            )
 
             for existing_token, existing_role in self._role_cache.items():
                 cosine_sim = self.cosine(existing_role, role)
-                MathematicalMetrics.verify_role_orthogonality(token, existing_token, cosine_sim)
+                MathematicalMetrics.verify_role_orthogonality(
+                    token, existing_token, cosine_sim
+                )
                 AdvancedMathematicalMetrics.check_orthogonality(cosine_sim)
 
         self._role_cache[token] = role
@@ -231,29 +237,27 @@ class QuantumLayer:
 
     def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
         from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
-        
+
         a_vec = self._ensure_vector(a, name="bind_unitary.a")
         role_vec = self.make_unitary_role(role_token)
-        
+
         # Record initial energies
         initial_energy = np.sum(a_vec * a_vec)
-        
+
         result = self._renorm(self._binder.bind(a_vec, role_vec))
-        
+
         # Verify conservation laws
         final_energy = np.sum(result * result)
         AdvancedMathematicalMetrics.verify_energy_conservation(
-            'bind_unitary',
-            initial_energy,
-            final_energy
+            "bind_unitary", initial_energy, final_energy
         )
-        
+
         # Check frame properties if we have enough roles
         if len(self._role_cache) > 1:
             AdvancedMathematicalMetrics.measure_frame_properties(
                 list(self._role_cache.values())
             )
-        
+
         return result
 
     # ------------------------------------------------------------------
@@ -318,7 +322,10 @@ class QuantumLayer:
             score = self.cosine(query, candidate)
             if density_matrix is not None:
                 try:
-                    score = alpha * float(density_matrix.score(query, candidate)) + (1 - alpha) * score
+                    score = (
+                        alpha * float(density_matrix.score(query, candidate))
+                        + (1 - alpha) * score
+                    )
                 except Exception:
                     pass
             if score > best_score:
@@ -329,17 +336,23 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
-    def _validate_unitary_role(self, role: np.ndarray, spectrum: Optional[np.ndarray]) -> None:
+    def _validate_unitary_role(
+        self, role: np.ndarray, spectrum: Optional[np.ndarray]
+    ) -> None:
         """Record invariants that prove a role remains unitary."""
 
         norm = float(np.linalg.norm(role))
-        MathematicalMetrics.verify_mathematical_invariant("unitary_role_norm", abs(norm - 1.0))
+        MathematicalMetrics.verify_mathematical_invariant(
+            "unitary_role_norm", abs(norm - 1.0)
+        )
 
         from somabrain.metrics.advanced_math_metrics import AdvancedMathematicalMetrics
 
         AdvancedMathematicalMetrics.record_numerical_error(abs(norm - 1.0))
 
-        magnitudes = np.abs(spectrum) if spectrum is not None else np.abs(np.fft.rfft(role))
+        magnitudes = (
+            np.abs(spectrum) if spectrum is not None else np.abs(np.fft.rfft(role))
+        )
         MathematicalMetrics.verify_spectral_property("unitary_role", magnitudes)
 
         # Track worst-case deviation for spectral gap diagnostics

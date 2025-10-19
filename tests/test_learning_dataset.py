@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
-from somabrain.learning.dataset import TrainingExample, build_examples, tokenize_examples
+from somabrain.learning.dataset import (
+    TrainingExample,
+    build_examples,
+    tokenize_examples,
+)
 
 
 def test_build_examples_from_conversation():
@@ -78,12 +81,24 @@ def test_export_learning_corpus_requires_flag(tmp_path, monkeypatch):
     # With force flag it should succeed
     dummy_cfg_enabled = type("Cfg", (), {"learning_loop_enabled": False})()
     monkeypatch.setattr(export_script, "get_config", lambda: dummy_cfg_enabled)
-    monkeypatch.setattr(export_script, "_git_metadata", lambda: {"commit": "deadbeef", "dirty": False})
-    monkeypatch.setattr(export_script, "_config_snapshot", lambda: {"digest": "abc123", "learning_loop_enabled": False})
+    monkeypatch.setattr(
+        export_script, "_git_metadata", lambda: {"commit": "deadbeef", "dirty": False}
+    )
+    monkeypatch.setattr(
+        export_script,
+        "_config_snapshot",
+        lambda: {"digest": "abc123", "learning_loop_enabled": False},
+    )
 
     metadata_path = tmp_path / "run.json"
     rc = export_script.main(
-        [str(input_path), str(output_path), "--force", "--metadata-out", str(metadata_path)]
+        [
+            str(input_path),
+            str(output_path),
+            "--force",
+            "--metadata-out",
+            str(metadata_path),
+        ]
     )
     assert rc == 0
     assert output_path.exists()

@@ -23,7 +23,7 @@
 ```
     E2E Tests (Few)
     ================
-   Integration Tests (Some) 
+   Integration Tests (Some)
    ========================
   Unit Tests (Many)
   ====================
@@ -57,7 +57,7 @@ from somabrain.config import TestConfig
 def pytest_configure(config):
     """Configure pytest settings."""
     config.addinivalue_line("markers", "unit: mark test as a unit test")
-    config.addinivalue_line("markers", "integration: mark test as an integration test") 
+    config.addinivalue_line("markers", "integration: mark test as an integration test")
     config.addinivalue_line("markers", "e2e: mark test as an end-to-end test")
     config.addinivalue_line("markers", "slow: mark test as slow running")
 
@@ -122,7 +122,7 @@ class TestMemoryManager:
     def test_init_with_valid_config(self, test_config):
         """Test MemoryManager initialization with valid configuration."""
         manager = MemoryManager(config=test_config)
-        
+
         assert manager.vector_dimensions == test_config.vector_dimensions
         assert manager.similarity_threshold == test_config.similarity_threshold
         assert manager.config == test_config
@@ -130,7 +130,7 @@ class TestMemoryManager:
     def test_init_with_invalid_dimensions(self, test_config):
         """Test MemoryManager initialization fails with invalid dimensions."""
         test_config.vector_dimensions = -1
-        
+
         with pytest.raises(ValueError, match="vector_dimensions must be positive"):
             MemoryManager(config=test_config)
 
@@ -141,14 +141,14 @@ class TestMemoryManager:
         expected_id = "generated_id_123"
         memory_manager.database_manager.store_memory = AsyncMock(return_value=expected_id)
         memory_manager.vector_encoder.encode = Mock(return_value=mock_memory.vector_encoding)
-        
+
         # Act
         result = await memory_manager.store_memory(
             content=mock_memory.content,
             metadata=mock_memory.metadata.dict(),
             tenant_id=mock_memory.tenant_id
         )
-        
+
         # Assert
         assert result == expected_id
         memory_manager.vector_encoder.encode.assert_called_once_with(mock_memory.content)
@@ -171,7 +171,7 @@ class TestMemoryManager:
         memory_manager.vector_encoder.encode = Mock(
             side_effect=Exception("Encoding model not available")
         )
-        
+
         # Act & Assert
         with pytest.raises(EncodingError, match="Failed to encode content"):
             await memory_manager.store_memory(
@@ -191,14 +191,14 @@ class TestMemoryManager:
         memory_manager.vector_encoder.encode = Mock(
             return_value=np.random.rand(384).astype(np.float32)
         )
-        
+
         # Act
         results = await memory_manager.recall_memories(
             query="test query",
             k=5,
             tenant_id="test_tenant"
         )
-        
+
         # Assert
         assert len(results) == 1
         assert results[0].id == mock_memory.id
@@ -212,14 +212,14 @@ class TestMemoryManager:
         memory_manager.vector_encoder.encode = Mock(
             return_value=np.random.rand(384).astype(np.float32)
         )
-        
+
         # Act
         results = await memory_manager.recall_memories(
             query="nonexistent query",
             k=5,
             tenant_id="test_tenant"
         )
-        
+
         # Assert
         assert len(results) == 0
 
@@ -237,14 +237,14 @@ class TestMemoryManager:
         memory_manager.vector_encoder.encode = Mock(
             return_value=np.random.rand(384).astype(np.float32)
         )
-        
+
         # Act
         await memory_manager.recall_memories(
             query="test query",
             k=k,
             tenant_id="test_tenant"
         )
-        
+
         # Assert
         call_args = memory_manager.database_manager.search_memories.call_args
         actual_limit = call_args[1]['limit'] if 'limit' in call_args[1] else call_args[0][2]
@@ -256,11 +256,11 @@ class TestMemoryManager:
         vector1 = np.array([1, 0, 0], dtype=np.float32)
         vector2 = np.array([0, 1, 0], dtype=np.float32)  # Orthogonal
         vector3 = np.array([1, 0, 0], dtype=np.float32)  # Identical
-        
+
         # Act
         similarity_orthogonal = memory_manager._compute_similarity(vector1, vector2)
         similarity_identical = memory_manager._compute_similarity(vector1, vector3)
-        
+
         # Assert
         assert abs(similarity_orthogonal - 0.0) < 1e-6  # Should be ~0
         assert abs(similarity_identical - 1.0) < 1e-6   # Should be ~1
@@ -356,7 +356,7 @@ describe('SomaBrainClient', () => {
         apiKey: 'test-key',
         tenantId: 'test-tenant'
       });
-      
+
       expect((clientWithSlash as any).baseUrl).toBe('http://localhost:9696');
     });
 
@@ -366,7 +366,7 @@ describe('SomaBrainClient', () => {
         apiKey: 'test-key',
         tenantId: 'test-tenant'
       });
-      
+
       expect((clientWithoutTimeout as any).timeout).toBe(30000);
     });
   });
@@ -449,7 +449,7 @@ describe('SomaBrainClient', () => {
         metadata: { category: 'test' }
       },
       {
-        memory_id: 'mem_2', 
+        memory_id: 'mem_2',
         content: 'Content 2',
         score: 0.8,
         metadata: { category: 'test' }
@@ -488,7 +488,7 @@ describe('SomaBrainClient', () => {
           expect(body.threshold).toBe(0.2);
           expect(body.filters).toEqual({});
           expect(body.include_scores).toBe(true);
-          
+
           return res(ctx.json({ results: [], query_time_ms: 10 }));
         })
       );
@@ -513,7 +513,7 @@ describe('SomaBrainClient', () => {
           expect(body.threshold).toBe(0.5);
           expect(body.filters).toEqual({ category: 'specific' });
           expect(body.include_scores).toBe(false);
-          
+
           return res(ctx.json({ results: [], query_time_ms: 10 }));
         })
       );
@@ -570,27 +570,27 @@ from somabrain.config import TestConfig
 @pytest.fixture(scope="session")
 async def test_database():
     """Create test database with migrations."""
-    
+
     # Create temporary database file
     db_fd, db_path = tempfile.mkstemp()
     database_url = f"sqlite:///{db_path}"
-    
+
     try:
         # Run migrations
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", database_url)
         command.upgrade(alembic_cfg, "head")
-        
+
         # Create engine and session
         engine = create_engine(database_url)
         SessionLocal = sessionmaker(bind=engine)
-        
+
         yield {
             "url": database_url,
             "engine": engine,
             "session_factory": SessionLocal
         }
-        
+
     finally:
         # Cleanup
         os.close(db_fd)
@@ -600,7 +600,7 @@ async def test_database():
 async def database_manager(test_database):
     """Create DatabaseManager with test database."""
     config = TestConfig(database_url=test_database["url"])
-    
+
     async with DatabaseManager(config) as db_manager:
         # Create test tenant
         await db_manager.create_tenant("test_tenant", "Test Tenant")
@@ -613,7 +613,7 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_store_and_retrieve_memory(self, database_manager):
         """Test complete memory storage and retrieval workflow."""
-        
+
         # Store memory
         memory_id = await database_manager.store_memory(
             content="Integration test memory content",
@@ -621,12 +621,12 @@ class TestDatabaseIntegration:
             vector_encoding=np.random.rand(384).astype(np.float32),
             tenant_id="test_tenant"
         )
-        
+
         assert memory_id is not None
-        
+
         # Retrieve memory
         retrieved_memory = await database_manager.get_memory(memory_id, "test_tenant")
-        
+
         assert retrieved_memory is not None
         assert retrieved_memory.content == "Integration test memory content"
         assert retrieved_memory.metadata["category"] == "integration_test"
@@ -635,10 +635,10 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_tenant_isolation(self, database_manager):
         """Test that tenant isolation works correctly."""
-        
+
         # Create another tenant
         await database_manager.create_tenant("other_tenant", "Other Tenant")
-        
+
         # Store memory for first tenant
         memory_id_1 = await database_manager.store_memory(
             content="Tenant 1 memory",
@@ -646,23 +646,23 @@ class TestDatabaseIntegration:
             vector_encoding=np.random.rand(384).astype(np.float32),
             tenant_id="test_tenant"
         )
-        
+
         # Store memory for second tenant
         memory_id_2 = await database_manager.store_memory(
-            content="Tenant 2 memory", 
+            content="Tenant 2 memory",
             metadata={"tenant": "2"},
             vector_encoding=np.random.rand(384).astype(np.float32),
             tenant_id="other_tenant"
         )
-        
+
         # Verify tenant 1 cannot access tenant 2's memory
         memory_cross_access = await database_manager.get_memory(memory_id_2, "test_tenant")
         assert memory_cross_access is None
-        
+
         # Verify each tenant can access their own memory
         memory_1 = await database_manager.get_memory(memory_id_1, "test_tenant")
         memory_2 = await database_manager.get_memory(memory_id_2, "other_tenant")
-        
+
         assert memory_1 is not None
         assert memory_2 is not None
         assert memory_1.metadata["tenant"] == "1"
@@ -671,12 +671,12 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_similarity_search(self, database_manager):
         """Test vector similarity search functionality."""
-        
+
         # Create test vectors with known similarities
         base_vector = np.array([1, 0, 0, 0], dtype=np.float32)
         similar_vector = np.array([0.9, 0.1, 0, 0], dtype=np.float32)
         dissimilar_vector = np.array([0, 0, 1, 0], dtype=np.float32)
-        
+
         # Store memories with different similarities
         similar_id = await database_manager.store_memory(
             content="Similar content",
@@ -684,14 +684,14 @@ class TestDatabaseIntegration:
             vector_encoding=similar_vector,
             tenant_id="test_tenant"
         )
-        
+
         dissimilar_id = await database_manager.store_memory(
             content="Dissimilar content",
             metadata={"type": "dissimilar"},
             vector_encoding=dissimilar_vector,
             tenant_id="test_tenant"
         )
-        
+
         # Search with base vector
         results = await database_manager.search_memories(
             query_vector=base_vector,
@@ -699,7 +699,7 @@ class TestDatabaseIntegration:
             threshold=0.5,
             tenant_id="test_tenant"
         )
-        
+
         # Should only return similar memory
         assert len(results) == 1
         assert results[0].id == similar_id
@@ -708,7 +708,7 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_memory_updates(self, database_manager):
         """Test memory update operations."""
-        
+
         # Store initial memory
         memory_id = await database_manager.store_memory(
             content="Original content",
@@ -716,7 +716,7 @@ class TestDatabaseIntegration:
             vector_encoding=np.random.rand(384).astype(np.float32),
             tenant_id="test_tenant"
         )
-        
+
         # Update memory
         success = await database_manager.update_memory(
             memory_id=memory_id,
@@ -724,9 +724,9 @@ class TestDatabaseIntegration:
             metadata={"version": 2},
             tenant_id="test_tenant"
         )
-        
+
         assert success is True
-        
+
         # Verify update
         updated_memory = await database_manager.get_memory(memory_id, "test_tenant")
         assert updated_memory.content == "Updated content"
@@ -735,7 +735,7 @@ class TestDatabaseIntegration:
     @pytest.mark.asyncio
     async def test_concurrent_operations(self, database_manager):
         """Test database operations under concurrent load."""
-        
+
         async def store_memory_task(i):
             return await database_manager.store_memory(
                 content=f"Concurrent memory {i}",
@@ -743,15 +743,15 @@ class TestDatabaseIntegration:
                 vector_encoding=np.random.rand(384).astype(np.float32),
                 tenant_id="test_tenant"
             )
-        
+
         # Store multiple memories concurrently
         tasks = [store_memory_task(i) for i in range(10)]
         memory_ids = await asyncio.gather(*tasks)
-        
+
         # Verify all memories were stored
         assert len(memory_ids) == 10
         assert all(id is not None for id in memory_ids)
-        
+
         # Verify memories can be retrieved
         for i, memory_id in enumerate(memory_ids):
             memory = await database_manager.get_memory(memory_id, "test_tenant")
@@ -771,7 +771,7 @@ from contextlib import asynccontextmanager
 from somabrain.api.main import create_app
 from somabrain.config import TestConfig
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 async def test_app():
     """Create test FastAPI application."""
     config = TestConfig()
@@ -792,7 +792,7 @@ class TestAPIIntegration:
     async def test_health_endpoint(self, client):
         """Test health check endpoint."""
         response = await client.get("/health")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "healthy"
@@ -801,7 +801,7 @@ class TestAPIIntegration:
     @pytest.mark.asyncio
     async def test_remember_and_recall_workflow(self, client):
         """Test complete remember and recall workflow."""
-        
+
         # Store a memory
         remember_response = await client.post(
             "/remember",
@@ -815,12 +815,12 @@ class TestAPIIntegration:
             },
             headers={"X-Tenant-ID": "test_tenant", "X-API-Key": "test_key"}
         )
-        
+
         assert remember_response.status_code == 200
         memory_data = remember_response.json()
         assert "memory_id" in memory_data
         memory_id = memory_data["memory_id"]
-        
+
         # Recall memories
         recall_response = await client.post(
             "/recall",
@@ -831,12 +831,12 @@ class TestAPIIntegration:
             },
             headers={"X-Tenant-ID": "test_tenant", "X-API-Key": "test_key"}
         )
-        
+
         assert recall_response.status_code == 200
         recall_data = recall_response.json()
         assert "results" in recall_data
         assert len(recall_data["results"]) > 0
-        
+
         # Verify the stored memory is in results
         memory_ids = [result["memory_id"] for result in recall_data["results"]]
         assert memory_id in memory_ids
@@ -844,7 +844,7 @@ class TestAPIIntegration:
     @pytest.mark.asyncio
     async def test_tenant_isolation_api(self, client):
         """Test tenant isolation through API."""
-        
+
         # Store memory for tenant 1
         await client.post(
             "/remember",
@@ -854,46 +854,46 @@ class TestAPIIntegration:
             },
             headers={"X-Tenant-ID": "tenant_1", "X-API-Key": "test_key"}
         )
-        
-        # Store memory for tenant 2  
+
+        # Store memory for tenant 2
         await client.post(
             "/remember",
             json={
-                "content": "Tenant 2 specific information", 
+                "content": "Tenant 2 specific information",
                 "metadata": {"tenant": "2"}
             },
             headers={"X-Tenant-ID": "tenant_2", "X-API-Key": "test_key"}
         )
-        
+
         # Search from tenant 1 - should not see tenant 2's data
         response_1 = await client.post(
             "/recall",
             json={"query": "Tenant 2 specific", "k": 10},
             headers={"X-Tenant-ID": "tenant_1", "X-API-Key": "test_key"}
         )
-        
+
         # Search from tenant 2 - should not see tenant 1's data
         response_2 = await client.post(
-            "/recall", 
+            "/recall",
             json={"query": "Tenant 1 specific", "k": 10},
             headers={"X-Tenant-ID": "tenant_2", "X-API-Key": "test_key"}
         )
-        
+
         # Verify isolation
         results_1 = response_1.json()["results"]
         results_2 = response_2.json()["results"]
-        
+
         # Each tenant should not see the other's specific information
         tenant_1_contents = [r["content"] for r in results_1]
         tenant_2_contents = [r["content"] for r in results_2]
-        
+
         assert not any("Tenant 2 specific" in content for content in tenant_1_contents)
         assert not any("Tenant 1 specific" in content for content in tenant_2_contents)
 
     @pytest.mark.asyncio
     async def test_api_error_handling(self, client):
         """Test API error handling."""
-        
+
         # Test missing tenant ID
         response = await client.post(
             "/remember",
@@ -901,7 +901,7 @@ class TestAPIIntegration:
             headers={"X-API-Key": "test_key"}  # Missing X-Tenant-ID
         )
         assert response.status_code == 400
-        
+
         # Test invalid API key
         response = await client.post(
             "/remember",
@@ -909,7 +909,7 @@ class TestAPIIntegration:
             headers={"X-Tenant-ID": "test_tenant", "X-API-Key": "invalid_key"}
         )
         assert response.status_code == 401
-        
+
         # Test empty content
         response = await client.post(
             "/remember",
@@ -918,10 +918,10 @@ class TestAPIIntegration:
         )
         assert response.status_code == 400
 
-    @pytest.mark.asyncio  
+    @pytest.mark.asyncio
     async def test_rate_limiting(self, client):
         """Test API rate limiting."""
-        
+
         # Make requests rapidly to test rate limiting
         tasks = []
         for i in range(100):  # Assuming rate limit is lower than this
@@ -931,15 +931,15 @@ class TestAPIIntegration:
                 headers={"X-Tenant-ID": "test_tenant", "X-API-Key": "test_key"}
             )
             tasks.append(task)
-        
+
         responses = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         # Check that some requests were rate limited
         rate_limited_count = sum(
-            1 for r in responses 
+            1 for r in responses
             if isinstance(r, httpx.Response) and r.status_code == 429
         )
-        
+
         # Should have at least some rate limiting
         assert rate_limited_count > 0
 ```
@@ -962,14 +962,14 @@ from playwright.async_api import async_playwright
 @pytest.fixture(scope="session")
 async def somabrain_deployment():
     """Deploy SomaBrain for E2E testing."""
-    
+
     # Start Docker Compose for E2E testing
     client = docker.from_env()
-    
+
     # Build and start services
     project_root = Path(__file__).parent.parent.parent
     compose_file = project_root / "docker-compose.test.yml"
-    
+
     try:
         # Run docker compose up
         client.compose.up(
@@ -977,15 +977,15 @@ async def somabrain_deployment():
             detach=True,
             build=True
         )
-        
+
         # Wait for services to be ready
         await wait_for_service_health("http://localhost:9696/health", timeout=60)
-        
+
         yield {
             "api_url": "http://localhost:9696",
             "web_url": "http://localhost:3000"  # If you have a web UI
         }
-        
+
     finally:
         # Cleanup
         client.compose.down(compose_file_path=str(compose_file), volumes=True)
@@ -993,7 +993,7 @@ async def somabrain_deployment():
 async def wait_for_service_health(url: str, timeout: int = 60):
     """Wait for service to become healthy."""
     import httpx
-    
+
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
@@ -1003,9 +1003,9 @@ async def wait_for_service_health(url: str, timeout: int = 60):
                     return
         except Exception:
             pass
-        
+
         await asyncio.sleep(2)
-    
+
     raise TimeoutError(f"Service at {url} did not become healthy within {timeout} seconds")
 
 @pytest.mark.e2e
@@ -1015,12 +1015,12 @@ class TestUserWorkflows:
     @pytest.mark.asyncio
     async def test_knowledge_worker_workflow(self, somabrain_deployment):
         """Test complete workflow for knowledge worker using SomaBrain."""
-        
+
         api_url = somabrain_deployment["api_url"]
-        
+
         # Simulate a knowledge worker storing and retrieving information
         async with httpx.AsyncClient(base_url=api_url) as client:
-            
+
             # 1. Store project documentation
             docs_to_store = [
                 {
@@ -1036,7 +1036,7 @@ class TestUserWorkflows:
                     "metadata": {"category": "api_limits", "project": "user_service"}
                 }
             ]
-            
+
             memory_ids = []
             for doc in docs_to_store:
                 response = await client.post(
@@ -1046,30 +1046,30 @@ class TestUserWorkflows:
                 )
                 assert response.status_code == 200
                 memory_ids.append(response.json()["memory_id"])
-            
+
             # 2. Worker asks questions about the stored information
             questions = [
                 "How long do JWT tokens last?",
                 "What should I consider when creating database migrations?",
                 "What are the API rate limits?"
             ]
-            
+
             for question in questions:
                 response = await client.post(
                     "/recall",
                     json={"query": question, "k": 3},
                     headers={"X-Tenant-ID": "knowledge_worker", "X-API-Key": "test_key"}
                 )
-                
+
                 assert response.status_code == 200
                 results = response.json()["results"]
-                
+
                 # Should find relevant information
                 assert len(results) > 0
-                
+
                 # Check that similarity scores are reasonable
                 assert all(result["score"] > 0.3 for result in results)
-            
+
             # 3. Worker updates documentation
             update_response = await client.put(
                 f"/memories/{memory_ids[0]}",
@@ -1079,16 +1079,16 @@ class TestUserWorkflows:
                 },
                 headers={"X-Tenant-ID": "knowledge_worker", "X-API-Key": "test_key"}
             )
-            
+
             assert update_response.status_code == 200
-            
+
             # 4. Verify update is reflected in searches
             search_response = await client.post(
                 "/recall",
                 json={"query": "JWT token expiration", "k": 1},
                 headers={"X-Tenant-ID": "knowledge_worker", "X-API-Key": "test_key"}
             )
-            
+
             updated_result = search_response.json()["results"][0]
             assert "12-hour" in updated_result["content"]
             assert updated_result["metadata"]["updated"] is True
@@ -1096,11 +1096,11 @@ class TestUserWorkflows:
     @pytest.mark.asyncio
     async def test_multi_user_collaboration(self, somabrain_deployment):
         """Test collaboration between multiple users in the same tenant."""
-        
+
         api_url = somabrain_deployment["api_url"]
-        
+
         async with httpx.AsyncClient(base_url=api_url) as client:
-            
+
             # User 1 stores initial knowledge
             response1 = await client.post(
                 "/remember",
@@ -1111,10 +1111,10 @@ class TestUserWorkflows:
                 headers={"X-Tenant-ID": "team_alpha", "X-API-Key": "user1_key"}
             )
             assert response1.status_code == 200
-            
+
             # User 2 adds related information
             response2 = await client.post(
-                "/remember", 
+                "/remember",
                 json={
                     "content": "Email validation for registration requires confirmed email address before account activation",
                     "metadata": {"author": "user2", "component": "registration", "relates_to": "email_validation"}
@@ -1122,17 +1122,17 @@ class TestUserWorkflows:
                 headers={"X-Tenant-ID": "team_alpha", "X-API-Key": "user2_key"}
             )
             assert response2.status_code == 200
-            
+
             # User 3 searches for registration information
             search_response = await client.post(
                 "/recall",
                 json={"query": "user registration process", "k": 10},
                 headers={"X-Tenant-ID": "team_alpha", "X-API-Key": "user3_key"}
             )
-            
+
             assert search_response.status_code == 200
             results = search_response.json()["results"]
-            
+
             # Should find contributions from both users
             authors = [result["metadata"].get("author") for result in results]
             assert "user1" in authors
@@ -1141,17 +1141,17 @@ class TestUserWorkflows:
     @pytest.mark.asyncio
     async def test_data_export_import_workflow(self, somabrain_deployment):
         """Test complete data export and import workflow."""
-        
+
         api_url = somabrain_deployment["api_url"]
-        
+
         async with httpx.AsyncClient(base_url=api_url, timeout=30) as client:
-            
+
             # 1. Store multiple memories
             memories_data = [
                 {"content": f"Memory content {i}", "metadata": {"index": i, "category": "export_test"}}
                 for i in range(20)
             ]
-            
+
             for memory_data in memories_data:
                 response = await client.post(
                     "/remember",
@@ -1159,41 +1159,41 @@ class TestUserWorkflows:
                     headers={"X-Tenant-ID": "export_tenant", "X-API-Key": "admin_key"}
                 )
                 assert response.status_code == 200
-            
+
             # 2. Export all data
             export_response = await client.get(
                 "/export",
                 params={"format": "json"},
                 headers={"X-Tenant-ID": "export_tenant", "X-API-Key": "admin_key"}
             )
-            
+
             assert export_response.status_code == 200
             export_data = export_response.json()
-            
+
             # Verify export contains all memories
             assert len(export_data["memories"]) == 20
-            
+
             # 3. Create new tenant for import
             # (This would typically be done through admin API)
-            
+
             # 4. Import data to new tenant
             import_response = await client.post(
                 "/import",
                 json=export_data,
                 headers={"X-Tenant-ID": "import_tenant", "X-API-Key": "admin_key"}
             )
-            
+
             assert import_response.status_code == 200
             import_result = import_response.json()
             assert import_result["imported_count"] == 20
-            
+
             # 5. Verify imported data
             search_response = await client.post(
                 "/recall",
                 json={"query": "Memory content", "k": 25},
                 headers={"X-Tenant-ID": "import_tenant", "X-API-Key": "admin_key"}
             )
-            
+
             results = search_response.json()["results"]
             assert len(results) == 20
 ```
@@ -1212,9 +1212,9 @@ import json
 
 class SomaBrainUser(HttpUser):
     """Simulate SomaBrain user behavior for load testing."""
-    
+
     wait_time = between(1, 3)  # Wait 1-3 seconds between requests
-    
+
     def on_start(self):
         """Set up user session."""
         self.tenant_id = f"tenant_{random.randint(1, 100)}"
@@ -1229,14 +1229,14 @@ class SomaBrainUser(HttpUser):
     @task(3)
     def store_memory(self):
         """Store a new memory (most common operation)."""
-        
+
         content_templates = [
             "User {user_id} reported issue with {component} showing {error_type} error",
             "Meeting notes: discussed {topic} with {team}, decided on {decision}",
             "Code review feedback: {component} needs {improvement_type} improvements",
             "Customer feedback: {feature} is {sentiment}, suggest {improvement}"
         ]
-        
+
         content = random.choice(content_templates).format(
             user_id=random.randint(1, 1000),
             component=random.choice(["authentication", "database", "API", "UI"]),
@@ -1248,7 +1248,7 @@ class SomaBrainUser(HttpUser):
             sentiment=random.choice(["excellent", "good", "needs work"]),
             improvement=random.choice(["better UX", "more options", "faster response"])
         )
-        
+
         payload = {
             "content": content,
             "metadata": {
@@ -1257,8 +1257,8 @@ class SomaBrainUser(HttpUser):
                 "source": "load_test"
             }
         }
-        
-        with self.client.post("/remember", json=payload, headers=self.headers, 
+
+        with self.client.post("/remember", json=payload, headers=self.headers,
                              catch_response=True) as response:
             if response.status_code == 200:
                 memory_id = response.json().get("memory_id")
@@ -1271,7 +1271,7 @@ class SomaBrainUser(HttpUser):
     @task(5)
     def search_memories(self):
         """Search for memories (most frequent read operation)."""
-        
+
         queries = [
             "authentication error",
             "meeting notes",
@@ -1282,13 +1282,13 @@ class SomaBrainUser(HttpUser):
             "API integration",
             "security update"
         ]
-        
+
         payload = {
             "query": random.choice(queries),
             "k": random.randint(5, 15),
             "threshold": random.uniform(0.2, 0.5)
         }
-        
+
         with self.client.post("/recall", json=payload, headers=self.headers,
                              catch_response=True) as response:
             if response.status_code == 200:
@@ -1308,12 +1308,12 @@ class SomaBrainUser(HttpUser):
     @task(1)
     def update_memory(self):
         """Update existing memory (less frequent operation)."""
-        
+
         if not self.memory_ids:
             return
-        
+
         memory_id = random.choice(self.memory_ids)
-        
+
         payload = {
             "content": f"Updated content for memory {memory_id} at load test",
             "metadata": {
@@ -1322,8 +1322,8 @@ class SomaBrainUser(HttpUser):
                 "version": random.randint(1, 5)
             }
         }
-        
-        with self.client.put(f"/memories/{memory_id}", json=payload, 
+
+        with self.client.put(f"/memories/{memory_id}", json=payload,
                            headers=self.headers, catch_response=True) as response:
             if response.status_code in [200, 404]:  # 404 is ok for load testing
                 response.success()
@@ -1333,7 +1333,7 @@ class SomaBrainUser(HttpUser):
     @task(1)
     def health_check(self):
         """Periodic health check."""
-        
+
         with self.client.get("/health", catch_response=True) as response:
             if response.status_code == 200:
                 response.success()
@@ -1362,44 +1362,44 @@ class TestPerformanceBenchmarks:
 
     def test_vector_encoding_performance(self, benchmark):
         """Benchmark vector encoding performance."""
-        
+
         encoder = VectorEncoder(model_name="all-MiniLM-L6-v2")
         test_content = "This is test content for vector encoding performance measurement."
-        
+
         def encode_content():
             return encoder.encode(test_content)
-        
+
         result = benchmark(encode_content)
-        
+
         # Verify result
         assert isinstance(result, np.ndarray)
         assert result.shape[0] > 0
-        
+
         # Performance assertions
         assert benchmark.stats.mean < 0.1  # Should encode in under 100ms
 
     def test_similarity_computation_performance(self, benchmark):
         """Benchmark similarity computation performance."""
-        
+
         # Generate test vectors
         vector1 = np.random.rand(1024).astype(np.float32)
         vector2 = np.random.rand(1024).astype(np.float32)
-        
+
         def compute_similarity():
             return np.dot(vector1, vector2) / (np.linalg.norm(vector1) * np.linalg.norm(vector2))
-        
+
         result = benchmark(compute_similarity)
-        
+
         # Verify result is reasonable
         assert -1 <= result <= 1
-        
+
         # Performance assertion
         assert benchmark.stats.mean < 0.001  # Should compute in under 1ms
 
     @pytest.mark.asyncio
     async def test_memory_storage_throughput(self, database_manager):
         """Benchmark memory storage throughput."""
-        
+
         # Prepare test data
         memories_data = [
             {
@@ -1410,24 +1410,24 @@ class TestPerformanceBenchmarks:
             }
             for i in range(100)
         ]
-        
+
         # Measure storage time
         start_time = time.time()
-        
+
         # Store memories concurrently
         tasks = []
         for memory_data in memories_data:
             task = database_manager.store_memory(**memory_data)
             tasks.append(task)
-        
+
         memory_ids = await asyncio.gather(*tasks)
-        
+
         end_time = time.time()
         total_time = end_time - start_time
-        
+
         # Calculate throughput
         throughput = len(memories_data) / total_time
-        
+
         # Assertions
         assert len(memory_ids) == 100
         assert all(id is not None for id in memory_ids)
@@ -1436,7 +1436,7 @@ class TestPerformanceBenchmarks:
     @pytest.mark.asyncio
     async def test_memory_search_latency(self, database_manager):
         """Benchmark memory search latency."""
-        
+
         # Pre-populate with test data
         for i in range(1000):
             await database_manager.store_memory(
@@ -1445,7 +1445,7 @@ class TestPerformanceBenchmarks:
                 vector_encoding=np.random.rand(384).astype(np.float32),
                 tenant_id="search_perf_tenant"
             )
-        
+
         # Test search queries
         test_queries = [
             "performance test content",
@@ -1453,33 +1453,33 @@ class TestPerformanceBenchmarks:
             "various keywords",
             "specific category"
         ]
-        
+
         latencies = []
-        
+
         for query in test_queries:
             query_vector = np.random.rand(384).astype(np.float32)
-            
+
             # Measure search time
             start_time = time.time()
-            
+
             results = await database_manager.search_memories(
                 query_vector=query_vector,
                 limit=10,
                 threshold=0.2,
                 tenant_id="search_perf_tenant"
             )
-            
+
             end_time = time.time()
             latency = end_time - start_time
             latencies.append(latency)
-            
+
             # Verify results
             assert isinstance(results, list)
-        
+
         # Calculate statistics
         avg_latency = mean(latencies)
         max_latency = max(latencies)
-        
+
         # Performance assertions
         assert avg_latency < 0.5  # Average search under 500ms
         assert max_latency < 1.0   # No search over 1 second
@@ -1495,9 +1495,9 @@ class TestPerformanceBenchmarks:
 # pytest.ini
 [tool:pytest]
 minversion = 6.0
-addopts = 
+addopts =
     -ra
-    -q 
+    -q
     --strict-markers
 
     Golden truth samples live under `tests/data/golden/` and must reflect **real** service interactions—no mocks, no synthetic stand-ins.

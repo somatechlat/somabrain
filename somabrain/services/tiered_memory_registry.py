@@ -103,7 +103,9 @@ class TieredMemoryRegistry:
             return TieredRecallResult(
                 context=context,
                 payload=payload_copy,
-                coordinate=copy.deepcopy(coordinate) if coordinate is not None else None,
+                coordinate=copy.deepcopy(coordinate)
+                if coordinate is not None
+                else None,
                 eta=bundle.wm_cfg.eta,
                 tau=bundle.wm_policy.threshold,
                 sparsity=bundle.sparsity,
@@ -116,8 +118,12 @@ class TieredMemoryRegistry:
             bundle = self._bundles.get(key)
             if bundle is None:
                 ann_cfg = _ann_config_from_env()
-                wm_cfg = TraceConfig(dim=dim, rotation_enabled=True, cleanup_topk=ann_cfg.top_k)
-                ltm_cfg = TraceConfig(dim=dim, rotation_enabled=True, cleanup_topk=ann_cfg.top_k)
+                wm_cfg = TraceConfig(
+                    dim=dim, rotation_enabled=True, cleanup_topk=ann_cfg.top_k
+                )
+                ltm_cfg = TraceConfig(
+                    dim=dim, rotation_enabled=True, cleanup_topk=ann_cfg.top_k
+                )
                 tiered = TieredMemory(
                     wm_cfg,
                     ltm_cfg,
@@ -189,7 +195,9 @@ class TieredMemoryRegistry:
                 "backend": bundle.ann_cfg.backend,
             }
 
-    def rebuild(self, tenant: str, namespace: Optional[str] = None) -> List[Dict[str, float]]:
+    def rebuild(
+        self, tenant: str, namespace: Optional[str] = None
+    ) -> List[Dict[str, float]]:
         selected: List[Tuple[str, str, _TieredBundle]] = []
         with self._lock:
             for (t, ns), bundle in self._bundles.items():
@@ -285,7 +293,9 @@ def _ann_config_from_env() -> AnnConfig:
     except Exception:
         m = 32
     try:
-        ef_construction = int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200"))
+        ef_construction = int(
+            os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200")
+        )
     except Exception:
         ef_construction = 200
     try:

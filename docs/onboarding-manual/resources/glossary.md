@@ -17,7 +17,7 @@
 
 **Related Terms**: Semantic Memory, Episodic Memory, Associative Recall
 
-### Hyperdimensional Computing (HDC)  
+### Hyperdimensional Computing (HDC)
 **Definition**: A mathematical framework using very high-dimensional vectors (typically 1000+ dimensions) to represent and manipulate information, inspired by neural computation patterns.
 
 **Usage**: "SomaBrain's hyperdimensional computing approach enables efficient similarity operations on high-dimensional semantic representations."
@@ -42,7 +42,7 @@
 
 **Technical Details**: Implemented in `somabrain/mt_wm.py` with configurable size limits and eviction policies.
 
-### Long-term Memory  
+### Long-term Memory
 **Definition**: Persistent memory storage system for long-term retention of memories with full semantic encoding.
 
 **Usage**: "Long-term memory provides durable storage for agent experiences and learned knowledge."
@@ -75,7 +75,7 @@
 
 **Formula**: `c = a ⊛ b` where ⊛ represents the binding operation
 
-### Unbinding  
+### Unbinding
 **Definition**: Inverse of binding operation, used to extract one component when given the bound result and the other component.
 
 **Usage**: "Unbinding allows retrieval of 'France' when given the bound representation and the query 'capital'."
@@ -186,7 +186,7 @@
 
 **Production**: Kubernetes with Helm charts for production deployments
 
-### Observability  
+### Observability
 **Definition**: System's ability to be monitored, debugged, and understood through external outputs like logs, metrics, and traces.
 
 **Components**: Logging (structured JSON), Metrics (Prometheus), Tracing (optional)
@@ -204,7 +204,7 @@
 
 **Capabilities**: Code generation, debugging, documentation, testing
 
-### Memory-as-a-Service (MaaS)  
+### Memory-as-a-Service (MaaS)
 **Definition**: Cloud service model providing cognitive memory capabilities through API interfaces.
 
 **Usage**: "SomaBrain delivers memory-as-a-service to AI applications requiring persistent, semantic memory."

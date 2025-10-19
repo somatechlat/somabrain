@@ -147,7 +147,7 @@ class MemoryIntegrityWorker:
                 list(missing_in_vector)[:20],
             )
 
-    # Emit a short report via logging for CI/dev usage
+        # Emit a short report via logging for CI/dev usage
         report = {
             "redis_count": len(redis_keys),
             "pg_count": len(pg_keys),

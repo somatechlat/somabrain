@@ -1,6 +1,7 @@
 """
 API for interacting with the transactional outbox.
 """
+
 from __future__ import annotations
 
 import uuid

@@ -6,10 +6,12 @@ from somabrain.learning.adaptation import AdaptationEngine, UtilityWeights
 from somabrain.context.builder import RetrievalWeights, ContextBuilder, MemoryRecord
 from somabrain.feedback import Feedback
 from somabrain.metrics import tau_gauge
+
 # ---------------------------------------------------------------------------
 # Test fixtures
 # ---------------------------------------------------------------------------
 from unittest import mock
+
 
 @pytest.fixture(autouse=True)
 def patch_metrics(monkeypatch):
@@ -21,8 +23,11 @@ def patch_metrics(monkeypatch):
     call arguments.
     """
     mock_update = mock.Mock()
-    monkeypatch.setattr('somabrain.metrics.update_learning_retrieval_weights', mock_update)
+    monkeypatch.setattr(
+        "somabrain.metrics.update_learning_retrieval_weights", mock_update
+    )
     return mock_update
+
 
 # Real Redis client fixture – connects to the running Redis server
 @pytest.fixture(autouse=True)
@@ -40,6 +45,7 @@ def real_redis(monkeypatch):
     # Cleanup after test – delete the keys again
     for key in client.scan_iter(match="adaptation:state:*"):
         client.delete(key)
+
 
 def test_per_tenant_state_is_isolated(real_redis):
     # Create two engines with different tenant ids
@@ -67,6 +73,7 @@ def test_per_tenant_state_is_isolated(real_redis):
     # Ensure that the learning rates differ according to the applied signal
     assert data_a["learning_rate"] != data_b["learning_rate"]
 
+
 def test_per_tenant_feedback_updates_weights_and_metrics(patch_metrics):
     # Create engine for a specific tenant
     retrieval = RetrievalWeights(alpha=1.0, beta=0.2, gamma=0.1, tau=0.7)
@@ -84,13 +91,14 @@ def test_per_tenant_feedback_updates_weights_and_metrics(patch_metrics):
     assert kwargs["gamma"] == engine.retrieval_weights.gamma
     assert kwargs["tau"] == engine.retrieval_weights.tau
 
+
 def test_per_tenant_adaptation(patch_metrics):
     engine1 = AdaptationEngine(tenant_id="tenantA")
     engine2 = AdaptationEngine(tenant_id="tenantB")
-    
+
     # Verify separate state isolation
     assert engine1._state != engine2._state
-    
+
     # Test Redis state persistence
     engine1.save_state()
     loaded_state = engine1.load_state()

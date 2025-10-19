@@ -99,7 +99,7 @@ Closes #123
 ```yaml
 # Example CODEOWNERS file entries
 /somabrain/core/          @senior-dev @architect
-/somabrain/api/           @api-team @security-team  
+/somabrain/api/           @api-team @security-team
 /somabrain/ml/            @ml-team @data-scientist
 /docs/                    @tech-writers @docs-team
 /infra/                   @devops-team @infrastructure
@@ -133,40 +133,40 @@ Closes #123
 # Self-review checklist for code changes
 class MemorySearchImprover:
     """Improves memory search functionality with enhanced ranking."""
-    
+
     def __init__(self, config: SearchConfig) -> None:
         # ✓ Type hints present
         # ✓ Docstring follows NumPy format
         # ✓ Proper error handling setup
         self.config = config
         self._validator = SearchValidator()
-        
+
     async def search_memories(
-        self, 
-        query: str, 
+        self,
+        query: str,
         tenant_id: str,
         *,
         limit: int = 10,
         min_similarity: float = 0.7
     ) -> List[MemoryResult]:
         """Search for memories with improved ranking algorithm.
-        
+
         Parameters
         ----------
         query : str
             Search query text.
-        tenant_id : str  
+        tenant_id : str
             Tenant namespace identifier.
         limit : int, default=10
             Maximum number of results to return.
         min_similarity : float, default=0.7
             Minimum similarity threshold.
-            
+
         Returns
         -------
         List[MemoryResult]
             Ranked list of matching memories.
-            
+
         Raises
         ------
         ValidationError
@@ -175,8 +175,8 @@ class MemorySearchImprover:
         # ✓ Input validation
         if not query.strip():
             raise ValidationError("Query cannot be empty")
-        
-        # ✓ Proper error handling    
+
+        # ✓ Proper error handling
         try:
             results = await self._perform_search(query, tenant_id, limit, min_similarity)
             # ✓ Logging for operations
@@ -199,7 +199,7 @@ class MemorySearchImprover:
 
 ## Review Response Process
 
-### [ ] Feedback Integration  
+### [ ] Feedback Integration
 - [ ] **Address All Comments**: Respond to every review comment appropriately
 - [ ] **Code Updates**: Make requested code changes with clear commits
 - [ ] **Explanation**: Provide explanations for decisions where changes weren't made
@@ -219,7 +219,7 @@ class MemorySearchImprover:
 ### @reviewer1 - Line 45: Consider using async context manager
 ✅ **Implemented** - Changed to `async with` pattern as suggested. This ensures proper cleanup even if exceptions occur.
 
-### @reviewer2 - Performance concern about N+1 queries  
+### @reviewer2 - Performance concern about N+1 queries
 ✅ **Fixed** - Added batch loading using `select_related()` to reduce database calls from O(n) to O(1).
 
 ### @reviewer3 - Add input validation
@@ -255,7 +255,7 @@ Thanks everyone for the thorough review! 🙏
 ```bash
 # CI/CD pipeline checks to verify:
 # ✓ Linting (ruff, black, isort)
-# ✓ Type checking (mypy)  
+# ✓ Type checking (mypy)
 # ✓ Unit tests (pytest)
 # ✓ Integration tests
 # ✓ Security scan (bandit, safety)
@@ -276,7 +276,7 @@ Thanks everyone for the thorough review! 🙏
 
 ### [ ] Documentation Updates
 - [ ] **Changelog**: Entry added to CHANGELOG.md if applicable
-- [ ] **API Documentation**: OpenAPI/Swagger specs updated if API changes made  
+- [ ] **API Documentation**: OpenAPI/Swagger specs updated if API changes made
 - [ ] **Migration Guide**: Database or configuration migrations documented
 - [ ] **Release Notes**: Significant changes noted for next release
 
@@ -304,7 +304,7 @@ and user feedback to improve search relevance.
 Closes #123"
 
 # Regular merge commit (for important features)
-git checkout main  
+git checkout main
 git merge --no-ff feature/major-architecture-change
 
 # Rebase and merge (for clean history)
@@ -373,7 +373,7 @@ async def search_memories(query: str, tenant_id: str) -> List[MemoryResult]:
 ## 👍 Positive Feedback
 "Nice use of the async context manager pattern here - this ensures proper cleanup even if an exception occurs."
 
-## 🤔 Constructive Questions  
+## 🤔 Constructive Questions
 "Could you help me understand why we're using a thread pool here instead of native async? Is there blocking I/O that I'm missing?"
 
 ## 🔧 Specific Suggestions

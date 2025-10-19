@@ -97,7 +97,9 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             header_str = str(header_val)
             try:
                 ctx["provenance_valid"] = verify_hmac_sha256(
-                    cfg.provenance_secret, raw_body, header_str  # type: ignore[arg-type]
+                    cfg.provenance_secret,
+                    raw_body,
+                    header_str,  # type: ignore[arg-type]
                 )
             except Exception:
                 ctx["provenance_valid"] = None

@@ -39,10 +39,7 @@ def retrieve_wm(
                 coord_str = None
                 if isinstance(coord, (list, tuple)) and len(coord) >= 3:
                     coord_str = ",".join(str(float(c)) for c in coord[:3])
-                key = (
-                    str(payload.get("task") or payload.get("id") or "")
-                    or None
-                )
+                key = str(payload.get("task") or payload.get("id") or "") or None
                 out_cached.append(
                     RAGCandidate(
                         coord=coord_str,
@@ -53,6 +50,7 @@ def retrieve_wm(
                     )
                 )
             return out_cached
+
         hits = (mc_wm if use_microcircuits else mt_wm).recall(
             tenant_id, qv, top_k=top_k
         )
@@ -135,7 +133,7 @@ def retrieve_graph(
         import numpy as np
 
         qv = embedder.embed(query)
-        
+
         def _candidates_from_cache(entries: list[dict]) -> list[RAGCandidate]:
             out_cached: list[RAGCandidate] = []
             for entry in entries:
@@ -146,10 +144,7 @@ def retrieve_graph(
                 coord_str = None
                 if isinstance(coord, (list, tuple)) and len(coord) >= 3:
                     coord_str = ",".join(str(float(c)) for c in coord[:3])
-                key = (
-                    str(payload.get("task") or payload.get("id") or "")
-                    or None
-                )
+                key = str(payload.get("task") or payload.get("id") or "") or None
                 out_cached.append(
                     RAGCandidate(
                         coord=coord_str,
@@ -160,6 +155,7 @@ def retrieve_graph(
                     )
                 )
             return out_cached
+
         start = mem_client.coord_for_key(query, universe=universe)
         # Attempt explicit two-hop traversal
         doc_coords: list[tuple] = []
@@ -227,7 +223,9 @@ def retrieve_graph(
                 return _candidates_from_cache(cached)[: max(1, int(top_k))]
         if not coords:
             # No graph edges found; fall back to vector similarity search
-            return retrieve_vector(query, top_k, mem_client=mem_client, embedder=embedder)
+            return retrieve_vector(
+                query, top_k, mem_client=mem_client, embedder=embedder
+            )
         payloads = mem_client.payloads_for_coords(coords, universe=universe)
         if (not payloads) and namespace is not None:
             cached = rag_cache.get_candidates(namespace, query)
@@ -235,7 +233,10 @@ def retrieve_graph(
             for coord in coords:
                 for entry in cached:
                     entry_coord = entry.get("coordinate")
-                    if not isinstance(entry_coord, (list, tuple)) or len(entry_coord) < 3:
+                    if (
+                        not isinstance(entry_coord, (list, tuple))
+                        or len(entry_coord) < 3
+                    ):
                         continue
                     if all(
                         abs(float(coord[i]) - float(entry_coord[i])) <= 1e-6
@@ -250,7 +251,9 @@ def retrieve_graph(
                 return _candidates_from_cache(cached)[: max(1, int(top_k))]
         if not payloads:
             # Final safeguard: degrade to vector retriever if payloads unavailable
-            return retrieve_vector(query, top_k, mem_client=mem_client, embedder=embedder)
+            return retrieve_vector(
+                query, top_k, mem_client=mem_client, embedder=embedder
+            )
         out: list[RAGCandidate] = []
         for p in payloads:
             txt = _text_of(p)

@@ -25,7 +25,7 @@ def test_role_spectrum_unitarity_and_determinism(dim):
     c = q.bind(a, r1)
     na = np.linalg.norm(a)
     nc = np.linalg.norm(c)
-    assert np.isclose(nc / na, 1.0, atol=5e-4), f"norm ratio {nc/na} deviates"
+    assert np.isclose(nc / na, 1.0, atol=5e-4), f"norm ratio {nc / na} deviates"
 
 
 @pytest.mark.parametrize("dim", [D_SMALL, D_LARGE])
@@ -57,9 +57,9 @@ def test_wiener_improves_with_higher_snr():
     # Basic floor
     assert min(cosines) > 0.9
     # Monotonic non-decreasing
-    assert all(
-        cosines[i + 1] + 1e-6 >= cosines[i] for i in range(len(cosines) - 1)
-    ), cosines
+    assert all(cosines[i + 1] + 1e-6 >= cosines[i] for i in range(len(cosines) - 1)), (
+        cosines
+    )
 
 
 def test_exact_not_worse_than_robust():
@@ -91,6 +91,6 @@ def test_tiny_floor_scaling():
     t2 = compute_tiny_floor(d2)
     expected = np.sqrt(d2 / d1)
     ratio = t2 / t1
-    assert (
-        0.8 * expected <= ratio <= 1.2 * expected
-    ), f"ratio {ratio} outside band around {expected}"
+    assert 0.8 * expected <= ratio <= 1.2 * expected, (
+        f"ratio {ratio} outside band around {expected}"
+    )

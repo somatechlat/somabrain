@@ -120,7 +120,7 @@ def rotate_journal(
             # shift older: .(i) -> .(i+1)
             for i in range(keep - 1, 0, -1):
                 src = path.with_name(f"{path.name}.{i}")
-                dst = path.with_name(f"{path.name}.{i+1}")
+                dst = path.with_name(f"{path.name}.{i + 1}")
                 if src.exists():
                     try:
                         if dst.exists():

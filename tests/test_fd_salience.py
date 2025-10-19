@@ -19,7 +19,9 @@ def test_fd_salience_boosts_on_residual_energy():
         fd_energy_floor=0.9,
     )
     amy = AmygdalaSalience(cfg, fd_backend=sketch)
-    nm = NeuromodState(dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0)
+    nm = NeuromodState(
+        dopamine=0.4, serotonin=0.5, noradrenaline=0.0, acetylcholine=0.0
+    )
 
     v = np.array([1.0, 0.0, 0.0, 0.0])
     s1 = amy.score(0.0, 0.0, nm, v)

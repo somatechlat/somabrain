@@ -164,10 +164,10 @@ async def feedback_endpoint(
         adapter_count = getattr(adapter, "_feedback_count", 0)
         # Track the highest observed count from either the adapter or module-level counter.
         _feedback_counter = max(_feedback_counter + 1, adapter_count)
-        
+
         # Record metrics on successful feedback application
         record_learning_feedback_applied(tenant_id)
-        
+
         # Update weight metrics
         update_learning_retrieval_weights(
             tenant_id,
@@ -182,13 +182,15 @@ async def feedback_endpoint(
             mu=adapter.utility_weights.mu,
             nu=adapter.utility_weights.nu,
         )
-        
+
         # Update effective learning rate metric
         lr_eff = getattr(adapter, "_lr", 0.0)
         update_learning_effective_lr(tenant_id, lr_eff)
     else:
         # Feedback rejected - determine reason
-        reason = "bounds" if payload.utility is None or payload.reward is None else "outlier"
+        reason = (
+            "bounds" if payload.utility is None or payload.reward is None else "outlier"
+        )
         record_learning_feedback_rejected(tenant_id, reason)
     # Capture weights after adaptation
     after = {
@@ -269,11 +271,11 @@ async def feedback_endpoint(
             _feedback_counter = max(_feedback_counter, adapter_total, store_total)
         except Exception:
             pass
-    
+
     # Record feedback latency
     elapsed = time.perf_counter() - start_time
     record_learning_feedback_latency(tenant_id, elapsed)
-    
+
     return FeedbackResponse(accepted=True, adaptation_applied=applied)
 
 
@@ -291,7 +293,9 @@ def _constitution_checksum() -> Optional[str]:
 _adaptation_engines: dict[str, AdaptationEngine] = {}
 
 
-def _get_adaptation(builder, planner: ContextPlanner, tenant_id: str = "default") -> AdaptationEngine:
+def _get_adaptation(
+    builder, planner: ContextPlanner, tenant_id: str = "default"
+) -> AdaptationEngine:
     """
     Get or create a per-tenant AdaptationEngine instance.
     Each tenant maintains independent learning state.
@@ -320,9 +324,7 @@ def _make_event_id(session_id: str) -> str:
 
 @router.get("/adaptation/state", response_model=AdaptationStateResponse)
 async def adaptation_state_endpoint(
-    request: Request, 
-    tenant_id: Optional[str] = None,
-    auth=Depends(auth_guard)
+    request: Request, tenant_id: Optional[str] = None, auth=Depends(auth_guard)
 ):
     """Return current adaptation weights (retrieval + utility) and history length.
 

@@ -15,6 +15,7 @@ Latency:
 Usage:
   PYTHONPATH=. .venv/bin/python benchmarks/cognition_core_bench.py
 """
+
 from __future__ import annotations
 
 import csv
@@ -358,7 +359,7 @@ def main() -> None:
         print(
             f"Gate2 (Wiener-Tikhonov @k={k} >= 0.03):",
             "PASS" if ok else "FAIL",
-            f"(Δ={float(w)-float(t):.3f})",
+            f"(Δ={float(w) - float(t):.3f})",
         )
         gate2 = gate2 and ok
 

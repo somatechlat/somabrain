@@ -44,7 +44,7 @@ extend-exclude = '''
 /(
   migrations
   | \.git
-  | \.hg  
+  | \.hg
   | \.mypy_cache
   | \.tox
   | \.venv
@@ -126,11 +126,11 @@ class CognitiveReasoner:
     def __init__(self, config: ReasoningConfig):
         self.config = config
         self._reasoning_cache = {}
-        
+
     def reason_about_query(self, query: str) -> ReasoningResult:
         """Public method for cognitive reasoning."""
         pass
-        
+
     def _build_reasoning_chain(self, context: List[Memory]) -> ReasoningChain:
         """Private method for building reasoning chains."""
         pass
@@ -160,68 +160,68 @@ class Memory:
 class MemoryManager:
     """
     Manages cognitive memory operations including storage, retrieval, and reasoning.
-    
+
     This class provides the core functionality for SomaBrain's memory system,
     handling vector encoding, similarity computation, and contextual retrieval.
-    
+
     Attributes:
         vector_dimensions: Dimensionality of vector encodings (default: 1024)
         similarity_threshold: Minimum similarity score for retrieval (default: 0.2)
         encoding_model: Name of the sentence transformer model
-        
+
     Example:
         >>> manager = MemoryManager(vector_dimensions=1024)
         >>> memory_id = manager.store_memory("Python is great", {"topic": "programming"})
         >>> results = manager.recall_memories("programming languages", k=5)
     """
-    
+
     def __init__(
-        self, 
+        self,
         vector_dimensions: int = 1024,
         similarity_threshold: float = 0.2,
         encoding_model: str = "all-MiniLM-L6-v2"
     ) -> None:
         """
         Initialize the memory manager with specified configuration.
-        
+
         Args:
             vector_dimensions: Number of dimensions for vector encodings
             similarity_threshold: Minimum similarity score for retrieval
             encoding_model: Sentence transformer model name
-            
+
         Raises:
             ValueError: If vector_dimensions is not positive
             ModelNotFoundError: If encoding_model cannot be loaded
         """
         if vector_dimensions <= 0:
             raise ValueError("vector_dimensions must be positive")
-            
+
         self.vector_dimensions = vector_dimensions
         self.similarity_threshold = similarity_threshold
         self.encoding_model = encoding_model
         self._encoder = self._load_encoder()
-        
+
     def store_memory(
-        self, 
-        content: str, 
+        self,
+        content: str,
         metadata: Dict[str, Any],
         tenant_id: str
     ) -> str:
         """
         Store a new memory with content and metadata.
-        
+
         Args:
             content: The textual content of the memory
             metadata: Associated metadata as key-value pairs
             tenant_id: Tenant identifier for isolation
-            
+
         Returns:
             Unique identifier for the stored memory
-            
+
         Raises:
             ValueError: If content is empty or too long
             TenantNotFoundError: If tenant_id is invalid
-            
+
         Example:
             >>> memory_id = manager.store_memory(
             ...     "FastAPI is a modern Python web framework",
@@ -231,7 +231,7 @@ class MemoryManager:
         """
         # Implementation here
         pass
-        
+
     def recall_memories(
         self,
         query: str,
@@ -241,16 +241,16 @@ class MemoryManager:
     ) -> List[Memory]:
         """
         Retrieve memories similar to the query.
-        
+
         Args:
             query: Search query as natural language
             k: Maximum number of memories to return
             filters: Optional metadata filters
             tenant_id: Tenant scope for search
-            
+
         Returns:
             List of memories ranked by similarity score
-            
+
         Raises:
             ValueError: If k is not positive
             InvalidQueryError: If query cannot be processed
@@ -272,7 +272,7 @@ from dataclasses import dataclass
 class SomaBrainErrorCode(Enum):
     """Standardized error codes for SomaBrain operations."""
     MEMORY_NOT_FOUND = "MEMORY_001"
-    ENCODING_FAILED = "MEMORY_002" 
+    ENCODING_FAILED = "MEMORY_002"
     SIMILARITY_TIMEOUT = "MEMORY_003"
     TENANT_ISOLATION_VIOLATION = "SECURITY_001"
     RATE_LIMIT_EXCEEDED = "API_001"
@@ -284,7 +284,7 @@ class SomaBrainError(Exception):
     error_code: SomaBrainErrorCode
     message: str
     details: Optional[Dict[str, Any]] = None
-    
+
     def __str__(self) -> str:
         return f"{self.error_code.value}: {self.message}"
 
@@ -310,9 +310,9 @@ logger = logging.getLogger(__name__)
 
 def store_memory_with_error_handling(content: str, metadata: Dict[str, Any]) -> str:
     """Example of proper error handling and logging."""
-    
+
     logger.info(f"Storing memory with content length: {len(content)}")
-    
+
     try:
         # Validate input
         if not content or len(content.strip()) == 0:
@@ -321,7 +321,7 @@ def store_memory_with_error_handling(content: str, metadata: Dict[str, Any]) -> 
                 message="Memory content cannot be empty",
                 details={"content_length": len(content)}
             )
-        
+
         # Attempt encoding
         try:
             vector_encoding = encode_content(content)
@@ -332,13 +332,13 @@ def store_memory_with_error_handling(content: str, metadata: Dict[str, Any]) -> 
                 message=f"Failed to encode content: {str(e)}",
                 details={"original_error": str(e), "content_sample": content[:100]}
             )
-        
+
         # Store in database
         memory_id = _store_in_database(content, metadata, vector_encoding)
-        
+
         logger.info(f"Successfully stored memory: {memory_id}")
         return memory_id
-        
+
     except SomaBrainError:
         # Re-raise SomaBrain specific errors
         raise
@@ -374,35 +374,35 @@ def compute_similarity_cached(vector1_hash: str, vector2_hash: str) -> float:
 # Use async for I/O bound operations
 async def encode_memories_batch(contents: List[str]) -> List[np.ndarray]:
     """Encode multiple memories concurrently."""
-    
+
     async def encode_single(content: str) -> np.ndarray:
         # Use thread pool for CPU-intensive encoding
         loop = asyncio.get_event_loop()
         with ThreadPoolExecutor() as executor:
             return await loop.run_in_executor(executor, encode_content, content)
-    
+
     # Process in batches to avoid overwhelming resources
     batch_size = 50
     results = []
-    
+
     for i in range(0, len(contents), batch_size):
         batch = contents[i:i + batch_size]
         batch_results = await asyncio.gather(*[encode_single(content) for content in batch])
         results.extend(batch_results)
-    
+
     return results
 
 # Optimize database queries
 def recall_memories_optimized(
-    query: str, 
+    query: str,
     k: int = 10,
     tenant_id: str = None
 ) -> List[Memory]:
     """Optimized memory recall with query planning."""
-    
+
     # Use query vector encoding
     query_vector = encode_content(query)
-    
+
     # Optimize similarity search with approximate methods for large datasets
     if get_memory_count(tenant_id) > 100000:
         # Use FAISS for approximate similarity search
@@ -411,14 +411,14 @@ def recall_memories_optimized(
     else:
         # Use exact search for smaller datasets
         candidate_memories = get_all_memories(tenant_id)
-    
+
     # Compute exact similarities for candidates
     similarities = []
     for memory in candidate_memories:
         similarity = compute_similarity(query_vector, memory.vector_encoding)
         if similarity >= similarity_threshold:
             similarities.append((memory, similarity))
-    
+
     # Sort and return top k
     similarities.sort(key=lambda x: x[1], reverse=True)
     return [mem for mem, score in similarities[:k]]
@@ -432,13 +432,13 @@ def monitor_performance(func: Callable) -> Callable:
         try:
             result = func(*args, **kwargs)
             execution_time = time.time() - start_time
-            
+
             # Log performance metrics
             logger.info(f"{func.__name__} executed in {execution_time:.3f}s")
-            
+
             # Send metrics to monitoring system
             metrics.histogram(f"somabrain.{func.__name__}.duration", execution_time)
-            
+
             return result
         except Exception as e:
             execution_time = time.time() - start_time
@@ -614,7 +614,7 @@ export class SomaBrainClient {
         content,
         metadata
       });
-      
+
       return response.memory_id;
     } catch (error) {
       this.handleError(error);
@@ -769,51 +769,51 @@ export class SomaBrainClient {
 CREATE TABLE memories (
     -- Primary key: UUIDs for distributed systems
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    
+
     -- Core memory content
-    content TEXT NOT NULL 
-        CONSTRAINT ck_memories_content_not_empty 
+    content TEXT NOT NULL
+        CONSTRAINT ck_memories_content_not_empty
         CHECK (length(trim(content)) > 0),
-    
+
     -- Metadata as JSONB for flexibility and indexing
     metadata JSONB NOT NULL DEFAULT '{}',
-    
+
     -- Vector encoding stored as binary
     vector_encoding BYTEA,
-    
+
     -- Tenant isolation (required for all tables)
     tenant_id VARCHAR(255) NOT NULL,
-    
+
     -- Timestamps with timezone
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    
+
     -- Content length for optimization
     content_length INTEGER GENERATED ALWAYS AS (length(content)) STORED,
-    
+
     -- Soft delete support
     deleted_at TIMESTAMPTZ NULL
 );
 
 -- Indexes for performance
-CREATE INDEX idx_memories_tenant_id ON memories (tenant_id) 
+CREATE INDEX idx_memories_tenant_id ON memories (tenant_id)
     WHERE deleted_at IS NULL;
-    
-CREATE INDEX idx_memories_created_at ON memories (created_at DESC) 
+
+CREATE INDEX idx_memories_created_at ON memories (created_at DESC)
     WHERE deleted_at IS NULL;
-    
+
 -- GIN index for metadata queries
-CREATE INDEX idx_memories_metadata ON memories USING GIN (metadata) 
+CREATE INDEX idx_memories_metadata ON memories USING GIN (metadata)
     WHERE deleted_at IS NULL;
 
 -- Composite index for common queries
-CREATE INDEX idx_memories_tenant_created ON memories (tenant_id, created_at DESC) 
+CREATE INDEX idx_memories_tenant_created ON memories (tenant_id, created_at DESC)
     WHERE deleted_at IS NULL;
 
 -- Constraints and foreign keys
-ALTER TABLE memories 
-    ADD CONSTRAINT fk_memories_tenant_id 
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id) 
+ALTER TABLE memories
+    ADD CONSTRAINT fk_memories_tenant_id
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
     ON DELETE CASCADE;
 
 -- Row Level Security (RLS) for tenant isolation
@@ -824,13 +824,13 @@ CREATE POLICY memories_tenant_isolation ON memories
     USING (tenant_id = current_setting('app.current_tenant_id'));
 
 -- Comments for documentation
-COMMENT ON TABLE memories IS 
+COMMENT ON TABLE memories IS
     'Stores cognitive memories with content, metadata, and vector encodings';
-COMMENT ON COLUMN memories.content IS 
+COMMENT ON COLUMN memories.content IS
     'Textual content of the memory, limited to 1MB';
-COMMENT ON COLUMN memories.metadata IS 
+COMMENT ON COLUMN memories.metadata IS
     'Flexible metadata as JSONB with category, topic, tags, etc.';
-COMMENT ON COLUMN memories.vector_encoding IS 
+COMMENT ON COLUMN memories.vector_encoding IS
     'High-dimensional vector encoding for similarity search';
 
 -- Trigger for updated_at timestamp
@@ -842,8 +842,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER trigger_memories_updated_at 
-    BEFORE UPDATE ON memories 
+CREATE TRIGGER trigger_memories_updated_at
+    BEFORE UPDATE ON memories
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
@@ -865,29 +865,29 @@ from sqlalchemy.dialects import postgresql
 
 def upgrade():
     """Apply migration changes."""
-    
+
     # Create memories table
     op.create_table(
         'memories',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, 
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True,
                  server_default=sa.text('gen_random_uuid()')),
         sa.Column('content', sa.Text(), nullable=False),
-        sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()), 
+        sa.Column('metadata', postgresql.JSONB(astext_type=sa.Text()),
                  nullable=False, server_default='{}'),
         sa.Column('vector_encoding', sa.LargeBinary(), nullable=True),
         sa.Column('tenant_id', sa.String(255), nullable=False),
-        sa.Column('created_at', sa.TIMESTAMP(timezone=True), 
+        sa.Column('created_at', sa.TIMESTAMP(timezone=True),
                  nullable=False, server_default=sa.func.now()),
-        sa.Column('updated_at', sa.TIMESTAMP(timezone=True), 
+        sa.Column('updated_at', sa.TIMESTAMP(timezone=True),
                  nullable=False, server_default=sa.func.now()),
         sa.Column('deleted_at', sa.TIMESTAMP(timezone=True), nullable=True),
-        
+
         # Constraints
         sa.CheckConstraint('length(trim(content)) > 0', name='ck_memories_content_not_empty'),
-        sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'], 
+        sa.ForeignKeyConstraint(['tenant_id'], ['tenants.id'],
                                name='fk_memories_tenant_id', ondelete='CASCADE')
     )
-    
+
     # Create indexes
     op.create_index('idx_memories_tenant_id', 'memories', ['tenant_id'],
                    postgresql_where=sa.text('deleted_at IS NULL'))
@@ -896,17 +896,17 @@ def upgrade():
     op.create_index('idx_memories_metadata', 'memories', ['metadata'],
                    postgresql_using='gin',
                    postgresql_where=sa.text('deleted_at IS NULL'))
-    
+
     # Enable Row Level Security
     op.execute('ALTER TABLE memories ENABLE ROW LEVEL SECURITY')
-    
+
     # Create RLS policy
     op.execute("""
         CREATE POLICY memories_tenant_isolation ON memories
         FOR ALL TO application_role
         USING (tenant_id = current_setting('app.current_tenant_id'))
     """)
-    
+
     # Create updated_at trigger function if not exists
     op.execute("""
         CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -917,24 +917,24 @@ def upgrade():
         END;
         $$ language 'plpgsql'
     """)
-    
+
     # Create trigger
     op.execute("""
-        CREATE TRIGGER trigger_memories_updated_at 
-        BEFORE UPDATE ON memories 
+        CREATE TRIGGER trigger_memories_updated_at
+        BEFORE UPDATE ON memories
         FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()
     """)
 
 def downgrade():
     """Revert migration changes."""
-    
+
     # Drop trigger and function
     op.execute('DROP TRIGGER IF EXISTS trigger_memories_updated_at ON memories')
     op.execute('DROP FUNCTION IF EXISTS update_updated_at_column()')
-    
+
     # Drop RLS policy
     op.execute('DROP POLICY IF EXISTS memories_tenant_isolation ON memories')
-    
+
     # Drop table (cascades indexes and constraints)
     op.drop_table('memories')
 ```
@@ -950,7 +950,7 @@ def downgrade():
 
 ### Functionality
 - [ ] Code implements requirements correctly
-- [ ] Edge cases are handled appropriately  
+- [ ] Edge cases are handled appropriately
 - [ ] Error conditions are properly managed
 - [ ] Performance considerations are addressed
 - [ ] Security implications are considered

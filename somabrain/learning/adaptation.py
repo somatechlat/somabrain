@@ -27,11 +27,13 @@ def _get_redis():
     for compatibility with local development.
     """
     import os
+
     try:
         redis_url = get_redis_url()
         if redis_url:
             redis_url = redis_url.strip()
         import redis
+
         if redis_url:
             return redis.from_url(redis_url)
         # Legacy fallback to host/port variables without hard-coded defaults
@@ -79,6 +81,7 @@ class AdaptationEngine:
         # Lazy import to avoid circular dependency at module load time
         if retrieval is None:
             from somabrain.context.builder import RetrievalWeights as RetrievalWeights
+
             retrieval = RetrievalWeights()
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
@@ -95,7 +98,7 @@ class AdaptationEngine:
         }
         # Counter for how many feedback applications have occurred – used for observability
         self._feedback_count = 0
-        
+
         # Per-tenant state management
         self._tenant_id = tenant_id or "default"
         self._redis = _get_redis()
@@ -111,15 +114,18 @@ class AdaptationEngine:
         elif os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1":
             dyn_lr = True
         self._enable_dynamic_lr = dyn_lr
-        
+
         # Initialize per-tenant tau gauge with a small deterministic offset
         try:
             from somabrain.metrics import tau_gauge
+
             offset = (hash(self._tenant_id) % 100) / 1000.0  # 0.0‑0.099
-            tau_gauge.labels(tenant_id=self._tenant_id).set(self._retrieval.tau + offset)
+            tau_gauge.labels(tenant_id=self._tenant_id).set(
+                self._retrieval.tau + offset
+            )
         except Exception:
             pass
-        
+
         # Load state from Redis if available
         if self._redis and self._tenant_id:
             self._load_state()
@@ -175,6 +181,7 @@ class AdaptationEngine:
         """
         try:
             from somabrain.neuromodulators import PerTenantNeuromodulators
+
             neuromod = PerTenantNeuromodulators()
             return neuromod.get_state(self._tenant_id)
         except Exception:
@@ -187,7 +194,7 @@ class AdaptationEngine:
     @property
     def utility_weights(self) -> UtilityWeights:
         return self._utility
-    
+
     @property
     def tenant_id(self) -> str:
         return self._tenant_id
@@ -212,7 +219,7 @@ class AdaptationEngine:
         signal = reward if reward is not None else utility_val
         if signal is None:
             return False
-        
+
         # Compute learning rate based on configuration
         if self._enable_dynamic_lr:
             # Dynamic scaling using dopamine level
@@ -225,7 +232,7 @@ class AdaptationEngine:
             self._lr = self._base_lr * (1.0 + float(signal))
         # Expose the effective learning rate for tests and external inspection
         self._lr_eff = self._lr
-        
+
         # Save current state for rollback
         self._save_history()
         delta = self._lr * float(signal)
@@ -247,7 +254,7 @@ class AdaptationEngine:
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
         except Exception:
             pass
-        
+
         # Persist state to Redis before metric update to guarantee persistence
         # Ensure we have a Redis client (fallback to _get_redis) before persisting
         if not self._redis:
@@ -256,6 +263,7 @@ class AdaptationEngine:
         # Update shared metrics for this tenant (import inside to allow monkeypatching)
         try:
             from somabrain import metrics as _metrics
+
             _metrics.update_learning_retrieval_weights(
                 tenant_id=self._tenant_id,
                 alpha=self._retrieval.alpha,
@@ -313,17 +321,18 @@ class AdaptationEngine:
         if upper is not None and value > upper:
             return upper
         return value
-    
+
     def _get_dopamine_level(self) -> float:
         """Fetch dopamine level from neuromodulator state for this tenant."""
         try:
             from somabrain.neuromodulators import PerTenantNeuromodulators
+
             neuromod = PerTenantNeuromodulators()
             state = neuromod.get_state(self._tenant_id)
             return state.dopamine
         except Exception:
             return 0.0  # Neutral if unavailable
-    
+
     def _persist_state(self):
         """Save current adaptation state to Redis with tenant prefix."""
         if not self._redis:
@@ -359,7 +368,7 @@ class AdaptationEngine:
             state_data = self._redis.get(state_key)
             if not state_data:
                 return
-            
+
             state = json.loads(state_data)
             # Restore retrieval weights
             if "retrieval" in state:
@@ -368,14 +377,14 @@ class AdaptationEngine:
                 self._retrieval.beta = r.get("beta", self._retrieval.beta)
                 self._retrieval.gamma = r.get("gamma", self._retrieval.gamma)
                 self._retrieval.tau = r.get("tau", self._retrieval.tau)
-            
+
             # Restore utility weights
             if "utility" in state:
                 u = state["utility"]
                 self._utility.lambda_ = u.get("lambda_", self._utility.lambda_)
                 self._utility.mu = u.get("mu", self._utility.mu)
                 self._utility.nu = u.get("nu", self._utility.nu)
-            
+
             # Restore counters
             self._feedback_count = state.get("feedback_count", 0)
             self._lr = state.get("learning_rate", self._base_lr)

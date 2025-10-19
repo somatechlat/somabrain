@@ -204,4 +204,3 @@ class FDSalienceSketch:
             "trace_norm_error": self.trace_norm_error,
             "psd_ok": self.psd_ok,
         }
-

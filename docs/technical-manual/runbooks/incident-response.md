@@ -168,7 +168,7 @@ ETA: [Best estimate for resolution]
 
 #### Escalation Triggers
 - **15 minutes**: No progress on P0 incident
-- **1 hour**: No progress on P1 incident  
+- **1 hour**: No progress on P1 incident
 - **Customer complaints**: Multiple reports received
 - **Media attention**: Public visibility of incident
 - **Data breach suspected**: Security team involvement
@@ -211,8 +211,8 @@ watch -n 5 'curl -s http://localhost:9696/metrics | grep -E "(request_duration|e
 
 # Check database performance
 psql -h postgres-host -U soma -d somabrain -c "
-SELECT query, calls, total_time, mean_time 
-FROM pg_stat_statements 
+SELECT query, calls, total_time, mean_time
+FROM pg_stat_statements
 ORDER BY total_time DESC LIMIT 10;"
 ```
 
@@ -406,7 +406,7 @@ echo "14:45 - Service restored" >> timeline.txt
 
 #### Technical Escalation
 - **15 minutes P0**: Engineering Manager
-- **30 minutes P0**: CTO + VP Engineering  
+- **30 minutes P0**: CTO + VP Engineering
 - **1 hour P0**: CEO notification
 - **Multi-service impact**: Architecture team lead
 - **Data integrity issues**: Data team lead + Legal
@@ -439,7 +439,7 @@ Legal/Compliance: legal-emergency@somabrain.com
 
 After incident resolution, verify:
 - [ ] **All services healthy**: Check /health endpoints
-- [ ] **Performance normalized**: Latency and error rates normal  
+- [ ] **Performance normalized**: Latency and error rates normal
 - [ ] **Monitoring active**: All alerts and dashboards functional
 - [ ] **Customer impact resolved**: No ongoing user reports
 - [ ] **Documentation updated**: Runbooks reflect any changes made
@@ -464,7 +464,7 @@ After incident resolution, verify:
 
 - [SomaBrain API Runbook](somabrain-api.md) for service-specific procedures
 - [Redis Operations](redis-operations.md) for memory system recovery
-- [Postgres Operations](postgres-operations.md) for database recovery  
+- [Postgres Operations](postgres-operations.md) for database recovery
 - [Kafka Operations](kafka-operations.md) for message queue issues
 - [Monitoring Guide](../monitoring.md) for observability setup
 - [Security Policies](../security/) for security incident procedures

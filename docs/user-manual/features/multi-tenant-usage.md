@@ -30,12 +30,12 @@ SomaBrain supports **multi-tenant architecture** that provides complete data iso
 SomaBrain Instance
 ├── Tenant A (org_acme)
 │   ├── Memory Store (isolated)
-│   ├── Vector Encodings (isolated)  
+│   ├── Vector Encodings (isolated)
 │   └── Configuration (tenant-specific)
 ├── Tenant B (user_alice)
 │   ├── Memory Store (isolated)
 │   ├── Vector Encodings (isolated)
-│   └── Configuration (tenant-specific)  
+│   └── Configuration (tenant-specific)
 └── Shared Components
     ├── API Gateway (routing)
     ├── Authentication (unified)
@@ -44,7 +44,7 @@ SomaBrain Instance
 
 **Isolation Levels**:
 - **Data**: Complete memory content and metadata isolation
-- **Vector Space**: Separate vector encodings per tenant  
+- **Vector Space**: Separate vector encodings per tenant
 - **Configuration**: Tenant-specific settings and limits
 - **Metrics**: Per-tenant usage and performance monitoring
 
@@ -64,83 +64,83 @@ tenants:
     type: "organization"
     status: "active"
     created_at: "2025-01-15T00:00:00Z"
-    
+
     # Resource limits
     limits:
       max_memories: 1000000
       max_storage_mb: 5120  # 5GB
       requests_per_minute: 1000
       concurrent_requests: 50
-      
+
     # Memory configuration
     memory:
       vector_dimensions: 1024
       similarity_threshold: 0.2
       max_content_length: 10240  # 10KB
-      
-    # Feature flags  
+
+    # Feature flags
     features:
       cognitive_reasoning: true
       batch_operations: true
       export_capabilities: true
       advanced_analytics: true
-      
+
     # Authentication
     auth:
-      api_keys: 
-        - key_id: "acme_prod_001" 
+      api_keys:
+        - key_id: "acme_prod_001"
           key: "sk_acme_prod_abc123xyz"
           scopes: ["read", "write", "admin"]
         - key_id: "acme_readonly_001"
-          key: "sk_acme_ro_def456uvw" 
+          key: "sk_acme_ro_def456uvw"
           scopes: ["read"]
-          
+
   user_alice:
     name: "Alice Developer"
     type: "individual"
-    status: "active" 
+    status: "active"
     created_at: "2025-02-01T00:00:00Z"
-    
-    # Individual user limits (smaller)  
+
+    # Individual user limits (smaller)
     limits:
       max_memories: 10000
       max_storage_mb: 100  # 100MB
       requests_per_minute: 100
       concurrent_requests: 5
-      
+
     memory:
       vector_dimensions: 512  # Smaller for individual use
       similarity_threshold: 0.3
       max_content_length: 2048  # 2KB
-      
+
     features:
       cognitive_reasoning: false  # Disabled for free tier
       batch_operations: true
       export_capabilities: true
       advanced_analytics: false
-      
+
     auth:
       api_keys:
         - key_id: "alice_personal_001"
           key: "sk_alice_personal_ghi789rst"
           scopes: ["read", "write"]
 
-# Global defaults for new tenants          
+# Global defaults for new tenants
 defaults:
   limits:
     max_memories: 1000
     max_storage_mb: 10
     requests_per_minute: 60
     concurrent_requests: 3
-    
+
   memory:
     vector_dimensions: 384
     similarity_threshold: 0.4
     max_content_length: 1024
-    
+
   features:
     cognitive_reasoning: false
-    batch_operations: false 
+    batch_operations: false
     export_capabilities: true
     advanced_analytics: false
 ```
@@ -157,7 +157,7 @@ curl -X POST http://localhost:9696/admin/tenants \
   -H "Content-Type: application/json" \
   -H "X-Admin-Key: your-admin-key" \
   -d '{
-    "tenant_id": "startup_beta", 
+    "tenant_id": "startup_beta",
     "name": "Beta Startup Inc",
     "type": "organization",
     "limits": {
@@ -193,7 +193,7 @@ curl -H "X-Admin-Key: your-admin-key" \
   "tenants": [
     {
       "tenant_id": "org_acme",
-      "name": "ACME Corporation", 
+      "name": "ACME Corporation",
       "status": "active",
       "memory_count": 45230,
       "storage_used_mb": 2341,
@@ -223,7 +223,7 @@ curl -X POST http://localhost:9696/admin/tenants/org_acme/keys \
     "description": "Analytics team read-only access"
   }'
 
-# Revoke API key  
+# Revoke API key
 curl -X DELETE http://localhost:9696/admin/tenants/org_acme/keys/acme_analytics_001 \
   -H "X-Admin-Key: your-admin-key"
 
@@ -234,7 +234,7 @@ curl -H "X-Admin-Key: your-admin-key" \
 
 **API Key Scopes**:
 - `read`: Memory recall and search operations
-- `write`: Memory storage and updates  
+- `write`: Memory storage and updates
 - `delete`: Memory deletion operations
 - `admin`: Tenant configuration changes
 - `analytics`: Usage metrics and statistics
@@ -256,7 +256,7 @@ environment:
 ```json
 {
   "tenant_id": "org_acme",
-  "user_id": "user_123", 
+  "user_id": "user_123",
   "scopes": ["read", "write"],
   "exp": 1735689600,
   "iat": 1735603200
@@ -290,24 +290,24 @@ tenants:
       admin:
         permissions: ["*"]  # All permissions
         users: ["admin@acme.com"]
-        
-      developer: 
+
+      developer:
         permissions: ["read", "write", "analytics"]
         users: ["dev1@acme.com", "dev2@acme.com"]
-        
+
       analyst:
-        permissions: ["read", "analytics"] 
+        permissions: ["read", "analytics"]
         users: ["analyst@acme.com"]
-        
+
       readonly:
         permissions: ["read"]
         users: ["guest@acme.com"]
-        
+
     # Permission definitions
     permissions:
       read: ["GET /recall", "GET /memories/*", "GET /search"]
       write: ["POST /remember", "PUT /memories/*", "POST /remember/batch"]
-      delete: ["DELETE /memories/*"]  
+      delete: ["DELETE /memories/*"]
       analytics: ["GET /metrics", "GET /admin/stats"]
       admin: ["POST /admin/*", "PUT /admin/*", "DELETE /admin/*"]
 ```
@@ -330,7 +330,7 @@ curl -X POST http://localhost:9696/remember \
     "metadata": {
       "department": "engineering",
       "classification": "internal",
-      "project": "project_alpha"  
+      "project": "project_alpha"
     }
   }'
 
@@ -339,7 +339,7 @@ curl -X POST http://localhost:9696/recall \
   -H "X-API-Key: sk_acme_prod_abc123xyz" \
   -H "Content-Type: application/json" \
   -d '{
-    "query": "project alpha documentation", 
+    "query": "project alpha documentation",
     "k": 10,
     "filters": {
       "department": "engineering"
@@ -361,7 +361,7 @@ curl -X PUT http://localhost:9696/admin/tenants/org_acme/config \
   -d '{
     "similarity_scoring": {
       "cosine_weight": 0.7,
-      "recency_weight": 0.2, 
+      "recency_weight": 0.2,
       "frequency_weight": 0.1
     },
     "vector_encoding": {
@@ -391,7 +391,7 @@ curl -X POST http://localhost:9696/admin/search/global \
     "include_tenant_info": true
   }'
 
-# Cross-tenant memory statistics  
+# Cross-tenant memory statistics
 curl -H "X-Admin-Key: your-admin-key" \
      http://localhost:9696/admin/stats/cross-tenant?metric=memory_growth
 ```
@@ -415,7 +415,7 @@ curl -H "X-Admin-Key: your-admin-key" \
   "usage": {
     "memory_count": 45230,
     "storage_used_mb": 2341,
-    "storage_limit_mb": 5120,  
+    "storage_limit_mb": 5120,
     "storage_percentage": 45.7,
     "vector_index_size_mb": 890,
     "metadata_size_mb": 1451
@@ -439,18 +439,18 @@ rate_limits:
     requests_per_minute: 1000
     burst_capacity: 50
     concurrent_requests: 50
-    
+
   user_alice:
     requests_per_minute: 100
     burst_capacity: 10
     concurrent_requests: 5
-    
+
 # Rate limit algorithms
 algorithms:
-  sliding_window: 
+  sliding_window:
     window_size: 60  # seconds
     precision: 10    # sub-windows
-    
+
   token_bucket:
     refill_rate: 16.67  # tokens per second (1000/60)
     bucket_size: 50
@@ -484,7 +484,7 @@ curl -X PUT http://localhost:9696/admin/tenants/org_acme/scaling \
         "parameters": {"increase_by_mb": 1024}
       },
       {
-        "metric": "requests_per_minute", 
+        "metric": "requests_per_minute",
         "threshold": 900,
         "action": "increase_rate_limit",
         "parameters": {"new_limit": 1500}
@@ -533,7 +533,7 @@ curl -H "X-Admin-Key: your-admin-key" \
     },
     "memory": {
       "new_memories": 8200,
-      "total_memories": 45230, 
+      "total_memories": 45230,
       "avg_similarity_score": 0.73
     }
   }
@@ -553,7 +553,7 @@ curl -H "X-Admin-Key: your-admin-key" \
 # TYPE somabrain_memories_total counter
 somabrain_memories_total{tenant="org_acme"} 45230
 
-# TYPE somabrain_requests_total counter  
+# TYPE somabrain_requests_total counter
 somabrain_requests_total{tenant="org_acme",operation="recall"} 4100
 
 # TYPE somabrain_response_time_seconds histogram
@@ -570,7 +570,7 @@ Monitor tenant health and detect issues:
 curl -H "X-Admin-Key: your-admin-key" \
      http://localhost:9696/admin/tenants/org_acme/health
 
-# Health status response  
+# Health status response
 {
   "tenant_id": "org_acme",
   "health_status": "healthy",  # healthy, warning, critical
@@ -580,7 +580,7 @@ curl -H "X-Admin-Key: your-admin-key" \
       "usage_percentage": 45.7
     },
     "rate_limits": {
-      "status": "healthy", 
+      "status": "healthy",
       "current_usage": 67.3
     },
     "api_errors": {
@@ -654,7 +654,7 @@ curl -X POST http://localhost:9696/admin/tenants/org_acme/import \
 
 **Import Modes**:
 - `merge`: Add new memories, update existing ones
-- `replace`: Replace all tenant data 
+- `replace`: Replace all tenant data
 - `append`: Add new memories only, skip conflicts
 
 ### Cross-Instance Migration
@@ -666,7 +666,7 @@ Migrate tenants between SomaBrain instances:
 curl -H "X-Admin-Key: source-admin-key" \
      http://source.somabrain.com:9696/admin/tenants/org_acme/export?format=complete > complete_export.json
 
-# 2. Create tenant on target instance  
+# 2. Create tenant on target instance
 curl -X POST http://target.somabrain.com:9696/admin/tenants \
   -H "X-Admin-Key: target-admin-key" \
   -d '@tenant_config.json'
@@ -717,23 +717,23 @@ networks:
   somabrain_internal:
     driver: bridge
     internal: true  # No external access
-    
+
   somabrain_api:
     driver: bridge
     ipam:
       config:
         - subnet: 172.20.0.0/24
-          
+
 services:
   somabrain-api:
     networks:
       - somabrain_api
       - somabrain_internal
-      
+
   somabrain-redis:
     networks:
       - somabrain_internal  # No direct external access
-      
+
   somabrain-postgres:
     networks:
       - somabrain_internal  # No direct external access
@@ -754,7 +754,7 @@ environment:
 ```
 
 **Encryption Layers**:
-- **Database**: PostgreSQL transparent data encryption (TDE)  
+- **Database**: PostgreSQL transparent data encryption (TDE)
 - **Cache**: Redis encryption for vector data
 - **Application**: Memory content encryption before storage
 - **Transport**: TLS/HTTPS for all API communications
@@ -815,5 +815,5 @@ curl -H "X-Admin-Key: your-admin-key" \
 **References**:
 - [Installation Guide](../installation.md) for initial multi-tenant setup
 - [API Integration Guide](api-integration.md) for tenant-aware API usage
-- [Technical Manual - Security](../../technical-manual/security/rbac-matrix.md) for advanced security configuration  
+- [Technical Manual - Security](../../technical-manual/security/rbac-matrix.md) for advanced security configuration
 - [Technical Manual - Monitoring](../../technical-manual/monitoring.md) for tenant monitoring setup

@@ -1,5 +1,6 @@
 from somabrain.metrics import tau_gauge  # Import shared gauge
 
+
 class ContextBuilder:
     def __init__(self, tenant_id: str | None = None, initial_tau: float = 1.0):
         """Create a ContextBuilder.
@@ -18,7 +19,7 @@ class ContextBuilder:
     def build_context(self):
         # Build context using the current tau
         context = self._build_context_with_tau(self._current_tau)
-        
+
         # Tau adaptation for diversity
         self._track_diversity()
         clamped_tau = max(0.4, min(1.2, self._current_tau))
@@ -30,7 +31,7 @@ class ContextBuilder:
             gauge._val = gauge._value
         except Exception:
             pass
-        
+
         return context
 
     def _build_context_with_tau(self, tau):
@@ -51,7 +52,7 @@ class ContextBuilder:
             duplicate_ratio = len(set(recent_coords)) / len(recent_coords)
         else:
             duplicate_ratio = 0.0
-        
+
         # Adjust tau based on diversity needs
         if duplicate_ratio < 0.6:
             self._current_tau *= 1.05

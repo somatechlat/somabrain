@@ -59,14 +59,18 @@ class UnifiedScorer:
         if v < lo:
             if M:
                 try:
-                    M.SCORER_WEIGHT_CLAMPED.labels(component=component, bound="min").inc()
+                    M.SCORER_WEIGHT_CLAMPED.labels(
+                        component=component, bound="min"
+                    ).inc()
                 except Exception:
                     pass
             return lo
         if v > hi:
             if M:
                 try:
-                    M.SCORER_WEIGHT_CLAMPED.labels(component=component, bound="max").inc()
+                    M.SCORER_WEIGHT_CLAMPED.labels(
+                        component=component, bound="max"
+                    ).inc()
                 except Exception:
                     pass
             return hi

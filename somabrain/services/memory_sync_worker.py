@@ -5,7 +5,6 @@ This background service provides proactive, resilient synchronization of memorie
 that were queued locally while the remote memory service was unavailable.
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -31,13 +30,17 @@ class MemorySyncWorker:
     def __init__(self, mt_memory: MultiTenantMemory, config: Any):
         self.mt_memory = mt_memory
         self.config = config
-        self.poll_interval_seconds = int(getattr(config, "sync_worker_poll_interval", 30))
+        self.poll_interval_seconds = int(
+            getattr(config, "sync_worker_poll_interval", 30)
+        )
         self.batch_size = int(getattr(config, "sync_worker_batch_size", 100))
-        self.delay_between_batches_seconds = float(getattr(config, "sync_worker_batch_delay", 1.0))
+        self.delay_between_batches_seconds = float(
+            getattr(config, "sync_worker_batch_delay", 1.0)
+        )
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run_loop, daemon=True)
         self._memory_service_healthy = False
-        
+
         endpoint = require(
             get_memory_http_endpoint()
             or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
@@ -65,7 +68,7 @@ class MemorySyncWorker:
                 self._check_health_and_process_journals()
             except Exception:
                 LOGGER.exception("Unhandled error in MemorySyncWorker loop.")
-            
+
             self._stop_event.wait(self.poll_interval_seconds)
 
     def _check_health_and_process_journals(self):
@@ -74,7 +77,9 @@ class MemorySyncWorker:
             response = self._http_client.get("/health")
             response.raise_for_status()
             if not self._memory_service_healthy:
-                 LOGGER.info("Memory service is now healthy. Checking for journals to sync.")
+                LOGGER.info(
+                    "Memory service is now healthy. Checking for journals to sync."
+                )
             self._memory_service_healthy = True
             self._process_all_journals()
         except httpx.RequestError:
@@ -92,7 +97,7 @@ class MemorySyncWorker:
             if self._stop_event.is_set():
                 break
             if filename.endswith(".jsonl"):
-                namespace = filename[:-len(".jsonl")]
+                namespace = filename[: -len(".jsonl")]
                 self._process_journal_for_namespace(namespace, journal_dir)
 
     def _process_journal_for_namespace(self, namespace: str, journal_dir: str):
@@ -106,14 +111,14 @@ class MemorySyncWorker:
 
         client = self.mt_memory.for_namespace(namespace)
         pending_events = list(events)
-        
+
         while pending_events:
             if self._stop_event.is_set():
                 break
 
-            batch = pending_events[:self.batch_size]
+            batch = pending_events[: self.batch_size]
             items_to_remember = []
-            
+
             for event in batch:
                 if event.get("type") == "mem":
                     items_to_remember.append((event["key"], event["payload"]))
@@ -123,30 +128,41 @@ class MemorySyncWorker:
                     # Sync memories to the real service
                     for key, payload in items_to_remember:
                         client.remember(key, payload)
-                    
-                    M.MEMORY_OUTBOX_SYNC_TOTAL.labels(status="success").inc(len(items_to_remember))
+
+                    M.MEMORY_OUTBOX_SYNC_TOTAL.labels(status="success").inc(
+                        len(items_to_remember)
+                    )
                     # Successfully synced - remove these events from pending
-                    pending_events = pending_events[self.batch_size:]
-                    LOGGER.info(f"Successfully synced {len(items_to_remember)} memories for namespace '{namespace}'.")
+                    pending_events = pending_events[self.batch_size :]
+                    LOGGER.info(
+                        f"Successfully synced {len(items_to_remember)} memories for namespace '{namespace}'."
+                    )
                 except Exception:
-                    LOGGER.exception(f"Failed to sync batch for namespace '{namespace}'. Will retry.")
-                    M.MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc(len(items_to_remember))
+                    LOGGER.exception(
+                        f"Failed to sync batch for namespace '{namespace}'. Will retry."
+                    )
+                    M.MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc(
+                        len(items_to_remember)
+                    )
                     break  # Stop processing this namespace on failure to avoid data loss
 
             time.sleep(self.delay_between_batches_seconds)
 
         # Compact journal - only keep failed events, archive successful ones
         journal_path = journal.journal_path(journal_dir, namespace)
-        
+
         # If we successfully processed everything, we can clear the journal
         if not pending_events:
             # Archive the old journal before clearing
             import shutil
             import time
+
             archive_path = f"{journal_path}.{int(time.time())}.processed"
             try:
                 shutil.move(str(journal_path), archive_path)
-                LOGGER.info(f"Archived processed journal for namespace '{namespace}' to {archive_path}")
+                LOGGER.info(
+                    f"Archived processed journal for namespace '{namespace}' to {archive_path}"
+                )
             except Exception:
                 # If archive fails, just truncate the journal
                 with open(journal_path, "w") as f:
@@ -156,7 +172,7 @@ class MemorySyncWorker:
             with open(journal_path, "w") as f:
                 for event in pending_events:
                     f.write(json.dumps(event) + "\n")
-        
+
         M.MEMORY_OUTBOX_PENDING_ITEMS.set(len(pending_events))
 
 

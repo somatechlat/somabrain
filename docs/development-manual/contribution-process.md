@@ -13,7 +13,7 @@
 ### Contribution Types
 
 **Bug Fixes**: Resolve existing issues and improve stability
-**Feature Development**: Add new functionality and capabilities  
+**Feature Development**: Add new functionality and capabilities
 **Documentation**: Improve guides, API docs, and code comments
 **Performance**: Optimize algorithms, database queries, and system performance
 **Refactoring**: Improve code structure without changing functionality
@@ -41,10 +41,10 @@
    ```bash
    git clone https://github.com/YOUR_USERNAME/somabrain.git
    cd somabrain
-   
+
    # Add upstream remote
    git remote add upstream https://github.com/somabrain/somabrain.git
-   
+
    # Verify remotes
    git remote -v
    ```
@@ -53,7 +53,7 @@
    ```bash
    # Follow local setup guide
    make setup
-   
+
    # Verify installation
    make test
    make lint
@@ -102,7 +102,7 @@ git checkout -b feature/123-add-memory-search
 2. **Plan the Implementation**:
    ```python
    # Example: Planning memory search feature
-   
+
    # 1. Define API endpoint structure
    # POST /memories/search
    # {
@@ -110,14 +110,14 @@ git checkout -b feature/123-add-memory-search
    #   "filters": {"category": "technical"},
    #   "options": {"k": 10, "threshold": 0.3}
    # }
-   
+
    # 2. Identify components to modify
    # - Add search endpoint to FastAPI router
    # - Implement search logic in MemoryManager
    # - Add database search method
    # - Create response models
    # - Add comprehensive tests
-   
+
    # 3. Consider edge cases
    # - Empty query handling
    # - Invalid filter handling
@@ -130,13 +130,13 @@ git checkout -b feature/123-add-memory-search
    # somabrain/api/routers/memory.py
    from fastapi import APIRouter, Depends, HTTPException
    from typing import List, Optional
-   
+
    from somabrain.models.search import SearchRequest, SearchResponse
    from somabrain.core.memory_manager import MemoryManager
    from somabrain.api.dependencies import get_memory_manager, get_current_tenant
-   
+
    router = APIRouter()
-   
+
    @router.post("/search", response_model=SearchResponse)
    async def search_memories(
        request: SearchRequest,
@@ -145,15 +145,15 @@ git checkout -b feature/123-add-memory-search
    ):
        """
        Search memories using semantic similarity.
-       
+
        Args:
            request: Search parameters including query and filters
            memory_manager: Injected memory manager instance
            tenant_id: Current tenant identifier
-           
+
        Returns:
            SearchResponse with matching memories and metadata
-           
+
        Raises:
            HTTPException: For invalid requests or search failures
        """
@@ -164,7 +164,7 @@ git checkout -b feature/123-add-memory-search
                    status_code=400,
                    detail="Search query cannot be empty"
                )
-           
+
            # Perform search
            results = await memory_manager.search_memories(
                query=request.query,
@@ -173,14 +173,14 @@ git checkout -b feature/123-add-memory-search
                threshold=request.options.threshold,
                tenant_id=tenant_id
            )
-           
+
            return SearchResponse(
                results=results,
                total_count=len(results),
                query=request.query,
                processing_time_ms=results.processing_time
            )
-           
+
        except ValueError as e:
            raise HTTPException(status_code=400, detail=str(e))
        except Exception as e:
@@ -197,12 +197,12 @@ git checkout -b feature/123-add-memory-search
    import pytest
    from fastapi.testclient import TestClient
    from unittest.mock import AsyncMock, patch
-   
+
    from somabrain.api.main import app
    from somabrain.models.memory import Memory
-   
+
    client = TestClient(app)
-   
+
    @pytest.fixture
    def mock_search_results():
        """Mock search results for testing."""
@@ -214,13 +214,13 @@ git checkout -b feature/123-add-memory-search
                metadata={"category": "test"}
            ),
            Memory(
-               id="mem_2", 
+               id="mem_2",
                content="Test content 2",
                similarity_score=0.8,
                metadata={"category": "test"}
            )
        ]
-   
+
    @patch('somabrain.api.routers.memory.get_memory_manager')
    def test_search_memories_success(mock_get_manager, mock_search_results):
        """Test successful memory search."""
@@ -228,7 +228,7 @@ git checkout -b feature/123-add-memory-search
        mock_manager = AsyncMock()
        mock_manager.search_memories.return_value = mock_search_results
        mock_get_manager.return_value = mock_manager
-       
+
        # Act
        response = client.post(
            "/memories/search",
@@ -239,14 +239,14 @@ git checkout -b feature/123-add-memory-search
            },
            headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
        )
-       
+
        # Assert
        assert response.status_code == 200
        data = response.json()
        assert len(data["results"]) == 2
        assert data["query"] == "test query"
        assert data["total_count"] == 2
-   
+
    def test_search_empty_query():
        """Test search with empty query fails validation."""
        response = client.post(
@@ -257,10 +257,10 @@ git checkout -b feature/123-add-memory-search
            },
            headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
        )
-       
+
        assert response.status_code == 400
        assert "empty" in response.json()["detail"].lower()
-   
+
    def test_search_invalid_parameters():
        """Test search with invalid parameters."""
        response = client.post(
@@ -271,7 +271,7 @@ git checkout -b feature/123-add-memory-search
            },
            headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
        )
-       
+
        assert response.status_code == 400
    ```
 
@@ -279,13 +279,13 @@ git checkout -b feature/123-add-memory-search
    ```markdown
    # Update API documentation
    # docs/development-manual/api-reference.md
-   
+
    ### Search Memories
-   
+
    Search for memories using semantic similarity.
-   
+
    **Endpoint**: `POST /memories/search`
-   
+
    **Request**:
    ```json
    {
@@ -314,7 +314,7 @@ pre-commit install
 
 # Pre-commit will automatically run:
 # - black (code formatting)
-# - isort (import sorting)  
+# - isort (import sorting)
 # - flake8 (linting)
 # - mypy (type checking)
 # - pytest (unit tests)
@@ -353,7 +353,7 @@ Includes comprehensive tests and API documentation.
 
 Closes #123"
 
-# Bug fix commit  
+# Bug fix commit
 git commit -m "fix(auth): handle expired JWT tokens correctly
 
 Previously expired tokens would cause server errors.
@@ -392,19 +392,19 @@ Closes #789"
    ```markdown
    ## Description
    Brief description of changes and motivation.
-   
+
    ## Type of Change
    - [ ] Bug fix (non-breaking change that fixes an issue)
-   - [x] New feature (non-breaking change that adds functionality) 
+   - [x] New feature (non-breaking change that adds functionality)
    - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
    - [ ] Documentation update
-   
+
    ## Testing
    - [x] Unit tests pass
    - [x] Integration tests pass
    - [x] Manual testing completed
    - [ ] Performance testing (if applicable)
-   
+
    ## Checklist
    - [x] Code follows style guidelines
    - [x] Self-review completed
@@ -412,10 +412,10 @@ Closes #789"
    - [x] Documentation updated
    - [x] Tests added/updated
    - [x] No breaking changes (or clearly documented)
-   
+
    ## Related Issues
    Closes #123
-   
+
    ## Screenshots (if applicable)
    Add screenshots for UI changes.
    ```
@@ -454,7 +454,7 @@ git add .
 git commit -m "fix: address review feedback
 
 - Add input validation for edge cases
-- Improve error message clarity  
+- Improve error message clarity
 - Add missing docstrings
 - Fix type hints"
 
@@ -515,7 +515,7 @@ def test_memory_search_invalid_filters():
     """Test memory search with invalid filter format."""
     pass
 
-# Integration tests for API endpoints  
+# Integration tests for API endpoints
 async def test_search_api_integration():
     """Test complete search API workflow."""
     pass
@@ -592,7 +592,7 @@ make test-package
 ### Release Workflow
 
 1. **Feature Freeze**: Stop merging new features
-2. **Release Candidate**: Deploy to staging environment  
+2. **Release Candidate**: Deploy to staging environment
 3. **Testing Phase**: Comprehensive testing and validation
 4. **Release Notes**: Document all changes and breaking changes
 5. **Release Deployment**: Merge to main and deploy
@@ -615,23 +615,23 @@ def search_memories(
 ) -> List[Memory]:
     """
     Search for memories using semantic similarity.
-    
+
     Performs vector similarity search on stored memories, applying
     optional metadata filters to narrow results.
-    
+
     Args:
         query: Search query text for semantic matching
         filters: Optional metadata filters as key-value pairs
         k: Maximum number of results to return (1-100)
         threshold: Minimum similarity score (0.0-1.0)
-        
+
     Returns:
         List of Memory objects sorted by similarity score descending.
-        
+
     Raises:
         ValueError: If query is empty or parameters are invalid
         SearchError: If search operation fails
-        
+
     Example:
         >>> manager = MemoryManager()
         >>> results = manager.search_memories(
@@ -645,7 +645,7 @@ def search_memories(
 
 **API Documentation**:
 - OpenAPI/Swagger specifications
-- Request/response examples  
+- Request/response examples
 - Error code documentation
 - SDK usage examples
 
@@ -670,7 +670,7 @@ All notable changes to this project will be documented in this file.
 - WebSocket real-time notifications
 - Batch memory operations
 
-### Changed  
+### Changed
 - Improved vector similarity performance by 30%
 - Updated API authentication to use JWT tokens
 
@@ -703,7 +703,7 @@ All notable changes to this project will be documented in this file.
 
 **Expected Behavior**:
 - Use welcoming and inclusive language
-- Respect differing viewpoints and experiences  
+- Respect differing viewpoints and experiences
 - Accept constructive criticism gracefully
 - Focus on what's best for the community
 - Show empathy towards other community members
@@ -726,7 +726,7 @@ Clear description of the bug.
 2. Click on...
 3. See error...
 
-**Expected Behavior**  
+**Expected Behavior**
 What should have happened.
 
 **Actual Behavior**
@@ -764,7 +764,7 @@ Screenshots, mockups, or other relevant information.
 
 **Response Time Targets**:
 - Memory storage: < 200ms (p95)
-- Memory search: < 500ms (p95)  
+- Memory search: < 500ms (p95)
 - Memory retrieval: < 100ms (p95)
 - Batch operations: < 2000ms (p95)
 
@@ -782,21 +782,21 @@ from locust import HttpUser, task, between
 
 class SomaBrainLoadTest(HttpUser):
     wait_time = between(1, 3)
-    
+
     def on_start(self):
         self.headers = {
             "X-API-Key": "test-key",
             "X-Tenant-ID": "load-test-tenant"
         }
-    
+
     @task(3)
     def search_memories(self):
         self.client.post("/recall", json={
             "query": "test search query",
             "k": 10
         }, headers=self.headers)
-    
-    @task(1)  
+
+    @task(1)
     def store_memory(self):
         self.client.post("/remember", json={
             "content": "Load test memory content",
@@ -829,6 +829,6 @@ pytest tests/performance/ -v --benchmark-only
 
 **References**:
 - [Local Setup Guide](local-setup.md) for development environment
-- [Coding Standards](coding-standards.md) for code quality requirements  
+- [Coding Standards](coding-standards.md) for code quality requirements
 - [Testing Guidelines](testing-guidelines.md) for comprehensive testing
 - [API Reference](api-reference.md) for API development patterns

@@ -5,6 +5,7 @@ memory backend implementation (HTTP-backed client, in-process stub, or test
 double). Introducing this Protocol makes subsequent refactors incremental and
 type-checkable without changing runtime behavior.
 """
+
 from __future__ import annotations
 
 from typing import Protocol, Optional, List, Tuple, Any
@@ -19,11 +20,9 @@ class MemoryBackend(Protocol):
     first refactor pass) so callers can be migrated gradually.
     """
 
-    def remember(self, key: str, payload: dict, *args, **kwargs) -> Any:
-        ...
+    def remember(self, key: str, payload: dict, *args, **kwargs) -> Any: ...
 
-    async def aremember(self, key: str, payload: dict, *args, **kwargs) -> Any:
-        ...
+    async def aremember(self, key: str, payload: dict, *args, **kwargs) -> Any: ...
 
     def link(
         self,
@@ -31,8 +30,7 @@ class MemoryBackend(Protocol):
         to_coord: Coordinate,
         link_type: str = "related",
         weight: float = 1.0,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     async def alink(
         self,
@@ -40,17 +38,16 @@ class MemoryBackend(Protocol):
         to_coord: Coordinate,
         link_type: str = "related",
         weight: float = 1.0,
-    ) -> None:
-        ...
+    ) -> None: ...
 
-    def coord_for_key(self, key: str, universe: Optional[str] = None) -> Coordinate:
-        ...
+    def coord_for_key(self, key: str, universe: Optional[str] = None) -> Coordinate: ...
 
-    def payloads_for_coords(self, coords: List[Coordinate], universe: Optional[str] = None) -> List[dict]:
-        ...
+    def payloads_for_coords(
+        self, coords: List[Coordinate], universe: Optional[str] = None
+    ) -> List[dict]: ...
 
-    def delete(self, coordinate: Coordinate) -> Any:
-        ...
+    def delete(self, coordinate: Coordinate) -> Any: ...
 
-    def links_from(self, start: Coordinate, type_filter: Optional[str] = None, limit: int = 50) -> List[dict]:
-        ...
+    def links_from(
+        self, start: Coordinate, type_filter: Optional[str] = None, limit: int = 50
+    ) -> List[dict]: ...

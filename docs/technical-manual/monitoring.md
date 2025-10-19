@@ -27,7 +27,7 @@ SomaBrain provides multi-layer monitoring capabilities designed for production o
 SomaBrain Services → Prometheus → Grafana → AlertManager → Notifications
                  ↓
               Log Aggregation → ElasticSearch/Loki → Log Analysis
-                 ↓  
+                 ↓
               Health Checks → Service Discovery → Load Balancer
 ```
 
@@ -59,7 +59,7 @@ Monitor cognitive memory operations performance:
 # Memory storage rate
 rate(somabrain_memories_stored_total[5m])
 
-# Memory recall latency percentiles  
+# Memory recall latency percentiles
 histogram_quantile(0.95, rate(somabrain_recall_duration_seconds_bucket[5m]))
 
 # Similarity score distribution
@@ -123,7 +123,7 @@ Monitor Docker container resources:
 # CPU usage per container
 rate(container_cpu_usage_seconds_total{name=~"somabrain.*"}[5m]) * 100
 
-# Memory usage per container  
+# Memory usage per container
 container_memory_usage_bytes{name=~"somabrain.*"} / container_spec_memory_limit_bytes{name=~"somabrain.*"} * 100
 
 # Network I/O per container
@@ -146,7 +146,7 @@ pg_stat_database_tup_fetched{datname="somabrain"}
 pg_locks_count{datname="somabrain"}
 pg_database_size_bytes{datname="somabrain"}
 
-# Redis metrics  
+# Redis metrics
 redis_connected_clients{instance="somabrain-redis:6379"}
 redis_used_memory_bytes{instance="somabrain-redis:6379"}
 redis_keyspace_hits_total{instance="somabrain-redis:6379"} / (redis_keyspace_hits_total{instance="somabrain-redis:6379"} + redis_keyspace_misses_total{instance="somabrain-redis:6379"})
@@ -183,28 +183,28 @@ scrape_configs:
       - targets: ['somabrain-api:9696']
     metrics_path: '/metrics'
     scrape_interval: 10s
-    
+
   # SomaBrain worker metrics
   - job_name: 'somabrain-workers'
     static_configs:
       - targets: ['somabrain-worker:8080']
     metrics_path: '/metrics'
-    
-  # PostgreSQL metrics  
+
+  # PostgreSQL metrics
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
-      
+
   # Redis metrics
   - job_name: 'redis'
     static_configs:
       - targets: ['redis-exporter:9121']
-      
+
   # Node/container metrics
   - job_name: 'node-exporter'
     static_configs:
       - targets: ['node-exporter:9100']
-      
+
   - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
@@ -269,7 +269,7 @@ Define alerting rules for operational issues:
 groups:
 - name: somabrain.rules
   rules:
-  
+
   # High error rate alert
   - alert: SomaBrainHighErrorRate
     expr: rate(somabrain_http_requests_total{status=~"5.."}[5m]) / rate(somabrain_http_requests_total[5m]) > 0.05
@@ -279,8 +279,8 @@ groups:
     annotations:
       summary: "SomaBrain API error rate is {{ $value | humanizePercentage }}"
       description: "SomaBrain API has error rate of {{ $value | humanizePercentage }} for more than 2 minutes"
-      
-  # High response time alert  
+
+  # High response time alert
   - alert: SomaBrainHighLatency
     expr: histogram_quantile(0.95, rate(somabrain_http_request_duration_seconds_bucket[5m])) > 2
     for: 3m
@@ -288,7 +288,7 @@ groups:
       severity: warning
     annotations:
       summary: "SomaBrain API 95th percentile latency is {{ $value }}s"
-      
+
   # Memory usage alert
   - alert: SomaBrainHighMemoryUsage
     expr: container_memory_usage_bytes{name="somabrain-api"} / container_spec_memory_limit_bytes{name="somabrain-api"} > 0.85
@@ -297,7 +297,7 @@ groups:
       severity: warning
     annotations:
       summary: "SomaBrain API memory usage is {{ $value | humanizePercentage }}"
-      
+
   # Storage usage alert
   - alert: SomaBrainStorageSpaceLow
     expr: (somabrain_storage_used_bytes / somabrain_storage_total_bytes) > 0.80
@@ -306,7 +306,7 @@ groups:
       severity: warning
     annotations:
       summary: "SomaBrain storage usage is {{ $value | humanizePercentage }}"
-      
+
   # Service down alert
   - alert: SomaBrainServiceDown
     expr: up{job="somabrain-api"} == 0
@@ -315,7 +315,7 @@ groups:
       severity: critical
     annotations:
       summary: "SomaBrain API service is down"
-      
+
   # Database connection issues
   - alert: SomaBrainDatabaseConnectionHigh
     expr: somabrain_database_connections_active / somabrain_database_connections_max > 0.80
@@ -324,7 +324,7 @@ groups:
       severity: warning
     annotations:
       summary: "SomaBrain database connection usage is {{ $value | humanizePercentage }}"
-      
+
   # Tenant rate limiting
   - alert: SomaBrainTenantRateLimited
     expr: increase(somabrain_rate_limit_exceeded_total[5m]) by (tenant) > 10
@@ -359,7 +359,7 @@ Import the provided Grafana dashboard configuration:
         ]
       },
       {
-        "title": "Response Time Distribution", 
+        "title": "Response Time Distribution",
         "type": "heatmap",
         "targets": [
           {
@@ -384,7 +384,7 @@ Import the provided Grafana dashboard configuration:
       },
       {
         "title": "Error Rate",
-        "type": "singlestat", 
+        "type": "singlestat",
         "targets": [
           {
             "expr": "rate(somabrain_http_requests_total{status=~\"5..\"}[5m]) / rate(somabrain_http_requests_total[5m])",
@@ -408,7 +408,7 @@ Import the provided Grafana dashboard configuration:
       "list": [
         {
           "name": "tenant",
-          "type": "query", 
+          "type": "query",
           "query": "label_values(somabrain_requests_total, tenant)"
         }
       ]
@@ -464,7 +464,7 @@ services:
         max-size: "100m"
         max-file: "5"
         labels: "service,version,tenant"
-        
+
     environment:
       - LOG_LEVEL=INFO
       - LOG_FORMAT=json
@@ -509,14 +509,14 @@ services:
       - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
-      
+
   logstash:
     image: logstash:8.10.0
     volumes:
       - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
     depends_on:
       - elasticsearch
-      
+
   kibana:
     image: kibana:8.10.0
     ports:
@@ -544,21 +544,21 @@ filter {
     json {
       source => "message"
     }
-    
+
     # Parse correlation IDs
     if [correlation_id] {
       mutate {
         add_field => { "trace_id" => "%{correlation_id}" }
       }
     }
-    
+
     # Extract tenant information
     if [tenant_id] {
       mutate {
         add_field => { "tenant" => "%{tenant_id}" }
       }
     }
-    
+
     # Performance categorization
     if [duration_ms] {
       if [duration_ms] > 1000 {
@@ -610,7 +610,7 @@ curl http://localhost:9696/health/detailed
       "cpu_usage_percent": 15.3
     },
     "postgresql": {
-      "status": "healthy", 
+      "status": "healthy",
       "connection_pool": {
         "active": 12,
         "idle": 8,
@@ -668,7 +668,7 @@ spec:
         image: somabrain/api:latest
         ports:
         - containerPort: 9696
-        
+
         # Startup probe - allow time for initialization
         startupProbe:
           httpGet:
@@ -678,7 +678,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 10
-          
+
         # Readiness probe - service ready for traffic
         readinessProbe:
           httpGet:
@@ -688,7 +688,7 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-          
+
         # Liveness probe - container is alive
         livenessProbe:
           httpGet:
@@ -753,7 +753,7 @@ Monitor resource utilization for capacity planning:
 # Memory growth rate
 deriv(somabrain_memories_total[1h]) * 24  # memories per day
 
-# Storage growth rate  
+# Storage growth rate
 deriv(somabrain_storage_used_bytes[1h]) * 24 * 60 * 60  # bytes per day
 
 # Request rate growth
@@ -796,7 +796,7 @@ receivers:
   email_configs:
   - to: 'ops@company.com'
     subject: 'SomaBrain Alert: {{ .GroupLabels.alertname }}'
-    
+
 - name: 'critical-alerts'
   email_configs:
   - to: 'oncall@company.com'
@@ -804,7 +804,7 @@ receivers:
   slack_configs:
   - api_url: 'https://hooks.slack.com/services/...'
     channel: '#critical-alerts'
-    
+
 - name: 'somabrain-team'
   slack_configs:
   - api_url: 'https://hooks.slack.com/services/...'
@@ -822,7 +822,7 @@ Define application-specific alerts:
 groups:
 - name: somabrain.business.rules
   rules:
-  
+
   # Tenant memory quota alert
   - alert: SomaBrainTenantQuotaExceeded
     expr: somabrain_tenant_memory_usage_bytes / somabrain_tenant_memory_limit_bytes > 0.90
@@ -832,7 +832,7 @@ groups:
       tenant: "{{ $labels.tenant }}"
     annotations:
       summary: "Tenant {{ $labels.tenant }} memory usage at {{ $value | humanizePercentage }}"
-      
+
   # Reasoning operation failures
   - alert: SomaBrainReasoningFailureRate
     expr: rate(somabrain_reasoning_failed_total[5m]) / rate(somabrain_reasoning_total[5m]) > 0.10
@@ -841,7 +841,7 @@ groups:
       severity: warning
     annotations:
       summary: "SomaBrain reasoning failure rate is {{ $value | humanizePercentage }}"
-      
+
   # Vector index performance degradation
   - alert: SomaBrainVectorIndexSlow
     expr: histogram_quantile(0.95, rate(somabrain_vector_similarity_duration_seconds_bucket[5m])) > 0.5
@@ -850,7 +850,7 @@ groups:
       severity: warning
     annotations:
       summary: "Vector similarity computation is slow: {{ $value }}s at 95th percentile"
-      
+
   # Data consistency issues
   - alert: SomaBrainDataInconsistency
     expr: abs(somabrain_memories_postgres_count - somabrain_memories_redis_count) > 100

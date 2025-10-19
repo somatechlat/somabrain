@@ -214,9 +214,9 @@ redis-cli -h redis-host -p 6379 --memkeys
 
 # Check for memory leaks (keys without TTL)
 redis-cli -h redis-host -p 6379 --scan --pattern "*" | \
-  while read key; do 
+  while read key; do
     ttl=$(redis-cli -h redis-host -p 6379 ttl "$key")
-    if [ "$ttl" = "-1" ]; then 
+    if [ "$ttl" = "-1" ]; then
       echo "No TTL: $key"
     fi
   done

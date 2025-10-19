@@ -175,9 +175,7 @@ def get_histogram(
         return existing
 
     if labelnames:
-        return _histogram(
-            name, documentation, labelnames, registry=registry, **kwargs
-        )
+        return _histogram(name, documentation, labelnames, registry=registry, **kwargs)
     return _histogram(name, documentation, registry=registry, **kwargs)
 
 
@@ -982,6 +980,7 @@ LEARNING_EXPERIMENT_PROMOTIONS = get_counter(
 # Helper Functions for Learning Metrics
 # ==============================
 
+
 def update_learning_retrieval_weights(
     tenant_id: str, alpha: float, beta: float, gamma: float, tau: float
 ):
@@ -1232,6 +1231,7 @@ async def timing_middleware(
             response, "status_code", 500 if response is None else response.status_code
         )
         HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
+
 
 CIRCUIT_BREAKER_STATE = Gauge(
     "somabrain_memory_circuit_breaker_state",

@@ -14,11 +14,12 @@ metadata:
 ---
 # Redis Deployment
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: somabrain-redis
   namespace: somabrain
 spec:
+  serviceName: somabrain-redis
   replicas: 1
   selector:
     matchLabels:
@@ -43,6 +44,9 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "500m"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
         livenessProbe:
           exec:
             command:
@@ -57,6 +61,14 @@ spec:
             - ping
           initialDelaySeconds: 5
           periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
 
 ---
 apiVersion: v1
@@ -137,11 +149,12 @@ spec:
 ---
 # OPA Deployment
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: somabrain-opa
   namespace: somabrain
 spec:
+  serviceName: somabrain-opa
   replicas: 1
   selector:
     matchLabels:
@@ -167,6 +180,9 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "500m"
+        volumeMounts:
+        - name: opa-data
+          mountPath: /var/lib/opa
         livenessProbe:
           httpGet:
             path: /health
@@ -179,6 +195,14 @@ spec:
             port: 8181
           initialDelaySeconds: 5
           periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: opa-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi
 
 ---
 apiVersion: v1
@@ -291,11 +315,12 @@ spec:
 ---
 # Prometheus Deployment
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: somabrain-prometheus
   namespace: somabrain
 spec:
+  serviceName: somabrain-prometheus
   replicas: 1
   selector:
     matchLabels:
@@ -320,6 +345,17 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        volumeMounts:
+        - name: prometheus-data
+          mountPath: /prometheus
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
 
 ---
 apiVersion: v1

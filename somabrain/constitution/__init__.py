@@ -491,7 +491,9 @@ class ConstitutionEngine:
         # If we loaded from storage but Redis signature set is empty, push current values
         if self._signatures and self._constitution:
             try:
-                self._storage._write_redis(self._constitution, self._checksum, self._signatures)  # type: ignore[attr-defined]
+                self._storage._write_redis(
+                    self._constitution, self._checksum, self._signatures
+                )  # type: ignore[attr-defined]
             except Exception:
                 pass
 

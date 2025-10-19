@@ -70,7 +70,7 @@ def _mk_docs(n_docs: int, n_topics: int, seed: int = 13) -> Tuple[List[str], Lis
     labels: List[str] = []
     for i in range(n_docs):
         t = topics[i % len(topics)]
-        sent = f"{t} {random.choice(['guide','overview','notes','primer','report'])} {_noise_words(6)}"
+        sent = f"{t} {random.choice(['guide', 'overview', 'notes', 'primer', 'report'])} {_noise_words(6)}"
         # Add small random suffix to diversify
         suffix = "".join(random.choice(string.ascii_lowercase) for _ in range(3))
         sent = f"{sent} {suffix}"

@@ -94,7 +94,7 @@ services:
     ports:
       - "${KAFKA_BROKER_HOST_PORT}:${KAFKA_BROKER_CONTAINER_PORT}"
     healthcheck:
-      test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1"]
       interval: 15s
       timeout: 10s
       retries: 6
@@ -106,7 +106,7 @@ services:
     container_name: somabrain_kafka_exporter
     restart: unless-stopped
     command:
-      - --kafka.server=somabrain_kafka:9092
+      - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}
     deploy:
       resources:
         limits:
@@ -121,7 +121,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:9308/"]
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:${KAFKA_EXPORTER_CONTAINER_PORT}/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -136,15 +136,16 @@ services:
           memory: 64M
         reservations:
           memory: 32M
-    command: ["run", "--server", "--addr=0.0.0.0:8181", "--diagnostic-addr=0.0.0.0:8282", "/policies"]
+    command: ["run", "--server", "--addr=0.0.0.0:${OPA_CONTAINER_PORT}", "--diagnostic-addr=0.0.0.0:8282", "/policies"]
     networks:
       - somabrain_net
     ports:
       - "${OPA_HOST_PORT}:${OPA_CONTAINER_PORT}"
     volumes:
       - ./ops/opa/policies:/policies:ro
+      - opa_data:/var/lib/opa
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:8181/health?plugins"]
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://127.0.0.1:${OPA_CONTAINER_PORT}/health?plugins"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -165,6 +166,7 @@ services:
       - "${PROMETHEUS_HOST_PORT}:${PROMETHEUS_CONTAINER_PORT}"
     volumes:
       - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
 
   somabrain_postgres:
     image: postgres:15-alpine
@@ -187,7 +189,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U soma -d somabrain"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -212,7 +214,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:9187/"]
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:${POSTGRES_EXPORTER_CONTAINER_PORT}/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -264,7 +266,7 @@ services:
     ports:
       - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9696/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -302,6 +304,10 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  opa_data:
+    driver: local
+  prometheus_data:
     driver: local
 
 networks:

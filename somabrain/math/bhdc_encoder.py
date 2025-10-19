@@ -33,7 +33,13 @@ def _build_seed_bundle(
     tenant_id: _SeedLike,
     model_version: _SeedLike,
 ) -> _SeedBundle:
-    parts = [label, str(base_seed), str(extra_seed or ""), str(tenant_id or ""), str(model_version or "")]
+    parts = [
+        label,
+        str(base_seed),
+        str(extra_seed or ""),
+        str(tenant_id or ""),
+        str(model_version or ""),
+    ]
     prefix = "|".join(parts).encode("ascii")
     return _SeedBundle(prefix=prefix, base_seed=np.uint64(seed_to_uint64(prefix)))
 
@@ -174,7 +180,9 @@ class PermutationBinder:
         b_arr = np.asarray(b, dtype=self._dtype)
         denom_abs = np.abs(b_arr)
         if np.any(denom_abs < self._eps):
-            raise ValueError("PermutationBinder cannot unbind with zero-valued role components")
+            raise ValueError(
+                "PermutationBinder cannot unbind with zero-valued role components"
+            )
         return c_arr / b_arr
 
     # ------------------------------------------------------------------
@@ -183,7 +191,9 @@ class PermutationBinder:
         return np.roll(arr, times)
 
     # ------------------------------------------------------------------
-    def _permute_operand(self, operand: np.ndarray, *, expected_shape: Tuple[int, ...]) -> np.ndarray:
+    def _permute_operand(
+        self, operand: np.ndarray, *, expected_shape: Tuple[int, ...]
+    ) -> np.ndarray:
         b_arr = np.asarray(operand, dtype=self._dtype)
         if b_arr.shape != expected_shape:
             raise ValueError("operands must have the same shape for binding")

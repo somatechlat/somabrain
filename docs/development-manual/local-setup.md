@@ -155,7 +155,7 @@ docker compose logs somabrain_app
 ```bash
 # Before committing, run full quality pipeline:
 ruff check .                    # Linting
-ruff format .                   # Code formatting  
+ruff format .                   # Code formatting
 mypy somabrain                 # Type checking
 pytest                         # Test suite
 ```
@@ -208,7 +208,7 @@ SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
 
 # Production Controls
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1          # Enable mathematical validation
-SOMABRAIN_FORCE_FULL_STACK=1     # Require all services  
+SOMABRAIN_FORCE_FULL_STACK=1     # Require all services
 SOMABRAIN_REQUIRE_MEMORY=1       # Require memory backend
 SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)
 ```
@@ -216,7 +216,7 @@ SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)
 ### 🐳 Docker Infrastructure:
 The `docker-compose.yml` provides a complete stack:
 - **Redis**: Working memory cache and session storage
-- **Kafka**: Event streaming for audit and monitoring  
+- **Kafka**: Event streaming for audit and monitoring
 - **Postgres**: System state and configuration storage
 - **Prometheus**: Metrics collection and monitoring
 - **OPA**: Policy engine for governance (optional)
@@ -231,7 +231,7 @@ The `docker-compose.yml` provides a complete stack:
 ruff check .                    # Linting
 mypy somabrain                 # Type validation
 
-# Test suite  
+# Test suite
 pytest                         # Unit and integration tests
 python run_learning_test.py    # Cognitive functionality validation
 
@@ -264,7 +264,7 @@ scripts/export_openapi.py      # Generate API docs
 ```bash
 # Check Docker service logs
 docker compose logs redis
-docker compose logs postgres  
+docker compose logs postgres
 docker compose logs kafka
 
 # Test service connectivity
@@ -325,7 +325,7 @@ uv pip sync uv.lock
 # View service status
 docker compose ps
 
-# Restart specific service  
+# Restart specific service
 docker compose restart redis
 
 # View live logs
@@ -342,7 +342,7 @@ docker compose exec postgres psql -U somabrain
 
 **Expected Output**:
 - ruff: No linting errors
-- mypy: Success, no issues found  
+- mypy: Success, no issues found
 - pytest: All tests pass (may skip some integration tests in CI-only mode)
 
 **Common Errors**:

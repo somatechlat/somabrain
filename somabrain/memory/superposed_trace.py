@@ -96,13 +96,17 @@ class SuperposedTrace:
         cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
         self.cfg = cfg.validate()
-        self._q = quantum or QuantumLayer(HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed))
+        self._q = quantum or QuantumLayer(
+            HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed)
+        )
         self._state = np.zeros((self.cfg.dim,), dtype=np.float32)
         self._anchors: Dict[str, np.ndarray] = {}
         self._rotation = None
         if self.cfg.rotation_enabled:
             factory = rotation_matrix_factory or _make_orthogonal_matrix
-            self._rotation = factory(self.cfg.dim, self.cfg.rotation_seed).astype("float32", copy=False)
+            self._rotation = factory(self.cfg.dim, self.cfg.rotation_seed).astype(
+                "float32", copy=False
+            )
         self._eta = self.cfg.eta
         self._eps = self.cfg.epsilon
         self._cleanup_index = cleanup_index
@@ -219,7 +223,9 @@ class SuperposedTrace:
             except Exception:
                 pass
 
-    def rebuild_cleanup_index(self, cleanup_index: Optional["CleanupIndex"] = None) -> int:
+    def rebuild_cleanup_index(
+        self, cleanup_index: Optional["CleanupIndex"] = None
+    ) -> int:
         """Rebuild the cleanup index from current anchors."""
 
         if cleanup_index is not None:
@@ -264,7 +270,9 @@ class SuperposedTrace:
         else:
             candidates = [
                 (anchor_id, float(self._q.cosine(query_vec, anchor_vec)))
-                for anchor_id, anchor_vec in list(self._anchors.items())[: self.cfg.cleanup_topk]
+                for anchor_id, anchor_vec in list(self._anchors.items())[
+                    : self.cfg.cleanup_topk
+                ]
             ]
         for anchor_id, score in candidates:
             if score > best_score:
@@ -313,4 +321,6 @@ class CleanupIndex(Protocol):
 
     def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]: ...
 
-    def configure(self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None) -> None: ...
+    def configure(
+        self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
+    ) -> None: ...

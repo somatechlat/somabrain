@@ -6,6 +6,7 @@ import os
 import socket
 from typing import Dict
 
+
 def _env_port(name: str, fallback: int) -> int:
     try:
         raw = os.getenv(name)

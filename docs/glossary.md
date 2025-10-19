@@ -24,22 +24,22 @@
 
 ### Cognitive Memory
 **Definition**: SomaBrain's semantic memory system that stores and recalls information based on meaning instead of literal string matching.
-**Usage**: "Cognitive memory enables AI assistants to recall context-aware conversations." 
+**Usage**: "Cognitive memory enables AI assistants to recall context-aware conversations."
 **See also**: [Memory Operations Guide](user-manual/features/memory-operations.md)
 
 ### Hyperdimensional Computing (HDC)
 **Definition**: Mathematical framework using high-dimensional vectors (hypervectors) to represent and manipulate information.
-**Usage**: "Hyperdimensional computing powers SomaBrain's semantic similarity scoring." 
+**Usage**: "Hyperdimensional computing powers SomaBrain's semantic similarity scoring."
 **See also**: [Cognitive Reasoning Guide](user-manual/features/cognitive-reasoning.md)
 
 ### Strict Real Mode
 **Definition**: Deployment configuration that prohibits stubs, mocks, or dummy data paths and enforces end-to-end realism.
-**Usage**: "Enable strict real mode in CI to prevent silent fallback to placeholder services." 
+**Usage**: "Enable strict real mode in CI to prevent silent fallback to placeholder services."
 **See also**: [Backend Enforcement Mode (No-Stubs Contract)](technical-manual/security/strict-mode.md)
 
 ### Multi-Tenant Working Memory
 **Definition**: In-memory layer that isolates active memories per tenant for sub-second retrieval.
-**Usage**: "Each tenant receives an isolated working memory namespace managed by Redis." 
+**Usage**: "Each tenant receives an isolated working memory namespace managed by Redis."
 **See also**: [Multi-Tenant Usage](user-manual/features/multi-tenant-usage.md)
 
 ---
@@ -62,7 +62,7 @@
 
 ### Neuromodulators
 **Definition**: Control signals that modulate recall behaviour (e.g., salience boosts for critical items).
-**Usage**: "Neuromodulators bias the scorer toward safety-critical memories during incidents." 
+**Usage**: "Neuromodulators bias the scorer toward safety-critical memories during incidents."
 
 ---
 

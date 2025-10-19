@@ -106,7 +106,9 @@ def test_rag_pipeline_vector_retriever(vector_runtime):
     )
     ctx = _Ctx(namespace="ns:test")
 
-    resp = asyncio.run(run_rag_pipeline(req, ctx=ctx, cfg=None, universe=None, trace_id="trace-1"))
+    resp = asyncio.run(
+        run_rag_pipeline(req, ctx=ctx, cfg=None, universe=None, trace_id="trace-1")
+    )
 
     assert resp.namespace == "ns:test"
     assert resp.trace_id == "trace-1"
@@ -114,7 +116,10 @@ def test_rag_pipeline_vector_retriever(vector_runtime):
     assert 1 <= len(resp.candidates) <= len(docs)
 
     ranked = sorted(
-        ((float(np.dot(embedder.embed(req.query), embedder.embed(doc))), doc) for doc in docs),
+        (
+            (float(np.dot(embedder.embed(req.query), embedder.embed(doc))), doc)
+            for doc in docs
+        ),
         reverse=True,
     )
     returned = [cand.payload.get("task") for cand in resp.candidates]

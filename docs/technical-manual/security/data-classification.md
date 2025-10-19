@@ -6,8 +6,8 @@
 
 **Audience**: All employees, contractors, and third-party vendors with access to SomaBrain data.
 
-**Owner**: Security Team  
-**Reviewed**: Quarterly  
+**Owner**: Security Team
+**Reviewed**: Quarterly
 **Last Updated**: 2024-10-16
 
 ---
@@ -284,11 +284,11 @@ Confidential:
   Implementation: Database-level encryption
 
 Database Configuration:
-  PostgreSQL: 
+  PostgreSQL:
     - Enable transparent data encryption (TDE)
     - Set ssl = on in postgresql.conf
     - Use encrypted tablespaces for sensitive tables
-  
+
   Redis:
     - Enable TLS for client connections
     - Use Redis AUTH with strong passwords
@@ -301,12 +301,12 @@ All Classifications:
   Minimum: TLS 1.2
   Preferred: TLS 1.3
   Cipher Suites: ECDHE-RSA-AES256-GCM-SHA384, ECDHE-RSA-CHACHA20-POLY1305
-  
+
 HTTPS Configuration:
   HSTS: max-age=31536000; includeSubDomains; preload
   Certificate: RSA 2048-bit minimum, ECC P-256 preferred
   Certificate Authority: Let's Encrypt or internal CA
-  
+
 API Security:
   Authentication: JWT with RS256 signing
   Rate Limiting: Per endpoint and per user
@@ -327,7 +327,7 @@ Roles:
     data_access:
       - confidential: limited
       - highly_confidential: none
-  
+
   data_scientist:
     permissions:
       - read:analytics_data
@@ -335,7 +335,7 @@ Roles:
     data_access:
       - confidential: anonymized_only
       - highly_confidential: none
-  
+
   security_admin:
     permissions:
       - read:audit_logs
@@ -344,7 +344,7 @@ Roles:
     data_access:
       - confidential: full
       - highly_confidential: full
-  
+
   system_admin:
     permissions:
       - read:system_logs
@@ -464,7 +464,7 @@ done
 echo
 echo "Database Access Summary:"
 psql -h postgres-host -U admin -d somabrain -c "
-SELECT 
+SELECT
   usename as username,
   string_agg(rolname, ', ') as roles,
   valuntil as password_expiry
@@ -507,24 +507,24 @@ Technical Implementation:
 # Automated data classification example
 def classify_data(data_field, content):
     """Automatically classify data based on content analysis"""
-    
+
     classification_rules = {
         'email_patterns': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
         'phone_patterns': r'\b\d{3}-\d{3}-\d{4}\b|\b\(\d{3}\)\s?\d{3}-\d{4}\b',
         'ssn_patterns': r'\b\d{3}-\d{2}-\d{4}\b',
         'credit_card_patterns': r'\b4[0-9]{12}(?:[0-9]{3})?\b|\b5[1-5][0-9]{14}\b'
     }
-    
+
     # Check for PII patterns
     for pattern_name, pattern in classification_rules.items():
         if re.search(pattern, content):
             return 'HIGHLY_CONFIDENTIAL'
-    
+
     # Check field names for sensitive indicators
     sensitive_fields = ['password', 'token', 'key', 'secret', 'credential']
     if any(field in data_field.lower() for field in sensitive_fields):
         return 'HIGHLY_CONFIDENTIAL'
-    
+
     # Default classification based on data context
     if 'user_' in data_field or 'customer_' in data_field:
         return 'CONFIDENTIAL'
@@ -543,21 +543,21 @@ apply_protection_controls(data, classification)
 #### Storage Security Requirements
 ```yaml
 Highly Confidential Storage:
-  Location: 
+  Location:
     - Primary: Encrypted database with TDE
     - Backup: Separate encrypted storage with different keys
     - Geographic: Same country/region as data subject
-  
+
   Access Controls:
     - Database: Row-level security, column encryption
     - File System: Access Control Lists (ACLs)
     - Application: Attribute-based access control
-  
+
   Monitoring:
     - All access logged with user ID and timestamp
     - Automated anomaly detection
     - Real-time alerting for suspicious access patterns
-  
+
   Performance:
     - Encrypted indexes where supported
     - Query optimization for encrypted columns
@@ -575,34 +575,34 @@ export AUDIT_LOG_LEVEL=FULL
 # 2. Input validation and sanitization
 validate_input() {
   local input="$1"
-  
+
   # Check for SQL injection patterns
   if echo "$input" | grep -qE "(SELECT|INSERT|UPDATE|DELETE|DROP|UNION)" ; then
     logger -p security.error "Potential SQL injection detected in input"
     return 1
   fi
-  
+
   # Check for XSS patterns
   if echo "$input" | grep -qE "(<script|javascript:|vbscript:)" ; then
     logger -p security.error "Potential XSS detected in input"
     return 1
   fi
-  
+
   return 0
 }
 
 # 3. Process with appropriate controls
 process_confidential_data() {
   local data_file="$1"
-  
+
   # Verify data classification
   if [[ ! -f "${data_file}.classification" ]]; then
     echo "ERROR: Missing data classification file"
     return 1
   fi
-  
+
   classification=$(cat "${data_file}.classification")
-  
+
   # Apply appropriate processing controls
   case "$classification" in
     "HIGHLY_CONFIDENTIAL")
@@ -615,7 +615,7 @@ process_confidential_data() {
       process_standard "$data_file"
       ;;
   esac
-  
+
   # Log processing activity
   logger -p local0.info "Data processed: file=$data_file, classification=$classification, user=$USER"
 }
@@ -630,19 +630,19 @@ Retention Schedule:
     - Active accounts: Indefinite (while account active)
     - Closed accounts: 30 days after closure
     - Legal hold: Extended as required
-  
+
   Conversation Data:
     - User conversations: Per user preference (default 1 year)
     - System logs: 90 days
     - Security logs: 7 years
     - Audit trails: 7 years
-  
+
   Business Data:
     - Financial records: 7 years
     - Employee records: 7 years after termination
     - Contracts: 7 years after expiration
     - Marketing data: 3 years unless consent withdrawn
-  
+
   Technical Data:
     - Application logs: 90 days
     - Performance metrics: 2 years
@@ -656,31 +656,31 @@ Retention Schedule:
 secure_disposal() {
   local data_path="$1"
   local classification="$2"
-  
+
   case "$classification" in
     "HIGHLY_CONFIDENTIAL"|"CONFIDENTIAL")
       # Cryptographic erasure - delete encryption keys
       echo "Performing cryptographic erasure for $data_path"
-      
+
       # 1. Identify encryption keys used
       key_id=$(get_encryption_key_id "$data_path")
-      
+
       # 2. Securely delete keys
       aws kms schedule-key-deletion --key-id "$key_id" --pending-window-in-days 7
-      
+
       # 3. Overwrite data multiple times
       shred -vfz -n 3 "$data_path"
-      
+
       # 4. Verify deletion
       if [[ -f "$data_path" ]]; then
         echo "ERROR: File still exists after deletion"
         return 1
       fi
-      
+
       # 5. Log disposal
       logger -p auth.info "Secure disposal completed: $data_path (classification: $classification)"
       ;;
-      
+
     "INTERNAL"|"PUBLIC")
       # Standard deletion
       rm -f "$data_path"
@@ -694,20 +694,20 @@ dispose_database_records() {
   local table_name="$1"
   local where_clause="$2"
   local classification="$3"
-  
+
   if [[ "$classification" == "HIGHLY_CONFIDENTIAL" ]]; then
     # For highly confidential data, overwrite before delete
     psql -h postgres-host -U admin -d somabrain -c "
-    UPDATE $table_name 
-    SET 
+    UPDATE $table_name
+    SET
       data_column = '🗑️DISPOSED🗑️',
       created_at = NOW(),
       updated_at = NOW()
     WHERE $where_clause;
-    
+
     -- Then delete the records
     DELETE FROM $table_name WHERE $where_clause;
-    
+
     -- Vacuum to reclaim space
     VACUUM FULL $table_name;
     "
@@ -715,7 +715,7 @@ dispose_database_records() {
     # Standard deletion
     psql -h postgres-host -U admin -d somabrain -c "DELETE FROM $table_name WHERE $where_clause;"
   fi
-  
+
   logger -p auth.info "Database disposal completed: $table_name WHERE $where_clause"
 }
 ```
@@ -805,16 +805,16 @@ echo "1. Checking encryption compliance..."
 check_encryption_compliance() {
   # Verify database encryption
   psql -h postgres-host -U admin -d somabrain -c "
-  SELECT name, setting 
-  FROM pg_settings 
+  SELECT name, setting
+  FROM pg_settings
   WHERE name IN ('ssl', 'ssl_cert_file', 'ssl_key_file');" | grep -q "on"
-  
+
   if [[ $? -eq 0 ]]; then
     echo "✅ Database encryption: COMPLIANT"
   else
     echo "❌ Database encryption: NON-COMPLIANT"
   fi
-  
+
   # Check Redis TLS
   redis-cli --tls --cert redis-client.crt --key redis-client.key ping &>/dev/null
   if [[ $? -eq 0 ]]; then
@@ -834,7 +834,7 @@ check_access_controls() {
   else
     echo "❌ Found $shared_accounts shared accounts: NON-COMPLIANT"
   fi
-  
+
   # Check password policies
   if grep -q "minlen=12" /etc/security/pwquality.conf; then
     echo "✅ Password complexity: COMPLIANT"
@@ -853,7 +853,7 @@ check_audit_logging() {
   else
     echo "❌ Audit service: NON-COMPLIANT"
   fi
-  
+
   # Check log retention
   log_retention=$(grep "max_log_file_action" /etc/audit/auditd.conf | awk '{print $3}')
   if [[ "$log_retention" == "rotate" ]]; then
@@ -885,14 +885,14 @@ from typing import Dict, List, Optional
 class DataSubjectRequestHandler:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
-        
+
     def handle_access_request(self, user_id: str, email: str) -> Dict:
         """Handle data subject access request (GDPR Article 15)"""
         try:
             # 1. Verify identity
             if not self.verify_user_identity(user_id, email):
                 raise ValueError("Identity verification failed")
-            
+
             # 2. Collect all user data
             user_data = {
                 'personal_info': self.get_user_profile(user_id),
@@ -901,7 +901,7 @@ class DataSubjectRequestHandler:
                 'audit_logs': self.get_user_audit_logs(user_id),
                 'processing_activities': self.get_processing_activities(user_id)
             }
-            
+
             # 3. Generate report
             report = {
                 'request_id': f"SAR-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
@@ -911,23 +911,23 @@ class DataSubjectRequestHandler:
                 'retention_periods': self.get_retention_periods(),
                 'legal_basis': self.get_legal_basis_for_processing(user_id)
             }
-            
+
             # 4. Log the request
             self.logger.info(f"Access request fulfilled for user {user_id}")
-            
+
             return report
-            
+
         except Exception as e:
             self.logger.error(f"Error processing access request: {e}")
             raise
-    
+
     def handle_deletion_request(self, user_id: str, email: str) -> Dict:
         """Handle right to erasure request (GDPR Article 17)"""
         try:
             # 1. Verify identity
             if not self.verify_user_identity(user_id, email):
                 raise ValueError("Identity verification failed")
-            
+
             # 2. Check if deletion is legally permissible
             if not self.can_delete_user_data(user_id):
                 return {
@@ -935,26 +935,26 @@ class DataSubjectRequestHandler:
                     'reason': 'Legal obligation to retain data',
                     'retention_period': self.get_mandatory_retention_period(user_id)
                 }
-            
+
             # 3. Perform secure deletion
             deletion_log = []
-            
+
             # Delete user conversations
             deleted_conversations = self.secure_delete_conversations(user_id)
             deletion_log.append(f"Deleted {deleted_conversations} conversations")
-            
+
             # Delete user profile
             self.secure_delete_user_profile(user_id)
             deletion_log.append("Deleted user profile")
-            
+
             # Delete preferences and settings
             self.secure_delete_user_preferences(user_id)
             deletion_log.append("Deleted user preferences")
-            
+
             # Update audit logs (mark as deleted, don't delete)
             self.mark_user_deleted_in_audit_logs(user_id)
             deletion_log.append("Updated audit logs")
-            
+
             # 4. Generate deletion certificate
             certificate = {
                 'request_id': f"DEL-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
@@ -963,15 +963,15 @@ class DataSubjectRequestHandler:
                 'deletion_log': deletion_log,
                 'status': 'completed'
             }
-            
+
             self.logger.info(f"Deletion request completed for user {user_id}")
-            
+
             return certificate
-            
+
         except Exception as e:
             self.logger.error(f"Error processing deletion request: {e}")
             raise
-    
+
     def secure_delete_conversations(self, user_id: str) -> int:
         """Securely delete user conversations with cryptographic erasure"""
         # Implementation would include:
@@ -981,7 +981,7 @@ class DataSubjectRequestHandler:
         # 4. Delete the records
         # 5. Return count of deleted conversations
         pass
-    
+
     def get_legal_basis_for_processing(self, user_id: str) -> Dict:
         """Get legal basis for each type of data processing"""
         return {
@@ -1048,7 +1048,7 @@ echo "=== Daily Security Check Complete ==="
 generate_compliance_report() {
   local month=$(date +%Y-%m)
   local report_file="compliance_report_$month.json"
-  
+
   cat > "$report_file" << EOF
 {
   "report_period": "$month",
@@ -1076,7 +1076,7 @@ generate_compliance_report() {
   }
 }
 EOF
-  
+
   echo "Compliance report generated: $report_file"
 }
 ```
@@ -1087,12 +1087,12 @@ EOF
 
 This data classification and handling policy provides:
 
-✅ **Clear Classification Levels**: Four-tier system from Public to Highly Confidential  
-✅ **Specific Protection Requirements**: Technical controls for each classification level  
-✅ **Practical Implementation**: Code examples and operational procedures  
-✅ **Compliance Framework**: GDPR, CCPA, and SOC 2 alignment  
-✅ **Automated Monitoring**: Scripts for continuous compliance verification  
-✅ **Data Lifecycle Management**: Creation through secure disposal procedures  
+✅ **Clear Classification Levels**: Four-tier system from Public to Highly Confidential
+✅ **Specific Protection Requirements**: Technical controls for each classification level
+✅ **Practical Implementation**: Code examples and operational procedures
+✅ **Compliance Framework**: GDPR, CCPA, and SOC 2 alignment
+✅ **Automated Monitoring**: Scripts for continuous compliance verification
+✅ **Data Lifecycle Management**: Creation through secure disposal procedures
 
 **Next Steps:**
 1. Train all personnel on classification procedures
@@ -1103,6 +1103,6 @@ This data classification and handling policy provides:
 
 **Approval Required From:**
 - [x] Security Team Lead
-- [x] Privacy Officer  
+- [x] Privacy Officer
 - [x] Legal Counsel
 - [x] Chief Information Security Officer (CISO)

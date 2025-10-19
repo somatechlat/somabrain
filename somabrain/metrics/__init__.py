@@ -6,6 +6,7 @@ specialised submodules such as ``somabrain.metrics.math_metrics``.  The bridge
 loads the legacy module under a private name and re-exports its public
 attributes from the package namespace so existing imports keep working.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -34,7 +35,11 @@ def _load_base_module() -> ModuleType:
 _base_module = _load_base_module()
 
 # Re-export the public API from the base module.
-__all__ = getattr(_base_module, "__all__", [name for name in dir(_base_module) if not name.startswith("_")])
+__all__ = getattr(
+    _base_module,
+    "__all__",
+    [name for name in dir(_base_module) if not name.startswith("_")],
+)
 for _name in __all__:
     globals()[_name] = getattr(_base_module, _name)
 

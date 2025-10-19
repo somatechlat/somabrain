@@ -17,7 +17,7 @@ Run these commands to verify basic setup:
 python --version                    # Should show Python 3.10+
 which python                        # Should point to your venv/uv environment
 
-# 2. Verify SomaBrain installation  
+# 2. Verify SomaBrain installation
 python -c "import somabrain; print('✅ SomaBrain imported')"
 
 # 3. Verify development tools
@@ -97,7 +97,7 @@ curl -f http://localhost:9696/health | jq '.status'  # Should return "healthy"
 
 - [ ] **Type Checking**: MyPy configured correctly
   ```bash
-  mypy --version && mypy somabrain --quiet  
+  mypy --version && mypy somabrain --quiet
   # Expected: Version displayed, no type errors
   ```
 

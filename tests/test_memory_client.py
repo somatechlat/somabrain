@@ -37,7 +37,9 @@ def main():
             return self._data
 
     class _RecordingHTTP:
-        def __init__(self, recall_data, recall_scores, hybrid_data=None, keyword_data=None):
+        def __init__(
+            self, recall_data, recall_scores, hybrid_data=None, keyword_data=None
+        ):
             self._recall = recall_data
             self._recall_scores = recall_scores
             self._hybrid = hybrid_data or {"results": []}
@@ -51,11 +53,17 @@ def main():
             if endpoint == "/recall_with_scores":
                 return _FakeResponse(self._recall_scores)
             if endpoint == "/hybrid_recall_with_scores":
-                if isinstance(json, dict) and (json.get("query") or "").strip().lower() == "zebra":
+                if (
+                    isinstance(json, dict)
+                    and (json.get("query") or "").strip().lower() == "zebra"
+                ):
                     return _FakeResponse(self._hybrid)
                 return _FakeResponse({"results": []})
             if endpoint == "/keyword_search":
-                if isinstance(json, dict) and (json.get("term") or "").strip().lower() == "zebra":
+                if (
+                    isinstance(json, dict)
+                    and (json.get("term") or "").strip().lower() == "zebra"
+                ):
                     return _FakeResponse(self._keyword)
                 return _FakeResponse({"results": []})
             if endpoint == "/store_bulk":
@@ -127,9 +135,9 @@ def main():
     assert hits[0].coordinate and len(hits[0].coordinate) == 3
 
     # remember_bulk should return coordinates and surface them in recall_with_scores
-    bulk_coords = mc.remember_bulk([
-        ("bulk-key", {"task": "bulk memory win", "memory_type": "episodic"})
-    ])
+    bulk_coords = mc.remember_bulk(
+        [("bulk-key", {"task": "bulk memory win", "memory_type": "episodic"})]
+    )
     assert len(bulk_coords) == 1
     bulk_hits = mc.recall_with_scores("bulk", top_k=1)
     assert bulk_hits and bulk_hits[0].score is not None
@@ -152,12 +160,21 @@ def main():
     sources = [hit.payload.get("_source_endpoint") for hit in zebra_hits]
     assert "/keyword_search" in sources, "Keyword search results should be merged"
     keyword_hit = next(
-        (hit for hit in zebra_hits if hit.payload.get("_source_endpoint") == "/keyword_search"),
+        (
+            hit
+            for hit in zebra_hits
+            if hit.payload.get("_source_endpoint") == "/keyword_search"
+        ),
         None,
     )
     assert keyword_hit is not None
     assert keyword_hit.score is not None and keyword_hit.score > 0
-    assert "zebra" in (keyword_hit.payload.get("text") or keyword_hit.payload.get("content") or "").lower()
+    assert (
+        "zebra"
+        in (
+            keyword_hit.payload.get("text") or keyword_hit.payload.get("content") or ""
+        ).lower()
+    )
 
     print("MemoryClient tests passed.")
 

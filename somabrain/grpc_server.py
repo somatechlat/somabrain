@@ -48,7 +48,9 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
     def __init__(self, mem_client: MemoryClient):
         self._mem = mem_client
 
-    def Remember(self, request: memory_pb2.RememberRequest, context: grpc.ServicerContext) -> memory_pb2.RememberResponse:  # noqa: D401
+    def Remember(
+        self, request: memory_pb2.RememberRequest, context: grpc.ServicerContext
+    ) -> memory_pb2.RememberResponse:  # noqa: D401
         LOGGER.debug("Received Remember request: %s", request)
         try:
             payload = {}
@@ -57,7 +59,9 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
                 payload["content"] = getattr(request.payload, "content", "")
                 try:
                     # allow callers to pass JSON in content; keep as raw string otherwise
-                    payload_json = json.loads(payload["content"]) if payload["content"] else None
+                    payload_json = (
+                        json.loads(payload["content"]) if payload["content"] else None
+                    )
                     if isinstance(payload_json, dict):
                         payload.update(payload_json)
                 except Exception:
@@ -81,20 +85,30 @@ class MemoryService(memory_pb2_grpc.MemoryServiceServicer):
             context.set_code(grpc.StatusCode.UNAVAILABLE)
             return memory_pb2.RememberResponse(ok=False)
 
-    def Recall(self, request: memory_pb2.RecallRequest, context: grpc.ServicerContext) -> memory_pb2.RecallResponse:  # noqa: D401
-        LOGGER.debug("Received Recall request: query=%s top_k=%s", request.query, request.top_k)
+    def Recall(
+        self, request: memory_pb2.RecallRequest, context: grpc.ServicerContext
+    ) -> memory_pb2.RecallResponse:  # noqa: D401
+        LOGGER.debug(
+            "Received Recall request: query=%s top_k=%s", request.query, request.top_k
+        )
         try:
             hits = self._mem.recall(request.query or "", top_k=int(request.top_k or 3))
             items = []
             for h in hits:
-                payload = h.payload if hasattr(h, "payload") and h.payload is not None else {}
+                payload = (
+                    h.payload if hasattr(h, "payload") and h.payload is not None else {}
+                )
                 coord_key = payload.get("id") or payload.get("memory_id") or ""
                 try:
                     content = json.dumps(payload, default=str)
                 except Exception:
                     content = str(payload)
                 score = float(h.score) if getattr(h, "score", None) is not None else 0.0
-                items.append(memory_pb2.RecallItem(coord_key=str(coord_key), content=content, quality_score=score))
+                items.append(
+                    memory_pb2.RecallItem(
+                        coord_key=str(coord_key), content=content, quality_score=score
+                    )
+                )
             return memory_pb2.RecallResponse(items=items)
         except StubUsageError as e:
             LOGGER.error("Backend enforcement stub usage in Recall: %s", e)

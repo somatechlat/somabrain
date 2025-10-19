@@ -90,10 +90,13 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
         os.getenv("SOMABRAIN_MEMORY_HTTP_PORT"),
         os.getenv("MEMORY_HTTP_PORT"),
     )
-    scheme = _first_non_empty(
-        os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"),
-        os.getenv("MEMORY_HTTP_SCHEME"),
-    ) or "http"
+    scheme = (
+        _first_non_empty(
+            os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"),
+            os.getenv("MEMORY_HTTP_SCHEME"),
+        )
+        or "http"
+    )
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -121,10 +124,13 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
         os.getenv("SOMABRAIN_KAFKA_PORT"),
         os.getenv("KAFKA_PORT"),
     )
-    scheme = _first_non_empty(
-        os.getenv("SOMABRAIN_KAFKA_SCHEME"),
-        os.getenv("KAFKA_SCHEME"),
-    ) or "kafka"
+    scheme = (
+        _first_non_empty(
+            os.getenv("SOMABRAIN_KAFKA_SCHEME"),
+            os.getenv("KAFKA_SCHEME"),
+        )
+        or "kafka"
+    )
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -151,10 +157,13 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
         os.getenv("SOMABRAIN_OPA_PORT"),
         os.getenv("OPA_PORT"),
     )
-    scheme = _first_non_empty(
-        os.getenv("SOMABRAIN_OPA_SCHEME"),
-        os.getenv("OPA_SCHEME"),
-    ) or "http"
+    scheme = (
+        _first_non_empty(
+            os.getenv("SOMABRAIN_OPA_SCHEME"),
+            os.getenv("OPA_SCHEME"),
+        )
+        or "http"
+    )
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -181,10 +190,13 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
         os.getenv("SOMABRAIN_PUBLIC_PORT"),
         os.getenv("SOMABRAIN_HOST_PORT"),
     )
-    scheme = _first_non_empty(
-        os.getenv("SOMABRAIN_API_SCHEME"),
-        os.getenv("API_SCHEME"),
-    ) or "http"
+    scheme = (
+        _first_non_empty(
+            os.getenv("SOMABRAIN_API_SCHEME"),
+            os.getenv("API_SCHEME"),
+        )
+        or "http"
+    )
 
     if host and port:
         return f"{scheme}://{host}:{port}"

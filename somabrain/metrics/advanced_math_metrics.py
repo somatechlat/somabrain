@@ -5,78 +5,70 @@ Provides detailed mathematical verification and monitoring.
 
 from prometheus_client import Gauge, Histogram, Counter
 import numpy as np
-from typing import List, Optional
+from typing import List
 
 # Quantum State Metrics
 quantum_state_purity = Gauge(
-    'quantum_state_purity',
-    'Measure of quantum state purity tr(ρ²)',
-    ['state_type']
+    "quantum_state_purity", "Measure of quantum state purity tr(ρ²)", ["state_type"]
 )
 
 quantum_entropy = Gauge(
-    'quantum_entropy',
-    'Von Neumann entropy of quantum states',
-    ['state_type']
+    "quantum_entropy", "Von Neumann entropy of quantum states", ["state_type"]
 )
 
 quantum_interference = Histogram(
-    'quantum_interference_pattern',
-    'Quantum interference pattern measurements',
-    buckets=[0.0, 0.25, 0.5, 0.75, 1.0]
+    "quantum_interference_pattern",
+    "Quantum interference pattern measurements",
+    buckets=[0.0, 0.25, 0.5, 0.75, 1.0],
 )
 
 # Advanced Mathematical Properties
 spectral_gap = Gauge(
-    'density_matrix_spectral_gap',
-    'Spectral gap in density matrix eigenvalues'
+    "density_matrix_spectral_gap", "Spectral gap in density matrix eigenvalues"
 )
 
 frame_condition_number = Gauge(
-    'role_frame_condition_number',
-    'Condition number of the role frame'
+    "role_frame_condition_number", "Condition number of the role frame"
 )
 
 binding_condition_number = Gauge(
-    'binding_condition_number',
-    'Condition number of binding operands'
+    "binding_condition_number", "Condition number of binding operands"
 )
 
 permutation_cycle_length = Histogram(
-    'permutation_cycle_length',
-    'Distribution of permutation cycle lengths',
-    buckets=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024]
+    "permutation_cycle_length",
+    "Distribution of permutation cycle lengths",
+    buckets=[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
 )
 
 # Conservation Laws
 energy_conservation = Gauge(
-    'binding_energy_conservation',
-    'Energy conservation in binding operations',
-    ['operation']
+    "binding_energy_conservation",
+    "Energy conservation in binding operations",
+    ["operation"],
 )
 
 probability_conservation = Gauge(
-    'probability_conservation',
-    'Conservation of probability in operations',
-    ['operation']
+    "probability_conservation",
+    "Conservation of probability in operations",
+    ["operation"],
 )
 
 # Error Metrics
 numerical_error = Histogram(
-    'numerical_error_distribution',
-    'Distribution of numerical errors in operations',
-    buckets=np.logspace(-10, 0, 11).tolist()
+    "numerical_error_distribution",
+    "Distribution of numerical errors in operations",
+    buckets=np.logspace(-10, 0, 11).tolist(),
 )
 
 orthogonality_violation = Counter(
-    'orthogonality_violations_total',
-    'Number of orthogonality violations detected'
+    "orthogonality_violations_total", "Number of orthogonality violations detected"
 )
 
 
 class AdvancedMathematicalMetrics:
     """Advanced mathematical metrics collection and verification."""
-    
+
     @staticmethod
     def measure_state_purity(state_type: str, density_matrix: np.ndarray) -> None:
         """Measure and record quantum state purity."""
@@ -107,13 +99,17 @@ class AdvancedMathematicalMetrics:
         """Measure and record frame properties."""
         if not frame_vectors:
             return
-            
+
         # Construct frame operator
         frame_op = sum(np.outer(v, v) for v in frame_vectors)
-        
+
         # Calculate condition number
         eigvals = np.linalg.eigvalsh(frame_op)
-        cond = float(np.max(eigvals) / np.min(eigvals)) if np.min(eigvals) > 0 else float('inf')
+        cond = (
+            float(np.max(eigvals) / np.min(eigvals))
+            if np.min(eigvals) > 0
+            else float("inf")
+        )
         frame_condition_number.set(cond)
 
     @staticmethod
@@ -123,9 +119,7 @@ class AdvancedMathematicalMetrics:
 
     @staticmethod
     def verify_energy_conservation(
-        operation: str,
-        initial_energy: float,
-        final_energy: float
+        operation: str, initial_energy: float, final_energy: float
     ) -> None:
         """Verify and record energy conservation."""
         relative_error = abs(final_energy - initial_energy) / initial_energy
@@ -133,9 +127,7 @@ class AdvancedMathematicalMetrics:
 
     @staticmethod
     def verify_probability_conservation(
-        operation: str,
-        initial_prob: float,
-        final_prob: float
+        operation: str, initial_prob: float, final_prob: float
     ) -> None:
         """Verify and record probability conservation."""
         if abs(initial_prob) <= 1e-12:

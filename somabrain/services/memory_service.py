@@ -54,6 +54,7 @@ try:  # Prometheus metrics are optional in some test contexts
 except Exception:  # pragma: no cover - metrics not always available in tests
     _metrics = None  # type: ignore
 
+
 class MemoryService:
     """Universe-aware façade around :class:`MultiTenantMemory`.
 
@@ -61,7 +62,7 @@ class MemoryService:
     for replaying the client outbox so the FastAPI layer can remain thin.
     """
 
-    def __init__(self, mt_memory: 'MultiTenantMemory', namespace: str):
+    def __init__(self, mt_memory: "MultiTenantMemory", namespace: str):
         self.mt_memory = mt_memory
         self.namespace = namespace
 
@@ -160,7 +161,7 @@ class MemoryService:
         """Stores a memory payload. In V3, this fails fast if the remote is down."""
         if universe and "universe" not in payload:
             payload["universe"] = universe
-        
+
         if self._is_circuit_open():
             self._journal_failure(
                 "remember",
@@ -174,9 +175,15 @@ class MemoryService:
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning(f"Memory operation 'remember' failed for key '{key}'. Journaling.")
-            self._journal_failure("remember", {"key": key, "payload": payload, "universe": universe})
-            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+            logger.warning(
+                f"Memory operation 'remember' failed for key '{key}'. Journaling."
+            )
+            self._journal_failure(
+                "remember", {"key": key, "payload": payload, "universe": universe}
+            )
+            raise RuntimeError(
+                "Memory service unavailable; operation journaled."
+            ) from e
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         """Async version of remember."""
@@ -196,9 +203,15 @@ class MemoryService:
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning(f"Async memory operation 'aremember' failed for key '{key}'. Journaling.")
-            self._journal_failure("remember", {"key": key, "payload": payload, "universe": universe})
-            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+            logger.warning(
+                f"Async memory operation 'aremember' failed for key '{key}'. Journaling."
+            )
+            self._journal_failure(
+                "remember", {"key": key, "payload": payload, "universe": universe}
+            )
+            raise RuntimeError(
+                "Memory service unavailable; operation journaled."
+            ) from e
 
     async def aremember_bulk(
         self,
@@ -232,12 +245,16 @@ class MemoryService:
             return list(coords)
         except Exception as e:
             self._mark_failure()
-            logger.warning("Async memory operation 'aremember_bulk' failed. Journaling.")
+            logger.warning(
+                "Async memory operation 'aremember_bulk' failed. Journaling."
+            )
             self._journal_failure(
                 "remember_bulk",
                 {"items": journal_payload, "universe": universe},
             )
-            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+            raise RuntimeError(
+                "Memory service unavailable; operation journaled."
+            ) from e
 
     def link(self, from_coord, to_coord, link_type="related", weight=1.0):
         """Creates a link between memories. Fails fast and journals on error."""
@@ -260,8 +277,18 @@ class MemoryService:
         except Exception as e:
             self._mark_failure()
             logger.warning("Memory operation 'link' failed. Journaling.")
-            self._journal_failure("link", {"from_coord": from_coord, "to_coord": to_coord, "link_type": link_type, "weight": weight})
-            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+            self._journal_failure(
+                "link",
+                {
+                    "from_coord": from_coord,
+                    "to_coord": to_coord,
+                    "link_type": link_type,
+                    "weight": weight,
+                },
+            )
+            raise RuntimeError(
+                "Memory service unavailable; operation journaled."
+            ) from e
 
     async def alink(self, from_coord, to_coord, link_type="related", weight=1.0):
         """Async version of link."""
@@ -284,8 +311,18 @@ class MemoryService:
         except Exception as e:
             self._mark_failure()
             logger.warning("Async memory operation 'alink' failed. Journaling.")
-            self._journal_failure("link", {"from_coord": from_coord, "to_coord": to_coord, "link_type": link_type, "weight": weight})
-            raise RuntimeError("Memory service unavailable; operation journaled.") from e
+            self._journal_failure(
+                "link",
+                {
+                    "from_coord": from_coord,
+                    "to_coord": to_coord,
+                    "link_type": link_type,
+                    "weight": weight,
+                },
+            )
+            raise RuntimeError(
+                "Memory service unavailable; operation journaled."
+            ) from e
 
     def _journal_failure(self, op: str, data: dict):
         """Writes a failed operation to the journal for the sync worker to pick up."""
@@ -295,12 +332,15 @@ class MemoryService:
             )
         try:
             from somabrain import journal
+
             journal_dir = getattr(get_config(), "journal_dir", "./data/somabrain")
             event_type = "mem" if op == "remember" else op
             event = {"op": op, "type": event_type, **data}
             journal.append_event(journal_dir, self.namespace, event)
         except Exception:
-            logger.exception("Failed to write to journal. Memory operation may be lost.")
+            logger.exception(
+                "Failed to write to journal. Memory operation may be lost."
+            )
 
     def _health_check(self) -> bool:
         try:
@@ -428,7 +468,9 @@ class MemoryService:
                 coord_key = payload.get("coord_key") or payload.get("key")
                 if not coord_key:
                     inner = payload.get("payload") or {}
-                    coord_key = inner.get("task") or inner.get("id") or os.urandom(4).hex()
+                    coord_key = (
+                        inner.get("task") or inner.get("id") or os.urandom(4).hex()
+                    )
                 body = payload.get("payload") or payload
                 client.remember(coord_key, body)
                 return True

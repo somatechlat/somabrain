@@ -10,10 +10,10 @@ import typing as _t
 
 
 def __getattr__(name: str) -> _t.Any:  # pragma: no cover
-	raise RuntimeError(
-		"somabrain.memory_stub is disabled. Configure SOMABRAIN_MEMORY_HTTP_ENDPOINT "
-		"to point at the real memory backend."
-	)
+    raise RuntimeError(
+        "somabrain.memory_stub is disabled. Configure SOMABRAIN_MEMORY_HTTP_ENDPOINT "
+        "to point at the real memory backend."
+    )
 
 
 __all__: list[str] = []

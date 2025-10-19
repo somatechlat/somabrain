@@ -57,7 +57,7 @@ def main():
         print(f"p50 latency: {statistics.median(results):.4f}s")
         print(f"p95 latency: {statistics.quantiles(results, n=100)[94]:.4f}s")
         print(f"p99 latency: {statistics.quantiles(results, n=100)[98]:.4f}s")
-        print(f"Throughput: {len(results)/t_total:.2f} req/s")
+        print(f"Throughput: {len(results) / t_total:.2f} req/s")
 
 
 if __name__ == "__main__":

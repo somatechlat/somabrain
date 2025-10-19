@@ -26,7 +26,7 @@ echo "Running pre-commit quality checks..."
 echo "→ Checking linting..."
 ruff check somabrain/ tests/ || exit 1
 
-# Type checking  
+# Type checking
 echo "→ Checking types..."
 mypy somabrain/ || exit 1
 
@@ -62,7 +62,7 @@ async def store_memory(
     ttl_seconds: Optional[int] = None
 ) -> MemoryRecord:
     """Store a memory with vector encoding and metadata.
-    
+
     Parameters
     ----------
     content : str
@@ -73,26 +73,26 @@ async def store_memory(
         Additional key-value metadata to associate with the memory.
     ttl_seconds : int, optional
         Time-to-live in seconds. If provided, memory will expire automatically.
-        
+
     Returns
     -------
     MemoryRecord
         The stored memory record with generated ID and vector encoding.
-        
+
     Raises
     ------
     ValidationError
         If content is empty or tenant_id is invalid.
     EncodingError
         If vector encoding fails for the provided content.
-    StorageError  
+    StorageError
         If database storage operation fails.
-        
+
     Examples
     --------
     >>> memory = await store_memory(
     ...     content="Python is a programming language",
-    ...     tenant_id="user_123", 
+    ...     tenant_id="user_123",
     ...     metadata={"source": "user_input", "category": "programming"}
     ... )
     >>> print(memory.id)
@@ -113,7 +113,7 @@ async def store_memory(
 
 ### [ ] Test Coverage
 - [ ] **Unit Tests**: All new functions have corresponding unit tests
-- [ ] **Integration Tests**: API changes include integration test coverage  
+- [ ] **Integration Tests**: API changes include integration test coverage
 - [ ] **Coverage Threshold**: Overall test coverage remains above 85%
 - [ ] **Edge Cases**: Tests cover error conditions and boundary cases
 
@@ -124,7 +124,7 @@ pytest --cov=somabrain --cov-report=html --cov-report=term-missing
 coverage report --fail-under=85
 ```
 
-### [ ] Test Quality  
+### [ ] Test Quality
 - [ ] **Test Isolation**: Tests do not depend on external state or other tests
 - [ ] **Descriptive Names**: Test function names clearly describe what is being tested
 - [ ] **Arrange-Act-Assert**: Tests follow clear AAA pattern
@@ -140,11 +140,11 @@ async def test_store_memory_creates_vector_encoding():
     tenant_id = "test_tenant_123"
     mock_encoder = Mock()
     mock_encoder.encode.return_value = np.array([0.1, 0.2, 0.3])
-    
+
     # Act
     with patch('somabrain.core.memory_manager.vector_encoder', mock_encoder):
         memory = await memory_manager.store_memory(content, tenant_id)
-    
+
     # Assert
     assert memory.vector_encoding is not None
     assert len(memory.vector_encoding) == 3
@@ -189,7 +189,7 @@ class MemoryRequest(BaseModel):
     content: str
     tenant_id: str
     metadata: Optional[Dict[str, Any]] = None
-    
+
     @validator('content')
     def content_not_empty(cls, v):
         if not v or not v.strip():
@@ -197,7 +197,7 @@ class MemoryRequest(BaseModel):
         if len(v) > 10000:  # 10KB limit
             raise ValueError('Content exceeds maximum length')
         return v.strip()
-    
+
     @validator('tenant_id')
     def valid_tenant_id(cls, v):
         if not re.match(r'^[a-zA-Z0-9_-]+$', v):
@@ -218,7 +218,7 @@ class MemoryRequest(BaseModel):
 ### [ ] Resource Usage
 - [ ] **Memory Usage**: Changes do not significantly increase memory consumption
 - [ ] **Database Queries**: No N+1 query problems introduced
-- [ ] **Async Operations**: I/O operations use async/await appropriately  
+- [ ] **Async Operations**: I/O operations use async/await appropriately
 - [ ] **Caching**: Expensive operations are cached when appropriate
 
 ```python
@@ -228,14 +228,14 @@ async def check_performance_impact():
     import psutil
     process = psutil.Process()
     mem_before = process.memory_info().rss
-    
+
     # Run your code change
     result = await your_new_function()
-    
+
     # Memory usage after
     mem_after = process.memory_info().rss
     mem_increase = (mem_after - mem_before) / 1024 / 1024  # MB
-    
+
     assert mem_increase < 100, f"Memory increase too high: {mem_increase}MB"
 ```
 
@@ -328,7 +328,7 @@ Add configurable similarity threshold for memory search operations.
 This allows tenants to control precision vs recall tradeoffs.
 
 - Add VECTOR_SIMILARITY_THRESHOLD environment variable
-- Update search logic to use configurable threshold  
+- Update search logic to use configurable threshold
 - Add validation for threshold range (0.0-1.0)
 - Update documentation and tests
 
@@ -337,7 +337,7 @@ Closes #123
 
 ### [ ] Branch Status
 - [ ] **Up to Date**: Branch is rebased on latest main/develop branch
-- [ ] **Clean History**: No merge commits or unnecessary commits in branch  
+- [ ] **Clean History**: No merge commits or unnecessary commits in branch
 - [ ] **Conflict Resolution**: All merge conflicts resolved properly
 - [ ] **Feature Complete**: All work for the feature/fix is included
 
@@ -356,7 +356,7 @@ git diff main..HEAD --stat   # See what changes vs main
 ### [ ] End-to-End Testing
 - [ ] **Manual Testing**: Critical user flows tested manually
 - [ ] **Error Handling**: Error cases produce appropriate responses
-- [ ] **Logging**: Important operations are logged appropriately  
+- [ ] **Logging**: Important operations are logged appropriately
 - [ ] **Monitoring**: Relevant metrics are captured
 
 ### [ ] Team Communication

@@ -21,7 +21,7 @@ The SomaBrain API is the primary FastAPI service handling cognitive memory opera
 
 ### Dependencies
 - **Redis**: Working memory cache and session state
-- **PostgreSQL**: Persistent storage for metadata and audit logs  
+- **PostgreSQL**: Persistent storage for metadata and audit logs
 - **Kafka**: Event streaming for audit trails (optional)
 - **OPA**: Policy engine for authorization
 - **Memory Service**: Long-term memory HTTP service
@@ -41,7 +41,7 @@ curl -f https://api.somabrain.company.com/health
   "timestamp": "2025-10-15T12:00:00Z",
   "components": {
     "redis": {"status": "healthy", "latency_ms": 1.2},
-    "postgres": {"status": "healthy", "latency_ms": 2.1}, 
+    "postgres": {"status": "healthy", "latency_ms": 2.1},
     "kafka": {"status": "healthy", "latency_ms": 0.8},
     "opa": {"status": "healthy", "latency_ms": 1.0}
   },
@@ -218,7 +218,7 @@ spec:
             memory: "4Gi"
             cpu: "2000m"
           limits:
-            memory: "8Gi" 
+            memory: "8Gi"
             cpu: "4000m"
 ```
 

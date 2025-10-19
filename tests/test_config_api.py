@@ -19,7 +19,6 @@ def client(monkeypatch) -> TestClient:
 
 
 def test_effective_config_and_cutover_flow(client: TestClient):
-
     # Fetch default config
     resp = client.get("/config/memory", params={"tenant": "acme", "namespace": "wm"})
     assert resp.status_code == 200

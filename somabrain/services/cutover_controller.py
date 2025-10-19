@@ -46,7 +46,7 @@ class CutoverController:
         self,
         config_service: ConfigService,
         *,
-    clock: Optional[Callable[[], float]] = None,
+        clock: Optional[Callable[[], float]] = None,
         readiness_margin: float = 0.0,
         latency_budget_factor: float = 1.05,
     ) -> None:
@@ -57,11 +57,16 @@ class CutoverController:
         self._latency_budget_factor = latency_budget_factor
         self._lock = asyncio.Lock()
 
-    async def open_plan(self, tenant: str, from_namespace: str, to_namespace: str) -> CutoverPlan:
+    async def open_plan(
+        self, tenant: str, from_namespace: str, to_namespace: str
+    ) -> CutoverPlan:
         if from_namespace == to_namespace:
             raise CutoverError("from and to namespaces must differ")
         async with self._lock:
-            if tenant in self._plans and self._plans[tenant].status in {"draft", "approved"}:
+            if tenant in self._plans and self._plans[tenant].status in {
+                "draft",
+                "approved",
+            }:
                 raise CutoverError(f"cutover already open for tenant {tenant}")
             plan = CutoverPlan(
                 tenant=tenant,
@@ -138,7 +143,9 @@ class CutoverController:
         target_margin = float(targets.get("margin", 0.12)) - self._readiness_margin
 
         baseline = self._config.effective_config(plan.tenant, plan.from_namespace)
-        latency_budget = float(baseline.get("latency_p95_ms", 100.0)) * self._latency_budget_factor
+        latency_budget = (
+            float(baseline.get("latency_p95_ms", 100.0)) * self._latency_budget_factor
+        )
 
         return (
             metrics.top1_accuracy >= target_top1

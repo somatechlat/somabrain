@@ -18,7 +18,9 @@ def test_backend_enforcement_health_and_no_stub_backfill(monkeypatch):
     try:
         r = requests.get(os.getenv("SOMA_API_URL") + "/health", timeout=1.5)
     except requests.exceptions.RequestException:
-        pytest.skip("SOMA_API_URL not reachable; backend enforcement health check skipped")
+        pytest.skip(
+            "SOMA_API_URL not reachable; backend enforcement health check skipped"
+        )
     assert r.status_code == 200, r.text
     data = r.json()
     assert data.get("minimal_public_api") in (False, None)

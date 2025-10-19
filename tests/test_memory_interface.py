@@ -1,5 +1,6 @@
 import os
 import asyncio
+
 os.environ.setdefault("DISABLE_START_SERVER", "1")
 
 from somabrain.interfaces.memory import MemoryBackend
@@ -19,11 +20,15 @@ class DummyBackend:
     async def aremember(self, key: str, payload: dict, *args, **kwargs):
         return self.remember(key, payload, *args, **kwargs)
 
-    def link(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
+    def link(
+        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
+    ):
         # no-op
         return None
 
-    async def alink(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
+    async def alink(
+        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
+    ):
         return None
 
     def coord_for_key(self, key: str, universe: str | None = None):

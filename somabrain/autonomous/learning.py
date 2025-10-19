@@ -293,7 +293,9 @@ class ExperimentManager:
             if analysis:
                 # Store analysis for external consumers (e.g., promotion logic)
                 self.experiments[exp_id].setdefault("analysis", analysis)
-                logger.info(f"Analyzed experiment {exp_id}: p={analysis.get('p_value'):.4f}, d={analysis.get('effect_size_cohen_d'):.4f}")
+                logger.info(
+                    f"Analyzed experiment {exp_id}: p={analysis.get('p_value'):.4f}, d={analysis.get('effect_size_cohen_d'):.4f}"
+                )
                 # Optionally stop the experiment after analysis
                 self.stop_experiment(exp_id)
             else:

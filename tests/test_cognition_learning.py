@@ -231,10 +231,7 @@ def test_cognition_memory_round_trip_live(target: TargetConfig):
             content = ""
             if isinstance(item, dict):
                 content = str(
-                    item.get("content")
-                    or item.get("fact")
-                    or item.get("text")
-                    or item
+                    item.get("content") or item.get("fact") or item.get("text") or item
                 )
             else:
                 content = str(item)

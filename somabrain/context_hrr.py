@@ -29,6 +29,7 @@ from .quantum import QuantumLayer
 try:  # pragma: no cover - metrics import may fail in minimal environments
     from somabrain.metrics.context_metrics import ContextMetrics
 except Exception:  # pragma: no cover
+
     class ContextMetrics:  # type: ignore[too-many-ancestors]
         """No-op metrics shim when Prometheus is unavailable."""
 
@@ -130,9 +131,7 @@ class HRRContext:
                 snr_ratio = max(signal / noise, 1e-12)
                 snr_db = 20.0 * math.log10(snr_ratio)
 
-        ContextMetrics.observe_state(
-            self._context_id, anchor_count, capacity, snr_db
-        )
+        ContextMetrics.observe_state(self._context_id, anchor_count, capacity, snr_db)
 
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
         norm = float(np.linalg.norm(vec))
@@ -143,7 +142,9 @@ class HRRContext:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def admit(self, anchor_id: str, vec: np.ndarray, *, timestamp: float | None = None) -> None:
+    def admit(
+        self, anchor_id: str, vec: np.ndarray, *, timestamp: float | None = None
+    ) -> None:
         """Admit a new anchor vector and update the context state."""
 
         ts = float(timestamp) if timestamp is not None else self._now()

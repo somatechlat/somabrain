@@ -23,7 +23,11 @@ from .healing import AutonomousHealer
 from .learning import AutonomousLearner
 from .monitor import AutonomousMonitor
 from somabrain.storage.feedback import FeedbackStore
-from somabrain.autonomous.learning import ExperimentManager, ParameterOptimizer, FeedbackCollector
+from somabrain.autonomous.learning import (
+    ExperimentManager,
+    ParameterOptimizer,
+    FeedbackCollector,
+)
 from somabrain import audit
 
 logger = logging.getLogger(__name__)
@@ -394,6 +398,7 @@ def initialize_autonomous_operations(
 
 # Removed duplicate imports and redundant definitions. Keep helper functions.
 
+
 def get_feedback_store() -> FeedbackStore:
     global _feedback_store
     if _feedback_store is None:
@@ -401,7 +406,9 @@ def get_feedback_store() -> FeedbackStore:
     return _feedback_store
 
 
-def get_experiment_manager(config: Optional[AutonomousConfig] = None) -> ExperimentManager:
+def get_experiment_manager(
+    config: Optional[AutonomousConfig] = None,
+) -> ExperimentManager:
     """Retrieve the global ExperimentManager, creating it if necessary.
 
     The original implementation instantiated ``ExperimentManager`` without a
@@ -431,12 +438,16 @@ async def _poll_feedback_loop(app: FastAPI) -> None:
     It fetches recent feedback events, feeds them to FeedbackCollector, and
     triggers the experiment manager to evaluate any pending experiments.
     """
-    poll_interval = int(os.getenv("SOMABRAIN_COORDINATOR_POLL_SEC", "300"))  # default 5 min
+    poll_interval = int(
+        os.getenv("SOMABRAIN_COORDINATOR_POLL_SEC", "300")
+    )  # default 5 min
     while True:
         try:
             store = get_feedback_store()
             # Retrieve events from the last poll interval
-            since = datetime.datetime.utcnow() - datetime.timedelta(seconds=poll_interval)
+            since = datetime.datetime.utcnow() - datetime.timedelta(
+                seconds=poll_interval
+            )
             recent = store.get_events_since(since.isoformat())
             if recent:
                 collector = FeedbackCollector()
@@ -464,6 +475,7 @@ def setup_coordinator(app: FastAPI) -> None:
 
     Usage: in the main FastAPI creation file, call ``setup_coordinator(app)``.
     """
+
     @app.on_event("startup")
     async def start_coordinator() -> None:
         # Kick off the background poller

@@ -275,7 +275,9 @@ class MemoryClient:
     to preserve determinism and test invariants.
     """
 
-    def __init__(self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None):
+    def __init__(
+        self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None
+    ):
         self.cfg = cfg
         self._scorer = scorer
         self._embedder = embedder
@@ -301,7 +303,9 @@ class MemoryClient:
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if shared_settings is not None:
             try:
-                db_path = str(getattr(shared_settings, "memory_db_path", "./data/memory.db"))
+                db_path = str(
+                    getattr(shared_settings, "memory_db_path", "./data/memory.db")
+                )
             except Exception:
                 db_path = "./data/memory.db"
         else:
@@ -355,7 +359,9 @@ class MemoryClient:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
-            keepalive = int(os.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive)))
+            keepalive = int(
+                os.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive))
+            )
         except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
@@ -377,21 +383,20 @@ class MemoryClient:
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
         candidate_base = get_memory_http_endpoint()
-        env_base = (
-            os.getenv("SOMABRAIN_HTTP_ENDPOINT")
-            or os.getenv("MEMORY_SERVICE_URL")
+        env_base = os.getenv("SOMABRAIN_HTTP_ENDPOINT") or os.getenv(
+            "MEMORY_SERVICE_URL"
         )
         if not env_base:
             env_base = candidate_base
         if env_base:
             try:
                 env_base = str(env_base).strip()
-                if "://" not in env_base and env_base.startswith('/'):
+                if "://" not in env_base and env_base.startswith("/"):
                     pass
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
-                if env_base.endswith('/openapi.json'):
-                    env_base = env_base[:-len('/openapi.json')]
+                if env_base.endswith("/openapi.json"):
+                    env_base = env_base[: -len("/openapi.json")]
             except Exception:
                 env_base = None
         base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
@@ -408,11 +413,11 @@ class MemoryClient:
                 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
             except Exception:
                 pass
-    # If running inside Docker and no endpoint provided, default to the
-    # host gateway which is commonly reachable as host.docker.internal on
-    # macOS/Windows. This helps tests running inside containers talk to
-    # a memory service running on the host machine (configure via
-    # SOMABRAIN_DOCKER_MEMORY_FALLBACK).
+        # If running inside Docker and no endpoint provided, default to the
+        # host gateway which is commonly reachable as host.docker.internal on
+        # macOS/Windows. This helps tests running inside containers talk to
+        # a memory service running on the host machine (configure via
+        # SOMABRAIN_DOCKER_MEMORY_FALLBACK).
         try:
             in_docker = os.path.exists("/.dockerenv")
         except Exception:
@@ -576,9 +581,7 @@ class MemoryClient:
             return status < 300, status, data
         return False, status, data
 
-    def _store_http_sync(
-        self, body: dict, headers: dict
-    ) -> tuple[bool, Any]:
+    def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         if self._http is None:
             return False, None
 
@@ -600,9 +603,7 @@ class MemoryClient:
 
         return False, data
 
-    async def _store_http_async(
-        self, body: dict, headers: dict
-    ) -> tuple[bool, Any]:
+    async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         if self._http_async is None:
             return False, None
 
@@ -917,7 +918,6 @@ class MemoryClient:
         ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
         return [item[-1] for item in ranked]
 
-
     def _memories_search_sync(
         self,
         query: str,
@@ -1076,7 +1076,11 @@ class MemoryClient:
 
     def _recency_normalisation(self) -> tuple[float, float]:
         scale = getattr(self.cfg, "recall_recency_time_scale", 60.0)
-        if not isinstance(scale, (int, float)) or not math.isfinite(scale) or scale <= 0:
+        if (
+            not isinstance(scale, (int, float))
+            or not math.isfinite(scale)
+            or scale <= 0
+        ):
             scale = 60.0
         cap = getattr(self.cfg, "recall_recency_max_steps", 4096.0)
         if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
@@ -1149,7 +1153,9 @@ class MemoryClient:
                     value = float(txt)
                 except ValueError:
                     try:
-                        txt_norm = txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
+                        txt_norm = (
+                            txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
+                        )
                         dt = datetime.fromisoformat(txt_norm)
                         if dt.tzinfo is None:
                             dt = dt.replace(tzinfo=timezone.utc)
@@ -1214,7 +1220,9 @@ class MemoryClient:
         penalty = 1.0 - (weight * deficit)
         return max(floor, min(1.0, penalty))
 
-    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+    def _rescore_and_rank_hits(
+        self, hits: List[RecallHit], query: str
+    ) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
             # Fallback to old logic if scorer is not available
             self._apply_weighting_to_hits(hits)
@@ -1235,7 +1243,7 @@ class MemoryClient:
                 new_score = 0.0
             else:
                 candidate_vec = self._embedder.embed(text)
-                
+
                 # Calculate recency_steps from timestamp
                 recency_steps: float | None = None
                 recency_boost = 1.0
@@ -1254,7 +1262,7 @@ class MemoryClient:
                     query_vec,
                     candidate_vec,
                     recency_steps=recency_steps,
-                    cosine=hit.score, # Pass original score as cosine hint
+                    cosine=hit.score,  # Pass original score as cosine hint
                 )
                 new_score *= recency_boost
                 try:
@@ -1272,7 +1280,7 @@ class MemoryClient:
                 except Exception:
                     pass
             new_score = max(0.0, min(1.0, float(new_score)))
-            
+
             hit.score = new_score
             scored_hits.append(hit)
 
@@ -1303,7 +1311,9 @@ class MemoryClient:
                 weighting_enabled = True
                 priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
                 try:
-                    quality_exp = float(os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0"))
+                    quality_exp = float(
+                        os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0")
+                    )
                 except Exception:
                     quality_exp = 1.0
         if not weighting_enabled:
@@ -1345,6 +1355,7 @@ class MemoryClient:
                     pass
         except Exception:
             return
+
     # --- HTTP compatibility helpers -------------------------------------------------
     def _compat_enrich_payload(
         self, payload: dict, coord_key: str
@@ -1707,9 +1718,7 @@ class MemoryClient:
                 enriched = dict(enriched)
                 enriched.setdefault("coordinate", coord)
                 memory_type = str(
-                    enriched.get("memory_type")
-                    or enriched.get("type")
-                    or "episodic"
+                    enriched.get("memory_type") or enriched.get("type") or "episodic"
                 )
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
@@ -1737,9 +1746,7 @@ class MemoryClient:
                                 p2["coordinate"] = server_coord
                             except Exception:
                                 pass
-                        if getattr(
-                            self.cfg, "prefer_server_coords_for_links", False
-                        ):
+                        if getattr(self.cfg, "prefer_server_coords_for_links", False):
                             return server_coord
                         return server_coord
                 return coord
@@ -2069,7 +2076,11 @@ class MemoryClient:
                             "weight": float(edge.get("weight", 1.0)),
                         }
                     )
-                    if not unlimited and max_items is not None and len(out) >= max_items:
+                    if (
+                        not unlimited
+                        and max_items is not None
+                        and len(out) >= max_items
+                    ):
                         break
                 except Exception:
                     continue
@@ -2329,9 +2340,7 @@ class MemoryClient:
                 return []
             seen: set[Tuple[float, float, float]] = set()
             # build explicit 3-tuples for static typing
-            frontier = [
-                (float(s[0]), float(s[1]), float(s[2])) for s in starts
-            ]
+            frontier = [(float(s[0]), float(s[1]), float(s[2])) for s in starts]
             out: list[Tuple[float, float, float]] = []
             for d in range(max(1, int(depth))):
                 new_frontier: list[Tuple[float, float, float]] = []
@@ -2415,7 +2424,9 @@ class MemoryClient:
                     parsed_coord: Tuple[float, float, float] | None = None
                     if isinstance(coord_value, str):
                         parsed_coord = _parse_coord_string(coord_value)
-                    elif isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3:
+                    elif (
+                        isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3
+                    ):
                         try:
                             parsed_coord = (
                                 float(coord_value[0]),
@@ -2455,9 +2466,7 @@ class MemoryClient:
                     "coord": f"{c[0]},{c[1]},{c[2]}",
                     "payload": dict(payload),
                     "memory_type": str(
-                        payload.get("memory_type")
-                        or payload.get("type")
-                        or "episodic"
+                        payload.get("memory_type") or payload.get("type") or "episodic"
                     ),
                 }
                 success, _ = self._store_http_sync(body, headers)
@@ -2515,9 +2524,7 @@ class MemoryClient:
         sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         memory_type = str(
-            enriched.get("memory_type")
-            or enriched.get("type")
-            or "episodic"
+            enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
         body = {
             "coord": coord_str,
@@ -2574,9 +2581,7 @@ class MemoryClient:
         sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         memory_type = str(
-            enriched.get("memory_type")
-            or enriched.get("type")
-            or "episodic"
+            enriched.get("memory_type") or enriched.get("type") or "episodic"
         )
         body = {
             "coord": coord_str,
@@ -2587,9 +2592,7 @@ class MemoryClient:
         try:
             ok, response_data = await self._store_http_async(body, rid_hdr)
             if ok and response_data is not None:
-                server_coord = _extract_memory_coord(
-                    response_data, idempotency_key=rid
-                )
+                server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
                 if server_coord:
                     try:
                         payload["coordinate"] = server_coord
@@ -2604,6 +2607,7 @@ class MemoryClient:
                 )
             except Exception:
                 pass
+
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.
 # Adding a Protocol-based alias for type checkers helps during the refactor.

@@ -265,7 +265,7 @@ rm -rf "$BACKUP_DIR" "$BACKUP_DIR.tar.gz"
 
 **Scenario**: Total environment loss, rebuild from backups
 
-**Recovery Time Objective (RTO)**: 4 hours  
+**Recovery Time Objective (RTO)**: 4 hours
 **Recovery Point Objective (RPO)**: 1 hour
 
 #### Phase 1: Infrastructure Recovery (60 minutes)
@@ -288,7 +288,7 @@ kubectl apply -f k8s/rbac/
 helm install postgres bitnami/postgresql -f values/postgres-prod.yaml
 ./scripts/restore-postgres-pitr.sh
 
-# 2. Deploy Redis and restore data  
+# 2. Deploy Redis and restore data
 helm install redis bitnami/redis -f values/redis-prod.yaml
 ./scripts/restore-redis.sh
 
@@ -342,7 +342,7 @@ kubectl patch service redis -n somabrain-prod -p '{"spec":{"selector":{"app":"re
 ### Monthly DR Drill Checklist
 - [ ] Verify all backup jobs completed successfully in past 7 days
 - [ ] Test Redis restore in staging environment
-- [ ] Test PostgreSQL PITR in isolated environment  
+- [ ] Test PostgreSQL PITR in isolated environment
 - [ ] Validate Kafka topic restoration
 - [ ] Test configuration restore process
 - [ ] Measure actual RTO/RPO vs targets

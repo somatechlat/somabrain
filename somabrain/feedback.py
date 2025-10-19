@@ -8,6 +8,7 @@ can be used wherever a float utility value is expected.
 
 from __future__ import annotations
 
+
 class Feedback:
     """Simple feedback container.
 
@@ -24,6 +25,5 @@ class Feedback:
         self.score = float(score)
 
     def __float__(self) -> float:
-        """Allow ``float(feedback)`` to return the score.
-        """
+        """Allow ``float(feedback)`` to return the score."""
         return self.score

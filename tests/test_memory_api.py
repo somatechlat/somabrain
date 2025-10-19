@@ -51,7 +51,9 @@ class DummyMemoryClient:
         self._store: Dict[str, List[dict]] = {}
         self._outbox_path = ""
 
-    async def aremember(self, coord_key: str, payload: dict, request_id: str | None = None):
+    async def aremember(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ):
         self._store.setdefault(coord_key, []).append(payload)
         return (1.0, 2.0, 3.0)
 
@@ -64,7 +66,13 @@ class DummyMemoryClient:
             coords.append((1.0 + idx, 2.0 + idx, 3.0 + idx))
         return coords
 
-    async def arecall(self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None):
+    async def arecall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ):
         hits = [DummyHit(payload) for payload in self._store.get(query, [])]
         return hits[:top_k]
 
@@ -82,7 +90,9 @@ def patch_runtime(monkeypatch):
     monkeypatch.setattr(rt, "embedder", DummyEmbedder(), raising=False)
     monkeypatch.setattr(rt, "mt_wm", DummyWM(), raising=False)
     monkeypatch.setattr(rt, "mt_memory", DummyMultiTenantMemory(), raising=False)
-    monkeypatch.setattr(rt, "cfg", types.SimpleNamespace(namespace="base_ns"), raising=False)
+    monkeypatch.setattr(
+        rt, "cfg", types.SimpleNamespace(namespace="base_ns"), raising=False
+    )
     submitted_snapshots.clear()
 
     async def _fake_dispatcher():
@@ -94,15 +104,32 @@ def patch_runtime(monkeypatch):
     async def _fake_submit(snapshot):
         submitted_snapshots.append(snapshot)
 
-    monkeypatch.setattr("somabrain.api.memory_api.ensure_config_dispatcher", _fake_dispatcher)
-    monkeypatch.setattr("somabrain.api.memory_api.ensure_supervisor_worker", _fake_supervisor_worker)
-    monkeypatch.setattr("somabrain.api.memory_api.submit_metrics_snapshot", _fake_submit)
+    monkeypatch.setattr(
+        "somabrain.api.memory_api.ensure_config_dispatcher", _fake_dispatcher
+    )
+    monkeypatch.setattr(
+        "somabrain.api.memory_api.ensure_supervisor_worker", _fake_supervisor_worker
+    )
+    monkeypatch.setattr(
+        "somabrain.api.memory_api.submit_metrics_snapshot", _fake_submit
+    )
 
     def _fake_rebuild(tenant, namespace=None):
         rebuild_calls.append((tenant, namespace))
-        return [{"tenant": tenant, "namespace": namespace or "wm", "backend": "simple", "wm_rebuilt": 1.0, "ltm_rebuilt": 1.0, "duration_seconds": 0.0}]
+        return [
+            {
+                "tenant": tenant,
+                "namespace": namespace or "wm",
+                "backend": "simple",
+                "wm_rebuilt": 1.0,
+                "ltm_rebuilt": 1.0,
+                "duration_seconds": 0.0,
+            }
+        ]
 
-    monkeypatch.setattr("somabrain.api.memory_api._TIERED_REGISTRY.rebuild", _fake_rebuild)
+    monkeypatch.setattr(
+        "somabrain.api.memory_api._TIERED_REGISTRY.rebuild", _fake_rebuild
+    )
     yield
 
 
@@ -158,7 +185,9 @@ def test_memory_api_roundtrip(client: TestClient):
     assert recall_data["namespace"] == namespace
     assert recall_data["wm_hits"] >= 1
     assert any(item["layer"] == "wm" for item in recall_data["results"])
-    tiered_items = [item for item in recall_data["results"] if item["source"] == "tiered_memory"]
+    tiered_items = [
+        item for item in recall_data["results"] if item["source"] == "tiered_memory"
+    ]
     assert tiered_items, "tiered_memory result expected"
     assert tiered_items[0]["payload"].get("governed_margin") is not None
     assert tiered_items[0]["confidence"] is not None
@@ -234,7 +263,9 @@ def test_memory_api_batch_remember(client: TestClient):
     assert recall_resp.status_code == 200
     recall_data = recall_resp.json()
     assert recall_data["wm_hits"] >= 1
-    tiered_items = [item for item in recall_data["results"] if item["source"] == "tiered_memory"]
+    tiered_items = [
+        item for item in recall_data["results"] if item["source"] == "tiered_memory"
+    ]
     if not tiered_items:
         # Tiered cleanup depends on ANN snapshots; allow WM fallback in tests
         assert any(item["layer"] == "wm" for item in recall_data["results"])
@@ -268,7 +299,9 @@ def test_memory_admin_rebuild_ann_records_metrics(monkeypatch, client: TestClien
         coordinate=[0.0, 0.1, 0.2],
     )
 
-    counter = M.ANN_REBUILD_TOTAL.labels(tenant="acme", namespace="wm", backend="simple")
+    counter = M.ANN_REBUILD_TOTAL.labels(
+        tenant="acme", namespace="wm", backend="simple"
+    )
     histogram = M.ANN_REBUILD_SECONDS.labels(tenant="acme", namespace="wm")
     before_total = counter._value.get()
     before_sum = histogram._sum.get()
@@ -298,7 +331,10 @@ def test_memory_api_streaming_recall(client: TestClient):
             "items": [
                 {"key": "stream:1", "value": {"text": "stream one", "importance": 0.8}},
                 {"key": "stream:2", "value": {"text": "stream two", "importance": 0.7}},
-                {"key": "stream:3", "value": {"text": "stream three", "importance": 0.6}},
+                {
+                    "key": "stream:3",
+                    "value": {"text": "stream three", "importance": 0.6},
+                },
             ],
         },
     )

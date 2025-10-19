@@ -77,7 +77,6 @@ from somabrain.scoring import UnifiedScorer
 from somabrain.sdr import LSHIndex, SDREncoder
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
-from somabrain.services.memory_sync_worker import setup_memory_sync_worker
 from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
@@ -812,6 +811,7 @@ except Exception:
 # Add timing middleware for request instrumentation
 try:
     from somabrain.metrics import timing_middleware
+
     app.middleware("http")(timing_middleware)
 except Exception:
     pass
@@ -834,6 +834,7 @@ except Exception:
 # Add timing middleware for request instrumentation
 try:
     from somabrain.metrics import timing_middleware
+
     app.middleware("http")(timing_middleware)
 except Exception:
     pass
@@ -1016,7 +1017,12 @@ if not BACKEND_ENFORCEMENT:
     try:
         enforcement_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
         if enforcement_env is not None:
-            BACKEND_ENFORCEMENT = enforcement_env.strip().lower() in ("1", "true", "yes", "on")
+            BACKEND_ENFORCEMENT = enforcement_env.strip().lower() in (
+                "1",
+                "true",
+                "yes",
+                "on",
+            )
     except Exception:
         pass
 
@@ -1049,7 +1055,9 @@ try:
     _EMBED_DIM = int(getattr(embedder, "dim"))
 except Exception:
     try:
-        _EMBED_DIM = int(np.asarray(embedder.embed("___dim_probe___"), dtype=float).size)
+        _EMBED_DIM = int(
+            np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
+        )
     except Exception as exc:
         raise RuntimeError("embedder failed to produce vector dimension") from exc
 # Ensure config reflects the actual embedder dimension at runtime
@@ -1727,7 +1735,10 @@ async def health(request: Request) -> S.HealthResponse:
     scorer_stats: Optional[Dict[str, Any]] = None
     backend_enforced_flag = BACKEND_ENFORCEMENT
     try:
-        from somabrain.stub_audit import BACKEND_ENFORCED as __BACKEND_ENFORCED, stub_stats as __stub_stats
+        from somabrain.stub_audit import (
+            BACKEND_ENFORCED as __BACKEND_ENFORCED,
+            stub_stats as __stub_stats,
+        )
         from somabrain.opa.client import opa_client as __opa
 
         backend_enforced_flag = bool(__BACKEND_ENFORCED)
@@ -1791,7 +1802,9 @@ async def health(request: Request) -> S.HealthResponse:
             mem_items = int(getattr(ns_mem, "count", lambda: 0)() or 0)
         except Exception:
             pass
-        predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or not backend_enforced_flag
+        predictor_ok = (
+            _PREDICTOR_PROVIDER not in ("stub", "baseline")
+        ) or not backend_enforced_flag
         # Allow ops override to relax predictor requirement for readiness while keeping strict memory/embedder
         relax_overrides = False
         if shared_settings is not None:
@@ -1816,14 +1829,19 @@ async def health(request: Request) -> S.HealthResponse:
                 # When enforcement is active, require HTTP endpoint to be healthy
                 memory_ok = bool(mhealth.get("http", False))
             else:
-                memory_ok = bool(mhealth.get("ok", False)) if isinstance(mhealth, dict) else False
+                memory_ok = (
+                    bool(mhealth.get("ok", False))
+                    if isinstance(mhealth, dict)
+                    else False
+                )
         except Exception:
             memory_ok = False
-            
+
         # Add circuit breaker state to health response
         try:
             from somabrain.services.memory_service import MemoryService
-            circuit_open = getattr(MemoryService, '_circuit_open', False)
+
+            circuit_open = getattr(MemoryService, "_circuit_open", False)
             resp["memory_circuit_open"] = bool(circuit_open)
         except Exception:
             resp["memory_circuit_open"] = None
@@ -1898,11 +1916,7 @@ async def health(request: Request) -> S.HealthResponse:
     if "scorer" not in resp:
         resp["scorer"] = scorer_stats
 
-    if (
-        fd_violation
-        and resp.get("ok", True)
-        and resp.get("ready", True)
-    ):
+    if fd_violation and resp.get("ok", True) and resp.get("ready", True):
         resp["ok"] = False
         resp["ready"] = False
 
@@ -1941,6 +1955,7 @@ async def health(request: Request) -> S.HealthResponse:
 async def metrics():
     """Prometheus metrics endpoint."""
     return await M.metrics_endpoint()
+
 
 # Alias endpoint for legacy health check used in tests
 @app.get("/healthz", include_in_schema=False)
@@ -2005,7 +2020,9 @@ async def recall(req: S.RecallRequest, request: Request):
 
     data = thalamus.normalize(req.model_dump())
     # Apply thalamic filtering based on attention and neuromodulators
-    data = thalamus.filter_input(data, per_tenant_neuromodulators.get_state(ctx.tenant_id))
+    data = thalamus.filter_input(
+        data, per_tenant_neuromodulators.get_state(ctx.tenant_id)
+    )
     cohort = request.headers.get("X-Backend-Cohort", "baseline").strip() or "baseline"
     # Universe scoping: request field overrides header if provided
     req_u = getattr(req, "universe", None) or None
@@ -2069,7 +2086,6 @@ async def recall(req: S.RecallRequest, request: Request):
                 reranked = []
                 for s, p in wm_hits:
                     if isinstance(p, dict):
-                       
                         text_p = str(p.get("task") or p.get("fact") or "")
                     else:
                         text_p = str(p)
@@ -3040,7 +3056,6 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
     if start_coord:
         # Debug: show namespace and global links for triage
         try:
-            import builtins as _builtins
             import sys as _sys
 
             from somabrain import memory_client as _mc
@@ -3158,7 +3173,9 @@ if sys.modules.get("somabrain.app") is not _current_module:
 # Provide a ModuleSpec so importlib.reload works in test fixtures
 spec = getattr(_current_module, "__spec__", None)
 if spec is None:
-    _current_module.__spec__ = importlib.util.spec_from_loader("somabrain.app", loader=None)
+    _current_module.__spec__ = importlib.util.spec_from_loader(
+        "somabrain.app", loader=None
+    )
 else:
     spec_name = getattr(spec, "name", None)
     if spec_name != "somabrain.app":

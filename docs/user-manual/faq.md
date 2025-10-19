@@ -12,7 +12,7 @@
 
 ### Q: What are the minimum system requirements?
 
-**A**: 
+**A**:
 - **CPU**: 2+ cores recommended (ARM64 or x86_64)
 - **RAM**: 4GB minimum, 8GB+ recommended for production
 - **Storage**: 2GB for Docker images + data storage
@@ -53,7 +53,7 @@ curl http://localhost:9696/health
 **Expected Response**:
 ```json
 {
-  "status": "healthy", 
+  "status": "healthy",
   "components": {
     "redis": {"status": "healthy"},
     "postgres": {"status": "healthy"},
@@ -89,7 +89,7 @@ curl http://localhost:9696/health
    ```
 
 2. **Language mismatch**: Query and stored content should use similar vocabulary
-   
+
 3. **Cold start**: With few memories, semantic relationships are limited
 
 **Verification**: Try querying for content you know exists with exact phrases first.
@@ -134,7 +134,7 @@ curl -X PUT http://localhost:9696/memories/{memory_id} \
 
 - **JavaScript/Node.js**: Use `fetch()` or `axios`
 - **Python**: Use `requests` or the official SDK
-- **Java**: Use `OkHttp` or `RestTemplate` 
+- **Java**: Use `OkHttp` or `RestTemplate`
 - **Go**: Use standard `net/http`
 - **cURL**: For command-line testing
 
@@ -148,7 +148,7 @@ curl -X PUT http://localhost:9696/memories/{memory_id} \
 # API key authentication (recommended)
 curl -H "X-API-Key: your-api-key" http://localhost:9696/recall
 
-# JWT token authentication  
+# JWT token authentication
 curl -H "Authorization: Bearer your-jwt-token" http://localhost:9696/recall
 ```
 
@@ -226,7 +226,7 @@ docker run --rm -v somabrain_postgres_data:/data -v $(pwd):/backup \
 # Metrics for Prometheus
 curl http://localhost:9696/metrics
 
-# Performance statistics  
+# Performance statistics
 curl http://localhost:9696/stats
 
 # Memory usage by tenant
@@ -253,7 +253,7 @@ curl http://localhost:9696/admin/tenants
 # Check resource usage
 docker stats somabrain-api somabrain-redis somabrain-postgres
 
-# Profile slow queries  
+# Profile slow queries
 curl -X POST http://localhost:9696/recall?profile=true \
   -d '{"query": "your query", "k": 10}'
 ```
@@ -330,7 +330,7 @@ docker image inspect somabrain/api:latest | grep Architecture
 **A**: Encryption options:
 
 - **At Rest**: Configure PostgreSQL encryption (TDE) and Redis encryption
-- **In Transit**: Enable HTTPS/TLS for API endpoints  
+- **In Transit**: Enable HTTPS/TLS for API endpoints
 - **Application Level**: Encrypt sensitive content before storing
 
 **Configuration**: See [Security Guide](../technical-manual/security/secrets-policy.md).
@@ -347,7 +347,7 @@ curl -H "X-Tenant-ID: your-tenant" \
 # CSV export (for analysis)
 curl http://localhost:9696/export?format=csv > export.csv
 
-# Vector export (for migration) 
+# Vector export (for migration)
 curl http://localhost:9696/export?format=vectors > vectors.npy
 ```
 
@@ -380,7 +380,7 @@ curl http://localhost:9696/export?format=vectors > vectors.npy
 # config/sandbox.tenants.yaml
 scoring:
   cosine_weight: 0.6        # Semantic similarity
-  recency_weight: 0.15      # Time-based scoring  
+  recency_weight: 0.15      # Time-based scoring
   frequency_weight: 0.25    # Diversity factor
   custom_boosts:            # Custom metadata boosting
     priority: 1.2
@@ -407,7 +407,7 @@ curl -X POST http://localhost:9696/recall \
 # Complex metadata filtering
 curl -X POST http://localhost:9696/recall \
   -d '{
-    "query": "technical knowledge", 
+    "query": "technical knowledge",
     "filters": {
       "category": ["technical", "learning"],
       "confidence": {"$gte": 0.8},
@@ -450,13 +450,13 @@ curl -X POST http://localhost:9696/recall \
 **A**: Additional resources:
 
 - **User Guides**: `/docs/user-manual/` directory
-- **Technical Documentation**: `/docs/technical-manual/` directory  
+- **Technical Documentation**: `/docs/technical-manual/` directory
 - **Development Info**: `/docs/development-manual/` directory
 - **API Reference**: [API Integration Guide](features/api-integration.md)
 
 ### Q: How do I report bugs or request features?
 
-**A**: 
+**A**:
 
 1. **Check Logs**: `docker compose logs api | tail -100`
 2. **Search Issues**: Check existing GitHub issues first
@@ -477,7 +477,7 @@ curl -X POST http://localhost:9696/recall \
 
 1. **Read**: [Development Manual](../development-manual/index.md)
 2. **Setup**: Local development environment
-3. **Code**: Follow coding standards and testing guidelines  
+3. **Code**: Follow coding standards and testing guidelines
 4. **Submit**: Pull request with tests and documentation
 
 **Reference**: See [Contribution Process](../development-manual/contribution-process.md).
@@ -501,5 +501,5 @@ curl -X POST http://localhost:9696/recall \
 
 **References**:
 - [Installation Guide](installation.md) for setup issues
-- [Technical Manual](../technical-manual/index.md) for system administration  
+- [Technical Manual](../technical-manual/index.md) for system administration
 - [Development Manual](../development-manual/index.md) for code-related problems

@@ -209,11 +209,15 @@ async def run_rag_pipeline(
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is None:
-                raise RuntimeError("WM retriever unavailable (embedder not configured).")
+                raise RuntimeError(
+                    "WM retriever unavailable (embedder not configured)."
+                )
             mt_wm = getattr(_rt, "mt_wm", None)
             mc_wm = getattr(_rt, "mc_wm", None)
             if mt_wm is None and mc_wm is None:
-                raise RuntimeError("WM retriever unavailable (working memory backend missing).")
+                raise RuntimeError(
+                    "WM retriever unavailable (working memory backend missing)."
+                )
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -237,9 +241,13 @@ async def run_rag_pipeline(
                 raise RuntimeError("WM retriever execution failed.") from exc
         elif rname == "vector":
             if rt_embedder is None:
-                raise RuntimeError("Vector retriever unavailable (embedder not configured).")
+                raise RuntimeError(
+                    "Vector retriever unavailable (embedder not configured)."
+                )
             if mem_client is None:
-                raise RuntimeError("Vector retriever unavailable (memory client missing).")
+                raise RuntimeError(
+                    "Vector retriever unavailable (memory client missing)."
+                )
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -259,9 +267,13 @@ async def run_rag_pipeline(
                 raise RuntimeError("Vector retriever execution failed.") from exc
         elif rname == "graph":
             if rt_embedder is None:
-                raise RuntimeError("Graph retriever unavailable (embedder not configured).")
+                raise RuntimeError(
+                    "Graph retriever unavailable (embedder not configured)."
+                )
             if mem_client is None:
-                raise RuntimeError("Graph retriever unavailable (memory client missing).")
+                raise RuntimeError(
+                    "Graph retriever unavailable (memory client missing)."
+                )
             try:
                 hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
                 limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
@@ -282,7 +294,9 @@ async def run_rag_pipeline(
                 raise RuntimeError("Graph retriever execution failed.") from exc
         elif rname == "lexical":
             if mem_client is None:
-                raise RuntimeError("Lexical retriever unavailable (memory client missing).")
+                raise RuntimeError(
+                    "Lexical retriever unavailable (memory client missing)."
+                )
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -299,7 +313,9 @@ async def run_rag_pipeline(
     # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
     # in non-strict mode, backfill to keep endpoint responsive in empty stores.
     if not cands:
-        if shared_settings is not None and getattr(shared_settings, "require_external_backends", False):
+        if shared_settings is not None and getattr(
+            shared_settings, "require_external_backends", False
+        ):
             raise RuntimeError(
                 "No retriever results and backend enforcement enabled – backfill disabled."
             )
@@ -573,7 +589,7 @@ async def run_rag_pipeline(
                 memsvc = MemoryService(mem_backend, ctx.namespace)
                 persist_records: list[dict] = []
                 # Build session payload with provenance and top candidates summary
-                sess_key = f"rag_session::{trace_id or ''}::{int(_time.time()*1000)}"
+                sess_key = f"rag_session::{trace_id or ''}::{int(_time.time() * 1000)}"
                 sess_payload = {
                     "task": f"RAG session for '{req.query[:64]}'",
                     "memory_type": "episodic",
@@ -661,9 +677,7 @@ async def run_rag_pipeline(
                         return targets
                     seen_doc_coords.add(coord_t)
                     payload_dict = (
-                        dict(payload)
-                        if isinstance(payload, dict)
-                        else {"raw": payload}
+                        dict(payload) if isinstance(payload, dict) else {"raw": payload}
                     )
                     payload_dict.setdefault("coordinate", coord_t)
                     targets.append((coord_t, payload_dict))
@@ -672,18 +686,26 @@ async def run_rag_pipeline(
                 for c in out:
                     payload_dict = c.payload if isinstance(c.payload, dict) else {}
                     key_for_coord = c.key or (
-                        payload_dict.get("task") if isinstance(payload_dict, dict) else None
+                        payload_dict.get("task")
+                        if isinstance(payload_dict, dict)
+                        else None
                     )
                     is_session = False
                     if isinstance(payload_dict, dict) and payload_dict.get("rag"):
                         is_session = True
-                    if isinstance(key_for_coord, str) and key_for_coord.lower().startswith("rag session"):
+                    if isinstance(
+                        key_for_coord, str
+                    ) and key_for_coord.lower().startswith("rag session"):
                         is_session = True
 
                     doc_targets: list[tuple[tuple[float, float, float], dict]] = []
 
                     if not is_session:
-                        pc = payload_dict.get("coordinate") if isinstance(payload_dict, dict) else None
+                        pc = (
+                            payload_dict.get("coordinate")
+                            if isinstance(payload_dict, dict)
+                            else None
+                        )
                         doc_coord: tuple[float, float, float] | None
                         if isinstance(pc, (list, tuple)) and len(pc) >= 3:
                             doc_coord = (
@@ -712,7 +734,11 @@ async def run_rag_pipeline(
                         doc_keys: list[str] = []
                         if isinstance(rag_info, dict):
                             for entry in rag_info.get("candidates", []):
-                                doc_key = entry.get("key") if isinstance(entry, dict) else None
+                                doc_key = (
+                                    entry.get("key")
+                                    if isinstance(entry, dict)
+                                    else None
+                                )
                                 if not doc_key:
                                     continue
                                 doc_key_str = str(doc_key)

@@ -17,7 +17,9 @@ from brain.adapters.memstore_adapter import MemstoreAdapter
 
 try:  # optional import; falls back to defaults during lightweight tests
     from somabrain.config import get_config as _get_config
-except Exception:  # pragma: no cover - config module may not be loaded in some unit tests
+except (
+    Exception
+):  # pragma: no cover - config module may not be loaded in some unit tests
     _get_config = None
 
 
@@ -194,7 +196,9 @@ class ContextBuilder:
             ts = float(mem.metadata.get("timestamp", 0.0))
             age_penalty = self._temporal_decay(ts)
             density_factor = self._density_factor(mem.metadata)
-            combined = (alpha * cos + beta * g_score + gamma * age_penalty) * density_factor
+            combined = (
+                alpha * cos + beta * g_score + gamma * age_penalty
+            ) * density_factor
             if density_factor != 1.0:
                 try:
                     mem.metadata.setdefault("_density_factor", density_factor)
@@ -227,7 +231,9 @@ class ContextBuilder:
             new_tau = max(self._weights.tau - 0.05, 0.4)
         self._weights.tau = new_tau
         # Emit metric for the current tenant (import inside to respect monkeypatch)
-        from somabrain.metrics import update_learning_retrieval_weights as _update_metric
+        from somabrain.metrics import (
+            update_learning_retrieval_weights as _update_metric,
+        )
 
         _update_metric(
             tenant_id=self._tenant_id,

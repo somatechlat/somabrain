@@ -39,7 +39,7 @@ def run(iterations: int, url: str | None = None):
         s.commit()
     t1 = time.perf_counter()
     print(
-        f"Inserted {iterations} rows in {t1-t0:.3f}s ({iterations/(t1-t0):.1f} ops/s)"
+        f"Inserted {iterations} rows in {t1 - t0:.3f}s ({iterations / (t1 - t0):.1f} ops/s)"
     )
 
 

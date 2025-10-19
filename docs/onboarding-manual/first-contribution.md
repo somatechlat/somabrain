@@ -43,7 +43,7 @@ Users want to filter recalled memories by creation date (e.g., "memories from la
 
 ## Acceptance Criteria
 - [ ] Add `date_range` parameter to recall API
-- [ ] Support relative filters (e.g., "7d", "1month")  
+- [ ] Support relative filters (e.g., "7d", "1month")
 - [ ] Support absolute date ranges
 - [ ] Add comprehensive tests
 - [ ] Update API documentation
@@ -133,20 +133,20 @@ from pydantic import BaseModel, validator
 
 class DateRange(BaseModel):
     """Date range filter for memory recall."""
-    
+
     # Relative ranges (e.g., "7d", "1w", "1month")
     relative: Optional[str] = None
-    
-    # Absolute ranges  
+
+    # Absolute ranges
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    
+
     @validator('relative')
     def validate_relative_format(cls, v):
         """Validate relative date format."""
         if v is None:
             return v
-            
+
         import re
         pattern = r'^(\d+)(d|w|month|year)$'
         if not re.match(pattern, v.lower()):
@@ -154,7 +154,7 @@ class DateRange(BaseModel):
                 'Relative date must be format like "7d", "2w", "1month", "1year"'
             )
         return v.lower()
-    
+
     @validator('end_date')
     def validate_date_range(cls, v, values):
         """Ensure end_date is after start_date."""
@@ -165,15 +165,15 @@ class DateRange(BaseModel):
 
 class RecallRequest(BaseModel):
     """Request model for memory recall API."""
-    
+
     query: str
     k: int = 10
     threshold: float = 0.2
     filters: Optional[Dict[str, Any]] = {}
-    
+
     # New date range filtering
     date_range: Optional[DateRange] = None
-    
+
     include_metadata: bool = True
     include_scores: bool = True
 
@@ -182,7 +182,7 @@ class RecallRequest(BaseModel):
         if not 1 <= v <= 100:
             raise ValueError('k must be between 1 and 100')
         return v
-        
+
     @validator('threshold')
     def validate_threshold(cls, v):
         if not 0.0 <= v <= 1.0:
@@ -201,27 +201,27 @@ import re
 def parse_relative_date(relative_str: str) -> Tuple[datetime, datetime]:
     """
     Parse relative date string to absolute date range.
-    
+
     Args:
         relative_str: String like "7d", "2w", "1month", "1year"
-        
+
     Returns:
         Tuple of (start_datetime, end_datetime)
-        
+
     Raises:
         ValueError: If format is invalid
     """
     pattern = r'^(\d+)(d|w|month|year)$'
     match = re.match(pattern, relative_str.lower())
-    
+
     if not match:
         raise ValueError(f"Invalid relative date format: {relative_str}")
-    
+
     amount = int(match.group(1))
     unit = match.group(2)
-    
+
     end_date = datetime.utcnow()
-    
+
     if unit == 'd':
         start_date = end_date - timedelta(days=amount)
     elif unit == 'w':
@@ -234,27 +234,27 @@ def parse_relative_date(relative_str: str) -> Tuple[datetime, datetime]:
         start_date = end_date - timedelta(days=amount * 365)
     else:
         raise ValueError(f"Unsupported time unit: {unit}")
-    
+
     return start_date, end_date
 
 def get_date_range_filter(date_range: DateRange) -> Tuple[datetime, datetime]:
     """
     Convert DateRange model to absolute datetime range.
-    
+
     Args:
         date_range: DateRange model with relative or absolute dates
-        
+
     Returns:
         Tuple of (start_datetime, end_datetime)
     """
     if date_range.relative:
         return parse_relative_date(date_range.relative)
-    
+
     elif date_range.start_date or date_range.end_date:
         start_date = date_range.start_date or datetime.min
         end_date = date_range.end_date or datetime.utcnow()
         return start_date, end_date
-    
+
     else:
         raise ValueError("DateRange must specify either relative or absolute dates")
 ```
@@ -274,7 +274,7 @@ async def search_memories_with_filters(
 ) -> List[Memory]:
     """
     Search memories with comprehensive filtering.
-    
+
     Args:
         query_vector: Vector representation of search query
         tenant_id: Tenant isolation identifier
@@ -282,53 +282,53 @@ async def search_memories_with_filters(
         threshold: Minimum similarity threshold
         metadata_filters: JSON metadata filters
         date_range: Optional (start_date, end_date) tuple
-        
+
     Returns:
         List of matching Memory objects with similarity scores
     """
-    
+
     # Base query with vector similarity
     query = """
-    SELECT 
+    SELECT
         id, content, metadata, created_at, updated_at,
         1 - (vector_encoding <=> $1) AS similarity_score
-    FROM memories 
-    WHERE 
+    FROM memories
+    WHERE
         tenant_id = $2
         AND (1 - (vector_encoding <=> $1)) >= $3
     """
-    
+
     params = [query_vector.tolist(), tenant_id, threshold]
     param_count = 3
-    
+
     # Add metadata filtering if provided
     if metadata_filters:
         param_count += 1
         query += f" AND metadata @> ${param_count}"
         params.append(json.dumps(metadata_filters))
-    
+
     # Add date range filtering if provided
     if date_range:
         start_date, end_date = date_range
         param_count += 1
         query += f" AND created_at >= ${param_count}"
         params.append(start_date)
-        
+
         param_count += 1
         query += f" AND created_at <= ${param_count}"
         params.append(end_date)
-    
+
     # Order by similarity and limit results
     query += f"""
     ORDER BY vector_encoding <=> $1
     LIMIT ${param_count + 1}
     """
     params.append(limit)
-    
+
     # Execute query
     async with self.pool.acquire() as conn:
         rows = await conn.fetch(query, *params)
-    
+
     # Convert to Memory objects
     memories = []
     for row in rows:
@@ -342,7 +342,7 @@ async def search_memories_with_filters(
             tenant_id=tenant_id
         )
         memories.append(memory)
-    
+
     return memories
 ```
 
@@ -358,7 +358,7 @@ async def recall_memories(
 ):
     """
     Recall semantically similar memories with optional filtering.
-    
+
     Enhanced with date range filtering to find memories within
     specific time periods.
     """
@@ -369,7 +369,7 @@ async def recall_memories(
                 status_code=400,
                 detail="Search query cannot be empty"
             )
-        
+
         # Parse date range if provided
         date_range_filter = None
         if request.date_range:
@@ -381,7 +381,7 @@ async def recall_memories(
                     status_code=400,
                     detail=f"Invalid date range: {str(e)}"
                 )
-        
+
         # Perform memory search with all filters
         results = await memory_manager.recall_memories_with_filters(
             query=request.query,
@@ -391,14 +391,14 @@ async def recall_memories(
             date_range=date_range_filter,
             tenant_id=tenant_id
         )
-        
+
         return RecallResponse(
             results=results,
             total_results=len(results),
             query=request.query,
             processing_time_ms=results.processing_time if hasattr(results, 'processing_time') else 0
         )
-        
+
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -428,26 +428,26 @@ class TestDateHelpers:
     def test_parse_relative_date_days(self):
         """Test parsing relative dates in days."""
         start_date, end_date = parse_relative_date("7d")
-        
+
         # Should be approximately 7 days ago to now
         expected_start = datetime.utcnow() - timedelta(days=7)
         expected_end = datetime.utcnow()
-        
+
         # Allow 1 minute tolerance for test execution time
         assert abs((start_date - expected_start).total_seconds()) < 60
         assert abs((end_date - expected_end).total_seconds()) < 60
 
     def test_parse_relative_date_weeks(self):
-        """Test parsing relative dates in weeks.""" 
+        """Test parsing relative dates in weeks."""
         start_date, end_date = parse_relative_date("2w")
-        
+
         expected_start = datetime.utcnow() - timedelta(weeks=2)
         assert abs((start_date - expected_start).total_seconds()) < 60
 
     def test_parse_relative_date_months(self):
         """Test parsing relative dates in months."""
         start_date, end_date = parse_relative_date("1month")
-        
+
         expected_start = datetime.utcnow() - timedelta(days=30)
         assert abs((start_date - expected_start).total_seconds()) < 60
 
@@ -455,7 +455,7 @@ class TestDateHelpers:
         """Test error handling for invalid formats."""
         with pytest.raises(ValueError, match="Invalid relative date format"):
             parse_relative_date("invalid")
-        
+
         with pytest.raises(ValueError, match="Invalid relative date format"):
             parse_relative_date("7x")  # Invalid unit
 
@@ -463,7 +463,7 @@ class TestDateHelpers:
         """Test DateRange with relative dates."""
         date_range = DateRange(relative="7d")
         start_date, end_date = get_date_range_filter(date_range)
-        
+
         expected_start = datetime.utcnow() - timedelta(days=7)
         assert abs((start_date - expected_start).total_seconds()) < 60
 
@@ -471,10 +471,10 @@ class TestDateHelpers:
         """Test DateRange with absolute dates."""
         start = datetime(2024, 1, 1)
         end = datetime(2024, 1, 31)
-        
+
         date_range = DateRange(start_date=start, end_date=end)
         start_date, end_date = get_date_range_filter(date_range)
-        
+
         assert start_date == start
         assert end_date == end
 
@@ -490,14 +490,14 @@ class TestDateHelpers:
         """Test validation of relative date formats."""
         # Valid formats
         DateRange(relative="7d")
-        DateRange(relative="2w") 
+        DateRange(relative="2w")
         DateRange(relative="1month")
         DateRange(relative="1year")
-        
+
         # Invalid formats
         with pytest.raises(ValueError):
             DateRange(relative="invalid")
-        
+
         with pytest.raises(ValueError):
             DateRange(relative="7x")
 ```
@@ -520,7 +520,7 @@ class TestRecallWithDateRange:
     @patch('somabrain.api.routers.memory.get_memory_manager')
     def test_recall_with_relative_date_range(self, mock_get_manager):
         """Test recall with relative date range filter."""
-        
+
         # Mock memory manager
         mock_manager = AsyncMock()
         mock_manager.recall_memories_with_filters.return_value = [
@@ -532,7 +532,7 @@ class TestRecallWithDateRange:
             )
         ]
         mock_get_manager.return_value = mock_manager
-        
+
         # Make API request
         response = client.post(
             "/recall",
@@ -545,13 +545,13 @@ class TestRecallWithDateRange:
             },
             headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
         )
-        
+
         # Verify response
         assert response.status_code == 200
         data = response.json()
         assert len(data["results"]) == 1
         assert data["results"][0]["content"] == "Recent memory"
-        
+
         # Verify manager was called with date filter
         mock_manager.recall_memories_with_filters.assert_called_once()
         call_kwargs = mock_manager.recall_memories_with_filters.call_args.kwargs
@@ -560,11 +560,11 @@ class TestRecallWithDateRange:
     @patch('somabrain.api.routers.memory.get_memory_manager')
     def test_recall_with_absolute_date_range(self, mock_get_manager):
         """Test recall with absolute date range filter."""
-        
+
         mock_manager = AsyncMock()
         mock_manager.recall_memories_with_filters.return_value = []
         mock_get_manager.return_value = mock_manager
-        
+
         response = client.post(
             "/recall",
             json={
@@ -576,14 +576,14 @@ class TestRecallWithDateRange:
             },
             headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
         )
-        
+
         assert response.status_code == 200
-        
+
     def test_recall_invalid_date_range(self):
         """Test recall with invalid date range returns 400."""
-        
+
         response = client.post(
-            "/recall", 
+            "/recall",
             json={
                 "query": "test query",
                 "date_range": {
@@ -592,7 +592,7 @@ class TestRecallWithDateRange:
             },
             headers={"X-Tenant-ID": "test-tenant", "X-API-Key": "test-key"}
         )
-        
+
         assert response.status_code == 400
         assert "Invalid date range" in response.json()["detail"]
 ```
@@ -615,20 +615,20 @@ class TestDateRangeFiltering:
     @pytest.fixture
     async def populated_database(self, database_manager):
         """Create test memories with different creation dates."""
-        
+
         # Create memories from different time periods
         memories = [
             # Recent memories (last 3 days)
             ("Recent memory 1", datetime.utcnow() - timedelta(days=1)),
             ("Recent memory 2", datetime.utcnow() - timedelta(days=2)),
-            
-            # Older memories (last week)  
+
+            # Older memories (last week)
             ("Week old memory", datetime.utcnow() - timedelta(days=6)),
-            
+
             # Much older memories (last month)
             ("Month old memory", datetime.utcnow() - timedelta(days=25)),
         ]
-        
+
         memory_ids = []
         for content, created_at in memories:
             # Manually set created_at (normally would be auto-generated)
@@ -640,23 +640,23 @@ class TestDateRangeFiltering:
                 created_at=created_at
             )
             memory_ids.append(memory_id)
-        
+
         return memory_ids
 
     @pytest.mark.asyncio
     async def test_date_range_filtering_recent_only(
-        self, 
-        database_manager, 
+        self,
+        database_manager,
         populated_database
     ):
         """Test filtering to show only recent memories."""
-        
+
         # Search for memories from last 3 days
         date_range = (
             datetime.utcnow() - timedelta(days=3),
             datetime.utcnow()
         )
-        
+
         results = await database_manager.search_memories_with_filters(
             query_vector=np.random.rand(384).astype(np.float32),
             tenant_id="test_tenant",
@@ -664,10 +664,10 @@ class TestDateRangeFiltering:
             threshold=0.0,  # Very low threshold to get all results
             date_range=date_range
         )
-        
+
         # Should only return recent memories
         assert len(results) == 2  # Only the 2 recent memories
-        
+
         recent_contents = [r.content for r in results]
         assert "Recent memory 1" in recent_contents
         assert "Recent memory 2" in recent_contents
@@ -676,17 +676,17 @@ class TestDateRangeFiltering:
 
     @pytest.mark.asyncio
     async def test_date_range_filtering_week_range(
-        self, 
-        database_manager, 
+        self,
+        database_manager,
         populated_database
     ):
         """Test filtering for memories from last week."""
-        
+
         date_range = (
             datetime.utcnow() - timedelta(days=7),
             datetime.utcnow()
         )
-        
+
         results = await database_manager.search_memories_with_filters(
             query_vector=np.random.rand(384).astype(np.float32),
             tenant_id="test_tenant",
@@ -694,10 +694,10 @@ class TestDateRangeFiltering:
             threshold=0.0,
             date_range=date_range
         )
-        
+
         # Should return recent + week old memories (3 total)
         assert len(results) == 3
-        
+
         contents = [r.content for r in results]
         assert "Week old memory" in contents
         assert "Month old memory" not in contents
@@ -758,7 +758,7 @@ open htmlcov/index.html
 
 {
   "date_range": {
-    "relative": "2w"     // Last 2 weeks  
+    "relative": "2w"     // Last 2 weeks
   }
 }
 
@@ -804,14 +804,14 @@ results = await client.recall(
     query="quarterly planning",
     date_range={
         "start_date": "2024-01-01T00:00:00Z",
-        "end_date": "2024-01-31T23:59:59Z" 
+        "end_date": "2024-01-31T23:59:59Z"
     }
 )
 ```
 
 **Supported Relative Formats**:
 - `7d` - Last 7 days
-- `2w` - Last 2 weeks  
+- `2w` - Last 2 weeks
 - `1month` - Last month (30 days)
 - `1year` - Last year (365 days)
 ```
@@ -932,8 +932,8 @@ git log --oneline -5
 ### Open PR on GitHub
 
 1. **Navigate to Repository**: Go to your fork on GitHub
-2. **Create PR**: Click "Compare & pull request" 
-3. **Select Branches**: 
+2. **Create PR**: Click "Compare & pull request"
+3. **Select Branches**:
    - Base repository: `somabrain/somabrain`
    - Base branch: `develop`
    - Compare branch: `feature/456-date-range-filtering`
@@ -953,7 +953,7 @@ This PR adds date range filtering capability to the `/recall` API endpoint, allo
 
 ### New Features
 - **DateRange Model**: Support for relative (`"7d"`, `"2w"`) and absolute date ranges
-- **Date Utilities**: Parsing and validation functions for date ranges  
+- **Date Utilities**: Parsing and validation functions for date ranges
 - **Database Filtering**: Extended search query with efficient date range filtering
 - **API Enhancement**: Added optional `date_range` parameter to recall endpoint
 
@@ -986,7 +986,7 @@ None - this is a backward-compatible enhancement.
 **Relative Date Filtering**:
 ```json
 {
-  "query": "project updates", 
+  "query": "project updates",
   "date_range": {"relative": "7d"}
 }
 ```
@@ -1005,7 +1005,7 @@ None - this is a backward-compatible enhancement.
 ## Checklist
 
 - [x] Code follows style guidelines
-- [x] Self-review completed  
+- [x] Self-review completed
 - [x] Tests added and passing
 - [x] Documentation updated
 - [x] No breaking changes
@@ -1054,7 +1054,7 @@ alembic revision -m "add index for date filtering performance"
 # migrations/versions/xxx_add_date_index.py
 def upgrade():
     op.create_index(
-        'ix_memories_tenant_created_performance', 
+        'ix_memories_tenant_created_performance',
         'memories',
         ['tenant_id', 'created_at']
     )
@@ -1070,7 +1070,7 @@ class DateRangeError(ValidationError):
     """Specific error for date range validation issues."""
     pass
 
-# somabrain/utils/date_helpers.py  
+# somabrain/utils/date_helpers.py
 def parse_relative_date(relative_str: str) -> Tuple[datetime, datetime]:
     try:
         # existing implementation...
@@ -1092,14 +1092,14 @@ All dates are processed in UTC timezone. When providing absolute dates:
 **4. Add Leap Year Test**:
 ```python
 def test_leap_year_handling(self):
-    """Test date parsing handles leap years correctly.""" 
+    """Test date parsing handles leap years correctly."""
     # Test during leap year Feb 29
     with patch('somabrain.utils.date_helpers.datetime') as mock_datetime:
         mock_datetime.utcnow.return_value = datetime(2024, 2, 29, 12, 0, 0)
         mock_datetime.side_effect = lambda *args, **kw: datetime(*args, **kw)
-        
+
         start_date, end_date = parse_relative_date("1year")
-        
+
         # Should correctly handle leap year boundary
         expected_start = datetime(2023, 2, 28, 12, 0, 0)  # No leap day in 2023
         assert abs((start_date - expected_start).total_seconds()) < 86400  # Within 1 day
@@ -1114,7 +1114,7 @@ git commit -m "fix: address review feedback
 
 - Add database index for (tenant_id, created_at) performance
 - Improve error handling with specific DateRangeError
-- Add timezone documentation to API reference  
+- Add timezone documentation to API reference
 - Add leap year test coverage"
 
 git push origin feature/456-date-range-filtering
@@ -1174,11 +1174,11 @@ git push origin develop
 
 **Comment on Original Issue**:
 ```markdown
-🎉 Feature implemented and merged! 
+🎉 Feature implemented and merged!
 
 The date range filtering is now available in the `/recall` API. Users can filter memories using:
 
-- Relative dates: `"7d"`, `"2w"`, `"1month"`, `"1year"`  
+- Relative dates: `"7d"`, `"2w"`, `"1month"`, `"1year"`
 - Absolute dates: ISO format with timezone support
 
 Documentation and examples are available in the updated API reference.

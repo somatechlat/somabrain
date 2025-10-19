@@ -10,6 +10,7 @@ The data lives in-process only and is intentionally simple: callers store a list
 of dictionaries that describe candidates (payload, coordinate, score, retriever).
 Subsequent readers receive a defensive copy to avoid accidental mutation.
 """
+
 from __future__ import annotations
 
 from threading import Lock

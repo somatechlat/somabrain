@@ -46,35 +46,35 @@ graph TD
 
 ### 🧩 The Brain Behind The Magic:
 
-**🌐 Neural Gateway** (`somabrain.app`)  
-*Human Impact:* Your apps get a simple, powerful interface to cognitive superpowers  
+**🌐 Neural Gateway** (`somabrain.app`)
+*Human Impact:* Your apps get a simple, powerful interface to cognitive superpowers
 *The Science:* Production FastAPI with cognitive middleware and strict mathematical validation
 
-**🧠 Lightning Memory** (`somabrain/mt_wm.py`)  
-*Human Impact:* Instant access to the most important memories - no waiting  
+**🧠 Lightning Memory** (`somabrain/mt_wm.py`)
+*Human Impact:* Instant access to the most important memories - no waiting
 *The Science:* Multi-tenant working memory with Redis backing and intelligent LRU eviction
 
-**⚛️ Meaning Engine** (`somabrain/quantum.py`)  
-*Human Impact:* Understands that "car" and "automobile" mean the same thing  
+**⚛️ Meaning Engine** (`somabrain/quantum.py`)
+*Human Impact:* Understands that "car" and "automobile" mean the same thing
 *The Science:* Binary Hyperdimensional Computing (BHDC) with 2048D vector spaces using permutation-based binding (PermutationBinder). Perfectly invertible by construction. Deterministic unitary roles with verified spectral properties (‖H_k‖≈1). Orthogonality and binding correctness verified via MathematicalMetrics on every operation.
 
-**📊 Relevance Oracle** (`somabrain/scoring.py`)  
-*Human Impact:* Finds exactly what you need, even when you ask imperfectly  
+**📊 Relevance Oracle** (`somabrain/scoring.py`)
+*Human Impact:* Finds exactly what you need, even when you ask imperfectly
 *The Science:* UnifiedScorer combining cosine similarity, FD subspace projection (via FDSalienceSketch), and exponential recency decay (exp(-age/τ)) with configurable weight bounds
 
-**🔗 Memory Vault** (`somabrain/memory_client.py`)  
-*Human Impact:* Never loses anything, remembers everything, proves what happened  
+**🔗 Memory Vault** (`somabrain/memory_client.py`)
+*Human Impact:* Never loses anything, remembers everything, proves what happened
 *The Science:* HTTP-first persistence with cryptographic audit trails and strict-mode validation
 
-**📈 Health Guardian**  
-*Human Impact:* Self-monitoring system that prevents problems before you notice them  
+**📈 Health Guardian**
+*Human Impact:* Self-monitoring system that prevents problems before you notice them
 *The Science:* Prometheus metrics, structured logging, and real-time health diagnostics
 
 ## Infrastructure Components
 
 ### Redis Cache
 - **Purpose**: High-performance cache for working memory and session state
-- **Configuration**: 
+- **Configuration**:
   - Memory limit: 8GB (configurable)
   - Eviction policy: LRU
   - Persistence: RDB snapshots + AOF
@@ -83,7 +83,7 @@ graph TD
 
 ### PostgreSQL Database
 - **Purpose**: Persistent storage for configuration, audit logs, and metadata
-- **Schema**: 
+- **Schema**:
   - Configuration tables (tenants, policies, settings)
   - Audit log tables (operations, events, metrics)
   - Memory metadata (embeddings, relationships)
@@ -251,7 +251,7 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 
 **Verification**: System health can be validated via `/health` endpoint and Prometheus metrics dashboard.
 
-**Common Errors**: 
+**Common Errors**:
 - Redis connection failures → Check network connectivity and Redis service status
 - OPA policy evaluation timeouts → Review policy complexity and OPA resource allocation
 - Memory storage inconsistencies → Validate write mirroring configuration

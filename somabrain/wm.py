@@ -22,7 +22,7 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, List, Tuple, TYPE_CHECKING
 
 import numpy as np
 

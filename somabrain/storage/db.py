@@ -17,7 +17,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from somabrain.db.models.outbox import OutboxEvent
 
 try:
     from common.config.settings import settings as shared_settings
@@ -41,7 +40,9 @@ def get_default_db_url() -> str:
     url = None
     if shared_settings is not None:
         try:
-            url = str(getattr(shared_settings, "postgres_dsn", "") or "").strip() or None
+            url = (
+                str(getattr(shared_settings, "postgres_dsn", "") or "").strip() or None
+            )
         except Exception:
             url = None
     if not url:

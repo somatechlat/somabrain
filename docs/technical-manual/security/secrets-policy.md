@@ -15,7 +15,7 @@ SomaBrain requires secure handling of multiple types of sensitive information ac
 ### Types of Secrets
 
 **API Keys**: Authentication keys for SomaBrain API access and external service integration
-**Database Credentials**: PostgreSQL and Redis authentication information  
+**Database Credentials**: PostgreSQL and Redis authentication information
 **Encryption Keys**: Keys for at-rest and in-transit data encryption
 **Certificates**: TLS/SSL certificates for secure communications
 **JWT Secrets**: JSON Web Token signing and verification keys
@@ -47,9 +47,9 @@ classifications:
       - Production database master passwords
       - Encryption master keys
       - Root CA private keys
-      
+
   HIGH:
-    description: "Production API keys, service credentials"  
+    description: "Production API keys, service credentials"
     retention: "3 years"
     rotation: "180 days"
     access_approval: "Security team + manager"
@@ -57,17 +57,17 @@ classifications:
       - Production SomaBrain API keys
       - External service API keys
       - JWT signing secrets
-      
+
   MEDIUM:
     description: "Non-production credentials, certificates"
-    retention: "1 year" 
+    retention: "1 year"
     rotation: "365 days"
     access_approval: "Team lead approval"
     examples:
       - Staging environment credentials
       - Development certificates
       - Monitoring service tokens
-      
+
   LOW:
     description: "Development secrets, test data"
     retention: "90 days"
@@ -101,7 +101,7 @@ classifications:
 Deploy Vault for centralized secret management:
 
 ```yaml
-# docker-compose.vault.yml  
+# docker-compose.vault.yml
 version: '3.8'
 services:
   vault:
@@ -132,7 +132,7 @@ services:
 
 volumes:
   vault_data:
-  vault_config:  
+  vault_config:
   vault_agent_config:
   somabrain_secrets:
 ```
@@ -173,7 +173,7 @@ Configure secret engines for different types of secrets:
 # Enable KV secrets engine for static secrets
 vault secrets enable -version=2 -path=somabrain kv
 
-# Enable database secrets engine for dynamic credentials  
+# Enable database secrets engine for dynamic credentials
 vault secrets enable database
 
 # Configure PostgreSQL dynamic secrets
@@ -212,7 +212,7 @@ path "somabrain/data/api-keys/*" {
 }
 
 path "somabrain/data/encryption/*" {
-  capabilities = ["read"] 
+  capabilities = ["read"]
 }
 
 path "database/creds/somabrain-role" {
@@ -223,7 +223,7 @@ path "pki/issue/somabrain-servers" {
   capabilities = ["create", "update"]
 }
 
-# vault/policies/somabrain-admin.hcl - Administrator policy  
+# vault/policies/somabrain-admin.hcl - Administrator policy
 path "somabrain/*" {
   capabilities = ["create", "read", "update", "delete", "list"]
 }
@@ -307,7 +307,7 @@ vault kv put somabrain/certificates/production \
   tls_key=@/path/to/somabrain-prod.key \
   ca_cert=@/path/to/ca-bundle.crt
 
-# Store external service credentials  
+# Store external service credentials
 vault kv put somabrain/external/production \
   prometheus_url="https://prometheus.internal" \
   prometheus_token="prom_token_789" \
@@ -333,7 +333,7 @@ auto_auth {
     mount_path = "auth/approle"
     config = {
       role_id_file_path = "/vault/config/role-id"
-      secret_id_file_path = "/vault/config/secret-id"  
+      secret_id_file_path = "/vault/config/secret-id"
       remove_secret_id_file_after_reading = false
     }
   }
@@ -355,7 +355,7 @@ template {
 
 # Template for database configuration
 template {
-  source = "/vault/templates/database-config.tpl"  
+  source = "/vault/templates/database-config.tpl"
   destination = "/vault/secrets/database.env"
   perms = 0600
 }
@@ -372,7 +372,7 @@ MONITORING_TOKEN={{ .Data.data.monitoring_token }}
 
 {{- with secret "somabrain/data/encryption/production" -}}
 SOMABRAIN_MASTER_KEY={{ .Data.data.master_key }}
-JWT_SIGNING_KEY={{ .Data.data.jwt_signing_key }}  
+JWT_SIGNING_KEY={{ .Data.data.jwt_signing_key }}
 DATA_ENCRYPTION_KEY={{ .Data.data.data_encryption_key }}
 {{- end }}
 
@@ -413,7 +413,7 @@ spec:
 
 ---
 # External Secret for API keys
-apiVersion: external-secrets.io/v1beta1  
+apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
   name: somabrain-api-keys
@@ -433,7 +433,7 @@ spec:
       property: somabrain_master_key
   - secretKey: external-ai-key
     remoteRef:
-      key: api-keys/production  
+      key: api-keys/production
       property: external_ai_api_key
 
 ---
@@ -486,13 +486,13 @@ spec:
             secretKeyRef:
               name: somabrain-database
               key: redis_url
-              
+
         # Mount certificates as files
         volumeMounts:
         - name: tls-certs
           mountPath: /etc/ssl/certs/somabrain
           readOnly: true
-          
+
       volumes:
       - name: tls-certs
         secret:
@@ -522,79 +522,79 @@ echo "Starting secret rotation for environment: $ENVIRONMENT"
 # Rotate API keys (every 90 days)
 rotate_api_keys() {
   echo "Rotating API keys..."
-  
+
   # Generate new API key
   NEW_API_KEY=$(openssl rand -hex 32)
-  
+
   # Store new key in Vault
   vault kv put somabrain/api-keys/$ENVIRONMENT \
     somabrain_master_key="sk_${ENVIRONMENT}_${NEW_API_KEY}" \
     rotation_date="$(date -Iseconds)" \
     rotated_by="automated_rotation"
-  
+
   # Update application configuration
   kubectl patch secret somabrain-api-keys \
     --type='json' \
     -p='[{"op": "replace", "path": "/data/api-key", "value":"'$(echo -n "sk_${ENVIRONMENT}_${NEW_API_KEY}" | base64)'"}]'
-  
+
   # Restart services to pick up new key
   kubectl rollout restart deployment/somabrain-api
-  
+
   echo "API key rotation completed"
 }
 
 # Rotate encryption keys (every 180 days)
 rotate_encryption_keys() {
   echo "Rotating encryption keys..."
-  
+
   # Generate new encryption keys
   NEW_MASTER_KEY=$(openssl rand -base64 32)
   NEW_JWT_KEY=$(openssl rand -base64 64)
-  
+
   # Store new keys in Vault
   vault kv put somabrain/encryption/$ENVIRONMENT \
     master_key="$NEW_MASTER_KEY" \
     jwt_signing_key="$NEW_JWT_KEY" \
     rotation_date="$(date -Iseconds)"
-  
+
   echo "Encryption keys rotation completed"
 }
 
 # Rotate database credentials (dynamic - every 24 hours)
 rotate_database_credentials() {
   echo "Rotating database credentials..."
-  
+
   # Database credentials are automatically rotated by Vault
   # Force renewal of current lease
   vault write -f database/rotate-role/somabrain-role
-  
+
   echo "Database credential rotation completed"
 }
 
 # Rotate certificates (every 30 days)
 rotate_certificates() {
   echo "Rotating TLS certificates..."
-  
+
   # Generate new certificate from internal CA
   vault write -format=json pki/issue/somabrain-servers \
     common_name="somabrain-api.$ENVIRONMENT.internal" \
     alt_names="somabrain-api,localhost" \
     ttl="720h" > /tmp/cert_response.json
-  
+
   # Extract certificate and key
   jq -r '.data.certificate' /tmp/cert_response.json > /tmp/somabrain.crt
   jq -r '.data.private_key' /tmp/cert_response.json > /tmp/somabrain.key
   jq -r '.data.issuing_ca' /tmp/cert_response.json > /tmp/ca.crt
-  
+
   # Update Kubernetes secret
   kubectl delete secret somabrain-tls-certs --ignore-not-found
   kubectl create secret tls somabrain-tls-certs \
     --cert=/tmp/somabrain.crt \
     --key=/tmp/somabrain.key
-  
+
   # Clean up temporary files
   rm -f /tmp/cert_response.json /tmp/somabrain.crt /tmp/somabrain.key /tmp/ca.crt
-  
+
   echo "Certificate rotation completed"
 }
 
@@ -656,10 +656,10 @@ spec:
             - /scripts/rotate-secrets.sh
             - production
             - all
-            
+
           restartPolicy: OnFailure
           serviceAccountName: secret-rotator
-          
+
 ---
 # Service account for secret rotation
 apiVersion: v1
@@ -708,7 +708,7 @@ roleRef:
 Procedures for immediate secret revocation in security incidents:
 
 ```bash
-#!/bin/bash  
+#!/bin/bash
 # scripts/emergency-revoke.sh - Emergency secret revocation
 
 INCIDENT_ID=${1:-"INCIDENT_$(date +%s)"}
@@ -722,7 +722,7 @@ vault kv patch somabrain/api-keys/$ENVIRONMENT \
   revocation_reason="Security incident $INCIDENT_ID" \
   revoked_at="$(date -Iseconds)"
 
-# 2. Rotate database credentials immediately  
+# 2. Rotate database credentials immediately
 vault write -f database/rotate-role/somabrain-role
 
 # 3. Revoke all active tokens
@@ -755,12 +755,12 @@ echo "Emergency key expires in 24 hours."
 
 ### Immediate Actions (0-30 minutes)
 - [ ] Execute emergency secret revocation script
-- [ ] Notify security team and incident commander  
+- [ ] Notify security team and incident commander
 - [ ] Isolate affected systems from network
 - [ ] Preserve logs and forensic evidence
 - [ ] Document timeline and initial findings
 
-### Short-term Actions (30 minutes - 4 hours)  
+### Short-term Actions (30 minutes - 4 hours)
 - [ ] Generate new secrets for critical operations
 - [ ] Update applications with emergency credentials
 - [ ] Review audit logs for unauthorized access
@@ -809,7 +809,7 @@ Ensure secret management meets compliance requirements:
 
 **SOC 2 Type II**:
 - Access controls and authentication (CC6.1)
-- Logical and physical access controls (CC6.2)  
+- Logical and physical access controls (CC6.2)
 - Network security (CC6.3)
 - Data protection (CC6.7)
 

@@ -82,7 +82,9 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 # Respect fail-closed posture if configured
                 if shared_settings is not None:
                     try:
-                        fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                        fail_closed = bool(
+                            getattr(shared_settings, "opa_fail_closed", False)
+                        )
                     except Exception:
                         fail_closed = False
                 else:
@@ -140,7 +142,9 @@ class OpaMiddleware(BaseHTTPMiddleware):
             # Failure to contact OPA – honor fail-closed posture if enabled
             if shared_settings is not None:
                 try:
-                    fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                    fail_closed = bool(
+                        getattr(shared_settings, "opa_fail_closed", False)
+                    )
                 except Exception:
                     fail_closed = False
             else:

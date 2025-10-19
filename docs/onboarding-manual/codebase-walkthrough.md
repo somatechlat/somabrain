@@ -98,28 +98,28 @@ somabrain/
 class MemoryManager:
     """
     Core memory operations manager.
-    
+
     Handles the complete lifecycle of memories:
     - Encoding content to vectors using transformer models
     - Storing memories with metadata in PostgreSQL
     - Performing semantic similarity searches
     - Managing tenant isolation and security
     """
-    
+
     def __init__(self, config: AppConfig):
         self.config = config
         self.vector_encoder = VectorEncoder(config.model_name)
         self.database = DatabaseManager(config.database_url)
         self.cache = CacheManager(config.redis_url)
-    
+
     async def store_memory(
-        self, 
-        content: str, 
+        self,
+        content: str,
         metadata: dict,
         tenant_id: str
     ) -> str:
         """Store new memory with vector encoding."""
-        
+
     async def recall_memories(
         self,
         query: str,
@@ -144,19 +144,19 @@ class MemoryManager:
 class VectorEncoder:
     """
     Handles text-to-vector encoding using transformer models.
-    
+
     Uses sentence-transformers library with models like:
     - all-MiniLM-L6-v2 (384 dimensions, fast)
     - all-mpnet-base-v2 (768 dimensions, accurate)
     """
-    
+
     def __init__(self, model_name: str):
         self.model = SentenceTransformer(model_name)
         self.dimensions = self.model.get_sentence_embedding_dimension()
-    
+
     def encode(self, text: str) -> np.ndarray:
         """Convert text to vector representation."""
-        
+
     def compute_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
         """Calculate cosine similarity between vectors."""
 ```
@@ -174,12 +174,12 @@ class VectorEncoder:
 class Memory(Base):
     """
     Main memory storage table.
-    
+
     Stores content, metadata, vector encodings, and audit information.
     Partitioned by tenant_id for isolation and performance.
     """
     __tablename__ = "memories"
-    
+
     id = Column(String, primary_key=True)
     tenant_id = Column(String, nullable=False, index=True)
     content = Column(Text, nullable=False)
@@ -187,7 +187,7 @@ class Memory(Base):
     vector_encoding = Column(ARRAY(Float), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, onupdate=datetime.utcnow)
-    
+
     # Indexes for performance
     __table_args__ = (
         Index('ix_memories_tenant_created', 'tenant_id', 'created_at'),
@@ -197,7 +197,7 @@ class Memory(Base):
 class Tenant(Base):
     """Tenant configuration and limits."""
     __tablename__ = "tenants"
-    
+
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     settings = Column(JSON, nullable=False)
@@ -209,17 +209,17 @@ class Tenant(Base):
 class DatabaseManager:
     """
     Handles all database operations with connection pooling.
-    
+
     Features:
     - Async PostgreSQL operations using asyncpg
     - Connection pooling for performance
     - Transaction management
     - Query optimization and explain plans
     """
-    
+
     async def store_memory(self, memory: Memory) -> str:
         """Store memory with vector in single transaction."""
-        
+
     async def search_memories(
         self,
         query_vector: np.ndarray,
@@ -237,7 +237,7 @@ class DatabaseManager:
 def create_app(config: AppConfig) -> FastAPI:
     """
     FastAPI application factory.
-    
+
     Sets up:
     - CORS middleware for web clients
     - Authentication middleware
@@ -250,17 +250,17 @@ def create_app(config: AppConfig) -> FastAPI:
         description="Cognitive Memory Platform",
         version=__version__
     )
-    
+
     # Middleware setup
     app.add_middleware(CORSMiddleware, ...)
     app.add_middleware(AuthenticationMiddleware, ...)
     app.add_middleware(PrometheusMiddleware, ...)
-    
+
     # Router registration
     app.include_router(memory_router, prefix="/api/v1")
     app.include_router(reasoning_router, prefix="/api/v1")
     app.include_router(tenant_router, prefix="/api/v1")
-    
+
     return app
 ```
 
@@ -274,15 +274,15 @@ async def store_memory(
 ):
     """
     Store a new memory.
-    
+
     1. Validate request content and metadata
-    2. Check tenant limits and quotas  
+    2. Check tenant limits and quotas
     3. Encode content to vector representation
     4. Store in database with audit trail
     5. Return memory ID and metadata
     """
 
-@router.post("/recall", response_model=RecallResponse)  
+@router.post("/recall", response_model=RecallResponse)
 async def recall_memories(
     request: RecallRequest,
     memory_manager: MemoryManager = Depends(get_memory_manager),
@@ -290,7 +290,7 @@ async def recall_memories(
 ):
     """
     Search for semantically similar memories.
-    
+
     1. Validate query and parameters
     2. Encode query to vector
     3. Perform similarity search in database
@@ -333,7 +333,7 @@ graph TD
 
 ```mermaid
 graph TD
-    A[Search Query] --> B[Query Encoding] 
+    A[Search Query] --> B[Query Encoding]
     B --> C[Vector Search]
     C --> D[Similarity Scoring]
     D --> E[Metadata Filtering]
@@ -358,33 +358,33 @@ graph TD
 class AppConfig(BaseSettings):
     """
     Application configuration with environment variable support.
-    
+
     Supports multiple environments (dev, staging, prod) with
     appropriate defaults and validation.
     """
-    
+
     # Database
     database_url: str = "postgresql://user:pass@localhost/somabrain"
     database_pool_size: int = 10
-    
-    # Vector Service  
+
+    # Vector Service
     vector_model: str = "all-MiniLM-L6-v2"
     vector_dimensions: int = 384
-    
+
     # Redis Cache
     redis_url: str = "redis://localhost:6379"
     cache_ttl: int = 3600
-    
+
     # API Settings
     api_key_header: str = "X-API-Key"
-    tenant_id_header: str = "X-Tenant-ID" 
+    tenant_id_header: str = "X-Tenant-ID"
     rate_limit_requests: int = 1000
     rate_limit_window: int = 60
-    
+
     # Monitoring
     prometheus_metrics: bool = True
     log_level: str = "INFO"
-    
+
     class Config:
         env_file = ".env"
         env_prefix = "SOMABRAIN_"
@@ -399,7 +399,7 @@ SOMABRAIN_LOG_LEVEL=DEBUG
 SOMABRAIN_PROMETHEUS_METRICS=false
 ```
 
-**Production** (`.env.production`):  
+**Production** (`.env.production`):
 ```bash
 SOMABRAIN_DATABASE_URL=postgresql://prod_user:${DB_PASSWORD}@db.prod/somabrain
 SOMABRAIN_LOG_LEVEL=WARNING
@@ -438,23 +438,23 @@ tests/
 @pytest.mark.asyncio
 async def test_store_memory_success():
     """Test successful memory storage with all components mocked."""
-    
+
     # Arrange - Mock all dependencies
     mock_encoder = Mock()
     mock_encoder.encode.return_value = np.array([1, 2, 3])
-    
+
     mock_db = AsyncMock()
     mock_db.store_memory.return_value = "mem_123"
-    
+
     manager = MemoryManager(encoder=mock_encoder, database=mock_db)
-    
+
     # Act - Call method under test
     result = await manager.store_memory(
         content="Test content",
         metadata={"category": "test"},
         tenant_id="test_tenant"
     )
-    
+
     # Assert - Verify behavior
     assert result == "mem_123"
     mock_encoder.encode.assert_called_once_with("Test content")
@@ -467,26 +467,26 @@ async def test_store_memory_success():
 @pytest.mark.asyncio
 async def test_store_and_recall_workflow():
     """Test complete memory storage and retrieval via API."""
-    
+
     # Uses real database, real encoder, but isolated test tenant
     async with AsyncClient(app=app, base_url="http://test") as client:
-        
+
         # Store memory
         store_response = await client.post("/remember", json={
             "content": "Integration test content",
             "metadata": {"type": "integration_test"}
         }, headers={"X-Tenant-ID": "test_tenant"})
-        
+
         memory_id = store_response.json()["memory_id"]
-        
+
         # Recall memory
         recall_response = await client.post("/recall", json={
             "query": "integration test",
             "k": 5
         }, headers={"X-Tenant-ID": "test_tenant"})
-        
+
         results = recall_response.json()["results"]
-        
+
         # Verify end-to-end workflow
         assert len(results) > 0
         assert any(r["memory_id"] == memory_id for r in results)
@@ -553,16 +553,16 @@ class EncodingError(SomaBrainError):
 @app.exception_handler(SomaBrainError)
 async def somabrain_exception_handler(request: Request, exc: SomaBrainError):
     """Convert application errors to proper HTTP responses."""
-    
+
     error_mapping = {
         ValidationError: 400,
         AuthenticationError: 401,
         MemoryNotFoundError: 404,
         EncodingError: 500
     }
-    
+
     status_code = error_mapping.get(type(exc), 500)
-    
+
     return JSONResponse(
         status_code=status_code,
         content={
@@ -581,21 +581,21 @@ async def somabrain_exception_handler(request: Request, exc: SomaBrainError):
 ```python
 async def process_batch_memories(memories: List[Dict]) -> List[str]:
     """Process multiple memories concurrently."""
-    
+
     async def process_single_memory(memory_data):
         async with database.transaction():
             # Encode vector
             vector = await encoder.encode(memory_data["content"])
-            
+
             # Store in database
             memory_id = await database.store_memory(
                 content=memory_data["content"],
                 metadata=memory_data["metadata"],
                 vector=vector
             )
-            
+
             return memory_id
-    
+
     # Process all memories concurrently
     tasks = [process_single_memory(mem) for mem in memories]
     return await asyncio.gather(*tasks)
@@ -612,37 +612,37 @@ async def process_batch_memories(memories: List[Dict]) -> List[str]:
 class CacheManager:
     """
     Multi-level caching for performance optimization.
-    
+
     L1: In-memory LRU cache for frequent vectors
-    L2: Redis cache for computed results  
+    L2: Redis cache for computed results
     L3: Database with optimized indexes
     """
-    
+
     def __init__(self):
         self.memory_cache = LRUCache(maxsize=1000)  # L1
         self.redis_client = Redis()                  # L2
-    
+
     async def get_similar_memories(self, query_vector, tenant_id):
         # L1: Check in-memory cache
         cache_key = f"similar:{tenant_id}:{hash(query_vector.tobytes())}"
-        
+
         if cache_key in self.memory_cache:
             return self.memory_cache[cache_key]
-        
+
         # L2: Check Redis cache
         cached_result = await self.redis_client.get(cache_key)
         if cached_result:
             result = json.loads(cached_result)
             self.memory_cache[cache_key] = result
             return result
-        
+
         # L3: Database query
         result = await self.database.search_memories(query_vector, tenant_id)
-        
+
         # Populate caches
         await self.redis_client.setex(cache_key, 3600, json.dumps(result))
         self.memory_cache[cache_key] = result
-        
+
         return result
 ```
 
@@ -651,21 +651,21 @@ class CacheManager:
 **Query Patterns**:
 ```sql
 -- Optimized similarity search with pgvector
-SELECT 
+SELECT
     id, content, metadata,
     1 - (vector_encoding <=> %s) AS similarity_score
-FROM memories 
-WHERE 
+FROM memories
+WHERE
     tenant_id = %s
     AND 1 - (vector_encoding <=> %s) > %s  -- threshold filter
 ORDER BY vector_encoding <=> %s  -- pgvector distance operator
 LIMIT %s;
 
 -- Metadata filtering with GIN indexes
-SELECT id, content 
-FROM memories 
-WHERE 
-    tenant_id = %s 
+SELECT id, content
+FROM memories
+WHERE
+    tenant_id = %s
     AND metadata @> %s  -- JSON contains operator
 ORDER BY created_at DESC;
 ```
@@ -674,7 +674,7 @@ ORDER BY created_at DESC;
 ```python
 class DatabasePool:
     """Connection pool for high-concurrency database access."""
-    
+
     def __init__(self, database_url: str, pool_size: int = 20):
         self.pool = asyncpg.create_pool(
             database_url,
@@ -682,7 +682,7 @@ class DatabasePool:
             max_size=pool_size,
             command_timeout=30
         )
-    
+
     async def execute_query(self, query: str, *args):
         async with self.pool.acquire() as conn:
             return await conn.fetch(query, *args)

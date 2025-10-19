@@ -83,7 +83,7 @@ Store a new memory with content and metadata.
   "content": "FastAPI is a modern, fast web framework for building APIs with Python",
   "metadata": {
     "category": "technical",
-    "topic": "web_frameworks", 
+    "topic": "web_frameworks",
     "language": "python",
     "source": "documentation",
     "tags": ["api", "python", "framework"]
@@ -101,7 +101,7 @@ Store a new memory with content and metadata.
   "metadata": {
     "category": "technical",
     "topic": "web_frameworks",
-    "language": "python", 
+    "language": "python",
     "source": "documentation",
     "tags": ["api", "python", "framework"],
     "created_at": "2024-01-15T10:30:45.123Z",
@@ -182,7 +182,7 @@ Search and retrieve memories based on semantic similarity.
       "content": "Django provides a comprehensive web framework with ORM and admin interface",
       "similarity_score": 0.76,
       "metadata": {
-        "category": "technical", 
+        "category": "technical",
         "topic": "web_frameworks",
         "language": "python",
         "created_at": "2024-01-14T15:22:33.456Z"
@@ -340,7 +340,7 @@ Create a reasoning chain from multiple memories and context.
     {
       "step": 2,
       "premise": "Django is comprehensive but may have more overhead for simple APIs",
-      "source_memory_id": "mem_7e4c2f8a9b5d1c3e", 
+      "source_memory_id": "mem_7e4c2f8a9b5d1c3e",
       "confidence": 0.85
     },
     {
@@ -473,7 +473,7 @@ Store multiple memories in a single request.
       "metadata": {"category": "batch_test", "index": 1}
     },
     {
-      "content": "Second memory content", 
+      "content": "Second memory content",
       "metadata": {"category": "batch_test", "index": 2}
     }
   ],
@@ -496,7 +496,7 @@ Store multiple memories in a single request.
     },
     {
       "index": 1,
-      "status": "success", 
+      "status": "success",
       "memory_id": "mem_def456",
       "processing_time_ms": 134
     }
@@ -658,7 +658,7 @@ import { SomaBrainClient } from '@somabrain/js-sdk';
 // Initialize client
 const client = new SomaBrainClient({
   apiKey: 'your-api-key',
-  tenantId: 'your-tenant-id', 
+  tenantId: 'your-tenant-id',
   baseUrl: 'https://api.somabrain.com'
 });
 
@@ -765,7 +765,7 @@ async def retry_with_backoff(
     jitter: bool = True
 ):
     """Retry function with exponential backoff."""
-    
+
     for attempt in range(max_retries + 1):
         try:
             return await func()
@@ -773,16 +773,16 @@ async def retry_with_backoff(
             if e.error_type in ['RATE_LIMIT_EXCEEDED', 'SERVICE_UNAVAILABLE']:
                 if attempt == max_retries:
                     raise
-                
+
                 # Calculate delay
                 delay = min(base_delay * (exponential_base ** attempt), max_delay)
                 if jitter:
                     delay *= (0.5 + random.random() * 0.5)  # Add jitter
-                
+
                 await asyncio.sleep(delay)
             else:
                 raise  # Don't retry on non-transient errors
-    
+
     raise Exception("Max retries exceeded")
 
 # Usage
@@ -856,7 +856,7 @@ X-RateLimit-Retry-After: 60
 # TYPE somabrain_requests_total counter
 somabrain_requests_total{method="POST",endpoint="/remember",status="200"} 1543
 
-# HELP somabrain_response_time_seconds Response time in seconds  
+# HELP somabrain_response_time_seconds Response time in seconds
 # TYPE somabrain_response_time_seconds histogram
 somabrain_response_time_seconds_bucket{endpoint="/recall",le="0.1"} 892
 somabrain_response_time_seconds_bucket{endpoint="/recall",le="0.5"} 1234

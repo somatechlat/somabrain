@@ -32,7 +32,7 @@ Each memory consists of:
   "content": "The actual memory content as text",
   "metadata": {
     "category": "classification_label",
-    "topic": "subject_area", 
+    "topic": "subject_area",
     "timestamp": "2025-10-15T10:00:00Z",
     "confidence": 0.85,
     "custom_fields": "flexible_additional_data"
@@ -95,7 +95,7 @@ curl -X POST http://localhost:9696/remember/batch \
         "content": "PostgreSQL supports ACID transactions and complex queries with JSON columns",
         "metadata": {
           "category": "technical_knowledge",
-          "topic": "databases", 
+          "topic": "databases",
           "technology": "postgresql",
           "features": ["acid", "json", "sql"]
         }
@@ -103,7 +103,7 @@ curl -X POST http://localhost:9696/remember/batch \
       {
         "content": "MongoDB is a document database with flexible schema and horizontal scaling",
         "metadata": {
-          "category": "technical_knowledge", 
+          "category": "technical_knowledge",
           "topic": "databases",
           "technology": "mongodb",
           "features": ["document", "nosql", "scaling"]
@@ -187,7 +187,7 @@ curl -X POST http://localhost:9696/recall \
       "explanation": "High semantic match for 'transactions' and 'database choice'"
     },
     {
-      "memory_id": "mem_tech_postgres_001", 
+      "memory_id": "mem_tech_postgres_001",
       "content": "PostgreSQL supports ACID transactions and complex queries...",
       "score": 0.76,
       "metadata": {
@@ -268,7 +268,7 @@ curl -X POST http://localhost:9696/recall \
   -H "Content-Type: application/json" \
   -H "X-Tenant-ID: your_tenant" \
   -d '{
-    "query": "database performance optimization", 
+    "query": "database performance optimization",
     "k": 5,
     "scoring": {
       "semantic_weight": 0.5,
@@ -366,7 +366,7 @@ curl -X PATCH http://localhost:9696/memories/mem_tech_redis_001/metadata \
   -d '{
     "metadata": {
       "tags": ["nosql", "cache", "performance", "production"],
-      "priority": "high", 
+      "priority": "high",
       "last_reviewed": "2025-10-15",
       "review_status": "current"
     }
@@ -529,13 +529,13 @@ indexes:
     type: "ivf_flat"
     nlist: 1024
     dimensions: 1024
-  
+
   metadata:
     fields: ["category", "topic", "created_at"]
     compound_indexes:
       - ["category", "created_at"]
       - ["topic", "confidence"]
-  
+
   hybrid:
     semantic_weight: 0.7
     metadata_weight: 0.3
@@ -558,7 +558,7 @@ curl -X POST http://localhost:9696/validate/quality \
     "metadata": {"category": "technical"},
     "quality_checks": [
       "content_length",
-      "semantic_richness", 
+      "semantic_richness",
       "metadata_completeness",
       "uniqueness"
     ]
@@ -572,7 +572,7 @@ curl -X POST http://localhost:9696/validate/quality \
   "issues": [
     {
       "type": "content_length",
-      "severity": "warning", 
+      "severity": "warning",
       "message": "Content is very brief (13 chars). Consider adding more detail.",
       "suggestion": "Include specific Redis features, use cases, or technical details"
     }

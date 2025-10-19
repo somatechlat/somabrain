@@ -42,4 +42,6 @@ async def test_basic_recall(client):
     data = recall_resp.json()
     # The response schema includes a ``results`` list; ensure our payload appears.
     results = data.get("results", [])
-    assert any(r.get("task") == payload["task"] for r in results), "Recall should return the stored memory"
+    assert any(r.get("task") == payload["task"] for r in results), (
+        "Recall should return the stored memory"
+    )

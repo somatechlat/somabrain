@@ -188,10 +188,7 @@ class ConfigService:
     @staticmethod
     def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
         for key, value in patch.items():
-            if (
-                isinstance(value, dict)
-                and isinstance(base.get(key), dict)
-            ):
+            if isinstance(value, dict) and isinstance(base.get(key), dict):
                 base[key] = ConfigService._deep_merge(
                     copy.deepcopy(base.get(key, {})), value
                 )
@@ -216,6 +213,7 @@ class ConfigService:
             elif isinstance(obj, (int, float)):
                 if isinstance(obj, float) and (obj != obj):  # NaN check
                     raise ConfigMergeError(f"non-finite value at {path}")
+
         _walk(data)
 
 

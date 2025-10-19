@@ -40,7 +40,9 @@ def get_parameter_supervisor() -> ParameterSupervisor:
     return _supervisor
 
 
-def register_config_listener(callback: Callable[[ConfigEvent], Optional[Awaitable[None]]]) -> None:
+def register_config_listener(
+    callback: Callable[[ConfigEvent], Optional[Awaitable[None]]],
+) -> None:
     if callback not in _listeners:
         _listeners.append(callback)
 

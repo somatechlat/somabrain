@@ -2,6 +2,7 @@ import pytest
 
 from somabrain.learning.adaptation import AdaptationEngine, RetrievalWeights
 
+
 def test_dynamic_learning_rate_scaling(monkeypatch):
     # Create engine with dynamic LR enabled
     retrieval = RetrievalWeights(alpha=1.0, beta=0.2, gamma=0.1, tau=0.7)

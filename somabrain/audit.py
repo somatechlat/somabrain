@@ -53,9 +53,7 @@ else:
     LOGGER.info("Kafka Python client detected: %s", _DEFAULT_KAFKA_CLIENT)
 
 _KAFKA_PORT_FALLBACK = (
-    os.getenv("SOMABRAIN_KAFKA_PORT")
-    or os.getenv("KAFKA_PORT")
-    or "9092"
+    os.getenv("SOMABRAIN_KAFKA_PORT") or os.getenv("KAFKA_PORT") or "9092"
 )
 
 
@@ -117,7 +115,12 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     ev.setdefault("schema_version", "audit_event_v1")
 
     enforcement_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
-    if enforcement_env and enforcement_env.strip().lower() in ("1", "true", "yes", "on"):
+    if enforcement_env and enforcement_env.strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
         try:
             enqueue_event(topic=topic, payload=ev, dedupe_key=ev["event_id"])
             return True
@@ -197,7 +200,9 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         return kurl
 
     kafka_bootstrap = get_kafka_bootstrap()
-    kafka_url: Optional[str] = _parse_kafka_url(kafka_bootstrap) if kafka_bootstrap else None
+    kafka_url: Optional[str] = (
+        _parse_kafka_url(kafka_bootstrap) if kafka_bootstrap else None
+    )
     if not kafka_url:
         LOGGER.warning(
             "Kafka bootstrap servers not configured; falling back to journal-only audit logging."

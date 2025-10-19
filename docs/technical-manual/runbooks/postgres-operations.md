@@ -54,14 +54,14 @@ ORDER BY pg_database_size(pg_database.datname) DESC;"
 \c somabrain
 
 -- Verify key tables exist
-SELECT schemaname, tablename, tableowner 
-FROM pg_tables 
-WHERE schemaname = 'public' 
+SELECT schemaname, tablename, tableowner
+FROM pg_tables
+WHERE schemaname = 'public'
 ORDER BY tablename;
 
 -- Check recent audit log entries
 SELECT count(*) as recent_audits
-FROM audit_log 
+FROM audit_log
 WHERE created_at > NOW() - INTERVAL '1 hour';
 
 -- Monitor outbox table size
@@ -89,7 +89,7 @@ GROUP BY datname
 ORDER BY connections DESC;
 
 -- Identify idle connections
-SELECT pid, usename, application_name, state, 
+SELECT pid, usename, application_name, state,
        now() - state_change as idle_time
 FROM pg_stat_activity
 WHERE state = 'idle'
@@ -132,10 +132,10 @@ CREATE TABLE IF NOT EXISTS outbox_events (
 );
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_audit_log_tenant_created 
+CREATE INDEX IF NOT EXISTS idx_audit_log_tenant_created
 ON audit_log(tenant_id, created_at);
 
-CREATE INDEX IF NOT EXISTS idx_outbox_status_created 
+CREATE INDEX IF NOT EXISTS idx_outbox_status_created
 ON outbox_events(status, created_at);
 ```
 
@@ -219,7 +219,7 @@ FOR ALL TO somabrain_app
 USING (tenant_id = current_setting('app.current_tenant', true));
 
 -- Check active connections and their privileges
-SELECT datname, usename, application_name, 
+SELECT datname, usename, application_name,
        client_addr, state, query
 FROM pg_stat_activity
 WHERE datname = 'somabrain';
@@ -254,7 +254,7 @@ SHOW ALL;
 
 -- Key performance settings (postgresql.conf)
 -- shared_buffers = 256MB          # 25% of RAM
--- effective_cache_size = 1GB      # 75% of RAM  
+-- effective_cache_size = 1GB      # 75% of RAM
 -- work_mem = 4MB                  # Per operation
 -- maintenance_work_mem = 64MB     # For maintenance
 -- max_connections = 100           # Adjust based on load
@@ -462,9 +462,9 @@ SELECT blocked_locks.pid AS blocked_pid,
        blocked_activity.query AS blocked_statement,
        blocking_activity.query AS blocking_statement
 FROM pg_catalog.pg_locks blocked_locks
-JOIN pg_catalog.pg_stat_activity blocked_activity 
+JOIN pg_catalog.pg_stat_activity blocked_activity
      ON blocked_activity.pid = blocked_locks.pid
-JOIN pg_catalog.pg_locks blocking_locks 
+JOIN pg_catalog.pg_locks blocking_locks
      ON blocking_locks.locktype = blocked_locks.locktype
      AND blocking_locks.DATABASE IS NOT DISTINCT FROM blocked_locks.DATABASE
      AND blocking_locks.relation IS NOT DISTINCT FROM blocked_locks.relation
@@ -476,7 +476,7 @@ JOIN pg_catalog.pg_locks blocking_locks
      AND blocking_locks.objid IS NOT DISTINCT FROM blocked_locks.objid
      AND blocking_locks.objsubid IS NOT DISTINCT FROM blocked_locks.objsubid
      AND blocking_locks.pid != blocked_locks.pid
-JOIN pg_catalog.pg_stat_activity blocking_activity 
+JOIN pg_catalog.pg_stat_activity blocking_activity
      ON blocking_activity.pid = blocking_locks.pid
 WHERE NOT blocked_locks.GRANTED;
 ```

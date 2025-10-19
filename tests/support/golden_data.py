@@ -1,4 +1,5 @@
 """Utilities for loading golden datasets used in regression tests."""
+
 from __future__ import annotations
 
 import json

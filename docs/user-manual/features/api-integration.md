@@ -14,10 +14,10 @@ SomaBrain provides a RESTful API that enables cognitive memory operations throug
 
 ### Base Configuration
 
-**Base URL**: `http://localhost:9696` (default development)  
-**API Version**: `v1` (current stable)  
-**Content Type**: `application/json`  
-**Authentication**: API Key or JWT tokens  
+**Base URL**: `http://localhost:9696` (default development)
+**API Version**: `v1` (current stable)
+**Content Type**: `application/json`
+**Authentication**: API Key or JWT tokens
 
 ### Core Endpoints
 
@@ -93,9 +93,9 @@ async def main():
             tags=["python", "api", "documentation"]
         )
     )
-    
+
     print(f"Stored memory: {memory_id}")
-    
+
     # Recall memories
     results = await client.recall(
         query="How to generate API documentation?",
@@ -103,7 +103,7 @@ async def main():
         filters={"technology": "fastapi"},
         threshold=0.3
     )
-    
+
     for result in results:
         print(f"Score: {result.score:.3f}")
         print(f"Content: {result.content}")
@@ -126,10 +126,10 @@ from somabrain import SomaBrainClient, BatchMemoryRequest
 class MemoryManager:
     def __init__(self, client: SomaBrainClient):
         self.client = client
-        
+
     async def store_knowledge_base(self, knowledge_items: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Store multiple knowledge items with error handling"""
-        
+
         batch_requests = []
         for item in knowledge_items:
             batch_requests.append(
@@ -138,19 +138,19 @@ class MemoryManager:
                     metadata=item["metadata"]
                 )
             )
-        
+
         try:
             # Store in batches of 50 for optimal performance
             batch_size = 50
             results = {"success": [], "failed": []}
-            
+
             for i in range(0, len(batch_requests), batch_size):
                 batch = batch_requests[i:i+batch_size]
-                
+
                 try:
                     batch_result = await self.client.remember_batch(batch)
                     results["success"].extend(batch_result.memory_ids)
-                    
+
                 except Exception as e:
                     # Handle individual failures
                     for req in batch:
@@ -158,15 +158,15 @@ class MemoryManager:
                             "content": req.content[:50] + "...",
                             "error": str(e)
                         })
-            
+
             return results
-            
+
         except Exception as e:
             raise Exception(f"Batch storage failed: {e}")
 
     async def semantic_search_with_fallback(self, query: str, **kwargs) -> List[Any]:
         """Semantic search with automatic fallback strategies"""
-        
+
         # Try primary search
         try:
             results = await self.client.recall(query, **kwargs)
@@ -174,7 +174,7 @@ class MemoryManager:
                 return results
         except Exception as e:
             print(f"Primary search failed: {e}")
-        
+
         # Fallback 1: Broader search with lower threshold
         try:
             fallback_kwargs = {**kwargs, "threshold": 0.1, "k": kwargs.get("k", 10) * 2}
@@ -183,7 +183,7 @@ class MemoryManager:
                 return results[:kwargs.get("k", 10)]
         except Exception as e:
             print(f"Fallback search failed: {e}")
-        
+
         # Fallback 2: Keyword-based search
         try:
             keywords = query.split()[:3]  # Use first 3 words
@@ -193,7 +193,7 @@ class MemoryManager:
                     return results
         except Exception as e:
             print(f"Keyword fallback failed: {e}")
-            
+
         return []
 ```
 
@@ -208,7 +208,7 @@ class ContextualMemorySession:
         self.client = client
         self.session_id = session_id
         self.context_memories = []
-        
+
     @asynccontextmanager
     async def conversation_context(self):
         """Manage conversational context across multiple operations"""
@@ -217,10 +217,10 @@ class ContextualMemorySession:
         finally:
             # Clean up session context
             await self._cleanup_session()
-    
+
     async def remember_with_context(self, content: str, metadata: dict = None):
         """Store memory with current conversation context"""
-        
+
         # Enhance metadata with context
         enhanced_metadata = {
             **(metadata or {}),
@@ -229,19 +229,19 @@ class ContextualMemorySession:
             "conversation_turn": len(self.context_memories) + 1,
             "timestamp": datetime.now().isoformat()
         }
-        
+
         memory_id = await self.client.remember(content, enhanced_metadata)
-        
+
         # Add to context tracking
         self.context_memories.append(
             type('Memory', (), {'id': memory_id, 'content': content})()
         )
-        
+
         return memory_id
-    
+
     async def recall_with_context(self, query: str, **kwargs):
         """Recall memories considering current conversation context"""
-        
+
         # Build context-aware query
         if self.context_memories:
             recent_context = " ".join([
@@ -250,13 +250,13 @@ class ContextualMemorySession:
             contextual_query = f"{query}. Recent context: {recent_context}"
         else:
             contextual_query = query
-        
+
         # Add session filtering
         filters = kwargs.get("filters", {})
         filters["session_id"] = self.session_id
-        
+
         return await self.client.recall(
-            contextual_query, 
+            contextual_query,
             filters=filters,
             **{k: v for k, v in kwargs.items() if k != "filters"}
         )
@@ -264,14 +264,14 @@ class ContextualMemorySession:
 # Usage example
 async def conversational_ai_example():
     client = SomaBrainClient(base_url="http://localhost:9696", tenant_id="ai_bot")
-    
+
     async with ContextualMemorySession(client, "conv_123").conversation_context() as session:
         # Store conversation memories with context
         await session.remember_with_context(
             "User asked about database performance optimization",
             {"intent": "technical_question", "domain": "databases"}
         )
-        
+
         # Later in conversation - context-aware recall
         results = await session.recall_with_context(
             "What did we discuss about optimization?"
@@ -358,10 +358,10 @@ class KnowledgeBot {
           timestamp: new Date().toISOString()
         }
       });
-      
+
       console.log(`Recorded interaction: ${memoryId}`);
       return memoryId;
-      
+
     } catch (error) {
       console.error('Failed to record interaction:', error);
       throw error;
@@ -428,7 +428,7 @@ class KnowledgeBot {
 
     for (let i = 0; i < documents.length; i += batchSize) {
       const batch = documents.slice(i, i + batchSize);
-      
+
       try {
         const batchResult = await this.client.rememberBatch(
           batch.map(doc => ({
@@ -443,7 +443,7 @@ class KnowledgeBot {
         );
 
         results.success += batchResult.stored_count;
-        
+
       } catch (error) {
         results.failed += batch.length;
         results.errors.push({
@@ -503,7 +503,7 @@ async function handleUserMessage(userId, message) {
 
   // Generate and return response
   const response = await bot.generateResponse(userId, message);
-  
+
   // Record the bot's response
   await bot.recordInteraction('bot', response.response, {
     intent: 'bot_response',
@@ -534,7 +534,7 @@ const somabrain = new SomaBrainClient({
 app.post('/api/memories', async (req, res) => {
   try {
     const { content, metadata } = req.body;
-    
+
     // Validate request
     if (!content || content.length < 5) {
       return res.status(400).json({
@@ -723,8 +723,8 @@ public class SomaBrainClient {
         });
     }
 
-    public CompletableFuture<List<RecallResult>> recall(String query, 
-                                                       Map<String, Object> filters, 
+    public CompletableFuture<List<RecallResult>> recall(String query,
+                                                       Map<String, Object> filters,
                                                        int k) {
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -753,7 +753,7 @@ public class SomaBrainClient {
 
                 Map<String, Object> responseMap = objectMapper.readValue(
                     response.body(), Map.class);
-                List<Map<String, Object>> results = (List<Map<String, Object>>) 
+                List<Map<String, Object>> results = (List<Map<String, Object>>)
                     responseMap.get("results");
 
                 return results.stream()
@@ -777,7 +777,7 @@ public class SomaBrainClient {
         public final double score;
         public final Map<String, Object> metadata;
 
-        public RecallResult(String memoryId, String content, double score, 
+        public RecallResult(String memoryId, String content, double score,
                           Map<String, Object> metadata) {
             this.memoryId = memoryId;
             this.content = content;
@@ -793,15 +793,15 @@ public class SomaBrainClient {
 ```java
 @Service
 public class KnowledgeService {
-    
+
     private final SomaBrainClient somaBrainClient;
-    
+
     public KnowledgeService(@Value("${somabrain.url}") String url,
                           @Value("${somabrain.tenant}") String tenant,
                           @Value("${somabrain.api-key}") String apiKey) {
         this.somaBrainClient = new SomaBrainClient(url, tenant, apiKey);
     }
-    
+
     @Async
     public CompletableFuture<Void> indexDocument(Document document) {
         Map<String, Object> metadata = Map.of(
@@ -810,17 +810,17 @@ public class KnowledgeService {
             "created_at", document.getCreatedAt().toString(),
             "tags", document.getTags()
         );
-        
+
         return somaBrainClient.remember(document.getContent(), metadata)
             .thenRun(() -> log.info("Indexed document: {}", document.getId()));
     }
-    
+
     public CompletableFuture<SearchResponse> searchKnowledge(SearchRequest request) {
         Map<String, Object> filters = Map.of(
             "document_type", request.getDocumentTypes(),
             "tags", request.getTags()
         );
-        
+
         return somaBrainClient.recall(request.getQuery(), filters, request.getLimit())
             .thenApply(results -> new SearchResponse(
                 results.stream()
@@ -833,13 +833,13 @@ public class KnowledgeService {
 @RestController
 @RequestMapping("/api/knowledge")
 public class KnowledgeController {
-    
+
     private final KnowledgeService knowledgeService;
-    
+
     @PostMapping("/search")
     public CompletableFuture<ResponseEntity<SearchResponse>> search(
             @RequestBody SearchRequest request) {
-        
+
         return knowledgeService.searchKnowledge(request)
             .thenApply(ResponseEntity::ok)
             .exceptionally(ex -> ResponseEntity.status(500)
@@ -1067,11 +1067,11 @@ class ResilientSomaBrainClient:
 
     async def remember_with_retry(self, content: str, metadata: Dict[str, Any]) -> str:
         """Store memory with automatic retry and error handling"""
-        
+
         for attempt in range(self.max_retries + 1):
             try:
                 return await self.client.remember(content, metadata)
-                
+
             except ConnectionError as e:
                 if attempt == self.max_retries:
                     raise SomaBrainException(
@@ -1079,12 +1079,12 @@ class ResilientSomaBrainClient:
                         f"Failed to connect after {self.max_retries} attempts",
                         {"original_error": str(e)}
                     )
-                
+
                 # Exponential backoff
                 wait_time = 2 ** attempt
                 self.logger.warning(f"Connection failed, retrying in {wait_time}s...")
                 await asyncio.sleep(wait_time)
-                
+
             except TimeoutError as e:
                 if attempt == self.max_retries:
                     raise SomaBrainException(
@@ -1092,9 +1092,9 @@ class ResilientSomaBrainClient:
                         "Request timeout exceeded maximum retries",
                         {"timeout_duration": str(e)}
                     )
-                
+
                 await asyncio.sleep(1)
-                
+
             except ValueError as e:
                 # Don't retry validation errors
                 raise SomaBrainException(
@@ -1105,21 +1105,21 @@ class ResilientSomaBrainClient:
 
     async def recall_with_fallback(self, query: str, **kwargs) -> list:
         """Recall with multiple fallback strategies"""
-        
+
         strategies = [
             # Primary strategy
             lambda: self.client.recall(query, **kwargs),
-            
+
             # Fallback 1: Lower threshold
             lambda: self.client.recall(query, **{**kwargs, "threshold": 0.1}),
-            
+
             # Fallback 2: Broader search
             lambda: self.client.recall(query, **{**kwargs, "k": kwargs.get("k", 10) * 2, "threshold": 0.1}),
-            
+
             # Fallback 3: Keyword search
             lambda: self._keyword_fallback(query, **kwargs)
         ]
-        
+
         for i, strategy in enumerate(strategies):
             try:
                 results = await strategy()
@@ -1127,7 +1127,7 @@ class ResilientSomaBrainClient:
                     if i > 0:
                         self.logger.info(f"Fallback strategy {i} succeeded")
                     return results
-                    
+
             except Exception as e:
                 self.logger.warning(f"Strategy {i} failed: {e}")
                 if i == len(strategies) - 1:  # Last strategy
@@ -1136,13 +1136,13 @@ class ResilientSomaBrainClient:
                         "All recall strategies failed",
                         {"last_error": str(e)}
                     )
-        
+
         return []
 
     async def _keyword_fallback(self, query: str, **kwargs):
         """Extract keywords and search individually"""
         keywords = query.lower().split()[:5]  # First 5 words
-        
+
         for keyword in keywords:
             try:
                 results = await self.client.recall(keyword, **kwargs)
@@ -1150,7 +1150,7 @@ class ResilientSomaBrainClient:
                     return results
             except Exception:
                 continue
-        
+
         return []
 ```
 
@@ -1161,7 +1161,7 @@ class APIErrorHandler:
     @staticmethod
     def handle_http_error(status_code: int, response_body: str) -> SomaBrainException:
         """Convert HTTP status codes to appropriate exceptions"""
-        
+
         error_mappings = {
             400: (SomaBrainErrorType.VALIDATION_ERROR, "Bad request - check input format"),
             401: (SomaBrainErrorType.AUTHENTICATION_ERROR, "Authentication failed - check API key"),
@@ -1171,12 +1171,12 @@ class APIErrorHandler:
             503: (SomaBrainErrorType.CONNECTION_ERROR, "Service unavailable - try again later"),
             504: (SomaBrainErrorType.TIMEOUT_ERROR, "Gateway timeout - request took too long")
         }
-        
+
         error_type, default_message = error_mappings.get(
-            status_code, 
+            status_code,
             (SomaBrainErrorType.SERVER_ERROR, f"Unexpected HTTP status: {status_code}")
         )
-        
+
         # Try to extract error details from response
         details = {"status_code": status_code, "raw_response": response_body}
         try:
@@ -1185,7 +1185,7 @@ class APIErrorHandler:
             message = response_json.get("message", default_message)
         except:
             message = default_message
-            
+
         return SomaBrainException(error_type, message, details)
 ```
 
@@ -1209,7 +1209,7 @@ class OptimizedSomaBrainClient:
         self.session = None
         self._memory_cache = {}
         self._query_cache = {}
-        
+
     async def __aenter__(self):
         # Connection pooling configuration
         connector = aiohttp.TCPConnector(
@@ -1218,13 +1218,13 @@ class OptimizedSomaBrainClient:
             ttl_dns_cache=300,  # DNS cache TTL
             use_dns_cache=True,
         )
-        
+
         timeout = aiohttp.ClientTimeout(
             total=30,  # Total timeout
             connect=5,  # Connection timeout
             sock_read=10  # Socket read timeout
         )
-        
+
         self.session = aiohttp.ClientSession(
             connector=connector,
             timeout=timeout,
@@ -1235,7 +1235,7 @@ class OptimizedSomaBrainClient:
             }
         )
         return self
-        
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.session:
             await self.session.close()
@@ -1247,63 +1247,63 @@ class OptimizedSomaBrainClient:
 
     async def recall_cached(self, query: str, filters: Dict[str, Any] = None, k: int = 10, cache_ttl: int = 300):
         """Recall with local caching to reduce API calls"""
-        
+
         filters_str = json.dumps(filters or {}, sort_keys=True)
         cache_key = self._cache_key(query, filters_str, k)
-        
+
         # Check cache
         if cache_key in self._query_cache:
             cached_result, timestamp = self._query_cache[cache_key]
             if time.time() - timestamp < cache_ttl:
                 return cached_result
-        
+
         # Make API call
         result = await self._make_recall_request(query, filters, k)
-        
+
         # Cache result
         self._query_cache[cache_key] = (result, time.time())
-        
+
         # Clean old cache entries (simple LRU)
         if len(self._query_cache) > 10000:
-            oldest_key = min(self._query_cache.keys(), 
+            oldest_key = min(self._query_cache.keys(),
                            key=lambda k: self._query_cache[k][1])
             del self._query_cache[oldest_key]
-        
+
         return result
 
     async def batch_remember_optimized(self, memories: list, batch_size: int = 50):
         """Optimized batch memory storage with concurrent requests"""
-        
+
         # Process in batches concurrently
         batches = [memories[i:i+batch_size] for i in range(0, len(memories), batch_size)]
-        
+
         async def process_batch(batch):
             return await self._make_batch_remember_request(batch)
-        
+
         # Limit concurrent batches to avoid overwhelming the server
         semaphore = asyncio.Semaphore(5)  # Max 5 concurrent batches
-        
+
         async def bounded_process(batch):
             async with semaphore:
                 return await process_batch(batch)
-        
+
         results = await asyncio.gather(
             *[bounded_process(batch) for batch in batches],
             return_exceptions=True
         )
-        
+
         # Aggregate results
         success_count = 0
         failed_count = 0
         errors = []
-        
+
         for result in results:
             if isinstance(result, Exception):
                 failed_count += batch_size
                 errors.append(str(result))
             else:
                 success_count += len(result.get("memory_ids", []))
-        
+
         return {
             "success_count": success_count,
             "failed_count": failed_count,
@@ -1318,7 +1318,7 @@ import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
 
 class StreamingSomaBrainClient extends SomaBrainClient {
-  
+
   // Stream large recall results
   async *streamRecall(query, options = {}) {
     const pageSize = options.pageSize || 50;
@@ -1350,7 +1350,7 @@ class StreamingSomaBrainClient extends SomaBrainClient {
   // Compressed batch operations for large datasets
   async rememberBatchCompressed(memories) {
     const batchData = JSON.stringify({ memories });
-    
+
     // Compress request body
     const compressed = await new Promise((resolve, reject) => {
       zlib.gzip(batchData, (err, result) => {

@@ -67,7 +67,7 @@ async def post_remember(client: httpx.AsyncClient, i: int):
     body = make_payload(i)
     start = time.perf_counter()
     bench_timeout = float(os.getenv("BENCH_TIMEOUT", "90"))
-    rid = f"bench-{i}-{int(time.time()*1000)}-{uuid.uuid4().hex[:6]}"
+    rid = f"bench-{i}-{int(time.time() * 1000)}-{uuid.uuid4().hex[:6]}"
     hdrs = dict(HEADERS)
     hdrs["X-Request-ID"] = rid
     try:

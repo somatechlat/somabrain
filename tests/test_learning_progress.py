@@ -64,7 +64,9 @@ def _get_adaptation_state(cfg: TargetConfig) -> dict | None:
     return resp.json()
 
 
-def _remember_memory(cfg: TargetConfig, headers: dict[str, str], coord: str | None = None) -> None:
+def _remember_memory(
+    cfg: TargetConfig, headers: dict[str, str], coord: str | None = None
+) -> None:
     payload = {
         "coord": coord,
         "payload": {

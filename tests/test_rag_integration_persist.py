@@ -45,9 +45,9 @@ def test_rag_persist_and_links_local_backend():
     assert isinstance(ns, str) and ns.endswith(":ragtest")
     print(f"rt_module.mt_memory id: {id(rt_module.mt_memory)}")
     print(f"app_module.mt_memory id: {id(app_module.mt_memory)}")
-    assert (
-        rt_module.mt_memory is app_module.mt_memory
-    ), "mt_memory instances are not the same!"
+    assert rt_module.mt_memory is app_module.mt_memory, (
+        "mt_memory instances are not the same!"
+    )
     backend = rt_module.mt_memory or app_module.mt_memory
     assert backend is not None
     print("backend id", id(backend))

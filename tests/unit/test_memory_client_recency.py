@@ -21,7 +21,9 @@ class _StaticEmbedder:
         return vec
 
 
-def _mk_client(cfg: Config, *, w_cosine: float = 0.0, w_recency: float = 1.0) -> MemoryClient:
+def _mk_client(
+    cfg: Config, *, w_cosine: float = 0.0, w_recency: float = 1.0
+) -> MemoryClient:
     scorer = UnifiedScorer(
         w_cosine=w_cosine,
         w_fd=0.0,
@@ -65,7 +67,12 @@ def test_rescore_bounds_recency_by_configured_cap() -> None:
     recency_component = math.exp(-steps / cfg.scorer_recency_tau)
     boost = max(
         cfg.recall_recency_floor,
-        math.exp(-(age_seconds / cfg.recall_recency_time_scale) ** cfg.recall_recency_sharpness),
+        math.exp(
+            -(
+                (age_seconds / cfg.recall_recency_time_scale)
+                ** cfg.recall_recency_sharpness
+            )
+        ),
     )
     expected = recency_component * boost
     assert math.isclose(aged.score or 0.0, expected, rel_tol=1e-6, abs_tol=1e-7)
@@ -86,9 +93,13 @@ def test_rescore_accepts_iso8601_timestamps() -> None:
 
     ranked = client._rescore_and_rank_hits([hit], "iso query")
     assert ranked[0].payload["content"] == "iso"
-    steps = math.log1p(5.0 / cfg.recall_recency_time_scale) * cfg.recall_recency_sharpness
+    steps = (
+        math.log1p(5.0 / cfg.recall_recency_time_scale) * cfg.recall_recency_sharpness
+    )
     recency_component = math.exp(-steps / cfg.scorer_recency_tau)
-    boost = math.exp(-(5.0 / cfg.recall_recency_time_scale) ** cfg.recall_recency_sharpness)
+    boost = math.exp(
+        -((5.0 / cfg.recall_recency_time_scale) ** cfg.recall_recency_sharpness)
+    )
     expected = recency_component * boost
     assert math.isclose(ranked[0].score or 0.0, expected, rel_tol=3e-5, abs_tol=5e-6)
 
@@ -104,4 +115,6 @@ def test_density_factor_applies_floor_when_margin_low() -> None:
     hit = RecallHit(payload={"content": "dense", "_cleanup_margin": 0.05}, score=None)
     ranked = client._rescore_and_rank_hits([hit], "dense")
     assert ranked[0].payload["content"] == "dense"
-    assert math.isclose(ranked[0].score or 0.0, cfg.recall_density_margin_floor, rel_tol=1e-6)
+    assert math.isclose(
+        ranked[0].score or 0.0, cfg.recall_density_margin_floor, rel_tol=1e-6
+    )

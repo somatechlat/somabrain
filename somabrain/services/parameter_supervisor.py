@@ -68,7 +68,9 @@ class ParameterSupervisor:
         patch: Dict[str, object] = {}
 
         if snapshot.top1_accuracy < target_top1:
-            eta = float(effective.get("eta", effective.get("trace", {}).get("eta", 0.05)))
+            eta = float(
+                effective.get("eta", effective.get("trace", {}).get("eta", 0.05))
+            )
             new_eta = self._clamp(eta + self._policy.eta_step, *self._policy.eta_bounds)
             if not math.isclose(new_eta, eta):
                 patch["eta"] = new_eta
@@ -83,7 +85,9 @@ class ParameterSupervisor:
             cleanup = effective.get("cleanup", {})
             hnsw = cleanup.get("hnsw", {})
             ef = int(hnsw.get("efSearch", 128))
-            new_ef = int(self._clamp(ef + self._policy.ef_step, *self._policy.ef_bounds))
+            new_ef = int(
+                self._clamp(ef + self._policy.ef_step, *self._policy.ef_bounds)
+            )
             if new_ef != ef:
                 patch.setdefault("cleanup", {}).setdefault("hnsw", {})
                 patch["cleanup"]["hnsw"]["efSearch"] = new_ef

@@ -15,7 +15,7 @@ SomaBrain implements multi-layered role-based access control across application,
 ### Access Control Layers
 
 **Application Layer**: API endpoints, memory operations, and tenant-specific resources
-**Infrastructure Layer**: Container orchestration, networking, and storage access  
+**Infrastructure Layer**: Container orchestration, networking, and storage access
 **Administrative Layer**: System configuration, monitoring, and operational tasks
 **Security Layer**: Secret management, audit access, and security controls
 
@@ -36,7 +36,7 @@ SomaBrain implements multi-layered role-based access control across application,
 ```yaml
 # Application-level roles for SomaBrain API access
 application_roles:
-  
+
   memory_reader:
     description: "Read-only access to memory operations"
     permissions:
@@ -55,7 +55,7 @@ application_roles:
       - Analytics users
       - Read-only integrations
       - Monitoring systems
-      
+
   memory_writer:
     description: "Full memory operations within tenant scope"
     inherits: [memory_reader]
@@ -65,7 +65,7 @@ application_roles:
       - memory:batch_operations
     api_endpoints:
       - "POST /remember"
-      - "PUT /memories/{id}" 
+      - "PUT /memories/{id}"
       - "POST /remember/batch"
       - "PATCH /memories/{id}/metadata"
     rate_limits:
@@ -75,7 +75,7 @@ application_roles:
       - Application services
       - Content management systems
       - User-facing applications
-      
+
   memory_admin:
     description: "Full memory management including deletion"
     inherits: [memory_writer]
@@ -85,7 +85,7 @@ application_roles:
       - tenant:manage_own
     api_endpoints:
       - "DELETE /memories/{id}"
-      - "DELETE /memories/batch" 
+      - "DELETE /memories/batch"
       - "GET /export"
       - "POST /import"
     rate_limits:
@@ -95,9 +95,9 @@ application_roles:
     examples:
       - Data administrators
       - Application owners
-      
+
   reasoning_user:
-    description: "Access to cognitive reasoning capabilities" 
+    description: "Access to cognitive reasoning capabilities"
     inherits: [memory_reader]
     permissions:
       - reasoning:basic
@@ -114,7 +114,7 @@ application_roles:
       - AI applications
       - Decision support systems
       - Research platforms
-      
+
   reasoning_admin:
     description: "Advanced reasoning and analytics access"
     inherits: [reasoning_user, memory_admin]
@@ -159,7 +159,7 @@ infrastructure_roles:
       - Developers
       - Support staff
       - Monitoring tools
-      
+
   container_operator:
     description: "Container lifecycle management"
     inherits: [container_viewer]
@@ -181,7 +181,7 @@ infrastructure_roles:
     examples:
       - DevOps engineers
       - Site reliability engineers
-      
+
   infrastructure_admin:
     description: "Full infrastructure management"
     inherits: [container_operator]
@@ -203,7 +203,7 @@ infrastructure_roles:
 ### Administrative Roles
 
 ```yaml
-# System and security administration roles  
+# System and security administration roles
 administrative_roles:
 
   tenant_viewer:
@@ -220,7 +220,7 @@ administrative_roles:
       - Customer success
       - Billing systems
       - Usage analytics
-      
+
   tenant_admin:
     description: "Tenant lifecycle and configuration management"
     inherits: [tenant_viewer]
@@ -237,7 +237,7 @@ administrative_roles:
     examples:
       - Account managers
       - Customer onboarding
-      
+
   security_analyst:
     description: "Security monitoring and incident response"
     permissions:
@@ -256,7 +256,7 @@ administrative_roles:
     examples:
       - Security operations center
       - Compliance team
-      
+
   security_admin:
     description: "Full security administration"
     inherits: [security_analyst]
@@ -275,7 +275,7 @@ administrative_roles:
     examples:
       - Security architects
       - CISO team
-      
+
   system_admin:
     description: "Full system administration (break glass)"
     inherits: [infrastructure_admin, security_admin, tenant_admin]
@@ -320,21 +320,21 @@ resource_permissions:
       conditions:
         - tenant_scope: own
         - data_classification: non_sensitive
-    
+
     write:
       roles: [memory_writer, memory_admin]
       conditions:
         - tenant_scope: own
         - content_size_limit: "10MB"
         - rate_limit: "1000/hour"
-    
+
     delete:
       roles: [memory_admin]
       conditions:
         - tenant_scope: own
         - requires_confirmation: true
         - audit_retention: "7_years"
-        
+
     cross_tenant_read:
       roles: [reasoning_admin, system_admin]
       conditions:
@@ -348,13 +348,13 @@ resource_permissions:
       conditions:
         - business_case_required: true
         - resource_quota_defined: true
-        
+
     update:
-      roles: [tenant_admin, system_admin]  
+      roles: [tenant_admin, system_admin]
       conditions:
         - change_approval: required
         - impact_assessment: required
-        
+
     delete:
       roles: [system_admin]
       conditions:
@@ -368,7 +368,7 @@ resource_permissions:
       conditions:
         - business_hours_only: true
         - change_window: preferred
-        
+
     infrastructure_modify:
       roles: [infrastructure_admin, system_admin]
       conditions:
@@ -382,7 +382,7 @@ resource_permissions:
       conditions:
         - incident_ticket: required
         - retention_compliance: enforced
-        
+
     security_config:
       roles: [security_admin, system_admin]
       conditions:
@@ -442,7 +442,7 @@ metadata:
   name: infrastructure-admin
 rules:
 - apiGroups: ["*"]
-  resources: ["*"] 
+  resources: ["*"]
   verbs: ["*"]
 
 ---
@@ -513,7 +513,7 @@ class RBACManager:
     def __init__(self):
         self.roles = self._load_roles()
         self.user_roles = {}
-        
+
     def _load_roles(self) -> Dict[str, Role]:
         return {
             "memory_reader": Role(
@@ -522,7 +522,7 @@ class RBACManager:
                 requires_mfa=False
             ),
             "memory_writer": Role(
-                name="memory_writer", 
+                name="memory_writer",
                 permissions=[Permission.MEMORY_WRITE],
                 inherits=["memory_reader"],
                 requires_mfa=False
@@ -548,42 +548,42 @@ class RBACManager:
                 time_limited="4h"
             )
         }
-    
+
     def get_effective_permissions(self, role_name: str) -> List[Permission]:
         """Get all permissions including inherited ones"""
         role = self.roles.get(role_name)
         if not role:
             return []
-            
+
         permissions = set(role.permissions)
-        
+
         # Add inherited permissions
         if role.inherits:
             for inherited_role in role.inherits:
                 permissions.update(self.get_effective_permissions(inherited_role))
-                
+
         return list(permissions)
-    
+
     def check_permission(self, user_id: str, tenant_id: str, permission: Permission) -> bool:
         """Check if user has specific permission for tenant"""
         user_roles = self.get_user_roles(user_id, tenant_id)
-        
+
         for role_name in user_roles:
             effective_permissions = self.get_effective_permissions(role_name)
             if permission in effective_permissions:
                 return True
-                
+
         return False
-    
+
     def requires_mfa(self, user_id: str, tenant_id: str) -> bool:
         """Check if any user role requires MFA"""
         user_roles = self.get_user_roles(user_id, tenant_id)
-        
+
         for role_name in user_roles:
             role = self.roles.get(role_name)
             if role and role.requires_mfa:
                 return True
-                
+
         return False
 
 def require_permission(permission: Permission):
@@ -599,16 +599,16 @@ def require_permission(permission: Permission):
                 tenant_id = payload['tenant_id']
             except:
                 return {"error": "Invalid token"}, 401
-            
+
             # Check permission
             rbac = RBACManager()
             if not rbac.check_permission(user_id, tenant_id, permission):
                 return {"error": "Insufficient permissions"}, 403
-                
+
             # Check MFA requirement
             if rbac.requires_mfa(user_id, tenant_id) and not payload.get('mfa_verified'):
                 return {"error": "MFA required"}, 403
-                
+
             return f(*args, **kwargs)
         return decorated_function
     return decorator
@@ -620,7 +620,7 @@ def remember_endpoint():
     # Implementation here
     pass
 
-@app.route('/admin/tenants', methods=['GET'])  
+@app.route('/admin/tenants', methods=['GET'])
 @require_permission(Permission.ADMIN_FULL)
 def list_tenants():
     # Implementation here
@@ -636,7 +636,7 @@ def list_tenants():
 ```yaml
 # MFA requirements configuration
 mfa_requirements:
-  
+
   standard_roles:
     - memory_reader
     - memory_writer
@@ -645,7 +645,7 @@ mfa_requirements:
   authentication_methods:
     - api_key
     - jwt_token
-    
+
   elevated_roles:
     - memory_admin
     - tenant_admin
@@ -655,7 +655,7 @@ mfa_requirements:
     - totp  # Time-based One-Time Password
     - hardware_key  # YubiKey, etc.
     - sms_backup  # Backup method only
-    
+
   administrative_roles:
     - security_admin
     - infrastructure_admin
@@ -681,37 +681,37 @@ from typing import Optional, Dict, Any
 class MFAManager:
     def __init__(self):
         self.totp_secrets = {}  # In production, store in secure database
-        
+
     def setup_totp(self, user_id: str) -> Dict[str, Any]:
         """Set up TOTP for user"""
         secret = pyotp.random_base32()
         self.totp_secrets[user_id] = secret
-        
+
         totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
             name=user_id,
             issuer_name="SomaBrain"
         )
-        
+
         # Generate QR code
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(totp_uri)
         qr.make(fit=True)
-        
+
         return {
             "secret": secret,
             "qr_code": qr.make_image(fill_color="black", back_color="white"),
             "backup_codes": self._generate_backup_codes(user_id)
         }
-    
+
     def verify_totp(self, user_id: str, token: str) -> bool:
         """Verify TOTP token"""
         secret = self.totp_secrets.get(user_id)
         if not secret:
             return False
-            
+
         totp = pyotp.TOTP(secret)
         return totp.verify(token, valid_window=1)
-    
+
     def _generate_backup_codes(self, user_id: str, count: int = 10) -> List[str]:
         """Generate backup recovery codes"""
         import secrets
@@ -719,10 +719,10 @@ class MFAManager:
         for _ in range(count):
             code = '-'.join([secrets.token_hex(2).upper() for _ in range(3)])
             codes.append(code)
-        
+
         # Store backup codes (hashed) in database
         # Implementation depends on your storage solution
-        
+
         return codes
 
 # MFA middleware
@@ -731,21 +731,21 @@ def require_mfa(f):
     def decorated_function(*args, **kwargs):
         token = request.headers.get('Authorization', '').replace('Bearer ', '')
         payload = jwt.decode(token, current_app.config['JWT_SECRET'], algorithms=['HS256'])
-        
+
         user_id = payload['user_id']
         tenant_id = payload['tenant_id']
-        
+
         rbac = RBACManager()
         if rbac.requires_mfa(user_id, tenant_id):
             # Check if MFA was completed in this session
             if not payload.get('mfa_verified'):
                 return {"error": "MFA verification required", "mfa_required": True}, 403
-                
+
             # Check if MFA verification is still valid (time-based)
             mfa_timestamp = payload.get('mfa_timestamp', 0)
             if time.time() - mfa_timestamp > 14400:  # 4 hours
                 return {"error": "MFA verification expired", "mfa_required": True}, 403
-        
+
         return f(*args, **kwargs)
     return decorated_function
 ```
@@ -759,7 +759,7 @@ def require_mfa(f):
 ```yaml
 # Approval workflow configuration
 approval_workflows:
-  
+
   tenant_creation:
     required_for:
       - new_tenant_requests
@@ -771,20 +771,20 @@ approval_workflows:
           - expected_usage_volume
           - compliance_requirements
         approver_role: "business_owner"
-        
-      - step: "technical_review" 
+
+      - step: "technical_review"
         required_info:
           - resource_requirements
           - integration_plan
           - security_assessment
         approver_role: "technical_lead"
-        
+
       - step: "security_approval"
         required_info:
           - security_review_completed
           - rbac_plan_approved
         approver_role: "security_admin"
-        
+
       - step: "final_approval"
         approver_role: "tenant_admin"
         requires_all_previous: true
@@ -801,15 +801,15 @@ approval_workflows:
           - time_duration
           - specific_permissions_needed
         self_service: true
-        
+
       - step: "manager_approval"
         approver_role: "team_lead"
         time_limit: "4h"
-        
+
       - step: "security_review"
         approver_role: "security_analyst"
         required_for_roles: ["system_admin", "security_admin"]
-        
+
   emergency_access:
     required_for:
       - break_glass_access
@@ -820,11 +820,11 @@ approval_workflows:
           - incident_severity
           - impact_description
           - immediate_actions_needed
-        
+
       - step: "incident_commander_approval"
         approver_role: "incident_commander"
         emergency_bypass: true
-        
+
       - step: "post_incident_review"
         required: true
         time_limit: "24h_after_access"
@@ -863,15 +863,15 @@ class ApprovalRequest:
 class ApprovalManager:
     def __init__(self):
         self.pending_requests = {}
-        
-    def create_request(self, requester_id: str, role: str, tenant_id: str, 
+
+    def create_request(self, requester_id: str, role: str, tenant_id: str,
                       justification: str, duration: Optional[timedelta] = None) -> str:
         """Create new approval request"""
         request_id = f"req_{int(datetime.now().timestamp())}"
-        
+
         # Determine required approvers based on role
         required_approvers = self._get_required_approvers(role)
-        
+
         request = ApprovalRequest(
             request_id=request_id,
             requester_id=requester_id,
@@ -885,33 +885,33 @@ class ApprovalManager:
             approvers=required_approvers,
             approved_by=[]
         )
-        
+
         self.pending_requests[request_id] = request
-        
+
         # Send notifications to approvers
         self._notify_approvers(request)
-        
+
         return request_id
-    
+
     def approve_request(self, request_id: str, approver_id: str) -> bool:
         """Approve a pending request"""
         request = self.pending_requests.get(request_id)
         if not request or request.status != ApprovalStatus.PENDING:
             return False
-            
+
         if approver_id not in request.approvers:
             return False  # Unauthorized approver
-            
+
         if approver_id not in request.approved_by:
             request.approved_by.append(approver_id)
-        
+
         # Check if all approvers have approved
         if set(request.approved_by) >= set(request.approvers):
             request.status = ApprovalStatus.APPROVED
             self._grant_temporary_access(request)
-            
+
         return True
-    
+
     def _get_required_approvers(self, role: str) -> List[str]:
         """Get list of required approvers for role"""
         approval_matrix = {
@@ -921,7 +921,7 @@ class ApprovalManager:
             "system_admin": ["security_manager", "ciso", "cto"]
         }
         return approval_matrix.get(role, ["team_lead"])
-    
+
     def _grant_temporary_access(self, request: ApprovalRequest):
         """Grant temporary access after approval"""
         # Implementation depends on your user management system
@@ -942,7 +942,7 @@ class ApprovalManager:
 ```yaml
 # Audit logging configuration
 audit_logging:
-  
+
   events_to_log:
     authentication:
       - login_success
@@ -950,26 +950,26 @@ audit_logging:
       - mfa_verification
       - token_refresh
       - logout
-      
+
     authorization:
       - permission_granted
       - permission_denied
       - role_assumption
       - privilege_escalation
-      
+
     data_access:
       - memory_read
       - memory_write
       - memory_delete
       - cross_tenant_access
       - export_operations
-      
+
     administrative:
       - role_creation
       - role_modification
       - user_role_assignment
       - configuration_changes
-      
+
     security:
       - approval_requests
       - approval_decisions
@@ -978,23 +978,23 @@ audit_logging:
 
   log_retention:
     security_events: "7_years"
-    access_events: "3_years" 
+    access_events: "3_years"
     administrative_events: "5_years"
     data_access_events: "7_years"
-    
+
   compliance_frameworks:
     sox:
       events: ["administrative", "data_access", "financial_data"]
       retention: "7_years"
-      
+
     gdpr:
       events: ["data_access", "personal_data", "consent"]
       retention: "6_years"
       right_to_erasure: true
-      
+
     hipaa:
       events: ["all"]
-      retention: "6_years"  
+      retention: "6_years"
       encryption_required: true
 ```
 
@@ -1009,17 +1009,17 @@ from typing import Dict, List, Any
 class ComplianceReporter:
     def __init__(self, audit_logger):
         self.audit_logger = audit_logger
-        
+
     def generate_sox_report(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
         """Generate SOX compliance report"""
-        
+
         # Query audit logs for SOX-relevant events
         events = self.audit_logger.query_events(
             start_date=start_date,
             end_date=end_date,
             event_types=['administrative', 'data_access', 'privilege_escalation']
         )
-        
+
         report = {
             "report_type": "SOX_404_Compliance",
             "period": {"start": start_date.isoformat(), "end": end_date.isoformat()},
@@ -1038,16 +1038,16 @@ class ComplianceReporter:
             "violations": self._identify_compliance_violations(events),
             "recommendations": self._generate_recommendations(events)
         }
-        
+
         return report
-    
+
     def generate_rbac_effectiveness_report(self) -> Dict[str, Any]:
         """Generate RBAC effectiveness analysis"""
-        
+
         # Analyze role usage and effectiveness
         role_usage = self._analyze_role_usage()
         permission_effectiveness = self._analyze_permission_effectiveness()
-        
+
         return {
             "rbac_effectiveness": {
                 "role_utilization": role_usage,
@@ -1078,7 +1078,7 @@ class ComplianceReporter:
 
 ### Initial Setup
 - [ ] Define organizational roles and responsibilities
-- [ ] Map business functions to technical permissions  
+- [ ] Map business functions to technical permissions
 - [ ] Create role hierarchy and inheritance model
 - [ ] Implement permission matrix
 - [ ] Configure authentication and MFA requirements
@@ -1090,7 +1090,7 @@ class ComplianceReporter:
 - [ ] Set up audit logging and monitoring
 - [ ] Create approval workflow automation
 
-### Operational Procedures  
+### Operational Procedures
 - [ ] Document role assignment procedures
 - [ ] Create access request workflows
 - [ ] Implement regular access reviews

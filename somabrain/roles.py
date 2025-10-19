@@ -25,19 +25,19 @@ def make_unitary_role(
     (dim//2+1,).
     """
     rng = _seed.rng_from_seed(seed)
-    
+
     # Create a random phase spectrum
     phase = rng.uniform(-np.pi, np.pi, size=(dim // 2 + 1,))
-    
+
     # Create a unitary spectrum with unit magnitude
     U_canon = np.exp(1j * phase).astype(np.complex64)
-    
+
     # Synthesize to time domain
     u_time = _num.irfft_norm(U_canon, n=dim, axis=-1).astype(dtype)
-    
+
     # Renormalize in time domain to ensure unit norm
     u_time = _num.normalize_array(u_time)
-    
+
     return u_time, U_canon
 
 

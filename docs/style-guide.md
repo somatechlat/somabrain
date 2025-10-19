@@ -93,13 +93,13 @@ kind: Deployment
 ````
 
 ### Links and References
-- **Internal links**: `[Link Text](relative-path.md)` 
+- **Internal links**: `[Link Text](relative-path.md)`
 - **External links**: `[Link Text](https://example.com)`
 - **Anchor links**: `[Section](#section-heading)` (lowercase, hyphens for spaces)
 - **Reference style**: Use for repeated URLs:
   ```markdown
   See the [official docs][1] and [API reference][2].
-  
+
   [1]: https://docs.somabrain.com
   [2]: https://api.somabrain.com
   ```
@@ -259,7 +259,7 @@ How to confirm this step worked correctly.
 Before publishing any documentation:
 
 - [ ] **Purpose statement** clearly describes document goal
-- [ ] **Audience** specifically identifies intended readers  
+- [ ] **Audience** specifically identifies intended readers
 - [ ] **Prerequisites** list all required knowledge/setup
 - [ ] **Code examples** tested and working
 - [ ] **All links** resolve correctly
@@ -280,7 +280,7 @@ All documentation must pass these automated checks:
 # Markdown linting
 markdownlint-cli2 "docs/**/*.md"
 
-# Link checking  
+# Link checking
 markdown-link-check docs/**/*.md
 
 # Spell checking
@@ -316,7 +316,7 @@ Documentation builds run these validations:
 | **Density Matrix** | Mathematical structure tracking memory relationships | Use in technical documentation |
 | **Strict Mode** | Production configuration requiring real services | Always capitalize |
 
-### Technical Terms  
+### Technical Terms
 | Term | Definition | Usage |
 |------|------------|-------|
 | **Memory Operations** | Store (remember) and retrieve (recall) functions | User-facing terminology |

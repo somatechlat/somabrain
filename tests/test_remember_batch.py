@@ -25,7 +25,7 @@ def test_remember_handles_batch_of_memories_live():
             "task": task,
             "importance": 1,
             "memory_type": "episodic",
-            "timestamp": f"2025-01-{idx+1:02d}T12:00:00Z",
+            "timestamp": f"2025-01-{idx + 1:02d}T12:00:00Z",
             "namespace": namespace,
         }
         res = requests.post(
@@ -51,6 +51,6 @@ def test_remember_handles_batch_of_memories_live():
             if isinstance(seq, list):
                 candidates.extend(seq)
         memories = candidates
-        assert any(
-            m.get("task") == task for m in memories
-        ), f"Missing memory for {task}"
+        assert any(m.get("task") == task for m in memories), (
+            f"Missing memory for {task}"
+        )

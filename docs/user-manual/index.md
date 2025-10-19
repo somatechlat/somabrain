@@ -12,27 +12,27 @@
 
 **SomaBrain gives your AI the memory it deserves.** Imagine ChatGPT that remembers your entire conversation history, recommendation engines that learn your preferences over months, or AI assistants that build relationships with users. That's the power of cognitive memory.
 
-**What is SomaBrain?**  
+**What is SomaBrain?**
 The world's first production-ready cognitive memory system that thinks like a human brain but operates at digital speed. Instead of dumb keyword searches, SomaBrain understands meaning, builds connections, and learns from every interaction—turning any AI application into an intelligent, learning companion.
 
 ## 🚀 **Transform Any AI Application in Minutes**
 
-### **Before SomaBrain:** 
-❌ AI forgets everything between conversations  
-❌ Keyword-based search misses important context  
-❌ No learning from user interactions  
-❌ Complex setup and maintenance  
+### **Before SomaBrain:**
+❌ AI forgets everything between conversations
+❌ Keyword-based search misses important context
+❌ No learning from user interactions
+❌ Complex setup and maintenance
 
 ### **After SomaBrain:**
-✅ **Persistent Intelligence**: Remembers every interaction, builds lasting relationships  
-✅ **Contextual Understanding**: Finds "Tesla Model 3" when you search for "electric car"  
-✅ **Continuous Learning**: Adapts to user preferences and behavior patterns  
-✅ **One-Line Setup**: `docker compose up` and you're running production-grade cognitive memory  
+✅ **Persistent Intelligence**: Remembers every interaction, builds lasting relationships
+✅ **Contextual Understanding**: Finds "Tesla Model 3" when you search for "electric car"
+✅ **Continuous Learning**: Adapts to user preferences and behavior patterns
+✅ **One-Line Setup**: `docker compose up` and you're running production-grade cognitive memory
 
 ## Quick Navigation
 
 - [Installation](installation.md) - Simple setup for end-users
-- [Quick Start Tutorial](quick-start-tutorial.md) - Your first SomaBrain workflow  
+- [Quick Start Tutorial](quick-start-tutorial.md) - Your first SomaBrain workflow
 - [Features](features/) - Complete feature guides
   - [Memory Operations](features/memory-operations.md) - Remember and recall
   - [Cognitive Reasoning](features/cognitive-reasoning.md) - Planning and inference
@@ -52,7 +52,7 @@ Have specific questions? Check the [FAQ](faq.md) or browse feature-specific guid
 
 **Common Errors**: See [FAQ](faq.md) for troubleshooting user-facing issues.
 
-**References**: 
+**References**:
 - [Technical Manual](../technical-manual/index.md) for system administration
 - [Development Manual](../development-manual/index.md) for contributing code
 - [API Reference](../development-manual/api-reference.md) for complete endpoint documentation

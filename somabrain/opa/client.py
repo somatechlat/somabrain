@@ -72,7 +72,9 @@ class OPAClient:
             # Respect fail-open vs fail-closed posture via SOMA_OPA_FAIL_CLOSED
             if shared_settings is not None:
                 try:
-                    fail_closed = bool(getattr(shared_settings, "opa_fail_closed", False))
+                    fail_closed = bool(
+                        getattr(shared_settings, "opa_fail_closed", False)
+                    )
                 except Exception:
                     fail_closed = False
             else:

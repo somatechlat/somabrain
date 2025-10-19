@@ -11,7 +11,9 @@ def _service() -> ConfigService:
     return ConfigService(lambda: Config())
 
 
-async def _seed(service: ConfigService, tenant: str, namespace: str, top1: float, margin: float) -> None:
+async def _seed(
+    service: ConfigService, tenant: str, namespace: str, top1: float, margin: float
+) -> None:
     await service.patch_namespace(
         tenant,
         namespace,
@@ -29,7 +31,9 @@ async def test_cutover_flow_success() -> None:
     await _seed(service, "tenant-a", "wm@v1", 0.9, 0.12)
     await _seed(service, "tenant-a", "wm@v2", 0.9, 0.12)
 
-    controller = CutoverController(service, readiness_margin=0.0, latency_budget_factor=1.10)
+    controller = CutoverController(
+        service, readiness_margin=0.0, latency_budget_factor=1.10
+    )
 
     plan = await controller.open_plan("tenant-a", "wm@v1", "wm@v2")
     assert plan.status == "draft"

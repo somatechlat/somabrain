@@ -462,7 +462,7 @@ def test_encoding_performance(benchmark):
 
 # Solution 3: Control environment
 # - Close other applications
-# - Use dedicated test machine  
+# - Use dedicated test machine
 # - Monitor system resources
 ```
 
@@ -632,29 +632,29 @@ async with database_pool.acquire() as conn:
 **Diagnosis**:
 ```sql
 -- Check slow queries
-SELECT query, mean_time, calls 
-FROM pg_stat_statements 
-ORDER BY mean_time DESC 
+SELECT query, mean_time, calls
+FROM pg_stat_statements
+ORDER BY mean_time DESC
 LIMIT 10;
 
 -- Analyze query plan
-EXPLAIN (ANALYZE, BUFFERS) 
-SELECT * FROM memories 
-WHERE tenant_id = 'test' 
-ORDER BY vector_encoding <=> '[1,2,3]'::vector 
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT * FROM memories
+WHERE tenant_id = 'test'
+ORDER BY vector_encoding <=> '[1,2,3]'::vector
 LIMIT 10;
 
 -- Check index usage
-SELECT schemaname, tablename, attname, n_distinct, correlation 
-FROM pg_stats 
+SELECT schemaname, tablename, attname, n_distinct, correlation
+FROM pg_stats
 WHERE tablename = 'memories';
 ```
 
 **Solutions**:
 ```sql
 -- Solution 1: Add missing indexes
-CREATE INDEX CONCURRENTLY idx_memories_tenant_vector 
-ON memories (tenant_id) 
+CREATE INDEX CONCURRENTLY idx_memories_tenant_vector
+ON memories (tenant_id)
 INCLUDE (vector_encoding);
 
 -- Solution 2: Update table statistics
@@ -662,7 +662,7 @@ ANALYZE memories;
 
 -- Solution 3: Optimize query
 -- Use appropriate vector index type (HNSW vs IVFFlat)
-CREATE INDEX idx_memories_vector_hnsw 
+CREATE INDEX idx_memories_vector_hnsw
 ON memories USING hnsw (vector_encoding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 ```
@@ -863,8 +863,8 @@ logging.basicConfig(
 # Solution 2: Add structured logging
 import structlog
 logger = structlog.get_logger()
-logger.info("Memory operation completed", 
-           memory_id=memory_id, 
+logger.info("Memory operation completed",
+           memory_id=memory_id,
            tenant_id=tenant_id,
            operation_time=elapsed_time)
 
@@ -904,10 +904,10 @@ async def health_check():
         "cache": await check_cache_health(),
         "vector_service": await check_vector_service_health()
     }
-    
+
     all_healthy = all(checks.values())
     status_code = 200 if all_healthy else 503
-    
+
     return {"status": "healthy" if all_healthy else "unhealthy", "checks": checks}
 
 # Solution 3: Alerting integration

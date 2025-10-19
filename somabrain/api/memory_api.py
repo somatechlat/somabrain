@@ -71,13 +71,19 @@ async def _ensure_config_runtime_started() -> None:
 class MemoryAttachment(BaseModel):
     kind: str = Field(..., description="Attachment type identifier")
     uri: Optional[str] = Field(None, description="External location reference")
-    content_type: Optional[str] = Field(None, description="MIME type for the attachment")
-    checksum: Optional[str] = Field(None, description="Integrity checksum for validation")
+    content_type: Optional[str] = Field(
+        None, description="MIME type for the attachment"
+    )
+    checksum: Optional[str] = Field(
+        None, description="Integrity checksum for validation"
+    )
     data: Optional[str] = Field(
         None,
         description="Inline base64-encoded payload; use sparingly for small blobs",
     )
-    meta: Optional[Dict[str, Any]] = Field(None, description="Attachment metadata annotations")
+    meta: Optional[Dict[str, Any]] = Field(
+        None, description="Attachment metadata annotations"
+    )
 
 
 class MemoryLink(BaseModel):
@@ -88,9 +94,15 @@ class MemoryLink(BaseModel):
 
 
 class MemorySignalPayload(BaseModel):
-    importance: Optional[float] = Field(None, ge=0.0, description="Relative importance weight")
-    novelty: Optional[float] = Field(None, ge=0.0, description="Novelty score from agent")
-    ttl_seconds: Optional[int] = Field(None, ge=0, description="Soft time-to-live for cleanup")
+    importance: Optional[float] = Field(
+        None, ge=0.0, description="Relative importance weight"
+    )
+    novelty: Optional[float] = Field(
+        None, ge=0.0, description="Novelty score from agent"
+    )
+    ttl_seconds: Optional[int] = Field(
+        None, ge=0, description="Soft time-to-live for cleanup"
+    )
     reinforcement: Optional[str] = Field(
         None, description="Working-memory reinforcement hint (e.g. boost, suppress)"
     )
@@ -111,8 +123,12 @@ class MemorySignalFeedback(BaseModel):
 
 class MemoryWriteRequest(BaseModel):
     tenant: str = Field(..., min_length=1, description="Tenant identifier")
-    namespace: str = Field(..., min_length=1, description="Logical namespace (e.g. wm, ltm)")
-    key: str = Field(..., min_length=1, description="Stable key used to derive coordinates")
+    namespace: str = Field(
+        ..., min_length=1, description="Logical namespace (e.g. wm, ltm)"
+    )
+    key: str = Field(
+        ..., min_length=1, description="Stable key used to derive coordinates"
+    )
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(
         None, description="Optional metadata blended into the stored payload"
@@ -123,7 +139,9 @@ class MemoryWriteRequest(BaseModel):
     ttl_seconds: Optional[int] = Field(
         None, ge=0, description="Desired time-to-live hint for automatic cleanup"
     )
-    tags: List[str] = Field(default_factory=list, description="Arbitrary agent-supplied tags")
+    tags: List[str] = Field(
+        default_factory=list, description="Arbitrary agent-supplied tags"
+    )
     policy_tags: List[str] = Field(
         default_factory=list, description="Policy or governance tags for this memory"
     )
@@ -136,8 +154,12 @@ class MemoryWriteRequest(BaseModel):
     signals: Optional[MemorySignalPayload] = Field(
         None, description="Agent-provided signals guiding storage priorities"
     )
-    importance: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.importance")
-    novelty: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.novelty")
+    importance: Optional[float] = Field(
+        None, ge=0.0, description="Shortcut for signals.importance"
+    )
+    novelty: Optional[float] = Field(
+        None, ge=0.0, description="Shortcut for signals.novelty"
+    )
     trace_id: Optional[str] = Field(
         None, description="Agent correlation identifier for downstream observability"
     )
@@ -171,12 +193,16 @@ class MemoryRecallRequest(BaseModel):
         None, description="Set to 'wm', 'ltm', or omit for both"
     )
     universe: Optional[str] = None
-    tags: List[str] = Field(default_factory=list, description="Filter hits containing these tags")
+    tags: List[str] = Field(
+        default_factory=list, description="Filter hits containing these tags"
+    )
     min_score: Optional[float] = Field(
         None, ge=0.0, description="Drop hits with score below this threshold"
     )
     max_age_seconds: Optional[int] = Field(
-        None, ge=0, description="Exclude hits older than the specified age when payload timestamps exist"
+        None,
+        ge=0,
+        description="Exclude hits older than the specified age when payload timestamps exist",
     )
     scoring_mode: Optional[str] = Field(
         None,
@@ -193,7 +219,10 @@ class MemoryRecallRequest(BaseModel):
         description="If true, persist results in the session registry for follow-up queries",
     )
     chunk_size: Optional[int] = Field(
-        None, ge=1, le=50, description="Limit number of hits returned per call for streaming"
+        None,
+        ge=1,
+        le=50,
+        description="Limit number of hits returned per call for streaming",
     )
     chunk_index: int = Field(
         0,
@@ -247,7 +276,9 @@ class MemoryBatchWriteItem(BaseModel):
     key: str = Field(..., min_length=1)
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
-    ttl_seconds: Optional[int] = Field(None, ge=0, description="TTL override for this item")
+    ttl_seconds: Optional[int] = Field(
+        None, ge=0, description="TTL override for this item"
+    )
     tags: List[str] = Field(default_factory=list, description="Optional tags")
     policy_tags: List[str] = Field(default_factory=list, description="Policy tags")
     attachments: List[MemoryAttachment] = Field(default_factory=list)
@@ -411,7 +442,9 @@ def _compose_memory_payload(
     stored_payload.setdefault("namespace", namespace)
     stored_payload.setdefault("tenant", tenant)
     stored_payload.setdefault("key", key)
-    stored_payload.setdefault("memory_type", stored_payload.get("memory_type", "episodic"))
+    stored_payload.setdefault(
+        "memory_type", stored_payload.get("memory_type", "episodic")
+    )
     if meta:
         incoming_meta = dict(meta)
         existing_meta = stored_payload.get("meta")
@@ -425,8 +458,7 @@ def _compose_memory_payload(
     stored_payload["policy_tags"] = list(dict.fromkeys(policy_tags or []))
     if attachments:
         stored_payload["attachments"] = [
-            attachment.dict(exclude_none=True)
-            for attachment in attachments
+            attachment.dict(exclude_none=True) for attachment in attachments
         ]
     if links:
         stored_payload["links"] = [link.dict(exclude_none=True) for link in links]
@@ -483,7 +515,9 @@ def _store_recall_session(
 
 
 @router.post("/remember", response_model=MemoryWriteResponse)
-async def remember_memory(payload: MemoryWriteRequest, request: Request) -> MemoryWriteResponse:
+async def remember_memory(
+    payload: MemoryWriteRequest, request: Request
+) -> MemoryWriteResponse:
     await _ensure_config_runtime_started()
     pool = _get_memory_pool()
     wm = _get_wm()
@@ -754,7 +788,7 @@ async def remember_memory_batch(
 
 
 async def _perform_recall(
-    payload: MemoryRecallRequest,*, default_chunk_size: Optional[int] = None
+    payload: MemoryRecallRequest, *, default_chunk_size: Optional[int] = None
 ) -> MemoryRecallResponse:
     await _ensure_config_runtime_started()
     layer = (payload.layer or "all").lower()
@@ -906,7 +940,9 @@ async def _perform_recall(
                 detail={"message": str(exc), "breaker_open": breaker_state},
             ) from exc
         except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"recall failed: {exc}") from exc
+            raise HTTPException(
+                status_code=502, detail=f"recall failed: {exc}"
+            ) from exc
         stage_dur = time.perf_counter() - stage_start
         try:
             from somabrain import metrics as M
@@ -1134,6 +1170,8 @@ async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
     await _ensure_config_runtime_started()
     results = _TIERED_REGISTRY.rebuild(payload.tenant, namespace=payload.namespace)
     return {"ok": True, "results": results}
+
+
 class AnnRebuildRequest(BaseModel):
     tenant: str
     namespace: Optional[str] = None

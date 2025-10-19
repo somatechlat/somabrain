@@ -57,7 +57,7 @@ curl -X POST http://localhost:9696/reason \
 
 **Example Memory Context**:
 - Memory 1: "PostgreSQL supports ACID transactions critical for payment processing"
-- Memory 2: "Redis provides sub-millisecond response times for session management"  
+- Memory 2: "Redis provides sub-millisecond response times for session management"
 - Memory 3: "Our e-commerce site processes 10,000 orders per day"
 - Memory 4: "Previous projects showed MongoDB struggled with complex transactions"
 
@@ -74,14 +74,14 @@ curl -X POST http://localhost:9696/reason \
       "supporting_memories": ["mem_postgres_acid", "mem_ecommerce_requirements"]
     },
     {
-      "step": 2, 
+      "step": 2,
       "type": "performance_consideration",
       "observation": "High traffic demands fast read performance for product catalogs",
       "supporting_memories": ["mem_redis_performance", "mem_traffic_patterns"]
     },
     {
       "step": 3,
-      "type": "risk_assessment", 
+      "type": "risk_assessment",
       "observation": "MongoDB transaction limitations pose risks for payment processing",
       "supporting_memories": ["mem_mongodb_limitations", "mem_payment_failures"]
     }
@@ -143,13 +143,13 @@ Step 1: Identify current MongoDB usage patterns
 ├─ Memory: "Current read/write ratio is 80/20"
 └─ Inference: Need to replicate these patterns in PostgreSQL
 
-Step 2: Analyze PostgreSQL requirements  
+Step 2: Analyze PostgreSQL requirements
 ├─ Memory: "PostgreSQL requires more RAM for optimal performance"
 ├─ Memory: "JSON columns can replace document structure"
 └─ Inference: Infrastructure scaling needed for memory requirements
 
 Step 3: Identify migration dependencies
-├─ Memory: "Application uses MongoDB-specific aggregation pipelines"  
+├─ Memory: "Application uses MongoDB-specific aggregation pipelines"
 ├─ Memory: "Several microservices depend on MongoDB change streams"
 └─ Inference: Code refactoring required for PostgreSQL equivalents
 
@@ -174,7 +174,7 @@ curl -X POST http://localhost:9696/reason \
     "reasoning_mode": "decision_tree",
     "criteria": {
       "performance": 0.4,
-      "complexity": 0.3, 
+      "complexity": 0.3,
       "maintainability": 0.2,
       "cost": 0.1
     },
@@ -241,7 +241,7 @@ curl -X POST http://localhost:9696/reason \
     {
       "date": "2025-02-15",
       "event": "Initial performance degradation noticed",
-      "type": "problem_identification", 
+      "type": "problem_identification",
       "details": "Query response times increased from 100ms to 2s",
       "supporting_memory": "mem_perf_alert_001"
     },
@@ -253,7 +253,7 @@ curl -X POST http://localhost:9696/reason \
       "supporting_memory": "mem_analysis_002"
     },
     {
-      "date": "2025-03-01", 
+      "date": "2025-03-01",
       "event": "Index optimization implemented",
       "type": "solution_implemented",
       "details": "Added GIN indexes on user preferences JSON column",
@@ -324,7 +324,7 @@ curl -X POST http://localhost:9696/reason \
 ```json
 {
   "primary_analogy": {
-    "source": "Netflix API Gateway Implementation", 
+    "source": "Netflix API Gateway Implementation",
     "similarity_score": 0.87,
     "key_patterns": [
       "Circuit breaker pattern for fault tolerance",
@@ -333,7 +333,7 @@ curl -X POST http://localhost:9696/reason \
     ],
     "applicable_lessons": [
       "Implement Hystrix-style circuit breakers",
-      "Use weighted routing for A/B testing", 
+      "Use weighted routing for A/B testing",
       "Monitor service-level error rates"
     ]
   },
@@ -539,9 +539,9 @@ technical_architecture:
   confidence_thresholds:
     high_impact_decisions: 0.8
     routine_decisions: 0.6
-  
+
 business_strategy:
-  reasoning_modes: [temporal, probabilistic, counterfactual] 
+  reasoning_modes: [temporal, probabilistic, counterfactual]
   evidence_sources: [market_data, competitor_analysis, financial_projections]
   uncertainty_handling: bayesian_updating
 ```
@@ -566,7 +566,7 @@ curl -X POST http://localhost:9696/validate/reasoning \
     },
     "quality_metrics": [
       "logical_consistency",
-      "evidence_coverage", 
+      "evidence_coverage",
       "conclusion_support",
       "bias_detection"
     ]
@@ -585,7 +585,7 @@ curl -X POST http://localhost:9696/analyze/bias \
     "reasoning_history": ["session_120", "session_121", "session_122"],
     "bias_types": [
       "confirmation_bias",
-      "recency_bias", 
+      "recency_bias",
       "availability_bias",
       "anchoring_bias"
     ],

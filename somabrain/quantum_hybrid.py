@@ -7,4 +7,3 @@ this module now raises immediately to surface stale dependencies.
 raise ImportError(
     "somabrain.quantum_hybrid has been removed; use somabrain.quantum.QuantumLayer instead"
 )
-
