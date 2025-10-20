@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 import somabrain.metrics as M
-from brain.adapters.memstore_adapter import MemstoreAdapter
+from somabrain.context.memory_shim import MemoryRecallClient
 from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import auth_guard
 from somabrain.context import ContextBuilder, ContextBundle
@@ -25,8 +25,8 @@ _weights = RetrievalWeights()
 
 
 def _builder_for_request() -> ContextBuilder:
-    base_url = os.getenv("SOMABRAIN_MEMSTORE_URL")
-    memstore = MemstoreAdapter(base_url=base_url) if base_url else MemstoreAdapter()
+    # Use canonical MemoryClient via shim; base URL and token come from central config
+    memstore = MemoryRecallClient()
     return ContextBuilder(
         embed_fn=_embedder.embed,
         memstore=memstore,

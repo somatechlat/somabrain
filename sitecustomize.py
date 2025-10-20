@@ -9,6 +9,5 @@ if mem_endpoint is not None:
     if sanitized:
         os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = sanitized
     else:
-        os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = "http://host.docker.internal:9595"
-else:
-    os.environ.setdefault("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://host.docker.internal:9595")
+        # leave unset to let central settings or docker compose define defaults
+        os.environ.pop("SOMABRAIN_MEMORY_HTTP_ENDPOINT", None)

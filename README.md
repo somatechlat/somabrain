@@ -139,7 +139,7 @@ Metrics are available at `http://localhost:9696/metrics`; queued writes appear u
 
 1. Read the [Development Manual](docs/development-manual/index.md) and follow the local setup + testing instructions (`pytest`, `ruff`, `mypy`).
 2. Extend the cognitive stack: plug in your own memory service, add new retrieval strategies, or integrate additional planning heuristics via `somabrain/planner`.
-3. Capture benchmarks with the scripts under `benchmarks/` (e.g., `learning_speed_interactive.ipynb`) to measure model retention and learning speed.
+3. Capture benchmarks with the scripts under `benchmarks/` (e.g., `adaptation_learning_bench.py`) to measure model retention and learning speed. The old interactive notebook has been removed in favor of script-based, reproducible runs that operate against real services.
 4. File issues or update `docs/CANONICAL_IMPROVEMENTS.md` whenever you add a new capability or harden an assumption.
 
 **SomaBrain’s guiding philosophy is simple: make high-order memory and reasoning practical without relaxing the math. If something looks magical, you can find the code, metrics, and documentation that make it real.**

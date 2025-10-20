@@ -30,31 +30,38 @@ def _get_redis():
     import os
 
     # First, honor an explicit request to use in-memory Redis for tests
-    try:
-        allow_fake = os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")
-        if str(allow_fake).strip() in {"1", "true", "True", "yes", "on"}:
+    allow_fake = os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")
+    # Under pytest, default to fake/none unless explicitly forced
+    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("SOMABRAIN_FORCE_EXTERNAL_REDIS", "0") not in {"1", "true", "True", "yes", "on"}:
+        allow_fake = "1"
+    if str(allow_fake).strip() in {"1", "true", "True", "yes", "on"}:
+        try:
             import fakeredis  # type: ignore
 
             return fakeredis.FakeRedis()
-    except Exception:
-        pass
+        except Exception:
+            # Explicitly requested fake Redis but it's not available –
+            # return None to avoid attempting a real network connection in tests.
+            return None
 
-    try:
-        redis_url = get_redis_url()
-        if redis_url:
-            redis_url = redis_url.strip()
-        import redis
+    require_backends = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
+    if str(require_backends).strip() in {"1", "true", "True", "yes", "on"}:
+        try:
+            redis_url = get_redis_url()
+            if redis_url:
+                redis_url = redis_url.strip()
+            import redis
 
-        if redis_url:
-            return redis.from_url(redis_url)
-        # Legacy fallback to host/port variables without hard-coded defaults
-        redis_host = os.getenv("SOMABRAIN_REDIS_HOST") or os.getenv("REDIS_HOST")
-        redis_port = os.getenv("SOMABRAIN_REDIS_PORT") or os.getenv("REDIS_PORT")
-        redis_db = os.getenv("SOMABRAIN_REDIS_DB") or os.getenv("REDIS_DB", "0")
-        if redis_host and redis_port:
-            return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
-    except Exception:
-        pass
+            if redis_url:
+                return redis.from_url(redis_url)
+            # Legacy fallback to host/port variables without hard-coded defaults
+            redis_host = os.getenv("SOMABRAIN_REDIS_HOST") or os.getenv("REDIS_HOST")
+            redis_port = os.getenv("SOMABRAIN_REDIS_PORT") or os.getenv("REDIS_PORT")
+            redis_db = os.getenv("SOMABRAIN_REDIS_DB") or os.getenv("REDIS_DB", "0")
+            if redis_host and redis_port:
+                return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
+        except Exception:
+            pass
     return None
 
 
@@ -256,6 +263,89 @@ class AdaptationEngine:
         # Load state from Redis if available
         if self._redis and self._tenant_id:
             self._load_state()
+
+    # ---------------------------------------------------------------------
+    # Configuration and lifecycle controls
+    # ---------------------------------------------------------------------
+    def set_constraints(self, constraints: AdaptationConstraints) -> None:
+        """Replace constraint bounds at runtime and rebuild internal map."""
+        self._constraint_bounds = constraints
+        self._constraints = {
+            "alpha": (constraints.alpha_min, constraints.alpha_max),
+            "gamma": (constraints.gamma_min, constraints.gamma_max),
+            "lambda_": (constraints.lambda_min, constraints.lambda_max),
+            "mu": (constraints.mu_min, constraints.mu_max),
+            "nu": (constraints.nu_min, constraints.nu_max),
+        }
+
+    def set_gains(self, gains: AdaptationGains) -> None:
+        """Replace per-parameter gains at runtime."""
+        self._gains = gains
+
+    def set_base_learning_rate(self, base_lr: float) -> None:
+        """Update base learning rate and reset effective LR to base."""
+        try:
+            self._base_lr = float(base_lr)
+        except Exception:
+            return
+        self._lr = self._base_lr
+
+    def reset(
+        self,
+        retrieval_defaults: Optional["RetrievalWeights"] = None,
+        utility_defaults: Optional[UtilityWeights] = None,
+        base_lr: Optional[float] = None,
+        clear_history: bool = True,
+    ) -> None:
+        """Reset weights and counters to defaults for a clean run.
+
+        Args:
+            retrieval_defaults: Optional RetrievalWeights to copy into engine.
+            utility_defaults: Optional UtilityWeights to copy into engine.
+            base_lr: Optional new base learning rate.
+            clear_history: When True, drops rollback history and feedback count.
+        """
+        # Reset retrieval weights
+        if retrieval_defaults is not None:
+            self._retrieval.alpha = float(retrieval_defaults.alpha)
+            self._retrieval.beta = float(retrieval_defaults.beta)
+            self._retrieval.gamma = float(retrieval_defaults.gamma)
+            self._retrieval.tau = float(retrieval_defaults.tau)
+        else:
+            # Sensible defaults aligning with ContextBuilder defaults
+            try:
+                from somabrain.context.builder import RetrievalWeights as _RW
+
+                rw = _RW()
+                self._retrieval.alpha = float(rw.alpha)
+                self._retrieval.beta = float(rw.beta)
+                self._retrieval.gamma = float(rw.gamma)
+                self._retrieval.tau = float(rw.tau)
+            except Exception:
+                self._retrieval.alpha = 1.0
+                self._retrieval.beta = 0.2
+                self._retrieval.gamma = 0.1
+                self._retrieval.tau = 0.7
+        # Reset utility weights
+        if utility_defaults is not None:
+            self._utility.lambda_ = float(utility_defaults.lambda_)
+            self._utility.mu = float(utility_defaults.mu)
+            self._utility.nu = float(utility_defaults.nu)
+        else:
+            self._utility.lambda_ = 1.0
+            self._utility.mu = 0.1
+            self._utility.nu = 0.05
+        # Learning rate
+        if base_lr is not None:
+            self.set_base_learning_rate(float(base_lr))
+        else:
+            # Snap effective LR back to base
+            self._lr = self._base_lr
+        if clear_history:
+            self._history.clear()
+            self._feedback_count = 0
+        # Persist updated state
+        self._persist_state()
 
     # ---------------------------------------------------------------------
     # Public helpers for tests / external callers

@@ -14,6 +14,24 @@ except Exception:  # pragma: no cover - optional dependency in legacy layouts
 from somabrain.infrastructure import get_opa_url
 
 
+def _policy_path_for_mode() -> str:
+    """Resolve OPA data path based on centralized mode bundle.
+
+    - dev mode -> somabrain/auth/allow_dev
+    - staging/prod -> somabrain/auth/allow
+    """
+    bundle = None
+    if shared_settings is not None:
+        try:
+            bundle = str(getattr(shared_settings, "mode_opa_policy_bundle", "") or "")
+        except Exception:
+            bundle = None
+    bundle = (bundle or "").strip().lower()
+    if bundle == "allow-dev" or bundle == "dev":
+        return "somabrain/auth/allow_dev"
+    return "somabrain/auth/allow"
+
+
 class OPAClient:
     """Simple OPA HTTP client.
 
@@ -25,7 +43,7 @@ class OPAClient:
     stance where OPA enforcement is optional.
     """
 
-    def __init__(self, policy_path: str = "somabrain/auth/allow") -> None:
+    def __init__(self, policy_path: str | None = None) -> None:
         if shared_settings is not None:
             try:
                 self.timeout = float(
@@ -33,8 +51,7 @@ class OPAClient:
                 )
             except Exception:
                 self.timeout = 2.0
-            # TODO(Sprint3): honor settings.mode_opa_policy_bundle to choose
-            # the proper bundle path or params when OPA exposes multiple bundles.
+            # Policy path is derived from mode bundle when not explicitly provided
         else:
             self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
 
@@ -46,7 +63,8 @@ class OPAClient:
                 or os.getenv("SOMABRAIN_OPA_FALLBACK")
                 or "http://localhost:8181"
             )
-        self.policy_path = policy_path.rstrip("/")
+        effective_path = (policy_path or _policy_path_for_mode()).rstrip("/")
+        self.policy_path = effective_path
         self.session = requests.Session()
         LOGGER.debug(
             "OPA client initialized: %s (policy %s)", self.base_url, self.policy_path

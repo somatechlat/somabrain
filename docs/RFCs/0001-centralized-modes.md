@@ -53,7 +53,7 @@ Behavior by mode (summary):
 - API: somabrain/api/*.py
 - Learning: somabrain/learning/adaptation.py
 - Context: somabrain/context/builder.py
-- Memstore: brain/adapters/memstore_adapter.py
+- Memory client: somabrain/memory_client.py (single gateway)
 - Policy/Auth hub: services/sah/__init__.py and ops/opa/policies/*
 - Workers: somabrain/workers/*
 - Benchmarks: benchmarks/*.py

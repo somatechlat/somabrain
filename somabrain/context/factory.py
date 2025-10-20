@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 
-from brain.adapters.memstore_adapter import MemstoreAdapter
+from somabrain.context.memory_shim import MemoryRecallClient
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.embeddings import TinyDeterministicEmbedder
@@ -21,8 +21,7 @@ _utility_weights = UtilityWeights()
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
-    base_url = os.getenv("SOMABRAIN_MEMSTORE_URL")
-    memstore = MemstoreAdapter(base_url=base_url) if base_url else MemstoreAdapter()
+    memstore = MemoryRecallClient()
     return ContextBuilder(
         embed_fn=_embedder.embed,
         memstore=memstore,

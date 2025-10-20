@@ -14,7 +14,7 @@ from typing import Callable, Dict, Iterable, List, Optional
 
 import numpy as np
 
-from brain.adapters.memstore_adapter import MemstoreAdapter
+from somabrain.context.memory_shim import MemoryRecallClient
 
 try:  # optional import; falls back to defaults during lightweight tests
     from somabrain.config import get_config as _get_config
@@ -56,12 +56,12 @@ class ContextBuilder:
     def __init__(
         self,
         embed_fn: Callable[[str], Iterable[float]],
-        memstore: Optional[MemstoreAdapter] = None,
+        memstore: Optional[object] = None,
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memstore = memstore or MemstoreAdapter()
+        self._memstore = memstore or MemoryRecallClient()
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default placeholder)
@@ -189,7 +189,7 @@ class ContextBuilder:
         session_id: Optional[str] = None,
     ) -> ContextBundle:
         embedding = self._embed(query)
-        results = self._search(embedding, top_k)
+        results = self._search(query, embedding, top_k)
         memories: List[MemoryRecord] = [
             MemoryRecord(
                 id=r.get("id", ""),
@@ -232,7 +232,16 @@ class ContextBuilder:
             raise RuntimeError("embedding function returned empty vector")
         return [float(v) for v in raw]
 
-    def _search(self, embedding: List[float], top_k: int) -> List[Dict]:
+    def _search(self, query_text: str, embedding: List[float], top_k: int) -> List[Dict]:
+        # Prefer text search on the live memstore when possible, with tenant scoping
+        try:
+            filters = {"tenant": self._tenant_id} if getattr(self, "_tenant_id", None) else None
+            results = self._memstore.search_text(query_text, top_k=top_k, filters=filters)
+            if results:
+                return results
+        except Exception:
+            pass
+        # Fallback to legacy vector search path
         try:
             return self._memstore.search(embedding, top_k=top_k)
         except Exception:

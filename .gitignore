@@ -31,6 +31,10 @@ docker-build.log
 # Logs and temporary files
 *.log
 somabrain.log
+audit_log.jsonl
+runtime_profile.json
+data/postgres.bak.*/
+**/sb_persist_test_*.txt
 *.tmp
 *.swp
 

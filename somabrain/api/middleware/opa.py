@@ -10,7 +10,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 import somabrain.metrics as app_metrics
-from somabrain.opa.client import opa_client
+from somabrain.opa.client import opa_client, _policy_path_for_mode
 
 try:
     from common.config.settings import settings as shared_settings
@@ -112,7 +112,8 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 return await call_next(request)
 
         # OPA is configured – call external OPA service
-        query_url = f"{opa_url.rstrip('/')}/v1/data/soma/allow"
+        policy_path = _policy_path_for_mode()
+        query_url = f"{opa_url.rstrip('/')}/v1/data/{policy_path}"
         try:
             import httpx
 
