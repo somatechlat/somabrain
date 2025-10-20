@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  memory-api:
+    image: ${SFM_IMAGE:-ghcr.io/somatechlat/somafractalmemory:latest}
+    environment:
+      - SOMA_API_TOKEN=devtoken
+    ports:
+      - "8001:8000"
+
+  somabrain:
+    build: .
+    environment:
+      - SOMABRAIN_MEMORY_MODE=http
+      - SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://memory-api:8000
+      - SOMABRAIN_MEMORY_HTTP_TOKEN=devtoken
+      - SOMABRAIN_RATE_RPS=50
+      - SOMABRAIN_RATE_BURST=100
+    depends_on:
+      - memory-api
+    ports:
+      - "8000:8000"

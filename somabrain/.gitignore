@@ -1,0 +1,22 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+
+# Local vendor (treated as external dependency)
+somafractalmemory/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Logs and local data
+*.log
+audit_log.jsonl
+qdrant.db
+*.index
+*_qdrant/

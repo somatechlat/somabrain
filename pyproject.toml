@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "somabrain"
+version = "0.1.0"
+description = "SomaBrain FastAPI cognitive layer using SomaFractalMemory"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn",
+  "pydantic>=2",
+  "numpy",
+  "prometheus-client",
+  "httpx",
+  "dynaconf",
+]
+
+[project.scripts]
+somabrain-api = "somabrain.app:app"
+

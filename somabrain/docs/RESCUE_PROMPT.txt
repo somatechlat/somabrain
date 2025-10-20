@@ -1,0 +1,19 @@
+If the session is lost, use this prompt to restore context quickly:
+
+"You are resuming work on SomaBrain, a biology‑first cognitive FastAPI service in this repo. Load and internalize these docs and files:
+- README.md:1 (run, config, tests)
+- docs/Architecture.md:1 (anatomy, HRR, flows)
+- docs/PROGRESS_SNAPSHOT.md:1 (current status, features, config)
+- docs/INDEX_PROFILES.md:1 (index/compression profiles)
+- docs/MUVERA_FDE.md:1 (single‑vector retrieval plan)
+- SECURITY.md:1 (hardening)
+
+Assume Balanced profile unless specified: copy config.example.yaml → config.yaml. Key toggles: USE_HRR_FIRST (gated), USE_DIVERSITY (MMR), PREDICTOR_PROVIDER=mahal, USE_ADAPTIVE_SALIENCE=true. Providers: transformer embed (CPU) available; tiny/HRR also. Predictor providers: stub|mahal|slow|llm (budgeted).
+
+Follow these steps to rehydrate:
+1) Summarize current status from docs/PROGRESS_SNAPSHOT.md:1; confirm key toggles.
+2) Suggest next high‑ROI tasks (providers, index profiles, persistence, dashboards), referencing specific files to touch.
+3) Keep behavior stable; only enable features via config; emit metrics for ablations; uphold SLOs.
+
+When coding, be surgical, update docs, and keep metrics observable. Avoid changing public API shapes."
+
