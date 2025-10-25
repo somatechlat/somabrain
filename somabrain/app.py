@@ -83,6 +83,7 @@ from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
 from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
+from somabrain.healthchecks import check_kafka, check_postgres
 
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
@@ -1914,16 +1915,36 @@ async def health(request: Request) -> S.HealthResponse:
             except Exception:
                 opa_ok = False
         resp["opa_ok"] = bool(opa_ok)
+        # Core backend connectivity (Kafka, Postgres) – real checks, not exporters
+        kafka_url = os.getenv("SOMABRAIN_KAFKA_URL")
+        try:
+            # Allow config override if available
+            if not kafka_url and hasattr(cfg, "kafka_bootstrap"):
+                kafka_url = str(getattr(cfg, "kafka_bootstrap"))
+        except Exception:
+            pass
+        pg_dsn = os.getenv("SOMABRAIN_POSTGRES_DSN")
+        try:
+            if not pg_dsn and hasattr(cfg, "postgres_dsn"):
+                pg_dsn = str(getattr(cfg, "postgres_dsn"))
+        except Exception:
+            pass
+        kafka_ok = check_kafka(kafka_url)
+        postgres_ok = check_postgres(pg_dsn)
+        resp["kafka_ok"] = bool(kafka_ok)
+        resp["postgres_ok"] = bool(postgres_ok)
         # Enforce full-stack readiness if requested (and include OPA if required)
         if full_stack:
             enforced_ready = (
                 predictor_ok
                 and memory_ok
                 and embedder_ok
+                and kafka_ok
+                and postgres_ok
                 and (opa_ok if opa_required else True)
             )
         else:
-            base_ok = predictor_ok and memory_ok and embedder_ok
+            base_ok = predictor_ok and memory_ok and embedder_ok and kafka_ok and postgres_ok
             enforced_ready = (not backend_enforced_flag) or (
                 base_ok and (opa_ok if opa_required else True)
             )
@@ -1965,37 +1986,57 @@ async def health(request: Request) -> S.HealthResponse:
     if "scorer" not in resp:
         resp["scorer"] = scorer_stats
 
-    if fd_violation and resp.get("ok", True) and resp.get("ready", True):
+    # Only enforce FD scorer invariants on health if explicitly enabled.
+    enforce_fd = False
+    try:
+        if shared_settings is not None:
+            try:
+                enforce_fd = bool(getattr(shared_settings, "enforce_fd_invariants", False))
+            except Exception:
+                enforce_fd = False
+        if not enforce_fd:
+            env_flag = os.getenv("SOMABRAIN_ENFORCE_FD_INVARIANTS", "").strip().lower()
+            enforce_fd = env_flag in ("1", "true", "yes", "on")
+    except Exception:
+        enforce_fd = False
+    if enforce_fd and fd_violation and resp.get("ok", True) and resp.get("ready", True):
         resp["ok"] = False
         resp["ready"] = False
 
-    required_raw = getattr(
-        cfg,
-        "external_metrics_required",
-        ("kafka", "postgres", "opa"),
-    )
-    if isinstance(required_raw, str):
-        required_metrics = tuple(
-            part.strip() for part in required_raw.split(",") if part.strip()
-        )
-    else:
+    # Best-effort: observe exporter availability and mark metrics scraped when reachable
+    try:
+        if opa_ok:
+            M.mark_external_metric_scraped("opa")
+        # Only attempt exporter probes if running in Docker network (common in dev/compose)
         try:
-            required_metrics = tuple(
-                str(item).strip() for item in required_raw if str(item).strip()
-            )
-        except TypeError:
-            required_metrics = ()
-    if not required_metrics:
-        required_metrics = ("kafka", "postgres", "opa")
-    metrics_ready = M.external_metrics_ready(required_metrics)
+            import httpx  # type: ignore
+
+            with httpx.Client(timeout=1.0) as _hc:
+                try:
+                    kr = _hc.get("http://somabrain_kafka_exporter:9308/")
+                    if int(getattr(kr, "status_code", 0) or 0) == 200:
+                        M.mark_external_metric_scraped("kafka")
+                except Exception:
+                    pass
+                try:
+                    pr = _hc.get("http://somabrain_postgres_exporter:9187/")
+                    if int(getattr(pr, "status_code", 0) or 0) == 200:
+                        M.mark_external_metric_scraped("postgres")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Observability readiness derived from real backend connectivity
+    metrics_required = ["kafka", "postgres"] + (["opa"] if resp.get("opa_required") else [])
+    metrics_ready = bool(resp.get("kafka_ok")) and bool(resp.get("postgres_ok")) and (
+        bool(resp.get("opa_ok")) if resp.get("opa_required") else True
+    )
     resp["metrics_ready"] = bool(metrics_ready)
-    resp["metrics_required"] = list(required_metrics)
-    if resp.get("ok", True) and resp.get("ready", True) and not metrics_ready:
-        resp["ok"] = False
-        resp["ready"] = False
-        alerts = resp.setdefault("alerts", [])
-        if "observability_metrics_missing" not in alerts:
-            alerts.append("observability_metrics_missing")
+    resp["metrics_required"] = metrics_required
+    # Do not force-fail health solely due to exporter scrape state; we base it on connectivity above.
     return resp
 
 

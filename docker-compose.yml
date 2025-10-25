@@ -69,6 +69,8 @@ services:
           {
             echo "process.roles=$${KAFKA_CFG_PROCESS_ROLES}"
             echo "node.id=$${KAFKA_CFG_NODE_ID}"
+            # Some base configs may still read broker.id; set it explicitly for safety
+            echo "broker.id=$${KAFKA_CFG_NODE_ID}"
             echo "controller.listener.names=$${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}"
             echo "controller.quorum.voters=$${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}"
             echo "listeners=$${KAFKA_CFG_LISTENERS}"

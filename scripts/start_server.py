@@ -12,8 +12,21 @@ import uvicorn
 sys.path.insert(0, "/app")
 
 HOST = os.getenv("SOMABRAIN_HOST", "0.0.0.0")
-PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
-WORKERS = int(os.getenv("SOMABRAIN_WORKERS", "1"))
+# Be resilient to empty or invalid env values
+def _int_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    try:
+        if raw is None:
+            return default
+        raw = str(raw).strip()
+        if raw == "":
+            return default
+        return int(raw)
+    except Exception:
+        return default
+
+PORT = _int_env("SOMABRAIN_PORT", 9696)
+WORKERS = _int_env("SOMABRAIN_WORKERS", 1)
 
 try:
     # Run the initializer (idempotent)

@@ -129,7 +129,11 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 resp = await client.post(query_url, json={"input": input_payload})
             if resp.status_code == 200:
                 result = resp.json().get("result", {})
-                allowed = bool(result.get("allow", True))
+                # Accept both object {allow: bool} and primitive boolean responses
+                if isinstance(result, dict):
+                    allowed = bool(result.get("allow", True))
+                else:
+                    allowed = bool(result)
                 if not allowed:
                     # Emit OPA deny metric
                     app_metrics.OPA_DENY_TOTAL.inc()

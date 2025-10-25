@@ -593,6 +593,19 @@ class HealthResponse(BaseModel):
     predictor_ok: Optional[bool] = None
     memory_ok: Optional[bool] = None
     embedder_ok: Optional[bool] = None
+    # Extended diagnostics
+    opa_ok: Optional[bool] = None
+    opa_required: Optional[bool] = None
+    kafka_ok: Optional[bool] = None
+    postgres_ok: Optional[bool] = None
+    metrics_ready: Optional[bool] = None
+    metrics_required: Optional[list[str]] = None
+    alerts: Optional[list[str]] = None
+    memory_circuit_open: Optional[bool] = None
+    fd_trace_norm_error: Optional[float] = None
+    fd_psd_ok: Optional[bool] = None
+    fd_capture_ratio: Optional[float] = None
+    scorer: Optional[Dict[str, Any]] = None
 
 
 class PersonalityState(BaseModel):

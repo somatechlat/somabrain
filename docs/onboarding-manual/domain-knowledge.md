@@ -981,59 +981,63 @@ class SecurityManager:
 
 ## Learning Algorithm Diagnostics
 
-SomaBrain's current adaptation engine lives in `somabrain/learning/adaptation.py`. Two internal analyses documented the same core flaw: **parameter coupling that creates the illusion of learning**. Preserve these findings while implementing fixes.
+SomaBrain’s adaptation engine lives in `somabrain/learning/adaptation.py`. It implements decoupled, per‑parameter updates with configurable gains and constraints, and optional neuromodulated learning rates. Earlier internal notes about “coupled parameters” are outdated.
 
-### Coupled Parameter Updates
+### Decoupled Parameter Updates
 
 ```python
 def apply_feedback(self, utility: float, reward: Optional[float] = None) -> bool:
     signal = reward if reward is not None else utility
+    # Dynamic or signal‑scaled LR
+    self._lr = (
+        self._base_lr * min(max(0.5 + self._get_dopamine_level(), 0.5), 1.2)
+        if self._enable_dynamic_lr
+        else self._base_lr * (1.0 + float(signal))
+    )
 
-    # Learning rate manipulation
-    self._lr = self._base_lr * (1.0 + float(signal))
-    delta = self._lr * float(signal)
-
-    # Identical deltas across parameters
-    self._retrieval.alpha = self._constrain("alpha", self._retrieval.alpha + delta)
-    self._retrieval.gamma = self._constrain("gamma", self._retrieval.gamma - 0.5 * delta)
-    self._utility.lambda_ = self._constrain("lambda_", self._utility.lambda_ + delta)
-    self._utility.mu = self._constrain("mu", self._utility.mu - 0.25 * delta)
-    self._utility.nu = self._constrain("nu", self._utility.nu - 0.25 * delta)
+    semantic_signal = float(signal)
+    utility_signal = float(reward) if reward is not None else semantic_signal
+    # Independent deltas via AdaptationGains
+    self._retrieval.alpha = self._constrain(
+        "alpha", self._retrieval.alpha + self._lr * self._gains.alpha * semantic_signal
+    )
+    self._retrieval.gamma = self._constrain(
+        "gamma", self._retrieval.gamma + self._lr * self._gains.gamma * semantic_signal
+    )
+    self._utility.lambda_ = self._constrain(
+        "lambda_", self._utility.lambda_ + self._lr * self._gains.lambda_ * utility_signal
+    )
+    self._utility.mu = self._constrain(
+        "mu", self._utility.mu + self._lr * self._gains.mu * utility_signal
+    )
+    self._utility.nu = self._constrain(
+        "nu", self._utility.nu + self._lr * self._gains.nu * utility_signal
+    )
     return True
 ```
 
-- `alpha` and `lambda_` move together because they share the same `+delta` updates.
-- `gamma` starts at 0.1 and the `-0.5 * delta` term drives it to the floor (`0.0`) quickly.
-- Learning rate becomes effectively constant for repeated positive feedback (`0.05 * (1.0 + 0.9) = 0.095`).
+- Alpha and lambda_ often increase together under positive utility, but they are not coupled or forced to be identical—each has its own gain and may be driven by distinct signals.
+- Gamma has a negative default gain and is bounded in [0, 1], so it typically decreases under positive utility until constrained.
+- The effective learning rate can be driven by the dopamine neuromodulator if enabled.
 
 ### Evidence from Telemetry and Tests
 
 | Observation | Source |
 | --- | --- |
-| Linear growth for `alpha`/`lambda_` (`[1.0, 1.045, 1.09, …]`) | `run_learning_test.py` output |
-| `gamma` hits 0.0 and remains clamped | Redis persistence of adaptation state |
-| Tests expect `alpha` and `lambda_` to increase together | `tests/test_learning_progress.py` |
-| State snapshot shows constant learning rate `0.095` | `somabrain/learning/adaptation.py` telemetry |
+| Directional updates (alpha/lambda_ increase; gamma non‑increasing) | `tests/workflow/test_adaptation_cycle.py` |
+| Env overrides for gains and bounds respected | `tests/workflow/test_adaptation_cycle.py` |
+| State persists per tenant with TTL | `somabrain/learning/adaptation.py` (Redis setex) |
 
-### Diagnosis Summary
+### Summary
 
-- The engine simulates learning by deterministic coupling rather than independent cognitive signals.
-- Strict mode ensures no stubs hide the behaviour—failures are observable in Redis state and audit logs.
-- Infrastructure (Redis, Kafka, metrics) is production ready; only the algorithm needs redesign.
+- The engine performs genuine adaptation with independent channels and guardrails.
+- Infrastructure (Redis, metrics) is production‑ready; documentation now reflects the decoupled design.
 
-### Recommended Fix Strategy
+### Adjacent Improvements (optional)
 
-1. **Decouple parameters**: introduce independent deltas per signal (semantic quality, utility improvement, temporal relevance).
-2. **Dynamic learning rates**: derive `alpha_lr`, `lambda_lr`, `gamma_lr` from neuromodulator state instead of a single `_base_lr` multiplier.
-3. **True cognitive signals**: feed semantic relevance, cost/benefit ratios, and temporal freshness into the adaptation step.
-4. **Guardrails**: add property tests verifying parameters diverge when signals differ; export dedicated metrics to confirm.
-
-### Migration Checklist
-
-- [ ] Refactor `apply_feedback` with independent learning channels.
-- [ ] Update tests to assert decorrelated parameter movement.
-- [ ] Extend metrics (`somabrain_learning_alpha_delta`, etc.) for visibility.
-- [ ] Document the new behaviour in this manual and update benchmarks.
+1. Expose per‑parameter delta metrics for richer introspection.
+2. Feed more explicit semantic/utility signals where available.
+3. Add property tests for decorrelation when reward ≠ utility.
 
 ## Mathematical Appendices
 

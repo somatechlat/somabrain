@@ -508,8 +508,16 @@ class MemoryClient:
         """Best-effort backend health signal for local or http mode."""
         try:
             if self._http:
-                r = self._http.get("/health")
-                return {"http": getattr(r, "status_code", 500) == 200}
+                # Try common health endpoints in order of preference.
+                for path in ("/health", "/healthz", "/readyz"):
+                    try:
+                        r = self._http.get(path)
+                        if int(getattr(r, "status_code", 0) or 0) == 200:
+                            return {"http": True}
+                    except Exception:
+                        # Try next path
+                        continue
+                return {"http": False}
         except Exception:
             return {"ok": False}
         return {"ok": True}
