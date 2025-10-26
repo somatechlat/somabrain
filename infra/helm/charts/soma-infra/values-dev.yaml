@@ -9,6 +9,19 @@ auth:
 
 opa:
   enabled: true
+  policies:
+    sample_integrator: |
+      package soma.policy.integrator
+      default allow = true
+      # Optionally override leader to 'state' if confidence is too low
+      allow := true
+      leader := input.candidate.leader
+      new_leader = l {
+        some l
+        weights := input.candidate.weights
+        not weights[leader] >= 0.2
+        l := "state"
+      }
 
 redis:
   enabled: true

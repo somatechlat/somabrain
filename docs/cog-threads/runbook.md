@@ -17,6 +17,9 @@ Segmentation modes:
 - CPD mode over Δerror streams (`cog.state|agent|action.updates`)
 	- Env: `SOMABRAIN_SEGMENT_MODE=cpd`
 	- Tuning: `SOMABRAIN_CPD_MIN_SAMPLES` (default 20), `SOMABRAIN_CPD_Z` (default 4.0), `SOMABRAIN_CPD_MIN_GAP_MS` (default 1000), `SOMABRAIN_CPD_MIN_STD` (default 0.02)
+ - Hazard/HMM mode over Δerror streams
+	- Env: `SOMABRAIN_SEGMENT_MODE=hazard`
+	- Tuning: `SOMABRAIN_HAZARD_LAMBDA` (default 0.02), `SOMABRAIN_HAZARD_VOL_MULT` (default 3.0), `SOMABRAIN_HAZARD_MIN_SAMPLES` (default 20), `SOMABRAIN_CPD_MIN_GAP_MS` (default 1000)
 
 OPA policy (integrator):
 - `SOMABRAIN_OPA_URL=http://somabrain_opa:8181`
@@ -25,7 +28,7 @@ OPA policy (integrator):
 Health and metrics:
 - API /health and /metrics on each stack
 - Key metrics: `somabrain_integrator_leader_entropy`, `somabrain_outbox_event_e2e_seconds`
- - Segmentation emits: `somabrain_segments_emitted_total{domain,evidence}` and `somabrain_segments_dwell_ms`
+ - Segmentation emits: `somabrain_segments_emitted_total{domain,evidence}` and `somabrain_segments_dwell_ms`; all microservices expose `/metrics` when `HEALTH_PORT` is set.
 
 On-call actions:
 - Disable a module by unsetting its feature flag (service auto-idles)

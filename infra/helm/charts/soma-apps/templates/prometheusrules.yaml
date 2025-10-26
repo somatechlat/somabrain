@@ -1,0 +1,50 @@
+{{- if and .Values.prometheus .Values.prometheus.rules .Values.prometheus.rules.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "soma-apps.fullname" . }}-cog-rules
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "soma-apps.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    role: alert-rules
+spec:
+  groups:
+    - name: cog-thread.availability
+      rules:
+        - alert: CogGlobalFrameAbsent
+          expr: sum(rate(somabrain_integrator_frames_total[5m])) == 0
+          for: {{ printf "%dm" (int .Values.prometheus.rules.frames_absent_minutes | default 5) }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "No GlobalFrame messages observed"
+            description: "cog.global.frame has no publishes for the last {{ .Values.prometheus.rules.frames_absent_minutes }} minutes."
+        - alert: CogSegmentsAbsent
+          expr: sum(rate(somabrain_segments_emitted_total[5m])) == 0
+          for: {{ printf "%dm" (int .Values.prometheus.rules.segments_absent_minutes | default 5) }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "No SegmentBoundary emitted"
+            description: "No segmentation boundaries observed for the last {{ .Values.prometheus.rules.segments_absent_minutes }} minutes."
+    - name: cog-thread.slo
+      rules:
+        - alert: IntegratorLeaderSwitchesSpike
+          expr: sum(rate(somabrain_integrator_leader_switches_total[5m])) > {{ .Values.prometheus.rules.leader_switches_rate_threshold | default 0.2 }}
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Integrator leader switching too frequently"
+            description: "Leader switches rate exceeded threshold."
+        - alert: OutboxLatencyP90High
+          expr: histogram_quantile(0.9, sum(rate(somabrain_outbox_event_e2e_seconds_bucket[5m])) by (le)) > {{ .Values.prometheus.rules.outbox_p90_seconds_threshold | default 2.0 }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Outbox E2E latency p90 high"
+            description: "End-to-end outbox apply latency p90 above threshold."
+{{- end }}

@@ -357,6 +357,128 @@ class CPDSegmenter:
         return None
 
 
+class HazardSegmenter:
+    """Two-state HMM-style hazard-based change detector per tenant:domain.
+
+    States: STABLE (0) and VOLATILE (1)
+    - Transition probability lambda controls switching tendency between states.
+    - Emission model: Normal with mean=running mean (from STABLE) and
+      std = sigma_s for STABLE, and k * sigma_s for VOLATILE (broader).
+
+    Evidence values:
+    - "hmm" when MAP state flips with min-gap respected
+    - "max_dwell" when dwell exceeds threshold regardless of state
+
+    Parameters
+    ----------
+    max_dwell_ms : int
+        Maximum dwell before forcing a boundary (0 to disable)
+    hazard_lambda : float
+        Transition probability between states per observation (0..1)
+    vol_sigma_mult : float
+        Multiplier applied to sigma in VOLATILE state
+    min_samples : int
+        Warmup samples before decisions (to estimate mean/std)
+    min_gap_ms : int
+        Minimum time gap between boundaries for a key
+    min_std : float
+        Lower bound on sigma to avoid degeneracy
+    """
+
+    def __init__(
+        self,
+        max_dwell_ms: int,
+        hazard_lambda: float,
+        vol_sigma_mult: float,
+        min_samples: int,
+        min_gap_ms: int,
+        min_std: float = 0.02,
+    ) -> None:
+        self.max_dwell_ms = max(0, int(max_dwell_ms))
+        self.lmb = min(1.0, max(0.0, float(hazard_lambda)))
+        self.k = max(1.0, float(vol_sigma_mult))
+        self.min_samples = max(1, int(min_samples))
+        self.min_gap_ms = max(0, int(min_gap_ms))
+        self.min_std = float(min_std)
+        # Per key (tenant:domain) state
+        self._stats: Dict[Tuple[str, str], _Welford] = {}
+        self._last_change_ms: Dict[Tuple[str, str], Optional[int]] = {}
+        self._map_state: Dict[Tuple[str, str], int] = {}
+
+    @staticmethod
+    def _parse_ts(ts: str) -> int:
+        return Segmenter._parse_ts(ts)
+
+    @staticmethod
+    def _log_norm_pdf(x: float, mu: float, sigma: float) -> float:
+        import math
+
+        s = max(1e-9, float(sigma))
+        z = (x - mu) / s
+        # log pdf of Normal
+        return -0.5 * (z * z) - (math.log(s) + 0.5 * math.log(2 * math.pi))
+
+    def observe(self, ts: str, tenant: str, domain: str, delta_error: float) -> Optional[Tuple[str, str, int, str]]:
+        key = ((tenant or "public").strip() or "public", (domain or "").strip())
+        if not key[1]:
+            return None
+        now_ms = self._parse_ts(ts)
+        st = self._stats.get(key)
+        if st is None:
+            st = _Welford()
+            self._stats[key] = st
+            self._last_change_ms[key] = now_ms
+            self._map_state[key] = 0  # assume STABLE at start
+        # Dwell enforcement
+        last_change = self._last_change_ms.get(key)
+        if (
+            self.max_dwell_ms > 0
+            and last_change is not None
+            and now_ms - last_change >= self.max_dwell_ms
+        ):
+            self._last_change_ms[key] = now_ms
+            dwell = now_ms - (last_change or now_ms)
+            return (key[1], ts, int(dwell), "max_dwell")
+
+        x = float(delta_error)
+        # Warmup
+        if st.n < self.min_samples:
+            st.update(x)
+            return None
+        mu = st.mean
+        sigma = max(self.min_std, st.std)
+        # Prior on state from previous MAP with symmetric transitions
+        prev_state = int(self._map_state.get(key, 0))
+        pS_prev = 1.0 if prev_state == 0 else 0.0
+        pV_prev = 1.0 - pS_prev
+        # Predict step
+        pS_pred = (1.0 - self.lmb) * pS_prev + self.lmb * pV_prev
+        pV_pred = self.lmb * pS_prev + (1.0 - self.lmb) * pV_prev
+        # Emission log-likelihoods (avoid underflow)
+        import math as _math
+        log_like_S = self._log_norm_pdf(x, mu, sigma)
+        log_like_V = self._log_norm_pdf(x, mu, self.k * sigma)
+        # Update (log-domain)
+        eps = 1e-18
+        log_post_S = _math.log(max(eps, pS_pred)) + log_like_S
+        log_post_V = _math.log(max(eps, pV_pred)) + log_like_V
+        new_state = 0 if log_post_S >= log_post_V else 1
+        # Boundary on state flip with min gap
+        if new_state != prev_state:
+            if last_change is None or (self.min_gap_ms == 0) or ((now_ms - last_change) >= self.min_gap_ms):
+                self._map_state[key] = new_state
+                self._last_change_ms[key] = now_ms
+                dwell = now_ms - (last_change or now_ms)
+                # Update stats reset on flip to avoid stale params
+                self._stats[key] = _Welford()
+                self._stats[key].update(x)
+                return (key[1], ts, int(dwell), "hmm")
+        # No boundary; update STABLE stats when STABLE more likely than VOLATILE
+        if log_post_S >= log_post_V:
+            st.update(x)
+        return None
+
+
 class SegmentationService:
     def __init__(self):
         _init_metrics()
@@ -410,6 +532,16 @@ class SegmentationService:
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "segmentation"}
 
+            # Prometheus metrics endpoint (optional)
+            try:
+                from somabrain import metrics as _M  # type: ignore
+
+                @app.get("/metrics")
+                async def _metrics_ep():  # type: ignore
+                    return await _M.metrics_endpoint()
+            except Exception:
+                pass
+
             port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
@@ -424,7 +556,7 @@ class SegmentationService:
             while True:
                 time.sleep(60)
         # Select topics based on mode
-        if self._mode == "cpd":
+        if self._mode == "cpd" or self._mode == "hazard":
             topics = [
                 "cog.state.updates",
                 "cog.agent.updates",
@@ -453,6 +585,31 @@ class SegmentationService:
                         if upd is None:
                             continue
                         out = self._cpd.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
+                        if out is None:
+                            continue
+                        domain, boundary_ts, dwell_ms, evidence = out
+                        tenant = upd.tenant
+                elif self._mode == "hazard":
+                    with self._tracer.start_as_current_span("segmentation_hazard"):
+                        upd = _parse_update(msg.value, self._serde_update)
+                        if upd is None:
+                            continue
+                        # Initialize hazard segmenter lazily
+                        if not hasattr(self, "_hazard"):
+                            setattr(
+                                self,
+                                "_hazard",
+                                HazardSegmenter(
+                                    max_dwell_ms=int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0"),
+                                    hazard_lambda=float(os.getenv("SOMABRAIN_HAZARD_LAMBDA", "0.02") or "0.02"),
+                                    vol_sigma_mult=float(os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0") or "3.0"),
+                                    min_samples=int(os.getenv("SOMABRAIN_HAZARD_MIN_SAMPLES", "20") or "20"),
+                                    min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
+                                    min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
+                                ),
+                            )
+                        hz: HazardSegmenter = getattr(self, "_hazard")
+                        out = hz.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
                         if out is None:
                             continue
                         domain, boundary_ts, dwell_ms, evidence = out

@@ -112,6 +112,16 @@ def run_forever() -> None:  # pragma: no cover
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "predictor_action"}
 
+            # Prometheus metrics endpoint (optional)
+            try:
+                from somabrain import metrics as _M  # type: ignore
+
+                @app.get("/metrics")
+                async def _metrics_ep():  # type: ignore
+                    return await _M.metrics_endpoint()
+            except Exception:
+                pass
+
             port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)

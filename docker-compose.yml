@@ -377,6 +377,153 @@ services:
       timeout: 5s
       retries: 3
 
+  # --- Cognitive Thread: Predictors ----------------------------------------
+  somabrain_predictor_state:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "services/predictor-state/main.py"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9101"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9101/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  somabrain_predictor_agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "services/predictor-agent/main.py"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9102"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9102/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  somabrain_predictor_action:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "services/predictor-action/main.py"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9103"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9103/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # --- Cognitive Thread: Integrator + Segmentation + Orchestrator ----------
+  somabrain_integrator_hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+      somabrain_redis:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.services.integrator_hub"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
+      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
+      SOMABRAIN_OPA_POLICY: "${SOMABRAIN_OPA_POLICY}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9105"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9105/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  somabrain_segmentation_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.services.segmentation_service"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_SEGMENT_MODE: "${SOMABRAIN_SEGMENT_MODE:-leader}"
+      SOMABRAIN_SEGMENT_MAX_DWELL_MS: "${SOMABRAIN_SEGMENT_MAX_DWELL_MS:-0}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9104"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9104/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  somabrain_orchestrator_service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+      somabrain_postgres:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.services.orchestrator_service"]
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
+      ENABLE_COG_THREADS: "1"
+      HEALTH_PORT: "9106"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9106/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
 volumes:
   kafka_data:
     driver: local

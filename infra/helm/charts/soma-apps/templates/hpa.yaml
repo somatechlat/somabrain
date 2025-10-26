@@ -1,0 +1,35 @@
+{{- if .Values.autoscaling.enabled }}
+{{- $root := . -}}
+{{- $targets := list (dict "k" "integrator" "v" .Values.integrator.enabled)
+                        (dict "k" "segmentation" "v" .Values.segmentation.enabled)
+                        (dict "k" "orchestrator" "v" .Values.orchestrator.enabled)
+                        (dict "k" "pred-state" "v" .Values.predictorState.enabled)
+                        (dict "k" "pred-agent" "v" .Values.predictorAgent.enabled)
+                        (dict "k" "pred-action" "v" .Values.predictorAction.enabled) -}}
+{{- range $t := $targets }}
+{{- if $t.v }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" $t.k) }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" $t.k) | indent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "soma-apps.componentName" (dict "root" $root "component" $t.k) }}
+  minReplicas: {{ $root.Values.autoscaling.minReplicas | default 1 }}
+  maxReplicas: {{ $root.Values.autoscaling.maxReplicas | default 3 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ $root.Values.autoscaling.cpu.targetAverageUtilization | default 70 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

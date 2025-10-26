@@ -38,6 +38,19 @@ data/postgres.bak.*/
 *.tmp
 *.swp
 
+# Local runtime artifacts (databases, caches, dumps)
+# Keep configs under data/, but ignore generated state files
+data/**/*.db
+data/**/*.sqlite
+data/**/*.rdb
+data/**/*.aof
+data/**/pgdata/**
+data/**/wal/**
+data/**/*.log
+data/**/tmp/**
+**/.cache/**
+**/.mypy_cache/**
+
 # VS Code settings
 .vscode/
 

@@ -1,0 +1,57 @@
+{{- if .Values.prometheus.podMonitor.enabled }}
+{{- $ns := .Values.global.namespace }}
+{{- $interval := .Values.prometheus.podMonitor.interval | default "30s" }}
+
+{{- /* Helper to render a PodMonitor for a given component key and enable flag */ -}}
+{{- define "soma-apps.podMonitor" -}}
+{{- $root := index . 0 -}}
+{{- $component := index . 1 -}}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" $component) }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $root.Release.Service }}
+    app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+    app.kubernetes.io/component: {{ $component }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+      app.kubernetes.io/component: {{ $component }}
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.podMonitor.interval | default "30s" | quote }}
+      scheme: http
+---
+{{- end -}}
+
+{{- if .Values.integrator.enabled }}
+{{ include "soma-apps.podMonitor" (list . "integrator") }}
+{{- end }}
+
+{{- if .Values.segmentation.enabled }}
+{{ include "soma-apps.podMonitor" (list . "segmentation") }}
+{{- end }}
+
+{{- if .Values.orchestrator.enabled }}
+{{ include "soma-apps.podMonitor" (list . "orchestrator") }}
+{{- end }}
+
+{{- if .Values.predictorState.enabled }}
+{{ include "soma-apps.podMonitor" (list . "pred-state") }}
+{{- end }}
+
+{{- if .Values.predictorAgent.enabled }}
+{{ include "soma-apps.podMonitor" (list . "pred-agent") }}
+{{- end }}
+
+{{- if .Values.predictorAction.enabled }}
+{{ include "soma-apps.podMonitor" (list . "pred-action") }}
+{{- end }}
+
+{{- end }}

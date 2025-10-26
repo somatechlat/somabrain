@@ -51,4 +51,6 @@ spec:
               port: health
             initialDelaySeconds: 10
             periodSeconds: 20
+          resources:
+{{ toYaml .Values.orchestrator.resources | indent 12 }}
 {{- end }}

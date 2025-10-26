@@ -23,6 +23,14 @@ opa:
   extraArgs:
     - "--server"
     - "--addr=0.0.0.0:8181"
+  # Optional: inline Rego policies to load via kube-mgmt.
+  # Provide a map of name -> rego contents in your values override (e.g., values-dev.yaml)
+  # Example:
+  # policies:
+  #   leader_policy: |
+  #     package soma.policy
+  #     default allow = true
+  policies: {}
 
 kafka:
   enabled: true
@@ -70,6 +78,13 @@ kube-prometheus-stack:
   prometheus:
     prometheusSpec:
       retention: 15d
+
+grafana:
+  dashboards:
+    enabled: false
+    # Namespace where Grafana runs (for dashboard sidecar). If using the
+    # kube-prometheus-stack dependency above, its default is the release namespace.
+    namespace: "soma"
 
 # Global
 fullnameOverride: "soma-infra"

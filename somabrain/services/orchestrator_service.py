@@ -127,6 +127,42 @@ class OrchestratorService:
             self._routing = {}
         # per-tenant rolling context for current segment
         self._ctx: Dict[str, GlobalFrameCtx] = {}
+        # Optional health / metrics server
+        try:
+            if os.getenv("HEALTH_PORT"):
+                self._start_health_server()
+        except Exception:
+            pass
+
+    def _start_health_server(self) -> None:
+        try:
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
+
+            app = FastAPI(title="Orchestrator Health")
+
+            @app.get("/healthz")
+            async def _hz():  # type: ignore
+                return {"ok": True, "service": "orchestrator"}
+
+            # Prometheus metrics endpoint (optional)
+            try:
+                from somabrain import metrics as _M  # type: ignore
+
+                @app.get("/metrics")
+                async def _metrics_ep():  # type: ignore
+                    return await _M.metrics_endpoint()
+            except Exception:
+                pass
+
+            port = int(os.getenv("HEALTH_PORT"))
+            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            server = uvicorn.Server(config)
+            import threading as _th
+            th = _th.Thread(target=server.run, daemon=True)
+            th.start()
+        except Exception:
+            pass
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         if enqueue_event is None:

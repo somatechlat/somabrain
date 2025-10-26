@@ -41,16 +41,19 @@ Predictor services live under `services/predictor-*`. Each entrypoint reads the 
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SOMABRAIN_SEGMENT_MODE` | `leader` | Determines the processing mode: `leader` (GlobalFrame based) or `cpd` (Change Point Detection). |
+| `SOMABRAIN_SEGMENT_MODE` | `leader` | Determines the processing mode: `leader` (GlobalFrame based), `cpd` (Change Point Detection), or `hazard` (2-state HMM/BOCPD-style). |
 | `SOMABRAIN_SEGMENT_MAX_DWELL_MS` | `0` | Optional dwell cap; emits a boundary when exceeded even if the leader is unchanged. |
 | `SOMABRAIN_CPD_MIN_SAMPLES` | `20` | Warm-up samples required before CPD decisions. |
 | `SOMABRAIN_CPD_Z` | `4.0` | Z-score threshold for CPD mode. |
 | `SOMABRAIN_CPD_MIN_GAP_MS` | `1000` | Minimum milliseconds between CPD boundaries per domain. |
 | `SOMABRAIN_CPD_MIN_STD` | `0.02` | Floor on running standard deviation to avoid divide-by-zero. |
+| `SOMABRAIN_HAZARD_LAMBDA` | `0.02` | Transition probability λ between STABLE and VOLATILE per observation (hazard mode). |
+| `SOMABRAIN_HAZARD_VOL_MULT` | `3.0` | Volatility sigma multiplier applied to STABLE sigma in VOLATILE state. |
+| `SOMABRAIN_HAZARD_MIN_SAMPLES` | `20` | Warm-up samples before hazard decisions. |
 | `SOMABRAIN_CONSUMER_GROUP` | `segmentation-service` | Kafka consumer group id. |
 | `HEALTH_PORT` | unset | Optional FastAPI health probe server. |
 
-The service initialises metrics (`somabrain_segments_emitted_total`, `somabrain_segments_dwell_ms`) and uses Avro schemas from `proto/cog/` when available.
+The service initialises metrics (`somabrain_segments_emitted_total`, `somabrain_segments_dwell_ms`) and uses Avro schemas from `proto/cog/` when available. Health/metrics endpoints are exposed on `/healthz` and `/metrics` when `HEALTH_PORT` is set.
 
 ---
 
@@ -113,3 +116,29 @@ For implementation details, see:
 - `somabrain/services/integrator_hub.py`
 - `services/opa_sidecar/policies`
 - Helm chart templates under `infra/helm/charts/soma-apps/templates`
+
+---
+
+## Prometheus scraping (Kubernetes)
+
+All cognitive-thread deployments expose `/metrics` on their internal health port (named `health`) when `HEALTH_PORT` is set via the Helm templates. To have your Prometheus operator scrape these endpoints without creating Services, enable the optional PodMonitor objects in the apps chart:
+
+- Helm values: `prometheus.podMonitor.enabled: true`
+- Optional: set a custom scrape interval with `prometheus.podMonitor.interval` (default `30s`).
+
+This renders one PodMonitor per enabled component (integrator, segmentation, orchestrator, predictor-{state,agent,action}) selecting pods by `app.kubernetes.io/component` and scraping `/metrics` on the `health` port.
+
+### Grafana dashboards
+
+If your cluster uses a Grafana sidecar for dashboards (for example, via kube-prometheus-stack), you can have the infra chart publish our curated dashboard as a ConfigMap:
+
+- In `infra/helm/charts/soma-infra/values.yaml` (override):
+
+```
+grafana:
+	dashboards:
+		enabled: true
+		namespace: soma  # or your Grafana namespace
+```
+
+This renders a ConfigMap labeled `grafana_dashboard: "1"` containing `Somabrain • Cognitive Thread`. The Prometheus PodMonitors should be enabled (in the apps chart) so the panels populate.
