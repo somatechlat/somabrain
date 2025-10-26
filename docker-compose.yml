@@ -128,6 +128,27 @@ services:
       timeout: 5s
       retries: 3
 
+  somabrain_schema_registry:
+    image: confluentinc/cp-schema-registry:7.6.0
+    container_name: somabrain_schema_registry
+    restart: unless-stopped
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    ports:
+      - "${SCHEMA_REGISTRY_HOST_PORT:-30008}:8081"
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:8081/subjects"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   somabrain_opa:
     image: openpolicyagent/opa:0.48.0-debug
     container_name: somabrain_opa

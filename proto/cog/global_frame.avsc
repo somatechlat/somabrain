@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "GlobalFrame",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "ts", "type": "string" },
+    { "name": "leader", "type": "string" },
+    { "name": "weights", "type": {"type": "map", "values": "float"} },
+    { "name": "frame", "type": {"type": "map", "values": "string"} },
+    { "name": "rationale", "type": "string" }
+  ]
+}
