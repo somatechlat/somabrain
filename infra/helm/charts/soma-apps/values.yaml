@@ -5,6 +5,7 @@ global:
 
 featureFlags:
   enableCogThreads: false
+  learnerEnabled: false
 
 sb:
   enabled: true
@@ -191,8 +192,48 @@ orchestrator:
     SOMABRAIN_FF_COG_ORCHESTRATOR: "1"
     ENABLE_COG_THREADS: "1"
 
+# Learner stack (values-gated)
+rewardProducer:
+  enabled: false
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "48Mi"
+    limits:
+      cpu: "200m"
+      memory: "192Mi"
+  env:
+    ENABLE_COG_THREADS: "1"
+    REWARD_PRODUCER_PORT: "8083"
+
+learnerOnline:
+  enabled: false
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+  env:
+    ENABLE_COG_THREADS: "1"
+    LEARNER_EMA_ALPHA: "0.2"
+    LEARNER_EMIT_PERIOD: "30"
+    LEARNER_ONLINE_PORT: "8084"
+
 prometheus:
   podMonitor:
+    enabled: false
+    interval: 30s
+  serviceMonitor:
     enabled: false
     interval: 30s
   rules:
@@ -202,6 +243,18 @@ prometheus:
     segments_absent_minutes: 5
     leader_switches_rate_threshold: 0.2   # switches/sec
     outbox_p90_seconds_threshold: 2.0
+    # KPI thresholds
+    reward_quality_min: 0.78
+    planning_p99_seconds_max: 0.02
+    storage_reduction_min: 0.40
+    extended:
+      enabled: false
+      # Requires a Kafka exporter providing kafka_consumergroup_lag metrics
+      consumerLag:
+        warning: 1000
+        critical: 5000
+      # Minutes without predictor emits to trigger warning
+      noEmitMinutes: 5
 
 autoscaling:
   enabled: false

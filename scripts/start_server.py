@@ -27,7 +27,7 @@ def _int_env(name: str, default: int) -> int:
     except Exception:
         return default
 
-PORT = _int_env("SOMABRAIN_PORT", 9696)
+PORT = _int_env("SOMABRAIN_PORT", 9999)
 WORKERS = _int_env("SOMABRAIN_WORKERS", 1)
 
 try:

@@ -607,6 +607,13 @@ DIVERSITY_PAIRWISE_MEAN = Histogram(
     registry=registry,
 )
 
+# Storage efficiency KPI: ratio of post-compression bytes to pre-compression bytes
+STORAGE_REDUCTION_RATIO = Gauge(
+    "somabrain_storage_reduction_ratio",
+    "Observed storage reduction ratio (post/pre). Higher is better if defined as retained fraction; dashboards invert to show savings.",
+    registry=registry,
+)
+
 # Capacity / backpressure
 WM_UTILIZATION = Gauge(
     "somabrain_wm_utilization",

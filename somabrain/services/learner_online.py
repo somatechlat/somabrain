@@ -238,6 +238,14 @@ async def startup() -> None:  # pragma: no cover
 async def health() -> Dict[str, Any]:
     return {"ok": True}
 
+@app.get("/metrics")
+async def metrics_ep():  # type: ignore
+    try:
+        from somabrain import metrics as _m  # type: ignore
+        return await _m.metrics_endpoint()
+    except Exception:
+        return {"status": "metrics not available"}
+
 
 def main() -> None:  # pragma: no cover
     port = int(os.getenv("LEARNER_ONLINE_PORT", "8084"))

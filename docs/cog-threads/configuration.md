@@ -142,3 +142,25 @@ grafana:
 ```
 
 This renders a ConfigMap labeled `grafana_dashboard: "1"` containing `Somabrain • Cognitive Thread`. The Prometheus PodMonitors should be enabled (in the apps chart) so the panels populate.
+
+---
+
+## Extended alerts and SBOM artifacts
+
+### Extended alerts (optional)
+
+The apps chart includes additional alerts gated under `values.prometheus.rules.extended.enabled`. When enabled, it adds:
+
+- Predictor no-emit alerts: warn if a predictor hasn’t emitted in `noEmitMinutes`.
+- Kafka consumer lag alerts: `KafkaConsumerLagHigh` and `KafkaConsumerLagCritical` (requires a Kafka exporter exposing `kafka_consumergroup_lag`). Thresholds are configurable via `values.prometheus.rules.extended.consumerLag`.
+
+These rules are off by default and safe to enable in staging first.
+
+### SBOM in CI
+
+The CI pipeline generates an SPDX SBOM for the single canonical Docker image and uploads it as an artifact:
+
+- Artifact name: `sbom-somabrain-ci`
+- File: `sbom-somabrain-ci.spdx.json`
+
+You can download the SBOM from the CI run’s Artifacts section for compliance and supply-chain auditing.

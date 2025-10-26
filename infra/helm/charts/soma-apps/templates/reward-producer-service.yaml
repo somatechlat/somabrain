@@ -1,0 +1,17 @@
+{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "reward") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
+spec:
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
+  ports:
+    - name: health
+      port: 8083
+      targetPort: 8083
+{{- end }}

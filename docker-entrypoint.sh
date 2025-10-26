@@ -5,7 +5,7 @@ set -e
 
 # Allow overriding host, port, workers, and extra args
 HOST="${SOMABRAIN_HOST:-0.0.0.0}"
-PORT="${SOMABRAIN_PORT:-9696}"
+PORT="${SOMABRAIN_PORT:-9999}"
 WORKERS="${SOMABRAIN_WORKERS:-1}"
 EXTRA_ARGS="${SOMABRAIN_EXTRA_ARGS}"
 

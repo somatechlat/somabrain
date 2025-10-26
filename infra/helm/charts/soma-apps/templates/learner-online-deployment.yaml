@@ -1,0 +1,54 @@
+{{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "learner") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 4 }}
+spec:
+  replicas: {{ .Values.learnerOnline.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 8 }}
+    spec:
+      containers:
+        - name: learner-online
+          image: "{{ .Values.learnerOnline.image.repository }}:{{ .Values.learnerOnline.image.tag }}"
+          imagePullPolicy: {{ $root.Values.global.imagePullPolicy }}
+          command: ["python3"]
+          args: ["-m", "somabrain.services.learner_online"]
+          ports:
+            - containerPort: 8084
+              name: health
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+            - name: ENABLE_COG_THREADS
+              value: "{{ ternary "1" "0" $root.Values.featureFlags.enableCogThreads }}"
+{{- range $key, $value := .Values.learnerOnline.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+{{ toYaml .Values.learnerOnline.resources | indent 12 }}
+{{- end }}

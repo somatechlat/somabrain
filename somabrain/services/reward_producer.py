@@ -79,6 +79,10 @@ _serde_inst: Optional[AvroSerde] = None
 _ready: bool = False
 _tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
 _REWARD_COUNT = metrics.get_counter("soma_reward_total", "Reward events posted") if metrics else None
+_REWARD_VALUE = metrics.get_histogram(
+    "somabrain_reward_value",
+    "Observed total reward values",
+) if metrics else None
 
 
 @app.on_event("startup")
@@ -92,6 +96,13 @@ async def startup() -> None:  # pragma: no cover
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"ok": bool(_ready)}
+
+@app.get("/metrics")
+async def metrics_ep():  # type: ignore
+    if not metrics:
+        # minimal fallback
+        return {"status": "metrics not available"}
+    return await metrics.metrics_endpoint()
 
 
 @app.post("/reward/{frame_id}")
@@ -122,6 +133,11 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         if _REWARD_COUNT is not None:
             try:
                 _REWARD_COUNT.inc()
+            except Exception:
+                pass
+        if _REWARD_VALUE is not None:
+            try:
+                _REWARD_VALUE.observe(total)
             except Exception:
                 pass
     except Exception as e:

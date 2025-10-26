@@ -54,4 +54,12 @@ spec:
 {{ include "soma-apps.podMonitor" (list . "pred-action") }}
 {{- end }}
 
+{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
+{{ include "soma-apps.podMonitor" (list . "reward") }}
+{{- end }}
+
+{{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
+{{ include "soma-apps.podMonitor" (list . "learner") }}
+{{- end }}
+
 {{- end }}

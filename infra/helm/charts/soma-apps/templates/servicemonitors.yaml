@@ -1,0 +1,164 @@
+{{- if and .Values.prometheus.serviceMonitor.enabled (or .Values.integrator.enabled .Values.segmentation.enabled .Values.predictorState.enabled .Values.predictorAgent.enabled .Values.predictorAction.enabled .Values.orchestrator.enabled (and .Values.featureFlags.learnerEnabled (or .Values.rewardProducer.enabled .Values.learnerOnline.enabled))) -}}
+{{- $root := . -}}
+{{- $ns := $root.Values.global.namespace -}}
+---
+{{- if .Values.integrator.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "integrator") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+---
+{{- end }}
+{{- if .Values.segmentation.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "segmentation") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+---
+{{- end }}
+{{- if .Values.predictorState.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-state") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+---
+{{- end }}
+{{- if .Values.predictorAgent.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-agent") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+---
+{{- end }}
+{{- if .Values.predictorAction.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-action") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+---
+{{- end }}
+{{- if .Values.orchestrator.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "orchestrator") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "orchestrator") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "orchestrator") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "reward") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+{{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "learner") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+{{- end }}

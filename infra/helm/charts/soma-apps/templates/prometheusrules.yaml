@@ -47,4 +47,85 @@ spec:
           annotations:
             summary: "Outbox E2E latency p90 high"
             description: "End-to-end outbox apply latency p90 above threshold."
+    - name: cog-thread.kpi
+      rules:
+        # Reward quality mean over 5 minutes
+        - record: somabrain_reward_value_mean_5m
+          expr: rate(somabrain_reward_value_sum[5m]) / rate(somabrain_reward_value_count[5m])
+        - alert: RewardQualityLow
+          expr: (rate(somabrain_reward_value_sum[5m]) / rate(somabrain_reward_value_count[5m])) < {{ .Values.prometheus.rules.reward_quality_min | default 0.78 }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Reward quality mean below target"
+            description: "Mean reward over 5m below {{ .Values.prometheus.rules.reward_quality_min }}."
+        # Planning p99 latency (predictor path) over 5 minutes
+        - record: somabrain_planning_latency_p99_5m
+          expr: histogram_quantile(0.99, sum(rate(somabrain_predictor_latency_seconds_bucket[5m])) by (le))
+        - alert: PlanningLatencyHigh
+          expr: histogram_quantile(0.99, sum(rate(somabrain_predictor_latency_seconds_bucket[5m])) by (le)) > {{ .Values.prometheus.rules.planning_p99_seconds_max | default 0.02 }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Planning latency p99 above SLO"
+            description: "p99 planning latency exceeds {{ .Values.prometheus.rules.planning_p99_seconds_max }}s."
+        # Storage reduction ratio (gauge updated by storage components)
+        - record: somabrain_storage_reduction_ratio_current
+          expr: somabrain_storage_reduction_ratio
+        - alert: StorageReductionLow
+          expr: somabrain_storage_reduction_ratio < {{ .Values.prometheus.rules.storage_reduction_min | default 0.40 }}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Storage reduction ratio below target"
+            description: "Observed storage reduction ratio fell below {{ .Values.prometheus.rules.storage_reduction_min }}."
+    {{- if and .Values.prometheus.rules .Values.prometheus.rules.extended .Values.prometheus.rules.extended.enabled }}
+    - name: cog-thread.activity
+      rules:
+        - alert: PredictorStateNoEmits
+          expr: sum(rate(somabrain_predictor_state_emitted_total[5m])) == 0
+          for: {{ printf "%dm" (int .Values.prometheus.rules.extended.noEmitMinutes | default 5) }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "predictor-state produced no emits"
+            description: "No predictor-state emits observed for {{ .Values.prometheus.rules.extended.noEmitMinutes }} minutes."
+        - alert: PredictorAgentNoEmits
+          expr: sum(rate(somabrain_predictor_agent_emitted_total[5m])) == 0
+          for: {{ printf "%dm" (int .Values.prometheus.rules.extended.noEmitMinutes | default 5) }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "predictor-agent produced no emits"
+            description: "No predictor-agent emits observed for {{ .Values.prometheus.rules.extended.noEmitMinutes }} minutes."
+        - alert: PredictorActionNoEmits
+          expr: sum(rate(somabrain_predictor_action_emitted_total[5m])) == 0
+          for: {{ printf "%dm" (int .Values.prometheus.rules.extended.noEmitMinutes | default 5) }}
+          labels:
+            severity: warning
+          annotations:
+            summary: "predictor-action produced no emits"
+            description: "No predictor-action emits observed for {{ .Values.prometheus.rules.extended.noEmitMinutes }} minutes."
+    - name: cog-thread.kafka
+      rules:
+        - alert: KafkaConsumerLagHigh
+          expr: max by (consumergroup) (kafka_consumergroup_lag) > {{ .Values.prometheus.rules.extended.consumerLag.warning | default 1000 }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Kafka consumer lag high"
+            description: "One or more consumer groups have lag above warning threshold. Requires kafka_exporter."
+        - alert: KafkaConsumerLagCritical
+          expr: max by (consumergroup) (kafka_consumergroup_lag) > {{ .Values.prometheus.rules.extended.consumerLag.critical | default 5000 }}
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka consumer lag critical"
+            description: "One or more consumer groups have lag above critical threshold. Requires kafka_exporter."
+    {{- end }}
 {{- end }}
