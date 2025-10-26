@@ -5,6 +5,24 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
+# Optional: publish BeliefUpdate events when feature flag enabled
+_FF_COG_UPDATES = False
+try:
+    _FF_COG_UPDATES = (os.getenv("SOMABRAIN_FF_COG_UPDATES", "").strip().lower() in ("1", "true", "yes", "on"))
+except Exception:
+    _FF_COG_UPDATES = False
+
+_BU_PUBLISHER = None
+if _FF_COG_UPDATES:
+    try:
+        from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+
+        _BU_PUBLISHER = BeliefUpdatePublisher()
+        if not getattr(_BU_PUBLISHER, "enabled", False):
+            _BU_PUBLISHER = None
+    except Exception:
+        _BU_PUBLISHER = None
+
 
 def eval_step(
     novelty: float,
@@ -86,6 +104,30 @@ def eval_step(
     except Exception:
         pass
     store_gate, act_gate = amygdala.gates(s, nm)
+
+    # Publish a state-domain BeliefUpdate (best-effort, feature-flagged)
+    try:
+        if _BU_PUBLISHER is not None:
+            conf = max(0.0, min(1.0, 1.0 - float(pred.error)))
+            latency_ms = int(1000.0 * float(pred_latency))
+            evidence = {
+                "tenant": str(tenant_id),
+                "novelty": f"{float(novelty):.4f}",
+                "salience": f"{float(s):.4f}",
+            }
+            model_ver = getattr(getattr(predictor, "base", predictor), "version", "v1")
+            _BU_PUBLISHER.publish(
+                domain="state",
+                delta_error=float(pred.error),
+                confidence=float(conf),
+                evidence=evidence,
+                posterior={},
+                model_ver=str(model_ver),
+                latency_ms=latency_ms,
+            )
+    except Exception:
+        # Never fail the cognitive loop due to telemetry
+        pass
 
     return {
         "pred_error": float(pred.error),
