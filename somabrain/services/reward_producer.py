@@ -23,10 +23,15 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
 
-try:  # kafka optional import
+try:  # kafka optional import (kafka-python)
     from kafka import KafkaProducer  # type: ignore
 except Exception:  # pragma: no cover
     KafkaProducer = None  # type: ignore
+
+try:  # preferred kafka client (confluent-kafka / librdkafka)
+    from confluent_kafka import Producer as CProducer  # type: ignore
+except Exception:  # pragma: no cover
+    CProducer = None  # type: ignore
 
 try:  # avro optional import
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -67,14 +72,24 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
     return json.dumps(rec).encode("utf-8")
 
 
-def _make_producer() -> Optional[KafkaProducer]:  # pragma: no cover - integration
-    if KafkaProducer is None:
-        return None
-    return KafkaProducer(bootstrap_servers=_bootstrap(), acks="1", linger_ms=5)
+def _make_producer():  # pragma: no cover - integration
+    # Prefer confluent-kafka if available (more robust with KRaft)
+    if CProducer is not None:
+        try:
+            return ("ck", CProducer({"bootstrap.servers": _bootstrap(), "message.timeout.ms": 10000}))
+        except Exception:
+            pass
+    if KafkaProducer is not None:
+        try:
+            return ("kp", KafkaProducer(bootstrap_servers=_bootstrap(), acks="1", linger_ms=5))
+        except Exception:
+            pass
+    return None
 
 
 app = FastAPI(title="Reward Producer")
-_producer: Optional[KafkaProducer] = None
+_producer: Any = None  # KafkaProducer | CProducer | None
+_producer_kind: Optional[str] = None  # "ck" for confluent, "kp" for kafka-python
 _serde_inst: Optional[AvroSerde] = None
 _ready: bool = False
 _tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
@@ -87,8 +102,12 @@ _REWARD_VALUE = metrics.get_histogram(
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
-    global _producer, _serde_inst, _ready
-    _producer = _make_producer()
+    global _producer, _producer_kind, _serde_inst, _ready
+    prod = _make_producer()
+    if isinstance(prod, tuple):
+        _producer_kind, _producer = prod
+    else:
+        _producer_kind, _producer = None, None
     _serde_inst = _serde()
     _ready = _producer is not None
 
@@ -129,7 +148,11 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     try:
-        _producer.send(TOPIC, value=_encode(rec, _serde_inst))
+        if _producer_kind == "ck":
+            _producer.produce(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[call-arg]
+            _producer.poll(0)  # type: ignore[attr-defined]
+        else:
+            _producer.send(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[attr-defined]
         if _REWARD_COUNT is not None:
             try:
                 _REWARD_COUNT.inc()

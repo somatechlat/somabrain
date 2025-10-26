@@ -54,8 +54,8 @@ git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
 
 # Configure environment
-cp .env.example .env.local
-# Edit .env.local with production values
+cp .env.example .env
+# Edit .env with environment-specific values
 
 # Start services with dynamic port assignment
 ./scripts/dev_up.sh --rebuild
@@ -79,7 +79,7 @@ The compose stack binds container ports directly to localhost for backend-enforc
 | Postgres | 5432 | Primary database access |
 | Postgres Exporter | 9187 | Database metrics |
 
-Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env.local` and `ports.json` with available values.
+Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env` and `ports.json` with available values.
 
 #### Docker Image Hardening Notes
 

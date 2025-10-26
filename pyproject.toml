@@ -35,6 +35,7 @@ dependencies = [
   "cryptography>=41",
   "PyJWT[crypto]>=2.9",
   "pydantic-settings>=2.1",
+  "PyYAML>=6.0",
 ]
 
 [project.optional-dependencies]

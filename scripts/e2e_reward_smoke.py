@@ -61,6 +61,26 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
 
 
 def main() -> int:
+    # 0) Prepare a consumer at 'latest' BEFORE posting so we only capture new events
+    try:
+        from kafka import KafkaConsumer  # type: ignore
+    except Exception:
+        KafkaConsumer = None  # type: ignore
+    consumer = None
+    if KafkaConsumer is not None:
+        try:
+            consumer = KafkaConsumer(
+                "cog.reward.events",
+                bootstrap_servers=_bootstrap(),
+                value_deserializer=lambda m: m,
+                auto_offset_reset="latest",
+                enable_auto_commit=False,
+                consumer_timeout_ms=int(45.0 * 1000),
+                group_id=f"reward-smoke-{int(time.time())}",
+            )
+        except Exception:
+            consumer = None
+
     # 1) POST a reward to the reward_producer
     port = int(os.getenv("REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")))
     url = f"http://127.0.0.1:{port}/reward/test-frame"
@@ -69,18 +89,50 @@ def main() -> int:
     code = getattr(resp, "status_code", 200)
     if code >= 300:
         print(f"reward POST failed: {code}")
+        if consumer is not None:
+            try:
+                consumer.close()
+            except Exception:
+                pass
         return 2
     try:
         data = resp.json()
         if data.get("status") != "ok":
             print(f"unexpected response: {data}")
+            if consumer is not None:
+                try:
+                    consumer.close()
+                except Exception:
+                    pass
             return 3
     except Exception as e:
         print(f"invalid response: {e}")
+        if consumer is not None:
+            try:
+                consumer.close()
+            except Exception:
+                pass
         return 4
 
     # 2) Consume one record from cog.reward.events
-    ok = _consume_one("cog.reward.events", timeout_s=45.0)
+    if consumer is None:
+        ok = _consume_one("cog.reward.events", timeout_s=45.0)
+    else:
+        ok = False
+        start = time.time()
+        try:
+            while time.time() - start < 45.0:
+                for m in consumer:
+                    if getattr(m, "value", None):
+                        ok = True
+                        break
+                if ok:
+                    break
+        finally:
+            try:
+                consumer.close()
+            except Exception:
+                pass
     if not ok:
         print("no reward event observed on Kafka topic cog.reward.events within timeout")
         return 5

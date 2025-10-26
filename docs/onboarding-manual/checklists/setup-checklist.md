@@ -252,7 +252,7 @@ curl -f http://localhost:9696/health | jq '.status'  # Should return "healthy"
 
 | Check Failed | Likely Cause | Solution |
 |--------------|-------------|----------|
-| Environment vars missing | .env.local not created | Run `./scripts/dev_up.sh` to generate config |
+| Environment vars missing | .env missing | Copy `.env.example` to `.env` (e.g., `cp .env.example .env`) or run `./scripts/dev_up.sh` to generate config |
 | Service connectivity failed | Network or firewall issue | Check Docker network: `docker network ls` |
 | Settings not loading | YAML syntax error | Validate YAML: `python -c "import yaml; yaml.safe_load(open('config.yaml'))"` |
 

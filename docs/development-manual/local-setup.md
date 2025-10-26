@@ -279,7 +279,7 @@ PYTHONPATH=$(pwd) uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reloa
 ```bash
 # Complete environment reset
 docker compose down --remove-orphans --volumes
-rm -f .env.local ports.json
+rm -f .env ports.json
 ./scripts/dev_up.sh --rebuild
 
 # Python environment reset
@@ -348,7 +348,7 @@ docker compose exec postgres psql -U somabrain
 **Common Errors**:
 - ModuleNotFoundError → Ensure virtual environment activated and `pip install -e .` completed
 - Docker connection errors → Verify Docker daemon running and user has docker group permissions
-- Test failures → Check `.env.local` configuration and service health
+- Test failures → Check `.env` configuration and service health
 
 **References**:
 - [Coding Standards](coding-standards.md) for style guide and linting rules

@@ -2,8 +2,8 @@
 
 This module mirrors the pattern used by other services in the SomaStack.
 It provides a single ``Settings`` class (pydantic ``BaseSettings``) that
-loads values from ``.env.local`` or the environment.  All new code should
-import ``Settings`` from here instead of calling ``os.getenv`` directly.
+loads values from the canonical ``.env`` file or the environment. All new code
+should import ``Settings`` from here instead of calling ``os.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
@@ -56,8 +56,8 @@ class Settings(BaseSettings):
     """Application‑wide settings.
 
     The fields correspond to the environment variables that SomaBrain already
-    uses.  ``env_file`` points at the generated ``.env.local`` so developers
-    can run the service locally without manually exporting each variable.
+    uses.  ``env_file`` points at the generated ``.env`` so developers can run
+    the service locally without manually exporting each variable.
     """
 
     # Core infra -----------------------------------------------------------
@@ -299,10 +299,9 @@ class Settings(BaseSettings):
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep
-    # case-insensitive env names. The `env_file` is preserved so `.env.local`
-    # will be loaded during local development.
+    # case-insensitive env names. The `env_file` points to the canonical `.env`.
     model_config = {
-        "env_file": ".env.local",
+        "env_file": ".env",
         "case_sensitive": False,
         "extra": "allow",
     }

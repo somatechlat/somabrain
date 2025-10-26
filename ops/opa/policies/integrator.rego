@@ -8,7 +8,6 @@ leader := input.candidate.leader
 
 # Example adjustment: if action weight is very strong, choose action explicitly
 leader := "action" if {
-  some w
   w := input.candidate.weights["action"]
   w >= 0.7
 }

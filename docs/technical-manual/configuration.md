@@ -30,17 +30,17 @@ Update the table whenever new knobs are introduced or deprecated so operators ha
 
 ## Loading Order
 
-1. `.env.local` if present (written by `scripts/dev_up.sh`).
+1. `.env` in the project root (written by `scripts/dev_up.sh` or `scripts/assign_ports.sh`).
 2. Real environment variables provided by the shell, container, or orchestrator.
 3. Defaults inside `common.config.settings.Settings`.
 
-The `Settings` singleton is instantiated once at process start. Avoid direct `os.getenv` lookups in new code—import `shared_settings` from `common.config.settings` instead so changes propagate consistently. For local work, start from `config/env.example` and copy it to `.env.local`.
+The `Settings` singleton is instantiated once at process start. Avoid direct `os.getenv` lookups in new code—import `shared_settings` from `common.config.settings` instead so changes propagate consistently. For local work, start from `.env.example` and copy it to `.env`.
 
 ---
 
 ## Local Backend-Enforcement Template
 
-Use the following `.env.local` snippet to mirror production behaviour on a workstation:
+Use the following `.env` snippet to mirror production behaviour on a workstation:
 
 ```env
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1

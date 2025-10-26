@@ -169,12 +169,12 @@ sudo apt install -y gcc g++ make libpq-dev
 
 **Option 1: Docker (Recommended for Development)**:
 ```bash
-# Use the canonical compose file (docker-compose.yml)
-cp .env .env.local  # optional: customize ports/credentials
-docker compose --env-file .env.local -f docker-compose.yml up -d somabrain_postgres somabrain_redis
+# Use the canonical compose file (docker-compose.yml) with the canonical .env
+cp .env.example .env  # optional: customize ports/credentials
+docker compose --env-file .env -f docker-compose.yml up -d somabrain_postgres somabrain_redis
 
 # Verify databases are running
-docker compose --env-file .env.local -f docker-compose.yml ps somabrain_postgres somabrain_redis
+docker compose --env-file .env -f docker-compose.yml ps somabrain_postgres somabrain_redis
 ```
 
 **Option 2: Native Installation**:
@@ -450,7 +450,7 @@ open htmlcov/index.html
 **Integration Tests**:
 ```bash
 # Ensure databases are running
-docker compose --env-file .env.local -f docker-compose.yml ps
+docker compose --env-file .env -f docker-compose.yml ps
 
 # Run integration tests
 pytest tests/integration/ -v
@@ -536,7 +536,7 @@ python benchmarks/test_vector_encoding.py
 
 ```bash
 # 1. Start development environment
-docker compose --env-file .env.local -f docker-compose.yml up -d
+docker compose --env-file .env -f docker-compose.yml up -d
 
 # 2. Activate Python environment
 source venv/bin/activate
@@ -631,7 +631,7 @@ python -c "import sys; print('\n'.join(sys.path))"
 **2. Database Connection Issues**:
 ```bash
 # Check PostgreSQL is running
-docker compose --env-file .env.local -f docker-compose.yml ps
+docker compose --env-file .env -f docker-compose.yml ps
 
 # Test connection manually
 psql postgresql://somabrain:development_password@localhost/somabrain_dev
@@ -672,10 +672,10 @@ pytest tests/integration/ --create-db
 tail -f logs/somabrain.log
 
 # Docker logs
-docker compose --env-file .env.local -f docker-compose.yml logs -f
+docker compose --env-file .env -f docker-compose.yml logs -f
 
 # Database logs
-docker compose --env-file .env.local -f docker-compose.yml logs postgres
+docker compose --env-file .env -f docker-compose.yml logs postgres
 ```
 
 **Performance Monitoring**:

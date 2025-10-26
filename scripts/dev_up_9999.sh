@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-ENVFILE=.env.9999.local
+ENVFILE=.env
 
 # Optional flag: also start monitoring/exporters on 301xx
 WITH_MONITORING=0
@@ -55,9 +55,8 @@ unset POSTGRES_EXPORTER_HOST_PORT || true
 unset SOMABRAIN_HOST_PORT || true
 unset SCHEMA_REGISTRY_HOST_PORT || true
 
-if [ ! -f "$ENVFILE" ]; then
-  echo "Generating $ENVFILE with fixed host ports for 9999 stack"
-  cat >"$ENVFILE" <<'EOF'
+echo "Generating $ENVFILE with fixed host ports for 9999 stack"
+cat >"$ENVFILE" <<'EOF'
 COMPOSE_PROJECT_NAME=somabrain-9999
 REDIS_CONTAINER_PORT=6379
 KAFKA_BROKER_CONTAINER_PORT=9092
@@ -66,6 +65,7 @@ OPA_CONTAINER_PORT=8181
 PROMETHEUS_CONTAINER_PORT=9090
 POSTGRES_CONTAINER_PORT=5432
 POSTGRES_EXPORTER_CONTAINER_PORT=9187
+# App listens on 9696 in-container; host maps to 9999
 SOMABRAIN_PORT=9696
 
 # 301xx host ports for the 9999 stack
@@ -133,17 +133,16 @@ KAFKA_CFG_COMPRESSION_TYPE=snappy
 KAFKA_HEAP_OPTS=-Xmx384m -Xms256m
 KAFKA_CLUSTER_ID=79LccNO-Qe6G6YgqP1Zrew
 EOF
-fi
 
-echo "Using compose project name from docker-compose.9999.yml (somabrain-9999)"
+echo "Using single compose file docker-compose.yml (project: somabrain-9999)"
 
 echo "Bringing up the 9999 stack (API on :9999) without touching other projects"
-docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_outbox_publisher somabrain_outbox_db_applier
+docker compose -p somabrain-9999 -f docker-compose.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_outbox_publisher somabrain_outbox_db_applier
 
 # Optionally bring up monitoring/exporters on 301xx range
 if [[ "$WITH_MONITORING" == "1" ]]; then
   echo "Starting monitoring/exporters on 301xx ports"
-  docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d somabrain_prometheus somabrain_kafka_exporter somabrain_postgres_exporter somabrain_schema_registry
+  docker compose -p somabrain-9999 -f docker-compose.yml --env-file "$ENVFILE" up -d somabrain_prometheus somabrain_kafka_exporter somabrain_postgres_exporter somabrain_schema_registry
 fi
 
 # Wait for somabrain health
@@ -165,7 +164,7 @@ services=['somabrain_app','somabrain_redis','somabrain_kafka','somabrain_prometh
 port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9092','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181','somabrain_schema_registry':'8081'}
 for s in services:
   try:
-    out=subprocess.check_output(['docker','compose','-p','somabrain-9999','-f','docker-compose.yml','-f','docker-compose.9999.yml','port',s,port_map[s]], text=True).strip()
+    out=subprocess.check_output(['docker','compose','-p','somabrain-9999','-f','docker-compose.yml','port',s,port_map[s]], text=True).strip()
     ports[s+'_host_mapping'] = out
   except Exception:
     ports[s+'_host_mapping'] = ''

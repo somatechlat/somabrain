@@ -44,6 +44,11 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - Created Onboarding Manual for new team members and contractors
 - Added comprehensive runbooks for all major system components
 
+### 💥 Removed
+- Legacy environment variants and overlays removed:
+  - Dropped support for `.env.local` and other per-variant env files. Use a single canonical `.env`.
+  - Deleted `docker-compose.9999.yml` and other overlay compose files. Single `docker-compose.yml` is the source of truth.
+
 ---
 
 ## [v0.1.0] - 2025-10-15

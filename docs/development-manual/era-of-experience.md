@@ -37,8 +37,8 @@ Schemas live under `proto/cog/*.avsc`. Tests validate presence and optional fast
 ## How to run (local 9999 stack)
 
 ```bash
-# From repo root
-docker compose --env-file .env.9999.local up -d somabrain_kafka somabrain_app somabrain_reward_producer somabrain_learner_online
+# From repo root, bring up the 9999 stack (isolated ports in 301xx)
+./scripts/dev_up_9999.sh --with-monitoring
 
 # Health checks
 curl -sf http://localhost:30183/health

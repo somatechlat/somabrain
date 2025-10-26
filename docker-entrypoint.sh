@@ -3,6 +3,12 @@
 
 set -e
 
+# If a command is provided, delegate to it immediately (service/worker mode)
+if [ "$#" -gt 0 ]; then
+  echo "docker-entrypoint: delegating to provided command: $*"
+  exec "$@"
+fi
+
 # Allow overriding host, port, workers, and extra args
 HOST="${SOMABRAIN_HOST:-0.0.0.0}"
 PORT="${SOMABRAIN_PORT:-9999}"
@@ -61,6 +67,7 @@ if [ "${SOMABRAIN_DEMO_SEED:-}" = "true" ] || [ "${SOMABRAIN_DEMO_SEED:-}" = "1"
 fi
 
 # Initialize runtime singletons (idempotent). Important when backend enforcement is enabled.
+# Only run for API mode (no custom command provided).
 if [ -x "/app/scripts/initialize_runtime.py" ] || [ -f "/app/scripts/initialize_runtime.py" ]; then
   echo "Running initialize_runtime.py to prepare runtime singletons"
   python3 /app/scripts/initialize_runtime.py || echo "initialize_runtime.py exited with non-zero status"

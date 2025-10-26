@@ -4,15 +4,14 @@ This guide shows how to run a second SOMABRAIN Docker cluster in parallel to you
 
 ## What’s included
 
-- docker-compose.9999.yml: compose override with unique project name, network, volumes, and container names.
-- .env.9999.local: environment file for the 9999 stack.
 - scripts/dev_up_9999.sh: helper to start the 9999 stack and generate ports.9999.json.
+- Single canonical docker-compose.yml and a generated `.env` drive both stacks.
 
 ## Start the secondary cluster
 
 ```bash
 # From the repo root
-./scripts/dev_up_9999.sh
+./scripts/dev_up_9999.sh --with-monitoring
 ```
 
 - API health: http://localhost:9999/health
@@ -21,7 +20,7 @@ This guide shows how to run a second SOMABRAIN Docker cluster in parallel to you
 ## Bring it down
 
 ```bash
-docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file .env.9999.local down
+docker compose -p somabrain-9999 -f docker-compose.yml --env-file .env down
 ```
 
 ## Notes
