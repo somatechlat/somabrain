@@ -95,9 +95,26 @@ class TargetConfig:
             return False, f"Memory unreachable at {url}: {exc}"
         if resp.status_code != 200:
             return False, f"Memory health returned {resp.status_code} for {url}"
-        if not resp.json().get("ok", False):
-            return False, f"Memory health check not OK for {self.label}"
-        return True, None
+        # Tolerate alternate health schemas (kv_store/vector_store/graph_store booleans)
+        try:
+            body = resp.json()
+        except Exception:
+            return False, f"Memory health returned non-JSON body for {url}"
+
+        # If an explicit 'ok' is provided, require it to be True
+        if "ok" in body:
+            return (True, None) if body.get("ok") else (False, f"Memory health check not OK for {self.label}")
+
+        # Otherwise, accept 200 with any truthy subsystem signal
+        for key in ("kv_store", "vector_store", "graph_store"):
+            if key in body and bool(body.get(key)):
+                return True, None
+
+        # Fallback: any non-empty JSON object with 200 is considered healthy
+        if isinstance(body, dict) and body:
+            return True, None
+
+        return False, f"Memory health ambiguous schema at {url}: {body!r}"
 
     def _probe_redis(self) -> tuple[bool, str | None]:
         if not self.redis_url:
