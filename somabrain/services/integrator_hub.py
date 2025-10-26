@@ -8,6 +8,7 @@ Environment:
 - SOMABRAIN_KAFKA_URL: Bootstrap servers (kafka://host:port or host:port)
 - SOMABRAIN_REDIS_URL: Redis URL (redis://host:port/db)
 - SOMABRAIN_OPA_URL: Optional OPA base URL for gating (POST /v1/data/<policy>)
+- SOMABRAIN_OPA_POLICY: Optional policy path (e.g., soma.policy.integrator)
 - SOMABRAIN_FF_COG_INTEGRATOR: Feature flag (1/true to enable main())
 
 Topics:
@@ -48,6 +49,12 @@ INTEGRATOR_ERRORS = app_metrics.get_counter(
     "somabrain_integrator_errors_total",
     "Unhandled errors in integrator loop",
     labelnames=["stage"],
+)
+
+# Optional OPA decision latency
+INTEGRATOR_OPA_LAT = app_metrics.get_histogram(
+    "somabrain_integrator_opa_latency_seconds",
+    "OPA decision latency for integrator gating",
 )
 
 
@@ -165,6 +172,29 @@ class IntegratorHub:
                 self._cache = RedisCache(self._redis_url, namespace="cog")
             except Exception:
                 self._cache = None
+        # OPA (optional)
+        self._opa_url: Optional[str] = None
+        self._opa_policy: Optional[str] = None
+        self._opa_fail_closed: bool = False
+        try:
+            from common.config.settings import settings as _settings  # type: ignore
+
+            self._opa_url = (_settings.opa_url or os.getenv("SOMABRAIN_OPA_URL") or "").strip()
+            self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
+            # Prefer mode-aware fail-closed if available
+            try:
+                self._opa_fail_closed = bool(_settings.mode_opa_fail_closed())
+            except Exception:
+                self._opa_fail_closed = bool(
+                    os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower()
+                    in ("1", "true", "yes", "on")
+                )
+        except Exception:
+            self._opa_url = (os.getenv("SOMABRAIN_OPA_URL") or "").strip()
+            self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
+            self._opa_fail_closed = bool(
+                os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower() in ("1", "true", "yes", "on")
+            )
 
     def _ensure_clients(self) -> None:
         if not self._bootstrap:
@@ -255,14 +285,77 @@ class IntegratorHub:
         except Exception:
             pass
         rationale = f"softmax_tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
+        # Optional OPA gating/adjustment
+        leader_adj = leader
+        if self._opa_url and self._opa_policy:
+            allowed, new_leader, opa_note = self._opa_decide(tenant, leader, weights, ev)
+            if not allowed:
+                # If fail-closed, drop frame; otherwise continue with original leader
+                if self._opa_fail_closed:
+                    return None
+                else:
+                    rationale += f"; opa=deny"
+            else:
+                if new_leader and new_leader in ("state", "agent", "action"):
+                    leader_adj = new_leader
+                rationale += f"; opa=allow{opa_note}"
         gf = {
             "ts": _now_iso(),
-            "leader": leader,
+            "leader": leader_adj,
             "weights": {k: float(v) for k, v in weights.items()},
             "frame": frame_map,
             "rationale": rationale,
         }
         return gf
+
+    def _opa_decide(
+        self,
+        tenant: str,
+        leader: str,
+        weights: Dict[str, float],
+        ev: Dict[str, Any],
+    ) -> Tuple[bool, Optional[str], str]:
+        """Call OPA to allow/adjust leader.
+
+        Returns: (allowed, new_leader|None, note)
+        """
+        url = self._opa_url or ""
+        pol = self._opa_policy or ""
+        if not url or not pol:
+            return True, None, ""
+        # Build input
+        payload = {
+            "input": {
+                "tenant": tenant,
+                "candidate": {"leader": leader, "weights": weights},
+                "event": ev,
+            }
+        }
+        # POST /v1/data/<policy>
+        endpoint = url.rstrip("/") + "/v1/data/" + pol.replace(".", "/")
+        t0 = time.perf_counter()
+        try:
+            import requests  # type: ignore
+
+            resp = requests.post(endpoint, json=payload, timeout=1.5)
+            INTEGRATOR_OPA_LAT.observe(max(0.0, time.perf_counter() - t0))
+            if resp.status_code >= 400:
+                return (not self._opa_fail_closed), None, ""
+            data = resp.json()
+            # Expect {"result": {"allow": bool, "leader": optional str}}
+            res = data.get("result") if isinstance(data, dict) else None
+            if not isinstance(res, dict):
+                return True, None, ""
+            allow = bool(res.get("allow", True))
+            new_leader = res.get("leader")
+            note = ""
+            if isinstance(new_leader, str) and new_leader:
+                note = f"; leader={new_leader}"
+            return allow, (str(new_leader) if isinstance(new_leader, str) else None), note
+        except Exception:
+            INTEGRATOR_ERRORS.labels(stage="opa").inc()
+            INTEGRATOR_OPA_LAT.observe(max(0.0, time.perf_counter() - t0))
+            return (not self._opa_fail_closed), None, ""
 
     def run_forever(self) -> None:
         self._ensure_clients()
