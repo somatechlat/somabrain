@@ -81,6 +81,7 @@ def _init_metrics() -> None:
 class Frame:
     ts: str
     leader: str
+    tenant: str
 
 
 def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
@@ -93,9 +94,17 @@ def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
             data = json.loads(value.decode("utf-8"))
         ts = str(data.get("ts") or "")
         leader = str(data.get("leader") or "")
+        # tenant is nested in frame map from IntegratorHub
+        tenant = "public"
+        try:
+            frame_map = data.get("frame") or {}
+            tv = frame_map.get("tenant") if isinstance(frame_map, dict) else None
+            tenant = str(tv or "public").strip() or "public"
+        except Exception:
+            tenant = "public"
         if not ts or not leader:
             return None
-        return Frame(ts=ts, leader=leader)
+        return Frame(ts=ts, leader=leader, tenant=tenant)
     except Exception:
         return None
 
@@ -124,8 +133,9 @@ class Segmenter:
 
     def __init__(self, max_dwell_ms: int = 0):
         self.max_dwell_ms = max(0, int(max_dwell_ms))
-        self._last_leader: Optional[str] = None
-        self._last_change_ms: Optional[int] = None
+        # Maintain independent state per tenant
+        self._last_leader: Dict[str, Optional[str]] = {}
+        self._last_change_ms: Dict[str, Optional[int]] = {}
 
     @staticmethod
     def _parse_ts(ts: str) -> int:
@@ -150,40 +160,48 @@ class Segmenter:
         except Exception:
             return _now_ms()
 
-    def observe(self, ts: str, leader: str) -> Optional[Tuple[str, str, int, str]]:
+    def observe(self, ts: str, leader: str, tenant: Optional[str] = None) -> Optional[Tuple[str, str, int, str]]:
+        """Observe a frame for a tenant and possibly emit a boundary.
+
+        Backward compatible: if tenant is None, use 'public' bucket.
+        """
+        t = (tenant or "public").strip() or "public"
         now_ms = self._parse_ts(ts)
         leader = (leader or "").strip()
         if not leader:
             return None
 
-        if self._last_leader is None:
+        last_leader = self._last_leader.get(t)
+        last_change = self._last_change_ms.get(t)
+
+        if last_leader is None:
             # Initialize state; no boundary yet
-            self._last_leader = leader
-            self._last_change_ms = now_ms
+            self._last_leader[t] = leader
+            self._last_change_ms[t] = now_ms
             return None
 
         # Check max dwell first
         if (
             self.max_dwell_ms > 0
-            and self._last_change_ms is not None
-            and now_ms - self._last_change_ms >= self.max_dwell_ms
-            and leader == self._last_leader
+            and last_change is not None
+            and now_ms - last_change >= self.max_dwell_ms
+            and leader == last_leader
         ):
-            dwell = now_ms - (self._last_change_ms or now_ms)
+            dwell = now_ms - (last_change or now_ms)
             boundary_ts = ts
-            domain = self._last_leader or leader
+            domain = last_leader or leader
             # Reset change marker but keep same leader
-            self._last_change_ms = now_ms
+            self._last_change_ms[t] = now_ms
             return (domain, boundary_ts, int(dwell), "max_dwell")
 
         # Leader change
-        if leader != self._last_leader:
-            dwell = now_ms - (self._last_change_ms or now_ms)
+        if leader != last_leader:
+            dwell = now_ms - (last_change or now_ms)
             boundary_ts = ts
-            domain = self._last_leader
+            domain = last_leader
             # Update state to new leader
-            self._last_leader = leader
-            self._last_change_ms = now_ms
+            self._last_leader[t] = leader
+            self._last_change_ms[t] = now_ms
             return (domain, boundary_ts, int(dwell), "leader_change")
 
         # No boundary
@@ -230,11 +248,12 @@ class SegmentationService:
                 frame = _parse_frame(msg.value, self._serde_in)
                 if frame is None:
                     continue
-                out = self._segmenter.observe(frame.ts, frame.leader)
+                out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
                 if out is None:
                     continue
                 domain, boundary_ts, dwell_ms, evidence = out
                 record = {
+                    "tenant": frame.tenant,
                     "domain": domain,
                     "boundary_ts": boundary_ts,
                     "dwell_ms": int(dwell_ms),
