@@ -5,6 +5,10 @@ Segmentation Service
 Consumes GlobalFrame events and emits SegmentBoundary records when the leader
 domain changes or when a maximum dwell threshold is reached.
 
+Optionally, supports a CPD (change-point detection) mode that consumes
+BeliefUpdate events (Δerror streams) from state/agent/action domains and
+emits SegmentBoundary on statistically significant shifts.
+
 Design choices:
 - Stateless Kafka I/O around a small, testable Segmenter core that tracks the
   current leader and last-change timestamp.
@@ -15,8 +19,12 @@ Design choices:
 Environment variables:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
 - SOMABRAIN_FF_COG_SEGMENTATION: enable/disable service (default off)
+- SOMABRAIN_SEGMENT_MODE: 'leader' (default) or 'cpd'
 - SOMABRAIN_SEGMENT_MAX_DWELL_MS: optional max dwell; emits boundary even if
-  leader hasn't changed (default 0 meaning disabled)
+    leader hasn't changed (default 0 meaning disabled)
+- SOMABRAIN_CPD_MIN_SAMPLES: warmup samples before testing (default 20)
+- SOMABRAIN_CPD_Z: Z-score threshold vs running std (default 4.0)
+- SOMABRAIN_CPD_MIN_GAP_MS: minimum gap between boundaries per domain (default 1000)
 """
 
 from __future__ import annotations
@@ -86,6 +94,36 @@ class Frame:
 
 def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
     if value is None:
+        return None
+
+
+# --- CPD mode support -------------------------------------------------------
+
+@dataclass
+class Update:
+    ts: str
+    tenant: str
+    domain: str
+    delta_error: float
+
+
+def _parse_update(value: bytes, serde: Optional[AvroSerde]) -> Optional[Update]:
+    if value is None:
+        return None
+    try:
+        if serde is not None:
+            data = serde.deserialize(value)  # type: ignore[arg-type]
+        else:
+            data = json.loads(value.decode("utf-8"))
+        ts = str(data.get("ts") or "")
+        tenant = str((data.get("tenant") or "public").strip() or "public")
+        domain = str((data.get("domain") or "").strip())
+        de = data.get("delta_error")
+        delta_error = float(de if de is not None else 0.0)
+        if not ts or not domain:
+            return None
+        return Update(ts=ts, tenant=tenant, domain=domain, delta_error=delta_error)
+    except Exception:
         return None
     try:
         if serde is not None:
@@ -208,30 +246,146 @@ class Segmenter:
         return None
 
 
+class _Welford:
+    """Online mean/std estimator.
+
+    Keeps running mean and variance using Welford's algorithm.
+    """
+
+    def __init__(self) -> None:
+        self.n = 0
+        self.mean = 0.0
+        self.M2 = 0.0
+
+    def update(self, x: float) -> None:
+        self.n += 1
+        delta = x - self.mean
+        self.mean += delta / self.n
+        delta2 = x - self.mean
+        self.M2 += delta * delta2
+
+    @property
+    def variance(self) -> float:
+        return self.M2 / self.n if self.n > 0 else 0.0
+
+    @property
+    def std(self) -> float:
+        import math
+
+        return math.sqrt(self.variance)
+
+
+class CPDSegmenter:
+    """Change-point detection over delta_error per tenant:domain.
+
+    Evidence values:
+    - "cpd" when Z-score threshold exceeded vs running std after warmup
+    - "max_dwell" when no CPD but dwell exceeds threshold
+    """
+
+    def __init__(self, max_dwell_ms: int, min_samples: int, z_threshold: float, min_gap_ms: int, min_std: float = 0.02):
+        self.max_dwell_ms = max(0, int(max_dwell_ms))
+        self.min_samples = max(1, int(min_samples))
+        self.z = float(z_threshold)
+        self.min_gap_ms = max(0, int(min_gap_ms))
+        self.min_std = float(min_std)
+        # State per tenant:domain
+        self._stats: Dict[Tuple[str, str], _Welford] = {}
+        self._last_change_ms: Dict[Tuple[str, str], Optional[int]] = {}
+
+    @staticmethod
+    def _parse_ts(ts: str) -> int:
+        return Segmenter._parse_ts(ts)
+
+    def observe(self, ts: str, tenant: str, domain: str, delta_error: float) -> Optional[Tuple[str, str, int, str]]:
+        key = ((tenant or "public").strip() or "public", (domain or "").strip())
+        if not key[1]:
+            return None
+        now_ms = self._parse_ts(ts)
+        st = self._stats.get(key)
+        if st is None:
+            st = _Welford()
+            self._stats[key] = st
+            self._last_change_ms[key] = now_ms
+        # Dwell boundary first
+        last_change = self._last_change_ms.get(key)
+        if (
+            self.max_dwell_ms > 0
+            and last_change is not None
+            and now_ms - last_change >= self.max_dwell_ms
+        ):
+            self._last_change_ms[key] = now_ms
+            dwell = now_ms - (last_change or now_ms)
+            return (key[1], ts, int(dwell), "max_dwell")
+
+        # Test threshold against PRE-update stats to avoid diluting spike
+        if st.n >= self.min_samples:
+            std = max(self.min_std, st.std)
+            z = abs((float(delta_error) - st.mean) / std)
+            if z >= self.z:
+                # Respect min_gap guard
+                if last_change is not None and self.min_gap_ms > 0 and (now_ms - last_change) < self.min_gap_ms:
+                    return None
+                self._last_change_ms[key] = now_ms
+                dwell = now_ms - (last_change or now_ms)
+                # Reset stats to avoid repeated triggers on same regime
+                self._stats[key] = _Welford()
+                return (key[1], ts, int(dwell), "cpd")
+        # No trigger; update stats and continue
+        st.update(float(delta_error))
+        return None
+
+
 class SegmentationService:
     def __init__(self):
         _init_metrics()
         self._serde_in: Optional[AvroSerde] = None
         self._serde_out: Optional[AvroSerde] = None
+        self._serde_update: Optional[AvroSerde] = None
         try:
             if load_schema is not None and AvroSerde is not None:
                 gf_schema = load_schema("global_frame")
                 sb_schema = load_schema("segment_boundary")
                 self._serde_in = AvroSerde(gf_schema)
                 self._serde_out = AvroSerde(sb_schema)
+                # Optional for CPD mode
+                try:
+                    bu_schema = load_schema("belief_update")
+                    self._serde_update = AvroSerde(bu_schema)
+                except Exception:
+                    self._serde_update = None
         except Exception:
             self._serde_in = None
             self._serde_out = None
+            self._serde_update = None
         max_dwell_ms = int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0")
         self._segmenter = Segmenter(max_dwell_ms=max_dwell_ms)
+        # CPD mode parameters
+        self._cpd = CPDSegmenter(
+            max_dwell_ms=max_dwell_ms,
+            min_samples=int(os.getenv("SOMABRAIN_CPD_MIN_SAMPLES", "20") or "20"),
+            z_threshold=float(os.getenv("SOMABRAIN_CPD_Z", "4.0") or "4.0"),
+            min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
+            min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
+        )
+        self._mode = (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
         if KafkaConsumer is None or KafkaProducer is None:
             print("Kafka client not available; segmentation service idle.")
             while True:
                 time.sleep(60)
+        # Select topics based on mode
+        if self._mode == "cpd":
+            topics = [
+                "cog.state.updates",
+                "cog.agent.updates",
+                "cog.action.updates",
+            ]
+        else:
+            topics = ["cog.global.frame"]
         consumer = KafkaConsumer(
-            "cog.global.frame",
+            *topics,
             bootstrap_servers=_bootstrap(),
             value_deserializer=lambda m: m,
             auto_offset_reset="latest",
@@ -245,15 +399,27 @@ class SegmentationService:
         )
         try:
             for msg in consumer:
-                frame = _parse_frame(msg.value, self._serde_in)
-                if frame is None:
-                    continue
-                out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
-                if out is None:
-                    continue
-                domain, boundary_ts, dwell_ms, evidence = out
+                if self._mode == "cpd":
+                    upd = _parse_update(msg.value, self._serde_update)
+                    if upd is None:
+                        continue
+                    out = self._cpd.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
+                    if out is None:
+                        continue
+                    domain, boundary_ts, dwell_ms, evidence = out
+                    tenant = upd.tenant
+                else:
+                    frame = _parse_frame(msg.value, self._serde_in)
+                    if frame is None:
+                        continue
+                    out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
+                    if out is None:
+                        continue
+                    domain, boundary_ts, dwell_ms, evidence = out
+                    tenant = frame.tenant
+
                 record = {
-                    "tenant": frame.tenant,
+                    "tenant": tenant,
                     "domain": domain,
                     "boundary_ts": boundary_ts,
                     "dwell_ms": int(dwell_ms),
@@ -272,9 +438,7 @@ class SegmentationService:
                     producer.send("cog.segments", value=payload)
                     if BOUNDARY_EMITTED is not None:
                         try:
-                            BOUNDARY_EMITTED.labels(
-                                domain=domain, evidence=evidence
-                            ).inc()
+                            BOUNDARY_EMITTED.labels(domain=domain, evidence=evidence).inc()
                         except Exception:
                             pass
                     if BOUNDARY_LATENCY is not None:
