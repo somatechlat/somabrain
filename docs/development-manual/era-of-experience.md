@@ -9,7 +9,7 @@ This document tracks the cognitive-thread design and the experience-centric lear
 - Predictive threads emit belief updates and next-event predictions (state/agent/action).
 - Integrator Hub selects a leader (softmax with OPA), segments streams, and publishes context.
 - Reward Producer ingests real reward signals; Learner Online closes the loop by adjusting exploration temperature (τ) and other knobs via `ConfigUpdate`.
-- Observability is metrics-only via Prometheus (no external dashboards).
+- Observability is metrics-only via Prometheus.
 - 9999 dev stack uses strict 301xx host ports; services are isolated.
 
 ## Topics & Contracts

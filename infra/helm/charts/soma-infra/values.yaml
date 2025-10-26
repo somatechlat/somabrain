@@ -67,8 +67,6 @@ vault:
 
 kube-prometheus-stack:
   enabled: true
-  grafana:
-    enabled: false
   prometheus:
     prometheusSpec:
       retention: 15d

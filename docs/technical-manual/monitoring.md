@@ -446,7 +446,7 @@ Historical example only (kept for reference; not used in this project):
 }
 ```
 
----
+<!-- Visualization examples removed entirely per policy. -->
 
 ## Log Management
 
