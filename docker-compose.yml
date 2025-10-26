@@ -3,7 +3,6 @@ name: somabrain
 services:
   somabrain_redis:
     image: redis:7.2-alpine
-    container_name: somabrain_redis
     restart: unless-stopped
     deploy:
       resources:
@@ -26,7 +25,6 @@ services:
 
   somabrain_kafka:
     image: apache/kafka:3.7.0
-    container_name: somabrain_kafka
     restart: unless-stopped
     deploy:
       resources:
@@ -105,7 +103,6 @@ services:
 
   somabrain_kafka_exporter:
     image: danielqsj/kafka-exporter:v1.7.0
-    container_name: somabrain_kafka_exporter
     restart: unless-stopped
     command:
       - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}
@@ -151,7 +148,6 @@ services:
 
   somabrain_opa:
     image: openpolicyagent/opa:0.48.0-debug
-    container_name: somabrain_opa
     restart: unless-stopped
     deploy:
       resources:
@@ -175,7 +171,6 @@ services:
 
   somabrain_prometheus:
     image: prom/prometheus:v2.49.0
-    container_name: somabrain_prometheus
     restart: unless-stopped
     deploy:
       resources:
@@ -193,7 +188,6 @@ services:
 
   somabrain_postgres:
     image: postgres:15-alpine
-    container_name: somabrain_postgres
     restart: unless-stopped
     deploy:
       resources:
@@ -219,7 +213,6 @@ services:
 
   somabrain_postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
-    container_name: somabrain_postgres_exporter
     restart: unless-stopped
     deploy:
       resources:
@@ -247,7 +240,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: somabrain:latest
-    container_name: somabrain_app
     restart: unless-stopped
     deploy:
       resources:
@@ -299,8 +291,26 @@ services:
       context: .
       dockerfile: Dockerfile
     image: somabrain:latest
-    container_name: somabrain_outbox_publisher
     restart: unless-stopped
+      somabrain_outbox_db_applier:
+        build:
+          context: .
+          dockerfile: Dockerfile
+        image: somabrain:latest
+        restart: unless-stopped
+        depends_on:
+          somabrain_postgres:
+            condition: service_healthy
+        networks:
+          - somabrain_net
+        command: ["python", "-m", "somabrain.workers.outbox_db_applier"]
+        environment:
+          SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+          SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK}"
+          SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
+          SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
+          SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES}
+          SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL}
     depends_on:
       somabrain_kafka:
         condition: service_healthy
@@ -320,6 +330,27 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY}
       SOMABRAIN_JOURNAL_DIR: ${SOMABRAIN_JOURNAL_DIR}
+
+  somabrain_outbox_db_applier:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    container_name: somabrain_outbox_db_applier
+    restart: unless-stopped
+    depends_on:
+      somabrain_postgres:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.workers.outbox_db_applier"]
+    environment:
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
+      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
+      SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
+      SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES}
+      SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL}
 
 volumes:
   kafka_data:

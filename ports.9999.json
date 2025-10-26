@@ -1,0 +1,11 @@
+{
+  "somabrain_app_host_mapping": "0.0.0.0:9999",
+  "somabrain_redis_host_mapping": "0.0.0.0:30100",
+  "somabrain_kafka_host_mapping": "0.0.0.0:30102",
+  "somabrain_prometheus_host_mapping": "",
+  "somabrain_postgres_host_mapping": "0.0.0.0:30106",
+  "somabrain_kafka_exporter_host_mapping": "",
+  "somabrain_postgres_exporter_host_mapping": "",
+  "somabrain_opa_host_mapping": "0.0.0.0:30104",
+  "somabrain_schema_registry_host_mapping": ""
+}

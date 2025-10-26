@@ -52,7 +52,7 @@ fi
 echo "Using compose project name from docker-compose.9999.yml (somabrain-9999)"
 
 echo "Bringing up the 9999 stack (API on :9999) without touching other projects"
-docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_outbox_publisher
+docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_outbox_publisher somabrain_outbox_db_applier
 
 # Wait for somabrain health
 API_HOST_PORT=9999
@@ -72,11 +72,11 @@ ports={}
 services=['somabrain_app','somabrain_redis','somabrain_kafka','somabrain_prometheus','somabrain_postgres','somabrain_kafka_exporter','somabrain_postgres_exporter','somabrain_opa','somabrain_schema_registry']
 port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9092','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181','somabrain_schema_registry':'8081'}
 for s in services:
-    try:
+  try:
     out=subprocess.check_output(['docker','compose','-p','somabrain-9999','-f','docker-compose.yml','-f','docker-compose.9999.yml','port',s,port_map[s]], text=True).strip()
-        ports[s+'_host_mapping']=out
-    except Exception:
-        ports[s+'_host_mapping']=''
+    ports[s+'_host_mapping'] = out
+  except Exception:
+    ports[s+'_host_mapping'] = ''
 open('ports.9999.json','w').write(json.dumps(ports,indent=2))
 print('wrote ports.9999.json')
 PY
