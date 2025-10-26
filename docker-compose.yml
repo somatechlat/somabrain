@@ -292,25 +292,6 @@ services:
       dockerfile: Dockerfile
     image: somabrain:latest
     restart: unless-stopped
-      somabrain_outbox_db_applier:
-        build:
-          context: .
-          dockerfile: Dockerfile
-        image: somabrain:latest
-        restart: unless-stopped
-        depends_on:
-          somabrain_postgres:
-            condition: service_healthy
-        networks:
-          - somabrain_net
-        command: ["python", "-m", "somabrain.workers.outbox_db_applier"]
-        environment:
-          SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS}"
-          SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK}"
-          SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
-          SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
-          SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES}
-          SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL}
     depends_on:
       somabrain_kafka:
         condition: service_healthy
@@ -336,7 +317,6 @@ services:
       context: .
       dockerfile: Dockerfile
     image: somabrain:latest
-    container_name: somabrain_outbox_db_applier
     restart: unless-stopped
     depends_on:
       somabrain_postgres:
