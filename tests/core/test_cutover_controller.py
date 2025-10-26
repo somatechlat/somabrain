@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 
 from somabrain.config import Config

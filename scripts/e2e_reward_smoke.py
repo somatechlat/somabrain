@@ -59,27 +59,64 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
         except Exception:
             pass
 
+def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
+    try:
+        from confluent_kafka import Consumer  # type: ignore
+    except Exception:
+        return False
+    conf = {
+        'bootstrap.servers': _bootstrap(),
+        'group.id': f'reward-smoke-ck-{int(time.time())}',
+        'auto.offset.reset': 'latest',
+        'enable.auto.commit': False,
+    }
+    c = Consumer(conf)
+    try:
+        c.subscribe([topic])
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            msg = c.poll(0.5)
+            if msg is None:
+                continue
+            if msg.error():
+                continue
+            if msg.value():
+                return True
+        return False
+    finally:
+        try:
+            c.close()
+        except Exception:
+            pass
+
 
 def main() -> int:
     # 0) Prepare a consumer at 'latest' BEFORE posting so we only capture new events
+    # Prefer confluent-kafka path if available; otherwise prepare a kafka-python consumer pre-POST
+    use_ck = False
     try:
-        from kafka import KafkaConsumer  # type: ignore
+        use_ck = True
     except Exception:
-        KafkaConsumer = None  # type: ignore
+        use_ck = False
     consumer = None
-    if KafkaConsumer is not None:
+    if not use_ck:
         try:
-            consumer = KafkaConsumer(
-                "cog.reward.events",
-                bootstrap_servers=_bootstrap(),
-                value_deserializer=lambda m: m,
-                auto_offset_reset="latest",
-                enable_auto_commit=False,
-                consumer_timeout_ms=int(45.0 * 1000),
-                group_id=f"reward-smoke-{int(time.time())}",
-            )
+            from kafka import KafkaConsumer  # type: ignore
         except Exception:
-            consumer = None
+            KafkaConsumer = None  # type: ignore
+        if KafkaConsumer is not None:
+            try:
+                consumer = KafkaConsumer(
+                    "cog.reward.events",
+                    bootstrap_servers=_bootstrap(),
+                    value_deserializer=lambda m: m,
+                    auto_offset_reset="latest",
+                    enable_auto_commit=False,
+                    consumer_timeout_ms=int(45.0 * 1000),
+                    group_id=f"reward-smoke-{int(time.time())}",
+                )
+            except Exception:
+                consumer = None
 
     # 1) POST a reward to the reward_producer
     port = int(os.getenv("REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")))
@@ -116,7 +153,8 @@ def main() -> int:
 
     # 2) Consume one record from cog.reward.events
     if consumer is None:
-        ok = _consume_one("cog.reward.events", timeout_s=45.0)
+        # Prefer confluent-kafka consumer if available
+        ok = _consume_one_ck("cog.reward.events", timeout_s=45.0) or _consume_one("cog.reward.events", timeout_s=45.0)
     else:
         ok = False
         start = time.time()

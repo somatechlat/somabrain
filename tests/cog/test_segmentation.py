@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 
 from somabrain.services.segmentation_service import Segmenter
 

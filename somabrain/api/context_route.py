@@ -434,7 +434,6 @@ async def adaptation_reset_endpoint(
                 raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
         except Exception:
             raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
-    from pydantic import BaseModel as _BM  # local import to avoid global dependency
     builder = get_context_builder()
     planner = get_context_planner()
     default_tenant = get_default_tenant()

@@ -58,7 +58,21 @@ Postgres ───────────────────────�
 Prometheus ─────────────────────► Metrics export
 ```
 
-Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters on ports 9696 and 20001–20007. Bring your own memory HTTP backend (default `http://localhost:9595`).
+Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. For local dev we reserve the 301xx host port range to avoid conflicts and keep things predictable:
+
+- API: host 9999 -> container 9696
+- Redis: 30100 -> 6379
+- Kafka broker: 30102 -> 9092 (internal advertised as somabrain_kafka:9092)
+- Kafka exporter: 30103 -> 9308
+- OPA: 30104 -> 8181
+- Prometheus: 30105 -> 9090
+- Postgres: 30106 -> 5432
+- Postgres exporter: 30107 -> 9187
+- Schema registry: 30108 -> 8081
+- Reward producer: 30183 -> 8083
+- Learner online: 30184 -> 8084
+
+Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config.
 
 ---
 
@@ -122,6 +136,8 @@ $ curl -s http://localhost:9696/context/adaptation/state | jq
 ```
 
 Metrics are available at `http://localhost:9696/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
+
+Journaling and durability: writes are journaled to `/var/lib/somabrain/journal` when external backends are unavailable. The Compose stack mounts a persistent volume (`somabrain_journal_data`) at that path so journaled events survive container restarts. You can replay journals into your memory backend with `scripts/migrate_journal_to_backend.py` or `scripts/journal_to_outbox.py`.
 
 ---
 

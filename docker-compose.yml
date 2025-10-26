@@ -277,6 +277,7 @@ services:
       SOMABRAIN_MEMORY_QUALITY_EXP: "${SOMABRAIN_MEMORY_QUALITY_EXP}"
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
       SOMABRAIN_MODE: "${SOMABRAIN_MODE}"
+      SOMABRAIN_JOURNAL_DIR: "${SOMABRAIN_JOURNAL_DIR}"
     ports:
       - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_PORT}"
     healthcheck:
@@ -284,6 +285,8 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    volumes:
+      - somabrain_journal_data:${SOMABRAIN_JOURNAL_DIR}
 
   somabrain_outbox_publisher:
     build:
@@ -310,6 +313,8 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY}
       SOMABRAIN_JOURNAL_DIR: ${SOMABRAIN_JOURNAL_DIR}
+    volumes:
+      - somabrain_journal_data:${SOMABRAIN_JOURNAL_DIR}
 
   somabrain_outbox_db_applier:
     build:
@@ -534,6 +539,8 @@ volumes:
   opa_data:
     driver: local
   prometheus_data:
+    driver: local
+  somabrain_journal_data:
     driver: local
 
 networks:

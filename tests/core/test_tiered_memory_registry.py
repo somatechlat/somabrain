@@ -27,11 +27,9 @@ def test_tiered_registry_remember_and_recall_simple() -> None:
     assert 0.0 <= res.eta <= 1.0
     assert res.sparsity >= 0.0
     assert isinstance(res.backend, str)
-import numpy as np
 
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.services.config_service import ConfigEvent
-from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
 
 
 def _quantum(dim: int = 256) -> QuantumLayer:

@@ -150,7 +150,11 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     try:
         if _producer_kind == "ck":
             _producer.produce(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[call-arg]
-            _producer.poll(0)  # type: ignore[attr-defined]
+            # Flush briefly to make smoke tests deterministic
+            try:
+                _producer.flush(2)  # type: ignore[attr-defined]
+            except Exception:
+                pass
         else:
             _producer.send(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[attr-defined]
         if _REWARD_COUNT is not None:
@@ -177,7 +181,6 @@ def main() -> None:  # pragma: no cover
         uvicorn.run(app, host="0.0.0.0", port=port)
     except Exception:
         # Fallback to a simple loopless run if uvicorn not available
-        import threading
         import time as _time
         print("uvicorn not installed; reward_producer HTTP won't start.")
         while True:

@@ -574,7 +574,7 @@ class IntegratorHub:
                     return None
                 else:
                     policy_allowed = False
-                    rationale += f"; opa=deny"
+                    rationale += "; opa=deny"
             else:
                 if new_leader and new_leader in ("state", "agent", "action"):
                     leader_adj = new_leader

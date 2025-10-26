@@ -34,7 +34,7 @@ import os
 import time
 from dataclasses import dataclass
 import threading
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 
 # Lazy imports for optional dependencies
