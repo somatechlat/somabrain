@@ -57,6 +57,31 @@ INTEGRATOR_OPA_LAT = app_metrics.get_histogram(
     "OPA decision latency for integrator gating",
 )
 
+# Entropy of domain weights (0 = degenerate, 1 = uniform across 3 domains)
+INTEGRATOR_ENTROPY = app_metrics.get_histogram(
+    "somabrain_integrator_leader_entropy",
+    "Entropy of domain weight distribution (normalized)",
+    labelnames=["tenant"],
+    buckets=(
+        0.0,
+        0.05,
+        0.1,
+        0.15,
+        0.2,
+        0.25,
+        0.3,
+        0.35,
+        0.4,
+        0.45,
+        0.5,
+        0.6,
+        0.7,
+        0.8,
+        0.9,
+        1.0,
+    ),
+)
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -271,6 +296,17 @@ class IntegratorHub:
         ts = time.time()
         self._sm.update(tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev))
         leader, weights, raw = self._sm.snapshot(tenant)
+        # Observe entropy of weights (normalize by log(3) so range is 0..1)
+        try:
+            import math as _math
+
+            ps = [max(1e-12, float(weights.get(k, 0.0))) for k in ("state", "agent", "action")]
+            Z = sum(ps) or 1.0
+            ps = [p / Z for p in ps]
+            H = -sum(p * _math.log(p) for p in ps) / _math.log(3.0)
+            INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(max(0.0, min(1.0, float(H))))
+        except Exception:
+            pass
         # Build GlobalFrame per schema (map values must be string for frame)
         frame_map: Dict[str, str] = {
             "tenant": tenant,
