@@ -125,6 +125,30 @@ Metrics are available at `http://localhost:9696/metrics`; queued writes appear u
 
 ---
 
+## Monitoring (no dashboards)
+
+Prometheus metrics and Alertmanager alerts only. See `docs/technical-manual/monitoring.md`.
+
+Quickstart:
+
+```bash
+# Generate .env from template
+./scripts/generate_global_env.sh
+
+# Start API locally with Compose
+docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
+
+# Check health and scrape metrics
+curl -fsS http://127.0.0.1:9696/healthz | jq .
+curl -fsS http://127.0.0.1:9696/metrics | head -n 20
+```
+
+For common queries, see the PromQL cheat sheet at the top of the monitoring guide.
+
+Alertmanager playbooks and escalation examples: see `docs/monitoring/alertmanager-playbooks.md`.
+
+---
+
 ## Documentation & Roadmap
 
 - **User Manual** – Installation, quick start, feature guides, FAQ (`docs/user-manual/`).
@@ -132,6 +156,8 @@ Metrics are available at `http://localhost:9696/metrics`; queued writes appear u
 - **Development Manual** – Repository layout, coding standards, testing strategy, contribution workflow (`docs/development-manual/`).
 - **Onboarding Manual** – Project context, code walkthroughs, checklists (`docs/onboarding-manual/`).
 - **Canonical Improvements** – Living record of all hardening and transparency work (`docs/CANONICAL_IMPROVEMENTS.md`).
+- **Cognitive-Thread Configuration** – Feature flags, environment variables, and Helm overrides for the predictor, segmentation, and integrator services (`docs/cog-threads/configuration.md`).
+- **Predictor Service API** – Health probe behaviour and Kafka emission contract for the predictor services (`docs/cog-threads/predictor-api.md`).
 
 ---
 

@@ -8,6 +8,29 @@
 
 ---
 
+## Quick PromQL cheat sheet
+
+Common queries without dashboards:
+
+```promql
+# Request rate by operation
+rate(somabrain_requests_total[5m]) by (operation)
+
+# API latency p95 by endpoint
+histogram_quantile(0.95, sum(rate(somabrain_http_request_duration_seconds_bucket[5m])) by (le, endpoint))
+
+# Error rate
+sum(rate(somabrain_http_requests_total{status=~"5.."}[5m])) / sum(rate(somabrain_http_requests_total[5m]))
+
+# Tenant request rate
+rate(somabrain_requests_total[5m]) by (tenant)
+
+# Memory writes per hour (moving)
+rate(somabrain_memories_stored_total[1h])
+```
+
+---
+
 ## Monitoring Architecture
 
 SomaBrain provides multi-layer monitoring capabilities designed for production observability:
