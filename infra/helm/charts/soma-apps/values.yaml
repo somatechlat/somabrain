@@ -3,6 +3,9 @@ global:
   namespace: "somabrain"
   sharedInfraNamespace: "soma"
 
+featureFlags:
+  enableCogThreads: false
+
 sb:
   enabled: true
   image:
@@ -126,3 +129,13 @@ predictorAction:
     SOMABRAIN_FF_PREDICTOR_ACTION: "1"
     ENABLE_COG_THREADS: "1"
     SOMA_COMPAT: "1"
+
+orchestrator:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_COG_ORCHESTRATOR: "1"
+    ENABLE_COG_THREADS: "1"

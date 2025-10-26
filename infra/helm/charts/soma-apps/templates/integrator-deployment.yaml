@@ -31,6 +31,8 @@ spec:
             - name: {{ $key }}
               value: "{{ $value }}"
 {{- end }}
+            - name: ENABLE_COG_THREADS
+              value: "{{ ternary "1" "0" $root.Values.featureFlags.enableCogThreads }}"
 {{- range $key, $value := .Values.integrator.env }}
             - name: {{ $key }}
               value: "{{ $value }}"

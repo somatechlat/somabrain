@@ -39,6 +39,12 @@ except Exception:  # pragma: no cover
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
+try:
+    # Optional Prometheus metrics via shared module
+    from somabrain import metrics as _metrics  # type: ignore
+except Exception:  # pragma: no cover
+    _metrics = None  # type: ignore
+
 
 TOPIC = "cog.state.updates"
 NEXT_TOPIC = "cog.next.events"
@@ -95,6 +101,9 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
 def run_forever() -> None:  # pragma: no cover
     init_tracing()
     tracer = get_tracer("somabrain.predictor.state")
+    # Metrics (lazy and optional)
+    _EMITTED = _metrics.get_counter("somabrain_predictor_state_emitted_total", "BeliefUpdate records emitted (state)") if _metrics else None
+    _NEXT_EMITTED = _metrics.get_counter("somabrain_predictor_state_next_total", "NextEvent records emitted (state)") if _metrics else None
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
         if os.getenv("HEALTH_PORT"):
@@ -148,6 +157,11 @@ def run_forever() -> None:  # pragma: no cover
                     "latency_ms": int(5 + 5 * random.random()),
                 }
                 prod.send(TOPIC, value=_encode(rec, serde))
+                if _EMITTED is not None:
+                    try:
+                        _EMITTED.inc()
+                    except Exception:
+                        pass
                 if soma_compat:
                     # Map to soma-compatible BeliefUpdate
                     try:
@@ -172,6 +186,11 @@ def run_forever() -> None:  # pragma: no cover
                     "ts": rec["ts"],
                 }
                 prod.send(NEXT_TOPIC, value=_encode(next_ev, next_serde))
+                if _NEXT_EMITTED is not None:
+                    try:
+                        _NEXT_EMITTED.inc()
+                    except Exception:
+                        pass
                 t += period
                 time.sleep(period)
     finally:
