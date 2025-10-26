@@ -41,18 +41,3 @@ services:
   somabrain_outbox_publisher:
     image: somabrain:V3.0.1-3LANE
 
-networks:
-  somabrain_net:
-    name: somabrain_net_9999
-
-volumes:
-  kafka_data:
-    name: somabrain_kafka_data_9999
-  postgres_data:
-    name: somabrain_postgres_data_9999
-  redis_data:
-    name: somabrain_redis_data_9999
-  opa_data:
-    name: somabrain_opa_data_9999
-  prometheus_data:
-    name: somabrain_prometheus_data_9999

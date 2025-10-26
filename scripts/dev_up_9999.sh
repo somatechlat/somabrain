@@ -7,6 +7,43 @@ cd "$ROOT"
 
 ENVFILE=.env.9999.local
 
+# Sanitize environment so host-level overrides from other stacks don't leak
+unset SOMABRAIN_KAFKA_URL || true
+unset SOMABRAIN_POSTGRES_DSN || true
+unset SOMABRAIN_REDIS_URL || true
+unset POSTGRES_USER || true
+unset POSTGRES_PASSWORD || true
+unset POSTGRES_DB || true
+unset KAFKA_CFG_NODE_ID || true
+unset KAFKA_CFG_PROCESS_ROLES || true
+unset KAFKA_CFG_CONTROLLER_QUORUM_VOTERS || true
+unset KAFKA_CFG_LISTENERS || true
+unset KAFKA_CFG_ADVERTISED_LISTENERS || true
+unset KAFKA_CFG_CONTROLLER_LISTENER_NAMES || true
+unset KAFKA_CFG_INTER_BROKER_LISTENER_NAME || true
+unset KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP || true
+unset KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE || true
+unset KAFKA_CFG_NUM_PARTITIONS || true
+unset KAFKA_CFG_DEFAULT_REPLICATION_FACTOR || true
+unset KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR || true
+unset KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR || true
+unset KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR || true
+unset KAFKA_CFG_LOG_DIRS || true
+unset KAFKA_CFG_LOG_RETENTION_MS || true
+unset KAFKA_CFG_LOG_SEGMENT_BYTES || true
+unset KAFKA_CFG_LOG_RETENTION_BYTES || true
+unset KAFKA_CFG_COMPRESSION_TYPE || true
+unset KAFKA_HEAP_OPTS || true
+unset KAFKA_CLUSTER_ID || true
+unset REDIS_HOST_PORT || true
+unset KAFKA_BROKER_HOST_PORT || true
+unset KAFKA_EXPORTER_HOST_PORT || true
+unset OPA_HOST_PORT || true
+unset PROMETHEUS_HOST_PORT || true
+unset POSTGRES_HOST_PORT || true
+unset POSTGRES_EXPORTER_HOST_PORT || true
+unset SOMABRAIN_HOST_PORT || true
+
 if [ ! -f "$ENVFILE" ]; then
   echo "Generating $ENVFILE with fixed host ports for 9999 stack"
   cp .env.9999.local "$ENVFILE"
