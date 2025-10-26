@@ -1,11 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 # dev_up_9999.sh - bring up the secondary stack (API on 9999) alongside the default
+#
+# This script strictly binds all host ports in the 30100+ range for the 9999 stack
+# to avoid collisions with the primary stack. It also unsets any conflicting
+# shell environment variables so the provided env-file is authoritative.
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
 ENVFILE=.env.9999.local
+
+# Optional flag: also start monitoring/exporters on 301xx
+WITH_MONITORING=0
+if [[ "${1:-}" == "--with-monitoring" ]]; then
+  WITH_MONITORING=1
+fi
 
 # Sanitize environment so host-level overrides from other stacks don't leak
 unset SOMABRAIN_KAFKA_URL || true
@@ -43,16 +53,98 @@ unset PROMETHEUS_HOST_PORT || true
 unset POSTGRES_HOST_PORT || true
 unset POSTGRES_EXPORTER_HOST_PORT || true
 unset SOMABRAIN_HOST_PORT || true
+unset SCHEMA_REGISTRY_HOST_PORT || true
 
 if [ ! -f "$ENVFILE" ]; then
   echo "Generating $ENVFILE with fixed host ports for 9999 stack"
-  cp .env.9999.local "$ENVFILE"
+  cat >"$ENVFILE" <<'EOF'
+COMPOSE_PROJECT_NAME=somabrain-9999
+REDIS_CONTAINER_PORT=6379
+KAFKA_BROKER_CONTAINER_PORT=9092
+KAFKA_EXPORTER_CONTAINER_PORT=9308
+OPA_CONTAINER_PORT=8181
+PROMETHEUS_CONTAINER_PORT=9090
+POSTGRES_CONTAINER_PORT=5432
+POSTGRES_EXPORTER_CONTAINER_PORT=9187
+SOMABRAIN_PORT=9696
+
+# 301xx host ports for the 9999 stack
+REDIS_HOST_PORT=30100
+KAFKA_BROKER_HOST_PORT=30102
+KAFKA_EXPORTER_HOST_PORT=30103
+OPA_HOST_PORT=30104
+PROMETHEUS_HOST_PORT=30105
+POSTGRES_HOST_PORT=30106
+POSTGRES_EXPORTER_HOST_PORT=30107
+SCHEMA_REGISTRY_HOST_PORT=30108
+SOMABRAIN_HOST_PORT=9999
+
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}
+SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token-allow}
+SOMABRAIN_FORCE_FULL_STACK=1
+SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
+SOMABRAIN_REQUIRE_MEMORY=1
+SOMABRAIN_MODE=enterprise
+SOMABRAIN_PREDICTOR_PROVIDER=mahal
+
+SOMABRAIN_HOST=0.0.0.0
+SOMABRAIN_WORKERS=1
+SOMABRAIN_ENABLE_BEST=1
+SOMABRAIN_DEFAULT_TENANT=sandbox
+
+SOMABRAIN_MEMORY_ENABLE_WEIGHTING=1
+SOMABRAIN_MEMORY_PHASE_PRIORS=bootstrap:1.05,general:1.0,specialized:1.03
+SOMABRAIN_MEMORY_QUALITY_EXP=1.0
+
+SOMABRAIN_OUTBOX_BATCH_SIZE=100
+SOMABRAIN_OUTBOX_MAX_DELAY=5.0
+SOMABRAIN_OUTBOX_POLL_INTERVAL=1.0
+SOMABRAIN_OUTBOX_MAX_RETRIES=5
+SOMABRAIN_JOURNAL_DIR=/var/lib/somabrain/journal
+
+SOMABRAIN_REDIS_URL=redis://somabrain_redis:6379/0
+SOMABRAIN_KAFKA_URL=kafka://somabrain_kafka:9092
+SOMABRAIN_OPA_URL=http://somabrain_opa:8181
+SOMABRAIN_OPA_POLICY=soma.policy.integrator
+POSTGRES_USER=soma
+POSTGRES_PASSWORD=soma_pass
+POSTGRES_DB=somabrain
+SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain
+
+KAFKA_CFG_NODE_ID=1
+KAFKA_CFG_PROCESS_ROLES=broker,controller
+KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@somabrain_kafka:9093
+KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://somabrain_kafka:9092
+KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+KAFKA_CFG_NUM_PARTITIONS=2
+KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
+KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+KAFKA_CFG_LOG_DIRS=/var/lib/kafka/data
+KAFKA_CFG_LOG_RETENTION_MS=604800000
+KAFKA_CFG_LOG_SEGMENT_BYTES=52428800
+KAFKA_CFG_LOG_RETENTION_BYTES=536870912
+KAFKA_CFG_COMPRESSION_TYPE=snappy
+KAFKA_HEAP_OPTS=-Xmx384m -Xms256m
+KAFKA_CLUSTER_ID=79LccNO-Qe6G6YgqP1Zrew
+EOF
 fi
 
 echo "Using compose project name from docker-compose.9999.yml (somabrain-9999)"
 
 echo "Bringing up the 9999 stack (API on :9999) without touching other projects"
 docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_outbox_publisher somabrain_outbox_db_applier
+
+# Optionally bring up monitoring/exporters on 301xx range
+if [[ "$WITH_MONITORING" == "1" ]]; then
+  echo "Starting monitoring/exporters on 301xx ports"
+  docker compose -p somabrain-9999 -f docker-compose.yml -f docker-compose.9999.yml --env-file "$ENVFILE" up -d somabrain_prometheus somabrain_kafka_exporter somabrain_postgres_exporter somabrain_schema_registry
+fi
 
 # Wait for somabrain health
 API_HOST_PORT=9999
@@ -80,5 +172,8 @@ for s in services:
 open('ports.9999.json','w').write(json.dumps(ports,indent=2))
 print('wrote ports.9999.json')
 PY
+
+echo "Effective 9999 stack host ports (should be in 301xx range):"
+grep -E '^(REDIS_HOST_PORT|KAFKA_BROKER_HOST_PORT|KAFKA_EXPORTER_HOST_PORT|OPA_HOST_PORT|PROMETHEUS_HOST_PORT|POSTGRES_HOST_PORT|POSTGRES_EXPORTER_HOST_PORT|SCHEMA_REGISTRY_HOST_PORT|SOMABRAIN_HOST_PORT)=' "$ENVFILE" || true
 
 echo "Done. Secondary stack is available at http://localhost:9999"
