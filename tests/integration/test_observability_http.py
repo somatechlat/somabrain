@@ -55,3 +55,18 @@ def test_postgres_exporter_metrics_head() -> None:
     if r is None:
         pytest.skip(f"Postgres exporter not reachable on {ports}")
     assert len(r.text) > 0
+
+
+@pytest.mark.integration
+def test_opa_health() -> None:
+    # Prefer standardized 30004, but tolerate 8181 as a legacy fallback
+    ports = _get_port_candidates("OPA_HOST_PORT", ["30004", "8181"])  # host mapping (container is 8181)
+    urls = []
+    for p in ports:
+        urls.append(f"http://127.0.0.1:{p}/health?plugins")
+        urls.append(f"http://127.0.0.1:{p}/health")
+    r = _try_get(urls)
+    if r is None:
+        pytest.skip(f"OPA not reachable on {ports}")
+    # Minimal assertion: status already 200 via _try_get; body can be '{}' depending on OPA
+    assert r.text is not None
