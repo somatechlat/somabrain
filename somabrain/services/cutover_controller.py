@@ -130,6 +130,10 @@ class CutoverController:
                 plan.notes.append(f"cancelled: {reason}")
             self._plans.pop(tenant, None)
 
+    def get_plan(self, tenant: str) -> Optional[CutoverPlan]:
+        """Return the current plan for a tenant, if any."""
+        return self._plans.get(tenant)
+
     def _require_plan(self, tenant: str) -> CutoverPlan:
         try:
             return self._plans[tenant]

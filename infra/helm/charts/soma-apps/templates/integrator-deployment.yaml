@@ -1,0 +1,35 @@
+{{- if .Values.integrator.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "integrator") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 4 }}
+spec:
+  replicas: {{ .Values.integrator.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 8 }}
+    spec:
+      containers:
+        - name: integrator
+          image: "{{ .Values.integrator.image.repository }}:{{ .Values.integrator.image.tag }}"
+          imagePullPolicy: {{ .Values.integrator.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          command: ["python3"]
+          args: ["-m", "somabrain.services.integrator_hub"]
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.integrator.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- end }}

@@ -31,6 +31,25 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+try:  # optional OTel init
+    from observability.provider import init_tracing, get_tracer  # type: ignore
+except Exception:  # pragma: no cover
+    def init_tracing():
+        return None
+
+    def get_tracer(name: str):  # type: ignore
+        class _Noop:
+            def start_as_current_span(self, *_args, **_kwargs):
+                class _Span:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *a):
+                        return False
+
+                return _Span()
+
+        return _Noop()
 
 import somabrain.metrics as app_metrics
 
@@ -43,6 +62,11 @@ INTEGRATOR_CONSUMED = app_metrics.get_counter(
 INTEGRATOR_PUBLISHED = app_metrics.get_counter(
     "somabrain_integrator_frames_total",
     "GlobalFrame records published",
+    labelnames=["tenant"],
+)
+INTEGRATOR_LEADER_SWITCHES = app_metrics.get_counter(
+    "somabrain_integrator_leader_switches_total",
+    "Leader changes per tenant",
     labelnames=["tenant"],
 )
 INTEGRATOR_ERRORS = app_metrics.get_counter(
@@ -82,6 +106,20 @@ INTEGRATOR_ENTROPY = app_metrics.get_histogram(
     ),
 )
 
+# Shadow/Config metrics
+INTEGRATOR_SHADOW_TOTAL = app_metrics.get_counter(
+    "somabrain_integrator_shadow_total",
+    "Frames routed to shadow topic",
+)
+INTEGRATOR_SHADOW_RATIO = app_metrics.get_gauge(
+    "somabrain_integrator_shadow_ratio",
+    "Observed ratio of frames sent to shadow topic (EMA-free, instantaneous)",
+)
+INTEGRATOR_TAU = app_metrics.get_gauge(
+    "somabrain_integrator_tau",
+    "Current softmax temperature (tau)",
+)
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -111,6 +149,9 @@ class SoftmaxIntegrator:
         self._tau = max(1e-6, float(tau))
         self._stale = max(0.0, float(stale_seconds))
         self._by_tenant: Dict[str, Dict[str, DomainObs]] = {}
+
+    def set_tau(self, tau: float) -> None:
+        self._tau = max(1e-6, float(tau))
 
     def update(self, tenant: str, domain: str, obs: DomainObs) -> None:
         t = (tenant or "public").strip() or "public"
@@ -145,6 +186,9 @@ class SoftmaxIntegrator:
 
 class IntegratorHub:
     def __init__(self, group_id: str = "integrator-hub-v1") -> None:
+        # Initialize tracing (no-op safe)
+        init_tracing()
+        self._tracer = get_tracer("somabrain.integrator_hub")
         # Bootstrap (prefer shared settings when available)
         bs = None
         redis_url = None
@@ -159,35 +203,73 @@ class IntegratorHub:
         redis_url = redis_url or os.getenv("SOMABRAIN_REDIS_URL") or ""
         self._bootstrap = _strip_scheme(bs)
         self._redis_url = redis_url
+        # Feature flags
+        self._soma_compat: bool = (
+            os.getenv("SOMA_COMPAT", "").strip().lower() in ("1", "true", "yes", "on")
+        )
         # Serde
         # Lazy import for Avro helpers to avoid import-time dependency for unit tests
         self._bu_schema = None
         self._gf_schema = None
+        self._ic_schema = None
         self._avro_bu = None
         self._avro_gf = None
+        self._avro_bu_soma = None
+        self._avro_ic = None
         try:
             from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
 
             self._bu_schema = load_schema("belief_update")
             self._gf_schema = load_schema("global_frame")
+            # Optional compatibility schemas
+            try:
+                self._ic_schema = load_schema("integrator_context")
+            except Exception:
+                self._ic_schema = None
+            try:
+                _soma_schema = load_schema("belief_update_soma")
+            except Exception:
+                _soma_schema = None
             try:
                 from libs.kafka_cog.serde import AvroSerde  # type: ignore
 
                 self._avro_bu = AvroSerde(self._bu_schema)
                 self._avro_gf = AvroSerde(self._gf_schema)
+                if _soma_schema is not None:
+                    try:
+                        self._avro_bu_soma = AvroSerde(_soma_schema)
+                    except Exception:
+                        self._avro_bu_soma = None
+                if self._ic_schema is not None:
+                    try:
+                        self._avro_ic = AvroSerde(self._ic_schema)
+                    except Exception:
+                        self._avro_ic = None
             except Exception:
                 self._avro_bu = None
                 self._avro_gf = None
+                self._avro_bu_soma = None
+                self._avro_ic = None
         except Exception:
             # Avro path unavailable; JSON fallback will be used
             self._bu_schema = None
             self._gf_schema = None
+            self._ic_schema = None
         # Kafka
         self._consumer: Optional[KafkaConsumer] = None
         self._producer: Optional[KafkaProducer] = None
         self._group_id = group_id
         # State
         self._sm = SoftmaxIntegrator(tau=1.0, stale_seconds=10.0)
+        try:
+            INTEGRATOR_TAU.set(1.0)
+        except Exception:
+            pass
+        self._shadow_ratio = float(os.getenv("SHADOW_RATIO", "0.0") or "0.0")
+        self._frames_seen = 0
+        self._shadow_sent = 0
+        # Track leader switches per tenant
+        self._last_leader: Dict[str, str] = {}
         # Redis cache (optional)
         self._cache = None
         if self._redis_url:
@@ -225,10 +307,21 @@ class IntegratorHub:
         if not self._bootstrap:
             raise RuntimeError("Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")
         if self._consumer is None:
-            self._consumer = KafkaConsumer(
+            topics = [
                 "cog.state.updates",
                 "cog.agent.updates",
                 "cog.action.updates",
+                "cog.config.updates",
+            ]
+            if self._soma_compat:
+                # Consume SOMA belief updates as well
+                topics.extend([
+                    "soma.belief.state",
+                    "soma.belief.agent",
+                    "soma.belief.action",
+                ])
+            self._consumer = KafkaConsumer(
+                *topics,
                 bootstrap_servers=self._bootstrap,
                 group_id=self._group_id,
                 enable_auto_commit=True,
@@ -255,6 +348,51 @@ class IntegratorHub:
         except Exception:
             return None
 
+    def _decode_update_soma(self, payload: bytes) -> Optional[Dict[str, Any]]:
+        """Decode a SOMA belief update and map to internal representation.
+
+        Internal format uses keys: domain, confidence, delta_error, evidence.tenant
+        """
+        rec: Optional[Dict[str, Any]] = None
+        # Prefer Avro soma schema if available
+        if self._avro_bu_soma is not None:
+            try:
+                rec = self._avro_bu_soma.deserialize(payload)  # type: ignore
+            except Exception:
+                rec = None
+        if rec is None:
+            try:
+                rec = json.loads(payload.decode("utf-8"))
+            except Exception:
+                return None
+        try:
+            # Map SOMA fields
+            stream = str(rec.get("stream") or rec.get("Stream") or "state").lower()
+            if stream not in ("state", "agent", "action"):
+                # Enum may be uppercase
+                stream = str(rec.get("stream") or "STATE").upper().strip()
+                stream = stream.lower()
+            ts_ms = int(rec.get("timestamp") or 0)
+            delta_error = float(rec.get("delta_error") or 0.0)
+            # Derive a confidence from delta_error (monotone decreasing)
+            try:
+                confidence = math.exp(-max(0.0, float(delta_error)))
+            except Exception:
+                confidence = 0.0
+            metadata = rec.get("metadata") or {}
+            tenant = "public"
+            if isinstance(metadata, dict):
+                tenant = str(metadata.get("tenant", "public") or "public").strip() or "public"
+            mapped = {
+                "domain": stream,
+                "confidence": float(confidence),
+                "delta_error": float(delta_error),
+                "evidence": {"tenant": tenant, "ts_ms": ts_ms},
+            }
+            return mapped
+        except Exception:
+            return None
+
     def _encode_frame(self, record: Dict[str, Any]) -> bytes:
         if self._avro_gf is not None:
             try:
@@ -263,13 +401,74 @@ class IntegratorHub:
                 pass
         return json.dumps(record).encode("utf-8")
 
+    def _decode_config(self, payload: bytes) -> Optional[Dict[str, Any]]:
+        try:
+            return json.loads(payload.decode("utf-8"))
+        except Exception:
+            return None
+
     def _publish_frame(self, frame: Dict[str, Any]) -> None:
         if not self._producer:
             return
+        # Shadow routing decision
+        route_to_shadow = False
         try:
-            self._producer.send("cog.global.frame", value=self._encode_frame(frame))
+            import random as _random
+
+            route_to_shadow = (self._shadow_ratio > 0.0) and (_random.random() < self._shadow_ratio)
+        except Exception:
+            route_to_shadow = False
+        try:
+            if route_to_shadow:
+                self._producer.send("cog.integrator.context.shadow", value=self._encode_frame(frame))
+                try:
+                    INTEGRATOR_SHADOW_TOTAL.inc()
+                    self._shadow_sent += 1
+                    if self._frames_seen > 0:
+                        INTEGRATOR_SHADOW_RATIO.set(max(0.0, min(1.0, float(self._shadow_sent) / float(self._frames_seen))))
+                except Exception:
+                    pass
+            else:
+                self._producer.send("cog.global.frame", value=self._encode_frame(frame))
         except Exception:
             INTEGRATOR_ERRORS.labels(stage="publish").inc()
+
+    def _publish_soma_context(
+        self,
+        leader: str,
+        weights: Dict[str, float],
+        gf_record: Dict[str, Any],
+        policy_allowed: bool,
+    ) -> None:
+        if not self._producer or not self._soma_compat:
+            return
+        try:
+            leader_score = float(weights.get(leader, 0.0))
+        except Exception:
+            leader_score = 0.0
+        # Encode embedded global_frame as bytes (prefer Avro if available)
+        try:
+            gf_bytes = self._encode_frame(gf_record)
+        except Exception:
+            try:
+                gf_bytes = json.dumps(gf_record).encode("utf-8")
+            except Exception:
+                gf_bytes = b"{}"
+        ic = {
+            "leader_stream": str(leader),
+            "leader_score": float(leader_score),
+            "global_frame": gf_bytes,
+            "timestamp": int(time.time() * 1000),
+            "policy_decision": bool(policy_allowed),
+        }
+        try:
+            if self._avro_ic is not None:
+                payload = self._avro_ic.serialize(ic)
+            else:
+                payload = json.dumps(ic).encode("utf-8")
+            self._producer.send("soma.integrator.context", value=payload)
+        except Exception:
+            INTEGRATOR_ERRORS.labels(stage="publish_soma").inc()
 
     def _cache_frame(self, tenant: str, frame: Dict[str, Any]) -> None:
         if not self._cache:
@@ -296,6 +495,14 @@ class IntegratorHub:
         ts = time.time()
         self._sm.update(tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev))
         leader, weights, raw = self._sm.snapshot(tenant)
+        # Leader switch metric
+        try:
+            last = self._last_leader.get(tenant)
+            if last is not None and last != leader:
+                INTEGRATOR_LEADER_SWITCHES.labels(tenant=tenant).inc()
+            self._last_leader[tenant] = leader
+        except Exception:
+            pass
         # Observe entropy of weights (normalize by log(3) so range is 0..1)
         try:
             import math as _math
@@ -323,6 +530,7 @@ class IntegratorHub:
         rationale = f"softmax_tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
         # Optional OPA gating/adjustment
         leader_adj = leader
+        policy_allowed = True
         if self._opa_url and self._opa_policy:
             allowed, new_leader, opa_note = self._opa_decide(tenant, leader, weights, ev)
             if not allowed:
@@ -330,6 +538,7 @@ class IntegratorHub:
                 if self._opa_fail_closed:
                     return None
                 else:
+                    policy_allowed = False
                     rationale += f"; opa=deny"
             else:
                 if new_leader and new_leader in ("state", "agent", "action"):
@@ -342,6 +551,8 @@ class IntegratorHub:
             "frame": frame_map,
             "rationale": rationale,
         }
+        # Attach policy flag so caller can publish SOMA context if enabled
+        gf["_policy_allowed"] = policy_allowed  # type: ignore
         return gf
 
     def _opa_decide(
@@ -398,16 +609,51 @@ class IntegratorHub:
         assert self._consumer is not None
         for msg in self._consumer:
             try:
-                ev = self._decode_update(msg.value)
+                topic = getattr(msg, "topic", "") or ""
+                # Config updates: adjust tau (and optionally other params)
+                if topic == "cog.config.updates":
+                    cfg = self._decode_config(msg.value)
+                    if isinstance(cfg, dict):
+                        temp = cfg.get("exploration_temp")
+                        if temp is not None:
+                            try:
+                                self._sm.set_tau(float(temp))
+                                INTEGRATOR_TAU.set(float(temp))
+                            except Exception:
+                                pass
+                    continue
+
+                # Decode event depending on topic (cog vs soma)
+                if topic.startswith("soma.belief."):
+                    ev = self._decode_update_soma(msg.value)
+                else:
+                    ev = self._decode_update(msg.value)
                 if not isinstance(ev, dict):
                     INTEGRATOR_ERRORS.labels(stage="decode").inc()
                     continue
                 dom = str(ev.get("domain", "state"))
                 INTEGRATOR_CONSUMED.labels(domain=dom).inc()
-                frame = self._process_update(ev)
+                with self._tracer.start_as_current_span("integrator_process_update"):
+                    frame = self._process_update(ev)
                 if frame is None:
                     continue
+                # Track frames seen for shadow ratio gauge
+                try:
+                    self._frames_seen += 1
+                except Exception:
+                    pass
+                # Publish primary global frame
                 self._publish_frame(frame)
+                # Publish SOMA integrator context if enabled
+                if self._soma_compat:
+                    try:
+                        policy_allowed = bool(frame.pop("_policy_allowed", True))  # type: ignore
+                    except Exception:
+                        policy_allowed = True
+                    leader_out = str(frame.get("leader", "state"))
+                    weights_out = dict(frame.get("weights", {})) if isinstance(frame.get("weights"), dict) else {}
+                    self._publish_soma_context(leader_out, weights_out, frame, policy_allowed)
+                # Cache and metrics
                 self._cache_frame(self._tenant_from(ev), frame)
                 INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
             except Exception:
@@ -416,7 +662,8 @@ class IntegratorHub:
 
 def main() -> None:  # pragma: no cover - manual run path
     ff = os.getenv("SOMABRAIN_FF_COG_INTEGRATOR", "").strip().lower()
-    if ff not in ("1", "true", "yes", "on"):
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
+    if ff not in ("1", "true", "yes", "on") and not composite:
         print("Integrator Hub feature flag disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 to enable.")
         return
     hub = IntegratorHub()

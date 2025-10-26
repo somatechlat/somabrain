@@ -69,3 +69,60 @@ envCommon:
   SOMABRAIN_KAFKA_URL: "kafka://soma-infra-kafka:9092"
   SOMABRAIN_POSTGRES_DSN: "postgresql://postgres:postgres@soma-postgres.svc.cluster.local:5432/somabrain"
   SOMABRAIN_OPA_URL: "http://soma-infra-opa.soma.svc.cluster.local:8181"
+
+# Cognitive thread microservices
+integrator:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_COG_INTEGRATOR: "1"
+    ENABLE_COG_THREADS: "1"
+    SOMA_COMPAT: "1"
+
+segmentation:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_COG_SEGMENTATION: "1"
+    ENABLE_COG_THREADS: "1"
+    SOMABRAIN_SEGMENT_MODE: "leader"
+    SOMABRAIN_SEGMENT_MAX_DWELL_MS: "0"
+
+predictorState:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_PREDICTOR_STATE: "1"
+    ENABLE_COG_THREADS: "1"
+    SOMA_COMPAT: "1"
+
+predictorAgent:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_PREDICTOR_AGENT: "1"
+    ENABLE_COG_THREADS: "1"
+    SOMA_COMPAT: "1"
+
+predictorAction:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  env:
+    SOMABRAIN_FF_PREDICTOR_ACTION: "1"
+    ENABLE_COG_THREADS: "1"
+    SOMA_COMPAT: "1"

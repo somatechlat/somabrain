@@ -35,6 +35,17 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest
+            # Service-oriented tags (same image, convenient for helm overrides)
+            type=raw,value=integrator-latest
+            type=raw,value=segmentation-latest
+            type=raw,value=predictor-state-latest
+            type=raw,value=predictor-agent-latest
+            type=raw,value=predictor-action-latest
+            type=raw,value=integrator-{{version}}
+            type=raw,value=segmentation-{{version}}
+            type=raw,value=predictor-state-{{version}}
+            type=raw,value=predictor-agent-{{version}}
+            type=raw,value=predictor-action-{{version}}
 
       - name: Build and push
         uses: docker/build-push-action@v6

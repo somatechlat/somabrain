@@ -1,0 +1,35 @@
+{{- if .Values.segmentation.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "segmentation") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 4 }}
+spec:
+  replicas: {{ .Values.segmentation.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 8 }}
+    spec:
+      containers:
+        - name: segmentation
+          image: "{{ .Values.segmentation.image.repository }}:{{ .Values.segmentation.image.tag }}"
+          imagePullPolicy: {{ .Values.segmentation.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          command: ["python3"]
+          args: ["-m", "somabrain.services.segmentation_service"]
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.segmentation.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- end }}

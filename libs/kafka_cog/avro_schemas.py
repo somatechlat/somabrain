@@ -31,11 +31,29 @@ def load_schema(name: str) -> Dict[str, Any]:
 
 
 def load_all() -> Dict[str, Dict[str, Any]]:
-    return {
+    out: Dict[str, Dict[str, Any]] = {
         "belief_update": load_schema("belief_update"),
         "global_frame": load_schema("global_frame"),
         "segment_boundary": load_schema("segment_boundary"),
+        # Extended contracts for learning loop
+        "reward_event": load_schema("reward_event"),
+        "next_event": load_schema("next_event"),
+        "config_update": load_schema("config_update"),
     }
+    # Optional compatibility schemas (present if files exist)
+    try:
+        out["integrator_context"] = load_schema("integrator_context")
+    except FileNotFoundError:
+        pass
+    try:
+        out["segment_event"] = load_schema("segment_event")
+    except FileNotFoundError:
+        pass
+    try:
+        out["belief_update_soma"] = load_schema("belief_update_soma")
+    except FileNotFoundError:
+        pass
+    return out
 
 
 __all__ = ["load_schema", "load_all"]

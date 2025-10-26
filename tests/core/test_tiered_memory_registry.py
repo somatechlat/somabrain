@@ -1,3 +1,32 @@
+from __future__ import annotations
+
+import numpy as np
+
+from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
+
+
+def test_tiered_registry_remember_and_recall_simple() -> None:
+    reg = TieredMemoryRegistry()
+    tenant, ns = "test", "unit"
+    # Create a simple 8-D key/value
+    key = np.asarray([1, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+    val = np.asarray([1, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+    payload = {"task": "unit-key"}
+
+    reg.remember(tenant, ns, anchor_id="a1", key_vector=key, value_vector=val, payload=payload, coordinate=[0,0,0])
+
+    # Query close to the anchor
+    q = np.asarray([0.99, 0.01, 0, 0, 0, 0, 0, 0], dtype=np.float32)
+    res = reg.recall(tenant, ns, query_vector=q)
+    assert res is not None
+    assert res.context.anchor_id == "a1"
+    assert res.context.score >= 0.5
+    # Margin should be non-negative and small but present in trivial case
+    assert res.context.margin >= 0.0
+    # Expose eta/sparsity/backend for observability
+    assert 0.0 <= res.eta <= 1.0
+    assert res.sparsity >= 0.0
+    assert isinstance(res.backend, str)
 import numpy as np
 
 from somabrain.quantum import HRRConfig, QuantumLayer

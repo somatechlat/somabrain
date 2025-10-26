@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "RewardEvent",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "frame_id", "type": "string" },
+    { "name": "r_task", "type": "float" },
+    { "name": "r_user", "type": "float" },
+    { "name": "r_latency", "type": "float" },
+    { "name": "r_safety", "type": "float" },
+    { "name": "r_cost", "type": "float" },
+    { "name": "total", "type": "float" },
+    { "name": "ts", "type": "string" }
+  ]
+}

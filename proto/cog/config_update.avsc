@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "name": "ConfigUpdate",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "learning_rate", "type": "float" },
+    { "name": "exploration_temp", "type": "float" },
+    { "name": "ts", "type": "string" }
+  ]
+}

@@ -1,0 +1,35 @@
+{{- if .Values.predictorState.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-state") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 4 }}
+spec:
+  replicas: {{ .Values.predictorState.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 8 }}
+    spec:
+      containers:
+        - name: predictor-state
+          image: "{{ .Values.predictorState.image.repository }}:{{ .Values.predictorState.image.tag }}"
+          imagePullPolicy: {{ .Values.predictorState.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          command: ["python3"]
+          args: ["/app/services/predictor-state/main.py"]
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.predictorState.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- end }}

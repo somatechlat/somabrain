@@ -6,6 +6,26 @@ import random
 import time
 from typing import Any, Dict, Optional
 
+try:
+    from observability.provider import init_tracing, get_tracer  # type: ignore
+except Exception:  # pragma: no cover
+    def init_tracing():
+        return None
+
+    def get_tracer(name: str):  # type: ignore
+        class _Noop:
+            def start_as_current_span(self, *_args, **_kwargs):
+                class _Span:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *a):
+                        return False
+
+                return _Span()
+
+        return _Noop()
+
 try:  # optional deps
     from kafka import KafkaProducer  # type: ignore
 except Exception:  # pragma: no cover
@@ -20,6 +40,8 @@ except Exception:  # pragma: no cover
 
 
 TOPIC = "cog.state.updates"
+NEXT_TOPIC = "cog.next.events"
+SOMA_TOPIC = "soma.belief.state"
 
 
 def _bootstrap() -> str:
@@ -42,6 +64,24 @@ def _serde() -> Optional[AvroSerde]:
         return None
 
 
+def _next_serde() -> Optional[AvroSerde]:
+    if load_schema is None or AvroSerde is None:
+        return None
+    try:
+        return AvroSerde(load_schema("next_event"))  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
+def _soma_serde() -> Optional[AvroSerde]:
+    if load_schema is None or AvroSerde is None:
+        return None
+    try:
+        return AvroSerde(load_schema("belief_update_soma"))  # type: ignore[arg-type]
+    except Exception:
+        return None
+
+
 def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
     if serde is not None:
         try:
@@ -52,37 +92,69 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
 
 
 def run_forever() -> None:  # pragma: no cover
+    init_tracing()
+    tracer = get_tracer("somabrain.predictor.state")
     ff = (os.getenv("SOMABRAIN_FF_PREDICTOR_STATE", "0").strip().lower() in ("1", "true", "yes", "on"))
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     if not ff:
-        print("predictor-state: feature flag disabled; exiting.")
-        return
+        if not composite:
+            print("predictor-state: feature flag disabled; exiting.")
+            return
     prod = _make_producer()
     if prod is None:
         print("predictor-state: Kafka not available; exiting.")
         return
     serde = _serde()
+    next_serde = _next_serde()
+    soma_serde = _soma_serde()
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = os.getenv("STATE_MODEL_VER", "v1")
     period = float(os.getenv("STATE_UPDATE_PERIOD", "0.5"))
+    soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in ("1", "true", "yes", "on")
     try:
         t = 0.0
         while True:
             # Simple synthetic delta_error stream (bounded noise + slow wave)
-            delta_error = max(0.0, min(1.0, 0.2 + 0.15 * (0.5 + 0.5 * (random.random() - 0.5)) + 0.1 * (1 + __import__("math").sin(t))))
-            confidence = max(0.0, min(1.0, 0.6 + 0.3 * random.random()))
-            rec = {
-                "domain": "state",
-                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "delta_error": float(delta_error),
-                "confidence": float(confidence),
-                "evidence": {"tenant": tenant, "source": "predictor-state"},
-                "posterior": {},
-                "model_ver": model_ver,
-                "latency_ms": int(5 + 5 * random.random()),
-            }
-            prod.send(TOPIC, value=_encode(rec, serde))
-            t += period
-            time.sleep(period)
+            with tracer.start_as_current_span("predictor_state_emit"):
+                delta_error = max(0.0, min(1.0, 0.2 + 0.15 * (0.5 + 0.5 * (random.random() - 0.5)) + 0.1 * (1 + __import__("math").sin(t))))
+                confidence = max(0.0, min(1.0, 0.6 + 0.3 * random.random()))
+                rec = {
+                    "domain": "state",
+                    "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "delta_error": float(delta_error),
+                    "confidence": float(confidence),
+                    "evidence": {"tenant": tenant, "source": "predictor-state"},
+                    "posterior": {},
+                    "model_ver": model_ver,
+                    "latency_ms": int(5 + 5 * random.random()),
+                }
+                prod.send(TOPIC, value=_encode(rec, serde))
+                if soma_compat:
+                    # Map to soma-compatible BeliefUpdate
+                    try:
+                        ts_ms = int(time.time() * 1000)
+                        soma_rec = {
+                            "stream": "STATE",
+                            "timestamp": ts_ms,
+                            "delta_error": float(delta_error),
+                            "info_gain": None,
+                            "metadata": {k: str(v) for k, v in (rec.get("evidence") or {}).items()},
+                        }
+                        payload = _encode(soma_rec, soma_serde)
+                        prod.send(SOMA_TOPIC, value=payload)
+                    except Exception:
+                        pass
+                # NextEvent emission (derived): predicted_state based on stability
+                predicted_state = "stable" if delta_error < 0.3 else "shifting"
+                next_ev = {
+                    "frame_id": f"state:{rec['ts']}",
+                    "predicted_state": predicted_state,
+                    "confidence": float(confidence),
+                    "ts": rec["ts"],
+                }
+                prod.send(NEXT_TOPIC, value=_encode(next_ev, next_serde))
+                t += period
+                time.sleep(period)
     finally:
         try:
             prod.flush(2)

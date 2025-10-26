@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "NextEvent",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "frame_id", "type": "string" },
+    { "name": "predicted_state", "type": "string" },
+    { "name": "confidence", "type": "float" },
+    { "name": "ts", "type": "string" }
+  ]
+}

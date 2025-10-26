@@ -41,6 +41,7 @@ dependencies = [
 controls = ["cryptography>=41"]
 dev = [
   "pytest>=7",
+  "pytest-cov>=4",
   "ruff>=0.5",
   "mypy>=1.5",
   "matplotlib>=3.8",

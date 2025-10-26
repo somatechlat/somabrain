@@ -11,6 +11,9 @@ SCHEMAS = {
     "belief_update": ROOT / "proto" / "cog" / "belief_update.avsc",
     "global_frame": ROOT / "proto" / "cog" / "global_frame.avsc",
     "segment_boundary": ROOT / "proto" / "cog" / "segment_boundary.avsc",
+    "reward_event": ROOT / "proto" / "cog" / "reward_event.avsc",
+    "next_event": ROOT / "proto" / "cog" / "next_event.avsc",
+    "config_update": ROOT / "proto" / "cog" / "config_update.avsc",
 }
 
 
@@ -46,3 +49,12 @@ def test_avro_round_trip_fastavro() -> None:
     out = schemaless_reader(io.BytesIO(buf.getvalue()), ps)
     assert out["domain"] == record["domain"]
     assert pytest.approx(out["delta_error"], rel=1e-6) == record["delta_error"]
+
+    # ConfigUpdate sample
+    s2 = json.loads(SCHEMAS["config_update"].read_text())
+    ps2 = parse_schema(s2)
+    rec2 = {"learning_rate": 0.1, "exploration_temp": 0.7, "ts": "2025-10-25T12:00:00Z"}
+    buf2 = io.BytesIO()
+    schemaless_writer(buf2, ps2, rec2)
+    out2 = schemaless_reader(io.BytesIO(buf2.getvalue()), ps2)
+    assert pytest.approx(out2["exploration_temp"], rel=1e-6) == rec2["exploration_temp"]

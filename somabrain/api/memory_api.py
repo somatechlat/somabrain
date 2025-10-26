@@ -31,6 +31,7 @@ from somabrain.runtime.config_runtime import (
     ensure_supervisor_worker,
     register_config_listener,
     submit_metrics_snapshot,
+    get_cutover_controller,
 )
 
 router = APIRouter(prefix="/memory", tags=["memory"])
@@ -262,6 +263,35 @@ class MemoryRecallResponse(BaseModel):
     total_results: int
     chunk_size: Optional[int] = None
     conversation_id: Optional[str] = None
+
+
+class CutoverOpenRequest(BaseModel):
+    tenant: str = Field(..., min_length=1)
+    from_namespace: str = Field(..., min_length=1)
+    to_namespace: str = Field(..., min_length=1)
+
+
+class CutoverActionRequest(BaseModel):
+    tenant: str = Field(..., min_length=1)
+    reason: Optional[str] = None
+
+
+class CutoverPlanResponse(BaseModel):
+    tenant: str
+    from_namespace: str
+    to_namespace: str
+    status: str
+    ready: bool
+    created_at: float
+    approved_at: Optional[float] = None
+    notes: List[str] = Field(default_factory=list)
+    last_top1_accuracy: Optional[float] = None
+    last_margin: Optional[float] = None
+    last_latency_p95_ms: Optional[float] = None
+def _tiered_enabled() -> bool:
+    flag = os.getenv("ENABLE_TIERED_MEMORY", "0").strip().lower()
+    return flag in ("1", "true", "yes", "on")
+
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -970,7 +1000,7 @@ async def _perform_recall(
     tiered_margin_value: Optional[float] = None
     tiered_eta_value: Optional[float] = None
     tiered_sparsity_value: Optional[float] = None
-    if query_vec is not None:
+    if _tiered_enabled() and query_vec is not None:
         try:
             tiered_hit = _TIERED_REGISTRY.recall(
                 payload.tenant,
@@ -1081,6 +1111,20 @@ async def _perform_recall(
     except Exception:
         pass
 
+    # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
+    try:
+        controller = get_cutover_controller()
+        await controller.record_shadow_metrics(
+            payload.tenant,
+            payload.namespace,
+            top1_accuracy=top_confidence,
+            margin=float(tiered_margin_value or 0.0),
+            latency_p95_ms=duration * 1000.0,
+        )
+    except Exception:
+        # Best-effort: ignore when no plan is open or namespaces do not match.
+        pass
+
     return MemoryRecallResponse(
         tenant=payload.tenant,
         namespace=payload.namespace,
@@ -1175,3 +1219,64 @@ async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
 class AnnRebuildRequest(BaseModel):
     tenant: str
     namespace: Optional[str] = None
+
+
+def _plan_to_response(plan) -> CutoverPlanResponse:
+    last = plan.last_shadow_metrics
+    return CutoverPlanResponse(
+        tenant=plan.tenant,
+        from_namespace=plan.from_namespace,
+        to_namespace=plan.to_namespace,
+        status=plan.status,
+        ready=plan.ready,
+        created_at=plan.created_at,
+        approved_at=plan.approved_at,
+        notes=list(plan.notes or []),
+        last_top1_accuracy=(last.top1_accuracy if last else None),
+        last_margin=(last.margin if last else None),
+        last_latency_p95_ms=(last.latency_p95_ms if last else None),
+    )
+
+
+@router.post("/cutover/open", response_model=CutoverPlanResponse)
+async def cutover_open(payload: CutoverOpenRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.open_plan(
+        payload.tenant, payload.from_namespace, payload.to_namespace
+    )
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/approve", response_model=CutoverPlanResponse)
+async def cutover_approve(payload: CutoverActionRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.approve(payload.tenant)
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/execute", response_model=CutoverPlanResponse)
+async def cutover_execute(payload: CutoverActionRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.execute(payload.tenant)
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/cancel")
+async def cutover_cancel(payload: CutoverActionRequest) -> Dict[str, Any]:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    await controller.cancel(payload.tenant, reason=payload.reason or "")
+    return {"ok": True}
+
+
+@router.get("/cutover/status/{tenant}", response_model=CutoverPlanResponse)
+async def cutover_status(tenant: str) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = controller.get_plan(tenant)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="no active plan for tenant")
+    return _plan_to_response(plan)

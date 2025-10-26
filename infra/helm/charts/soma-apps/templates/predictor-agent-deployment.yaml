@@ -1,0 +1,35 @@
+{{- if .Values.predictorAgent.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-agent") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 4 }}
+spec:
+  replicas: {{ .Values.predictorAgent.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 8 }}
+    spec:
+      containers:
+        - name: predictor-agent
+          image: "{{ .Values.predictorAgent.image.repository }}:{{ .Values.predictorAgent.image.tag }}"
+          imagePullPolicy: {{ .Values.predictorAgent.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          command: ["python3"]
+          args: ["/app/services/predictor-agent/main.py"]
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.predictorAgent.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- end }}

@@ -57,6 +57,26 @@ try:
 except Exception:  # pragma: no cover
     metrics = None  # type: ignore
 
+try:
+    from observability.provider import init_tracing, get_tracer  # type: ignore
+except Exception:  # pragma: no cover
+    def init_tracing():
+        return None
+
+    def get_tracer(name: str):  # type: ignore
+        class _Noop:
+            def start_as_current_span(self, *_args, **_kwargs):
+                class _Span:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *a):
+                        return False
+
+                return _Span()
+
+        return _Noop()
+
 
 BOUNDARY_EMITTED = None
 BOUNDARY_LATENCY = None
@@ -95,6 +115,26 @@ class Frame:
 def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
     if value is None:
         return None
+    try:
+        if serde is not None:
+            data = serde.deserialize(value)  # type: ignore[arg-type]
+        else:
+            data = json.loads(value.decode("utf-8"))
+        ts = str(data.get("ts") or "")
+        leader = str(data.get("leader") or "")
+        # tenant is nested in frame map from IntegratorHub
+        tenant = "public"
+        try:
+            frame_map = data.get("frame") or {}
+            tv = frame_map.get("tenant") if isinstance(frame_map, dict) else None
+            tenant = str(tv or "public").strip() or "public"
+        except Exception:
+            tenant = "public"
+        if not ts or not leader:
+            return None
+        return Frame(ts=ts, leader=leader, tenant=tenant)
+    except Exception:
+        return None
 
 
 # --- CPD mode support -------------------------------------------------------
@@ -123,26 +163,6 @@ def _parse_update(value: bytes, serde: Optional[AvroSerde]) -> Optional[Update]:
         if not ts or not domain:
             return None
         return Update(ts=ts, tenant=tenant, domain=domain, delta_error=delta_error)
-    except Exception:
-        return None
-    try:
-        if serde is not None:
-            data = serde.deserialize(value)  # type: ignore[arg-type]
-        else:
-            data = json.loads(value.decode("utf-8"))
-        ts = str(data.get("ts") or "")
-        leader = str(data.get("leader") or "")
-        # tenant is nested in frame map from IntegratorHub
-        tenant = "public"
-        try:
-            frame_map = data.get("frame") or {}
-            tv = frame_map.get("tenant") if isinstance(frame_map, dict) else None
-            tenant = str(tv or "public").strip() or "public"
-        except Exception:
-            tenant = "public"
-        if not ts or not leader:
-            return None
-        return Frame(ts=ts, leader=leader, tenant=tenant)
     except Exception:
         return None
 
@@ -339,6 +359,8 @@ class CPDSegmenter:
 class SegmentationService:
     def __init__(self):
         _init_metrics()
+        init_tracing()
+        self._tracer = get_tracer("somabrain.segmentation_service")
         self._serde_in: Optional[AvroSerde] = None
         self._serde_out: Optional[AvroSerde] = None
         self._serde_update: Optional[AvroSerde] = None
@@ -400,23 +422,25 @@ class SegmentationService:
         try:
             for msg in consumer:
                 if self._mode == "cpd":
-                    upd = _parse_update(msg.value, self._serde_update)
-                    if upd is None:
-                        continue
-                    out = self._cpd.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
-                    if out is None:
-                        continue
-                    domain, boundary_ts, dwell_ms, evidence = out
-                    tenant = upd.tenant
+                    with self._tracer.start_as_current_span("segmentation_cpd"):
+                        upd = _parse_update(msg.value, self._serde_update)
+                        if upd is None:
+                            continue
+                        out = self._cpd.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
+                        if out is None:
+                            continue
+                        domain, boundary_ts, dwell_ms, evidence = out
+                        tenant = upd.tenant
                 else:
-                    frame = _parse_frame(msg.value, self._serde_in)
-                    if frame is None:
-                        continue
-                    out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
-                    if out is None:
-                        continue
-                    domain, boundary_ts, dwell_ms, evidence = out
-                    tenant = frame.tenant
+                    with self._tracer.start_as_current_span("segmentation_leader"):
+                        frame = _parse_frame(msg.value, self._serde_in)
+                        if frame is None:
+                            continue
+                        out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
+                        if out is None:
+                            continue
+                        domain, boundary_ts, dwell_ms, evidence = out
+                        tenant = frame.tenant
 
                 record = {
                     "tenant": tenant,
@@ -462,8 +486,9 @@ class SegmentationService:
 
 
 def main() -> None:  # pragma: no cover - service entrypoint
-    ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip()
-    if ff not in ("1", "true", "True", "yes"):
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
+    ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip().lower()
+    if ff not in ("1", "true", "yes", "on") and not composite:
         print("Segmentation feature flag disabled; exiting.")
         return
     svc = SegmentationService()

@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "IntegratorContext",
+  "namespace": "com.soma.brain",
+  "fields": [
+    {"name": "leader_stream", "type": "string"},
+    {"name": "leader_score", "type": "double"},
+    {"name": "global_frame", "type": "bytes"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "policy_decision", "type": "boolean"}
+  ]
+}

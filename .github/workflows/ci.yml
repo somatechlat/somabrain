@@ -47,8 +47,8 @@ jobs:
         run: |
           mkdir -p data
           alembic upgrade head
-      - name: Run tests
-        run: uv run pytest
+      - name: Run tests with coverage (min 85%)
+        run: uv run pytest --cov=somabrain --cov-report=term-missing --cov-fail-under=85
       - name: Export OpenAPI
         run: |
           ./scripts/export_openapi.py
