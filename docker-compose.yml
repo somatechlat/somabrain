@@ -146,7 +146,7 @@ services:
       retries: 3
 
   somabrain_opa:
-    image: openpolicyagent/opa:0.48.0-debug
+    image: openpolicyagent/opa:latest
     restart: unless-stopped
     deploy:
       resources:

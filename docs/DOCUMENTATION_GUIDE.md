@@ -51,7 +51,7 @@ All documentation is organized into four primary manuals, each serving a distinc
 │   ├─ architecture.md              # C4 system overview
 │   ├─ deployment.md                # Docker/K8s deployment
 │   ├─ configuration.md             # Centralized config
-│   ├─ monitoring.md                # Prometheus/Grafana
+│   ├─ monitoring.md                # Prometheus (no Grafana)
 │   ├─ backup-and-recovery.md
 │   ├─ runbooks/
 │   │   ├─ api-service.md
@@ -129,7 +129,7 @@ All documentation is organized into four primary manuals, each serving a distinc
 | **1. System Architecture** | C4 diagrams, BHDC math stack, service dependencies. |
 | **2. Deployment** | Docker Compose (ports 9696, 20001-20007), Kubernetes (LoadBalancer 20020-20027), persistent volumes. |
 | **3. Configuration** | Centralized .env (126 vars), ConfigMap (96 vars), secrets management. |
-| **4. Monitoring & Health** | Prometheus metrics, Grafana dashboards, health endpoints. |
+| **4. Monitoring & Health** | Prometheus metrics, Alertmanager alerts, health endpoints. |
 | **5. Operational Runbooks** | API service, memory service, Kafka, PostgreSQL procedures. |
 | **6. Backup & Recovery** | Volume snapshots, disaster recovery procedures. |
 | **7. Security** | Secrets policy, strict mode, RBAC, compliance. |

@@ -21,8 +21,6 @@ vault:
       enabled: true
 
 kube-prometheus-stack:
-  grafana:
-    adminPassword: staging-admin
   prometheus:
     prometheusSpec:
       retention: 30d

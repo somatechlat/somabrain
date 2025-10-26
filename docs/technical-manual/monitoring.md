@@ -19,12 +19,12 @@ SomaBrain provides multi-layer monitoring capabilities designed for production o
 **Log Aggregation**: Structured logging with correlation IDs
 **Health Checks**: Automated service health verification
 **Alerting**: Rule-based alerts for operational issues
-**Dashboards**: Grafana visualization for key metrics
+**Dashboards**: Prometheus UI and Alertmanager for alerts (no Grafana)
 
 ### Metrics Collection Flow
 
 ```
-SomaBrain Services → Prometheus → Grafana → AlertManager → Notifications
+SomaBrain Services → Prometheus → AlertManager → Notifications
                  ↓
               Log Aggregation → ElasticSearch/Loki → Log Analysis
                  ↓
@@ -281,7 +281,7 @@ groups:
       description: "SomaBrain API has error rate of {{ $value | humanizePercentage }} for more than 2 minutes"
 
   # High response time alert
-  - alert: SomaBrainHighLatency
+        <!-- Grafana sections removed: Grafana is not part of this project. Use Prometheus UI and Alertmanager. -->
     expr: histogram_quantile(0.95, rate(somabrain_http_request_duration_seconds_bucket[5m])) > 2
     for: 3m
     labels:
@@ -337,11 +337,11 @@ groups:
 
 ---
 
-## Grafana Dashboards
+## Visualization examples (removed)
 
 ### Main SomaBrain Dashboard
 
-Import the provided Grafana dashboard configuration:
+Historical example only (kept for reference; not used in this project):
 
 ```json
 {
@@ -869,7 +869,7 @@ groups:
 
 | Issue | Symptoms | Solution |
 |-------|----------|----------|
-| Metrics not appearing | Empty Grafana panels | Check Prometheus scraping configuration and network connectivity |
+| Metrics not appearing | No data in Prometheus UI | Check Prometheus scraping configuration and network connectivity |
 | High cardinality metrics | Prometheus performance issues | Review metric labels and use recording rules |
 | Missing alerts | No notifications for known issues | Verify AlertManager configuration and routing rules |
 | Log parsing errors | Incomplete log data in Kibana | Check Logstash filters and field mappings |

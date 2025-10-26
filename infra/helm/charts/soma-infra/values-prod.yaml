@@ -47,8 +47,6 @@ vault:
       size: 50Gi
 
 kube-prometheus-stack:
-  grafana:
-    adminPassword: change-me-prod
   prometheus:
     prometheusSpec:
       retention: 60d

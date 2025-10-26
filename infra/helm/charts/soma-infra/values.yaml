@@ -68,10 +68,7 @@ vault:
 kube-prometheus-stack:
   enabled: true
   grafana:
-    enabled: true
-    adminPassword: admin
-    service:
-      type: ClusterIP
+    enabled: false
   prometheus:
     prometheusSpec:
       retention: 15d

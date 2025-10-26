@@ -454,14 +454,7 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
 ```
 
-### Grafana Dashboard Import
-```bash
-# Import SomaBrain dashboard
-curl -X POST http://grafana:3000/api/dashboards/db \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
-  -d @dashboards/somabrain-overview.json
-```
+<!-- Grafana has been removed from this project; dashboard import instructions deleted. -->
 
 ## Backup & Recovery Setup
 

@@ -5,6 +5,7 @@ import os
 import random
 import time
 from typing import Any, Dict, Optional
+import threading
 
 try:
     from observability.provider import init_tracing, get_tracer  # type: ignore
@@ -92,6 +93,24 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
 def run_forever() -> None:  # pragma: no cover
     init_tracing()
     tracer = get_tracer("somabrain.predictor.agent")
+    # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
+    try:
+        if os.getenv("HEALTH_PORT"):
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
+
+            app = FastAPI(title="Predictor-Agent Health")
+
+            @app.get("/healthz")
+            async def _hz():  # type: ignore
+                return {"ok": True, "service": "predictor_agent"}
+
+            port = int(os.getenv("HEALTH_PORT"))
+            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            server = uvicorn.Server(config)
+            threading.Thread(target=server.run, daemon=True).start()
+    except Exception:
+        pass
     ff = (os.getenv("SOMABRAIN_FF_PREDICTOR_AGENT", "0").strip().lower() in ("1", "true", "yes", "on"))
     composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     if not ff and not composite:

@@ -7,6 +7,22 @@ on:
     branches: ["main", "release/*"]
 
 jobs:
+  docker-lint-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dockerfile lint (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: 'docker.io/library/python:3.12-slim'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+    # Lint/scan can run in parallel; they don't depend on building our image
   lint:
     runs-on: ubuntu-latest
     steps:

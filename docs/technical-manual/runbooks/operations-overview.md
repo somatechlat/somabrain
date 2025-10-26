@@ -29,7 +29,7 @@ Backend-enforced deployments keep `/health` red until every dependency responds.
 2. Ensure Redis, Postgres, Kafka, and the memory HTTP service are reachable.
 3. Launch the API container or `uvicorn` process.
 4. Confirm `/health` reports `ready: true` and `stub_counts: {}`.
-5. Verify Prometheus scrape (`/metrics`) and Grafana dashboards.
+5. Verify Prometheus scrape (`/metrics`).
 
 If any dependency is missing, backend enforcement keeps the API unhealthy—investigate the root cause rather than disabling enforcement.
 
@@ -45,7 +45,7 @@ If any dependency is missing, backend enforcement keeps the API unhealthy—inve
 | `somabrain_planner_rate_limited_total` | Prometheus | Sudden spikes (>10/min) |
 | `somabrain_memory_http_errors_total` | Prometheus | >1 per minute |
 
-Dashboards ship in `grafana/` (import `grafana_dashboard.json`). Alertmanager templates live in `alerts.yml`.
+Alertmanager templates live in `alerts.yml`. Grafana is not used in this project.
 
 ---
 

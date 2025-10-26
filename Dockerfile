@@ -1,6 +1,6 @@
 ## Clean multi-stage Dockerfile: build wheel from pyproject and install in slim runtime
 ### Builder stage: build wheel
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -24,7 +24,7 @@ RUN python -m pip install --upgrade pip build setuptools wheel \
     && python -m build --wheel --no-isolation -o /build/dist
 
 ### Runtime stage: slim image with only runtime deps and wheel installed
-FROM python:3.10-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -58,6 +58,7 @@ COPY arc_cache.py /app/
 COPY brain /app/brain
 COPY observability /app/observability
 COPY services /app/services
+COPY config /app/config
 
 # Add memory package back for runtime imports
 COPY memory /app/memory
@@ -67,10 +68,12 @@ COPY common /app/common
 # Ensure runtime imports from /app are visible
 ENV PYTHONPATH=/app:${PYTHONPATH:-}
 
-# Create non-root user
-RUN useradd --create-home --shell /sbin/nologin appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+# Create non-root user with UID/GID 1000
+RUN set -eux; \
+    if ! getent group 1000 >/dev/null; then groupadd -g 1000 appuser; fi; \
+    if ! id -u 1000 >/dev/null 2>&1; then useradd --create-home -u 1000 -g 1000 --shell /usr/sbin/nologin appuser; fi; \
+    chown -R 1000:1000 /app
+USER 1000:1000
 
 # Expose default API port (can be overridden)
 EXPOSE 9696
@@ -89,8 +92,8 @@ ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \
 # Entrypoint script for flexible startup
 COPY --chown=appuser:appuser --chmod=0755 docker-entrypoint.sh /usr/local/bin/
 
-# Healthcheck against /health endpoint
+# Healthcheck against /healthz endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-9696}/health" || exit 1
+    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-9696}/healthz" || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]

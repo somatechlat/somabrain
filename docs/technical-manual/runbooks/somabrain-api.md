@@ -303,12 +303,9 @@ curl -X POST https://api.somabrain.company.com/recall -d '{"query": "validation_
 
 ---
 
-## Monitoring Dashboard Links
+## Monitoring References
 
-- **Service Overview**: http://grafana.company.com/d/somabrain-api/
-- **Performance Metrics**: http://grafana.company.com/d/somabrain-perf/
-- **Infrastructure Health**: http://grafana.company.com/d/somabrain-infra/
-- **Error Analysis**: http://grafana.company.com/d/somabrain-errors/
+- Use Prometheus UI for ad-hoc queries and Alertmanager for alert triage. Grafana is not used in this project.
 
 ## Alert Runbook Links
 

@@ -23,6 +23,9 @@ spec:
           imagePullPolicy: {{ .Values.integrator.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
           command: ["python3"]
           args: ["-m", "somabrain.services.integrator_hub"]
+          ports:
+            - containerPort: 8091
+              name: health
           env:
 {{- range $key, $value := $root.Values.envCommon }}
             - name: {{ $key }}
@@ -32,4 +35,18 @@ spec:
             - name: {{ $key }}
               value: "{{ $value }}"
 {{- end }}
+            - name: HEALTH_PORT
+              value: "8091"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 20
 {{- end }}

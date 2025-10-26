@@ -110,7 +110,7 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - **Docker Compose**: Complete local development stack with service orchestration
 - **Kubernetes Ready**: Helm chart preparation for cloud-native deployment
 - **CI/CD Pipeline**: Automated testing, linting, and quality gates
-- **Monitoring Stack**: Prometheus metrics, Grafana dashboards, and alerting rules
+- **Monitoring Stack**: Prometheus metrics and alerting rules (Grafana removed)
 
 ### Launch Snapshot
 

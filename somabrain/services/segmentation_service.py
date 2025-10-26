@@ -33,6 +33,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
+import threading
 from typing import Any, Dict, Optional, Tuple
 
 
@@ -361,6 +362,12 @@ class SegmentationService:
         _init_metrics()
         init_tracing()
         self._tracer = get_tracer("somabrain.segmentation_service")
+        # Start health server for k8s probes
+        try:
+            if os.getenv("HEALTH_PORT"):
+                self._start_health_server()
+        except Exception:
+            pass
         self._serde_in: Optional[AvroSerde] = None
         self._serde_out: Optional[AvroSerde] = None
         self._serde_update: Optional[AvroSerde] = None
@@ -391,6 +398,25 @@ class SegmentationService:
             min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
         )
         self._mode = (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
+
+    def _start_health_server(self) -> None:
+        try:
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
+
+            app = FastAPI(title="Segmentation Health")
+
+            @app.get("/healthz")
+            async def _hz():  # type: ignore
+                return {"ok": True, "service": "segmentation"}
+
+            port = int(os.getenv("HEALTH_PORT"))
+            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            server = uvicorn.Server(config)
+            th = threading.Thread(target=server.run, daemon=True)
+            th.start()
+        except Exception:
+            pass
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
         if KafkaConsumer is None or KafkaProducer is None:

@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+import threading
 try:  # optional OTel init
     from observability.provider import init_tracing, get_tracer  # type: ignore
 except Exception:  # pragma: no cover
@@ -189,6 +190,12 @@ class IntegratorHub:
         # Initialize tracing (no-op safe)
         init_tracing()
         self._tracer = get_tracer("somabrain.integrator_hub")
+        # Start lightweight health server on a side port for K8s probes
+        try:
+            if os.getenv("HEALTH_PORT"):
+                self._start_health_server()
+        except Exception:
+            pass
         # Bootstrap (prefer shared settings when available)
         bs = None
         redis_url = None
@@ -303,6 +310,24 @@ class IntegratorHub:
                 os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower() in ("1", "true", "yes", "on")
             )
 
+    def _start_health_server(self) -> None:
+        try:
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
+
+            app = FastAPI(title="IntegratorHub Health")
+
+            @app.get("/healthz")
+            async def _hz():  # type: ignore
+                return {"ok": True, "service": "integrator_hub"}
+
+            port = int(os.getenv("HEALTH_PORT"))
+            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            server = uvicorn.Server(config)
+            th = threading.Thread(target=server.run, daemon=True)
+            th.start()
+        except Exception:
+            pass
     def _ensure_clients(self) -> None:
         if not self._bootstrap:
             raise RuntimeError("Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")

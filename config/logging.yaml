@@ -1,0 +1,30 @@
+version: 1
+formatters:
+  json:
+    format: '%(asctime)s %(levelname)s %(name)s %(message)s'
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: json
+    stream: ext://sys.stdout
+loggers:
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  uvicorn.error:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  uvicorn.access:
+    level: INFO
+    handlers: [console]
+    propagate: False
+  somabrain:
+    level: INFO
+    handlers: [console]
+    propagate: True
+root:
+  level: INFO
+  handlers: [console]
