@@ -13,8 +13,9 @@ while [ $elapsed -lt $TIMEOUT ]; do
   if docker run --rm --network host redis:7 redis-cli -h 127.0.0.1 ping >/dev/null 2>&1; then
     ok_redis=1
   fi
-  # OPA
-  if curl -sf http://127.0.0.1:8181/health >/dev/null 2>&1; then
+  # OPA (host port defaults to 30004)
+  OPA_HP="${OPA_HOST_PORT:-30004}"
+  if curl -sf "http://127.0.0.1:${OPA_HP}/health" >/dev/null 2>&1; then
     ok_opa=1
   fi
   # Redpanda (kafka)

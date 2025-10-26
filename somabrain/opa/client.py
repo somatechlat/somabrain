@@ -58,10 +58,16 @@ class OPAClient:
         self.base_url = get_opa_url()
         if not self.base_url:
             # Legacy fallback for dev shells without explicit configuration
+            # Prefer explicit host port envs, defaulting to 30004 to align with dev stack mapping
+            host_port = (
+                os.getenv("OPA_HOST_PORT")
+                or os.getenv("OPA_PORT")
+                or "30004"
+            )
             self.base_url = (
                 os.getenv("SOMA_OPA_URL")
                 or os.getenv("SOMABRAIN_OPA_FALLBACK")
-                or "http://localhost:8181"
+                or f"http://127.0.0.1:{host_port}"
             )
         effective_path = (policy_path or _policy_path_for_mode()).rstrip("/")
         self.policy_path = effective_path

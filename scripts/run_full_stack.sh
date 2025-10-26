@@ -59,9 +59,10 @@ echo "[run_full_stack] Launching Somabrain API (uvicorn) on :9696"
 $PY_BIN -m uvicorn somabrain.app:app --host 0.0.0.0 --port 9696 --log-level warning &
 API_PID=$!
 
-# Ensure OPA is running locally
-if ! curl -sf -m 0.4 http://127.0.0.1:8181/health >/dev/null 2>&1; then
-  echo "[run_full_stack] ERROR: OPA server not reachable on http://127.0.0.1:8181/health"
+# Ensure OPA is running locally (host port defaults to 30004)
+OPA_HP="${OPA_HOST_PORT:-30004}"
+if ! curl -sf -m 0.4 "http://127.0.0.1:${OPA_HP}/health" >/dev/null 2>&1; then
+  echo "[run_full_stack] ERROR: OPA server not reachable on http://127.0.0.1:${OPA_HP}/health"
   echo "[run_full_stack] Launch the real OPA deployment (e.g. via scripts/start_dev_infra.sh or Helm) before running the brain stack."
   exit 91
 fi

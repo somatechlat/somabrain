@@ -5,12 +5,12 @@
 # This script checks for port availability starting from standard container ports
 # and generates a .env file with the assigned ports for docker-compose.
 #
-# Port allocation scheme (direct access, no offset):
+# Port allocation scheme (host access mapping):
 # - SomaBrain API: 9696
 # - Redis: 6379
 # - Kafka: 9092
 # - Kafka Exporter: 9308
-# - OPA: 8181
+# - OPA: 30004 (container 8181)
 # - Prometheus: 9090
 # - Postgres: 5432
 # - Postgres Exporter: 9187
@@ -23,7 +23,8 @@ SOMABRAIN_PORT=9696
 REDIS_PORT=6379
 KAFKA_PORT=9092
 KAFKA_EXPORTER_PORT=9308
-OPA_PORT=8181
+# Reserve unified host port for OPA
+OPA_PORT=30004
 PROMETHEUS_PORT=9090
 POSTGRES_PORT=5432
 POSTGRES_EXPORTER_PORT=9187
@@ -46,6 +47,6 @@ echo "Service access:"
 echo "  SomaBrain API: localhost:$SOMABRAIN_PORT"
 echo "  Redis: localhost:$REDIS_PORT"
 echo "  Kafka: localhost:$KAFKA_PORT"
-echo "  OPA: localhost:$OPA_PORT"
+echo "  OPA: localhost:$OPA_PORT (container 8181)"
 echo "  Prometheus: localhost:$PROMETHEUS_PORT"
 echo "  Postgres: localhost:$POSTGRES_PORT"
