@@ -1,5 +1,5 @@
 {
-	"deprecated": true,
-	"notice": "Grafana has been removed from this project. This file is left as a no-op placeholder to prevent accidental usage.",
-	"title": "REMOVED: SomaBrain Autonomous Overview"
+  "deprecated": true,
+  "notice": "External dashboards are not used in this project. This file is left as a no-op placeholder to prevent accidental usage.",
+  "title": "REMOVED: SomaBrain Autonomous Overview"
 }

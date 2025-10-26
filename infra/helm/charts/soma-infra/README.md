@@ -4,7 +4,7 @@
 
 This chart is the shared infra bundle for SomaBrain. It is intentionally
 lightweight as a scaffold; each component (Auth, OPA, Kafka, Redis, Prometheus,
-Grafana, Vault, Etcd) should be wired to either subcharts or external
+Vault, Etcd) should be wired to either subcharts or external
 operators in `Chart.yaml` dependencies.
 
 Quick dev install (Kind)

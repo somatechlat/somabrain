@@ -117,7 +117,7 @@ Objectives:
 ### Sprint 3 — Learning Brain Validation (2.5 weeks)
 - Integrate end-to-end learning soak into CI/nightly runs (`run_learning_test.py`).
 - Enforce backend-enforced across memory client paths in tests.
-- Update Prometheus assets with new metrics (FD health, capacity curves). Grafana is not used.
+- Update Prometheus assets with new metrics (FD health, capacity curves).
 - Document knobs and release guidance; run full stress suite.
 
 ### Guardrails

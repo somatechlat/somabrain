@@ -122,7 +122,6 @@
 
 **Monitoring and Observability**:
 - [Prometheus](https://prometheus.io/docs/) - Metrics collection and alerting
-<!-- Grafana removed: no longer part of this project. -->
 - [OpenTelemetry](https://opentelemetry.io/) - Distributed tracing
 - [Sentry](https://docs.sentry.io/) - Error tracking and performance monitoring
 

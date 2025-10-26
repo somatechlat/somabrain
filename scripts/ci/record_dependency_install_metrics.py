@@ -3,8 +3,8 @@
 
 This script wraps ``uv pip sync uv.lock`` to measure how long dependency
 installation takes and how many distributions are resolved. It writes the
-result to ``artifacts/bench_logs/dependency_install_metrics.json`` so Grafana
-or other tooling can scrape the values.
+result to ``artifacts/bench_logs/dependency_install_metrics.json`` so Prometheus
+or other internal tooling can scrape the values.
 
 The script is idempotent and can be invoked locally to reproduce CI metrics.
 When run outside CI, exports ``CI=false`` in the metric payload.

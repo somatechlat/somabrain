@@ -29,7 +29,7 @@ SomaBrain previously allowed configuration files and dependency resolution to dr
 1. Migrate all modules to `somabrain.config.get_config()` and expose `reload_config()` for administrative overrides (complete).
 2. Update development documentation with the `uv` bootstrap workflow (complete).
 3. Add `scripts/ci/record_dependency_install_metrics.py` and call it from CI to emit JSON metrics under `artifacts/bench_logs/` (complete).
-4. Visualise install duration trends via Prometheus queries; Grafana is not used.
+4. Visualise install duration trends via Prometheus queries (no external dashboards).
 
 ## Alternatives Considered
 

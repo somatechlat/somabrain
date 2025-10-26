@@ -13,7 +13,7 @@ for the Soma Auth API:
 * **Redis** – in‑memory cache.
 * **Etcd** – feature‑flag key‑value store.
 * **Vault** – secret injection (dev mode runs an in‑memory Vault).
-* **Observability stack** – kube-prometheus-stack (Prometheus + Grafana).
+* **Observability stack** – kube-prometheus-stack (Prometheus + Alertmanager).
 
 > Looking for the application layer? See `infra/helm/charts/soma-apps/` for the
 > companion chart that deploys SomaBrain (SB), SomaAgent01, SomaAgentHub, and

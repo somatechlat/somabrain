@@ -45,7 +45,7 @@ If any dependency is missing, backend enforcement keeps the API unhealthy—inve
 | `somabrain_planner_rate_limited_total` | Prometheus | Sudden spikes (>10/min) |
 | `somabrain_memory_http_errors_total` | Prometheus | >1 per minute |
 
-Alertmanager templates live in `alerts.yml`. Grafana is not used in this project.
+Alertmanager templates live in `alerts.yml`. External dashboards are not used in this project.
 
 ---
 

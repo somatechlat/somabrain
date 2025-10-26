@@ -3,7 +3,7 @@ Shared infra chart for SomaBrain
 The chart now bundles production-ready manifests for the shared services that
 back the Soma stack: Auth, OPA, Kafka (Bitnami), Redis (Bitnami), Etcd
 (Bitnami), Vault (Hashicorp) and the kube-prometheus-stack (Prometheus +
-Grafana). Deploy it **once per cluster** and point all application services at
+Alertmanager). Deploy it **once per cluster** and point all application services at
 the resulting in-cluster DNS names.
 
 Quick install:

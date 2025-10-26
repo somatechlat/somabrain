@@ -58,7 +58,7 @@ Behavior by mode (summary):
 - Workers: somabrain/workers/*
 - Benchmarks: benchmarks/*.py
 - Deploy/Infra: docker-compose.yml, infra/helm/charts/**
-- Observability: observability/*, ops/prometheus/* (Grafana removed)
+- Observability: observability/*, ops/prometheus/* (dashboards removed)
 
 ## Rollout plan
 

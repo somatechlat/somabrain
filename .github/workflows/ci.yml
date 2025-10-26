@@ -27,6 +27,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Helm
+        uses: azure/setup-helm@v1
+        with:
+          version: 'v3.12.0'
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -42,6 +46,10 @@ jobs:
         run: uv run black --check .
       - name: Run mypy type checks
         run: uv run mypy somabrain
+      - name: Helm lint charts (early)
+        run: |
+          helm lint infra/helm/charts/soma-infra || true
+          helm lint infra/helm/charts/soma-apps || true
 
   test:
     runs-on: ubuntu-latest
@@ -80,6 +88,13 @@ jobs:
           path: artifacts/openapi.json
       - name: Docker build (sanity)
         run: docker build -t somabrain:ci .
+      - name: Trivy scan somabrain:ci image
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: 'somabrain:ci'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
       - name: Container health smoke
         run: |
           cid=$(docker run -d -p 9696:9696 somabrain:ci)

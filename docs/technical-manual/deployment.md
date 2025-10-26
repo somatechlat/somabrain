@@ -454,7 +454,7 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
 ```
 
-<!-- Grafana has been removed from this project; dashboard import instructions deleted. -->
+<!-- Dashboard import instructions deleted. -->
 
 ## Backup & Recovery Setup
 

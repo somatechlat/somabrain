@@ -51,7 +51,7 @@ All documentation is organized into four primary manuals, each serving a distinc
 │   ├─ architecture.md              # C4 system overview
 │   ├─ deployment.md                # Docker/K8s deployment
 │   ├─ configuration.md             # Centralized config
-│   ├─ monitoring.md                # Prometheus (no Grafana)
+│   ├─ monitoring.md                # Prometheus (metrics + alerts)
 │   ├─ backup-and-recovery.md
 │   ├─ runbooks/
 │   │   ├─ api-service.md

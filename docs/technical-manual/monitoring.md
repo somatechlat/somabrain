@@ -19,7 +19,7 @@ SomaBrain provides multi-layer monitoring capabilities designed for production o
 **Log Aggregation**: Structured logging with correlation IDs
 **Health Checks**: Automated service health verification
 **Alerting**: Rule-based alerts for operational issues
-**Dashboards**: Prometheus UI and Alertmanager for alerts (no Grafana)
+**Dashboards**: Prometheus UI and Alertmanager for alerts
 
 ### Metrics Collection Flow
 
@@ -281,7 +281,7 @@ groups:
       description: "SomaBrain API has error rate of {{ $value | humanizePercentage }} for more than 2 minutes"
 
   # High response time alert
-        <!-- Grafana sections removed: Grafana is not part of this project. Use Prometheus UI and Alertmanager. -->
+        <!-- Visualization sections removed. Use Prometheus UI and Alertmanager. -->
     expr: histogram_quantile(0.95, rate(somabrain_http_request_duration_seconds_bucket[5m])) > 2
     for: 3m
     labels:

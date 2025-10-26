@@ -1,6 +1,6 @@
 apiVersion: v2
 name: soma-infra
-description: "Shared infra chart for SomaBrain (Auth, OPA, Kafka, Redis, Prometheus/Grafana, Vault, Etcd)"
+description: "Shared infra chart for SomaBrain (Auth, OPA, Kafka, Redis, Prometheus, Vault, Etcd)"
 version: 0.1.0
 appVersion: "1.0.0"
 keywords:

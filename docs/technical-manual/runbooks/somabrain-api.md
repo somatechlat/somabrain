@@ -305,7 +305,7 @@ curl -X POST https://api.somabrain.company.com/recall -d '{"query": "validation_
 
 ## Monitoring References
 
-- Use Prometheus UI for ad-hoc queries and Alertmanager for alert triage. Grafana is not used in this project.
+- Use Prometheus UI for ad-hoc queries and Alertmanager for alert triage. External dashboards are not used in this project.
 
 ## Alert Runbook Links
 
