@@ -119,6 +119,12 @@ class OrchestratorService:
             except Exception:
                 self._serde_sb = None
         self._ns = os.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
+        # Minimal leader->tools routing (JSON via env)
+        try:
+            routing_raw = os.getenv("SOMABRAIN_ORCH_ROUTING", "")
+            self._routing = json.loads(routing_raw) if routing_raw else {}
+        except Exception:
+            self._routing = {}
         # per-tenant rolling context for current segment
         self._ctx: Dict[str, GlobalFrameCtx] = {}
 
@@ -146,6 +152,13 @@ class OrchestratorService:
             value["rationale"] = gf.rationale
             value["last_frame_ts"] = gf.ts
             value["frames_in_segment"] = gf.count
+            # Leader-aware routing tags (optional)
+            try:
+                tools = self._routing.get(gf.leader)
+                if isinstance(tools, list) and tools:
+                    value["route"] = {"tools": [str(t) for t in tools]}
+            except Exception:
+                pass
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
