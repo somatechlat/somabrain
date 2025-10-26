@@ -127,7 +127,6 @@ services:
 
   somabrain_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
-    container_name: somabrain_schema_registry
     restart: unless-stopped
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
