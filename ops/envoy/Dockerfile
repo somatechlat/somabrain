@@ -1,5 +1,10 @@
 # Envoy Dockerfile for mTLS ingress
-FROM envoyproxy/envoy:v1.29-latest
+###############################
+# DEPRECATED – DO NOT USE
+# This repository does not build a custom Envoy image here.
+# If an Envoy proxy is needed, reference the upstream image directly
+# in your deployment manifests.
+ERROR DO_NOT_USE_THIS_DOCKERFILE
 
 # Copy static config and certs
 COPY envoy.yaml /etc/envoy/envoy.yaml

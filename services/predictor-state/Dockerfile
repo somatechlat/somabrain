@@ -1,5 +1,12 @@
 # syntax=docker/dockerfile:1.6
-FROM python:3.11-slim AS runtime
+###############################
+# DEPRECATED – DO NOT USE
+# This repository builds a single canonical image from the root Dockerfile.
+# This per-service Dockerfile is intentionally invalid to prevent accidental use.
+# Build the root image instead (Dockerfile at repo root), which is what CI, Helm,
+# and docker-compose use.
+
+ERROR DO_NOT_USE_THIS_DOCKERFILE
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.6
-FROM python:3.11-slim AS runtime
+###############################
+# DEPRECATED – DO NOT USE
+# Use the root-level Dockerfile to build the canonical image.
+ERROR DO_NOT_USE_THIS_DOCKERFILE
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
