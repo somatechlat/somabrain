@@ -118,6 +118,7 @@ SOMABRAIN_KAFKA_URL=kafka://somabrain_kafka:9092
 SOMABRAIN_OPA_URL=http://somabrain_opa:8181
 SOMABRAIN_OPA_POLICY=soma.policy.integrator
 POSTGRES_USER=soma
+ENABLE_COG_THREADS=1
 POSTGRES_PASSWORD=soma_pass
 POSTGRES_DB=somabrain
 SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain

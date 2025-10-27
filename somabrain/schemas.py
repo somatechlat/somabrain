@@ -350,6 +350,13 @@ class RAGRequest(BaseModel):
     )
     persist: bool = False
     universe: Optional[str] = None
+    # Advanced targeting (optional):
+    # mode: auto|id|key|coord|vector|wm|graph (auto by default)
+    mode: Optional[str] = None
+    # Direct lookup hints; when provided, exact matches are boosted to the top
+    id: Optional[str] = None
+    key: Optional[str] = None
+    coord: Optional[str] = None
 
 
 class RAGCandidate(BaseModel):

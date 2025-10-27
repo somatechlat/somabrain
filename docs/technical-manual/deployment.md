@@ -495,6 +495,49 @@ find /backups/somabrain -type d -mtime +30 -exec rm -rf {} \;
 
 ## Scaling Considerations
 
+### Maximum capacity configuration (production)
+
+For sustained peak throughput and lowest tail latency, configure the platform with these proven settings:
+
+- API process
+  - Replicas: 4–8 behind a load balancer (HPA min 4, max 20)
+  - Concurrency: uvicorn workers = CPU cores (2–4 per pod) with keep-alive 75s; enable HTTP pipelining at the ingress
+  - ENABLE_COG_THREADS: "1" across all cognitive services to keep the pipeline always-on
+  - OPA policy: mount policies from ops/opa/policies and run OPA fail-closed (mode_opa_fail_closed=true)
+  - Auth: mode_api_auth_enabled=true (JWT recommended) and rate limits tuned per tenant
+
+- Kafka
+  - Partitions: 12+ for audit and cognition topics to avoid producer backpressure
+  - Acks: all; linger.ms ~ 5–10ms for better batching under load
+  - Exporter enabled and scraped every 30s for saturation alerts
+
+- Redis
+  - Maxmemory: 8–16GiB with allkeys-lru; persistent snapshot + AOF for durability
+  - Use SOMABRAIN_REDIS_URL with pooled connections; pin CPU/memory in k8s
+
+- PostgreSQL
+  - Instance RAM: 8–16GiB; shared_buffers ~ 25% RAM; effective_cache_size ~ 60% RAM
+  - WAL on fast storage; enable pg_stat_statements and exporter
+  - Read replicas for reporting; primary reserved for writes and hot data
+
+- Prometheus/Alertmanager
+  - Retention: 15–30d; persistent volumes sized for retention targets
+  - PodMonitors for all components; alerts for API p95>2s, error rate>5%, memory>85%
+
+- OPA
+  - Serve on 8181, policies under ops/opa/policies; bundle or ConfigMap sync
+  - Enforce fail-closed in production; add liveness/readiness probes
+
+Operational flags to set in Helm values or environment:
+- SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
+- SOMABRAIN_FORCE_FULL_STACK=1
+- SOMABRAIN_REQUIRE_MEMORY=1
+- ENABLE_COG_THREADS=1
+
+Capacity tips:
+- Scale API first; Kafka partitions next; then Redis memory. Validate with load tests and Prometheus SLOs.
+- Keep Prometheus retention manageable; ship long-term metrics to a remote store if needed.
+
 ### Horizontal Pod Autoscaler (HPA)
 ```yaml
 apiVersion: autoscaling/v2

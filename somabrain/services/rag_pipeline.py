@@ -206,6 +206,94 @@ async def run_rag_pipeline(
                     expansions.append(f"intro to {req.query}")
     except Exception:
         pass
+
+    # Advanced targeting: exact id/key/coord path (boost to top, then fused context)
+    exact_mode = (req.mode or "auto").strip().lower()
+    exact_inputs: dict[str, Optional[str]] = {
+        "id": req.id,
+        "key": req.key,
+        "coord": req.coord,
+    }
+
+    def _parse_coord_string(s: str | None) -> Optional[tuple[float, float, float]]:
+        if not s:
+            return None
+        try:
+            parts = [float(x.strip()) for x in str(s).split(",")]
+            if len(parts) >= 3:
+                return (parts[0], parts[1], parts[2])
+        except Exception:
+            return None
+        return None
+
+    # Heuristic auto-detection if mode=auto and explicit fields absent
+    if exact_mode == "auto" and not any(exact_inputs.values()):
+        q = (req.query or "").strip()
+        # Treat pure 3-number comma string as coordinate
+        if _parse_coord_string(q) is not None:
+            exact_mode = "coord"
+            exact_inputs["coord"] = q
+        else:
+            # Treat single-token (no whitespace) moderately long string as key/id
+            if (" " not in q) and len(q) >= 6:
+                exact_mode = "key"
+                exact_inputs["key"] = q
+
+    pinned_exact: list[RAGCandidate] = []
+    pinned_keys: set[str] = set()
+    if mem_client is not None and exact_mode in ("id", "key", "coord", "auto"):
+        try:
+            coords_to_fetch: list[tuple[float, float, float]] = []
+            # Priority: coord > key > id (if multiple provided)
+            c = _parse_coord_string(exact_inputs.get("coord"))
+            if c is not None:
+                coords_to_fetch.append(c)
+            k = exact_inputs.get("key") or None
+            if k:
+                try:
+                    coords_to_fetch.append(mem_client.coord_for_key(k, universe=universe))
+                except Exception:
+                    pass
+            i = exact_inputs.get("id") or None
+            if i and i != k:
+                try:
+                    coords_to_fetch.append(mem_client.coord_for_key(i, universe=universe))
+                except Exception:
+                    pass
+            # Dedup coords
+            seen_c: set[tuple[float, float, float]] = set()
+            coords_to_fetch = [
+                (float(x), float(y), float(z))
+                for (x, y, z) in coords_to_fetch
+                if not ((float(x), float(y), float(z)) in seen_c or seen_c.add((float(x), float(y), float(z))))
+            ]
+            if coords_to_fetch:
+                payloads = mem_client.payloads_for_coords(coords_to_fetch, universe=universe) or []
+                for p in payloads:
+                    # Use high base score to keep ahead; final rerank will respect pinning below
+                    coord = p.get("coordinate")
+                    coord_str = None
+                    if isinstance(coord, (list, tuple)) and len(coord) >= 3:
+                        coord_str = ",".join(str(float(c)) for c in coord[:3])
+                    kid = str(p.get("task") or p.get("id") or "") or None
+                    cand = RAGCandidate(
+                        coord=coord_str,
+                        key=kid,
+                        score=1e9,  # sentinel high score for pinning
+                        retriever="exact",
+                        payload=p if isinstance(p, dict) else {"raw": p},
+                    )
+                    pinned_exact.append(cand)
+                    if coord_str:
+                        pinned_keys.add(coord_str)
+                    if kid:
+                        pinned_keys.add(kid)
+                if pinned_exact:
+                    lists_by_retriever["exact"] = list(pinned_exact)
+                    cands += pinned_exact
+        except Exception:
+            # Exact path is best-effort; continue with fused retrievals on failure
+            pass
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is None:
@@ -416,13 +504,47 @@ async def run_rag_pipeline(
         )
         for s, c in fused
     ]
+    # Ensure exact hits are pinned to the front (dedup by key/coord)
+    if pinned_exact:
+        def _kid(c: RAGCandidate) -> str:
+            return str(
+                c.coord or c.key or (c.payload.get("task") if isinstance(c.payload, dict) else "")
+            )
+
+        seen = set()
+        pinned_unique: list[RAGCandidate] = []
+        for c in pinned_exact:
+            k = _kid(c)
+            if k and k not in seen:
+                seen.add(k)
+                pinned_unique.append(c)
+        rest: list[RAGCandidate] = []
+        for c in out:
+            k = _kid(c)
+            if (not k) or (k not in seen):
+                rest.append(c)
+        out = pinned_unique + rest
     # Rerank policy
-    method = (req.rerank or "cosine").strip().lower()
+    # Resolve reranker (auto => prefer HRR > MMR > cosine)
+    requested = (req.rerank or "auto").strip().lower()
+    method = requested
+    if requested in ("auto", "default", "best"):
+        try:
+            if getattr(_rt, "quantum", None) is not None:
+                method = "hrr"
+            elif rt_embedder is not None:
+                method = "mmr"
+            else:
+                method = "cosine"
+        except Exception:
+            method = "cosine"
+
     if method == "mmr":
         try:
             from somabrain.services.recall_service import diversify_payloads
 
-            payloads = [c.payload for c in out]
+            # Do not rerank pinned exacts; only rerank the rest
+            payloads = [c.payload for c in (out[len(pinned_exact) :] if pinned_exact else out)]
             ordered = diversify_payloads(
                 embed=lambda t: _rt.embedder.embed(t),
                 query=req.query,
@@ -432,8 +554,9 @@ async def run_rag_pipeline(
                 lam=0.5,
             )
             # Map back by object id
-            id2cand = {id(c.payload): c for c in out}
-            out = [id2cand.get(id(p)) for p in ordered if id2cand.get(id(p))]
+            id2cand = {id(c.payload): c for c in (out[len(pinned_exact) :] if pinned_exact else out)}
+            reranked = [id2cand.get(id(p)) for p in ordered if id2cand.get(id(p))]
+            out = (out[: len(pinned_exact)] if pinned_exact else []) + reranked
         except Exception:
             pass
     elif method == "hrr":
@@ -446,9 +569,11 @@ async def run_rag_pipeline(
 
                     return float(QuantumLayer.cosine(a, b))
 
-                # recompute scores as HRR cosine
+                # recompute scores as HRR cosine for non-pinned section
                 new = []
-                for c in out:
+                head = out[: len(pinned_exact)] if pinned_exact else []
+                tail = out[len(pinned_exact) :] if pinned_exact else out
+                for c in tail:
                     txt = _extract_text(c.payload)
                     if not txt:
                         new.append((c.score, c))
@@ -457,7 +582,7 @@ async def run_rag_pipeline(
                     sc = _cos(hq, hv)
                     new.append((sc, c))
                 new.sort(key=lambda t: t[0], reverse=True)
-                out = [c for _, c in new]
+                out = head + [c for _, c in new]
         except Exception:
             pass
     elif method == "ce":
@@ -470,7 +595,10 @@ async def run_rag_pipeline(
             )
             batch = int(getattr(_rt.cfg, "reranker_batch", 32) or 32)
             if out:
-                payloads = [c.payload for c in out[:top_n]]
+                # Only rerank non-pinned tail
+                head = out[: len(pinned_exact)] if pinned_exact else []
+                tail = out[len(pinned_exact) :] if pinned_exact else out
+                payloads = [c.payload for c in tail[:top_n]]
                 pairs = [(req.query, _extract_text(p)) for p in payloads]
                 # Try cross-encoder if available
                 used_ce = False
@@ -500,8 +628,8 @@ async def run_rag_pipeline(
                         s = float(_np.dot(qv, pv) / (na * nb))
                         rescored.append((s, i))
                 rescored.sort(key=lambda t: t[0], reverse=True)
-                selected = [out[i] for _, i in rescored[:out_k]]
-                out = selected
+                selected = [tail[i] for _, i in rescored[:out_k]]
+                out = head + selected
         except Exception:
             pass
     # Default: fused order is already desc by score
@@ -844,10 +972,20 @@ async def run_rag_pipeline(
             except Exception:
                 pass
 
+    # Prepare metrics payload
+    metrics_payload = {
+        "retrievers": retriever_set,
+        "fusion": "wrrf",
+        "expansions": len(expansions),
+        "reranker_used": method,
+        "exact_mode": exact_mode,
+        "exact_count": len(pinned_exact),
+    }
+
     return RAGResponse(
         candidates=out,
         session_coord=session_coord_str,
         namespace=ctx.namespace,
         trace_id=trace_id or "",
-        metrics=None,
+        metrics=metrics_payload,
     )

@@ -309,6 +309,7 @@ services:
     networks:
       - somabrain_net
     environment:
+      ENABLE_COG_THREADS: "${ENABLE_COG_THREADS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
