@@ -31,6 +31,11 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - Automated backup and recovery procedures
 - Production-ready Kubernetes Helm charts
 - Performance benchmarking suite with canonical test cases
+ - Kafka teach feedback pipeline:
+   - New Avro contracts: `teach_feedback.avsc`, `teach_capsule.avsc`
+   - Processor service: `somabrain.services.teach_feedback_processor`
+   - Topic: `cog.teach.feedback` → maps `rating` to `r_user` and publishes `RewardEvent`
+   - Smoke script: `scripts/e2e_teach_feedback_smoke.py`
 
 ### 🔧 Changed
 - Improved metrics bridge architecture for better package compatibility
@@ -43,6 +48,7 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - Created Development Manual with coding standards and contribution process
 - Created Onboarding Manual for new team members and contractors
 - Added comprehensive runbooks for all major system components
+ - Documented teach feedback pipeline in Technical Manual and User Manual
 
 ### 💥 Removed
 - Legacy environment variants and overlays removed:

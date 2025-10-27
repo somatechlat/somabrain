@@ -46,6 +46,24 @@ def _topics() -> List[NewTopic]:
             replication_factor=1,
             topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
         ),
+        NewTopic(
+            name="cog.reward.events",
+            num_partitions=3,
+            replication_factor=1,
+            topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
+        ),
+        NewTopic(
+            name="cog.config.updates",
+            num_partitions=3,
+            replication_factor=1,
+            topic_configs={"retention.ms": str(3 * 24 * 60 * 60 * 1000)},
+        ),
+        NewTopic(
+            name="cog.teach.feedback",
+            num_partitions=3,
+            replication_factor=1,
+            topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
+        ),
     ]
 
 

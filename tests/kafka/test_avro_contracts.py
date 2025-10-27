@@ -24,6 +24,12 @@ def test_schemas_exist_and_parse() -> None:
         assert isinstance(data, dict) and data.get("type") == "record"
 
 
+# Compatibility alias for external test selectors
+def test_can_load_avro_schemas() -> None:
+    """Alias to satisfy node IDs used in external scripts."""
+    test_schemas_exist_and_parse()
+
+
 @pytest.mark.skipif(
     importlib.util.find_spec("fastavro") is None, reason="fastavro not installed"
 )

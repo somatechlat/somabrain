@@ -135,3 +135,27 @@ These endpoints are guarded by the same auth and tenant rules as memory operatio
 | Working memory size | Gauge `somabrain_wm_utilization` | Prometheus |
 
 Monitor these metrics to ensure reasoning workflows adapt as expected over time.
+
+---
+
+## 7. Teach feedback via Kafka (advanced)
+
+When you need auditable human ratings to influence exploration and policy selection, SomaBrain supports a Kafka-native teach feedback loop.
+
+- Produce TeachFeedback to `cog.teach.feedback` with fields:
+  - `feedback_id`, `capsule_id`, `frame_id`, `ts`, `rating` (1–5), `comment`
+- The `teach_feedback_processor` consumes `cog.teach.feedback` and emits a `RewardEvent` to `cog.reward.events`, mapping `rating` to `r_user`:
+  - 1→-1.0, 2→-0.5, 3→0.0, 4→0.5, 5→1.0; `total=r_user`
+- The `learner_online` service reads `cog.reward.events` and updates exploration temperature (`tau`) via `cog.config.updates`.
+
+Quick validation (requires local Kafka):
+
+```bash
+# Seed topics (idempotent)
+python scripts/seed_topics.py
+
+# Run the smoke test (produces TeachFeedback and waits for a RewardEvent)
+python scripts/e2e_teach_feedback_smoke.py
+```
+
+Schemas live in `proto/cog/teach_feedback.avsc` and `proto/cog/reward_event.avsc`. See `somabrain/services/teach_feedback_processor.py` for the mapping.

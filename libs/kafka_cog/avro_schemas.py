@@ -52,6 +52,15 @@ def load_all() -> Dict[str, Dict[str, Any]]:
         out["belief_update_soma"] = load_schema("belief_update_soma")
     except FileNotFoundError:
         pass
+    # Teach/feedback optional contracts
+    try:
+        out["teach_capsule"] = load_schema("teach_capsule")
+    except FileNotFoundError:
+        pass
+    try:
+        out["teach_feedback"] = load_schema("teach_feedback")
+    except FileNotFoundError:
+        pass
     return out
 
 

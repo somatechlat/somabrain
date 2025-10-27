@@ -1,14 +1,58 @@
-title: SomaBrain Documentation
-project: SomaBrain
-owner: Somatech LAT
-version: "3.0.1-3LANE"
-last_updated: "2025-10-27"
+# ISO-Aligned Documentation Metadata
+# Project: SomaBrain
+# Version: 3.0.2-KARPATHY-INFLUENCE
+# Last Updated: 2025-01-27
+
+project:
+  name: SomaBrain
+  version: 3.0.2-KARPATHY-INFLUENCE
+  description: Cognitive memory runtime with hyperdimensional computing
+  repository: https://github.com/somatechlat/somabrain
+
+documentation:
+  version: 1.0.0
+  last_updated: 2025-01-27
+  owner: Documentation Team
+  
 standards:
-  - ISO/IEC 12207
-  - ISO 21500
-  - ISO/IEC 42010
-  - ISO/IEC 29148
-  - ISO/IEC 29119
-  - ISO/IEC 27001
-badges:
-  version: https://img.shields.io/badge/version-3.0.1--3LANE-blue
+  - ISO/IEC 12207:2017  # Software lifecycle processes
+  - ISO/IEC 15288:2015  # System lifecycle processes
+  - ISO/IEC 29148:2018  # Requirements engineering
+  - ISO/IEC 29119:2013  # Software testing
+  - ISO/IEC 42010:2011  # Architecture description
+  - ISO 21500:2012      # Project management
+  - ISO/IEC 27001:2013  # Information security
+  - IEEE 1016:2009      # Software design descriptions
+
+manuals:
+  user:
+    path: user-manual/
+    audience: End users, product managers
+    purpose: How to use SomaBrain
+    
+  technical:
+    path: technical-manual/
+    audience: SREs, operators, platform teams
+    purpose: How to deploy and operate SomaBrain
+    
+  development:
+    path: development-manual/
+    audience: Engineers, contributors
+    purpose: How to build and contribute to SomaBrain
+    
+  onboarding:
+    path: onboarding-manual/
+    audience: New team members, contractors
+    purpose: How to quickly become productive
+
+quality:
+  linting: markdownlint-cli2
+  link_checking: enabled
+  diagram_rendering: plantuml
+  accessibility: wcag-2.1-aa
+  
+maintenance:
+  review_cycle: quarterly
+  stale_threshold_days: 90
+  feedback_enabled: true
+  archival_policy: deprecated-to-archive

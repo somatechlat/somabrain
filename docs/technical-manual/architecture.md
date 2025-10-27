@@ -256,6 +256,46 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 - OPA policy evaluation timeouts → Review policy complexity and OPA resource allocation
 - Memory storage inconsistencies → Validate write mirroring configuration
 
+---
+
+## Cognitive Threads and Teach Feedback (Kafka)
+
+SomaBrain’s cognition loop uses Kafka topics and small services for modularity and safety:
+
+- Contracts (Avro under `proto/cog/`):
+  - `global_frame.avsc` — leader, weights, rationale
+  - `segment_boundary.avsc` — boundaries for episodic segmentation
+  - `reward_event.avsc` — `r_task`, `r_user`, `r_latency`, `r_safety`, `r_cost`, `total`
+  - `config_update.avsc` — `learning_rate`, `exploration_temp`
+  - `teach_feedback.avsc` — `feedback_id`, `capsule_id`, `frame_id`, `rating`, `comment`
+
+- Topics:
+  - `cog.global.frame`, `cog.segments`, `cog.reward.events`, `cog.config.updates`, `cog.teach.feedback`
+
+- Services:
+  - `integrator_hub` — fuses predictor signals → `cog.global.frame`
+  - `segmentation_service` — derives `cog.segments` from frames
+  - `teach_feedback_processor` — maps TeachFeedback to RewardEvent (`rating`→`r_user`, `total=r_user`)
+  - `learner_online` — consumes rewards, emits `cog.config.updates` (`tau` from EMA of reward)
+
+### Operations
+
+- Topics are seeded via `scripts/seed_topics.py` (idempotent)
+- `somabrain_cog` container runs cognition services under Supervisor (see `ops/supervisor/supervisord.conf`)
+- Observability:
+  - `somabrain_teach_feedback_total`, `somabrain_teach_r_user`
+  - `somabrain_reward_value`, `soma_exploration_ratio`, `soma_policy_regret_estimate`
+
+### Safety and Policy
+
+- OPA middleware protects API edges; Kafka processors publish best-effort and log; deploy Kafka ACLs per-tenant where applicable
+- Teach-derived `r_user` is bounded in [-1, 1] via rating mapping to prevent extreme control signals
+
+### Validation
+
+- Run `python scripts/e2e_teach_feedback_smoke.py` to verify `cog.teach.feedback` → `cog.reward.events`
+- Run `python scripts/e2e_reward_smoke.py` to validate RewardProducer and topic bindings
+
 **References**:
 - [Deployment Guide](deployment.md) for installation procedures
 - [Monitoring Setup](monitoring.md) for observability configuration

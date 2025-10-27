@@ -1,2 +1,0 @@
-D=2048 N=500: per-call 0.0742s, batched 0.0566s
-rfft D=2048 N=500: per-call 0.0250s, batched 0.0054s
