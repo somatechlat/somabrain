@@ -400,7 +400,7 @@ groups:
 - Incomplete restores → Validate backup integrity and storage capacity
 
 **References**:
-- [Architecture Documentation](../architecture.md) for data flow understanding
-- [Monitoring Guide](../monitoring.md) for backup alerting setup
-- [Security Policies](../security/) for encryption and access controls
-- [Runbooks](../runbooks/) for component-specific recovery procedures
+- [Architecture](architecture.md) for data flow understanding
+- [Monitoring](monitoring.md) for backup alerting setup
+- [Security](security/) for encryption and access controls
+- [Runbooks](runbooks/) for component-specific recovery procedures

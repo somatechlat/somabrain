@@ -124,4 +124,4 @@ The retrieval and utility weights are now updated and persisted to Redis. Inspec
 | High latency (>1 s) | Kafka/Redis not ready | Wait for health probes, then retry |
 | `/healthz` shows `"memory_ok": false` in Docker | Using `127.0.0.1` inside the container | Set `SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595` and verify via `GET /diagnostics` |
 
-If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical-manual/troubleshooting.md) for deeper diagnostics.
+If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical-manual/index.md) for deeper diagnostics.

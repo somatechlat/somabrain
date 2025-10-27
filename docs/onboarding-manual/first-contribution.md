@@ -4,7 +4,7 @@
 
 **Audience**: New contributors, developers making their first SomaBrain contribution, and team members learning the workflow.
 
-**Prerequisites**: Completed [Environment Setup](environment-setup.md) and read [Codebase Walkthrough](codebase-walkthrough.md).
+**Prerequisites**: Completed [Local Setup](../development-manual/local-setup.md) and read [Codebase Walkthrough](codebase-walkthrough.md).
 
 ---
 
@@ -1243,6 +1243,6 @@ Thanks for the great first issue suggestion!
 
 **References**:
 - [Codebase Walkthrough](codebase-walkthrough.md) for understanding architecture
-- [Environment Setup](environment-setup.md) for development environment
+- [Local Setup](../development-manual/local-setup.md) for development environment
 - [Development Manual](../development-manual/contribution-process.md) for detailed process
-- [PR Checklist](checklists/pr-checklist.md) before submitting pull requests
+- [Contribution Process](../development-manual/contribution-process.md) before submitting pull requests

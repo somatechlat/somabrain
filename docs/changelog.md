@@ -267,5 +267,4 @@ SomaBrain follows these principles for breaking changes:
 **References**:
 - [Semantic Versioning Specification](https://semver.org/) for versioning policy understanding
 - [Migration Guides](#migration-guides) for upgrade procedures
-- [Release Notes](../releases/) for detailed version information
-- [API Documentation](../development-manual/api-reference.md) for current API specification
+- [API Documentation](development-manual/api-reference.md) for current API specification

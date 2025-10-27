@@ -1653,7 +1653,7 @@ jobs:
 
 ---
 
-**Common Errors**: See [FAQ](../../user-manual/faq.md) for testing troubleshooting.
+**Common Errors**: See [FAQ](../user-manual/faq.md) for testing troubleshooting.
 
 **References**:
 - [Coding Standards](coding-standards.md) for test code quality

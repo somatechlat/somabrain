@@ -25,10 +25,8 @@
   - [Incident Response](runbooks/incident-response.md) - General incident procedures
 - [Backup & Recovery](backup-and-recovery.md) - Disaster recovery procedures
 - [Security](security/) - Security policies and controls
-  - [Backend Enforcement Mode](security/strict-mode.md) - Enforces no-stub execution
   - [Secrets Policy](security/secrets-policy.md) - Secrets management
   - [RBAC Matrix](security/rbac-matrix.md) - Access control
-  - [Compliance & Proofs](security/compliance-and-proofs.md) - Audit artefacts
 
 ---
 

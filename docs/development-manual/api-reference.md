@@ -884,4 +884,4 @@ somabrain_memories_total{tenant="tenant_1"} 15432
 - [Testing Guidelines](testing-guidelines.md) for API testing examples
 - [Coding Standards](coding-standards.md) for API client implementation
 - [Contribution Process](contribution-process.md) for API changes
-- [User Manual API Integration](../../user-manual/api-integration.md) for usage examples
+- [API Integration](../user-manual/features/api-integration.md) for usage examples

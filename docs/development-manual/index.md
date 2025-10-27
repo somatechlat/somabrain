@@ -14,9 +14,7 @@
 - [Coding Standards](coding-standards.md) - Python style guide and linting rules
 - [Testing Guidelines](testing-guidelines.md) - Test strategy and framework usage
 - [API Reference](api-reference.md) - Complete endpoint documentation
-- [Architecture Decisions](architecture-decisions/) - Accepted ADRs guiding the codebase
 - [Contribution Process](contribution-process.md) - Pull request workflow and code review
-- [Documentation Guide](documentation-guide.md) - Standards for creating and maintaining docs
 
 ---
 

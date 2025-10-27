@@ -168,4 +168,4 @@ Use the same approach for feedback and planning—serialise the Pydantic models 
 - [Memory Operations](memory-operations.md) – Payload specifics and error cases.
 - [Cognitive Reasoning](cognitive-reasoning.md) – Context builder, planner, adaptation flows.
 - [Multi-tenant Usage](multi-tenant-usage.md) – Tenancy, universes, quotas.
-- [Technical Manual – API Surface](../../technical-manual/api-surface.md) – Complete endpoint inventory for operators.
+- [API Reference](../../development-manual/api-reference.md) – Complete endpoint inventory for operators.

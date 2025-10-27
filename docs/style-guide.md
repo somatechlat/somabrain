@@ -93,7 +93,7 @@ kind: Deployment
 ````
 
 ### Links and References
-- **Internal links**: `[Link Text](relative-path.md)`
+- **Internal links**: Use relative paths from current file location
 - **External links**: `[Link Text](https://example.com)`
 - **Anchor links**: `[Section](#section-heading)` (lowercase, hyphens for spaces)
 - **Reference style**: Use for repeated URLs:
@@ -344,6 +344,4 @@ Documentation builds run these validations:
 
 **References**:
 - [Markdown Guide](https://www.markdownguide.org/) for syntax reference
-- [Documentation Templates](templates/) for document structure examples
-- [Automated Linting Rules](.markdownlint.json) for specific style requirements
 - [Accessibility Guidelines](https://www.w3.org/WAI/WCAG21/quickref/) for inclusive design
