@@ -319,7 +319,7 @@ services:
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
     command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf"]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9001"]
+      test: ["CMD", "curl", "-fsS", "http://admin:soma@localhost:9001"]
       interval: 30s
       timeout: 5s
       retries: 5

@@ -60,6 +60,9 @@ COPY observability /app/observability
 COPY services /app/services
 COPY config /app/config
 
+# Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
+COPY somabrain /app/somabrain
+
 # Add memory package back for runtime imports
 COPY memory /app/memory
 # Copy shared `common` helpers so imports like `from common...` work at runtime
