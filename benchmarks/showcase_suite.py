@@ -106,7 +106,7 @@ async def _latency_smoke(
     }
 
 
-def _rag_quality_http(api_base: str, tenant: str = "showcase") -> Dict[str, Any]:
+def _rag_quality_http(api_base: str, tenant: str = "showcase", token: Optional[str] = None) -> Dict[str, Any]:
     """Minimal RAG quality smoke against the live API.
 
     Seeds a tiny corpus via /remember and measures hit-rate on /rag/retrieve variants.
@@ -115,12 +115,21 @@ def _rag_quality_http(api_base: str, tenant: str = "showcase") -> Dict[str, Any]
         raise RuntimeError("httpx is not available; install httpx or disable --rag")
 
     headers = {"X-Tenant-ID": tenant}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     client = httpx.Client(timeout=5.0)
 
-    def _remember(task: str) -> None:
+    def _remember(task: str, *, tenant_id: str) -> None:
+        # Memory API contract requires tenant/namespace/key/value
+        body = {
+            "tenant": tenant_id,
+            "namespace": "ltm",
+            "key": task,
+            "value": {"task": task, "memory_type": "episodic", "importance": 1},
+        }
         r = client.post(
             api_base.rstrip("/") + "/remember",
-            json={"payload": {"task": task, "memory_type": "episodic", "importance": 1}},
+            json=body,
             headers=headers,
         )
         r.raise_for_status()
@@ -146,7 +155,7 @@ def _rag_quality_http(api_base: str, tenant: str = "showcase") -> Dict[str, Any]
         "intro to renewable energy planning",
     ]
     for d in docs:
-        _remember(d)
+        _remember(d, tenant_id=tenant)
 
     query = "solar energy planning"
     top_k = 5
@@ -338,6 +347,8 @@ def run(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--concurrency", type=int, default=20)
     ap.add_argument("--timeout", type=float, default=2.0)
     ap.add_argument("--no-rag", action="store_true", help="Skip RAG micro-bench")
+    ap.add_argument("--tenant", default=os.environ.get("SOMA_TENANT", "showcase"))
+    ap.add_argument("--token", default=os.environ.get("SOMA_API_TOKEN"))
     ap.add_argument("--dry-run", action="store_true", help="Do not call network; emit synthetic data")
     args = ap.parse_args(argv)
 
@@ -388,7 +399,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             }
         else:
             try:
-                rag = _rag_quality_http(args.api_base)
+                rag = _rag_quality_http(args.api_base, tenant=args.tenant, token=args.token)
                 _write_json(out_dir / "rag_quality.json", rag)
             except Exception as e:  # noqa: BLE001
                 rag = {"error": f"{type(e).__name__}: {e}"}

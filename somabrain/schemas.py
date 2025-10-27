@@ -600,6 +600,8 @@ class HealthResponse(BaseModel):
     predictor_ok: Optional[bool] = None
     memory_ok: Optional[bool] = None
     embedder_ok: Optional[bool] = None
+    # RAG readiness: lightweight probe combining embedder + vector recall path
+    rag_ready: Optional[bool] = None
     # Extended diagnostics
     opa_ok: Optional[bool] = None
     opa_required: Optional[bool] = None

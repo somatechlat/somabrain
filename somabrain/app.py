@@ -2038,6 +2038,17 @@ async def health(request: Request) -> S.HealthResponse:
         except Exception:
             resp["memory_circuit_open"] = None
         embedder_ok = embedder is not None
+        # Lightweight RAG readiness probe: ensure embedder + vector recall path responds
+        rag_ready = False
+        try:
+            ns_mem = mt_memory.for_namespace(ctx.namespace)
+            # Minimal probe: attempt a tiny recall and an embed; success does not require hits
+            _ = ns_mem.recall("health_probe", top_k=1)
+            if embedder is not None:
+                _ = embedder.embed("health_probe")
+            rag_ready = True
+        except Exception:
+            rag_ready = False
         # OPA readiness (only required if fail-closed posture is enabled)
         if shared_settings is not None:
             try:
@@ -2101,6 +2112,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_ok"] = bool(memory_ok)
         resp["embedder_ok"] = bool(embedder_ok)
         resp["opa_required"] = bool(opa_required)
+        resp["rag_ready"] = bool(rag_ready)
         # Unified scorer & FD health invariants
         try:
             scorer_stats = unified_scorer.stats()

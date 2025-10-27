@@ -529,6 +529,13 @@ RAG_PERSIST = get_counter(
     labelnames=["status"],
 )
 
+# Successful /rag responses
+RAG_SUCCESS = get_counter(
+    "somabrain_rag_success_total",
+    "Number of successful /rag responses",
+    labelnames=["namespace"],
+)
+
 # Fusion metrics (RAG enhancements)
 RAG_FUSION_APPLIED = Counter(
     "somabrain_rag_fusion_applied_total",

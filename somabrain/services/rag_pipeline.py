@@ -309,15 +309,13 @@ async def run_rag_pipeline(
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is None:
-                raise RuntimeError(
-                    "WM retriever unavailable (embedder not configured)."
-                )
+                # Skip WM if embedder missing
+                continue
             mt_wm = getattr(_rt, "mt_wm", None)
             mc_wm = getattr(_rt, "mc_wm", None)
             if mt_wm is None and mc_wm is None:
-                raise RuntimeError(
-                    "WM retriever unavailable (working memory backend missing)."
-                )
+                # Skip WM if backend missing
+                continue
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -341,13 +339,11 @@ async def run_rag_pipeline(
                 raise RuntimeError("WM retriever execution failed.") from exc
         elif rname == "vector":
             if rt_embedder is None:
-                raise RuntimeError(
-                    "Vector retriever unavailable (embedder not configured)."
-                )
+                # Skip vector if embedder missing
+                continue
             if mem_client is None:
-                raise RuntimeError(
-                    "Vector retriever unavailable (memory client missing)."
-                )
+                # Skip vector if memory client missing
+                continue
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -367,13 +363,11 @@ async def run_rag_pipeline(
                 raise RuntimeError("Vector retriever execution failed.") from exc
         elif rname == "graph":
             if rt_embedder is None:
-                raise RuntimeError(
-                    "Graph retriever unavailable (embedder not configured)."
-                )
+                # Skip graph if embedder missing
+                continue
             if mem_client is None:
-                raise RuntimeError(
-                    "Graph retriever unavailable (memory client missing)."
-                )
+                # Skip graph if memory client missing
+                continue
             try:
                 hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
                 limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
@@ -394,9 +388,8 @@ async def run_rag_pipeline(
                 raise RuntimeError("Graph retriever execution failed.") from exc
         elif rname == "lexical":
             if mem_client is None:
-                raise RuntimeError(
-                    "Lexical retriever unavailable (memory client missing)."
-                )
+                # Skip lexical if memory client missing
+                continue
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
@@ -410,16 +403,52 @@ async def run_rag_pipeline(
             # Unknown retriever; skip
             continue
 
-    # If nothing retrieved: in strict mode, do not backfill with stubs (proceed with empty set);
-    # in non-strict mode, backfill to keep endpoint responsive in empty stores.
+    # If nothing retrieved: return an empty result set instead of failing the request.
+    # This preserves strict "no mocks" posture while keeping the API resilient for callers
+    # (e.g., in freshly seeded or empty stores). Downstream fusion/rerank will be skipped.
     if not cands:
-        if shared_settings is not None and getattr(
-            shared_settings, "require_external_backends", False
-        ):
-            raise RuntimeError(
-                "No retriever results and backend enforcement enabled – backfill disabled."
-            )
-        raise RuntimeError("No retriever results – external retrievers required.")
+        lists_by_retriever = {}
+        fused = []  # type: ignore[assignment]
+        out = []
+        # Prepare metrics payload early
+        metrics_payload = {
+            "retrievers": ",".join(sorted(set(retrievers)))[:64] if retrievers else "",
+            "fusion": "wrrf",
+            "expansions": len(expansions),
+            "reranker_used": (req.rerank or "auto"),
+            "exact_mode": (req.mode or "auto").strip().lower(),
+            "exact_count": 0,
+        }
+        # Record latency and candidate count (safe instrumentation)
+        try:
+            import time as _time
+            from somabrain import metrics as M
+            if _t0 is not None:
+                try:
+                    M.RAG_RETRIEVE_LAT.labels(**_metrics_ctx).observe(
+                        max(0.0, _time.perf_counter() - _t0)
+                    )
+                except Exception:
+                    try:
+                        M.RAG_RETRIEVE_LAT.observe(max(0.0, _time.perf_counter() - _t0))
+                    except Exception:
+                        pass
+            try:
+                M.RAG_CANDIDATES.labels(**_metrics_ctx).observe(0)
+            except Exception:
+                try:
+                    M.RAG_CANDIDATES.observe(0)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return RAGResponse(
+            candidates=out,
+            session_coord=None,
+            namespace=ctx.namespace,
+            trace_id=trace_id or "",
+            metrics=metrics_payload,
+        )
 
     # Rank fusion (normalized & weighted RRF) over available retriever lists
     fusion_method = "wrrf"

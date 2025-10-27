@@ -46,4 +46,10 @@ async def rag_retrieve(
     resp = await run_rag_pipeline(
         req, ctx=ctx, cfg=cfg, universe=universe, trace_id=trace_id
     )
+    try:
+        from somabrain import metrics as M
+
+        M.RAG_SUCCESS.labels(namespace=ctx.namespace).inc()
+    except Exception:
+        pass
     return resp
