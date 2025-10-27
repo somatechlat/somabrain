@@ -59,7 +59,8 @@ find_free_port() {
 
 # Fixed container ports, host ports allocated from 30000+ range
 REDIS_PORT=$(find_free_port 30000)
-KAFKA_BROKER_PORT=$(find_free_port 30001)
+# Host port for EXTERNAL Kafka listener; choose a free one in 301xx range
+KAFKA_BROKER_PORT=$(find_free_port 30102)
 KAFKA_EXPORTER_PORT=$(find_free_port 30003)
 OPA_PORT=$(find_free_port 30004)
 PROMETHEUS_PORT=$(find_free_port 30005)
@@ -82,6 +83,7 @@ cat <<PORTS >> $ENVFILE
 # Container port constants (avoid relying on base .env)
 REDIS_CONTAINER_PORT=6379
 KAFKA_BROKER_CONTAINER_PORT=9092
+KAFKA_BROKER_EXTERNAL_CONTAINER_PORT=9094
 KAFKA_EXPORTER_CONTAINER_PORT=9308
 OPA_CONTAINER_PORT=8181
 PROMETHEUS_CONTAINER_PORT=9090
@@ -100,8 +102,12 @@ SOMABRAIN_HOST_PORT=$API_HOST_PORT
 PORTS
 
 # Require an external memory service reachable from containers (default host gateway on macOS)
-echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}" >> $ENVFILE
-echo "SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token-allow}" >> $ENVFILE
+# Resolve defaults at script time so containers see concrete values
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}
+SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token-allow}
+echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT}" >> $ENVFILE
+echo "SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN}" >> $ENVFILE
+echo "SOMABRAIN_DOCKER_MEMORY_FALLBACK=http://host.docker.internal:9595" >> $ENVFILE
 
 # Production-like defaults for development: backend enforcement and full stack
 cat <<'FLAGS' >> $ENVFILE
@@ -124,15 +130,15 @@ SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somab
 INCLUSTER
 
 # Kafka KRaft single-node defaults
-cat <<'KRAFT' >> $ENVFILE
+cat <<KRAFT >> $ENVFILE
 KAFKA_CFG_NODE_ID=1
 KAFKA_CFG_PROCESS_ROLES=broker,controller
 KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@somabrain_kafka:9093
-KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://somabrain_kafka:9092
+KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:${KAFKA_BROKER_HOST_PORT}
 KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
 KAFKA_CFG_NUM_PARTITIONS=2
 KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
@@ -178,7 +184,7 @@ with open('.env') as f:
 ports={}
 ports.update(env)
 services=['somabrain_app','somabrain_redis','somabrain_kafka','somabrain_prometheus','somabrain_postgres','somabrain_kafka_exporter','somabrain_postgres_exporter','somabrain_opa']
-port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9092','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181'}
+port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9094','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181'}
 for s in services:
     try:
         # Map each service to its container port for port lookup

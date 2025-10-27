@@ -17,6 +17,10 @@ spec:
       labels:
 {{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 8 }}
     spec:
+      {{- if .Values.securityContext.pod.enabled }}
+      securityContext:
+{{ include "soma-apps.podSecurityContext" . | indent 8 }}
+      {{- end }}
       containers:
         - name: learner-online
           image: "{{ .Values.learnerOnline.image.repository }}:{{ .Values.learnerOnline.image.tag }}"
@@ -26,6 +30,10 @@ spec:
           ports:
             - containerPort: 8084
               name: health
+          {{- if .Values.securityContext.container.enabled }}
+          securityContext:
+{{ include "soma-apps.containerSecurityContext" . | indent 12 }}
+          {{- end }}
           env:
 {{- range $key, $value := $root.Values.envCommon }}
             - name: {{ $key }}

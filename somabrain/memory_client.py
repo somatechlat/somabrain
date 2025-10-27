@@ -398,7 +398,7 @@ class MemoryClient:
         # Hard requirement: if memory is required ensure an endpoint exists.
         require_memory_enabled = _require_memory_enabled()
         if require_memory_enabled and not base_url:
-            base_url = get_memory_http_endpoint()
+            base_url = get_memory_http_endpoint() or ""
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
         if base_url:
@@ -425,7 +425,7 @@ class MemoryClient:
             except Exception:
                 fallback = None
             try:
-                base_url = fallback or os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
+                base_url = (fallback or os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK") or "")
                 if base_url:
                     logger.debug(
                         "MemoryClient running in Docker, defaulting base_url to %r",

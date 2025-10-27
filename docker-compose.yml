@@ -92,7 +92,8 @@ services:
           fi
           exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
     ports:
-      - "${KAFKA_BROKER_HOST_PORT}:${KAFKA_BROKER_CONTAINER_PORT}"
+      # Expose only the EXTERNAL listener container port to the host
+      - "${KAFKA_BROKER_HOST_PORT}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT}"
     healthcheck:
       test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1"]
       interval: 15s

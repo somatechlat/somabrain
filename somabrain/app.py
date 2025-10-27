@@ -858,6 +858,101 @@ except Exception:
     if log:
         log.debug("Reward Gate middleware not registered", exc_info=True)
 
+# Single embed switch for dev/local: mount small HTTP services and start cognitive threads
+_EMBED_SERVICES = False
+try:
+    embed_all_flag = (os.getenv("SOMABRAIN_EMBED_SERVICES", "").strip().lower() or "")
+    if embed_all_flag in ("1", "true", "yes", "on"):
+        _EMBED_SERVICES = True
+except Exception:
+    _EMBED_SERVICES = False
+
+if _EMBED_SERVICES:
+    try:
+        # Mount Reward Producer under /reward
+        from somabrain.services import reward_producer as _reward_mod  # type: ignore
+
+        app.mount("/reward", _reward_mod.app)
+        logging.getLogger("somabrain").warning("Embedded reward_producer under /reward (dev mode)")
+    except Exception:
+        logging.getLogger("somabrain").warning("Failed to embed reward_producer", exc_info=True)
+    try:
+        # Mount Learner Online under /learner; its background thread starts on startup
+        from somabrain.services import learner_online as _learner_mod  # type: ignore
+
+        app.mount("/learner", _learner_mod.app)
+        logging.getLogger("somabrain").warning("Embedded learner_online under /learner (dev mode)")
+    except Exception:
+        logging.getLogger("somabrain").warning("Failed to embed learner_online", exc_info=True)
+    try:
+        @app.on_event("startup")
+        async def _start_embedded_services() -> None:  # pragma: no cover
+            # Explicitly invoke embedded apps' startup hooks so producers/threads initialize
+            try:
+                if hasattr(_reward_mod, "startup"):
+                    await _reward_mod.startup()  # type: ignore[attr-defined]
+            except Exception:
+                logging.getLogger("somabrain").warning("Embedded reward_producer startup failed", exc_info=True)
+            try:
+                if hasattr(_learner_mod, "startup"):
+                    await _learner_mod.startup()  # type: ignore[attr-defined]
+            except Exception:
+                logging.getLogger("somabrain").warning("Embedded learner_online startup failed", exc_info=True)
+    except Exception:
+        logging.getLogger("somabrain").warning("Failed to wire embedded service startup", exc_info=True)
+
+
+if _EMBED_SERVICES:
+    try:
+        import threading as _cog_thr
+
+        # Integrator Hub: consumes belief updates, publishes global frames, caches to Redis
+        try:
+            from somabrain.services.integrator_hub import IntegratorHub  # type: ignore
+
+            def _run_integrator():  # pragma: no cover - background thread
+                try:
+                    IntegratorHub().run_forever()
+                except Exception:
+                    logging.getLogger("somabrain").warning("IntegratorHub thread exited", exc_info=True)
+
+            _cog_thr.Thread(target=_run_integrator, daemon=True).start()
+            logging.getLogger("somabrain").warning("Embedded IntegratorHub thread (dev mode)")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed IntegratorHub", exc_info=True)
+
+        # Segmentation Service: emits segment boundaries from global frames or CPD mode
+        try:
+            from somabrain.services.segmentation_service import SegmentationService  # type: ignore
+
+            def _run_segmentation():  # pragma: no cover - background thread
+                try:
+                    SegmentationService().run_forever()
+                except Exception:
+                    logging.getLogger("somabrain").warning("SegmentationService thread exited", exc_info=True)
+
+            _cog_thr.Thread(target=_run_segmentation, daemon=True).start()
+            logging.getLogger("somabrain").warning("Embedded SegmentationService thread (dev mode)")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed SegmentationService", exc_info=True)
+
+        # Orchestrator Service: on boundaries, enqueues episodic snapshots to outbox
+        try:
+            from somabrain.services.orchestrator_service import OrchestratorService  # type: ignore
+
+            def _run_orchestrator():  # pragma: no cover - background thread
+                try:
+                    OrchestratorService().run_forever()
+                except Exception:
+                    logging.getLogger("somabrain").warning("OrchestratorService thread exited", exc_info=True)
+
+            _cog_thr.Thread(target=_run_orchestrator, daemon=True).start()
+            logging.getLogger("somabrain").warning("Embedded OrchestratorService thread (dev mode)")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed OrchestratorService", exc_info=True)
+    except Exception:
+        logging.getLogger("somabrain").warning("Failed to start embedded cognitive threads", exc_info=True)
+
 
 # --- Startup self-check banner (Sprint 1) ---------------------------------------
 @app.on_event("startup")

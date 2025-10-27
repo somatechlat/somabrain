@@ -26,6 +26,15 @@ repos:
         args: ["--fix"]
         additional_dependencies: ["ruff==0.7.1"]
 
+  # Secret scanning to prevent accidental commits of credentials
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: detect-secrets (scan for credentials)
+        # You can generate a baseline with: detect-secrets scan > .secrets.baseline
+        # args: ["--baseline", ".secrets.baseline"]
+
   # Local hooks to run quick project-specific checks before push
   - repo: local
     hooks:

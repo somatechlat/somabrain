@@ -4,12 +4,12 @@ import time
 import requests
 
 # Use centralized configuration for consistent testing
-try:
-    from tests.test_config import SOMABRAIN_API_URL
-    BASE = SOMABRAIN_API_URL
-except ImportError:
-    # Fallback for standalone usage
-    BASE = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
+# Strict: use explicit env override if provided; otherwise hardcode :9999 (no auto-detect)
+BASE = (
+    os.getenv("SOMA_API_URL")
+    or os.getenv("SOMABRAIN_API_URL")
+    or "http://127.0.0.1:9999"
+)
 
 
 def _api_get(path):

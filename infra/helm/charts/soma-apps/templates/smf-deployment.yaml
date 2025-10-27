@@ -17,6 +17,10 @@ spec:
       labels:
 {{ include "soma-apps.labels" (dict "root" $root "component" "smf") | indent 8 }}
     spec:
+      {{- if .Values.securityContext.pod.enabled }}
+      securityContext:
+{{ include "soma-apps.podSecurityContext" . | indent 8 }}
+      {{- end }}
       containers:
         - name: smf
           image: "{{ .Values.smf.image.repository }}:{{ .Values.smf.image.tag }}"
@@ -24,6 +28,10 @@ spec:
           ports:
             - containerPort: {{ .Values.smf.containerPort }}
               name: http
+          {{- if .Values.securityContext.container.enabled }}
+          securityContext:
+{{ include "soma-apps.containerSecurityContext" . | indent 12 }}
+          {{- end }}
           env:
 {{- range $key, $value := $root.Values.envCommon }}
             - name: {{ $key }}

@@ -41,6 +41,7 @@ import pathlib
 import time
 import uuid
 from typing import Dict, List, Optional, Tuple, Callable, Any
+import hashlib
 
 import requests
 import random
@@ -192,17 +193,63 @@ def _embed_texts(texts: Iterable[str]) -> List[List[float]]:
     return [list(map(float, emb.embed(t))) for t in texts]
 
 
-def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, timeout: float = 10.0, memory_type: str = "semantic") -> dict:
+def _stable_coord_from_key(key: str) -> str:
+    """Derive a deterministic 3D coordinate string "x,y,z" in [-1,1]^3 from a string key.
+
+    Mirrors the logic used in somabrain.memory_client._stable_coord so POST /memories
+    receives the commonly supported coord format.
+    """
+    key_s = str(key)
+    h = hashlib.blake2b(key_s.encode("utf-8"), digest_size=12).digest()
+    def _to_unit_pair(i: int) -> float:
+        return (int.from_bytes(h[i:i+4], "big") / 2**32) * 2 - 1
+    x = _to_unit_pair(0)
+    y = _to_unit_pair(4)
+    z = _to_unit_pair(8)
+    return f"{x},{y},{z}"
+
+
+def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, timeout: float = 10.0, memory_type: str = "semantic", *, tenant: Optional[str] = None) -> dict:
     """Store a single memory into the memstore via POST /memories.
 
     Payload is an arbitrary JSON object. We include tenant and content fields for retrieval.
     """
     url = f"{(base_url or DEFAULT_MEMSTORE_URL).rstrip('/')}/memories"
-    body = {"coord": coord, "payload": payload, "memory_type": memory_type}
+    # Ensure coord is a supported 3D coordinate string; if not, derive deterministically from key
+    coord_key = str(coord)
+    coord_value = coord_key if ("," in coord_key and len(coord_key.split(",")) >= 3) else _stable_coord_from_key(coord_key)
+
+    # Enrich payload with common fields expected by various memory services
+    p = dict(payload or {})
+    text = None
+    for k in ("task", "text", "content", "what", "fact", "headline"):
+        v = p.get(k)
+        if isinstance(v, str) and v.strip():
+            text = v.strip()
+            break
+    if not text:
+        text = str(p.get("title") or coord_key)
+    p.setdefault("text", text)
+    p.setdefault("content", text)
+    p.setdefault("id", p.get("memory_id") or coord_key)
+    try:
+        p.setdefault("timestamp", time.time())
+    except Exception:
+        pass
+    p.setdefault("universe", p.get("universe") or "real")
+    if tenant and not p.get("namespace"):
+        p["namespace"] = tenant
+
+    body = {"coord": coord_value, "payload": p, "memory_type": memory_type, "type": memory_type}
     headers = {}
     token = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    # Best-effort universe propagation, some services expect this
+    try:
+        headers.setdefault("X-Universe", str(p.get("universe") or "real"))
+    except Exception:
+        pass
     resp = requests.post(url, json=body, headers=headers, timeout=timeout)
     # Provide a cleaner message for common auth failures
     try:
@@ -210,6 +257,11 @@ def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, ti
     except requests.HTTPError:
         if resp.status_code in (401, 403):
             raise RuntimeError(f"memstore unauthorized ({resp.status_code}): check SOMABRAIN_MEMORY_HTTP_TOKEN")
+        try:
+            # Surface server details to aid debugging
+            print("memstore_store error:", resp.status_code, resp.text[:500])
+        except Exception:
+            pass
         raise
     return resp.json()
 
@@ -249,12 +301,18 @@ def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) ->
     for i in range(1, n + 1):
         text = f"Author{i} wrote Book{i}"
         coord = f"mem-{tenant}-{i}"
-        payload = {"content": text, "tenant": tenant, "kind": "synthetic", "text": text, "title": f"A{i}"}
+        payload = {"content": text, "tenant": tenant, "kind": "synthetic", "text": text, "title": f"A{i}", "universe": "real", "namespace": tenant}
         try:
-            memstore_store(coord, payload, base_url=memstore_url)
+            memstore_store(coord, payload, base_url=memstore_url, tenant=tenant)
             success += 1
         except Exception as exc:
             print(f"seed_memstore[{i}] failed: {exc}")
+            # Simple backoff on rate limits
+            try:
+                if "429" in str(exc):
+                    time.sleep(0.1)
+            except Exception:
+                pass
         if i % 200 == 0:
             print(f"Memstore seeding progress: {i}/{n} (ok={success})")
     return success

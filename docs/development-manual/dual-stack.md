@@ -39,3 +39,19 @@ The integrator will POST `{"input":{...}}` to `/v1/data/soma/policy/integrator` 
   - `somabrain_outbox_applier_applied_total{topic}` / `somabrain_outbox_applier_errors_total{topic}`
 
 Scrape via the API `/metrics` endpoint in each stack.
+
+### Kafka dual listeners (host + in-cluster)
+
+The local Kafka broker runs with two named listeners to avoid host/container mismatches:
+
+- INTERNAL listener: `somabrain_kafka:9092` for inter-broker and in-cluster clients (containers)
+- EXTERNAL listener: `localhost:30102` mapped to the broker's `9094` for host clients (your laptop)
+
+Key settings (from `.env`):
+
+- `KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093`
+- `KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:${KAFKA_BROKER_HOST_PORT}`
+- `KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL`
+- `KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT`
+
+Use `SOMABRAIN_KAFKA_URL=kafka://127.0.0.1:30102` for host-side tools and keep container services on `kafka://somabrain_kafka:9092`.

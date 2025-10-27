@@ -14,7 +14,7 @@ import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Iterable
 
 from somabrain.db.outbox import enqueue_event
 from somabrain.infrastructure import get_kafka_bootstrap
@@ -107,8 +107,12 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     Returns True if the event was accepted by any backend, False otherwise.
     This function avoids importing kafka-python at module import time.
     """
-    topic = topic or os.getenv("SOMA_AUDIT_TOPIC", "soma.audit")
+    topic_str: str = topic or os.getenv("SOMA_AUDIT_TOPIC") or "soma.audit"
     ev = dict(event)
+    # Sanitize potentially sensitive content before any I/O
+    sanitized = _sanitize_event(ev)
+    if sanitized is not None:
+        ev = sanitized
     # Ensure required audit fields exist
     ev.setdefault("ts", time.time())
     ev.setdefault("event_id", str(uuid.uuid4()))
@@ -122,7 +126,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         "on",
     ):
         try:
-            enqueue_event(topic=topic, payload=ev, dedupe_key=ev["event_id"])
+            enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
             return True
         except Exception:
             LOGGER.exception("Failed to enqueue audit event to outbox")
@@ -155,7 +159,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                 _direct_append_event(
                     str(_audit_journal_dir()),
                     "audit",
-                    {"kafka_topic": topic, "event": ev},
+                    {"kafka_topic": topic_str, "event": ev},
                 )
                 try:
                     _mx.AUDIT_JOURNAL_FALLBACK.inc()
@@ -173,7 +177,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             from . import journal as _journal, metrics as _mx
 
             _journal.append_event(
-                str(_audit_journal_dir()), "audit", {"kafka_topic": topic, "event": ev}
+                str(_audit_journal_dir()), "audit", {"kafka_topic": topic_str, "event": ev}
             )
             try:
                 _mx.AUDIT_JOURNAL_FALLBACK.inc()
@@ -211,7 +215,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             from . import journal as _journal, metrics as _mx
 
             _journal.append_event(
-                str(_audit_journal_dir()), "audit", {"kafka_topic": topic, "event": ev}
+                str(_audit_journal_dir()), "audit", {"kafka_topic": topic_str, "event": ev}
             )
             try:
                 _mx.AUDIT_JOURNAL_FALLBACK.inc()
@@ -260,19 +264,19 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                 import socket
 
                 first_bs = kafka_url.split(",")[0]
-                host, port = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
-                port = int(port)
+                host, port_s = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
+                port_i = int(port_s)
                 reachable = False
                 for _ in range(3):
                     try:
-                        with socket.create_connection((host, port), timeout=1):
+                        with socket.create_connection((host, port_i), timeout=1):
                             reachable = True
                             break
                     except Exception:
                         time.sleep(0.2)
                 if not reachable:
                     # Broker unreachable; skip confluent path and fall back
-                    raise RuntimeError(f"Bootstrap broker {host}:{port} unreachable")
+                    raise RuntimeError(f"Bootstrap broker {host}:{port_i} unreachable")
             except Exception:
                 LOGGER.debug(
                     "Confluent pre-check failed; skipping confluent-kafka path",
@@ -298,7 +302,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             # confluent expects bytes for key/value when not using serializer
             try:
                 producer.produce(
-                    topic=topic,
+                    topic=topic_str,
                     value=json.dumps(ev).encode("utf-8"),
                     key=key,
                     callback=_delivery_report,
@@ -354,9 +358,9 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             import socket
 
             first_bs = kafka_url.split(",")[0]
-            host, port = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
-            port = int(port)
-            with socket.create_connection((host, port), timeout=1):
+            host, port_s = (first_bs.split(":", 1) + [_KAFKA_PORT_FALLBACK])[:2]
+            port_i = int(port_s)
+            with socket.create_connection((host, port_i), timeout=1):
                 pass
         except Exception:
             LOGGER.debug(
@@ -387,7 +391,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         attempt = 0
         while attempt < max_attempts:
             attempt += 1
-            fut = producer.send(topic, value=ev, key=key)
+            fut = producer.send(topic_str, value=ev, key=key)
             try:
                 fut.get(timeout=6)
                 # Success – break out of retry loop
@@ -436,7 +440,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         )
         # Use direct append to avoid potential monkey‑patched journal.append_event
         _direct_append_event(
-            str(_audit_journal_dir()), "audit", {"kafka_topic": topic, "event": ev}
+            str(_audit_journal_dir()), "audit", {"kafka_topic": topic_str, "event": ev}
         )
         try:
             _mx.AUDIT_JOURNAL_FALLBACK.inc()
@@ -459,6 +463,9 @@ def log_admin_action(
 ) -> None:
     """Append an admin audit line to the configured audit file; never raises."""
     try:
+        # Sanitize user-provided details before writing to disk
+        safe_details = _sanitize_event(dict(details) if details else None)
+
         ev: Dict[str, Any] = {
             "ts": int(time.time()),
             "path": str(request.url.path),
@@ -466,8 +473,8 @@ def log_admin_action(
             "client": request.client.host if request.client else None,
             "action": action,
         }
-        if details:
-            ev["details"] = details
+        if safe_details:
+            ev["details"] = safe_details
 
         p = Path("./data/somabrain/audit.log")
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -478,3 +485,95 @@ def log_admin_action(
 
 
 __all__ = ["publish_event", "log_admin_action"]
+
+# ------------------------
+# Sanitization utilities
+# ------------------------
+
+_SENSITIVE_KEYS: Iterable[str] = (
+    "authorization",
+    "proxy-authorization",
+    "cookie",
+    "set-cookie",
+    "token",
+    "api_key",
+    "apikey",
+    "api-key",
+    "secret",
+    "password",
+    "pass",
+    "private_key",
+    "private-key",
+    "jwt",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "clientsecret",
+    "x-api-key",
+    "ssh_key",
+    "ssh-private-key",
+)
+
+_MASK = "***REDACTED***"
+
+
+def _mask_value(v: Any) -> Any:
+    try:
+        if v is None:
+            return None
+        if isinstance(v, (int, float, bool)):
+            return v
+        s = str(v)
+        # Mask bearer tokens while preserving scheme
+        ls = s.lower()
+        if ls.startswith("bearer "):
+            return s.split(" ", 1)[0] + " " + _MASK
+        # Heuristic: mask long secret-like strings
+        if "token" in ls or "secret" in ls or len(s) >= 16:
+            return _MASK
+        return s
+    except Exception:
+        return _MASK
+
+
+def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Recursively sanitize a mapping by masking sensitive fields.
+
+    - Keys matching _SENSITIVE_KEYS (case-insensitive) are masked.
+    - Values that look like bearer tokens or long token-ish strings are masked.
+    - Lists and nested dicts are traversed.
+    """
+    if ev is None:
+        return None
+    try:
+        def _walk(obj: Any) -> Any:
+            if isinstance(obj, dict):
+                out: Dict[str, Any] = {}
+                for k, v in obj.items():
+                    lk = str(k).lower()
+                    if lk in _SENSITIVE_KEYS:
+                        # For auth-like headers, preserve scheme (e.g., "Bearer ")
+                        if lk in ("authorization", "proxy-authorization", "cookie", "set-cookie"):
+                            out[k] = _mask_value(v)
+                        else:
+                            # Keys known to be sensitive are always masked regardless of value shape
+                            out[k] = _MASK
+                        continue
+                    # Special-case: a field called "tenant" may be a token identifier in some flows.
+                    # Mask if it contains the substring "token" or looks like a long opaque value.
+                    if lk == "tenant":
+                        out[k] = _mask_value(v)
+                        continue
+                    out[k] = _walk(v)
+                return out
+            if isinstance(obj, list):
+                return [_walk(i) for i in obj]
+            return obj
+
+        return _walk(ev)
+    except Exception:
+        # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
+        try:
+            return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}  # type: ignore[return-value]
+        except Exception:
+            return ev

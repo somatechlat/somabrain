@@ -63,3 +63,44 @@ groups:
         annotations:
           summary: "ANN rebuilds occurring frequently"
           description: "ANN rebuild count for tenant {{ $labels.tenant }} namespace {{ $labels.namespace }} backend {{ $labels.backend }} exceeded 5 in 10m (value: {{ $value }}). Review rebuild scheduling."
+
+      # API 5xx error rate per-tenant > 5% over 10m
+      - alert: SomabrainErrorRateHigh
+        expr: sum by (tenant) (rate(somabrain_http_requests_total{status=~"5.."}[5m]))
+              /
+              sum by (tenant) (rate(somabrain_http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate for tenant {{ $labels.tenant }}"
+          description: "5xx rate > 5% over 10m for tenant {{ $labels.tenant }}"
+
+      # Integrator global frames absent
+      - alert: CogGlobalFrameAbsent
+        expr: sum(rate(somabrain_integrator_frames_total[5m])) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No GlobalFrame messages observed"
+          description: "cog.global.frame has no publishes for 5 minutes."
+
+      # Kafka consumer lag (requires kafka_exporter)
+      - alert: KafkaConsumerLagHigh
+        expr: max by (consumergroup) (kafka_consumergroup_lag) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high"
+          description: "One or more consumer groups have lag above 1000."
+
+      - alert: KafkaConsumerLagCritical
+        expr: max by (consumergroup) (kafka_consumergroup_lag) > 5000
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka consumer lag critical"
+          description: "One or more consumer groups have lag above 5000."

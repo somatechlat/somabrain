@@ -8,7 +8,7 @@ PYTEST:=$(VENV)/bin/pytest
 RUFF:=$(VENV)/bin/ruff
 MYPY:=$(VENV)/bin/mypy
 
-.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean
+.PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean up-dev up-prod-like down-prod-like ps-prod-like logs-prod-like
 
 help:
 	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean"
@@ -151,3 +151,44 @@ compose-clean:
 	$(COMPOSE) down --remove-orphans
 	- docker network rm $(PROJECT)_default 2>/dev/null || true
 	@echo "Compose project cleaned."
+
+# ---------------------------------------------------------------------------
+# Two canonical modes: dev (embedded small services) and prod-like (full stack)
+# ---------------------------------------------------------------------------
+
+# Force port normalization regardless of host env noise
+PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=9999
+
+COMPOSE_CMD=docker compose --env-file ./.env -p somabrain-9999
+
+up-prod-like:
+	@echo "Starting full prod-like stack (all services, real infra)..."
+	@$(PORT_OVERRIDES) $(COMPOSE_CMD) up -d
+	@echo ""
+	@echo "Prod-like URLs:"
+	@echo "- API:            http://127.0.0.1:9999/health"
+	@echo "- Redis:          redis://127.0.0.1:30100"
+	@echo "- Kafka broker:   127.0.0.1:30102 (internal clients should use somabrain_kafka:9092)"
+	@echo "- OPA:            http://127.0.0.1:30104/health"
+	@echo "- Prometheus:     http://127.0.0.1:30105"
+	@echo "- Postgres:       127.0.0.1:30106"
+	@echo "- SchemaRegistry: http://127.0.0.1:30108"
+	@echo "- Reward Prod:    http://127.0.0.1:30183/health"
+	@echo "- Learner Online: http://127.0.0.1:30184/health"
+
+down-prod-like:
+	@$(COMPOSE_CMD) down --remove-orphans
+
+ps-prod-like:
+	@$(COMPOSE_CMD) ps
+
+logs-prod-like:
+	@$(COMPOSE_CMD) logs -f --tail=200
+
+up-dev:
+	@echo "Starting simplified dev mode (embed reward+learner under main API)..."
+	@SOMABRAIN_MODE=dev SOMABRAIN_EMBED_DEV_SERVICES=1 $(PORT_OVERRIDES) $(COMPOSE_CMD) up -d --remove-orphans somabrain_redis somabrain_kafka somabrain_opa somabrain_postgres somabrain_app
+	@echo "Dev URLs:"
+	@echo "- API:            http://127.0.0.1:9999/health"
+	@echo "- Reward:         http://127.0.0.1:9999/reward/health"
+	@echo "- Learner:        http://127.0.0.1:9999/learner/health"

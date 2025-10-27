@@ -21,6 +21,8 @@ fi
 unset SOMABRAIN_KAFKA_URL || true
 unset SOMABRAIN_POSTGRES_DSN || true
 unset SOMABRAIN_REDIS_URL || true
+unset SOMABRAIN_MEMORY_HTTP_ENDPOINT || true
+unset SOMABRAIN_MEMORY_HTTP_TOKEN || true
 unset POSTGRES_USER || true
 unset POSTGRES_PASSWORD || true
 unset POSTGRES_DB || true
@@ -56,10 +58,16 @@ unset SOMABRAIN_HOST_PORT || true
 unset SCHEMA_REGISTRY_HOST_PORT || true
 
 echo "Generating $ENVFILE with fixed host ports for 9999 stack"
-cat >"$ENVFILE" <<'EOF'
+
+# Resolve dev-friendly defaults at script time so the env-file carries concrete values
+: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:=http://host.docker.internal:9595}"
+: "${SOMABRAIN_MEMORY_HTTP_TOKEN:=dev-token-allow}"
+
+cat >"$ENVFILE" <<EOF
 COMPOSE_PROJECT_NAME=somabrain-9999
 REDIS_CONTAINER_PORT=6379
 KAFKA_BROKER_CONTAINER_PORT=9092
+KAFKA_BROKER_EXTERNAL_CONTAINER_PORT=9094
 KAFKA_EXPORTER_CONTAINER_PORT=9308
 OPA_CONTAINER_PORT=8181
 PROMETHEUS_CONTAINER_PORT=9090
@@ -79,13 +87,16 @@ POSTGRES_EXPORTER_HOST_PORT=30107
 SCHEMA_REGISTRY_HOST_PORT=30108
 SOMABRAIN_HOST_PORT=9999
 
-SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://host.docker.internal:9595}
-SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN:-dev-token-allow}
+SOMABRAIN_MEMORY_HTTP_ENDPOINT=${SOMABRAIN_MEMORY_HTTP_ENDPOINT}
+SOMABRAIN_MEMORY_HTTP_TOKEN=${SOMABRAIN_MEMORY_HTTP_TOKEN}
+# Fallback used by in-container clients if endpoint is not set explicitly
+SOMABRAIN_DOCKER_MEMORY_FALLBACK=http://host.docker.internal:9595
 SOMABRAIN_FORCE_FULL_STACK=1
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_MODE=enterprise
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
+SOMABRAIN_EMBED_SERVICES=1
 
 SOMABRAIN_HOST=0.0.0.0
 SOMABRAIN_WORKERS=1
@@ -114,11 +125,11 @@ SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somab
 KAFKA_CFG_NODE_ID=1
 KAFKA_CFG_PROCESS_ROLES=broker,controller
 KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@somabrain_kafka:9093
-KAFKA_CFG_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://somabrain_kafka:9092
+KAFKA_CFG_LISTENERS=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:30102
 KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
-KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
 KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
 KAFKA_CFG_NUM_PARTITIONS=2
 KAFKA_CFG_DEFAULT_REPLICATION_FACTOR=1
@@ -161,7 +172,7 @@ python3 - <<'PY'
 import json,subprocess
 ports={}
 services=['somabrain_app','somabrain_redis','somabrain_kafka','somabrain_prometheus','somabrain_postgres','somabrain_kafka_exporter','somabrain_postgres_exporter','somabrain_opa','somabrain_schema_registry']
-port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9092','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181','somabrain_schema_registry':'8081'}
+port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9094','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181','somabrain_schema_registry':'8081'}
 for s in services:
   try:
     out=subprocess.check_output(['docker','compose','-p','somabrain-9999','-f','docker-compose.yml','port',s,port_map[s]], text=True).strip()

@@ -14,15 +14,18 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
+BaseSettings: Any  # forward-declare for mypy
 try:
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
-    from pydantic_settings import BaseSettings
+    import pydantic_settings as _ps  # type: ignore
     from pydantic import Field
+    BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
 except Exception:  # pragma: no cover - fallback for older envs
-    from pydantic import BaseSettings, Field
+    from pydantic import BaseSettings as _BS, Field
+    BaseSettings = _BS  # type: ignore[assignment]
 
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -106,7 +109,9 @@ class Settings(BaseSettings):
 
     # Auth / JWT -----------------------------------------------------------
     jwt_secret: Optional[str] = Field(default=os.getenv("SOMABRAIN_JWT_SECRET"))
-    jwt_public_key_path: Optional[Path] = Field(
+    # Use str for path to avoid mypy complaining about default type; callers
+    # can wrap with Path when needed.
+    jwt_public_key_path: Optional[str] = Field(
         default=os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
     )
 

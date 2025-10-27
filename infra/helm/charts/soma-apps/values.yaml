@@ -26,6 +26,13 @@ sb:
   ingress:
     enabled: false
   env: {}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
 
 sa01:
   enabled: true
@@ -270,3 +277,26 @@ podDisruptionBudget:
 
 networkPolicy:
   enabled: false
+
+# Baseline security context for all pods/containers
+securityContext:
+  pod:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile: RuntimeDefault
+  container:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+
+# Optional JWT secret consumption (envFrom) for API auth
+jwt:
+  enabled: false
+  # Set to reference an externally managed secret name; when empty, defaults to "<release>-jwt"
+  secretName: ""
