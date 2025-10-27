@@ -279,6 +279,8 @@ services:
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
       SOMABRAIN_MODE: "${SOMABRAIN_MODE}"
       SOMABRAIN_JOURNAL_DIR: "${SOMABRAIN_JOURNAL_DIR}"
+      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
+      SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
     ports:
       - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_PORT}"
     healthcheck:
@@ -288,6 +290,39 @@ services:
       retries: 3
     volumes:
       - somabrain_journal_data:${SOMABRAIN_JOURNAL_DIR}
+
+  somabrain_cog:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+      somabrain_postgres:
+        condition: service_healthy
+      somabrain_redis:
+        condition: service_healthy
+      somabrain_opa:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    environment:
+      SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
+      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
+      SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
+      # Supervisor HTTP auth used by API for control; only on internal network
+      SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
+      SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
+    command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9001"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   somabrain_outbox_publisher:
     build:

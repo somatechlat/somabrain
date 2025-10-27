@@ -96,7 +96,7 @@ SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_MODE=enterprise
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
-SOMABRAIN_EMBED_SERVICES=1
+
 
 SOMABRAIN_HOST=0.0.0.0
 SOMABRAIN_WORKERS=1
@@ -148,7 +148,7 @@ EOF
 echo "Using single compose file docker-compose.yml (project: somabrain-9999)"
 
 echo "Bringing up the 9999 stack (API on :9999) with minimal containers"
-docker compose -p somabrain-9999 -f docker-compose.yml --env-file "$ENVFILE" up -d --build somabrain_app
+docker compose -p somabrain-9999 -f docker-compose.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_cog
 
 # Optionally bring up monitoring/exporters on 301xx range
 if [[ "$WITH_MONITORING" == "1" ]]; then

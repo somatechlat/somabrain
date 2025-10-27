@@ -34,10 +34,11 @@ import traceback
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from cachetools import TTLCache
+from xmlrpc.client import ServerProxy, Error as XMLRPCError
 
 from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
@@ -858,140 +859,95 @@ except Exception:
     if log:
         log.debug("Reward Gate middleware not registered", exc_info=True)
 
-# Single embed switch for dev/local: mount small HTTP services and start cognitive threads
-_EMBED_SERVICES = False
-try:
-    embed_all_flag = (os.getenv("SOMABRAIN_EMBED_SERVICES", "").strip().lower() or "")
-    if embed_all_flag in ("1", "true", "yes", "on"):
-        _EMBED_SERVICES = True
-except Exception:
-    _EMBED_SERVICES = False
+# Supervisor (cog) control client
+_SUPERVISOR_URL = os.getenv("SUPERVISOR_URL") or None
+if not _SUPERVISOR_URL:
+    # Default to supervisor inet_http_server in somabrain_cog on internal network
+    user = os.getenv("SUPERVISOR_HTTP_USER", "admin")
+    pwd = os.getenv("SUPERVISOR_HTTP_PASS", "soma")
+    _SUPERVISOR_URL = f"http://{user}:{pwd}@somabrain_cog:9001/RPC2"
 
-if _EMBED_SERVICES:
+def _supervisor() -> ServerProxy:
     try:
-        # Mount Reward Producer under /reward
-        from somabrain.services import reward_producer as _reward_mod  # type: ignore
+        return ServerProxy(_SUPERVISOR_URL, allow_none=True)  # type: ignore[arg-type]
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"supervisor client init failed: {e}")
 
-        app.mount("/reward", _reward_mod.app)
-        logging.getLogger("somabrain").warning("Embedded reward_producer under /reward (dev mode)")
-    except Exception:
-        logging.getLogger("somabrain").warning("Failed to embed reward_producer", exc_info=True)
+
+def _admin_guard_dep(request: Request):
+    # FastAPI dependency wrapper for admin auth
+    return require_admin_auth(request, cfg)
+
+
+@app.get("/admin/services", dependencies=[Depends(_admin_guard_dep)])
+async def list_services():
     try:
-        # Mount Learner Online under /learner; its background thread starts on startup
-        from somabrain.services import learner_online as _learner_mod  # type: ignore
+        s = _supervisor()
+        info = s.supervisor.getAllProcessInfo()
+        return {"ok": True, "services": info}
+    except XMLRPCError as e:
+        raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
-        app.mount("/learner", _learner_mod.app)
-        logging.getLogger("somabrain").warning("Embedded learner_online under /learner (dev mode)")
-    except Exception:
-        logging.getLogger("somabrain").warning("Failed to embed learner_online", exc_info=True)
+
+@app.get("/admin/services/{name}", dependencies=[Depends(_admin_guard_dep)])
+async def service_status(name: str):
     try:
-        @app.on_event("startup")
-        async def _start_embedded_services() -> None:  # pragma: no cover
-            # Explicitly invoke embedded apps' startup hooks so producers/threads initialize
-            try:
-                if hasattr(_reward_mod, "startup"):
-                    await _reward_mod.startup()  # type: ignore[attr-defined]
-            except Exception:
-                logging.getLogger("somabrain").warning("Embedded reward_producer startup failed", exc_info=True)
-            try:
-                if hasattr(_learner_mod, "startup"):
-                    await _learner_mod.startup()  # type: ignore[attr-defined]
-            except Exception:
-                logging.getLogger("somabrain").warning("Embedded learner_online startup failed", exc_info=True)
-    except Exception:
-        logging.getLogger("somabrain").warning("Failed to wire embedded service startup", exc_info=True)
+        s = _supervisor()
+        info = s.supervisor.getProcessInfo(name)
+        return {"ok": True, "service": info}
+    except XMLRPCError as e:
+        raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
-if _EMBED_SERVICES:
+@app.post("/admin/services/{name}/start", dependencies=[Depends(_admin_guard_dep)])
+async def service_start(name: str):
     try:
-        import threading as _cog_thr
-        import importlib.util as _imp_util
-        from pathlib import Path as _Path
+        s = _supervisor()
+        res = s.supervisor.startProcess(name, False)
+        return {"ok": bool(res), "action": "start", "service": name}
+    except XMLRPCError as e:
+        raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
-        def _load_and_run(py_path: str, func_name: str = "run_forever", label: str = "worker") -> None:
-            try:
-                p = _Path(py_path)
-                if not p.is_absolute():
-                    base = _Path(__file__).resolve().parent.parent
-                    p = (base / p).resolve()
-                spec = _imp_util.spec_from_file_location(f"embedded.{label}", str(p))
-                if not spec or not spec.loader:
-                    raise RuntimeError(f"cannot load {label} from {p}")
-                mod = _imp_util.module_from_spec(spec)
-                spec.loader.exec_module(mod)  # type: ignore[arg-type]
-                fn = getattr(mod, func_name, None)
-                if not callable(fn):
-                    raise RuntimeError(f"{label} missing callable {func_name}")
-                def _runner():  # pragma: no cover - background thread
-                    try:
-                        fn()
-                    except Exception:
-                        logging.getLogger("somabrain").warning(f"Embedded {label} thread exited", exc_info=True)
-                _cog_thr.Thread(target=_runner, daemon=True, name=f"{label}-thread").start()
-                logging.getLogger("somabrain").warning(f"Embedded {label} thread started")
-            except Exception:
-                logging.getLogger("somabrain").warning(f"Failed to embed {label}", exc_info=True)
 
-        # Integrator Hub: consumes belief updates, publishes global frames, caches to Redis
+@app.post("/admin/services/{name}/stop", dependencies=[Depends(_admin_guard_dep)])
+async def service_stop(name: str):
+    try:
+        s = _supervisor()
+        res = s.supervisor.stopProcess(name, False)
+        return {"ok": bool(res), "action": "stop", "service": name}
+    except XMLRPCError as e:
+        raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+
+
+@app.post("/admin/services/{name}/restart", dependencies=[Depends(_admin_guard_dep)])
+async def service_restart(name: str):
+    try:
+        s = _supervisor()
         try:
-            from somabrain.services.integrator_hub import IntegratorHub  # type: ignore
-
-            def _run_integrator():  # pragma: no cover - background thread
-                try:
-                    IntegratorHub().run_forever()
-                except Exception:
-                    logging.getLogger("somabrain").warning("IntegratorHub thread exited", exc_info=True)
-
-            _cog_thr.Thread(target=_run_integrator, daemon=True).start()
-            logging.getLogger("somabrain").warning("Embedded IntegratorHub thread (dev mode)")
+            s.supervisor.stopProcess(name, False)
         except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed IntegratorHub", exc_info=True)
+            pass
+        res = s.supervisor.startProcess(name, False)
+        return {"ok": bool(res), "action": "restart", "service": name}
+    except XMLRPCError as e:
+        raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
-        # Segmentation Service: emits segment boundaries from global frames or CPD mode
-        try:
-            from somabrain.services.segmentation_service import SegmentationService  # type: ignore
-
-            def _run_segmentation():  # pragma: no cover - background thread
-                try:
-                    SegmentationService().run_forever()
-                except Exception:
-                    logging.getLogger("somabrain").warning("SegmentationService thread exited", exc_info=True)
-
-            _cog_thr.Thread(target=_run_segmentation, daemon=True).start()
-            logging.getLogger("somabrain").warning("Embedded SegmentationService thread (dev mode)")
-        except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed SegmentationService", exc_info=True)
-
-        # Orchestrator Service: on boundaries, enqueues episodic snapshots to outbox
-        try:
-            from somabrain.services.orchestrator_service import OrchestratorService  # type: ignore
-
-            def _run_orchestrator():  # pragma: no cover - background thread
-                try:
-                    OrchestratorService().run_forever()
-                except Exception:
-                    logging.getLogger("somabrain").warning("OrchestratorService thread exited", exc_info=True)
-
-            _cog_thr.Thread(target=_run_orchestrator, daemon=True).start()
-            logging.getLogger("somabrain").warning("Embedded OrchestratorService thread (dev mode)")
-        except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed OrchestratorService", exc_info=True)
-
-        # Predictors: state, agent, action (top-level services directory with hyphens)
-        try:
-            _load_and_run("services/predictor-state/main.py", label="predictor-state")
-        except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed predictor-state", exc_info=True)
-        try:
-            _load_and_run("services/predictor-agent/main.py", label="predictor-agent")
-        except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed predictor-agent", exc_info=True)
-        try:
-            _load_and_run("services/predictor-action/main.py", label="predictor-action")
-        except Exception:
-            logging.getLogger("somabrain").warning("Failed to embed predictor-action", exc_info=True)
-    except Exception:
-        logging.getLogger("somabrain").warning("Failed to start embedded cognitive threads", exc_info=True)
+"""
+Embedding of services inside the API process has been removed for production parity.
+All cognitive services run as real OS processes under a supervisor in the
+somabrain_cog container. Admin endpoints below control those processes via
+Supervisor's XML‑RPC, reachable on the internal docker network.
+"""
 
 
 # --- Startup self-check banner (Sprint 1) ---------------------------------------

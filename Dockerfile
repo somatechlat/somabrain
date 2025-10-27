@@ -34,7 +34,7 @@ WORKDIR /app
 
 # System packages for healthcheck
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl librdkafka-dev libsnappy-dev libsnappy1v5 build-essential \
+    && apt-get install -y --no-install-recommends curl librdkafka-dev libsnappy-dev libsnappy1v5 build-essential supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheel from builder stage and install
@@ -67,6 +67,12 @@ COPY common /app/common
 
 # Ensure runtime imports from /app are visible
 ENV PYTHONPATH=/app:${PYTHONPATH:-}
+
+# Prepare writable log dir for supervisor and services
+RUN mkdir -p /app/logs && chmod 0755 /app/logs
+
+# Supervisor config for multi-process cognitive services (used by somabrain_cog container)
+COPY ops/supervisor /app/ops/supervisor
 
 # Create non-root user with UID/GID 1000
 RUN set -eux; \
