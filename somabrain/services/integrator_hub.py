@@ -697,8 +697,7 @@ class IntegratorHub:
 
 def main() -> None:  # pragma: no cover - manual run path
     ff = os.getenv("SOMABRAIN_FF_COG_INTEGRATOR", "").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
-    if ff not in ("1", "true", "yes", "on") and not composite:
+    if ff not in ("1", "true", "yes", "on"):
         print("Integrator Hub feature flag disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 to enable.")
         return
     hub = IntegratorHub()

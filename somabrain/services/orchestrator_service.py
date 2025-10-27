@@ -263,8 +263,7 @@ class OrchestratorService:
 
 def main() -> None:  # pragma: no cover - entrypoint
     ff = os.getenv("SOMABRAIN_FF_COG_ORCHESTRATOR", "0").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
-    if ff not in ("1", "true", "yes", "on") and not composite:
+    if ff not in ("1", "true", "yes", "on"):
         print("Orchestrator feature flag disabled; exiting.")
         return
     OrchestratorService().run_forever()

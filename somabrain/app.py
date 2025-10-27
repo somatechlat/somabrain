@@ -905,6 +905,32 @@ if _EMBED_SERVICES:
 if _EMBED_SERVICES:
     try:
         import threading as _cog_thr
+        import importlib.util as _imp_util
+        from pathlib import Path as _Path
+
+        def _load_and_run(py_path: str, func_name: str = "run_forever", label: str = "worker") -> None:
+            try:
+                p = _Path(py_path)
+                if not p.is_absolute():
+                    base = _Path(__file__).resolve().parent.parent
+                    p = (base / p).resolve()
+                spec = _imp_util.spec_from_file_location(f"embedded.{label}", str(p))
+                if not spec or not spec.loader:
+                    raise RuntimeError(f"cannot load {label} from {p}")
+                mod = _imp_util.module_from_spec(spec)
+                spec.loader.exec_module(mod)  # type: ignore[arg-type]
+                fn = getattr(mod, func_name, None)
+                if not callable(fn):
+                    raise RuntimeError(f"{label} missing callable {func_name}")
+                def _runner():  # pragma: no cover - background thread
+                    try:
+                        fn()
+                    except Exception:
+                        logging.getLogger("somabrain").warning(f"Embedded {label} thread exited", exc_info=True)
+                _cog_thr.Thread(target=_runner, daemon=True, name=f"{label}-thread").start()
+                logging.getLogger("somabrain").warning(f"Embedded {label} thread started")
+            except Exception:
+                logging.getLogger("somabrain").warning(f"Failed to embed {label}", exc_info=True)
 
         # Integrator Hub: consumes belief updates, publishes global frames, caches to Redis
         try:
@@ -950,6 +976,20 @@ if _EMBED_SERVICES:
             logging.getLogger("somabrain").warning("Embedded OrchestratorService thread (dev mode)")
         except Exception:
             logging.getLogger("somabrain").warning("Failed to embed OrchestratorService", exc_info=True)
+
+        # Predictors: state, agent, action (top-level services directory with hyphens)
+        try:
+            _load_and_run("services/predictor-state/main.py", label="predictor-state")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed predictor-state", exc_info=True)
+        try:
+            _load_and_run("services/predictor-agent/main.py", label="predictor-agent")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed predictor-agent", exc_info=True)
+        try:
+            _load_and_run("services/predictor-action/main.py", label="predictor-action")
+        except Exception:
+            logging.getLogger("somabrain").warning("Failed to embed predictor-action", exc_info=True)
     except Exception:
         logging.getLogger("somabrain").warning("Failed to start embedded cognitive threads", exc_info=True)
 

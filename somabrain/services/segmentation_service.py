@@ -669,9 +669,8 @@ class SegmentationService:
 
 
 def main() -> None:  # pragma: no cover - service entrypoint
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip().lower()
-    if ff not in ("1", "true", "yes", "on") and not composite:
+    if ff not in ("1", "true", "yes", "on"):
         print("Segmentation feature flag disabled; exiting.")
         return
     svc = SegmentationService()
