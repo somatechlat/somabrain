@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Tuple
 
 from somabrain.schemas import RAGCandidate
+import logging
 from somabrain.services import rag_cache
 
 
@@ -75,8 +76,15 @@ def retrieve_wm(
 
 
 def retrieve_vector(
-    query: str, top_k: int, *, mem_client, embedder, universe: str | None = None
+    query: str,
+    top_k: int,
+    *,
+    mem_client,
+    embedder,
+    universe: str | None = None,
+    namespace: str | None = None,
 ) -> list[RAGCandidate]:
+    _log = logging.getLogger(__name__)
     try:
         # Best-effort recall via client; scores may be unavailable -> score by cosine
         hits = getattr(mem_client, "recall")(query, top_k=top_k, universe=universe)
@@ -107,8 +115,105 @@ def retrieve_vector(
                     payload=payload,
                 )
             )
+        # Fallback: if no hits from backend (HTTP mode), try cached candidates from a
+        # previous persist and re-score by cosine similarity.
+        if not out:
+            try:
+                # Prefer explicit namespace provided by caller; fall back to client config
+                ns_eff = namespace
+                if ns_eff is None:
+                    ns_eff = getattr(mem_client, "namespace", None)
+                if ns_eff is None:
+                    ns_eff = getattr(getattr(mem_client, "cfg", None), "namespace", None)
+                cached = rag_cache.get_candidates(ns_eff, query)
+                if not cached and ns_eff is not None:
+                    # Namespace-wide conservative fallback
+                    cached = rag_cache.get_candidates_any(ns_eff)
+                try:
+                    _log.info(
+                        "vector.fallback: ns=%r query=%r cached=%d",
+                        ns_eff,
+                        query,
+                        len(cached or []),
+                    )
+                except Exception:
+                    pass
+                if cached:
+                    import numpy as np
+
+                    rescored: list[RAGCandidate] = []
+                    for entry in cached:
+                        p = entry.get("payload") or {}
+                        txt = _text_of(p)
+                        try:
+                            pv = embedder.embed(txt) if txt else qv
+                            na = float(np.linalg.norm(qv)) or 1.0
+                            nb = float(np.linalg.norm(pv)) or 1.0
+                            score = float(np.dot(qv, pv) / (na * nb))
+                        except Exception:
+                            score = float(entry.get("score") or 0.0)
+                        rescored.append(
+                            RAGCandidate(
+                                coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                                key=str(p.get("task") or p.get("id") or "") or None,
+                                score=score,
+                                retriever="vector",
+                                payload=p,
+                            )
+                        )
+                    rescored.sort(key=lambda c: float(c.score), reverse=True)
+                    return rescored[: max(1, int(top_k))]
+            except Exception:
+                pass
         return out[: max(1, int(top_k))]
     except Exception:
+        # Attempt cache-based fallback even on errors
+        try:
+            ns_eff = namespace
+            if ns_eff is None:
+                ns_eff = getattr(mem_client, "namespace", None)
+            if ns_eff is None:
+                ns_eff = getattr(getattr(mem_client, "cfg", None), "namespace", None)
+            cached = rag_cache.get_candidates(ns_eff, query)
+            if not cached and ns_eff is not None:
+                cached = rag_cache.get_candidates_any(ns_eff)
+            try:
+                _log.info(
+                    "vector.error_fallback: ns=%r query=%r cached=%d",
+                    ns_eff,
+                    query,
+                    len(cached or []),
+                )
+            except Exception:
+                pass
+            if cached:
+                import numpy as np
+
+                qv = embedder.embed(query)
+                rescored: list[RAGCandidate] = []
+                for entry in cached:
+                    p = entry.get("payload") or {}
+                    txt = _text_of(p)
+                    try:
+                        pv = embedder.embed(txt) if txt else qv
+                        na = float(np.linalg.norm(qv)) or 1.0
+                        nb = float(np.linalg.norm(pv)) or 1.0
+                        score = float(np.dot(qv, pv) / (na * nb))
+                    except Exception:
+                        score = float(entry.get("score") or 0.0)
+                    rescored.append(
+                        RAGCandidate(
+                            coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                            key=str(p.get("task") or p.get("id") or "") or None,
+                            score=score,
+                            retriever="vector",
+                            payload=p,
+                        )
+                    )
+                rescored.sort(key=lambda c: float(c.score), reverse=True)
+                return rescored[: max(1, int(top_k))]
+        except Exception:
+            pass
         return []
 
 
@@ -306,7 +411,9 @@ def retrieve_graph(
 _BM25_CACHE: dict[str, tuple[object, int, List[dict]]] = {}
 
 
-def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate]:
+def retrieve_lexical(
+    query: str, top_k: int, *, mem_client, namespace: str | None = None
+) -> list[RAGCandidate]:
     """BM25 lexical retriever over all_memories() when available.
 
     - Uses rank_bm25 if installed; otherwise falls back to simple token overlap.
@@ -316,8 +423,74 @@ def retrieve_lexical(query: str, top_k: int, *, mem_client) -> list[RAGCandidate
         corpus = getattr(mem_client, "all_memories")()
     except Exception:
         corpus = []
+    # If the backend cannot enumerate memories (HTTP mode), fall back to any cached
+    # candidates persisted for this namespace+query and re-score lexically.
     if not corpus:
-        return []
+        try:
+            # Prefer explicit namespace if provided; fall back to client config
+            ns_eff = namespace
+            if ns_eff is None:
+                ns_eff = getattr(mem_client, "namespace", None)
+            if ns_eff is None:
+                ns_eff = getattr(getattr(mem_client, "cfg", None), "namespace", None)
+            cached = rag_cache.get_candidates(ns_eff, query)
+            if not cached and ns_eff is not None:
+                cached = rag_cache.get_candidates_any(ns_eff)
+            try:
+                logging.getLogger(__name__).info(
+                    "lexical.fallback: ns=%r query=%r cached=%d",
+                    ns_eff,
+                    query,
+                    len(cached or []),
+                )
+            except Exception:
+                pass
+            if not cached:
+                return []
+            # Extract payload texts from cached candidates
+            docs: list[Tuple[str, dict]] = []
+            for entry in cached:
+                payload = entry.get("payload") or {}
+                try:
+                    t = _text_of(payload)
+                    if t:
+                        docs.append((t, payload))
+                except Exception:
+                    continue
+            if not docs:
+                return []
+            # Simple token-overlap scoring as lexical proxy when BM25 is unavailable
+            import re
+
+            def _tok(s: str) -> list[str]:
+                return re.findall(r"\w+", s.lower())
+
+            qtokens = set(_tok(str(query)))
+            if not qtokens:
+                return []
+            scored: list[Tuple[float, dict]] = []
+            for text, p in docs:
+                ptoks = set(_tok(text))
+                overlap = qtokens & ptoks
+                if not overlap:
+                    continue
+                score = sum(max(1.0, float(len(t)) / 6.0) for t in overlap)
+                scored.append((float(score), p))
+            scored.sort(key=lambda t: t[0], reverse=True)
+            out: list[RAGCandidate] = []
+            for s, p in scored[: max(1, int(top_k))]:
+                out.append(
+                    RAGCandidate(
+                        coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                        key=str(p.get("task") or p.get("id") or "") or None,
+                        score=float(s),
+                        retriever="lexical",
+                        payload=p,
+                    )
+                )
+            return out
+        except Exception:
+            return []
 
     # Extract texts and keep mapping
     docs: list[Tuple[str, dict]] = []

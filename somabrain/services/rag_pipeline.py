@@ -354,6 +354,7 @@ async def run_rag_pipeline(
                             mem_client=mem_client,
                             embedder=rt_embedder,
                             universe=universe,
+                            namespace=ctx.namespace,
                         )
                     )
                 lists_by_retriever["vector"] = lst_all
@@ -393,7 +394,11 @@ async def run_rag_pipeline(
             try:
                 lst_all: list[RAGCandidate] = []
                 for qx in expansions:
-                    lst_all.extend(retrieve_lexical(qx, top_k, mem_client=mem_client))
+                    lst_all.extend(
+                        retrieve_lexical(
+                            qx, top_k, mem_client=mem_client, namespace=ctx.namespace
+                        )
+                    )
                 lists_by_retriever["lexical"] = lst_all
                 cands += lst_all
                 continue
@@ -404,6 +409,128 @@ async def run_rag_pipeline(
             continue
 
     # If nothing retrieved: return an empty result set instead of failing the request.
+    # Environment fallback: if some retrievers returned nothing but we have cached
+    # candidates from a prior persist, synthesize minimal lists so modes like
+    # 'vector' or 'lexical' can still return non‑empty results in HTTP‑only setups.
+    try:
+        if ctx is not None:
+            ns_eff = getattr(ctx, "namespace", None)
+        else:
+            ns_eff = None
+        from somabrain.services import rag_cache as _rc
+        cached = _rc.get_candidates(ns_eff, req.query) or (
+            _rc.get_candidates_any(ns_eff) if ns_eff else []
+        )
+        if cached:
+            import re as _re
+            try:
+                import numpy as _np
+            except Exception:
+                _np = None  # type: ignore
+            def _tok(s: str) -> list[str]:
+                return _re.findall(r"\w+", (s or "").lower())
+            qtokens = set(_tok(req.query))
+            # Populate missing vector list
+            if "vector" in retrievers and not lists_by_retriever.get("vector") and rt_embedder is not None:
+                v_out: list[RAGCandidate] = []
+                qv = None
+                if _np is not None:
+                    try:
+                        qv = rt_embedder.embed(req.query)
+                        qn = float(_np.linalg.norm(qv)) or 1.0
+                    except Exception:
+                        qv = None
+                for entry in cached:
+                    p = entry.get("payload") or {}
+                    txt = _extract_text(p) if isinstance(p, dict) else str(p)
+                    score = float(entry.get("score") or 0.0)
+                    if qv is not None and _np is not None and txt:
+                        try:
+                            pv = rt_embedder.embed(txt)
+                            pn = float(_np.linalg.norm(pv)) or 1.0
+                            score = float(_np.dot(qv, pv) / (qn * pn))
+                        except Exception:
+                            pass
+                    v_out.append(
+                        RAGCandidate(
+                            coord=(
+                                ",".join(str(float(c)) for c in (entry.get("coordinate") or [])[:3])
+                                if isinstance(entry.get("coordinate"), (list, tuple))
+                                else None
+                            ),
+                            key=str(p.get("task") or p.get("id") or "") or None,
+                            score=float(score),
+                            retriever="vector",
+                            payload=p if isinstance(p, dict) else {"raw": p},
+                        )
+                    )
+                if v_out:
+                    lists_by_retriever["vector"] = v_out[: max(1, int(top_k))]
+                    cands += lists_by_retriever["vector"]
+            # Populate missing lexical list
+            if "lexical" in retrievers and not lists_by_retriever.get("lexical"):
+                l_out: list[RAGCandidate] = []
+                scored: list[tuple[float, dict]] = []
+                for entry in cached:
+                    p = entry.get("payload") or {}
+                    if not isinstance(p, dict):
+                        continue
+                    txt = _extract_text(p)
+                    if not txt:
+                        continue
+                    ptoks = set(_tok(txt))
+                    ov = qtokens & ptoks
+                    if not ov:
+                        continue
+                    sc = sum(max(1.0, float(len(t)) / 6.0) for t in ov)
+                    scored.append((float(sc), p))
+                scored.sort(key=lambda t: t[0], reverse=True)
+                for sc, p in scored[: max(1, int(top_k))]:
+                    l_out.append(
+                        RAGCandidate(
+                            coord=(
+                                ",".join(str(float(c)) for c in (p.get("coordinate") or [])[:3])
+                                if isinstance(p.get("coordinate"), (list, tuple))
+                                else None
+                            ),
+                            key=str(p.get("task") or p.get("id") or "") or None,
+                            score=float(sc),
+                            retriever="lexical",
+                            payload=p,
+                        )
+                    )
+                if l_out:
+                    lists_by_retriever["lexical"] = l_out
+                    cands += l_out
+            # If no cache is visible (e.g., different worker), attempt to harvest via graph
+            # even when 'graph' was not requested, leveraging learned links from warm-up.
+            if (not cached) and (mem_client is not None) and (rt_embedder is not None):
+                try:
+                    hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
+                    limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
+                    g_from_links = retrieve_graph(
+                        req.query,
+                        top_k,
+                        mem_client=mem_client,
+                        embedder=rt_embedder,
+                        hops=hops,
+                        limit=limit,
+                        universe=universe,
+                        namespace=ns_eff,
+                    )
+                    if g_from_links:
+                        if "vector" in retrievers and not lists_by_retriever.get("vector"):
+                            lists_by_retriever["vector"] = list(g_from_links)[: max(1, int(top_k))]
+                            cands += lists_by_retriever["vector"]
+                        if "lexical" in retrievers and not lists_by_retriever.get("lexical"):
+                            lists_by_retriever["lexical"] = list(g_from_links)[: max(1, int(top_k))]
+                            cands += lists_by_retriever["lexical"]
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # If nothing retrieved even after conservative fallbacks: return an empty result set.
     # This preserves strict "no mocks" posture while keeping the API resilient for callers
     # (e.g., in freshly seeded or empty stores). Downstream fusion/rerank will be skipped.
     if not cands:
