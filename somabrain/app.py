@@ -793,6 +793,57 @@ except Exception:
 if not _sphinx_build:
     setup_logging()
 
+# Emit concise startup diagnostics so operators can see effective backend wiring
+try:
+    import os as _os
+    import logging as _logging
+
+    @app.on_event("startup")
+    async def _startup_diagnostics() -> None:
+        try:
+            _log = _logging.getLogger("somabrain")
+            mem_ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+            token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
+            in_docker = bool(_os.path.exists("/.dockerenv")) or (_os.getenv("RUNNING_IN_DOCKER") == "1")
+            # Prefer shared settings for mode and policy flags
+            try:
+                from common.config.settings import settings as _shared
+            except Exception:
+                _shared = None  # type: ignore
+            mode = ""
+            ext_req = False
+            require_memory = True
+            try:
+                if _shared is not None:
+                    mode = str(getattr(_shared, "mode", "") or "").strip()
+                    ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+                    require_memory = bool(getattr(_shared, "require_memory", True))
+                else:
+                    mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
+                    ext_req = (_os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower() in ("1","true","yes","on")) or (
+                        _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower() in ("1","true","yes","on")
+                    )
+                    require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in ("1","true","yes","on")
+            except Exception:
+                pass
+
+            _log.info(
+                "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
+                mem_ep or "<unset>", token_present, in_docker, mode or "prod", ext_req, require_memory,
+            )
+
+            if in_docker and mem_ep and (
+                mem_ep.startswith("http://127.0.0.1") or mem_ep.startswith("http://localhost")
+            ):
+                _log.warning(
+                    "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
+                )
+        except Exception:
+            # never fail startup on diagnostics
+            pass
+except Exception:
+    pass
+
 # Initialize observability/tracing when available. Fail-open so the API still starts.
 try:
     from observability.provider import init_tracing
@@ -2143,6 +2194,48 @@ async def metrics():
 async def healthz(request: Request) -> dict:
     # Reuse the health logic to provide the same JSON payload
     return await health(request)
+
+
+# Lightweight diagnostics (sanitized; no secrets)
+@app.get("/diagnostics", include_in_schema=False)
+async def diagnostics() -> dict:
+    try:
+        import os as _os
+        in_docker = bool(_os.path.exists("/.dockerenv")) or (_os.getenv("RUNNING_IN_DOCKER") == "1")
+    except Exception:
+        in_docker = False
+    ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+    # Prefer shared settings for mode and flags
+    try:
+        from common.config.settings import settings as _shared
+        mode = str(getattr(_shared, "mode", "") or "").strip()
+        ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+        require_memory = bool(getattr(_shared, "require_memory", True))
+    except Exception:
+        mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
+        ext_req = (_os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower() in ("1","true","yes","on")) or (
+            _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower() in ("1","true","yes","on")
+        )
+        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in ("1","true","yes","on")
+    try:
+        from common.config.settings import settings as _shared
+        shared_present = True
+        shared_mem = getattr(_shared, "memory_http_endpoint", None)
+    except Exception:
+        shared_present = False
+        shared_mem = None
+    return {
+        "in_container": in_docker,
+        "mode": mode or "",
+        "external_backends_required": ext_req,
+        "require_memory": require_memory,
+        "memory_endpoint": ep or "",
+        "env_memory_endpoint": _os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", ""),
+        "shared_settings_present": shared_present,
+        "shared_settings_memory_endpoint": str(shared_mem or ""),
+        "memory_token_present": bool(getattr(getattr(cfg, "http", object()), "token", None)),
+        "api_version": int(API_VERSION),
+    }
 
 
 if not _MINIMAL_API:

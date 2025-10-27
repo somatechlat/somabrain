@@ -6,7 +6,10 @@
 
 **Prerequisites**
 - Followed the [Installation Guide](installation.md) and confirmed `/health` returns HTTP 200.
-- A memory backend listening on `http://localhost:9595`. When the backend is unavailable and `SOMABRAIN_REQUIRE_MEMORY=1`, `/remember` returns HTTP 503.
+- A memory backend listening on port 9595.
+  - For host runs (uvicorn on your machine): `http://localhost:9595`.
+  - For Docker containers (macOS/Windows): `http://host.docker.internal:9595`.
+  - Verify wiring at `GET /diagnostics` and check `memory_endpoint`.
 - Authentication disabled (`SOMABRAIN_DISABLE_AUTH=1`) or a valid bearer token. If auth is enabled, add `-H "Authorization: Bearer <token>"` to the examples.
 
 ---
@@ -119,5 +122,6 @@ The retrieval and utility weights are now updated and persisted to Redis. Inspec
 | `/recall` returns empty lists | Write queued or memory backend empty | Check `/remember` response flags and the memory service logs |
 | `401 missing bearer token` | Auth enabled | Set `SOMABRAIN_DISABLE_AUTH=1` for local testing or provide the correct API token |
 | High latency (>1 s) | Kafka/Redis not ready | Wait for health probes, then retry |
+| `/healthz` shows `"memory_ok": false` in Docker | Using `127.0.0.1` inside the container | Set `SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595` and verify via `GET /diagnostics` |
 
 If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical-manual/troubleshooting.md) for deeper diagnostics.

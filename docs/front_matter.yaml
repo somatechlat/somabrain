@@ -1,0 +1,14 @@
+title: SomaBrain Documentation
+project: SomaBrain
+owner: Somatech LAT
+version: "3.0.1-3LANE"
+last_updated: "2025-10-27"
+standards:
+  - ISO/IEC 12207
+  - ISO 21500
+  - ISO/IEC 42010
+  - ISO/IEC 29148
+  - ISO/IEC 29119
+  - ISO/IEC 27001
+badges:
+  version: https://img.shields.io/badge/version-3.0.1--3LANE-blue

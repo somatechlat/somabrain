@@ -55,7 +55,6 @@ COPY docs /app/docs
 COPY scripts /app/scripts
 COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
 COPY arc_cache.py /app/
-COPY brain /app/brain
 COPY observability /app/observability
 COPY services /app/services
 COPY config /app/config
@@ -89,7 +88,8 @@ EXPOSE 9696
 
 # Environment defaults (production-like for development parity)
 # Override at runtime with -e VAR=value as needed.
-ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595 \
+# Default memory endpoint for Docker Desktop on macOS/Windows; override in compose/k8s as needed
+ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595 \
     SOMABRAIN_HOST=0.0.0.0 \
     SOMABRAIN_PORT=9696 \
     SOMABRAIN_WORKERS=1 \

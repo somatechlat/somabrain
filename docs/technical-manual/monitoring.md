@@ -601,77 +601,56 @@ output {
 
 ---
 
-## Health Checks and Service Discovery
+## Health and diagnostics endpoints
 
-### Application Health Checks
+The API provides two operator-facing endpoints:
 
-SomaBrain provides comprehensive health endpoints:
+- `GET /health` and `GET /healthz` – readiness with dependency breakdown
+- `GET /diagnostics` – sanitized wiring snapshot (no secrets)
 
-```bash
-# Basic health check
-curl http://localhost:9696/health
+Example `/healthz` output:
+
+```json
 {
-  "status": "healthy",
-  "timestamp": "2025-10-15T14:30:45Z",
-  "version": "0.1.0",
-  "checks": {
-    "database": {"status": "healthy", "response_time_ms": 12},
-    "redis": {"status": "healthy", "response_time_ms": 5},
-    "vector_index": {"status": "healthy", "size_mb": 890}
-  }
-}
-
-# Detailed health check with dependencies
-curl http://localhost:9696/health/detailed
-{
-  "status": "healthy",
-  "components": {
-    "api_server": {
-      "status": "healthy",
-      "uptime_seconds": 86400,
-      "memory_usage_mb": 512,
-      "cpu_usage_percent": 15.3
-    },
-    "postgresql": {
-      "status": "healthy",
-      "connection_pool": {
-        "active": 12,
-        "idle": 8,
-        "max": 20
-      },
-      "query_performance": {
-        "avg_duration_ms": 23,
-        "slow_queries": 0
-      }
-    },
-    "redis": {
-      "status": "healthy",
-      "memory_usage_mb": 256,
-      "keyspace_hits_ratio": 0.97,
-      "connected_clients": 5
-    }
-  }
-}
-
-# Readiness check (for Kubernetes)
-curl http://localhost:9696/ready
-{
+  "ok": true,
+  "components": {"memory": {"http": true}, "wm_items": "tenant-scoped", "api_version": 1},
+  "namespace": "somabrain_ns:public",
   "ready": true,
-  "dependencies_ready": {
-    "database": true,
-    "redis": true,
-    "vector_index": true
-  }
-}
-
-# Liveness check (for Kubernetes)
-curl http://localhost:9696/live
-{
-  "alive": true,
-  "pid": 1234,
-  "uptime_seconds": 86400
+  "predictor_ok": true,
+  "memory_ok": true,
+  "embedder_ok": true,
+  "opa_ok": true,
+  "kafka_ok": true,
+  "postgres_ok": true,
+  "metrics_ready": true,
+  "metrics_required": ["kafka", "postgres"]
 }
 ```
+
+Semantics:
+- `components.memory.http` is the raw ping of the external memory service.
+- `*_ok` fields summarize key backends used by the current configuration.
+- `ready` is true only when all required backends are healthy.
+- `metrics_ready` reflects exportability of Kafka/Postgres (and OPA when required).
+
+Example `/diagnostics` output:
+
+```json
+{
+  "in_container": true,
+  "mode": "enterprise",
+  "external_backends_required": true,
+  "require_memory": true,
+  "memory_endpoint": "http://host.docker.internal:9595",
+  "env_memory_endpoint": "http://host.docker.internal:9595",
+  "shared_settings_present": true,
+  "shared_settings_memory_endpoint": "http://host.docker.internal:9595",
+  "memory_token_present": true,
+  "api_version": 1
+}
+```
+
+Use `/diagnostics` to confirm effective wiring during incidents (e.g., catching the `127.0.0.1`-inside-container trap). Startup logs also print these values and warn when the memory endpoint is a localhost URL inside Docker.
 
 ### Kubernetes Health Probes
 

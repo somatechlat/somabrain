@@ -147,6 +147,18 @@ EOF
 
 echo "Using single compose file docker-compose.yml (project: somabrain-9999)"
 
+# Quick visibility into effective memory endpoint and a reachability probe
+echo "Memory endpoint (host env): ${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+if [[ "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}" =~ ^http://(localhost|127\.0\.0\.1): ]]; then
+  echo "WARNING: localhost/127.0.0.1 won't be reachable from inside Docker. Use http://host.docker.internal:9595 when running memory on the host."
+fi
+echo "Probing memory endpoint from host..."
+if curl -fsS "${SOMABRAIN_MEMORY_HTTP_ENDPOINT%/}/healthz" >/dev/null 2>&1; then
+  echo "Memory endpoint reachable from host."
+else
+  echo "Memory endpoint probe failed from host (continuing)."
+fi
+
 echo "Bringing up the 9999 stack (API on :9999) with minimal containers"
 docker compose -p somabrain-9999 -f docker-compose.yml --env-file "$ENVFILE" up -d --build somabrain_app somabrain_cog
 
@@ -185,5 +197,9 @@ PY
 
 echo "Effective 9999 stack host ports (should be in 301xx range):"
 grep -E '^(REDIS_HOST_PORT|KAFKA_BROKER_HOST_PORT|KAFKA_EXPORTER_HOST_PORT|OPA_HOST_PORT|PROMETHEUS_HOST_PORT|POSTGRES_HOST_PORT|POSTGRES_EXPORTER_HOST_PORT|SCHEMA_REGISTRY_HOST_PORT|SOMABRAIN_HOST_PORT)=' "$ENVFILE" || true
+
+# Show in-container view of memory endpoint and a quick health probe from inside the app container
+echo "In-container memory endpoint and probe:"
+docker compose -p somabrain-9999 -f docker-compose.yml exec -T somabrain_app sh -lc 'echo "SOMABRAIN_MEMORY_HTTP_ENDPOINT=$SOMABRAIN_MEMORY_HTTP_ENDPOINT" && curl -fsS ${SOMABRAIN_MEMORY_HTTP_ENDPOINT%/}/health || true' || true
 
 echo "Done. Secondary stack is available at http://localhost:9999"
