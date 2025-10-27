@@ -1,83 +1,165 @@
-somabrain + somafractalmemory integration
+# SomaBrain
 
-Overview
-- The `somafractalmemory` library is cloned locally at `somafractalmemory/` and installed in editable mode into `.venv`.
-- A minimal example is available at `examples/soma_quickstart.py:1` that stores and recalls a memory using the in‑memory vector backend.
+**A FastAPI-based cognitive AI system with working memory, long-term memory, and brain-inspired processing.**
 
-SomaBrain docs
-- See `docs/SomaBrain.md:1` for a full, nicely formatted project summary, MVP scope, and roadmap.
-- Architecture: `docs/Architecture.md:1` details the biology‑first design and HRR/superposition plan.
-- Progress Log: `PROGRESS.md:1` tracks milestones, decisions, and next steps.
-- Use Cases + UML: `docs/UseCases.md:1` shows core flows and Mermaid diagrams.
+## What Actually Exists
 
-Setup
-- Create venv: `python3 -m venv .venv && source .venv/bin/activate`
-- Install package (editable) and deps:
-  - `python -m pip install -U pip setuptools wheel`
-  - `python -m pip install -e somafractalmemory`
-  - `python -m pip install numpy redis fakeredis qdrant-client networkx prometheus-client`
-  - Optional extras: `transformers cryptography scikit-learn Pillow torchaudio`
+Based on the actual code in `somabrain/somabrain/app.py`:
 
-Run the example
-- `source .venv/bin/activate`
-- `python examples/soma_quickstart.py`
+### Core Components
+- **FastAPI app** with cognitive middleware and error handling
+- **Multi-tenant working memory** (MT-WM) with embedding-based recall
+- **Memory service integration** for long-term storage
+- **Quantum layer** with HRR (Holographic Reduced Representations) support
+- **Neuromodulators** (dopamine, serotonin, noradrenaline, acetylcholine)
+- **Salience computation** based on novelty and prediction error
+- **Rate limiting and quotas** per tenant
+- **Reflection system** for clustering and summarizing memories
 
-Notes
-- ON_DEMAND mode defaults to an in‑memory vector store; no external services needed.
-- If you enable Qdrant/Redis backends, configure them via `config` or environment per `somafractalmemory/CONFIGURATION.md:1`.
+### API Endpoints
 
-Run API
-- `source .venv/bin/activate`
-- `uvicorn somabrain.app:app --reload`
+**Core Memory Operations:**
+- `GET /health` - System health check
+- `POST /remember` - Store a memory
+- `POST /recall` - Retrieve memories with working memory + long-term memory
+- `POST /act` - Execute actions with salience-based gating
+- `POST /reflect` - Cluster episodic memories and create summaries
 
-Configuration
-- Env vars (Dynaconf `SOMABRAIN_` prefix) or `config.yaml`:
-  - `SOMABRAIN_USE_HRR` (bool): enable HRR QuantumLayer and tenant HRR context.
-  - `SOMABRAIN_USE_HRR_CLEANUP` (bool): include HRR cleanup signal in `/recall` and metrics.
-  - `SOMABRAIN_WM_SIZE`, `SOMABRAIN_EMBED_DIM`: working memory capacity and embedding dim (default 64, 256).
-  - `SOMABRAIN_RATE_RPS`, `SOMABRAIN_RATE_BURST`: per‑tenant rate limiter.
-  - `SOMABRAIN_WRITE_DAILY_LIMIT`: per‑tenant daily write quota.
-  - Reflection: `SOMABRAIN_REFLECT_SIMILARITY_THRESHOLD` (default 0.35), `SOMABRAIN_REFLECT_MIN_CLUSTER_SIZE` (2), `SOMABRAIN_REFLECT_MAX_SUMMARIES` (5).
-  - Memory backend: `SOMABRAIN_MEMORY_MODE` = `local` | `http` | `stub`; HTTP endpoint/token via `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, `SOMABRAIN_MEMORY_HTTP_TOKEN`.
-  - Predictor: `SOMABRAIN_PREDICTOR_PROVIDER` (stub|slow), `SOMABRAIN_PREDICTOR_TIMEOUT_MS`, `SOMABRAIN_PREDICTOR_FAIL_DEGRADE`.
-  - Auth: `SOMABRAIN_API_TOKEN` for exact match token; `SOMABRAIN_AUTH_REQUIRED=true` to require any bearer token.
+**Brain Systems:**
+- `GET /brain/stats` - Get brain component statistics
+- `POST /brain/hippocampus/replay` - Trigger memory replay
+- `GET /brain/hippocampus/memories` - Get consolidated memories
+- `POST /brain/prefrontal/decide` - Make decisions using prefrontal cortex
+- `POST /brain/prefrontal/plan` - Create plans
+- `GET /brain/prefrontal/working-memory` - Get working memory contents
 
-HRR Cleanup (optional)
-- Enable `SOMABRAIN_USE_HRR=true` and `SOMABRAIN_USE_HRR_CLEANUP=true` to compute a top‑1 cleanup against tenant anchors.
-- `/recall` response includes `hrr_cleanup: { anchor_id, score }` and metrics emit:
-  - `somabrain_hrr_cleanup_used_total`
-  - `somabrain_hrr_cleanup_score`
+**Neuromodulators:**
+- `GET /neuromodulators` - Get current neuromodulator state
+- `POST /neuromodulators` - Set neuromodulator levels
 
-Reflection v2
-- `/reflect` clusters recent episodics by cosine similarity over BoW vectors and writes semantic summaries (up to `reflect_max_summaries`).
-- Tuned via reflection config keys above.
+**Advanced Systems:**
+- `POST /fnom/encode` - Fourier-Neural Oscillation Memory encoding
+- `POST /fnom/retrieve` - FNOM retrieval
+- `POST /fractal/encode` - Fractal memory system encoding
+- `POST /fractal/retrieve` - Fractal memory retrieval
+- `POST /brain/encode` - Unified brain encoding (FNOM + Fractal)
+- `POST /brain/transcendence` - Mathematical transcendence processing
+- `POST /brain/consciousness` - Fractal consciousness processing
+- `POST /brain/quantum` - Quantum cognition processing
 
-Anatomy Aliases
-- Use biological names without changing internals: `somabrain/anatomy.py` (e.g., `PrefrontalWM`, `CerebellumPredictor`, `HippocampusEpisodic`, `CortexSemantic`).
+**Graph Operations:**
+- `POST /link` - Create links between memories
+- `POST /graph/links` - Get links from a memory
 
-Testing
-- Quick smoke scripts (no pytest needed):
-  - `PYTHONPATH=. .venv/bin/python tests/test_endpoints_basic.py`
-  - `PYTHONPATH=. .venv/bin/python tests/test_hrr_cleanup.py`
-  - `PYTHONPATH=. .venv/bin/python tests/test_memory_client.py`
-  - `PYTHONPATH=. .venv/bin/python tests/test_reflection_v2.py`
-- These cover core endpoints, HRR cleanup signal, memory client behavior, and reflection clustering.
+**Utilities:**
+- `POST /sleep/run` - Run NREM/REM consolidation
+- `POST /migrate/export` - Export memories and working memory
+- `POST /migrate/import` - Import memories and working memory
+- `GET /personality` - Get personality state
+- `POST /personality` - Set personality traits
 
-Migration
-- Export: `POST /migrate/export { include_wm, wm_limit }` returns `{ manifest, memories, wm }` with `manifest.version` and `api_version`.
-- Import: `POST /migrate/import { manifest, memories, wm }` validates manifest, warms WM, and returns counts with `warnings` if any.
+### Configuration
 
-Project Goals
-- Cognitive layer over SomaFractalMemory with working memory, recall, prediction, salience, and reflection.
-- Biology-first architecture: modules mirror brain anatomy and neurochemistry.
-- Multi-tenant API with strong observability, quotas, and configurable backends.
-- Roadmap: HRR cleanup → Reflection v2 → Graph reasoning → Personality → Predictor providers → Ops/Packaging → Multi-agent.
+Environment variables (prefix `SOMABRAIN_`):
 
-Multi‑tenancy
-- Pass `X-Tenant-ID` header to isolate working memory and long‑term namespace per tenant.
-- Default fallback tenant is `public` when no header/token is provided.
+**Core Settings:**
+- `WM_SIZE` - Working memory capacity (default: 64)
+- `EMBED_DIM` - Embedding dimension (default: 256)
+- `EMBED_PROVIDER` - Embedding provider: tiny|transformer|hrr (default: tiny)
+- `USE_HRR` - Enable HRR quantum layer (default: false)
+- `USE_HRR_CLEANUP` - Enable HRR cleanup (default: false)
 
-Auth & Quotas
-- Optional bearer token: set `SOMABRAIN_API_TOKEN` (or in `config.yaml` as `api_token`); then include `Authorization: Bearer <token>` on requests.
-- Per-tenant rate limiting (token bucket): defaults `rate_rps=50`, `rate_burst=100`.
-- Per-tenant daily write quota: `write_daily_limit` (default 10000) enforced on `/remember` and gated writes in `/act`.
+**Memory:**
+- `MEMORY_MODE` - Memory backend: local|http|stub (default: local)
+- `MEMORY_HTTP_ENDPOINT` - HTTP memory service endpoint
+- `MEMORY_HTTP_TOKEN` - HTTP memory service token
+
+**Rate Limiting:**
+- `RATE_RPS` - Requests per second limit (default: 50.0)
+- `RATE_BURST` - Burst capacity (default: 100)
+- `WRITE_DAILY_LIMIT` - Daily write quota (default: 10000)
+
+**Salience:**
+- `SALIENCE_W_NOVELTY` - Novelty weight (default: 0.6)
+- `SALIENCE_W_ERROR` - Error weight (default: 0.4)
+- `SALIENCE_THRESHOLD_STORE` - Store threshold (default: 0.5)
+- `SALIENCE_THRESHOLD_ACT` - Action threshold (default: 0.7)
+
+**Features:**
+- `USE_MICROCIRCUITS` - Enable multi-column working memory (default: false)
+- `USE_SOFT_SALIENCE` - Enable soft salience (default: false)
+- `USE_EXEC_CONTROLLER` - Enable executive controller (default: false)
+- `USE_PLANNER` - Enable planning (default: false)
+- `CONSOLIDATION_ENABLED` - Enable sleep consolidation (default: false)
+
+### Quick Start
+
+```bash
+# Install dependencies
+pip install fastapi uvicorn numpy
+
+# Run the API
+uvicorn somabrain.somabrain.app:app --reload --port 8000
+
+# Test basic functionality
+curl -X POST "http://localhost:8000/remember" \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"task": "test memory", "content": "This is a test"}}'
+
+curl -X POST "http://localhost:8000/recall" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "test", "top_k": 5}'
+```
+
+### Multi-Tenancy
+
+Use `X-Tenant-ID` header to isolate data per tenant:
+
+```bash
+curl -X POST "http://localhost:8000/remember" \
+  -H "Content-Type: application/json" \
+  -H "X-Tenant-ID: user123" \
+  -d '{"payload": {"task": "user memory"}}'
+```
+
+### Authentication
+
+Set `SOMABRAIN_API_TOKEN` and use Bearer authentication:
+
+```bash
+curl -X POST "http://localhost:8000/remember" \
+  -H "Authorization: Bearer your-token-here" \
+  -H "Content-Type: application/json" \
+  -d '{"payload": {"task": "secure memory"}}'
+```
+
+## Architecture
+
+The system implements a brain-inspired cognitive architecture:
+
+1. **Thalamus Router** - Input filtering and attention
+2. **Working Memory** - Fast embedding-based recall
+3. **Long-term Memory** - Persistent storage via memory service
+4. **Salience System** - Importance scoring based on novelty and error
+5. **Neuromodulators** - Chemical-inspired state modulation
+6. **Executive Control** - High-level decision making
+7. **Consolidation** - Sleep-like memory processing
+
+### Processing Flow
+
+1. Input arrives at Thalamus for normalization
+2. Working memory provides fast recall of recent items
+3. Long-term memory provides persistent recall
+4. Salience system scores importance based on novelty and prediction error
+5. Basal ganglia makes store/act decisions based on salience
+6. Executive controller can override decisions
+7. Memories are stored in both working memory and long-term memory
+
+## Development
+
+The codebase is organized as:
+- `somabrain/somabrain/app.py` - Main FastAPI application
+- `somabrain/somabrain/config.py` - Configuration management
+- `somabrain/somabrain/` - Core modules (quantum, memory, salience, etc.)
+
+This README reflects the actual implemented functionality as of the current codebase.
