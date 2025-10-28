@@ -28,6 +28,19 @@ benchmarks/plots/*.png
 docs/build/
 docker-build.log
 
+# Generated benchmark outputs (keep scripts, delete outputs)
+benchmarks/**/*.json
+benchmarks/**/*.png
+benchmarks/**/*.csv
+benchmarks/**/*.log
+benchmarks/**/*.out
+benchmarks/**/*.html
+benchmarks/.mplconfig/
+benchmarks/governance/
+benchmarks/outputs/
+benchmarks/plots/
+benchmarks/results/
+
 # Logs and temporary files
 *.log
 somabrain.log
@@ -48,6 +61,12 @@ data/**/pgdata/**
 data/**/wal/**
 data/**/*.log
 data/**/tmp/**
+data/postgres/
+data/prometheus/
+data/redis/
+data/somabrain/*.log
+data/somabrain/*.jsonl
+data/somabrain.db
 **/.cache/**
 **/.mypy_cache/**
 
@@ -63,6 +82,7 @@ htmlcov/
 .coverage
 nosetests.xml
 pytest_cache/
+.pytest_cache/
 
 # Jupyter notebooks checkpoints
 .ipynb_checkpoints/
@@ -85,3 +105,12 @@ ports.*.json
 # Runtime files
 run/*.log
 run/*.pid
+
+# Python cache
+.ruff_cache/
+.mypy_cache/
+
+# IDE
+.idea/
+*.swp
+*.swo

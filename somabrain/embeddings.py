@@ -29,7 +29,14 @@ from typing import Callable, Optional
 
 import numpy as np
 
-from arc_cache import arc_cache
+# Prefer the optional top-level arc_cache helper; fall back to a no-op decorator if unavailable
+try:  # pragma: no cover - trivial import guard
+    from arc_cache import arc_cache  # type: ignore
+except Exception:  # pragma: no cover
+    def arc_cache(*args, **kwargs):  # type: ignore
+        def _decorator(fn):
+            return fn
+        return _decorator
 
 
 class TinyDeterministicEmbedder:
