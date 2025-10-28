@@ -8,14 +8,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from somabrain.infrastructure import get_redis_url
+
 LOGGER = logging.getLogger("somabrain.memstore")
 
 try:
     import redis
 except Exception:  # pragma: no cover - optional
     redis = None  # type: ignore
-
-from somabrain.infrastructure import get_redis_url
 
 
 class Memstore:

@@ -14,9 +14,10 @@ from typing import Any
 
 import httpx
 
-from somabrain import journal, metrics as M
-from somabrain.memory_pool import MultiTenantMemory
+from somabrain import journal
+from somabrain import metrics as M
 from somabrain.infrastructure import get_memory_http_endpoint, require
+from somabrain.memory_pool import MultiTenantMemory
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,19 +50,19 @@ class MemorySyncWorker:
         )
         self._http_client = httpx.Client(base_url=endpoint, timeout=5.0)
 
-    def start(self):
+    def start(self) -> None:
         """Starts the worker in a background thread."""
         LOGGER.info("Starting MemorySyncWorker...")
         self._thread.start()
 
-    def stop(self):
+    def stop(self) -> None:
         """Stops the worker."""
         LOGGER.info("Stopping MemorySyncWorker...")
         self._stop_event.set()
         self._thread.join(timeout=5.0)
         self._http_client.close()
 
-    def _run_loop(self):
+    def _run_loop(self) -> None:
         """The main loop for the worker thread."""
         while not self._stop_event.is_set():
             try:
@@ -71,7 +72,7 @@ class MemorySyncWorker:
 
             self._stop_event.wait(self.poll_interval_seconds)
 
-    def _check_health_and_process_journals(self):
+    def _check_health_and_process_journals(self) -> None:
         """Checks memory service health and processes journals if healthy."""
         try:
             response = self._http_client.get("/health")
@@ -87,7 +88,7 @@ class MemorySyncWorker:
                 LOGGER.warning("Memory service has gone offline. Will retry later.")
             self._memory_service_healthy = False
 
-    def _process_all_journals(self):
+    def _process_all_journals(self) -> None:
         """Scans the journal directory and processes each namespace's journal."""
         journal_dir = getattr(self.config, "journal_dir", "./data/somabrain")
         if not os.path.isdir(journal_dir):
@@ -100,7 +101,7 @@ class MemorySyncWorker:
                 namespace = filename[: -len(".jsonl")]
                 self._process_journal_for_namespace(namespace, journal_dir)
 
-    def _process_journal_for_namespace(self, namespace: str, journal_dir: str):
+    def _process_journal_for_namespace(self, namespace: str, journal_dir: str) -> None:
         """Processes the journal for a single namespace, with rate limiting."""
         events = list(journal.iter_events(journal_dir, namespace))
         if not events:
@@ -135,16 +136,19 @@ class MemorySyncWorker:
                     # Successfully synced - remove these events from pending
                     pending_events = pending_events[self.batch_size :]
                     LOGGER.info(
-                        f"Successfully synced {len(items_to_remember)} memories for namespace '{namespace}'."
+                        "Successfully synced %d memories for namespace '%s'.",
+                        len(items_to_remember),
+                        namespace,
                     )
                 except Exception:
                     LOGGER.exception(
-                        f"Failed to sync batch for namespace '{namespace}'. Will retry."
+                        "Failed to sync batch for namespace '%s'. Will retry.",
+                        namespace,
                     )
                     M.MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc(
                         len(items_to_remember)
                     )
-                    break  # Stop processing this namespace on failure to avoid data loss
+                    break  # stop on failure
 
             time.sleep(self.delay_between_batches_seconds)
 
@@ -155,13 +159,14 @@ class MemorySyncWorker:
         if not pending_events:
             # Archive the old journal before clearing
             import shutil
-            import time
 
             archive_path = f"{journal_path}.{int(time.time())}.processed"
             try:
                 shutil.move(str(journal_path), archive_path)
                 LOGGER.info(
-                    f"Archived processed journal for namespace '{namespace}' to {archive_path}"
+                    "Archived processed journal for namespace '%s' to %s",
+                    namespace,
+                    archive_path,
                 )
             except Exception:
                 # If archive fails, just truncate the journal
@@ -176,7 +181,7 @@ class MemorySyncWorker:
         M.MEMORY_OUTBOX_PENDING_ITEMS.set(len(pending_events))
 
 
-def setup_memory_sync_worker(mt_memory, config):
+def setup_memory_sync_worker(mt_memory: Any, config: Any) -> MemorySyncWorker:
     """Setup and start the memory sync worker."""
     worker = MemorySyncWorker(mt_memory, config)
     worker.start()

@@ -1,5 +1,9 @@
 ## Staging overrides for soma-infra
 
+# Override mode for staging environment
+envCommon:
+  SOMABRAIN_MODE: "staging"
+
 auth:
   replicaCount: 2
 

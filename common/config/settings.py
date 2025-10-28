@@ -160,7 +160,7 @@ class Settings(BaseSettings):
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_FF_MEMORY_WEIGHTING", False) or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
     )
     memory_phase_priors: str = Field(
         default=os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
@@ -200,15 +200,15 @@ class Settings(BaseSettings):
         Historically, the default was "enterprise"; we treat that as prod.
         """
         try:
-            m = (self.mode or "").strip().lower()
+            from somabrain.mode import get_mode_config
+            return get_mode_config().mode.value
         except Exception:
-            m = ""
-        if m in ("dev", "development"):  # allow synonyms
-            return "dev"
-        if m in ("stage", "staging"):
-            return "staging"
-        # enterprise/main/prod/empty -> prod
-        return "prod"
+            m = (self.mode or "").strip().lower()
+            if m in ("dev", "development"):
+                return "dev"
+            if m in ("stage", "staging"):
+                return "staging"
+            return "prod"
 
     @property
     def mode_api_auth_enabled(self) -> bool:
@@ -218,8 +218,11 @@ class Settings(BaseSettings):
         - staging: True
         - prod: True
         """
-        m = self.mode_normalized
-        return m != "dev"
+        try:
+            from somabrain.mode import get_mode_config
+            return get_mode_config().profile.auth_enabled
+        except Exception:
+            return self.mode_normalized != "dev"
 
     @property
     def mode_require_external_backends(self) -> bool:
@@ -227,7 +230,11 @@ class Settings(BaseSettings):
 
         This mirrors the "no mocks" requirement and prevents silent fallbacks.
         """
-        return True
+        try:
+            from somabrain.mode import get_mode_config
+            return get_mode_config().profile.require_external_backends
+        except Exception:
+            return True
 
     @property
     def mode_memstore_auth_required(self) -> bool:
@@ -247,17 +254,25 @@ class Settings(BaseSettings):
         - staging: True
         - prod: True
         """
-        return self.mode_normalized != "dev"
+        try:
+            from somabrain.mode import get_mode_config
+            return get_mode_config().profile.opa_fail_closed
+        except Exception:
+            return self.mode_normalized != "dev"
 
     @property
     def mode_log_level(self) -> str:
         """Recommended root log level by mode."""
-        m = self.mode_normalized
-        if m == "dev":
-            return "DEBUG"
-        if m == "staging":
-            return "INFO"
-        return "WARNING"
+        try:
+            from somabrain.mode import get_mode_config
+            return get_mode_config().profile.log_level
+        except Exception:
+            m = self.mode_normalized
+            if m == "dev":
+                return "DEBUG"
+            if m == "staging":
+                return "INFO"
+            return "WARNING"
 
     @property
     def mode_opa_policy_bundle(self) -> str:

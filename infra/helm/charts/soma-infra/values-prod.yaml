@@ -1,5 +1,9 @@
 ## Production overrides for soma-infra
 
+# Override mode for production environment
+envCommon:
+  SOMABRAIN_MODE: "production"
+
 auth:
   replicaCount: 3
   resources:

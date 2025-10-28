@@ -95,6 +95,8 @@ smf:
   env: {}
 
 envCommon:
+  # Deployment mode controls auth, backends, logging
+  SOMABRAIN_MODE: "production"
   # Memory endpoint is provisioned outside this chart; override as needed.
   SOMABRAIN_MEMORY_HTTP_ENDPOINT: ""
   SOMABRAIN_REDIS_URL: "redis://soma-infra-redis-master.soma.svc.cluster.local:6379/0"

@@ -183,7 +183,7 @@ services:
     ports:
       - "${PROMETHEUS_HOST_PORT}:${PROMETHEUS_CONTAINER_PORT}"
     volumes:
-      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
 
   somabrain_postgres:
@@ -259,7 +259,8 @@ services:
     networks:
       - somabrain_net
     environment:
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+      # Default to in-compose dev memory service when not provided via .env
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://somamemory_dev:9595}"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT}"
@@ -309,6 +310,8 @@ services:
     networks:
       - somabrain_net
     environment:
+      # Default to in-compose dev memory service when not provided via .env
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://somamemory_dev:9595}"
       SOMABRAIN_STRICT_REAL: "1"
       SOMA_HEAT_METHOD: "lanczos"
       SOMABRAIN_ENABLE_TEACH_FEEDBACK: "1"
@@ -375,6 +378,23 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
       SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES}
       SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL}
+
+  somamemory_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    networks:
+      - somabrain_net
+    command: ["python", "-m", "somabrain.dev_memory_service.app"]
+    ports:
+      - "9595:9595"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9595/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
 
   # --- Cognitive Thread: Predictors ----------------------------------------

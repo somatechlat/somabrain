@@ -74,3 +74,29 @@ line_length = 88
 combine_as_imports = true
 known_first_party = ["somabrain"]
 default_section = "THIRDPARTY"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+# Keep lint focused on production code; tests/benchmarks/scripts are noisy and optional
+exclude = [
+  "tests",
+  "benchmarks",
+  "scripts",
+  "examples",
+  "docs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# Ignore long lines and import-order/style issues for now; focus on correctness
+# Also silence common false positives in this mixed-style repo
+ignore = [
+  "E501", # line length
+  "E402", # module import not at top (legacy try/except import patterns)
+  "E702", # multiple statements per line (semi-colon)
+  "I001", # import sorting
+  "F401", # unused imports (common in optional submodules)
+  "F811", # redefinition
+  "F841", # assigned but unused
+]

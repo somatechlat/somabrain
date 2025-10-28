@@ -40,6 +40,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Any
 from threading import RLock
 from collections.abc import Iterable
 
@@ -62,7 +63,7 @@ class MemoryService:
     for replaying the client outbox so the FastAPI layer can remain thin.
     """
 
-    def __init__(self, mt_memory: "MultiTenantMemory", namespace: str):
+    def __init__(self, mt_memory: Any, namespace: str):
         self.mt_memory = mt_memory
         self.namespace = namespace
 

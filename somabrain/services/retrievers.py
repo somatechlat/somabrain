@@ -408,7 +408,7 @@ def retrieve_graph(
             raise
 
 
-_BM25_CACHE: dict[str, tuple[object, int, List[dict]]] = {}
+_BM25_CACHE: dict[str, tuple[object, int, list[dict]]] = {}
 
 
 def retrieve_lexical(

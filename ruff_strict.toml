@@ -1,0 +1,10 @@
+line-length = 88
+
+[lint]
+select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "I",  # isort
+]
+ignore = []
+# We only run strict on curated targets from CI, so no excludes here.

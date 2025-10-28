@@ -14,6 +14,8 @@ import argparse
 import sqlite3
 import json
 
+from somabrain.infrastructure import get_redis_url
+
 # Optional: import Kafka consumer, Redis, Postgres, and vector store clients
 try:
     import redis  # type: ignore
@@ -25,8 +27,6 @@ except ImportError:
 # from somabrain.vector_client import VectorStoreClient
 
 LOGGER = logging.getLogger("somabrain.services.memory_integrity_worker")
-
-from somabrain.infrastructure import get_redis_url
 
 
 class MemoryIntegrityWorker:

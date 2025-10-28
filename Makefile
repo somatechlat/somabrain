@@ -35,6 +35,10 @@ bench:
 bench-diffusion:
 	PYTHONPATH=. MPLBACKEND=Agg $(PYBIN) benchmarks/diffusion_predictor_bench.py
 
+.PHONY: bench-recall
+bench-recall:
+	PYTHONPATH=. $(PYBIN) benchmarks/recall_latency_bench.py
+
 test:
 	PYTHONPATH=. $(PYTEST) -q
 
