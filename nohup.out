@@ -1,4 +1,0 @@
-teach_feedback_processor host runner started (detached)
-Traceback (most recent call last):
-  File "<stdin>", line 9, in <module>
-KeyboardInterrupt

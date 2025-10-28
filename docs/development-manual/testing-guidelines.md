@@ -555,7 +555,7 @@ export const server = setupServer(...handlers);
 The repository includes pragmatic integration tests that exercise the live API surface and attached services. To run them locally in a production-like layout:
 
 - Use Docker Compose to bring up the stack with Kafka, Postgres, Redis, OPA, Prometheus, exporters, and the API.
-- A small development Memory HTTP service is included for testing and is started automatically by Compose as `somamemory_dev` listening on port 9595.
+Note: A real external Memory HTTP service on port 9595 is required; dev/mocked memory services are not used.
 - The API exposes proxy endpoints for the reward/learner services under `/reward/health`, `/learner/health`, and `/reward/reward/{frame_id}` to provide a stable ingress in dev.
 
 Steps:
@@ -566,7 +566,7 @@ Steps:
 scripts/dev_up.sh
 ```
 
-This script writes a `.env` with free host ports, starts Compose, waits for `/health`, and writes `ports.json`. The API containers default to the in-network memory endpoint `http://somamemory_dev:9595`, while host-run tests use `http://127.0.0.1:9595`.
+This script writes a `.env` with free host ports, starts Compose, waits for `/health`, and writes `ports.json`. Configure the API to use your real memory endpoint (e.g., `http://host.docker.internal:9595` on Docker Desktop, or a cluster service URL). Host-run tests commonly use `http://127.0.0.1:9595` when the real service is running on the host.
 
 2) Run the integration suite
 
@@ -584,7 +584,7 @@ What the tests cover:
 Design notes:
 
 - Tests skip only when a dependency is deliberately not reachable; under Compose they run fully and assert behavior, not just reachability.
-- The dev memory service is intentionally minimal and in-memory; it exists solely to prevent test skips without relaxing backend enforcement in the API.
+    The memory backend is an external component; ensure it’s reachable on port 9595 before running tests. Backend enforcement remains enabled.
 - The API proxy endpoints are light wrappers that preserve the production architecture boundary: Supervisor manages internal processes; the API forwards where appropriate in dev.
 
 
