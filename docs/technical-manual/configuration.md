@@ -26,7 +26,7 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMABRAIN_HTTP_RETRIES` | 1 | Backend HTTP retry attempts | shared settings |
 | `SOMABRAIN_DISABLE_AUTH` | 0 | Bypass API auth (dev only) | app |
 | `SOMABRAIN_MINIMAL_PUBLIC_API` | 0 | Expose a reduced surface (experiments) | app |
-| `SOMABRAIN_PREDICTOR_PROVIDER` | `stub` (Docker sets `mahal`) | Predictor backend selection | shared settings |
+| `SOMABRAIN_PREDICTOR_PROVIDER` | `mahal` (Docker sets `mahal`) | Predictor backend selection | shared settings |
 | `SOMA_HEAT_METHOD` | `lanczos` (default in env.example, Helm, Compose) | Heat kernel approximation: `chebyshev` or `lanczos` | diffusion |
 | `SOMABRAIN_ENABLE_TEACH_FEEDBACK` | 1 (default in env.example, Helm, Compose) | Enable teach→r_user reward processor loop | cognition |
 | `SOMABRAIN_REDIS_URL` | unset | Redis URL (e.g. `redis://somabrain_redis:6379/0`) | shared settings |

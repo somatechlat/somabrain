@@ -1,5 +1,10 @@
 # Byte‑compiled / optimized files
 __pycache__/
+*.pyc
+*.pyo
+*.log
+run/
+data/somabrain/*.jsonl
 *.py[cod]
 *$py.class
 

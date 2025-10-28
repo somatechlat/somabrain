@@ -67,7 +67,6 @@ from somabrain.prediction import (
     LLMPredictor,
     MahalanobisPredictor,
     SlowPredictor,
-    StubPredictor,
 )
 from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
 from somabrain.quantum import HRRConfig, QuantumLayer
@@ -1241,7 +1240,7 @@ if cfg.use_hrr:
 # App-level singletons
 #
 _EMBED_PROVIDER = getattr(cfg, "embed_provider", "tiny")
-_PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "stub")
+_PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "mahal")
 embedder = make_embedder(cfg, quantum=quantum)
 try:
     _EMBED_DIM = int(getattr(embedder, "dim"))
@@ -1263,22 +1262,23 @@ if cfg.embed_dim != _EMBED_DIM:
 
 
 def _make_predictor() -> BudgetedPredictor:
+    """Create the configured predictor.
+
+    Stubs are no longer permitted: requesting a 'stub' or 'baseline' provider
+    will raise explicitly. The default provider is now 'mahal' (Mahalanobis).
+    """
     provider_override = os.getenv("SOMABRAIN_PREDICTOR_PROVIDER")
     provider = str(
-        (provider_override or getattr(cfg, "predictor_provider", "stub") or "stub")
+        (provider_override or getattr(cfg, "predictor_provider", "mahal") or "mahal")
     ).lower()
-    enforce_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
-    enforcement_active = BACKEND_ENFORCEMENT or bool(
-        enforce_env and enforce_env.lower() in ("1", "true", "yes", "on")
-    )
-    if enforcement_active and provider in ("stub", "baseline"):
-        raise RuntimeError(
-            "BACKEND ENFORCEMENT: predictor provider 'stub' is not permitted. "
-            "Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm or disable SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS."
-        )
+
     if provider in ("stub", "baseline"):
-        base = StubPredictor()
-    elif provider in ("mahal", "mahalanobis"):
+        # Always disallow stub providers — this enforces the no-mocks policy.
+        raise RuntimeError(
+            "Predictor provider 'stub' is not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
+        )
+
+    if provider in ("mahal", "mahalanobis"):
         base = MahalanobisPredictor(alpha=0.01)
     elif provider == "slow":
         base = SlowPredictor(delay_ms=cfg.predictor_timeout_ms * 2)
@@ -1289,7 +1289,9 @@ def _make_predictor() -> BudgetedPredictor:
             timeout_ms=cfg.predictor_timeout_ms,
         )
     else:
-        base = StubPredictor()
+        # If an unknown provider is requested, fall back to Mahalanobis rather
+        # than a stub so we keep behaviour deterministic and production-ready.
+        base = MahalanobisPredictor(alpha=0.01)
     return BudgetedPredictor(base, timeout_ms=cfg.predictor_timeout_ms)
 
 
@@ -3276,9 +3278,8 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     ctx = get_tenant(request, cfg.namespace)
     require_auth(request, cfg)
     # Retrieve the predictor, neuromodulators and personality store for the tenant
-    predictor = BudgetedPredictor(
-        StubPredictor(), timeout_ms=getattr(cfg, "predictor_timeout_ms", 250)
-    )
+    # Use the configured predictor factory instead of instantiating a stub.
+    predictor = _make_predictor()
     # Run a single evaluation step – use the cognitive loop service helper
     # For simplicity we compute novelty as 0.0 and use a dummy WM vector.
     # The service will handle predictor fallback and neuromodulation.

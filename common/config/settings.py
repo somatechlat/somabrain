@@ -133,7 +133,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
     )
     predictor_provider: str = Field(
-        default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "stub"
+        default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
     )
     allow_backend_fallbacks: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_FALLBACKS", False)
