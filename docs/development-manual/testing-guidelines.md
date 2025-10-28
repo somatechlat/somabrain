@@ -1649,6 +1649,13 @@ jobs:
         docker compose -f docker-compose.test.yml down -v
 ```
 
+### Schema compatibility and E2E smokes
+
+- Avro schema compatibility is enforced in CI. Any changes to Avro records under `proto/cog/avro` must be backward-compatible (new fields require defaults; existing fields cannot be removed or change type incompatibly). The CI step runs a compatibility checker and will fail non-compliant PRs.
+- A lightweight E2E smoke validates the teach→reward pipeline: a `TeachFeedback` message is produced, and a compatible `RewardEvent` with mapped `r_user` is observed. See `scripts/e2e_teach_feedback_smoke.py`.
+
+When modifying schemas or the processor logic, update unit tests in `tests/services/test_teach_feedback_processor.py` and ensure the E2E smoke passes locally before pushing.
+
 **Verification**: Testing standards are properly implemented when tests are comprehensive, fast, deterministic, and provide high confidence in code quality.
 
 ---

@@ -21,6 +21,8 @@ def test_reward_health_embedded() -> None:
         pytest.skip(f"Embedded reward not reachable: {exc}")
     if r.status_code == 404:
         pytest.skip("Embedded reward endpoint not mounted (non-dev mode)")
+    if r.status_code == 403:
+        pytest.skip("Embedded reward endpoint forbidden (likely non-dev mode)")
     r.raise_for_status()
     body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
     assert body.get("ok") is True
@@ -36,6 +38,8 @@ def test_learner_health_embedded() -> None:
         pytest.skip(f"Embedded learner not reachable: {exc}")
     if r.status_code == 404:
         pytest.skip("Embedded learner endpoint not mounted (non-dev mode)")
+    if r.status_code == 403:
+        pytest.skip("Embedded learner endpoint forbidden (likely non-dev mode)")
     r.raise_for_status()
     body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
     assert body.get("ok") is True

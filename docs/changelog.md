@@ -27,6 +27,20 @@ All notable changes to SomaBrain are documented in this file. This project adher
 
 ### 🚀 Added
 - Complete documentation restructure following 4-manual standard
+- CI Avro schema compatibility checker for `proto/cog/avro` to prevent breaking changes
+- E2E smoke for teach→reward (`scripts/e2e_teach_feedback_smoke.py`)
+
+### 🔧 Changed
+- Default best-mode settings enabled in Helm and Compose:
+  - `SOMABRAIN_STRICT_REAL=1` to enforce real backends
+  - `SOMA_HEAT_METHOD=lanczos` for diffusion-based salience
+  - `SOMABRAIN_ENABLE_TEACH_FEEDBACK=1` to map TeachFeedback→r_user RewardEvent
+
+### ⚠️ Deprecated
+- Helm template placeholders for components consolidated into the mono "cog" container are marked deprecated and inert:
+  - predictor-{state,agent,action} deployments/services
+  - integrator, orchestrator, segmentation deployments/services
+  These files contain only comments and will be removed in the next minor release.
 ## V3.0.3 — Diffusion-backed Predictors and Integrator Normalization
 
 - New: `somabrain/predictors/base.py` with `PredictorBase` and `HeatDiffusionPredictor`

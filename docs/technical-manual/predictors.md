@@ -37,6 +37,9 @@ $$ c = e^{-\alpha \cdot \mathrm{mse}} \in (0, 1] $$
 - `SOMABRAIN_CHEB_K` (int, default 30)
 - `SOMABRAIN_LANCZOS_M` (int, default 20)
 - `SOMABRAIN_PREDICTOR_DIM` (int, fallback; used when no graph file is provided)
+  
+Defaults (deployment):
+- `SOMA_HEAT_METHOD=lanczos` is enabled by default in Docker Compose and Helm values for best speed/accuracy trade-off. Set to `chebyshev` to change.
 - Production graph files (JSON):
   - `SOMABRAIN_GRAPH_FILE` (global fallback)
   - `SOMABRAIN_GRAPH_FILE_STATE` | `SOMABRAIN_GRAPH_FILE_AGENT` | `SOMABRAIN_GRAPH_FILE_ACTION`

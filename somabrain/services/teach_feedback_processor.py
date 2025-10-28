@@ -27,6 +27,7 @@ import os
 import threading
 import time
 from typing import Any, Dict, Optional
+from collections import deque
 
 from fastapi import FastAPI
 
@@ -115,6 +116,10 @@ class TeachFeedbackService:
         self._producer: Optional[KafkaProducer] = None
         self._ck_producer: Optional[CKProducer] = None
         self._stop = threading.Event()
+        # Basic dedup cache for recent frame_ids
+        size = max(32, int(os.getenv("TEACH_DEDUP_CACHE_SIZE", "512")))
+        self._seen_frames = deque(maxlen=size)
+        self._seen_set = set()
         # Metrics
         self._mx_count = metrics.get_counter("somabrain_teach_feedback_total", "Teach feedback observed") if metrics else None
         self._mx_ruser = metrics.get_histogram("somabrain_teach_r_user", "Teach-derived r_user values") if metrics else None
@@ -149,6 +154,17 @@ class TeachFeedbackService:
             print("teach_proc: _emit_reward called", flush=True)
         except Exception:
             pass
+        # Build reward record (legacy reward_event schema fields); compatible with Avro serde fallback
+        rec = {
+            "frame_id": frame_id,
+            "r_task": 0.0,
+            "r_user": float(r_user),
+            "r_latency": 0.0,
+            "r_safety": 0.0,
+            "r_cost": 0.0,
+            "total": float(r_user),
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        }
         # If confluent producer exists, use it
         if self._ck_producer is not None:
             try:
@@ -202,16 +218,6 @@ class TeachFeedbackService:
             print("teach_proc: using kafka-python producer", flush=True)
         except Exception:
             pass
-        rec = {
-            "frame_id": frame_id,
-            "r_task": 0.0,
-            "r_user": float(r_user),
-            "r_latency": 0.0,
-            "r_safety": 0.0,
-            "r_cost": 0.0,
-            "total": float(r_user),
-            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        }
         try:
             fut = self._producer.send(TOPIC_REWARD, value=_enc(rec, self._serde_reward))
             try:
@@ -262,12 +268,19 @@ class TeachFeedbackService:
             c.subscribe([TOPIC_TEACH_FB])
             try:
                 while not self._stop.is_set():
-                    msg = c.poll(0.5)
-                    if msg is None or msg.error():
-                        continue
-                    payload = msg.value()
-                    if payload:
-                        self._handle_payload(payload)
+                    try:
+                        msg = c.poll(0.5)
+                        if msg is None or msg.error():
+                            continue
+                        payload = msg.value()
+                        if payload:
+                            self._handle_payload(payload)
+                    except Exception as e:
+                        try:
+                            print(f"teach_proc: consumer error (ck): {e}", flush=True)
+                        except Exception:
+                            pass
+                        time.sleep(0.25)
             finally:
                 try:
                     c.close()
@@ -286,15 +299,22 @@ class TeachFeedbackService:
         )
         try:
             while not self._stop.is_set():
-                msg = consumer.poll(timeout_ms=500)
-                if msg is None:
-                    continue
-                if isinstance(msg, dict):
-                    for _, records in msg.items():
-                        for rec in records:
-                            self._handle_record(rec)
-                else:
-                    self._handle_record(msg)
+                try:
+                    msg = consumer.poll(timeout_ms=500)
+                    if msg is None:
+                        continue
+                    if isinstance(msg, dict):
+                        for _, records in msg.items():
+                            for rec in records:
+                                self._handle_record(rec)
+                    else:
+                        self._handle_record(msg)
+                except Exception as e:
+                    try:
+                        print(f"teach_proc: consumer error (kp): {e}", flush=True)
+                    except Exception:
+                        pass
+                    time.sleep(0.25)
         finally:
             try:
                 consumer.close()
@@ -308,7 +328,7 @@ class TeachFeedbackService:
         try:
             frame_id = str(ev.get("frame_id") or "").strip()
             rating = int(ev.get("rating", 0))
-            r_user = _r_user_from_rating(rating)
+            r_user = max(-1.0, min(1.0, _r_user_from_rating(rating)))
             # Minimal observability for smoke
             try:
                 print(f"teach_feedback: frame_id={frame_id} rating={rating} -> r_user={r_user}", flush=True)
@@ -325,6 +345,13 @@ class TeachFeedbackService:
                 except Exception:
                     pass
             if frame_id:
+                # Deduplicate recent frame_ids
+                if frame_id in self._seen_set:
+                    return
+                self._seen_set.add(frame_id)
+                self._seen_frames.append(frame_id)
+                if len(self._seen_set) > self._seen_frames.maxlen:
+                    self._seen_set = set(self._seen_frames)
                 self._emit_reward(frame_id, r_user)
         except Exception:
             # Best-effort processor
@@ -346,8 +373,10 @@ _thread: Optional[threading.Thread] = None
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
-    _thread = threading.Thread(target=_svc.run, daemon=True)
-    _thread.start()
+    enabled = str(os.getenv("SOMABRAIN_ENABLE_TEACH_FEEDBACK", "0")).lower() in {"1", "true", "yes", "on"}
+    if enabled:
+        _thread = threading.Thread(target=_svc.run, daemon=True)
+        _thread.start()
 
 
 @app.get("/health")

@@ -4,8 +4,8 @@ global:
   sharedInfraNamespace: "soma"
 
 featureFlags:
-  enableCogThreads: false
-  learnerEnabled: false
+  enableCogThreads: true
+  learnerEnabled: true
 
 # External exposure controls for Kubernetes
 expose:
@@ -119,6 +119,11 @@ cog:
   env:
     ENABLE_COG_THREADS: "1"
     SOMA_COMPAT: "1"
+    SOMABRAIN_STRICT_REAL: "1"
+    # Heat diffusion method: prefer Lanczos for speed/accuracy
+    SOMA_HEAT_METHOD: "lanczos"
+    # Enable teach feedback processor loop by default
+    SOMABRAIN_ENABLE_TEACH_FEEDBACK: "1"
     # Integrator defaults
     SOMABRAIN_INTEGRATOR_ENFORCE_CONF: "1"
     SOMABRAIN_INTEGRATOR_ALPHA: "2.0"
@@ -159,7 +164,7 @@ orchestrator:
 
 # Learner stack (values-gated)
 rewardProducer:
-  enabled: false
+  enabled: true
   image:
     repository: ghcr.io/somatech/somabrain
     tag: latest
@@ -176,7 +181,7 @@ rewardProducer:
     REWARD_PRODUCER_PORT: "8083"
 
 learnerOnline:
-  enabled: false
+  enabled: true
   image:
     repository: ghcr.io/somatech/somabrain
     tag: latest

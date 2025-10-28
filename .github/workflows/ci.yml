@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: |
           uv pip install -e .[dev]
+      - name: Avro schema compatibility checks
+        run: |
+          uv run python scripts/ci/check_avro_compat.py
       - name: Check project structure (no clutter)
         run: python3 scripts/ci/check_project_structure.py
       - name: Check markdown links
@@ -122,6 +125,14 @@ jobs:
           export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
           export REWARD_PRODUCER_PORT="${REWARD_PRODUCER_HOST_PORT:-30183}"
           uv run python scripts/e2e_reward_smoke.py
+      - name: E2E smoke: teach feedback -> reward
+        run: |
+          set -e
+          set -a
+          source .env
+          set +a
+          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
+          uv run python scripts/e2e_teach_feedback_smoke.py
       - name: E2E smoke: learner config_update
         run: |
           set -e

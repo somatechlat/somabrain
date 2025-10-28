@@ -309,6 +309,9 @@ services:
     networks:
       - somabrain_net
     environment:
+      SOMABRAIN_STRICT_REAL: "1"
+      SOMA_HEAT_METHOD: "lanczos"
+      SOMABRAIN_ENABLE_TEACH_FEEDBACK: "1"
       ENABLE_COG_THREADS: "${ENABLE_COG_THREADS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"

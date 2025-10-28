@@ -16,6 +16,7 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | --- | --- | --- | --- |
 | `SOMABRAIN_MODE` | `enterprise` (treated as prod) | Deployment mode: dev, staging, prod; `enterprise` maps to prod | shared settings |
 | `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` | unset (false) | Enforce real backends (no stubs) | shared settings |
+| `SOMABRAIN_STRICT_REAL` | 1 (default in env.example, Helm, Compose) | Hard-fail on stub/placeholder paths | deployment defaults |
 | `SOMABRAIN_FORCE_FULL_STACK` | 0 | Also require all external services before ready | shared settings |
 | `SOMABRAIN_REQUIRE_MEMORY` | 1 (in Docker envs) | Fail startup if memory HTTP is absent/unhealthy | shared settings |
 | `SOMABRAIN_MEMORY_HTTP_ENDPOINT` | Docker default: `http://host.docker.internal:9595` | URL of the external memory service | shared settings → memory client |
@@ -26,6 +27,8 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMABRAIN_DISABLE_AUTH` | 0 | Bypass API auth (dev only) | app |
 | `SOMABRAIN_MINIMAL_PUBLIC_API` | 0 | Expose a reduced surface (experiments) | app |
 | `SOMABRAIN_PREDICTOR_PROVIDER` | `stub` (Docker sets `mahal`) | Predictor backend selection | shared settings |
+| `SOMA_HEAT_METHOD` | `lanczos` (default in env.example, Helm, Compose) | Heat kernel approximation: `chebyshev` or `lanczos` | diffusion |
+| `SOMABRAIN_ENABLE_TEACH_FEEDBACK` | 1 (default in env.example, Helm, Compose) | Enable teach→r_user reward processor loop | cognition |
 | `SOMABRAIN_REDIS_URL` | unset | Redis URL (e.g. `redis://somabrain_redis:6379/0`) | shared settings |
 | `SOMABRAIN_KAFKA_URL` | unset | Kafka bootstrap (e.g. `kafka://somabrain_kafka:9092`) | shared settings |
 | `SOMABRAIN_OPA_URL` | unset | OPA base URL | shared settings |
@@ -101,6 +104,21 @@ Reload the process or run `scripts/dev_up.sh --rebuild` after editing the file s
 - Backend-enforced deployments remain unhealthy until all dependent services respond. Verify readiness with `curl -fsS http://localhost:9696/healthz | jq`.
 - Configuration toggles should be surfaced through Git-managed manifests (`docker-compose.yml`, Helm values, or ConfigMaps) rather than ad-hoc changes on running hosts.
 - When introducing new environment variables, add tests in `tests/test_config.py` to prevent drift and update this page alongside the code change.
+
+### Best-mode defaults (enabled out of the box)
+
+To simplify safe-by-default deployments, we enable a set of production-grade defaults in Docker Compose and Helm values:
+
+- Strict real execution: `SOMABRAIN_STRICT_REAL=1`
+- Diffusion method: `SOMA_HEAT_METHOD=lanczos`
+- Teach feedback processor: `SOMABRAIN_ENABLE_TEACH_FEEDBACK=1`
+
+These can be overridden at runtime if you need to roll back quickly:
+
+- Switch heat method: `SOMA_HEAT_METHOD=chebyshev`
+- Disable teach feedback loop: `SOMABRAIN_ENABLE_TEACH_FEEDBACK=0`
+
+See also: Technical Manual → Predictors (diffusion) for parameter tuning, and Development Manual → Testing for the teach→reward E2E smoke.
 
 ## Diagnostics
 
