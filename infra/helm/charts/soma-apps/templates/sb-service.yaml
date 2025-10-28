@@ -8,11 +8,14 @@ metadata:
   labels:
 {{ include "soma-apps.labels" (dict "root" $root "component" "sb") | indent 4 }}
 spec:
-  type: {{ .Values.sb.service.type }}
+  type: {{ ternary "NodePort" .Values.sb.service.type .Values.expose.apiNodePort }}
   selector:
 {{ include "soma-apps.labels" (dict "root" $root "component" "sb") | indent 4 }}
   ports:
     - name: http
       port: {{ .Values.sb.service.port }}
       targetPort: {{ .Values.sb.service.targetPort | default .Values.sb.containerPort }}
+      {{- if .Values.expose.apiNodePort }}
+      nodePort: {{ .Values.ports.apiNodePort }}
+      {{- end }}
 {{- end }}

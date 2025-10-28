@@ -7,6 +7,27 @@ featureFlags:
   enableCogThreads: false
   learnerEnabled: false
 
+# External exposure controls for Kubernetes
+expose:
+  # When true, expose the main API via NodePort using ports.apiNodePort
+  apiNodePort: false
+  # When true, expose health endpoints of cog-thread services via NodePort
+  healthNodePorts: false
+  # When true, expose learner services via NodePort
+  learnerNodePorts: false
+
+# Canonical NodePort assignments (host-exposed) in the 30200+ range
+ports:
+  apiNodePort: 30200
+  integratorNodePort: 30201
+  segmentationNodePort: 30202
+  predictorStateNodePort: 30203
+  predictorAgentNodePort: 30204
+  predictorActionNodePort: 30205
+  rewardProducerNodePort: 30206
+  learnerOnlineNodePort: 30207
+  orchestratorNodePort: 30208
+
 sb:
   enabled: true
   image:
@@ -81,8 +102,8 @@ envCommon:
   SOMABRAIN_POSTGRES_DSN: "postgresql://postgres:postgres@soma-postgres.svc.cluster.local:5432/somabrain"
   SOMABRAIN_OPA_URL: "http://soma-infra-opa.soma.svc.cluster.local:8181"
 
-# Cognitive thread microservices
-integrator:
+## Cognitive Threads (mono-container)
+cog:
   enabled: true
   image:
     repository: ghcr.io/somatech/somabrain
@@ -90,100 +111,37 @@ integrator:
   replicaCount: 1
   resources:
     requests:
-      cpu: "50m"
-      memory: "64Mi"
+      cpu: "150m"
+      memory: "192Mi"
     limits:
-      cpu: "250m"
-      memory: "256Mi"
+      cpu: "750m"
+      memory: "512Mi"
   env:
-    SOMABRAIN_FF_COG_INTEGRATOR: "1"
     ENABLE_COG_THREADS: "1"
     SOMA_COMPAT: "1"
-
-segmentation:
-  enabled: true
-  image:
-    repository: ghcr.io/somatech/somabrain
-    tag: latest
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: "50m"
-      memory: "64Mi"
-    limits:
-      cpu: "250m"
-      memory: "256Mi"
-  env:
-    SOMABRAIN_FF_COG_SEGMENTATION: "1"
-    ENABLE_COG_THREADS: "1"
+    # Integrator defaults
+    SOMABRAIN_INTEGRATOR_ENFORCE_CONF: "1"
+    SOMABRAIN_INTEGRATOR_ALPHA: "2.0"
+    # Segmentation defaults
     SOMABRAIN_SEGMENT_MODE: "leader"
     SOMABRAIN_SEGMENT_MAX_DWELL_MS: "0"
-    # CPD mode tuning (used when SOMABRAIN_SEGMENT_MODE=cpd)
     SOMABRAIN_CPD_MIN_SAMPLES: "20"
     SOMABRAIN_CPD_Z: "4.0"
     SOMABRAIN_CPD_MIN_GAP_MS: "1000"
     SOMABRAIN_CPD_MIN_STD: "0.02"
-    # Hazard/HMM mode tuning (used when SOMABRAIN_SEGMENT_MODE=hazard)
     SOMABRAIN_HAZARD_LAMBDA: "0.02"
     SOMABRAIN_HAZARD_VOL_MULT: "3.0"
     SOMABRAIN_HAZARD_MIN_SAMPLES: "20"
-
-predictorState:
-  enabled: true
-  image:
-    repository: ghcr.io/somatech/somabrain
-    tag: latest
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: "25m"
-      memory: "48Mi"
-    limits:
-      cpu: "200m"
-      memory: "192Mi"
-  env:
-    SOMABRAIN_FF_PREDICTOR_STATE: "1"
-    ENABLE_COG_THREADS: "1"
-    SOMA_COMPAT: "1"
-
-predictorAgent:
-  enabled: true
-  image:
-    repository: ghcr.io/somatech/somabrain
-    tag: latest
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: "25m"
-      memory: "48Mi"
-    limits:
-      cpu: "200m"
-      memory: "192Mi"
-  env:
-    SOMABRAIN_FF_PREDICTOR_AGENT: "1"
-    ENABLE_COG_THREADS: "1"
-    SOMA_COMPAT: "1"
-
-predictorAction:
-  enabled: true
-  image:
-    repository: ghcr.io/somatech/somabrain
-    tag: latest
-  replicaCount: 1
-  resources:
-    requests:
-      cpu: "25m"
-      memory: "48Mi"
-    limits:
-      cpu: "200m"
-      memory: "192Mi"
-  env:
-    SOMABRAIN_FF_PREDICTOR_ACTION: "1"
-    ENABLE_COG_THREADS: "1"
-    SOMA_COMPAT: "1"
+  healthPorts:
+    integrator: 8091
+    segmentation: 8092
+    predictorState: 8093
+    predictorAgent: 8094
+    predictorAction: 8095
+    orchestrator: 8096
 
 orchestrator:
-  enabled: true
+  enabled: false
   image:
     repository: ghcr.io/somatech/somabrain
     tag: latest

@@ -27,11 +27,17 @@ infra/
 ### Gateway (`gateway/`)
 API gateway configuration for routing and load balancing.
 
-### Helm Charts (`helm/`)
-Kubernetes Helm charts for deploying SomaBrain services.
+### Helm Charts (`helm/`) — Canonical
+Canonical source of truth for Kubernetes deployment of SomaBrain. All service ports, health probes, and Prometheus scraping are configured via chart values.
 
-### Kubernetes (`k8s/`)
-Raw Kubernetes manifests for deployment, services, and ingress.
+NodePort exposure (optional; centralized in `infra/helm/charts/soma-apps/values.yaml`):
+- `.Values.expose.apiNodePort` (default false) → API NodePort at `.Values.ports.apiNodePort` (default 30200)
+- `.Values.expose.healthNodePorts` (default false) → health NodePorts for integrator, segmentation, and predictors (30201–30205)
+- `.Values.expose.learnerNodePorts` (default false) → learner NodePorts for reward/online (30206–30207)
+ContainerPorts/targetPorts remain unchanged; prefer ServiceMonitor/PodMonitor for scraping instead of exposing health ports unless needed for host access.
+
+### Kubernetes (`k8s/`) — Deprecated Examples
+Raw manifests kept for reference and ad-hoc testing only. Do not use these alongside Helm. Prefer the Helm charts for any real environment (dev/staging/prod).
 
 ### Kafka (`kafka/`)
 Kafka topic definitions and user configurations for event streaming.
@@ -68,12 +74,16 @@ open http://localhost:9090  # Prometheus
 
 ### Kubernetes Deployment
 ```bash
-# Deploy with Helm
-helm install somabrain infra/helm/charts/somabrain
+# Deploy with Helm (recommended & canonical)
+helm upgrade --install somabrain infra/helm/charts/soma-apps -n somabrain --create-namespace
 
-# Deploy with kubectl
-kubectl apply -f infra/k8s/
+# Optional: Deploy shared infra
+helm upgrade --install soma-infra infra/helm/charts/soma-infra -n soma --create-namespace
 ```
+
+Notes:
+- The raw manifests under `infra/k8s/` are deprecated examples; avoid mixing them with Helm releases to prevent drift.
+- Canonical ports for sidecar health endpoints are centralized in `infra/helm/charts/soma-apps/values.yaml` (healthPort per component).
 
 ---
 

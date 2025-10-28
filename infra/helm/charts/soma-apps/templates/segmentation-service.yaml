@@ -1,18 +1,1 @@
-{{- if .Values.segmentation.enabled }}
-{{- $root := . -}}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "segmentation") }}
-  namespace: {{ $root.Values.global.namespace }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 4 }}
-spec:
-  type: ClusterIP
-  selector:
-{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 4 }}
-  ports:
-    - name: health
-      port: 8092
-      targetPort: health
-{{- end }}
+{{/* Removed: consolidated into cog (mono-container) */}}

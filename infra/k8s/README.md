@@ -1,6 +1,14 @@
-> :warning: This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+> :warning: Deprecated examples — prefer Helm.
 
-Kubernetes full-stack run instructions (dev/staging parity)
+This directory contains legacy/raw Kubernetes manifests kept for reference and ad‑hoc testing only. For any environment (dev/staging/prod), use the canonical Helm charts under `infra/helm/`.
+
+Do not mix these manifests with Helm releases; choose one path to avoid configuration drift. Canonical ports and health/metrics scraping are defined in the Helm values (`infra/helm/charts/soma-apps/values.yaml`).
+
+---
+
+> This project must be designed with simplicity, elegance, and math in mind. Only truth. No mocking, no mimicking, no fake data.
+
+Kubernetes full-stack run instructions (legacy path)
 
 These steps mirror `k8s/full-stack.yaml`, which targets the `somabrain-prod` namespace by default. Adjust the namespace if you are testing in a sandbox (e.g. `somabrain-dev`).
 
@@ -17,7 +25,7 @@ kind load docker-image somatechlat/somabrain:dev --name somabrain
 # optional: pre-build other service images and load them if you customize manifests
 ```
 
-2) Apply the manifests:
+2) Apply the manifests (legacy):
 
 ```bash
 kubectl apply -f k8s/full-stack.yaml
@@ -58,4 +66,4 @@ python -m pytest -m integration -q -r a --maxfail=5
 Notes:
 - For Kafka in Kubernetes use Strimzi or Redpanda operator; the full-stack manifest assumes operator-managed brokers or an external bootstrap URL.
 - If you run tests from host, prefer port-forward per-service so the host `scripts/sb_precheck.py` can reach the services at `localhost`.
-- For production-grade deployments create Helm charts or Kustomize overlays and configure resource requests/limits, probes, and RBAC.
+- For production-grade deployments use the Helm charts in `infra/helm/`.

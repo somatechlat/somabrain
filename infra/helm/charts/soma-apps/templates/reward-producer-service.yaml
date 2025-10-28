@@ -8,10 +8,14 @@ metadata:
   labels:
 {{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
 spec:
+  type: {{ ternary "NodePort" "ClusterIP" .Values.expose.learnerNodePorts }}
   selector:
 {{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
   ports:
     - name: health
       port: 8083
       targetPort: 8083
+      {{- if .Values.expose.learnerNodePorts }}
+      nodePort: {{ .Values.ports.rewardProducerNodePort }}
+      {{- end }}
 {{- end }}

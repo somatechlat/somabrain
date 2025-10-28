@@ -1,65 +1,93 @@
 {{- if .Values.prometheus.podMonitor.enabled }}
+{{- $root := . -}}
 {{- $ns := .Values.global.namespace }}
 {{- $interval := .Values.prometheus.podMonitor.interval | default "30s" }}
 
-{{- /* Helper to render a PodMonitor for a given component key and enable flag */ -}}
-{{- define "soma-apps.podMonitor" -}}
-{{- $root := index . 0 -}}
-{{- $component := index . 1 -}}
+{{- /* PodMonitor for mono-container cog: scrape multiple named ports */ -}}
+{{- if .Values.cog.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" $component) }}
-  namespace: {{ $root.Values.global.namespace }}
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "cog") }}
+  namespace: {{ $ns }}
   labels:
     app.kubernetes.io/instance: {{ $root.Release.Name }}
     app.kubernetes.io/managed-by: {{ $root.Release.Service }}
     app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
-    app.kubernetes.io/component: {{ $component }}
+    app.kubernetes.io/component: cog
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/instance: {{ $root.Release.Name }}
       app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
-      app.kubernetes.io/component: {{ $component }}
+      app.kubernetes.io/component: cog
+  podMetricsEndpoints:
+    - port: integrator
+      path: /metrics
+      interval: {{ $interval | quote }}
+    - port: segmentation
+      path: /metrics
+      interval: {{ $interval | quote }}
+    - port: pred-state
+      path: /metrics
+      interval: {{ $interval | quote }}
+    - port: pred-agent
+      path: /metrics
+      interval: {{ $interval | quote }}
+    - port: pred-action
+      path: /metrics
+      interval: {{ $interval | quote }}
+    - port: orchestrator
+      path: /metrics
+      interval: {{ $interval | quote }}
+---
+{{- end }}
+
+{{- /* Optional: learner stack (if using separate pods) */ -}}
+{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "reward") }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $root.Release.Service }}
+    app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+    app.kubernetes.io/component: reward
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+      app.kubernetes.io/component: reward
   podMetricsEndpoints:
     - port: health
       path: /metrics
-      interval: {{ $root.Values.prometheus.podMonitor.interval | default "30s" | quote }}
-      scheme: http
+      interval: {{ $interval | quote }}
 ---
-{{- end -}}
-
-{{- if .Values.integrator.enabled }}
-{{ include "soma-apps.podMonitor" (list . "integrator") }}
-{{- end }}
-
-{{- if .Values.segmentation.enabled }}
-{{ include "soma-apps.podMonitor" (list . "segmentation") }}
-{{- end }}
-
-{{- if .Values.orchestrator.enabled }}
-{{ include "soma-apps.podMonitor" (list . "orchestrator") }}
-{{- end }}
-
-{{- if .Values.predictorState.enabled }}
-{{ include "soma-apps.podMonitor" (list . "pred-state") }}
-{{- end }}
-
-{{- if .Values.predictorAgent.enabled }}
-{{ include "soma-apps.podMonitor" (list . "pred-agent") }}
-{{- end }}
-
-{{- if .Values.predictorAction.enabled }}
-{{ include "soma-apps.podMonitor" (list . "pred-action") }}
-{{- end }}
-
-{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
-{{ include "soma-apps.podMonitor" (list . "reward") }}
 {{- end }}
 
 {{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
-{{ include "soma-apps.podMonitor" (list . "learner") }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "learner") }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/instance: {{ $root.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $root.Release.Service }}
+    app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+    app.kubernetes.io/component: learner
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ $root.Release.Name }}
+      app.kubernetes.io/name: {{ include "soma-apps.name" $root }}
+      app.kubernetes.io/component: learner
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $interval | quote }}
 {{- end }}
-
 {{- end }}

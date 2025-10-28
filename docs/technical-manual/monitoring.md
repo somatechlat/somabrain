@@ -916,3 +916,57 @@ curl http://localhost:9696/metrics
 - [Deployment Guide](deployment.md) for production setup context
 - [Backup and Recovery](backup-and-recovery.md) for operational procedures
 - [Runbooks](runbooks/somabrain-api.md) for incident response procedures
+
+---
+
+## Cognitive Threads Metrics (Predictors & Integrator)
+
+Track the diffusion-backed predictors and Integrator decision quality:
+
+```promql
+# Predictor error (MSE) by domain (p90)
+histogram_quantile(0.90, sum by (le, domain) (rate(somabrain_predictor_error_bucket[5m])))
+
+# Integrator leader distribution (last 5m)
+sum by (leader) (rate(somabrain_integrator_leader_total[5m]))
+
+# Leader switches by tenant (last 1h)
+increase(somabrain_integrator_leader_switches_total[1h]) by (tenant)
+
+# Leader entropy (normalized 0..1), p95 by tenant (1h window)
+quantile_over_time(0.95, somabrain_integrator_leader_entropy[1h])
+
+# OPA decision latency (if OPA enabled)
+histogram_quantile(0.95, rate(somabrain_integrator_opa_latency_seconds_bucket[5m]))
+
+# Softmax temperature (tau)
+somabrain_integrator_tau
+```
+
+Suggested alerts:
+
+```yaml
+- alert: CognitiveThreadsHighPredictorError
+  expr: histogram_quantile(0.95, sum by (le) (rate(somabrain_predictor_error_bucket[5m]))) > 0.5
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High predictor error at p95"
+
+- alert: CognitiveThreadsLeaderChurn
+  expr: increase(somabrain_integrator_leader_switches_total[15m]) > 20
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Frequent leader switching in Integrator"
+
+- alert: CognitiveThreadsLowEntropy
+  expr: avg_over_time(somabrain_integrator_leader_entropy[30m]) < 0.05
+  for: 15m
+  labels:
+    severity: info
+  annotations:
+    summary: "Integrator leader entropy near zero (one domain dominating)"
+```

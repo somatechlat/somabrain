@@ -74,6 +74,26 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 
 Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config.
 
+### Kubernetes external ports (NodePort)
+
+Kubernetes defaults to ClusterIP internally. If you need host access without an ingress/controller, enable NodePorts in the Helm chart using a centralized 30200+ range:
+
+- API: 30200 → 9696
+- Integrator health: 30201 → 8091
+- Segmentation health: 30202 → 8092
+- Predictor-State health: 30203 → 8093
+- Predictor-Agent health: 30204 → 8094
+- Predictor-Action health: 30205 → 8095
+- Reward Producer (optional): 30206 → 8083
+- Learner Online (optional): 30207 → 8084
+
+How to enable (values):
+- `.Values.expose.apiNodePort=true` → sets API service type to NodePort at `.Values.ports.apiNodePort`
+- `.Values.expose.healthNodePorts=true` → exposes all cog-thread health services at their respective NodePorts
+- `.Values.expose.learnerNodePorts=true` → exposes learner services at NodePorts
+
+All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml` under `.Values.ports.*`. Container and target ports remain internal and unchanged.
+
 ---
 
 ## API Overview
@@ -172,9 +192,22 @@ Predictors are diffusion-backed and enabled by default so they’re always avail
 - Always-on defaults: `SOMABRAIN_FF_PREDICTOR_STATE=1`, `SOMABRAIN_FF_PREDICTOR_AGENT=1`, `SOMABRAIN_FF_PREDICTOR_ACTION=1`
 - Heat diffusion method via `SOMA_HEAT_METHOD=chebyshev|lanczos`; tune `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`.
 - Provide production graph files via `SOMABRAIN_GRAPH_FILE_STATE`, `SOMABRAIN_GRAPH_FILE_AGENT`, `SOMABRAIN_GRAPH_FILE_ACTION` (or `SOMABRAIN_GRAPH_FILE`). Supported JSON formats: adjacency or laplacian matrices.
-- Integrator normalization (optional): `SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1` derives confidence from `delta_error` for cross-domain consistency.
+- Integrator normalization (default ON): `SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1` derives confidence from `delta_error` for cross-domain consistency. Set to `0` only if you must use raw predictor confidences.
 
 See Technical Manual > Predictors for math, config, and tests.
+
+### Benchmarks
+
+Run diffusion predictor benchmarks and generate plots (clean, timestamped artifacts):
+
+```bash
+make bench-diffusion
+```
+
+Artifacts:
+- Results (JSON): `benchmarks/results/diffusion_predictors/<timestamp>/`
+- Plots (PNG): `benchmarks/plots/diffusion_predictors/<timestamp>/`
+The latest timestamp is recorded in `benchmarks/results/diffusion_predictors/latest.txt`.
 
 ## Documentation & Roadmap
 

@@ -1,18 +1,1 @@
-{{- if .Values.predictorAction.enabled }}
-{{- $root := . -}}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-action") }}
-  namespace: {{ $root.Values.global.namespace }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 4 }}
-spec:
-  type: ClusterIP
-  selector:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 4 }}
-  ports:
-    - name: health
-      port: 8095
-      targetPort: health
-{{- end }}
+{{/* Removed: consolidated into cog (mono-container) */}}

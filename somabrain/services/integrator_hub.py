@@ -287,7 +287,8 @@ class IntegratorHub:
             self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
         except Exception:
             self._alpha = 2.0
-        self._enforce_conf = (os.getenv("SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "0").strip().lower() in ("1", "true", "yes", "on"))
+        # Default ON: enforce confidence normalization from delta_error unless explicitly disabled
+        self._enforce_conf = (os.getenv("SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1").strip().lower() in ("1", "true", "yes", "on"))
         # Redis cache (optional)
         self._cache = None
         if self._redis_url:

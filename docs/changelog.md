@@ -37,6 +37,7 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - Tests: `tests/predictors/test_heat_diffusion_predictor.py` (Chebyshev/Lanczos vs. exact expm; monotonic confidence)
 - Docs: New `docs/technical-manual/predictors.md`; updated `karpathy-architecture.md` and `architecture.md`
  - Production wiring: optional JSON graph files via `SOMABRAIN_GRAPH_FILE[_STATE|_AGENT|_ACTION]` with loader `load_operator_from_file()`; services now use `build_predictor_from_env()`
+ - Benchmarks: Added `benchmarks/diffusion_predictor_bench.py`, Makefile target `bench-diffusion`, and docs at `docs/technical-manual/benchmarks_diffusion.md`
 
 - Comprehensive onboarding guide for new developers and agent coders
 - Automated backup and recovery procedures

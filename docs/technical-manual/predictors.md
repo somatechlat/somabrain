@@ -77,11 +77,30 @@ Emitted schema: `proto/cog/belief_update.avsc`.
 - Chebyshev/Lanczos outputs match `scipy.linalg.expm` on a small Laplacian (tight tolerances)
 - Confidence decreases monotonically with increasing error
 
+## Benchmarks
+
+See also: [Diffusion Predictor Benchmarks](benchmarks_diffusion.md)
+
+Summary (example run on dev hardware):
+- Accuracy vs exact expm (n=32, t=0.3)
+  - Chebyshev: K=10→80 yields MSE ≈ 1e-33…1e-25, runtime ≈ 0.5–2.2 ms.
+  - Lanczos: m=10→40 yields MSE ≈ 1e-30…1e-32, runtime ≈ 0.5–1.8 ms (m≈20 is a sweet spot).
+- Runtime scaling (t=0.3, K=40, m=20): smooth sub-ms to low-ms for n=16→128.
+
+Artifacts are written under:
+- `benchmarks/results/diffusion_predictors/<timestamp>/` (JSON)
+- `benchmarks/plots/diffusion_predictors/<timestamp>/` (PNG)
+and the latest timestamp is stored in `benchmarks/results/diffusion_predictors/latest.txt`.
+
+Recommended defaults:
+- Lanczos with `m≈20` for speed/accuracy on small–medium graphs.
+- Chebyshev with `K≈40` when deterministic runtime or spectral assumptions fit your environment.
+
 ## Integrator Alignment
 
-IntegratorHub can enforce confidence normalization from `delta_error` to ensure consistent softmax inputs:
+IntegratorHub enforces confidence normalization from `delta_error` by default to ensure consistent softmax inputs across domains:
 - `SOMABRAIN_INTEGRATOR_ALPHA` (float, default 2.0)
-- `SOMABRAIN_INTEGRATOR_ENFORCE_CONF` (bool; if on, always recomputes `confidence = exp(-alpha·delta_error)`)
+- `SOMABRAIN_INTEGRATOR_ENFORCE_CONF` (bool; default 1. Set to 0 to trust raw predictor confidences.)
 
 Additionally, Integrator exposes `somabrain_integrator_leader_total{leader}` to track leader frequency.
 

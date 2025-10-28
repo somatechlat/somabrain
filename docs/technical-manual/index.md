@@ -14,9 +14,13 @@
 - [Deployment](deployment.md) - Production deployment procedures
 - [Configuration](configuration.md) - Environment variables and runtime settings
 - [Monitoring](monitoring.md) - Dashboards, alerts, and observability
+- Cognitive Threads
+  - [Predictors](predictors.md) - Diffusion-backed predictors and configuration
+  - [Diffusion Benchmarks](benchmarks_diffusion.md) - Accuracy & performance of Chebyshev/Lanczos
 - [Runbooks](runbooks/) - Operational procedures
   - [Operations Overview](runbooks/operations-overview.md) - Day-two checklist
   - [SomaBrain API](runbooks/somabrain-api.md) - Main service operations
+  - [Cognitive Threads](runbooks/cog-threads-operations.md) - Predictors & Integrator operations
   - [Redis Operations](runbooks/redis-operations.md) - Cache management
   - [Kafka Operations](runbooks/kafka-operations.md) - Message broker troubleshooting
   - [Postgres Operations](runbooks/postgres-operations.md) - Database operations

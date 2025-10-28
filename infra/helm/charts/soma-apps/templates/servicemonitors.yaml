@@ -1,126 +1,42 @@
-{{- if and .Values.prometheus.serviceMonitor.enabled (or .Values.integrator.enabled .Values.segmentation.enabled .Values.predictorState.enabled .Values.predictorAgent.enabled .Values.predictorAction.enabled .Values.orchestrator.enabled (and .Values.featureFlags.learnerEnabled (or .Values.rewardProducer.enabled .Values.learnerOnline.enabled))) -}}
+{{- if .Values.prometheus.serviceMonitor.enabled -}}
 {{- $root := . -}}
 {{- $ns := $root.Values.global.namespace -}}
----
-{{- if .Values.integrator.enabled }}
+
+{{- if .Values.cog.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "integrator") }}
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "cog") }}
   namespace: {{ $ns }}
   labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 4 }}
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 4 }}
 spec:
   selector:
     matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "integrator") | indent 6 }}
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 6 }}
   namespaceSelector:
     matchNames: ["{{ $ns }}"]
   endpoints:
-    - port: health
+    - port: integrator
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
----
-{{- end }}
-{{- if .Values.segmentation.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "segmentation") }}
-  namespace: {{ $ns }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 4 }}
-spec:
-  selector:
-    matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "segmentation") | indent 6 }}
-  namespaceSelector:
-    matchNames: ["{{ $ns }}"]
-  endpoints:
-    - port: health
+    - port: segmentation
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
----
-{{- end }}
-{{- if .Values.predictorState.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-state") }}
-  namespace: {{ $ns }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 4 }}
-spec:
-  selector:
-    matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-state") | indent 6 }}
-  namespaceSelector:
-    matchNames: ["{{ $ns }}"]
-  endpoints:
-    - port: health
+    - port: pred-state
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
----
-{{- end }}
-{{- if .Values.predictorAgent.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-agent") }}
-  namespace: {{ $ns }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 4 }}
-spec:
-  selector:
-    matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-agent") | indent 6 }}
-  namespaceSelector:
-    matchNames: ["{{ $ns }}"]
-  endpoints:
-    - port: health
+    - port: pred-agent
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
----
-{{- end }}
-{{- if .Values.predictorAction.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "pred-action") }}
-  namespace: {{ $ns }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 4 }}
-spec:
-  selector:
-    matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "pred-action") | indent 6 }}
-  namespaceSelector:
-    matchNames: ["{{ $ns }}"]
-  endpoints:
-    - port: health
+    - port: pred-action
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
----
-{{- end }}
-{{- if .Values.orchestrator.enabled }}
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "orchestrator") }}
-  namespace: {{ $ns }}
-  labels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "orchestrator") | indent 4 }}
-spec:
-  selector:
-    matchLabels:
-{{ include "soma-apps.labels" (dict "root" $root "component" "orchestrator") | indent 6 }}
-  namespaceSelector:
-    matchNames: ["{{ $ns }}"]
-  endpoints:
-    - port: health
+    - port: orchestrator
       path: /metrics
       interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
 {{- end }}
+
 {{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
 ---
 apiVersion: monitoring.coreos.com/v1

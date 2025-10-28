@@ -1,6 +1,7 @@
 {{- if .Values.autoscaling.enabled }}
 {{- $root := . -}}
-{{- $targets := list (dict "k" "integrator" "v" .Values.integrator.enabled)
+{{- $targets := list (dict "k" "cog" "v" .Values.cog.enabled)
+                        (dict "k" "integrator" "v" .Values.integrator.enabled)
                         (dict "k" "segmentation" "v" .Values.segmentation.enabled)
                         (dict "k" "orchestrator" "v" .Values.orchestrator.enabled)
                         (dict "k" "pred-state" "v" .Values.predictorState.enabled)

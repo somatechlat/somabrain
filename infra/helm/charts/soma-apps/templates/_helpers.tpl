@@ -36,7 +36,7 @@ runAsUser: {{ .Values.securityContext.pod.runAsUser | default 10001 }}
 runAsGroup: {{ .Values.securityContext.pod.runAsGroup | default 10001 }}
 fsGroup: {{ .Values.securityContext.pod.fsGroup | default 10001 }}
 seccompProfile:
-	type: {{ .Values.securityContext.pod.seccompProfile | default "RuntimeDefault" }}
+  type: {{ .Values.securityContext.pod.seccompProfile | default "RuntimeDefault" }}
 {{- end -}}
 
 {{/* Standard container security context mapping (only mapping body, not the key) */}}
@@ -44,5 +44,9 @@ seccompProfile:
 allowPrivilegeEscalation: {{ .Values.securityContext.container.allowPrivilegeEscalation | default false }}
 readOnlyRootFilesystem: {{ .Values.securityContext.container.readOnlyRootFilesystem | default true }}
 capabilities:
-	drop: {{ toYaml (default (list "ALL") .Values.securityContext.container.capabilities.drop) | nindent 2 | trim }}
+  drop:
+{{- $drops := (default (list "ALL") .Values.securityContext.container.capabilities.drop) -}}
+{{- range $i, $c := $drops }}
+    - {{ $c | quote }}
+{{- end }}
 {{- end -}}
