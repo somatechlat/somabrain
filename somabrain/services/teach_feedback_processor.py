@@ -37,6 +37,13 @@ except Exception:  # pragma: no cover
     KafkaProducer = None  # type: ignore
 
 try:
+    from confluent_kafka import Producer as CKProducer  # type: ignore
+    from confluent_kafka import Consumer as CKConsumer  # type: ignore
+except Exception:  # pragma: no cover
+    CKProducer = None  # type: ignore
+    CKConsumer = None  # type: ignore
+
+try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
 except Exception:  # pragma: no cover
@@ -106,20 +113,95 @@ class TeachFeedbackService:
         self._serde_fb = _serde("teach_feedback")
         self._serde_reward = _serde("reward_event")
         self._producer: Optional[KafkaProducer] = None
+        self._ck_producer: Optional[CKProducer] = None
         self._stop = threading.Event()
         # Metrics
         self._mx_count = metrics.get_counter("somabrain_teach_feedback_total", "Teach feedback observed") if metrics else None
         self._mx_ruser = metrics.get_histogram("somabrain_teach_r_user", "Teach-derived r_user values") if metrics else None
+        self._mx_reward_ok = metrics.get_counter("somabrain_reward_events_published_total", "Reward events successfully published") if metrics else None
+        self._mx_reward_fail = metrics.get_counter("somabrain_reward_events_failed_total", "Reward events publish failures") if metrics else None
 
     def _ensure_clients(self) -> None:
-        if KafkaConsumer is None or KafkaProducer is None:
+        if KafkaConsumer is None:
             raise RuntimeError("Kafka client not available")
-        if self._producer is None:
-            self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5)
+        # Prefer confluent-kafka for production reliability
+        if self._ck_producer is None and CKProducer is not None:
+            try:
+                print(f"teach_proc: creating ck-producer bootstrap={self._bootstrap}", flush=True)
+            except Exception:
+                pass
+            self._ck_producer = CKProducer({
+                "bootstrap.servers": self._bootstrap,
+                "socket.timeout.ms": 5000,
+                "message.timeout.ms": 5000,
+                # Avoid requiring python-snappy in host tools; keep interop simple
+                "compression.type": "none",
+            })
+        if self._producer is None and (KafkaProducer is not None):
+            try:
+                print(f"teach_proc: creating producer bootstrap={self._bootstrap}", flush=True)
+            except Exception:
+                pass
+            self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5, compression_type="gzip")
 
     def _emit_reward(self, frame_id: str, r_user: float) -> None:
+        try:
+            print("teach_proc: _emit_reward called", flush=True)
+        except Exception:
+            pass
+        # If confluent producer exists, use it
+        if self._ck_producer is not None:
+            try:
+                print("teach_proc: using ck-producer", flush=True)
+            except Exception:
+                pass
+            payload = _enc(rec, self._serde_reward)
+            delivered = {"ok": False, "err": None}
+
+            def _cb(err, _msg):  # type: ignore
+                delivered["ok"] = err is None
+                delivered["err"] = err
+
+            try:
+                self._ck_producer.produce(TOPIC_REWARD, value=payload, on_delivery=_cb)
+                remaining = self._ck_producer.flush(5)
+                if delivered["ok"] and remaining == 0:
+                    try:
+                        print(f"teach_proc: emitted reward for frame_id={frame_id} r_user={r_user}", flush=True)
+                    except Exception:
+                        pass
+                    if self._mx_reward_ok is not None:
+                        try:
+                            self._mx_reward_ok.inc()
+                        except Exception:
+                            pass
+                else:
+                    try:
+                        print(f"teach_proc: failed to emit reward via ck: err={delivered['err']} remaining={remaining}", flush=True)
+                    except Exception:
+                        pass
+                    if self._mx_reward_fail is not None:
+                        try:
+                            self._mx_reward_fail.inc()
+                        except Exception:
+                            pass
+            except Exception as e:
+                try:
+                    print(f"teach_proc: ck-produce error: {e}", flush=True)
+                except Exception:
+                    pass
+                if self._mx_reward_fail is not None:
+                    try:
+                        self._mx_reward_fail.inc()
+                    except Exception:
+                        pass
+            return
         if self._producer is None:
             return
+        try:
+            print("teach_proc: using kafka-python producer", flush=True)
+        except Exception:
+            pass
         rec = {
             "frame_id": frame_id,
             "r_task": 0.0,
@@ -131,19 +213,75 @@ class TeachFeedbackService:
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         try:
-            self._producer.send(TOPIC_REWARD, value=_enc(rec, self._serde_reward))
+            fut = self._producer.send(TOPIC_REWARD, value=_enc(rec, self._serde_reward))
+            try:
+                # Ensure timely delivery in small dev setups
+                fut.get(timeout=5)
+                try:
+                    print(f"teach_proc: emitted reward for frame_id={frame_id} r_user={r_user}", flush=True)
+                except Exception:
+                    pass
+                if self._mx_reward_ok is not None:
+                    try:
+                        self._mx_reward_ok.inc()
+                    except Exception:
+                        pass
+            except Exception:
+                try:
+                    self._producer.flush(timeout=2)
+                except Exception:
+                    pass
+                if self._mx_reward_fail is not None:
+                    try:
+                        self._mx_reward_fail.inc()
+                    except Exception:
+                        pass
         except Exception:
-            pass
+            try:
+                print("teach_proc: failed to emit reward", flush=True)
+            except Exception:
+                pass
+            if self._mx_reward_fail is not None:
+                try:
+                    self._mx_reward_fail.inc()
+                except Exception:
+                    pass
 
     def run(self) -> None:  # pragma: no cover - integration loop
         self._ensure_clients()
+        group_id = os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
+        # Prefer confluent-kafka consumer if available
+        if CKConsumer is not None:
+            conf = {
+                "bootstrap.servers": self._bootstrap,
+                "group.id": group_id,
+                "auto.offset.reset": "latest",
+                "enable.auto.commit": True,
+            }
+            c = CKConsumer(conf)
+            c.subscribe([TOPIC_TEACH_FB])
+            try:
+                while not self._stop.is_set():
+                    msg = c.poll(0.5)
+                    if msg is None or msg.error():
+                        continue
+                    payload = msg.value()
+                    if payload:
+                        self._handle_payload(payload)
+            finally:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+            return
+        # Fallback to kafka-python consumer
         consumer = KafkaConsumer(
             TOPIC_TEACH_FB,
             bootstrap_servers=self._bootstrap,
             value_deserializer=lambda m: m,
             auto_offset_reset="latest",
             enable_auto_commit=True,
-            group_id=os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc"),
+            group_id=group_id,
             consumer_timeout_ms=1000,
         )
         try:
@@ -163,8 +301,7 @@ class TeachFeedbackService:
             except Exception:
                 pass
 
-    def _handle_record(self, msg: Any) -> None:
-        payload = getattr(msg, "value", None)
+    def _handle_payload(self, payload: Optional[bytes]) -> None:
         ev = _dec(payload, self._serde_fb)
         if not isinstance(ev, dict):
             return
@@ -172,6 +309,11 @@ class TeachFeedbackService:
             frame_id = str(ev.get("frame_id") or "").strip()
             rating = int(ev.get("rating", 0))
             r_user = _r_user_from_rating(rating)
+            # Minimal observability for smoke
+            try:
+                print(f"teach_feedback: frame_id={frame_id} rating={rating} -> r_user={r_user}", flush=True)
+            except Exception:
+                pass
             if self._mx_count is not None:
                 try:
                     self._mx_count.inc()
@@ -187,6 +329,10 @@ class TeachFeedbackService:
         except Exception:
             # Best-effort processor
             pass
+
+    def _handle_record(self, msg: Any) -> None:
+        payload = getattr(msg, "value", None)
+        self._handle_payload(payload)
 
     def stop(self) -> None:
         self._stop.set()

@@ -151,6 +151,9 @@ When you need auditable human ratings to influence exploration and policy select
 Quick validation (requires local Kafka):
 
 ```bash
+# Install preferred Kafka client locally (recommended)
+pip install confluent-kafka
+
 # Seed topics (idempotent)
 python scripts/seed_topics.py
 
@@ -159,3 +162,7 @@ python scripts/e2e_teach_feedback_smoke.py
 ```
 
 Schemas live in `proto/cog/teach_feedback.avsc` and `proto/cog/reward_event.avsc`. See `somabrain/services/teach_feedback_processor.py` for the mapping.
+
+Notes:
+- The teach feedback processor publishes rewards using the confluent-kafka client with no compression by default for maximum interoperability.
+- The smoke script also prefers confluent-kafka; if unavailable it falls back to kafka-python.

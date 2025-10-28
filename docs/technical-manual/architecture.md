@@ -260,6 +260,9 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 
 ## Cognitive Threads and Teach Feedback (Kafka)
 
+**For comprehensive Karpathy tripartite architecture documentation (predictors, integrator, segmentation with heat diffusion), see [Karpathy Architecture](karpathy-architecture.md). For predictor math, configuration, and tests, see [Diffusion-backed Predictors](predictors.md).**
+
+
 SomaBrain’s cognition loop uses Kafka topics and small services for modularity and safety:
 
 - Contracts (Avro under `proto/cog/`):
@@ -275,7 +278,7 @@ SomaBrain’s cognition loop uses Kafka topics and small services for modularity
 - Services:
   - `integrator_hub` — fuses predictor signals → `cog.global.frame`
   - `segmentation_service` — derives `cog.segments` from frames
-  - `teach_feedback_processor` — maps TeachFeedback to RewardEvent (`rating`→`r_user`, `total=r_user`)
+  - `teach_feedback_processor` — maps TeachFeedback to RewardEvent (`rating`→`r_user`, `total=r_user`). Uses confluent-kafka for publishing with `compression.type=none` for maximum client compatibility; falls back to kafka-python if needed.
   - `learner_online` — consumes rewards, emits `cog.config.updates` (`tau` from EMA of reward)
 
 ### Operations
@@ -284,6 +287,7 @@ SomaBrain’s cognition loop uses Kafka topics and small services for modularity
 - `somabrain_cog` container runs cognition services under Supervisor (see `ops/supervisor/supervisord.conf`)
 - Observability:
   - `somabrain_teach_feedback_total`, `somabrain_teach_r_user`
+  - `somabrain_reward_events_published_total`, `somabrain_reward_events_failed_total`
   - `somabrain_reward_value`, `soma_exploration_ratio`, `soma_policy_regret_estimate`
 
 ### Safety and Policy
@@ -295,6 +299,8 @@ SomaBrain’s cognition loop uses Kafka topics and small services for modularity
 
 - Run `python scripts/e2e_teach_feedback_smoke.py` to verify `cog.teach.feedback` → `cog.reward.events`
 - Run `python scripts/e2e_reward_smoke.py` to validate RewardProducer and topic bindings
+
+Note: Local smoke tests prefer the confluent-kafka client; install with `pip install confluent-kafka`.
 
 **References**:
 - [Deployment Guide](deployment.md) for installation procedures

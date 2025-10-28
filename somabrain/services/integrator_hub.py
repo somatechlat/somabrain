@@ -70,6 +70,11 @@ INTEGRATOR_LEADER_SWITCHES = app_metrics.get_counter(
     "Leader changes per tenant",
     labelnames=["tenant"],
 )
+INTEGRATOR_LEADER_TOTAL = app_metrics.get_counter(
+    "somabrain_integrator_leader_total",
+    "GlobalFrame leader selection count",
+    labelnames=["leader"],
+)
 INTEGRATOR_ERRORS = app_metrics.get_counter(
     "somabrain_integrator_errors_total",
     "Unhandled errors in integrator loop",
@@ -277,6 +282,12 @@ class IntegratorHub:
         self._shadow_sent = 0
         # Track leader switches per tenant
         self._last_leader: Dict[str, str] = {}
+        # Confidence enforcement from delta_error
+        try:
+            self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
+        except Exception:
+            self._alpha = 2.0
+        self._enforce_conf = (os.getenv("SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "0").strip().lower() in ("1", "true", "yes", "on"))
         # Redis cache (optional)
         self._cache = None
         if self._redis_url:
@@ -525,8 +536,21 @@ class IntegratorHub:
     def _process_update(self, ev: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         domain = str(ev.get("domain", "state")).strip().lower()
         tenant = self._tenant_from(ev)
-        conf = float(ev.get("confidence", 0.0))
         derr = float(ev.get("delta_error", 0.0))
+        # Normalize confidence if enforcement enabled or missing/invalid
+        conf_in = ev.get("confidence")
+        conf_norm: float
+        try:
+            conf_norm = float(conf_in) if conf_in is not None else float("nan")
+        except Exception:
+            conf_norm = float("nan")
+        need_norm = self._enforce_conf or (not (isinstance(conf_in, (int, float)) and 0.0 <= conf_norm <= 1.0))
+        if need_norm:
+            try:
+                conf_norm = math.exp(-max(0.0, float(derr)) * float(self._alpha))
+            except Exception:
+                conf_norm = 0.0
+        conf = float(conf_norm)
         ts = time.time()
         self._sm.update(tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev))
         leader, weights, raw = self._sm.snapshot(tenant)
@@ -588,6 +612,11 @@ class IntegratorHub:
         }
         # Attach policy flag so caller can publish SOMA context if enabled
         gf["_policy_allowed"] = policy_allowed  # type: ignore
+        # Count leader selections
+        try:
+            INTEGRATOR_LEADER_TOTAL.labels(leader=leader_adj).inc()
+        except Exception:
+            pass
         return gf
 
     def _opa_decide(

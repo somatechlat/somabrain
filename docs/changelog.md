@@ -27,6 +27,17 @@ All notable changes to SomaBrain are documented in this file. This project adher
 
 ### 🚀 Added
 - Complete documentation restructure following 4-manual standard
+## V3.0.3 — Diffusion-backed Predictors and Integrator Normalization
+
+- New: `somabrain/predictors/base.py` with `PredictorBase` and `HeatDiffusionPredictor`
+- Refactor: `services/predictor-{state,agent,action}/main.py` now compute delta_error via diffusion and confidence = exp(-alpha·error)
+- Config: `SOMA_HEAT_METHOD`, `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`, `SOMABRAIN_PREDICTOR_DIM`
+- Integrator: Optional confidence normalization from `delta_error` via `SOMABRAIN_INTEGRATOR_ENFORCE_CONF` and `SOMABRAIN_INTEGRATOR_ALPHA`
+- Metrics: `somabrain_predictor_error{domain}`, `somabrain_integrator_leader_total{leader}`
+- Tests: `tests/predictors/test_heat_diffusion_predictor.py` (Chebyshev/Lanczos vs. exact expm; monotonic confidence)
+- Docs: New `docs/technical-manual/predictors.md`; updated `karpathy-architecture.md` and `architecture.md`
+ - Production wiring: optional JSON graph files via `SOMABRAIN_GRAPH_FILE[_STATE|_AGENT|_ACTION]` with loader `load_operator_from_file()`; services now use `build_predictor_from_env()`
+
 - Comprehensive onboarding guide for new developers and agent coders
 - Automated backup and recovery procedures
 - Production-ready Kubernetes Helm charts

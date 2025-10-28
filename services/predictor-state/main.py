@@ -6,6 +6,7 @@ import random
 import time
 from typing import Any, Dict, Optional
 import threading
+import numpy as np
 
 try:
     from observability.provider import init_tracing, get_tracer  # type: ignore
@@ -44,6 +45,15 @@ try:
     from somabrain import metrics as _metrics  # type: ignore
 except Exception:  # pragma: no cover
     _metrics = None  # type: ignore
+
+# Diffusion predictor
+from somabrain.predictors.base import (
+    HeatDiffusionPredictor,
+    PredictorConfig,
+    make_line_graph_laplacian,
+    matvec_from_matrix,
+    build_predictor_from_env,
+)
 
 
 TOPIC = "cog.state.updates"
@@ -104,6 +114,7 @@ def run_forever() -> None:  # pragma: no cover
     # Metrics (lazy and optional)
     _EMITTED = _metrics.get_counter("somabrain_predictor_state_emitted_total", "BeliefUpdate records emitted (state)") if _metrics else None
     _NEXT_EMITTED = _metrics.get_counter("somabrain_predictor_state_next_total", "NextEvent records emitted (state)") if _metrics else None
+    _ERR_HIST = _metrics.get_histogram("somabrain_predictor_error", "Per-update prediction error (MSE)", labelnames=["domain"]) if _metrics else None
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
         if os.getenv("HEALTH_PORT"):
@@ -149,13 +160,17 @@ def run_forever() -> None:  # pragma: no cover
     model_ver = os.getenv("STATE_MODEL_VER", "v1")
     period = float(os.getenv("STATE_UPDATE_PERIOD", "0.5"))
     soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in ("1", "true", "yes", "on")
+    # Diffusion-backed predictor setup (supports production graph via env)
+    predictor, dim = build_predictor_from_env("state")
+    source_idx = 0
     try:
-        t = 0.0
         while True:
             # Simple synthetic delta_error stream (bounded noise + slow wave)
             with tracer.start_as_current_span("predictor_state_emit"):
-                delta_error = max(0.0, min(1.0, 0.2 + 0.15 * (0.5 + 0.5 * (random.random() - 0.5)) + 0.1 * (1 + __import__("math").sin(t))))
-                confidence = max(0.0, min(1.0, 0.6 + 0.3 * random.random()))
+                # Build observed vector as next one-hot (simple deterministic proxy)
+                observed = np.zeros(dim, dtype=float)
+                observed[(source_idx + 1) % dim] = 1.0
+                _, delta_error, confidence = predictor.step(source_idx=source_idx, observed=observed)
                 rec = {
                     "domain": "state",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -170,6 +185,11 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
+                    except Exception:
+                        pass
+                if _ERR_HIST is not None:
+                    try:
+                        _ERR_HIST.labels(domain="state").observe(float(delta_error))
                     except Exception:
                         pass
                 if soma_compat:
@@ -201,7 +221,7 @@ def run_forever() -> None:  # pragma: no cover
                         _NEXT_EMITTED.inc()
                     except Exception:
                         pass
-                t += period
+                source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:
         try:

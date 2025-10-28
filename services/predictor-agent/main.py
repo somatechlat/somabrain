@@ -6,6 +6,7 @@ import random
 import time
 from typing import Any, Dict, Optional
 import threading
+import numpy as np
 
 try:
     from observability.provider import init_tracing, get_tracer  # type: ignore
@@ -100,6 +101,7 @@ def run_forever() -> None:  # pragma: no cover
     tracer = get_tracer("somabrain.predictor.agent")
     _EMITTED = _metrics.get_counter("somabrain_predictor_agent_emitted_total", "BeliefUpdate records emitted (agent)") if _metrics else None
     _NEXT_EMITTED = _metrics.get_counter("somabrain_predictor_agent_next_total", "NextEvent records emitted (agent)") if _metrics else None
+    _ERR_HIST = _metrics.get_histogram("somabrain_predictor_error", "Per-update prediction error (MSE)", labelnames=["domain"]) if _metrics else None
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
         if os.getenv("HEALTH_PORT"):
@@ -145,12 +147,17 @@ def run_forever() -> None:  # pragma: no cover
     period = float(os.getenv("AGENT_UPDATE_PERIOD", "0.7"))
     soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in ("1", "true", "yes", "on")
     intents = ["browse", "purchase", "support"]
+    # Diffusion-backed predictor setup (supports production graph via env)
+    from somabrain.predictors.base import build_predictor_from_env
+    predictor, dim = build_predictor_from_env("agent")
+    source_idx = 1
     try:
         while True:
             with tracer.start_as_current_span("predictor_agent_emit"):
-                confidence = max(0.0, min(1.0, 0.5 + 0.4 * random.random()))
-                delta_error = max(0.0, min(1.0, 0.15 + 0.25 * random.random()))
                 posterior = {"intent": random.choice(intents)}
+                observed = np.zeros(dim, dtype=float)
+                observed[(source_idx + 2) % dim] = 1.0
+                _, delta_error, confidence = predictor.step(source_idx=source_idx, observed=observed)
                 rec = {
                     "domain": "agent",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -165,6 +172,11 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
+                    except Exception:
+                        pass
+                if _ERR_HIST is not None:
+                    try:
+                        _ERR_HIST.labels(domain="agent").observe(float(delta_error))
                     except Exception:
                         pass
                 if soma_compat:
@@ -195,6 +207,7 @@ def run_forever() -> None:  # pragma: no cover
                         _NEXT_EMITTED.inc()
                     except Exception:
                         pass
+                source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:
         try:
