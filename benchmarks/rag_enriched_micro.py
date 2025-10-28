@@ -3,7 +3,7 @@ Enriched RAG Micro-Benchmark
 ----------------------------
 
 Seeds a synthetic, clustered corpus via /remember and evaluates retrieval
-quality against /rag/retrieve with multiple retriever configurations.
+quality against the unified /recall endpoint with multiple retriever configurations.
 
 Metrics per configuration:
 - HR@1 (top-1 hit rate)
@@ -117,7 +117,7 @@ def _retrieve(
     # Allow advanced targeting via extra fields (mode/key/id/coord)
     body.update({k: v for k, v in extra.items() if v is not None})
     r = client.post(
-        api_base.rstrip("/") + "/rag/retrieve",
+        api_base.rstrip("/") + "/recall",
         headers=headers,
         json=body,
     )
@@ -272,7 +272,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             t0 = time.perf_counter()
             data = _retrieve(args.api_base, args.tenant, args.token, case.query, args.top_k, retrs, persist=False)
             latencies.append(max(0.0, time.perf_counter() - t0))
-            keys = _extract_keys(data.get("candidates", []))
+            keys = _extract_keys(data.get("results", []))
             # Metrics
             top1 = keys[0] if keys else None
             m_hits_top1 += 1 if top1 in case.positives else 0
@@ -328,7 +328,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             mode="key",
             key=gold,
         )
-        keys = _extract_keys(data.get("candidates", []))
+        keys = _extract_keys(data.get("results", []))
         top1 = keys[0] if keys else None
         m_hits_top1 += 1 if top1 == gold else 0
         # For exact mode, truth is the single gold key (graded=3)
@@ -382,7 +382,7 @@ def run(argv: Optional[List[str]] = None) -> int:
             persist=False,
             # No mode/key fields here; rely on auto detection
         )
-        keys = _extract_keys(data.get("candidates", []))
+        keys = _extract_keys(data.get("results", []))
         top1 = keys[0] if keys else None
         # Accept either canonical doc or slug, since backend may echo slug in payload
         truth = [gold, slug]

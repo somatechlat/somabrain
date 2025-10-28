@@ -97,7 +97,7 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
 
 def eval_precision_at_1(base_url: str, tenant: str, items: List[Dict], top_k: int) -> Dict[str, int]:
     client = httpx.Client(timeout=20.0)
-    url = base_url.rstrip("/") + "/rag/retrieve"
+    url = base_url.rstrip("/") + "/recall"
     correct = 0
     total = 0
     for it in items:
@@ -108,7 +108,7 @@ def eval_precision_at_1(base_url: str, tenant: str, items: List[Dict], top_k: in
             total += 1
             if r.status_code == 200:
                 j = r.json()
-                cands = j.get("candidates", [])
+                cands = j.get("results", [])
                 # check if top-1 candidate payload contains the author string
                 expected = str(it.get("author") or f"Author{it['i']}")
                 found = any(expected in str(c.get("payload", {})) for c in cands[:1])

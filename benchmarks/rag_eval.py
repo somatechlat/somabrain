@@ -101,7 +101,7 @@ def main():
     for q, truths in query_truths:
         t0 = time.perf_counter()
         r = client.post(
-            "/rag/retrieve",
+            "/recall",
             headers=headers,
             json={
                 "query": q,
@@ -114,7 +114,7 @@ def main():
         dt = time.perf_counter() - t0
         assert r.status_code == 200, r.text
         data = r.json()
-        cands = data.get("candidates", [])
+        cands = data.get("results", [])
         metrics.append(
             {
                 "query": q,

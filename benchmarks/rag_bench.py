@@ -61,7 +61,7 @@ def run():
     # Baseline: vector only, no persist
     t0 = time.perf_counter()
     r0 = client.post(
-        "/rag/retrieve",
+        "/recall",
         headers=headers,
         json={
             "query": query,
@@ -72,12 +72,12 @@ def run():
     )
     dt0 = time.perf_counter() - t0
     data0 = r0.json()
-    hr0 = _hit_rate(data0.get("candidates", []), [docs[0], docs[2]])
+    hr0 = _hit_rate(data0.get("results", []), [docs[0], docs[2]])
 
     # Persist a session (vector+wm to get some docs and create links)
     t1 = time.perf_counter()
     r1 = client.post(
-        "/rag/retrieve",
+        "/recall",
         headers=headers,
         json={
             "query": query,
@@ -88,12 +88,12 @@ def run():
     )
     dt1 = time.perf_counter() - t1
     data1 = r1.json()
-    hr1 = _hit_rate(data1.get("candidates", []), [docs[0], docs[2]])
+    hr1 = _hit_rate(data1.get("results", []), [docs[0], docs[2]])
 
     # After persistence: graph-only retrieval should surface linked docs via session
     t2 = time.perf_counter()
     r2 = client.post(
-        "/rag/retrieve",
+        "/recall",
         headers=headers,
         json={
             "query": query,
@@ -104,7 +104,7 @@ def run():
     )
     dt2 = time.perf_counter() - t2
     data2 = r2.json()
-    hr2 = _hit_rate(data2.get("candidates", []), [docs[0], docs[2]])
+    hr2 = _hit_rate(data2.get("results", []), [docs[0], docs[2]])
 
     print("RAG Bench Results")
     print(

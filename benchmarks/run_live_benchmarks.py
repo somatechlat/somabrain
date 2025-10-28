@@ -2,13 +2,12 @@
 """Run live benchmarks in multiple passes and generate plots.
 
 - Runs recall latency at increasing N and fixed Q, TOPK
-- Runs RAG live bench once
+- Runs Recall live bench once
 - Writes all artifacts to benchmarks/outputs/live_runs/<timestamp>/
 
 Usage:
-  PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
-    --recall-api-url http://127.0.0.1:9999 \
-    --rag-api-url http://127.0.0.1:9999 \
+    PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
+        --recall-api-url http://127.0.0.1:9999 \
     --start 100 --end 1000 --passes 5 \
     --q 50 --topk 3 \
     --out-dir benchmarks/outputs/live_runs
@@ -41,7 +40,7 @@ class RecallSummary:
 class Provenance:
     timestamp: str
     recall_api_url: str
-    rag_api_url: str
+    # Unified recall only
     passes: List[int]
     q: int
     topk: int
@@ -62,12 +61,12 @@ def _run_recall_once(api_url: str, N: int, Q: int, TOPK: int, env: dict[str, str
     return (N, data)
 
 
-def _run_rag_live_once(api_url: str, out_file: Path, env: dict[str, str]) -> None:
+def _run_recall_live_once(api_url: str, out_file: Path, env: dict[str, str]) -> None:
     e = os.environ.copy()
     e.update(env)
     cmd = [
         "python",
-        "benchmarks/rag_live_bench.py",
+        "benchmarks/recall_live_bench.py",
         "--api-url", api_url,
         "--output", str(out_file),
     ]
@@ -167,7 +166,6 @@ def _linspace_int(start: int, end: int, count: int) -> List[int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run multi-pass live benchmarks and plot results")
     ap.add_argument("--recall-api-url", default=os.getenv("SOMA_API_URL", "http://127.0.0.1:9999"))
-    ap.add_argument("--rag-api-url", default=os.getenv("SOMABRAIN_API_URL", "http://127.0.0.1:9696"))
     ap.add_argument("--start", type=int, default=100)
     ap.add_argument("--end", type=int, default=1000)
     ap.add_argument("--passes", type=int, default=5)
@@ -218,14 +216,13 @@ def main() -> int:
             errors=int(data.get("errors", 0)),
         ))
 
-    # Run RAG live once (use recall API URL if rag is not reachable separately)
-    rag_out = run_dir / "rag_live_results.json"
-    rag_api = args.rag_api_url or args.recall_api_url
-    print(f"[run] rag_live_bench @ {rag_api}")
+    # Run Recall live once
+    recall_out = run_dir / "recall_live_results.json"
+    print(f"[run] recall_live_bench @ {args.recall_api_url}")
     try:
-        _run_rag_live_once(rag_api, rag_out, env)
+        _run_recall_live_once(args.recall_api_url, recall_out, env)
     except subprocess.CalledProcessError as e:
-        print(f"WARN: rag live bench failed: {e}; continuing without RAG results")
+        print(f"WARN: recall live bench failed: {e}; continuing without recall results")
 
     # Post-metrics snapshot and health
     try:
@@ -269,7 +266,6 @@ def main() -> int:
     prov = Provenance(
         timestamp=ts,
         recall_api_url=args.recall_api_url,
-        rag_api_url=rag_api,
         passes=passes,
         q=args.q,
         topk=args.topk,

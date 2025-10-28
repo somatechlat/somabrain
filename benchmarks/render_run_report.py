@@ -24,7 +24,7 @@ def _read_json(p: Path) -> Any:
 def render(run_dir: Path) -> int:
     summ = _read_json(run_dir / "summary.json") or {}
     deltas = _read_json(run_dir / "metrics_deltas.json") or {}
-    rag = _read_json(run_dir / "rag_live_results.json") or {}
+    recall = _read_json(run_dir / "recall_live_results.json") or {}
 
     md: List[str] = []
     md.append(f"# Live Benchmark Report — {run_dir.name}")
@@ -64,15 +64,15 @@ def render(run_dir: Path) -> int:
             if p.exists():
                 md.append(f"\n![{img}]({img})")
 
-    # RAG live results
-    if rag:
-        md.append("\n## RAG live benchmark")
-        md.append("- api_url: " + str(rag.get("api_url")))
-        wl = rag.get("write_latency_s") or {}
+    # Recall live results
+    if recall:
+        md.append("\n## Recall live benchmark")
+        md.append("- api_url: " + str(recall.get("api_url")))
+        wl = recall.get("write_latency_s") or {}
         if wl:
             md.append(f"- write avg: {wl.get('avg')}, p95: {wl.get('p95')}")
         for key in ("vector", "mix", "graph"):
-            sec = rag.get(key)
+            sec = recall.get(key)
             if sec:
                 md.append(f"- {key}: latency_s={sec.get('latency_s')}, hit_rate={sec.get('hit_rate')}")
 

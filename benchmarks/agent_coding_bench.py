@@ -66,17 +66,17 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     # Baseline vector-only
     t0 = time.perf_counter()
     r0 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["vector"], "persist": False},
     ).json()
     dt0 = time.perf_counter() - t0
-    hr0 = hit_rate(r0.get("candidates", []), truths)
+    hr0 = hit_rate(r0.get("results", []), truths)
 
     # Persist session
     t1 = time.perf_counter()
     r1 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={
             "query": query,
@@ -91,12 +91,12 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     # Graph-only after persist (requires hops >= 1; to reach docs via session, planner uses edges)
     t2 = time.perf_counter()
     r2 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["graph"], "persist": False},
     ).json()
     dt2 = time.perf_counter() - t2
-    hr2 = hit_rate(r2.get("candidates", []), truths)
+    hr2 = hit_rate(r2.get("results", []), truths)
 
     # Planning baseline (without retrieved_with)
     p0 = client.post(
@@ -128,17 +128,17 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
         "baseline": {
             "latency_s": dt0,
             "hit_rate": hr0,
-            "candidates": r0.get("candidates", []),
+            "results": r0.get("results", []),
         },
         "persist": {
             "latency_s": dt1,
             "session_coord": sess,
-            "candidates": r1.get("candidates", []),
+            "results": r1.get("results", []),
         },
         "post_persist_graph": {
             "latency_s": dt2,
             "hit_rate": hr2,
-            "candidates": r2.get("candidates", []),
+            "results": r2.get("results", []),
         },
         "plan": {
             "baseline": p0.get("plan", []),

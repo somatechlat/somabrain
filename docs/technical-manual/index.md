@@ -45,6 +45,14 @@ SomaBrain is a containerized cognitive memory platform with these core component
 - **OPA**: Policy engine for authorization and governance
 - **Prometheus**: Metrics collection and alerting
 
+## Retrieval API (Unified)
+
+- Primary endpoint: POST `/memory/recall`
+  - Backed by the unified retrieval pipeline (vector + WM + graph + lexical + fusion + rerank).
+  - Accepts either a JSON string (e.g., "find my favorite poem") or an object body (adds fields like retrievers, rerank, id/key/coord, mode, universe, top_k).
+  - Response remains compatible with the legacy MemoryRecallResponse shape for existing clients.
+
+
 ## Production Readiness
 
 For production deployment:

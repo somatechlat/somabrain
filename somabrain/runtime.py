@@ -29,7 +29,7 @@ if not hasattr(mod, "cfg") or getattr(mod, "cfg", None) is None:
 Runtime Singletons Registry
 ---------------------------
 
-Tiny module to avoid circular imports when wiring the RAG pipeline.
+Tiny module to avoid circular imports when wiring the retrieval pipeline.
 The app sets these singletons at startup; services import here lazily.
 """
 

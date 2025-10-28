@@ -508,43 +508,41 @@ UNBIND_K_EST = Gauge(
     registry=registry,
 )
 
-# --- RAG/RAF metrics (PR-3) ---
-RAG_REQUESTS = get_counter(
-    "somabrain_rag_requests",
-    "RAG requests",
+# --- Retrieval metrics ---
+RECALL_REQUESTS = get_counter(
+    "somabrain_recall_requests_total",
+    "Number of /memory/recall requests",
+    labelnames=["namespace"],
+)
+RETRIEVAL_REQUESTS = get_counter(
+    "somabrain_retrieval_requests",
+    "Retrieval requests",
     labelnames=["namespace", "retrievers"],
 )
-RAG_RETRIEVE_LAT = get_histogram(
-    "somabrain_rag_retrieve_latency_seconds",
-    "RAG retrieve pipeline latency",
+RETRIEVAL_LATENCY = get_histogram(
+    "somabrain_retrieval_latency_seconds",
+    "Retrieval pipeline latency",
 )
-RAG_CANDIDATES = get_histogram(
-    "somabrain_rag_candidates_total",
-    "RAG candidate count after dedupe/rerank",
+RETRIEVAL_CANDIDATES = get_histogram(
+    "somabrain_retrieval_candidates_total",
+    "Retrieval candidate count after dedupe/rerank",
     buckets=[1, 3, 5, 10, 20, 50],
 )
-RAG_PERSIST = get_counter(
-    "somabrain_rag_persist_total",
-    "RAG session persistence outcomes",
+RETRIEVAL_PERSIST = get_counter(
+    "somabrain_retrieval_persist_total",
+    "Retrieval session persistence outcomes",
     labelnames=["status"],
 )
 
-# Successful /rag responses
-RAG_SUCCESS = get_counter(
-    "somabrain_rag_success_total",
-    "Number of successful /rag responses",
-    labelnames=["namespace"],
-)
-
-# Fusion metrics (RAG enhancements)
-RAG_FUSION_APPLIED = Counter(
-    "somabrain_rag_fusion_applied_total",
+# Fusion metrics (retrieval enhancements)
+RETRIEVAL_FUSION_APPLIED = Counter(
+    "somabrain_retrieval_fusion_applied_total",
     "Times rank fusion was applied",
     ["method"],
     registry=registry,
 )
-RAG_FUSION_SOURCES = Histogram(
-    "somabrain_rag_fusion_sources",
+RETRIEVAL_FUSION_SOURCES = Histogram(
+    "somabrain_retrieval_fusion_sources",
     "Number of retriever sources fused",
     buckets=[1, 2, 3, 4, 5, 6],
     registry=registry,

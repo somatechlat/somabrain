@@ -194,10 +194,10 @@ def run(
             }
             if cfg.get("rerank"):
                 body["rerank"] = cfg["rerank"]
-            r = client.post("/rag/retrieve", headers=headers, json=body)
+            r = client.post("/recall", headers=headers, json=body)
             assert r.status_code == 200
             lat += time.perf_counter() - t1
-            cand = r.json().get("candidates", [])
+            cand = r.json().get("results", [])
             hits += _recall_at_k(cand, truth)
         total = len(queries)
         results[name] = {
@@ -210,7 +210,7 @@ def run(
         if name == "hybrid":
             for q, _ in queries:
                 client.post(
-                    "/rag/retrieve",
+                    "/recall",
                     headers=headers,
                     json={
                         "query": q,
@@ -226,13 +226,13 @@ def run(
     for q, truth in queries:
         t1 = time.perf_counter()
         r = client.post(
-            "/rag/retrieve",
+            "/recall",
             headers=headers,
             json={"query": q, "top_k": 5, "retrievers": ["graph"], "persist": False},
         )
         assert r.status_code == 200
         lat += time.perf_counter() - t1
-        cand = r.json().get("candidates", [])
+        cand = r.json().get("results", [])
         hits += _recall_at_k(cand, truth)
     total = len(queries)
     results["graph_after_persist"] = {

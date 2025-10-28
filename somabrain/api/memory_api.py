@@ -33,6 +33,10 @@ from somabrain.runtime.config_runtime import (
     submit_metrics_snapshot,
     get_cutover_controller,
 )
+from somabrain.config import get_config
+from somabrain.tenant import get_tenant
+from somabrain.auth import require_auth
+from somabrain.schemas import RetrievalRequest
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -1142,16 +1146,156 @@ async def _perform_recall(
     )
 
 
+def _as_float_list(coord: object) -> Optional[List[float]]:
+    if isinstance(coord, (list, tuple)) and len(coord) >= 3:
+        try:
+            return [float(coord[0]), float(coord[1]), float(coord[2])]
+        except Exception:
+            return None
+    if isinstance(coord, str):
+        try:
+            parts = [float(x.strip()) for x in coord.split(",")]
+            if len(parts) >= 3:
+                return [parts[0], parts[1], parts[2]]
+        except Exception:
+            return None
+    return None
+
+
+def _map_retrieval_to_memory_items(candidates: List[dict]) -> List["MemoryRecallItem"]:
+    items: List[MemoryRecallItem] = []
+    for c in candidates:
+        # candidate dict shape mirrors RetrievalCandidate model
+        retr = str(c.get("retriever") or "vector")
+        layer = "wm" if retr == "wm" else "ltm"
+        payload = c.get("payload") if isinstance(c.get("payload"), dict) else {}
+        score = c.get("score")
+        coord = _as_float_list(c.get("coord") or payload.get("coordinate"))
+        items.append(
+            MemoryRecallItem(
+                layer=layer,
+                score=float(score) if isinstance(score, (int, float)) else None,
+                payload=payload,
+                coordinate=coord,
+                source=retr,
+                confidence=float(score) if isinstance(score, (int, float)) else None,
+            )
+        )
+    return items
+
+
+def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> RetrievalRequest:
+    # Accept string or dict-like (including MemoryRecallRequest dict)
+    if isinstance(obj, str):
+        return RetrievalRequest(query=obj, top_k=default_top_k)
+    if isinstance(obj, MemoryRecallRequest):
+        return RetrievalRequest(
+            query=obj.query,
+            top_k=int(obj.top_k or default_top_k),
+            universe=obj.universe,
+        )
+    if isinstance(obj, dict):
+        d = dict(obj)
+        q = d.get("query") or d.get("q") or ""
+        rk = d.get("rerank")
+        retr = d.get("retrievers")
+        # Advanced hints
+        mode = d.get("mode")
+        idv = d.get("id")
+        keyv = d.get("key")
+        coord = d.get("coord")
+        uni = d.get("universe")
+        tk = int(d.get("top_k") or default_top_k)
+        return RetrievalRequest(
+            query=str(q),
+            top_k=tk,
+            retrievers=list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers,
+            rerank=str(rk) if isinstance(rk, str) else RetrievalRequest().rerank,
+            persist=bool(d.get("persist")) if d.get("persist") is not None else False,
+            universe=str(uni) if isinstance(uni, str) else None,
+            mode=str(mode) if isinstance(mode, str) else None,
+            id=str(idv) if isinstance(idv, str) else None,
+            key=str(keyv) if isinstance(keyv, str) else None,
+            coord=str(coord) if isinstance(coord, str) else None,
+        )
+    # Fallback: stringify unknown payload
+    return RetrievalRequest(query=str(obj), top_k=default_top_k)
+
+
 @router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
-    return await _perform_recall(payload)
+async def recall_memory(payload: object, request: Request) -> MemoryRecallResponse:
+    """Unified recall endpoint backed by the retrieval pipeline.
+
+    Accepts either a plain string (JSON string) or an object body. For object bodies,
+    accepts the legacy MemoryRecallRequest fields as well as RetrievalRequest fields.
+    """
+    await _ensure_config_runtime_started()
+    cfg = get_config()
+    ctx = get_tenant(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    # Coerce incoming payload to a RetrievalRequest
+    ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
+
+    # Run pipeline
+    import time as _time
+    t0 = _time.perf_counter()
+    from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
+
+    ret_resp = await run_retrieval_pipeline(ret_req, ctx=ctx, cfg=cfg, universe=ret_req.universe, trace_id=request.headers.get("X-Request-ID"))
+    dt_ms = round(( _time.perf_counter() - t0) * 1000.0, 3)
+
+    # Map candidates to MemoryRecallItems
+    # Convert RetrievalResponse (pydantic) to dict for portability
+    ret_dict = ret_resp.dict() if hasattr(ret_resp, "dict") else ret_resp  # type: ignore
+    cands = ret_dict.get("candidates") or []
+    items = _map_retrieval_to_memory_items(cands)
+
+    # Counts by retriever
+    wm_hits = sum(1 for it in items if it.layer == "wm")
+    ltm_hits = sum(1 for it in items if it.layer != "wm")
+
+    # Metric: count recall requests (retrieval-backed)
+    try:
+        from somabrain import metrics as M
+        M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
+    except Exception:
+        pass
+
+    # Prepare response
+    return MemoryRecallResponse(
+        tenant=ctx.tenant_id,
+        namespace=ctx.namespace,
+        results=items,
+        wm_hits=wm_hits,
+        ltm_hits=ltm_hits,
+        duration_ms=dt_ms,
+        session_id=str(ret_dict.get("session_coord") or ""),
+        scoring_mode=None,
+        chunk_index=0,
+        has_more=False,
+        total_results=len(items),
+        chunk_size=None,
+        conversation_id=None,
+    )
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
-async def recall_memory_stream(payload: MemoryRecallRequest) -> MemoryRecallResponse:
-    default_chunk_size = payload.chunk_size or min(payload.top_k, 5)
-    updated_payload = payload.copy(update={"chunk_size": default_chunk_size})
-    return await _perform_recall(updated_payload, default_chunk_size=default_chunk_size)
+async def recall_memory_stream(payload: object, request: Request) -> MemoryRecallResponse:
+    # Provide a reasonable default chunking and reuse the unified recall.
+    # We honor top_k from input if present; otherwise default to 10 and stream 5 per page.
+    ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
+    chunk_size = min(max(1, int(ret_req.top_k)), 5)
+    # Call the unified recall first
+    base = await recall_memory(payload, request)
+    # Apply chunking on top of the full results for streaming semantics
+    start_index = 0
+    end_index = min(len(base.results), chunk_size)
+    base.results = base.results[start_index:end_index]
+    base.has_more = end_index < base.total_results
+    base.chunk_index = 0
+    base.chunk_size = chunk_size
+    return base
 
 
 @router.get("/context/{session_id}", response_model=MemoryRecallSessionResponse)

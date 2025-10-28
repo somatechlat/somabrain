@@ -6,7 +6,7 @@ This runbook explains how to run SomaBrain benchmarks end-to-end (live, real IO)
 
 - Live/E2E (real HTTP/DB/Kafka):
   - `benchmarks/recall_latency_bench.py` — Remember + recall latency percentiles against a running API.
-  - `benchmarks/rag_live_bench.py` — Seeds corpus, queries `/rag/retrieve`, computes hit-rate@k, scrapes `/metrics`.
+  - `benchmarks/recall_live_bench.py` — Seeds corpus, queries `/memory/recall` (unified), computes hit-rate@k.
   - `benchmarks/http_bench.py` — Async HTTP harness for any endpoint to get latency percentiles.
   - `benchmarks/db_bench.py` — Direct DB throughput sanity via SQLAlchemy.
   - `benchmarks/scale/*` — Load/soak/spike, chaos experiments.
@@ -20,9 +20,8 @@ See also: `benchmarks/README.md` for a quick map.
 
 ## Prerequisites
 
-- A live stack running, with at least one API endpoint reachable:
-  - Recall/Memory API (default): `http://127.0.0.1:9999`
-  - RAG API (alt): `http://127.0.0.1:9696` (if not available, use `9999` for RAG as well)
+- A live stack running, with the Recall/Memory API reachable:
+  - `http://127.0.0.1:9999`
 - Optional: `matplotlib` for plots.
 
 Health check:
@@ -38,7 +37,6 @@ Use the helper to run multiple passes and produce plots to a timestamped folder:
 ```sh
 PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
   --recall-api-url http://127.0.0.1:9999 \
-  --rag-api-url http://127.0.0.1:9999 \
   --start 100 --end 1000 --passes 5 \
   --q 50 --topk 3 \
   --out-dir benchmarks/outputs/live_runs
@@ -46,12 +44,11 @@ PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
 
 Outputs will be created under `benchmarks/outputs/live_runs/<timestamp>/`, including:
 - Per-pass recall JSON summaries: `recall_N<value>.json`
-- RAG live results JSON: `rag_live_results.json`
+- Recall live results JSON: `recall_live_results.json`
 - Plots: `remember_latency_vs_N.png`, `recall_latency_vs_N.png`
 - `provenance.json`
 
 Notes:
-- If RAG API on `:9696` is unavailable, `:9999` is typically fine (same service profile in dev).
 - If plots are missing, install matplotlib: `pip install matplotlib`.
 
 ## Manual runs (alternatives)
@@ -62,10 +59,10 @@ SOMA_API_URL=http://127.0.0.1:9999 BENCH_N=300 BENCH_Q=50 BENCH_TOPK=3 \
   PYTHONPATH=. python benchmarks/recall_latency_bench.py | tee recall_300.json
 ```
 
-- RAG live bench:
+- Recall live bench:
 ```sh
 SOMABRAIN_API_URL=http://127.0.0.1:9999 \
-  PYTHONPATH=. python benchmarks/rag_live_bench.py --output benchmarks/outputs/rag_live_results.json
+  PYTHONPATH=. python benchmarks/recall_live_bench.py --output benchmarks/outputs/recall_live_results.json
 ```
 
 ## Troubleshooting

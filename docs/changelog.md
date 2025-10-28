@@ -1,3 +1,11 @@
+## V3.0.3-EXTRA-MILE
+
+- Unified recall under POST `/memory/recall` backed by the retrieval pipeline (vector, WM, lexical, graph, fusion, rerank).
+  - Input: accepts either a JSON string or an object (legacy MemoryRecallRequest + fields id/key/coord/mode/rerank/retrievers).
+  - Output: remains MemoryRecallResponse for compatibility; adds non-breaking extras internally (session, metrics).
+- Legacy `/rag/retrieve` endpoint fully removed from the public API.
+- Docs and runbooks updated to prefer `/memory/recall` for all retrieval operations.
+
 # SomaBrain Changelog
 
 **Purpose**: Chronological record of all changes, improvements, and fixes in SomaBrain releases.

@@ -109,7 +109,7 @@ async def _latency_smoke(
 def _rag_quality_http(api_base: str, tenant: str = "showcase", token: Optional[str] = None) -> Dict[str, Any]:
     """Minimal RAG quality smoke against the live API.
 
-    Seeds a tiny corpus via /remember and measures hit-rate on /rag/retrieve variants.
+    Seeds a tiny corpus via /remember and measures hit-rate on unified /recall variants.
     """
     if httpx is None:
         raise RuntimeError("httpx is not available; install httpx or disable --rag")
@@ -163,7 +163,7 @@ def _rag_quality_http(api_base: str, tenant: str = "showcase", token: Optional[s
     def _retrieve(retrievers: List[str], persist: bool) -> tuple[float, Dict[str, Any]]:
         t0 = time.perf_counter()
         r = client.post(
-            api_base.rstrip("/") + "/rag/retrieve",
+            api_base.rstrip("/") + "/recall",
             headers=headers,
             json={"query": query, "top_k": top_k, "retrievers": retrievers, "persist": persist},
         )
@@ -172,13 +172,13 @@ def _rag_quality_http(api_base: str, tenant: str = "showcase", token: Optional[s
         return dt, r.json()
 
     dt0, data0 = _retrieve(["vector"], False)
-    hr0 = _hit_rate(data0.get("candidates", []), [docs[0], docs[2]])
+    hr0 = _hit_rate(data0.get("results", []), [docs[0], docs[2]])
 
     dt1, data1 = _retrieve(["vector", "wm"], True)
-    hr1 = _hit_rate(data1.get("candidates", []), [docs[0], docs[2]])
+    hr1 = _hit_rate(data1.get("results", []), [docs[0], docs[2]])
 
     dt2, data2 = _retrieve(["graph"], False)
-    hr2 = _hit_rate(data2.get("candidates", []), [docs[0], docs[2]])
+    hr2 = _hit_rate(data2.get("results", []), [docs[0], docs[2]])
 
     return {
         "baseline_vector_latency_s": round(dt0, 6),

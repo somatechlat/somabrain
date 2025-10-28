@@ -1101,12 +1101,7 @@ async def _init_constitution() -> None:
 
 
 # Optional routers (fail-open if dependencies are missing).
-try:
-    from somabrain.api.routers import rag as _rag_router
-
-    app.include_router(_rag_router.router, prefix="/rag")
-except Exception:
-    pass
+# NOTE: Legacy retrieval router has been fully removed in favor of unified /memory/recall.
 
 try:
     from somabrain.api import context_route as _context_route
@@ -2064,17 +2059,17 @@ async def health(request: Request) -> S.HealthResponse:
         except Exception:
             resp["memory_circuit_open"] = None
         embedder_ok = embedder is not None
-        # Lightweight RAG readiness probe: ensure embedder + vector recall path responds
-        rag_ready = False
+        # Retrieval readiness probe: ensure embedder + vector recall path responds
+        retrieval_ready = False
         try:
             ns_mem = mt_memory.for_namespace(ctx.namespace)
             # Minimal probe: attempt a tiny recall and an embed; success does not require hits
             _ = ns_mem.recall("health_probe", top_k=1)
             if embedder is not None:
                 _ = embedder.embed("health_probe")
-            rag_ready = True
+            retrieval_ready = True
         except Exception:
-            rag_ready = False
+            retrieval_ready = False
         # OPA readiness (only required if fail-closed posture is enabled)
         if shared_settings is not None:
             try:
@@ -2138,7 +2133,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_ok"] = bool(memory_ok)
         resp["embedder_ok"] = bool(embedder_ok)
         resp["opa_required"] = bool(opa_required)
-        resp["rag_ready"] = bool(rag_ready)
+        resp["retrieval_ready"] = bool(retrieval_ready)
         # Unified scorer & FD health invariants
         try:
             scorer_stats = unified_scorer.stats()
@@ -3243,10 +3238,10 @@ async def delete_memory(req: S.DeleteRequest, request: Request):
     return S.DeleteResponse()
 
 
-# Add RAG-style delete endpoint
+# Recall delete endpoint (scoped under /recall)
 @app.post("/recall/delete", response_model=S.DeleteResponse)
 async def recall_delete(req: S.DeleteRequest, request: Request):
-    """Delete a memory by coordinate via the RAG recall API.
+    """Delete a memory by coordinate via the recall API.
     Mirrors the generic /delete endpoint but scoped under /recall for consistency.
     """
     ctx = get_tenant(request, cfg.namespace)

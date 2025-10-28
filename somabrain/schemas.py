@@ -340,8 +340,8 @@ class RecallResponse(BaseModel):
     results: List[Dict[str, Any]] = []
 
 
-# ----- RAG/RAF request and response models -----
-class RAGRequest(BaseModel):
+# ----- Retrieval request and response models -----
+class RetrievalRequest(BaseModel):
     query: str
     top_k: int = 10
     retrievers: List[str] = ["vector", "wm", "graph"]
@@ -359,7 +359,7 @@ class RAGRequest(BaseModel):
     coord: Optional[str] = None
 
 
-class RAGCandidate(BaseModel):
+class RetrievalCandidate(BaseModel):
     coord: Optional[str] = None
     key: Optional[str] = None
     score: float
@@ -367,8 +367,8 @@ class RAGCandidate(BaseModel):
     payload: Dict[str, Any]
 
 
-class RAGResponse(BaseModel):
-    candidates: List[RAGCandidate]
+class RetrievalResponse(BaseModel):
+    candidates: List[RetrievalCandidate]
     session_coord: Optional[str] = None
     namespace: str
     trace_id: str
@@ -600,8 +600,8 @@ class HealthResponse(BaseModel):
     predictor_ok: Optional[bool] = None
     memory_ok: Optional[bool] = None
     embedder_ok: Optional[bool] = None
-    # RAG readiness: lightweight probe combining embedder + vector recall path
-    rag_ready: Optional[bool] = None
+    # Retrieval readiness: lightweight probe combining embedder + vector recall path
+    retrieval_ready: Optional[bool] = None
     # Extended diagnostics
     opa_ok: Optional[bool] = None
     opa_required: Optional[bool] = None

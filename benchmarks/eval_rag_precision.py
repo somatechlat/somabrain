@@ -21,7 +21,7 @@ def load_manifest():
 
 def eval_precision_recall(base_url: str, items, k=5):
     client = httpx.Client(timeout=20.0)
-    url = base_url.rstrip("/") + "/rag/retrieve"
+    url = base_url.rstrip("/") + "/recall"
     results = []
     for it in items:
         query = f"Who wrote Book{it['i']}?"
@@ -32,7 +32,7 @@ def eval_precision_recall(base_url: str, items, k=5):
                 results.append({"i": it["i"], "status": r.status_code})
                 continue
             j = r.json()
-            cands = j.get("candidates", [])
+            cands = j.get("results", [])
             expected = f"Author{it['i']}"
             topk = cands[:k]
             found_k = sum(1 for c in topk if expected in str(c.get("payload", {})))

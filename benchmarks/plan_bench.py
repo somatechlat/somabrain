@@ -103,7 +103,7 @@ def run():
 
     # Persist a RAG session (vector + wm) to create query-linked edges
     r = client.post(
-        "/rag/retrieve",
+        "/recall",
         headers=headers,
         json={
             "query": query,
