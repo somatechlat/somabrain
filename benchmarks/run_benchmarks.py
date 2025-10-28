@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
 BENCHES = [
     "benchmarks.numerics_bench",
     "benchmarks.cognition_core_bench",
-    "benchmarks.rag_bench",
+    "benchmarks.retrieval_bench",
 ]
 
 

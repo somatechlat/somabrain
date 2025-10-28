@@ -5,7 +5,7 @@ Agent Coding Benchmark (Synthetic, Real HTTP)
 Simulates an agent learning to build a tiny FastAPI app by:
 - Seeding relevant "tool" documents
 - Running a baseline retrieval (vector-only)
-- Persisting a RAG session (vector+wm)
+- Persisting a recall session (vector+wm)
 - Measuring improvement via graph-only retrieval after persistence
 - Measuring planning improvement by including 'retrieved_with' edges
 
@@ -110,14 +110,14 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     ).json()
     phr0 = plan_hit_rate(p0.get("plan", []), truths)
 
-    # Planning after persist (include rag edges)
+    # Planning after persist (include recall edges)
     p1 = client.post(
         f"{base}/plan/suggest",
         headers=headers,
         json={
             "task_key": query,
             "max_steps": 5,
-            "rel_types": ["rag_session", "retrieved_with", "depends_on", "related"],
+            "rel_types": ["recall_session", "retrieved_with", "depends_on", "related"],
         },
     ).json()
     phr1 = plan_hit_rate(p1.get("plan", []), truths)

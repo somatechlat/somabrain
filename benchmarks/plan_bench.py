@@ -3,7 +3,7 @@ Planning Benchmark: Post-Persist Improvement
 -------------------------------------------
 
 Seeds a small set of tasks and relations, then compares the suggested plan
-for a query key before and after a RAG session is persisted (which adds
+for a query key before and after a recall session is persisted (which adds
 query->session and session->doc edges). The planning phase includes the
 relation type 'retrieved_with' to leverage the new edges.
 """
@@ -92,7 +92,7 @@ def run():
 
     query = "solar project planning"
 
-    # Baseline plan suggestions without RAG session links
+    # Baseline plan suggestions without recall session links
     base_plan = _plan(
         client,
         query,
@@ -101,7 +101,7 @@ def run():
     )
     base_hr = _hit_rate(base_plan, goal_docs)
 
-    # Persist a RAG session (vector + wm) to create query-linked edges
+    # Persist a recall session (vector + wm) to create query-linked edges
     r = client.post(
         "/recall",
         headers=headers,
@@ -114,7 +114,7 @@ def run():
     )
     assert r.status_code == 200, r.text
 
-    # Plan again including 'retrieved_with' to leverage RAG-created edges
+    # Plan again including 'retrieved_with' to leverage recall-created edges
     rich_plan = _plan(
         client,
         query,

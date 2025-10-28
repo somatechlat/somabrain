@@ -114,7 +114,7 @@
 | BHDC | Binary Hyperdimensional Computing | SomaBrain's encoding approach for semantic vectors. |
 | DR | Disaster Recovery | See backup-and-recovery procedures for RTO/RPO. |
 | MFA | Multi-Factor Authentication | Mandatory for elevated roles per RBAC matrix. |
-| RAG | Retrieval-Augmented Generation | Optional reasoning enhancer; must operate without stubs when backend enforcement is active. |
+| Retrieval | Unified retrieval pipeline | Consolidated surface for recall across vector/graph/WM/lexical. |
 | SLA | Service-Level Agreement | Contractual uptime/latency commitments cited in release health gating. |
 | SLO | Service-Level Objective | Measurable performance targets validated in monitoring dashboards. |
 

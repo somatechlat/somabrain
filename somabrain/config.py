@@ -224,7 +224,7 @@ class Config:
     diversity_k: int = 10
     diversity_lambda: float = 0.5
 
-    # RAG fusion weights
+    # Retrieval fusion weights
     retriever_weight_vector: float = 1.0
     retriever_weight_wm: float = 1.0
     retriever_weight_graph: float = 1.0

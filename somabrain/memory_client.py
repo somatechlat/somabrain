@@ -238,7 +238,7 @@ class MemoryClient:
         phase            : str   (e.g., "bootstrap", "general", "specialized")
         quality_score    : float (bounded recommendation: [0, 1])
         domains          : list[str] or comma string (topic / domain tags)
-        reasoning_chain  : list[str] | str (intermediate steps, RAG synthesis notes)
+        reasoning_chain  : list[str] | str (intermediate steps, retrieval synthesis notes)
 
     Feature Flags (env)
     -------------------

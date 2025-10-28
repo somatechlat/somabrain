@@ -4,16 +4,16 @@ Showcase Benchmark Suite
 
 Runs a fast, end-to-end smoke of the live API and collects artifacts:
 - Latency/throughput on a lightweight endpoint
-- Optional RAG-quality micro-bench against the API
+- Optional retrieval-quality micro-bench against the API
 - Metrics scrape from /metrics (Prometheus exposition)
 - JSON summary and optional PNG plots (if matplotlib is available)
 - Markdown report aggregating results and linking artifacts
 
 Usage (examples):
-  python -m benchmarks.showcase_suite --api-base http://localhost:9999 \
-      --out-dir artifacts/showcase --requests 100 --concurrency 20
+    python -m benchmarks.showcase_suite --api-base http://localhost:9999 \
+            --out-dir artifacts/showcase --requests 100 --concurrency 20
 
-  python -m benchmarks.showcase_suite --dry-run --out-dir artifacts/showcase
+    python -m benchmarks.showcase_suite --dry-run --out-dir artifacts/showcase
 
 Notes:
 - Plotting is optional; if matplotlib is not installed, plots are skipped.
@@ -106,13 +106,13 @@ async def _latency_smoke(
     }
 
 
-def _rag_quality_http(api_base: str, tenant: str = "showcase", token: Optional[str] = None) -> Dict[str, Any]:
-    """Minimal RAG quality smoke against the live API.
+def _retrieval_quality_http(api_base: str, tenant: str = "showcase", token: Optional[str] = None) -> Dict[str, Any]:
+    """Minimal retrieval quality smoke against the live API.
 
     Seeds a tiny corpus via /remember and measures hit-rate on unified /recall variants.
     """
     if httpx is None:
-        raise RuntimeError("httpx is not available; install httpx or disable --rag")
+        raise RuntimeError("httpx is not available; install httpx or disable quality check")
 
     headers = {"X-Tenant-ID": tenant}
     if token:
@@ -271,7 +271,16 @@ def _write_json(path: Path, data: Dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True))
 
 
-def _write_report_md(out_dir: Path, latency: Dict[str, Any], rag: Optional[Dict[str, Any]], metrics: Dict[str, float], latency_plot: Optional[str], latency_hist: Optional[str], diagnostics: Dict[str, Any], math_panels: List[str]) -> None:
+def _write_report_md(
+    out_dir: Path,
+    latency: Dict[str, Any],
+    retrieval: Optional[Dict[str, Any]],
+    metrics: Dict[str, float],
+    latency_plot: Optional[str],
+    latency_hist: Optional[str],
+    diagnostics: Dict[str, Any],
+    math_panels: List[str],
+) -> None:
     md = ["# Somabrain Showcase Report", ""]
     if diagnostics:
         md.append("## Wiring proof (/diagnostics)")
@@ -307,20 +316,20 @@ def _write_report_md(out_dir: Path, latency: Dict[str, Any], rag: Optional[Dict[
         md.append("")
         md.append(f"![Latency Histogram]({latency_hist})")
 
-    if rag is not None:
+    if retrieval is not None:
         md.append("")
-        md.append("## RAG quality (micro)")
-        if isinstance(rag, dict) and "error" in rag:
-            md.append(f"RAG micro-bench failed: {rag['error']}")
+        md.append("## Retrieval quality (micro)")
+        if isinstance(retrieval, dict) and "error" in retrieval:
+            md.append(f"Retrieval micro-bench failed: {retrieval['error']}")
         else:
             md.append(
-                f"Baseline vector: {rag['baseline_vector_hit_rate']:.2f} HR in {rag['baseline_vector_latency_s']:.3f}s"
+                f"Baseline vector: {retrieval['baseline_vector_hit_rate']:.2f} HR in {retrieval['baseline_vector_latency_s']:.3f}s"
             )
             md.append(
-                f"Persist mix: {rag['persist_mix_hit_rate']:.2f} HR in {rag['persist_mix_latency_s']:.3f}s"
+                f"Persist mix: {retrieval['persist_mix_hit_rate']:.2f} HR in {retrieval['persist_mix_latency_s']:.3f}s"
             )
             md.append(
-                f"Post-persist graph: {rag['post_persist_graph_hit_rate']:.2f} HR in {rag['post_persist_graph_latency_s']:.3f}s"
+                f"Post-persist graph: {retrieval['post_persist_graph_hit_rate']:.2f} HR in {retrieval['post_persist_graph_latency_s']:.3f}s"
             )
 
     if metrics:
@@ -346,7 +355,7 @@ def run(argv: Optional[List[str]] = None) -> int:
     ap.add_argument("--requests", type=int, default=100)
     ap.add_argument("--concurrency", type=int, default=20)
     ap.add_argument("--timeout", type=float, default=2.0)
-    ap.add_argument("--no-rag", action="store_true", help="Skip RAG micro-bench")
+    ap.add_argument("--no-retrieval", action="store_true", help="Skip retrieval micro-bench")
     ap.add_argument("--tenant", default=os.environ.get("SOMA_TENANT", "showcase"))
     ap.add_argument("--token", default=os.environ.get("SOMA_API_TOKEN"))
     ap.add_argument("--dry-run", action="store_true", help="Do not call network; emit synthetic data")
@@ -385,11 +394,11 @@ def run(argv: Optional[List[str]] = None) -> int:
     latency_plot = _maybe_plot_latency(samples, out_dir / "latency.png")
     latency_hist = _maybe_plot_latency_hist(samples, out_dir / "latency_hist.png")
 
-    # RAG micro quality
-    rag: Optional[Dict[str, Any]] = None
-    if not args.no_rag:
+    # Retrieval micro quality
+    retrieval: Optional[Dict[str, Any]] = None
+    if not args.no_retrieval:
         if args.dry_run:
-            rag = {
+            retrieval = {
                 "baseline_vector_latency_s": 0.012,
                 "baseline_vector_hit_rate": 0.50,
                 "persist_mix_latency_s": 0.020,
@@ -399,11 +408,13 @@ def run(argv: Optional[List[str]] = None) -> int:
             }
         else:
             try:
-                rag = _rag_quality_http(args.api_base, tenant=args.tenant, token=args.token)
-                _write_json(out_dir / "rag_quality.json", rag)
+                retrieval = _retrieval_quality_http(
+                    args.api_base, tenant=args.tenant, token=args.token
+                )
+                _write_json(out_dir / "retrieval_quality.json", retrieval)
             except Exception as e:  # noqa: BLE001
-                rag = {"error": f"{type(e).__name__}: {e}"}
-                _write_json(out_dir / "rag_quality.error.json", rag)
+                retrieval = {"error": f"{type(e).__name__}: {e}"}
+                _write_json(out_dir / "retrieval_quality.error.json", retrieval)
 
     # Diagnostics and Metrics snapshot from live API
     diagnostics: Dict[str, Any] = {}
@@ -440,7 +451,9 @@ def run(argv: Optional[List[str]] = None) -> int:
         pass
 
     # Markdown report
-    _write_report_md(out_dir, latency, rag, metrics, latency_plot, latency_hist, diagnostics, math_panels)
+    _write_report_md(
+        out_dir, latency, retrieval, metrics, latency_plot, latency_hist, diagnostics, math_panels
+    )
 
     print(f"Showcase artifacts written to: {out_dir}")
     return 0

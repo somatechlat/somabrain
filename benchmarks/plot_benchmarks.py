@@ -3,7 +3,7 @@
 Usage:
   python benchmarks/plot_benchmarks.py
 
-This looks for latest `learning_speed_*.json` and `rag_precision_*.json` in
+This looks for latest `learning_speed_*.json` and `retrieval_precision_*.json` in
 `artifacts/benchmarks/` and writes `learning_curve.png` and `precision_hist.png`.
 """
 
@@ -44,9 +44,9 @@ def plot_learning_curve():
 
 
 def plot_precision_hist():
-    path = latest("artifacts/benchmarks/rag_precision_*.json")
+    path = latest("artifacts/benchmarks/retrieval_precision_*.json")
     if not path:
-        print("No rag_precision artifact found.")
+        print("No retrieval_precision artifact found.")
         return
     with open(path) as f:
         j = json.load(f)
