@@ -50,6 +50,19 @@ $$ c = e^{-\alpha \cdot \mathrm{mse}} \in (0, 1] $$
 
 Each predictor service constructs a predictor via `build_predictor_from_env(domain)`, which prefers a domain-specific graph file if provided and falls back to a small line-graph Laplacian. In production, supply your domain graph file via the envs above to avoid the fallback.
 
+Runtime defaults (always-on):
+- Feature flags for predictors default to ON so the services are available unless explicitly disabled:
+  - `SOMABRAIN_FF_PREDICTOR_STATE=1`
+  - `SOMABRAIN_FF_PREDICTOR_AGENT=1`
+  - `SOMABRAIN_FF_PREDICTOR_ACTION=1`
+- To disable a specific predictor, set its FF to `0`.
+
+Quickstart (local):
+1) Provide graph files (optional): set `SOMABRAIN_GRAPH_FILE_*` envs or rely on fallback.
+2) Ensure Kafka is reachable via `SOMABRAIN_KAFKA_URL`.
+3) Start the services (e.g., via docker-compose or your process supervisor).
+4) Observe metrics: `somabrain_predictor_error{domain}` and Integrator metrics when enabled.
+
 Emitted schema: `proto/cog/belief_update.avsc`.
 
 ## Metrics

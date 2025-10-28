@@ -130,7 +130,8 @@ def run_forever() -> None:  # pragma: no cover
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
         pass
-    ff = (os.getenv("SOMABRAIN_FF_PREDICTOR_ACTION", "0").strip().lower() in ("1", "true", "yes", "on"))
+    # Default ON to ensure predictor is always available unless explicitly disabled
+    ff = (os.getenv("SOMABRAIN_FF_PREDICTOR_ACTION", "1").strip().lower() in ("1", "true", "yes", "on"))
     composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     if not ff and not composite:
         print("predictor-action: feature flag disabled; exiting.")

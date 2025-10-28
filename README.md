@@ -165,6 +165,17 @@ Alertmanager playbooks and escalation examples: see `docs/monitoring/alertmanage
 
 ---
 
+## Cognitive Threads (Predictors, Integrator, Segmentation)
+
+Predictors are diffusion-backed and enabled by default so they’re always available unless explicitly disabled. Each service emits BeliefUpdate messages that IntegratorHub can consume to produce a GlobalFrame.
+
+- Always-on defaults: `SOMABRAIN_FF_PREDICTOR_STATE=1`, `SOMABRAIN_FF_PREDICTOR_AGENT=1`, `SOMABRAIN_FF_PREDICTOR_ACTION=1`
+- Heat diffusion method via `SOMA_HEAT_METHOD=chebyshev|lanczos`; tune `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`.
+- Provide production graph files via `SOMABRAIN_GRAPH_FILE_STATE`, `SOMABRAIN_GRAPH_FILE_AGENT`, `SOMABRAIN_GRAPH_FILE_ACTION` (or `SOMABRAIN_GRAPH_FILE`). Supported JSON formats: adjacency or laplacian matrices.
+- Integrator normalization (optional): `SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1` derives confidence from `delta_error` for cross-domain consistency.
+
+See Technical Manual > Predictors for math, config, and tests.
+
 ## Documentation & Roadmap
 
 - **User Manual** – Installation, quick start, feature guides, FAQ (`docs/user-manual/`).

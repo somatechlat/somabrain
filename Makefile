@@ -31,6 +31,10 @@ run:
 bench:
 	PYTHONPATH=. MPLBACKEND=Agg $(PYBIN) benchmarks/cognition_core_bench.py
 
+.PHONY: bench-diffusion
+bench-diffusion:
+	PYTHONPATH=. MPLBACKEND=Agg $(PYBIN) benchmarks/diffusion_predictor_bench.py
+
 test:
 	PYTHONPATH=. $(PYTEST) -q
 
