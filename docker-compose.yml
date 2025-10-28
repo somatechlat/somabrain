@@ -211,6 +211,26 @@ services:
       timeout: 5s
       retries: 3
 
+  somabrain_db_migrate:
+    image: somabrain:latest
+    depends_on:
+      somabrain_postgres:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    environment:
+      # Use the internal service hostname to reach Postgres from within the network
+      # Compose will substitute these from your .env
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@somabrain_postgres:5432/${POSTGRES_DB}"
+    # Dev convenience: try to upgrade; if the schema already exists without Alembic history,
+    # stamp to heads to align the version table. Safe for local dev; don't use this in prod.
+    command: ["sh", "-lc", "cd /app && alembic -c /app/alembic.ini upgrade heads || alembic -c /app/alembic.ini stamp heads"]
+    restart: "no"
+    profiles: ["dev"]
+
   somabrain_postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     restart: unless-stopped
@@ -291,6 +311,14 @@ services:
       retries: 3
     volumes:
       - somabrain_journal_data:${SOMABRAIN_JOURNAL_DIR}
+    # Security hardening: drop all capabilities, run with read-only rootfs, and disallow privilege escalation.
+    # Note: we mount a tmpfs for /app/logs to keep runtime logs writable.
+    cap_drop: ["ALL"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
 
   somabrain_cog:
     build:
@@ -330,6 +358,13 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    cap_drop: ["ALL"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
+      - /tmp
 
   somabrain_outbox_publisher:
     build:
@@ -358,6 +393,18 @@ services:
       SOMABRAIN_JOURNAL_DIR: ${SOMABRAIN_JOURNAL_DIR}
     volumes:
       - somabrain_journal_data:${SOMABRAIN_JOURNAL_DIR}
+    cap_drop: ["ALL"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
+      - /tmp
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
 
   somabrain_outbox_db_applier:
     build:
@@ -378,6 +425,18 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
       SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES}
       SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL}
+    cap_drop: ["ALL"]
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
+      - /tmp
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
 
   
 

@@ -35,6 +35,7 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMA_OPA_TIMEOUT` | 2.0 | OPA request timeout (seconds) | shared settings |
 | `SOMA_OPA_FAIL_CLOSED` | 0 (dev), 1 (non‑dev) | Treat OPA failures as deny | shared settings (mode-derived) |
 | `SOMABRAIN_POSTGRES_DSN` | unset | Postgres DSN | shared settings |
+| `SOMABRAIN_AUTO_MIGRATE` | 0 (dev only) | When `1`, API runs `alembic upgrade heads` on startup; use one-shot migration job in prod | app entrypoint |
 | `SOMABRAIN_JWT_SECRET` | unset | API JWT HMAC secret | shared settings |
 | `SOMABRAIN_JWT_PUBLIC_KEY_PATH` | unset | API JWT public key path | shared settings |
 | `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | 0 | Enable memory weighting heuristics | shared settings |

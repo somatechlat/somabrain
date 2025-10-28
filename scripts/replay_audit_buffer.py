@@ -66,9 +66,10 @@ def replay_from_journal(limit: Optional[int] = None):
         return 0
     count = 0
     with open(AUDIT_JOURNAL_PATH, "r", encoding="utf-8") as f:
-        for i, line in enumerate(f):
-            if limit and i >= limit:
-                break
+            def _normalize_kafka_url(val: str) -> str:
+                return val.replace("kafka://", "", 1) if val.startswith("kafka://") else val
+
+            KAFKA_URL = _normalize_kafka_url(os.getenv("SOMABRAIN_KAFKA_URL", "localhost:9092"))
             try:
                 event = json.loads(line)
             except Exception as exc:

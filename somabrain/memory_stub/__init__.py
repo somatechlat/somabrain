@@ -1,19 +1,8 @@
-"""Memory stub module intentionally disabled.
+"""SOMABRAIN_STUB_DELETED
 
-Importing this package raises so developers are forced to rely on the real
-memory service instead of an in-process mock.
+This file is intentionally left in place as a deletion sentinel due to tooling
+limitations with automated file removal in this workspace. Any import of this
+module will fail immediately. Do not reintroduce stub logic.
 """
 
-from __future__ import annotations
-
-import typing as _t
-
-
-def __getattr__(name: str) -> _t.Any:  # pragma: no cover
-    raise RuntimeError(
-        "somabrain.memory_stub is disabled. Configure SOMABRAIN_MEMORY_HTTP_ENDPOINT "
-        "to point at the real memory backend."
-    )
-
-
-__all__: list[str] = []
+raise RuntimeError("memory_stub has been removed; use the real memory backend")

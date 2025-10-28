@@ -36,6 +36,7 @@ dependencies = [
   "PyJWT[crypto]>=2.9",
   "pydantic-settings>=2.1",
   "PyYAML>=6.0",
+  "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

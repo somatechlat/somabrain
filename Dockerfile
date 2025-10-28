@@ -58,6 +58,8 @@ COPY arc_cache.py /app/
 COPY observability /app/observability
 COPY services /app/services
 COPY config /app/config
+COPY alembic.ini /app/alembic.ini
+COPY migrations /app/migrations
 
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
 COPY somabrain /app/somabrain
@@ -101,8 +103,8 @@ ENV SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595 \
 # Entrypoint script for flexible startup
 COPY --chown=appuser:appuser --chmod=0755 docker-entrypoint.sh /usr/local/bin/
 
-# Healthcheck against /healthz endpoint
+# Healthcheck against unified /health endpoint (matches compose and docs)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-9696}/healthz" || exit 1
+    CMD curl -fsS "http://127.0.0.1:${SOMABRAIN_PORT:-9696}/health" || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]

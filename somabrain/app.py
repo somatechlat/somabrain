@@ -440,13 +440,37 @@ def setup_logging():
 
     Log output is sent to both console and 'somabrain.log'.
     """
+    # If logging is already configured (e.g., via YAML in start_server.py), don't reconfigure
+    root = logging.getLogger()
+    if getattr(root, "handlers", None):
+        return
+
+    handlers: list[logging.Handler] = [logging.StreamHandler()]
+
+    # Resolve a writable file path for logs under hardened containers
+    # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
+    log_path = os.getenv("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
+    candidate = log_path
+    try:
+        if not os.path.isabs(candidate):
+            if os.path.isdir("/app/logs"):
+                candidate = os.path.join("/app/logs", candidate)
+            else:
+                candidate = os.path.join(os.getcwd(), candidate)
+        parent = os.path.dirname(candidate) or "."
+        if parent and not os.path.exists(parent):
+            # Best-effort; on read-only rootfs this may fail, which is fine
+            os.makedirs(parent, exist_ok=True)
+        # Try to attach a file handler; fall back to stdout-only if not writable
+        handlers.append(logging.FileHandler(candidate, mode="a"))
+    except Exception:
+        # File logging not available (likely read-only FS). Continue with stream only.
+        pass
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(),
-            logging.FileHandler("somabrain.log", mode="a"),
-        ],
+        handlers=handlers,
     )
 
     # Create specialized loggers for different brain regions

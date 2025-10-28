@@ -32,8 +32,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--db-url",
         dest="db_url",
-        default=os.getenv("SOMABRAIN_POSTGRES_DSN") or os.getenv("SOMABRAIN_DB_URL"),
-        help="Override database URL (defaults to SOMABRAIN_POSTGRES_DSN or SOMABRAIN_DB_URL)",
+        default=os.getenv("SOMABRAIN_POSTGRES_DSN"),
+        help="Override database URL (defaults to SOMABRAIN_POSTGRES_DSN)",
     )
     parser.add_argument(
         "--redis-url",

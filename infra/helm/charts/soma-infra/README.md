@@ -31,3 +31,44 @@ Notes
 - `values-dev.yaml` contains local overrides to enable/disable components.
 - This chart includes templates for a `ConfigMap` and a `Secret` used by
   applications to read config and secrets in non-Vault dev modes.
+
+Persistence and production settings
+-----------------------------------
+- By default, persistence is disabled for Kafka/Redis/Etcd/Vault to keep local
+   iteration fast and stateless. For production, enable persistence and set
+   appropriate storage sizes in a values override (e.g., `values-prod.yaml`).
+
+Example (values override):
+
+```yaml
+kafka:
+   enabled: true
+   persistence:
+      enabled: true
+      size: 100Gi
+
+redis:
+   master:
+      persistence:
+         enabled: true
+         size: 20Gi
+
+etcd:
+   persistence:
+      enabled: true
+
+vault:
+   server:
+      standalone:
+         enabled: true
+   injector:
+      enabled: true
+```
+
+Observability
+-------------
+ServiceMonitor/PodMonitor resources can be enabled from the application chart
+(`infra/helm/charts/soma-apps`) to scrape metrics. You can also provide Grafana
+dashboards via your chosen Grafana deployment; see your platform’s dashboard
+provisioning docs. This repo ships Prometheus scrape examples for Docker Compose
+under `ops/prometheus/`.

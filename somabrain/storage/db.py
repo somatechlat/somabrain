@@ -33,8 +33,7 @@ def get_default_db_url() -> str:
 
     Preference order:
     1. SOMABRAIN_POSTGRES_DSN (official name)
-    2. SOMABRAIN_DB_URL (generic override)
-    3. sqlite:///./data/somabrain.db (local fallback for tests/dev)
+    2. sqlite:///./data/somabrain.db (local fallback for tests/dev)
     """
 
     url = None
@@ -46,7 +45,7 @@ def get_default_db_url() -> str:
         except Exception:
             url = None
     if not url:
-        url = os.getenv("SOMABRAIN_POSTGRES_DSN") or os.getenv("SOMABRAIN_DB_URL")
+        url = os.getenv("SOMABRAIN_POSTGRES_DSN")
     if url:
         return url
     # Ensure data directory exists for SQLite fallback
@@ -61,16 +60,12 @@ def reset_engine(url: Optional[str] = None) -> None:
     global _ENGINE, _SESSION_FACTORY
     _ENGINE = None
     _SESSION_FACTORY = None
-    if url:
-        os.environ["SOMABRAIN_DB_URL"] = url
 
 
 def get_engine(url: Optional[str] = None) -> Engine:
     """Return a shared SQLAlchemy engine (creating it on first use)."""
 
     global _ENGINE
-    if url:
-        os.environ["SOMABRAIN_DB_URL"] = url
     if _ENGINE is None:
         db_url = url or get_default_db_url()
         # Configure JSON serializer/deserializer for consistent behaviour.

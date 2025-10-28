@@ -6,6 +6,9 @@ cd "$ROOT_DIR"
 
 echo "[forbid_stubs] Scanning repository for forbidden stub artifacts..."
 
+# Note: Some environments cannot delete empty directories via automation.
+# We rely on content-based checks below to forbid any functional stub code.
+
 forbidden_patterns=(
   "somabrain/memory_stub"
   "from somabrain\.memory_stub"

@@ -25,19 +25,20 @@ KAFKA_OK=0
 OPA_OK=0
 
 # Use the real Kafka smoke test for health check
-# Prefer full SOMABRAIN_KAFKA_URL if provided (strip kafka:// scheme if present)
+# Single canonical env: SOMABRAIN_KAFKA_URL (optionally prefixed with kafka://)
 KAFKA_BROKER="${SOMABRAIN_KAFKA_URL:-}"
 if [ -n "$KAFKA_BROKER" ]; then
   KAFKA_BROKER="${KAFKA_BROKER#kafka://}"
-else
-  # Fallback to host/port with compose service default
-  KAFKA_BROKER="${SOMABRAIN_KAFKA_HOST:-somabrain_kafka}:${SOMABRAIN_KAFKA_PORT:-9092}"
 fi
-for i in 1 2 3 4 5 6; do
-  echo "Attempt $i: checking Kafka broker..."
-  python3 scripts/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
-  sleep 2
-done
+if [ -n "$KAFKA_BROKER" ]; then
+  for i in 1 2 3 4 5 6; do
+    echo "Attempt $i: checking Kafka broker..."
+    python3 scripts/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
+    sleep 2
+  done
+else
+  echo "Warning: SOMABRAIN_KAFKA_URL is not set; skipping Kafka smoke test"
+fi
 
 for i in 1 2 3 4 5 6; do
   echo "Attempt $i: checking OPA readiness..."
@@ -53,6 +54,17 @@ if [ "$KAFKA_OK" -ne 1 ]; then
 fi
 if [ "$OPA_OK" -ne 1 ]; then
   echo "Warning: OPA not reachable; the app will still start but policy checks may fail closed"
+fi
+
+# Optional: run database migrations (disabled by default). Enable by setting
+# SOMABRAIN_AUTO_MIGRATE=1 to execute Alembic upgrade on startup.
+if [ "${SOMABRAIN_AUTO_MIGRATE:-}" = "1" ] || [ "${SOMABRAIN_AUTO_MIGRATE:-}" = "true" ]; then
+  if command -v alembic >/dev/null 2>&1; then
+    echo "Running database migrations (alembic upgrade heads)..."
+    (cd /app && alembic -c /app/alembic.ini upgrade heads) || echo "alembic migration failed; continuing"
+  else
+    echo "Alembic not found on PATH; skipping auto-migrate"
+  fi
 fi
 
 # Optional demo seed: when SOMABRAIN_DEMO_SEED=true, seed a few memories after startup.

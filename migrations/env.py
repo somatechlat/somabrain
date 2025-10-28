@@ -12,11 +12,7 @@ TARGET_METADATA = db.Base.metadata
 
 def _get_url() -> str:
     """TODO: Add docstring."""
-    return (
-        os.getenv("SOMABRAIN_POSTGRES_DSN")
-        or os.getenv("SOMABRAIN_DB_URL")
-        or db.get_default_db_url()
-    )
+    return os.getenv("SOMABRAIN_POSTGRES_DSN") or db.get_default_db_url()
 
 
 def run_migrations_offline() -> None:

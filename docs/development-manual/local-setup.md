@@ -105,11 +105,15 @@ OPA_HOST_PORT=8181                   # OPA
 POSTGRES_HOST_PORT=5432              # Postgres
 
 # Container-internal URLs (used within compose network)
-SOMABRAIN_REDIS_HOST=somabrain_redis
-SOMABRAIN_REDIS_PORT=6379            # Container internal
-SOMABRAIN_KAFKA_HOST=somabrain_kafka
-SOMABRAIN_KAFKA_PORT=9092            # Container internal
+SOMABRAIN_REDIS_URL=redis://somabrain_redis:6379/0
+SOMABRAIN_KAFKA_URL=kafka://somabrain_kafka:9092    # Canonical app-level Kafka setting
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
+
+# Database
+SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain
+
+# Dev-only auto-migrations (off by default). Prefer the one-shot job below.
+SOMABRAIN_AUTO_MIGRATE=0
 ```
 
 #### Manual Docker Compose
@@ -120,6 +124,19 @@ docker compose up -d somabrain_redis somabrain_postgres somabrain_kafka somabrai
 # Check service health
 docker compose ps
 docker compose logs somabrain_app
+```
+
+#### Database Migrations (Dev)
+```bash
+# Preferred: run one-shot Alembic migrations for dev
+./scripts/migrate_db.sh           # stamps/aligns if schema already exists
+
+# Or, run the dev migration service directly
+docker compose --profile dev run --rm somabrain_db_migrate
+
+# Optional (dev-only): enable auto-migrate on API startup
+echo "SOMABRAIN_AUTO_MIGRATE=1" >> .env
+docker compose up -d somabrain_app
 ```
 
 ### IDE Configuration

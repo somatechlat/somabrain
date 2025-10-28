@@ -72,7 +72,11 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 - Reward producer: 30183 -> 8083
 - Learner online: 30184 -> 8084
 
-Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config.
+Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config. For WSL2 or remote clients, set the EXTERNAL listener host before running dev scripts:
+
+```bash
+KAFKA_EXTERNAL_HOST=192.168.1.10 ./scripts/dev_up.sh
+```
 
 ### Kubernetes external ports (NodePort)
 
@@ -123,17 +127,17 @@ $ git clone https://github.com/somatechlat/somabrain.git
 $ cd somabrain
 $ docker compose up -d
 # Ensure your memory backend is accessible at http://localhost:9595
-$ curl -s http://localhost:9696/health | jq
+$ curl -s http://localhost:9999/health | jq
 ```
 
 Store and recall a memory:
 
 ```bash
-$ curl -s http://localhost:9696/remember \
+$ curl -s http://localhost:9999/remember \
     -H "Content-Type: application/json" \
     -d '{"payload": {"task": "kb.paris", "content": "Paris is the capital of France."}}'
 
-$ curl -s http://localhost:9696/recall \
+$ curl -s http://localhost:9999/recall \
     -H "Content-Type: application/json" \
     -d '{"query": "capital of France", "top_k": 3}' | jq '.results'
 ```
@@ -141,7 +145,7 @@ $ curl -s http://localhost:9696/recall \
 Close the loop with feedback:
 
 ```bash
-$ curl -s http://localhost:9696/context/feedback \
+$ curl -s http://localhost:9999/context/feedback \
     -H "Content-Type: application/json" \
     -d '`
 {"session_id":"demo","query":"capital of France","prompt":"Summarise the capital of France.","response_text":"Paris is the capital of France.","utility":0.9,"reward":0.9}
@@ -152,10 +156,10 @@ $ curl -s http://localhost:9696/context/feedback \
 Inspect tenant learning state:
 
 ```bash
-$ curl -s http://localhost:9696/context/adaptation/state | jq
+$ curl -s http://localhost:9999/context/adaptation/state | jq
 ```
 
-Metrics are available at `http://localhost:9696/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
+Metrics are available at `http://localhost:9999/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
 
 Journaling and durability: writes are journaled to `/var/lib/somabrain/journal` when external backends are unavailable. The Compose stack mounts a persistent volume (`somabrain_journal_data`) at that path so journaled events survive container restarts. You can replay journals into your memory backend with `scripts/migrate_journal_to_backend.py` or `scripts/journal_to_outbox.py`.
 
@@ -175,8 +179,8 @@ Quickstart:
 docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
 
 # Check health and scrape metrics
-curl -fsS http://127.0.0.1:9696/healthz | jq .
-curl -fsS http://127.0.0.1:9696/metrics | head -n 20
+curl -fsS http://127.0.0.1:9999/health | jq .
+curl -fsS http://127.0.0.1:9999/metrics | head -n 20
 ```
 
 For common queries, see the PromQL cheat sheet at the top of the monitoring guide.
