@@ -82,6 +82,58 @@ def _ensure_matplotlib() -> bool:
         return False
 
 
+def _scrape_metrics_text(api_url: str) -> str:
+    import urllib.request
+    with urllib.request.urlopen(api_url.rstrip('/') + '/metrics', timeout=5) as resp:
+        return resp.read().decode('utf-8', errors='replace')
+
+
+def _metric_value(text: str, metric: str, match_labels: dict[str, str] | None = None) -> float:
+    """Parse Prometheus text exposition and extract a counter/gauge value.
+
+    This is a minimal parser using string checks to avoid extra deps.
+    For Counters, Prometheus exports as <name>_total; call with that exact name.
+    """
+    match_labels = match_labels or {}
+    want = metric.strip()
+    for line in text.splitlines():
+        if not line or line.startswith('#'):
+            continue
+        if not line.startswith(want):
+            continue
+        # Example: somabrain_http_requests_total{method="POST",path="/remember",status="200"} 123
+        try:
+            name_and_labels, value = line.split(None, 1)
+        except ValueError:
+            continue
+        if '{' in name_and_labels and '}' in name_and_labels:
+            name, raw_labels = name_and_labels.split('{', 1)
+            raw_labels = raw_labels.rsplit('}', 1)[0]
+            labels = {}
+            for part in raw_labels.split(','):
+                if '=' in part:
+                    k, v = part.split('=', 1)
+                    labels[k.strip()] = v.strip().strip('"')
+            ok = all(labels.get(k) == v for k, v in match_labels.items())
+            if not ok:
+                continue
+        try:
+            return float(value.strip())
+        except Exception:
+            pass
+    return 0.0
+
+
+def _health_snapshot(api_url: str) -> dict:
+    import json as _json
+    import urllib.request
+    try:
+        with urllib.request.urlopen(api_url.rstrip('/') + '/health', timeout=5) as resp:
+            return _json.loads(resp.read().decode('utf-8', errors='replace'))
+    except Exception:
+        return {"ok": False}
+
+
 def _plot_curves(passes: List[int], vals: List[float], ylabel: str, title: str, out: Path) -> None:
     try:
         import os
@@ -140,6 +192,12 @@ def main() -> int:
 
     # Run recall passes
     summaries: List[RecallSummary] = []
+    # Pre-metrics snapshot (HTTP counters) and health
+    try:
+        m_before = _scrape_metrics_text(args.recall_api_url)
+    except Exception:
+        m_before = ""
+    h_before = _health_snapshot(args.recall_api_url)
     for N in passes:
         print(f"[run] recall_latency_bench N={N} Q={args.q} TOPK={args.topk} @ {args.recall_api_url}")
         try:
@@ -169,9 +227,31 @@ def main() -> int:
     except subprocess.CalledProcessError as e:
         print(f"WARN: rag live bench failed: {e}; continuing without RAG results")
 
+    # Post-metrics snapshot and health
+    try:
+        m_after = _scrape_metrics_text(args.recall_api_url)
+    except Exception:
+        m_after = ""
+    h_after = _health_snapshot(args.recall_api_url)
+
+    # Compute HTTP counter deltas for /remember and /recall
+    http_remember_before = _metric_value(m_before, "somabrain_http_requests_total", {"path": "/remember"}) if m_before else 0.0
+    http_recall_before = _metric_value(m_before, "somabrain_http_requests_total", {"path": "/recall"}) if m_before else 0.0
+    http_remember_after = _metric_value(m_after, "somabrain_http_requests_total", {"path": "/remember"}) if m_after else 0.0
+    http_recall_after = _metric_value(m_after, "somabrain_http_requests_total", {"path": "/recall"}) if m_after else 0.0
+    metrics_delta = {
+        "http_remember_total_delta": max(0.0, http_remember_after - http_remember_before),
+        "http_recall_total_delta": max(0.0, http_recall_after - http_recall_before),
+        "before": {"remember": http_remember_before, "recall": http_recall_before},
+        "after": {"remember": http_remember_after, "recall": http_recall_after},
+    }
+    (run_dir / "metrics_deltas.json").write_text(json.dumps(metrics_delta, indent=2))
+
     # Save combined summary
     combined = {
         "recall_summaries": [asdict(s) for s in summaries],
+        "health_before": h_before,
+        "health_after": h_after,
     }
     (run_dir / "summary.json").write_text(json.dumps(combined, indent=2))
 
