@@ -1,9 +1,15 @@
 """Worker-side synthetic RAG pipeline benchmark.
 
 Usage:
-  python benchmarks/worker_bench.py --iterations 100
+    python benchmarks/worker_bench.py --iterations 100
 
-This simulates calling internal retriever stubs and the fusion code paths without network IO.
+Notes:
+- This is a synthetic micro-benchmark that exercises internal retriever stubs and
+    fusion code paths only. It does NOT perform any network IO or call live services
+    (API, Kafka, Postgres). Therefore it is NOT an end-to-end benchmark and should
+    not be used to substantiate production latency/throughput claims. Use
+    `benchmarks/recall_latency_bench.py`, `benchmarks/rag_live_bench.py`, or
+    `benchmarks/http_bench.py` against a running stack for live measurements.
 """
 
 import argparse
