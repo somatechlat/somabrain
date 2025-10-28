@@ -28,7 +28,7 @@ hrr_rerank_weight: 0.3
 hrr_rerank_only_low_margin: true
 rerank_margin_threshold: 0.05
 
-# RAG fusion weights (calibrated on synthetic large set)
+# Retriever fusion weights (calibrated on synthetic large set)
 retriever_weight_vector: 0.35
 retriever_weight_lexical: 0.55
 retriever_weight_wm: 0.10

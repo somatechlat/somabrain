@@ -38,9 +38,9 @@ repos:
   # Local hooks to run quick project-specific checks before push
   - repo: local
     hooks:
-      - id: run-critical-rag-tests
-        name: Run critical RAG persistence tests (prevent bad push)
-        entry: pytest -q tests/test_rag_integration_persist.py::test_rag_persist_and_links_local_backend -q -s
+      - id: run-critical-recall-test
+        name: Run critical recall E2E test (prevent bad push)
+        entry: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q tests/integration/test_e2e_memory_http.py::TestE2EMemoryHTTP::test_remember_and_recall_end_to_end -q -s
         language: system
         stages: [push]
 
