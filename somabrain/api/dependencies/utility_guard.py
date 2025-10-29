@@ -39,6 +39,21 @@ async def utility_guard(
     It is intentionally conservative and non-raising on missing constitution.
     """
     eng: Optional[ConstitutionEngine] = engine
+    # If no constitution engine is available or not loaded, act as a no-op guard.
+    # This matches the docstring promise: non-raising on missing constitution.
+    try:
+        has_const = bool(eng and eng.get_constitution())
+    except Exception:
+        has_const = False
+    if not has_const:
+        # Attach a neutral utility value for observability and allow the request.
+        try:
+            request.state.utility_value = 0.0
+            M.UTILITY_VALUE.set(0.0)
+        except Exception:
+            pass
+        return
+
     # extract confidence/cost/latency from request (middleware or handler should set these)
     conf = getattr(request.state, "model_confidence", None)
     if conf is None:
@@ -50,8 +65,10 @@ async def utility_guard(
     latency = float(getattr(request.state, "estimated_latency", 0.0))
 
     params = {}
-    if eng and eng.get_constitution():
-        params = eng.get_constitution().get("utility_params", {})
+    try:
+        params = eng.get_constitution().get("utility_params", {}) if eng else {}
+    except Exception:
+        params = {}
 
     u = compute_utility(conf, cost, latency, params)
     # attach for handler and metrics

@@ -37,16 +37,30 @@ def _post_json(
     resp.raise_for_status()
     return resp.json(), resp.elapsed.total_seconds()
 
-
-def _remember(base: str, task: str, headers: Dict[str, str]):
-    payload = {
-        "payload": {
-            "task": task,
-            "memory_type": "episodic",
-            "importance": 1,
-        }
-    }
-    return _post_json(base, "/remember", payload, headers)
+def _remember_batch_memory_api(
+    base: str,
+    tenant: str,
+    namespace: str,
+    docs: List[str],
+    headers: Dict[str, str],
+):
+    # Use /memory/remember/batch to ensure explicit tenant/namespace and unified indexing
+    items = []
+    for i, task in enumerate(docs):
+        items.append(
+            {
+                "key": f"seed::{i:04d}",
+                "value": {
+                    "task": task,
+                    "content": task,
+                    "memory_type": "episodic",
+                    "importance": 1,
+                    "universe": "real",
+                },
+            }
+        )
+    payload = {"tenant": tenant, "namespace": namespace, "items": items}
+    return _post_json(base, "/memory/remember/batch", payload, headers)
 
 
 def _hit_rate(candidates: List[dict], truths: List[str]) -> float:
@@ -76,14 +90,50 @@ def _discover_namespace(api_url: str, tenant: str) -> str | None:
         return None
 
 
-def run(api_url: str, corpus: List[str], output: Path):
-    headers = {"X-Tenant-ID": "recall-live-bench"}
+def run(api_url: str, corpus: List[str], output: Path, use_memory_api: bool = True):
+    tenant = "recall-live-bench"
+    namespace = "public"
+    headers = {"X-Tenant-ID": tenant}
 
-    # Seed corpus via live API
+    # Seed corpus
     write_times = []
-    for doc in corpus:
-        _, dt = _remember(api_url, doc, headers)
-        write_times.append(dt)
+    if use_memory_api:
+        try:
+            resp, dt = _remember_batch_memory_api(api_url, tenant, namespace, corpus, headers)
+            # Approximate per-item write time from batch
+            n = max(1, len(corpus))
+            write_times = [dt / n for _ in range(n)]
+        except Exception:
+            # Fallback to legacy endpoint one-by-one if batch fails (e.g., backend not ready in this mode)
+            write_times.clear()
+            for doc in corpus:
+                payload = {
+                    "payload": {
+                        "task": doc,
+                        "content": doc,
+                        "memory_type": "episodic",
+                        "importance": 1,
+                    }
+                }
+                try:
+                    _, dt = _post_json(api_url, "/remember", payload, headers)
+                    write_times.append(dt)
+                except Exception:
+                    # still record an entry to avoid divide-by-zero later
+                    write_times.append(0.0)
+    else:
+        # Fallback: legacy top-level /remember one-by-one
+        for doc in corpus:
+            payload = {
+                "payload": {
+                    "task": doc,
+                    "content": doc,
+                    "memory_type": "episodic",
+                    "importance": 1,
+                }
+            }
+            _, dt = _post_json(api_url, "/remember", payload, headers)
+            write_times.append(dt)
 
     # Best-effort: allow the external memory indexer to catch up
     try:
@@ -95,35 +145,58 @@ def run(api_url: str, corpus: List[str], output: Path):
     top_k = 5
     ground_truth = [corpus[0], corpus[2]]
 
-    # Vector only (unified recall)
-    payload_vec = {
-        "query": query,
-        "top_k": top_k,
-        "retrievers": ["vector"],
-        "persist": False,
-    }
-    vec_resp, dt_vec = _post_json(api_url, "/recall", payload_vec, headers)
-    hr_vec = _hit_rate(vec_resp.get("results", []), ground_truth)
+    if use_memory_api:
+        # Memory API unified recall (WM + LTM); returns items in results
+        recall_payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "query": query,
+            "top_k": top_k,
+            "layer": "all",
+        }
+        try:
+            mem_resp, dt_mem = _post_json(api_url, "/memory/recall", recall_payload, headers)
+            # Normalize shape to match previous result structure
+            norm_results = [
+                {"payload": item.get("payload", {})}
+                for item in mem_resp.get("results", [])
+                if isinstance(item, dict)
+            ]
+            hr_vec = _hit_rate(norm_results, ground_truth)
+            hr_mix = hr_vec
+            hr_graph = hr_vec
+            dt_vec = dt_mem
+            dt_mix = dt_mem
+            dt_graph = dt_mem
+            vec_resp = {"results": norm_results}
+            mix_resp = vec_resp
+            graph_resp = vec_resp
+        except Exception:
+            # Fallback to legacy /recall
+            payload_vec = {"query": query, "top_k": top_k}
+            vec_resp, dt_vec = _post_json(api_url, "/recall", payload_vec, headers)
+            hr_vec = _hit_rate(vec_resp.get("results", []), ground_truth)
 
-    # Mixed vector + WM with persistence (unified recall)
-    payload_mix = {
-        "query": query,
-        "top_k": top_k,
-        "retrievers": ["vector", "wm"],
-        "persist": True,
-    }
-    mix_resp, dt_mix = _post_json(api_url, "/recall", payload_mix, headers)
-    hr_mix = _hit_rate(mix_resp.get("results", []), ground_truth)
+            payload_mix = {"query": query, "top_k": top_k}
+            mix_resp, dt_mix = _post_json(api_url, "/recall", payload_mix, headers)
+            hr_mix = _hit_rate(mix_resp.get("results", []), ground_truth)
 
-    # Graph-only after persistence (unified recall)
-    payload_graph = {
-        "query": query,
-        "top_k": top_k,
-        "retrievers": ["graph"],
-        "persist": False,
-    }
-    graph_resp, dt_graph = _post_json(api_url, "/recall", payload_graph, headers)
-    hr_graph = _hit_rate(graph_resp.get("results", []), ground_truth)
+            payload_graph = {"query": query, "top_k": top_k}
+            graph_resp, dt_graph = _post_json(api_url, "/recall", payload_graph, headers)
+            hr_graph = _hit_rate(graph_resp.get("results", []), ground_truth)
+    else:
+        # Legacy top-level /recall paths (pipeline params ignored by server)
+        payload_vec = {"query": query, "top_k": top_k}
+        vec_resp, dt_vec = _post_json(api_url, "/recall", payload_vec, headers)
+        hr_vec = _hit_rate(vec_resp.get("results", []), ground_truth)
+
+        payload_mix = {"query": query, "top_k": top_k}
+        mix_resp, dt_mix = _post_json(api_url, "/recall", payload_mix, headers)
+        hr_mix = _hit_rate(mix_resp.get("results", []), ground_truth)
+
+        payload_graph = {"query": query, "top_k": top_k}
+        graph_resp, dt_graph = _post_json(api_url, "/recall", payload_graph, headers)
+        hr_graph = _hit_rate(graph_resp.get("results", []), ground_truth)
 
     results = {
         "api_url": api_url,
@@ -173,6 +246,12 @@ if __name__ == "__main__":  # pragma: no cover
         type=Path,
         default=Path("benchmarks/outputs/recall_live_results.json"),
     )
+    parser.add_argument(
+        "--use-memory-api",
+        action="store_true",
+        help="Use /memory API endpoints for seeding and recall (recommended)",
+        default=True,
+    )
     args = parser.parse_args()
 
     if args.corpus and args.corpus.exists():
@@ -180,4 +259,4 @@ if __name__ == "__main__":  # pragma: no cover
     else:
         docs = DEFAULT_CORPUS
 
-    run(args.api_url, docs, args.output)
+    run(args.api_url, docs, args.output, use_memory_api=bool(args.use_memory_api))

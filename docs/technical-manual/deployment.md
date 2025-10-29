@@ -34,6 +34,8 @@ Standard ports (host → container):
 - PostgreSQL: `30106` → `5432`
 - PostgreSQL Exporter: `30107` → `9187`
 
+Note: `scripts/dev_up.sh` auto-selects a free host port for the API (it tries 9696 first and increments on conflict). For a stable host port `:9999`, use `scripts/dev_up_9999.sh`. The effective host ports are written to `.env` and to `ports.json` (or `ports.9999.json`).
+
 **Kubernetes (LoadBalancer):**
 - API: `20020`
 - Redis: `20021`
@@ -150,8 +152,8 @@ docker build -t somabrain:latest .
 kind load docker-image somabrain:latest --name <cluster-name>
 
 # Deploy with centralized configuration
-kubectl apply -f k8s/somabrain-configmap.yaml
-kubectl apply -f k8s/somabrain-deployment.yaml
+kubectl apply -f infra/k8s/somabrain-configmap.yaml
+kubectl apply -f infra/k8s/somabrain-deployment.yaml
 
 # Check deployment status
 kubectl get pods -n somabrain
@@ -387,20 +389,20 @@ kafka-topics.sh --create --topic metrics.streams \
 ### Health Check Validation
 ```bash
 # Basic health check
-curl -f http://api.somabrain.company.com/health
+curl -f http://api.somabrain.company.com/health | jq
 
-# Expected response (200 OK)
+# Expected response (200 OK, key fields)
 {
-  "status": "healthy",
-  "timestamp": "2025-10-15T12:00:00Z",
+  "ok": true,
+  "namespace": "<tenant>",
   "components": {
-    "redis": {"status": "healthy", "latency_ms": 1.2},
-    "postgres": {"status": "healthy", "latency_ms": 2.1},
-    "kafka": {"status": "healthy", "latency_ms": 0.8},
-    "opa": {"status": "healthy", "latency_ms": 1.0}
+    "memory": { "http": true, "items": <int> },
+    "wm_items": "tenant-scoped",
+    "api_version": "<semver>"
   },
-  "version": "v0.1.0",
-  "mode": "production"
+  "ready": true,
+  "memory_ok": true,
+  "embedder_ok": true
 }
 ```
 
@@ -655,8 +657,8 @@ kubectl patch deployment somabrain -n somabrain-prod -p '{"spec":{"template":{"s
 - `docker-compose.yml` - Service definitions
 
 **Kubernetes:**
-- `k8s/somabrain-configmap.yaml` - ConfigMap and Secrets
-- `k8s/somabrain-deployment.yaml` - All service deployments
+- `infra/k8s/somabrain-configmap.yaml` - ConfigMap and Secrets
+- `infra/k8s/somabrain-deployment.yaml` - All service deployments
 
 ### Quick Access Commands
 
@@ -678,8 +680,8 @@ curl http://localhost:9999/health
 **Kubernetes:**
 ```bash
 # Deploy
-kubectl apply -f k8s/somabrain-configmap.yaml
-kubectl apply -f k8s/somabrain-deployment.yaml
+kubectl apply -f infra/k8s/somabrain-configmap.yaml
+kubectl apply -f infra/k8s/somabrain-deployment.yaml
 
 # Check status
 kubectl get pods -n somabrain

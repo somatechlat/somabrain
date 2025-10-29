@@ -103,7 +103,7 @@ services:
       - somabrain_net
 
   somabrain_kafka_exporter:
-    image: danielqsj/kafka-exporter:v1.7.0
+    image: quay.io/prometheuscommunity/kafka-exporter:v1.8.0
     restart: unless-stopped
     command:
       - --kafka.server=somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}

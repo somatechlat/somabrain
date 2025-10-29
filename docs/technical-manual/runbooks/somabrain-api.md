@@ -17,7 +17,7 @@ The SomaBrain API is the primary FastAPI service handling cognitive memory opera
 - `GET /metrics` - Prometheus metrics export
 - `POST /remember` - Store new memories with semantic encoding
 - `POST /recall` - Retrieve memories based on semantic queries
-- `POST /plan` - Generate reasoning plans based on stored knowledge
+- `POST /plan/suggest` - Generate reasoning plans based on stored knowledge
 
 ### Dependencies
 - **Redis**: Working memory cache and session state

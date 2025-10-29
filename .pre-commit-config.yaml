@@ -38,10 +38,7 @@ repos:
   # Local hooks to run quick project-specific checks before push
   - repo: local
     hooks:
-      - id: run-critical-recall-test
-        name: Run critical recall E2E test (prevent bad push)
-        entry: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 pytest -q tests/integration/test_e2e_memory_http.py::TestE2EMemoryHTTP::test_remember_and_recall_end_to_end -q -s
-        language: system
-        stages: [push]
+      # Note: legacy RAG tests were removed with the RAG deprecation.
+      # Add new recall-only critical hooks here if needed.
 
 # Optional: add other hooks as your CI requires

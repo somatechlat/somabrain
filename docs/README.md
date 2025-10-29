@@ -32,6 +32,9 @@ This documentation follows the ISO-aligned four-manual structure:
 ### For Operators
 - [Architecture Overview](technical-manual/architecture.md) - System design and components
 - [Deployment Guide](technical-manual/deployment.md) - Production deployment
+- [Environment Variables](technical-manual/environment-variables.md) - Configuration matrix
+- [Services & Ports](technical-manual/services-and-ports.md) - Compose/K8s ports overview
+- [Benchmarks Quickstart](technical-manual/benchmarks-quickstart.md) - Run live and micro benches
 - [Monitoring Setup](technical-manual/monitoring.md) - Observability and alerts
 - [Runbooks](technical-manual/runbooks/) - Operational procedures
 
