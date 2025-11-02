@@ -44,11 +44,7 @@ Alternatively, use the helper script that writes a complete `.env`, builds the i
 ./scripts/dev_up.sh
 ```
 
-On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, use the override file to add a host‑gateway mapping:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
-```
+On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP explicitly (e.g., `http://192.168.1.10:9595`).
 
 Verify the stack:
 

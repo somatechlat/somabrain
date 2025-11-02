@@ -201,39 +201,4 @@ up-dev:
 	@echo "- Reward:         http://127.0.0.1:9999/reward/health"
 	@echo "- Learner:        http://127.0.0.1:9999/learner/health"
 
-# ---------------------------------------------------------------------------
-# Cognition overlay helpers (predictor services)
-# ---------------------------------------------------------------------------
-.PHONY: cog-up cog-logs cog-down
-
-COG_SERVICES=somabrain_predictor_state somabrain_predictor_agent somabrain_predictor_action
-
-cog-up:
-	@echo "Starting cognition overlay services ($(COG_SERVICES))..."
-	docker compose -f docker-compose.yml -f docker-compose.cog.yml up -d --build $(COG_SERVICES)
-
-cog-logs:
-	@echo "Tailing cognition overlay logs..."
-	docker compose -f docker-compose.yml -f docker-compose.cog.yml logs -f --tail=200 $(COG_SERVICES)
-
-cog-down:
-	@echo "Stopping and removing cognition overlay services..."
-	- docker compose -f docker-compose.yml -f docker-compose.cog.yml stop $(COG_SERVICES) 2>/dev/null || true
-	- docker compose -f docker-compose.yml -f docker-compose.cog.yml rm -f $(COG_SERVICES) 2>/dev/null || true
-
-# ---------------------------------------------------------------------------
-# Linux host-gateway override helpers (host.docker.internal on Linux)
-# ---------------------------------------------------------------------------
-.PHONY: compose-up-linux compose-logs-linux compose-down-linux
-
-compose-up-linux:
-	@echo "Bringing up stack with Linux host-gateway override..."
-	docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
-
-compose-logs-linux:
-	@echo "Tailing logs (API + Prometheus) with Linux override..."
-	docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml logs -f --tail=200 somabrain_app somabrain_prometheus
-
-compose-down-linux:
-	@echo "Bringing down stack with Linux override..."
-	docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml down --remove-orphans
+# (Removed) cognition overlay and Linux host-gateway helpers to keep a single compose entrypoint

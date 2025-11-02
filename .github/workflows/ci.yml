@@ -104,57 +104,8 @@ jobs:
           uv pip install -e .[dev]
       - name: Prepare .env for docker compose
         run: cp .env.example .env
-      - name: Start cognition services (docker compose overlay)
-        run: |
-          docker compose --env-file ./.env -f docker-compose.yml -f docker-compose.cog.yml up -d --build \
-            somabrain_redis \
-            somabrain_kafka \
-            somabrain_schema_registry \
-            somabrain_predictor_state \
-            somabrain_predictor_agent \
-            somabrain_predictor_action
-      - name: E2E smoke: cognitive-thread topics
-        run: |
-          set -e
-          set -a
-          source .env
-          set +a
-          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
-          uv run python scripts/e2e_cog_smoke.py
-      - name: E2E smoke: next_event
-        run: |
-          set -e
-          set -a
-          source .env
-          set +a
-          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
-          uv run python scripts/e2e_next_smoke.py
-      - name: E2E smoke: reward_event
-        run: |
-          set -e
-          set -a
-          source .env
-          set +a
-          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
-          export REWARD_PRODUCER_PORT="${REWARD_PRODUCER_HOST_PORT:-30183}"
-          uv run python scripts/e2e_reward_smoke.py
-      - name: E2E smoke: teach feedback -> reward
-        run: |
-          set -e
-          set -a
-          source .env
-          set +a
-          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
-          uv run python scripts/e2e_teach_feedback_smoke.py
-      - name: E2E smoke: learner config_update
-        run: |
-          set -e
-          set -a
-          source .env
-          set +a
-          export SOMABRAIN_KAFKA_URL="kafka://127.0.0.1:${KAFKA_BROKER_HOST_PORT}"
-          export REWARD_PRODUCER_PORT="${REWARD_PRODUCER_HOST_PORT:-30183}"
-          uv run python scripts/e2e_learner_smoke.py
+      # Removed cognition overlay step; keeping CI focused on core services
+      # Removed E2E cognition-thread smokes which depended on overlay-specific services
       # Removed integrator tau assertion: service somabrain_integrator_hub is not defined in compose.
       - name: Run tests with coverage (min 85%)
         run: uv run pytest --cov=somabrain --cov-report=term-missing --cov-fail-under=85

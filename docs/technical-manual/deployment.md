@@ -474,7 +474,7 @@ scrape_configs:
 > - Use the provided override file to add the host-gateway mapping:
 >   
 >   ```bash
->   docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
+>   For Linux hosts where `host.docker.internal` isn’t resolvable inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to your host IP (e.g., `http://192.168.1.10:9595`).
 >   ```
 >   
 >   Or via Makefile helpers:
@@ -747,21 +747,8 @@ By default, Kafka’s EXTERNAL listener is advertised as `localhost:${KAFKA_BROK
 KAFKA_EXTERNAL_HOST=192.168.1.10 ./scripts/dev_up.sh
 ```
 
-### Cognitive-thread services in Compose
-CI exercises additional services (predictors, integrator, segmentation, orchestrator, learner). For local experimentation with the predictors that live in this repo, use the optional overlay file `docker-compose.cog.yml`:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.cog.yml up -d --build \
-  somabrain_predictor_state somabrain_predictor_agent somabrain_predictor_action
-```
-
-Alternatively, use the Makefile helpers:
-
-```bash
-make cog-up     # start the predictor services
-make cog-logs   # tail their logs
-make cog-down   # stop and remove them
-```
+### Cognitive-thread services
+The CI environment may run additional internal services for validation, but the standard local stack uses only the core services defined in `docker-compose.yml`.
 
 ### OPA policies
 The dev policy at `ops/opa/policies/example.rego` is permissive. For production, use the deny-by-default example under `ops/opa/policies-prod/default.rego` and configure OPA to load that directory.

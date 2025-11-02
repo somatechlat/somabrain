@@ -375,32 +375,6 @@ docker compose exec postgres psql -U somabrain
 
 ---
 
-## Linux: host.docker.internal resolution
+## Notes on Linux host.docker.internal
 
-Some Linux setups don’t resolve `host.docker.internal` inside containers. To make it resolvable for the API and Prometheus, use the provided Compose override:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
-```
-
-Or via Makefile helpers:
-
-```bash
-make compose-up-linux
-make compose-logs-linux
-make compose-down-linux
-```
-
-This adds `extra_hosts: ["host.docker.internal:host-gateway"]` so in-container clients can reach services running on the host.
-
-## Cognition overlay services (optional)
-
-To run the predictor services that live in this repo alongside the core stack:
-
-```bash
-make cog-up     # start predictor_state, predictor_agent, predictor_action
-make cog-logs   # tail their logs
-make cog-down   # stop and remove them
-```
-
-These wrap `docker-compose.cog.yml` so you don’t have to type the long command.
+On some Linux hosts, `host.docker.internal` isn’t resolved automatically inside containers. If your memory service runs on the host, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP address explicitly (for example: `http://192.168.1.10:9595`).
