@@ -38,6 +38,18 @@ docker compose up -d
 docker compose logs -f somabrain_app
 ```
 
+Alternatively, use the helper script that writes a complete `.env`, builds the image if needed, and waits for health:
+
+```bash
+./scripts/dev_up.sh
+```
+
+On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, use the override file to add a host‑gateway mapping:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
+```
+
 Verify the stack:
 
 ```bash

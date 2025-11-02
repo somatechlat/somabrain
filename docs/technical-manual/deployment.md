@@ -471,6 +471,17 @@ scrape_configs:
 > Linux hosts: If running Prometheus inside Docker on Linux, `host.docker.internal` may not resolve by default. Options:
 > - Run Prometheus with host networking and scrape `localhost:PORT`.
 > - Add `--add-host=host.docker.internal:host-gateway` to the Prometheus container (compose `extra_hosts`).
+> - Use the provided override file to add the host-gateway mapping:
+>   
+>   ```bash
+>   docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
+>   ```
+>   
+>   Or via Makefile helpers:
+>   
+>   ```bash
+>   make compose-up-linux
+>   ```
 > - Expose scrape targets inside the compose network and reference service names.
 
 ## Backup & Recovery Setup
@@ -742,6 +753,14 @@ CI exercises additional services (predictors, integrator, segmentation, orchestr
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.cog.yml up -d --build \
   somabrain_predictor_state somabrain_predictor_agent somabrain_predictor_action
+```
+
+Alternatively, use the Makefile helpers:
+
+```bash
+make cog-up     # start the predictor services
+make cog-logs   # tail their logs
+make cog-down   # stop and remove them
 ```
 
 ### OPA policies

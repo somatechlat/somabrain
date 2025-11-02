@@ -372,3 +372,35 @@ docker compose exec postgres psql -U somabrain
 - [Testing Guidelines](testing-guidelines.md) for test strategy and frameworks
 - [Contribution Process](contribution-process.md) for PR workflow
 - [Architecture Overview](../technical-manual/architecture.md) for system understanding
+
+---
+
+## Linux: host.docker.internal resolution
+
+Some Linux setups don’t resolve `host.docker.internal` inside containers. To make it resolvable for the API and Prometheus, use the provided Compose override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.linux.host-gateway.yml up -d
+```
+
+Or via Makefile helpers:
+
+```bash
+make compose-up-linux
+make compose-logs-linux
+make compose-down-linux
+```
+
+This adds `extra_hosts: ["host.docker.internal:host-gateway"]` so in-container clients can reach services running on the host.
+
+## Cognition overlay services (optional)
+
+To run the predictor services that live in this repo alongside the core stack:
+
+```bash
+make cog-up     # start predictor_state, predictor_agent, predictor_action
+make cog-logs   # tail their logs
+make cog-down   # stop and remove them
+```
+
+These wrap `docker-compose.cog.yml` so you don’t have to type the long command.

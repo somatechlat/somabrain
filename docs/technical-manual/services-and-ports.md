@@ -22,3 +22,4 @@ Notes
 - The Kafka INTERNAL listener remains on 9092 inside the Docker network (somabrain_kafka:9092); host-side clients should use the EXTERNAL listener on the mapped host port.
 - On Linux (Docker Engine), host.docker.internal may not resolve inside containers by default; see the deployment guide for alternatives.
 - The API is considered ready when memory_ok and embedder_ok are true in GET /health (with strict flags enabled).
+ - Convenience: on Linux you can use the override file `docker-compose.linux.host-gateway.yml` to add `host.docker.internal:host-gateway`. Helper targets: `make compose-up-linux`, `make compose-logs-linux`, `make compose-down-linux`.

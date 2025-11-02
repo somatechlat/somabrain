@@ -15,7 +15,7 @@ To verify or follow up
 - Ensure any client examples use current request schemas:
   - `/recall` expects `top_k` (not `k`).
   - `/remember` uses `{ "payload": { ... } }` as canonical; legacy shapes should be explicitly called out.
-- Confirm all references to Kafka exporter images are generic (no hard-coded unofficial images); Compose already uses `quay.io/prometheuscommunity/kafka-exporter`.
+- Confirm all references to Kafka exporter images reflect current setup; Compose uses a Docker Hub OSS image `danielqsj/kafka-exporter` by default.
 
 How to proceed
 - Run a grep to catch remaining mismatches:

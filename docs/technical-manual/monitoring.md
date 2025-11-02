@@ -241,44 +241,25 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'somabrain_active'
+  # SomaBrain API metrics (FastAPI exports /metrics)
+  - job_name: 'somabrain_api'
     static_configs:
-      - targets: ['sb_somabrain:9696']
+      - targets: ['somabrain_app:9696']
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  - job_name: 'somabrain_host'
+  # Postgres exporter (provided by docker-compose service somabrain_postgres_exporter)
+  - job_name: 'postgres_exporter'
     static_configs:
-      - targets: ['host.docker.internal:9696']
-    metrics_path: '/metrics'
+      - targets: ['somabrain_postgres_exporter:9187']
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  - job_name: 'redis_metrics'
+  # Kafka exporter (provided by docker-compose service somabrain_kafka_exporter)
+  - job_name: 'kafka_exporter'
     static_configs:
-      - targets: ['sb_redis:6379']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'postgres_metrics'
-    static_configs:
-      - targets: ['sb_postgres_exporter:9187']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'kafka_metrics'
-    static_configs:
-      - targets: ['sb_kafka_exporter:9308']
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'opa_metrics'
-    static_configs:
-      - targets: ['sb_opa:8181']
-    metrics_path: '/metrics'
+      - targets: ['somabrain_kafka_exporter:9308']
     scrape_interval: 30s
     scrape_timeout: 10s
 ```

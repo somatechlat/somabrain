@@ -67,16 +67,8 @@ if [ "${SOMABRAIN_AUTO_MIGRATE:-}" = "1" ] || [ "${SOMABRAIN_AUTO_MIGRATE:-}" = 
   fi
 fi
 
-# Optional demo seed: when SOMABRAIN_DEMO_SEED=true, seed a few memories after startup.
-# Runs in background to avoid blocking the server.
-if [ "${SOMABRAIN_DEMO_SEED:-}" = "true" ] || [ "${SOMABRAIN_DEMO_SEED:-}" = "1" ]; then
-  (
-    sleep 2
-    SEED_HOST="${HOST}"
-    SEED_PORT="${PORT}"
-    sh scripts/docker_demo_seed.sh "$SEED_HOST" "$SEED_PORT" || true
-  ) &
-fi
+# Note: demo seeding via scripts/docker_demo_seed.sh has been removed to avoid referencing
+# non-existent scripts. If needed in the future, reintroduce a seeded data helper explicitly.
 
 # Initialize runtime singletons (idempotent). Important when backend enforcement is enabled.
 # Only run for API mode (no custom command provided).
