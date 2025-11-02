@@ -71,7 +71,7 @@ class ModeConfig:
         self.profile = self.PROFILES[self.mode]
         self._validate()
     
-    def _parse_mode(self, mode: str) -> DeploymentMode:
+    def _parse_mode(self, mode: str | None) -> DeploymentMode:
         m = (mode or "").strip().lower()
         if m in ("dev", "development"):
             return DeploymentMode.DEV

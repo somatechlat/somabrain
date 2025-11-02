@@ -33,3 +33,6 @@ grpcio==1.75.0
 # matplotlib==3.7.5  # downgraded to avoid build issues on Python 3.13
 pyinstrument==5.1.1  # updated from 0.4.3 to a version available for Python 3.13
 py-spy==0.3.14
+
+# Type stubs for stricter MyPy on common deps
+types-redis==4.6.0.20241004
