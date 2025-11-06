@@ -802,37 +802,11 @@ LINK_DECAY_PRUNED = Counter(
     registry=registry,
 )
 
-# Journal metrics
-JOURNAL_APPEND = Counter(
-    "somabrain_journal_append_total",
-    "Journal append events",
-    registry=registry,
-)
-JOURNAL_REPLAY = Counter(
-    "somabrain_journal_replay_total",
-    "Journal events replayed",
-    registry=registry,
-)
-JOURNAL_SKIP = Counter(
-    "somabrain_journal_skip_total",
-    "Journal lines skipped due to parse errors",
-    registry=registry,
-)
-JOURNAL_ROTATE = Counter(
-    "somabrain_journal_rotate_total",
-    "Journal file rotations performed",
-    registry=registry,
-)
 
 # Audit pipeline metrics: observe whether events go to Kafka or the durable journal fallback
 AUDIT_KAFKA_PUBLISH = Counter(
     "somabrain_audit_kafka_publish_total",
     "Audit events successfully published to Kafka (best-effort)",
-    registry=registry,
-)
-AUDIT_JOURNAL_FALLBACK = Counter(
-    "somabrain_audit_journal_fallback_total",
-    "Audit events written to the durable JSONL journal as a fallback",
     registry=registry,
 )
 
@@ -1298,14 +1272,9 @@ CIRCUIT_BREAKER_STATE = Gauge(
     "The state of the memory service circuit breaker (1=open, 0=closed).",
     registry=registry,
 )
-MEMORY_OUTBOX_PENDING_ITEMS = Gauge(
-    "somabrain_memory_outbox_pending_items",
-    "Number of memory operations waiting in the outbox to be synced.",
-    registry=registry,
-)
 MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     "somabrain_memory_outbox_sync_total",
-    "Total number of memory sync operations from the outbox.",
+    "Total number of memory sync operations from the outbox (legacy gauge removed).",
     ["status"],
     registry=registry,
 )

@@ -5,7 +5,14 @@ with a base directory, namespace, and a ``MemoryClient`` instance. The function
 replays journalled memory/link events into the provided client and returns the
 number of memories and links applied.
 """
+"""Deprecated: journaling removed. Do not use.
 
+This script has been removed. Use the real backends via `scripts/dev_up.sh`.
+"""
+
+import sys
+
+raise SystemExit("scripts/migrate_journal_to_backend.py is removed; journaling is not supported.")
 from __future__ import annotations
 
 from typing import Tuple

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Migrate legacy journal events into the memory outbox."""
+"""Deprecated: journaling removed. Do not use.
+
+This script has been removed. Use the real backends via `scripts/dev_up.sh`.
+"""
+
+import sys
+
+raise SystemExit("scripts/journal_to_outbox.py is removed; journaling is not supported.")
 
 from __future__ import annotations
 

@@ -23,7 +23,7 @@ import os
 import sys
 
 from .config import get_config
-from .journal import compact_journal, rotate_journal
+# Journal subsystem removed: compact_journal / rotate_journal no longer available.
 
 
 def run_api() -> None:
@@ -66,60 +66,5 @@ def run_api() -> None:
     uvicorn.run("somabrain.app:app", host=host, port=port, reload=False)
 
 
-def journal_cli(argv: list[str] | None = None) -> int:
-    """
-    Command-line interface for journal maintenance operations.
-
-    Provides CLI commands for rotating and compacting SomaBrain journals.
-    Supports namespace-specific operations and configurable parameters.
-
-    Commands:
-        rotate: Rotate journal files when they exceed size limits
-        compact: Compact journal files to reduce storage
-
-    Args:
-        argv (list[str] | None, optional): Command line arguments. Defaults to sys.argv.
-
-    Returns:
-        int: Exit code (0 for success, 1 for failure).
-
-    Examples:
-        >>> # Rotate journal with custom settings
-        >>> journal_cli(["rotate", "--namespace", "test", "--max-bytes", "5000000", "--keep", "5"])
-        >>>
-        >>> # Compact journal for specific namespace
-        >>> journal_cli(["compact", "--namespace", "production"])
-        >>>
-        >>> # From command line:
-        >>> # somabrain-journal rotate --max-bytes 10000000
-        >>> # somabrain-journal compact --namespace my-namespace
-    """
-    parser = argparse.ArgumentParser(
-        prog="somabrain-journal", description="Journal maintenance"
-    )
-    sub = parser.add_subparsers(dest="cmd", required=True)
-    p_rot = sub.add_parser("rotate")
-    p_rot.add_argument("--namespace", default="public")
-    p_rot.add_argument("--max-bytes", type=int, default=10_000_000)
-    p_rot.add_argument("--keep", type=int, default=3)
-    p_cmp = sub.add_parser("compact")
-    p_cmp.add_argument("--namespace", default="public")
-    args = parser.parse_args(argv)
-
-    cfg = get_config()
-    base_dir = str(getattr(cfg, "journal_dir", "./data/somabrain"))
-    ns = str(getattr(args, "namespace", "public"))
-    if args.cmd == "rotate":
-        rot = rotate_journal(
-            base_dir,
-            ns,
-            max_bytes=int(getattr(args, "max_bytes", 10_000_000)),
-            keep=int(getattr(args, "keep", 3)),
-        )
-        print(rot if rot else "no-rotate")
-        return 0
-    if args.cmd == "compact":
-        ok = compact_journal(base_dir, ns)
-        print("ok" if ok else "fail")
-        return 0 if ok else 1
-    return 1
+def journal_cli(argv: list[str] | None = None) -> int:  # legacy entrypoint retained
+    raise SystemExit("Journal CLI removed (fail-fast architecture).")

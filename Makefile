@@ -109,8 +109,8 @@ dev-up:
 	@./scripts/dev_up.sh
 
 local-up:
-	@echo "Starting pure‑Python local stack..."
-	@./scripts/run_full_stack.sh
+	@echo "Delegating to Docker‑Compose dev stack (dev_up.sh)"
+	@./scripts/dev_up.sh
 
 # Clean up virtual environment and caches (keeps existing behavior)
 .PHONY: clean

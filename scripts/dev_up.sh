@@ -66,7 +66,7 @@ OPA_PORT=$(find_free_port 30004)
 PROMETHEUS_PORT=$(find_free_port 30005)
 POSTGRES_PORT=$(find_free_port 30006)
 POSTGRES_EXPORTER_PORT=$(find_free_port 30007)
-API_HOST_PORT=$(find_free_port 9696)
+API_HOST_PORT=9696
 
 echo "Port allocation (host ports):"
 echo "  Redis: $REDIS_PORT"
@@ -76,7 +76,7 @@ echo "  OPA: $OPA_PORT"
 echo "  Prometheus: $PROMETHEUS_PORT"
 echo "  Postgres: $POSTGRES_PORT"
 echo "  Postgres Exporter: $POSTGRES_EXPORTER_PORT"
-echo "  SomaBrain API: $API_HOST_PORT"
+echo "  SomaBrain API: $API_HOST_PORT (fixed)"
 
 # Write detected ports
 cat <<PORTS >> $ENVFILE

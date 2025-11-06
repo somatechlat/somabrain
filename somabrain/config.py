@@ -278,10 +278,7 @@ class Config:
     expose_brain_demos: bool = False
 
     # Persistence
-    persistent_journal_enabled: bool = False
-    journal_dir: str = "./data/somabrain"
-    allow_journal_fallback: bool = False
-    journal_redact_fields: list[str] = field(default_factory=list)
+    # Journal subsystem removed: no persistent journaling configuration retained.
 
     # Learning loop feature flag
     learning_loop_enabled: bool = False

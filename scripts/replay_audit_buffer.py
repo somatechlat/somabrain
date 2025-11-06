@@ -61,31 +61,15 @@ def replay_from_redis(limit: Optional[int] = None):
 
 
 def replay_from_journal(limit: Optional[int] = None):
-    if not os.path.exists(AUDIT_JOURNAL_PATH):
-        LOGGER.info("No audit journal at %s", AUDIT_JOURNAL_PATH)
         return 0
-    count = 0
-    with open(AUDIT_JOURNAL_PATH, "r", encoding="utf-8") as f:
+                (removed)
+            -- Removed: audit now requires real Kafka; no journal fallback.
             def _normalize_kafka_url(val: str) -> str:
-                return val.replace("kafka://", "", 1) if val.startswith("kafka://") else val
-
-            KAFKA_URL = _normalize_kafka_url(os.getenv("SOMABRAIN_KAFKA_URL", "localhost:9092"))
-            try:
-                event = json.loads(line)
-            except Exception as exc:
-                LOGGER.warning("Invalid JSON in journal: %s", exc)
-                continue
-            if send_to_kafka(event):
-                count += 1
-    LOGGER.info("Replayed %d events from journal", count)
-    return count
-
-
-def send_to_kafka(event: dict) -> bool:
-    if not KafkaProducer:
-        LOGGER.error("kafka-python not installed")
-        return False
-    try:
+            def replay_from_journal(limit: Optional[int] = None):
+                raise SystemExit("replay_audit_buffer.py is deprecated; audit journaling removed.")
+                    choices=["redis"],
+                else:
+                    raise SystemExit("Only 'redis' source supported; journal removed.")
         producer = KafkaProducer(
             bootstrap_servers=KAFKA_URL,
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),

@@ -3423,49 +3423,18 @@ _background_task = None
 
 
 @app.on_event("startup")
-async def start_memory_sync_worker():
-    """Start a periodic worker that processes the outbox for all tenants
-    and attempts circuit‑breaker recovery via health checks.
-    """
-    # Reset global circuit breaker state for a clean start (use class variables)
+async def _init_fail_fast_state():
+    """Initialize circuit breaker state (no sync worker)."""
     from somabrain.services.memory_service import MemoryService
-
     MemoryService._circuit_open = False
     MemoryService._failure_count = 0
     MemoryService._last_failure_time = 0.0
     MemoryService._failure_threshold = 3
     MemoryService._reset_interval = 60
 
-    async def worker():
-        while True:
-            # Iterate over all known namespaces in the MultiTenantMemory pool
-            for ns in list(mt_memory._pool.keys()):
-                try:
-                    memsvc = MemoryService(mt_memory, ns)
-                    # Reset circuit if needed (calls health check internally)
-                    memsvc._reset_circuit_if_needed()
-                    # Process any pending outbox entries
-                    await memsvc._process_outbox()
-                except Exception:
-                    # Log silently – a failure here should not stop the loop
-                    pass
-            await asyncio.sleep(5)  # run every 5 seconds
-
-    global _background_task
-    _background_task = asyncio.create_task(worker())
-
-
 @app.on_event("shutdown")
-async def stop_memory_sync_worker():
-    """Cancel the background outbox worker on application shutdown."""
-    global _background_task
-    if _background_task:
-        _background_task.cancel()
-        try:
-            await _background_task
-        except Exception:
-            pass
-        _background_task = None
+async def _noop_shutdown():
+    return None
 
 
 # --- Module reload support -------------------------------------------------
