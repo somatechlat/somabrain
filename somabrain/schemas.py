@@ -344,11 +344,14 @@ class RecallResponse(BaseModel):
 class RetrievalRequest(BaseModel):
     query: str
     top_k: int = 10
-    retrievers: List[str] = ["vector", "wm", "graph"]
+    # Default to full-power multi-retriever set. Can be overridden via API/env.
+    retrievers: List[str] = ["vector", "wm", "graph", "lexical"]
+    # Default to auto so the pipeline selects HRR→MMR→cosine based on availability.
     rerank: str = (
-        "cosine"  # "cosine"|"mmr"|"hrr" (validated loosely in pipeline for PR‑1)
+        "auto"  # "auto"|"cosine"|"mmr"|"hrr" (validated in pipeline)
     )
-    persist: bool = False
+    # Enable session learning by default; can be disabled via API/env.
+    persist: bool = True
     universe: Optional[str] = None
     # Advanced targeting (optional):
     # mode: auto|id|key|coord|vector|wm|graph (auto by default)

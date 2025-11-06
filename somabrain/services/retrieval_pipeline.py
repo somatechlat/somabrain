@@ -93,7 +93,8 @@ async def run_retrieval_pipeline(
     cands: List[RetrievalCandidate] = []
     lists_by_retriever: dict[str, List[RetrievalCandidate]] = {}
     if not retrievers:
-        retrievers = ["vector", "wm"]
+        # Default to full multi-retriever set to maximize recall quality
+        retrievers = ["vector", "wm", "graph", "lexical"]
     # Try real adapters first if runtime singletons are available; fallback logic removed
     from somabrain import runtime as _rt
 

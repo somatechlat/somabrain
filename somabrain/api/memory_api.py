@@ -1185,15 +1185,63 @@ def _map_retrieval_to_memory_items(candidates: List[dict]) -> List["MemoryRecall
 
 
 def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> RetrievalRequest:
+    # Resolve environment-backed defaults for full-power behavior with safe rollback
+    def _env(name: str, default: str | None = None) -> str | None:
+        try:
+            v = os.getenv(name)
+            return v if v is not None and v != "" else default
+        except Exception:
+            return default
+
+    def _env_bool(name: str, default: bool) -> bool:
+        v = _env(name)
+        if v is None:
+            return default
+        s = v.strip().lower()
+        return s in ("1", "true", "yes", "on")
+
+    # Master switch: full power on by default; set 0/false to revert to conservative
+    full_power = _env_bool("SOMABRAIN_RECALL_FULL_POWER", True)
+    simple_defaults = _env_bool("SOMABRAIN_RECALL_SIMPLE_DEFAULTS", False)
+
+    # Compute effective defaults
+    if simple_defaults or not full_power:
+        eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "cosine")
+        eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", False)
+        eff_retrievers = (
+            (_env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph") or "")
+            .split(",")
+        )
+    else:
+        eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "auto")
+        eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", True)
+        eff_retrievers = (
+            (_env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph,lexical") or "")
+            .split(",")
+        )
+    eff_retrievers = [r.strip() for r in eff_retrievers if r and r.strip()]
+
     # Accept string or dict-like (including MemoryRecallRequest dict)
     if isinstance(obj, str):
-        return RetrievalRequest(query=obj, top_k=default_top_k)
+        req = RetrievalRequest(query=obj, top_k=default_top_k)
+        # Apply env-backed defaults when caller did not specify
+        req.rerank = eff_rerank or req.rerank
+        req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+        if not req.retrievers:
+            req.retrievers = eff_retrievers or req.retrievers
+        return req
     if isinstance(obj, MemoryRecallRequest):
-        return RetrievalRequest(
+        req = RetrievalRequest(
             query=obj.query,
             top_k=int(obj.top_k or default_top_k),
             universe=obj.universe,
         )
+        # Apply env-backed defaults when not provided by caller
+        req.rerank = eff_rerank or req.rerank
+        req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+        if not req.retrievers:
+            req.retrievers = eff_retrievers or req.retrievers
+        return req
     if isinstance(obj, dict):
         d = dict(obj)
         q = d.get("query") or d.get("q") or ""
@@ -1206,20 +1254,33 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
         coord = d.get("coord")
         uni = d.get("universe")
         tk = int(d.get("top_k") or default_top_k)
-        return RetrievalRequest(
+        req = RetrievalRequest(
             query=str(q),
             top_k=tk,
             retrievers=list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers,
             rerank=str(rk) if isinstance(rk, str) else RetrievalRequest().rerank,
-            persist=bool(d.get("persist")) if d.get("persist") is not None else False,
+            persist=bool(d.get("persist")) if d.get("persist") is not None else RetrievalRequest().persist,
             universe=str(uni) if isinstance(uni, str) else None,
             mode=str(mode) if isinstance(mode, str) else None,
             id=str(idv) if isinstance(idv, str) else None,
             key=str(keyv) if isinstance(keyv, str) else None,
             coord=str(coord) if isinstance(coord, str) else None,
         )
+        # If caller omitted fields, enforce env-backed defaults
+        if not isinstance(retr, list) or not retr:
+            req.retrievers = eff_retrievers or req.retrievers
+        if not isinstance(rk, str) or not rk:
+            req.rerank = eff_rerank or req.rerank
+        if d.get("persist") is None:
+            req.persist = eff_persist
+        return req
     # Fallback: stringify unknown payload
-    return RetrievalRequest(query=str(obj), top_k=default_top_k)
+    req = RetrievalRequest(query=str(obj), top_k=default_top_k)
+    req.rerank = eff_rerank or req.rerank
+    req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+    if not req.retrievers:
+        req.retrievers = eff_retrievers or req.retrievers
+    return req
 
 
 @router.post("/recall", response_model=MemoryRecallResponse)

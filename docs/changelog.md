@@ -1,3 +1,17 @@
+## 2025-11-06 — Full-Power Recall Defaults
+
+- Default retrieval behavior now enables the strongest recall and learning path:
+  - retrievers: `vector, wm, graph, lexical`
+  - rerank: `auto` (HRR → MMR → cosine based on availability)
+  - persist: `true` (records recall sessions and `retrieved_with` links)
+- Safe rollback and tuning via environment variables:
+  - `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
+  - `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
+  - `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
+  - `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
+  - `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+- The unified retrieval pipeline remains authoritative; exact pinning, rank fusion, reranking, and session learning are unchanged aside from defaults.
+
 ## V3.0.3-EXTRA-MILE
 
 - Unified recall under POST `/memory/recall` backed by the retrieval pipeline (vector, WM, lexical, graph, fusion, rerank).

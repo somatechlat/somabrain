@@ -117,6 +117,24 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 
 All endpoints require a Bearer token unless you set `SOMABRAIN_DISABLE_AUTH=1` for local experiments, and every call can be scoped with `X-Tenant-ID`.
 
+### Full-Power Recall Defaults (2025-11)
+
+By default, the recall API runs in full-capacity mode:
+
+- Retrievers: `vector, wm, graph, lexical`
+- Rerank: `auto` (prefers HRR → MMR → cosine depending on availability)
+- Session learning: enabled (`persist=true`) — recall sessions and `retrieved_with` links are recorded to improve future retrievals
+
+Override or rollback via environment variables (no code changes required):
+
+- `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
+- `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
+- `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
+- `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
+- `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+
+Tip: set `use_hrr=true` in config to enable HRR reranking when `rerank=auto`.
+
 ---
 
 ## Quick Start
