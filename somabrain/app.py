@@ -1476,26 +1476,8 @@ if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
     missing.append("mt_wm")
 if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
     missing.append("mc_wm")
-# Also allow bypass via explicit env flag (useful for test imports)
+# Allow bypass only for pytest collection/execution
 _bypass = bool(os.getenv("PYTEST_CURRENT_TEST"))
-if shared_settings is not None:
-    try:
-        if getattr(shared_settings, "allow_backend_fallbacks", False) or getattr(
-            shared_settings, "allow_backend_auto_fallbacks", False
-        ):
-            _bypass = True
-    except Exception:
-        pass
-else:
-    env_bypass = os.getenv("SOMABRAIN_ALLOW_BACKEND_FALLBACKS")
-    env_auto = os.getenv("SOMABRAIN_ALLOW_BACKEND_AUTO_FALLBACKS")
-    try:
-        if env_bypass and env_bypass.lower() in ("1", "true", "yes"):
-            _bypass = True
-        if env_auto and env_auto.lower() in ("1", "true", "yes"):
-            _bypass = True
-    except Exception:
-        pass
 if __ENFORCEMENT and missing and not _is_test and not _bypass:
     raise RuntimeError(
         f"BACKEND ENFORCEMENT: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"

@@ -177,13 +177,11 @@ class MemoryService:
         """Store multiple memory payloads in a single operation."""
 
         prepared: list[tuple[str, dict]] = []
-        journal_payload: list[dict] = []
         for key, payload in items:
             body = dict(payload)
             if universe and "universe" not in body:
                 body["universe"] = universe
             prepared.append((key, body))
-            journal_payload.append({"key": key, "payload": body})
 
         if not prepared:
             return []

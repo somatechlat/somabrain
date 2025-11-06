@@ -25,7 +25,7 @@
 
 **Docker Compose (localhost):**
 Standard ports (host → container):
-- API: `9999` → `9696`
+- API: `9696` → `9696`
 - Redis: `30100` → `6379`
 - Kafka (EXTERNAL): `30102` → `9094` (INTERNAL listener remains `9092`)
 - Kafka Exporter: `30103` → `9308`
@@ -34,7 +34,7 @@ Standard ports (host → container):
 - PostgreSQL: `30106` → `5432`
 - PostgreSQL Exporter: `30107` → `9187`
 
-Note: `scripts/dev_up.sh` auto-selects a free host port for the API (it tries 9696 first and increments on conflict). For a stable host port `:9999`, use `scripts/dev_up_9999.sh`. The effective host ports are written to `.env` and to `ports.json` (or `ports.9999.json`).
+Note: `scripts/dev_up.sh` sets a fixed host API port of `:9696`. The effective host ports are written to `.env` and to `ports.json`.
 
 **Kubernetes (LoadBalancer):**
 - API: `20020`
@@ -68,7 +68,7 @@ docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_a
 ./scripts/dev_up.sh
 
 # Verify deployment (unified /health endpoint)
-curl -fsS http://localhost:9999/health | jq
+curl -fsS http://localhost:9696/health | jq
 ```
 
 #### Direct Port Access (Local Parity)
@@ -77,7 +77,7 @@ The compose stack binds container ports directly to localhost for backend-enforc
 
 | Service | Host Port | Notes |
 | --- | --- | --- |
-| SomaBrain API | 9999 | `http://localhost:9999` for health, metrics, OpenAPI |
+| SomaBrain API | 9696 | `http://localhost:9696` for health, metrics, OpenAPI |
 | Redis | 30100 | `redis://localhost:30100/0` working-memory cache |
 | Kafka (EXTERNAL) | 30102 | Host bootstrap; INTERNAL remains `somabrain_kafka:9092` |
 | Kafka Exporter | 30103 | Metrics endpoint for Kafka observability |
@@ -651,9 +651,9 @@ kubectl patch deployment somabrain -n somabrain-prod -p '{"spec":{"template":{"s
 
 **Docker Compose Deployment** ✅
 - All services running and healthy (API + Redis/Kafka/OPA/Postgres/Prometheus)
-- Ports: 9999 (API), 30100–30108 (services)
+- Ports: 9696 (API), 30100–30108 (services)
 - Configuration: Centralized in `.env` file
-- Access: http://localhost:9999
+- Access: http://localhost:9696
 
 **Kubernetes Deployment** ✅
 - Helm charts are canonical (`infra/helm/charts/soma-infra` and `soma-apps`)
@@ -685,7 +685,7 @@ docker compose ps
 docker compose logs -f somabrain_app
 
 # Access API
-curl http://localhost:9999/health
+curl http://localhost:9696/health
 ```
 
 **Kubernetes:**

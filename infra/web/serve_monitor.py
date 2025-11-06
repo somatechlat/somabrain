@@ -18,7 +18,7 @@ class CORSHandler(HANDLER_CLASS):
         # Parse URL and query parameters
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/metrics":
-            # Expected query: ?port=9696 (local/docker) or 9999 (kubernetes cluster)
+            # Expected query: ?port=9696 (local/docker or k8s cluster)
             qs = urllib.parse.parse_qs(parsed.query)
             target_port = qs.get("port", ["9696"])[0]
             target_url = f"http://127.0.0.1:{target_port}/metrics"

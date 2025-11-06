@@ -8,7 +8,7 @@ def _api() -> str:
     return (
         os.getenv("SOMABRAIN_API_URL")
         or os.getenv("SOMA_API_URL")
-        or f"http://127.0.0.1:{os.getenv('SOMABRAIN_HOST_PORT', '9999')}"
+        or f"http://127.0.0.1:{os.getenv('SOMABRAIN_HOST_PORT', '9696')}"
     ).rstrip("/")
 
 

@@ -21,13 +21,13 @@ See also: `benchmarks/README.md` for a quick map.
 ## Prerequisites
 
 - A live stack running, with the Recall/Memory API reachable:
-  - `http://127.0.0.1:9999`
+  - `http://127.0.0.1:9696`
 - Optional: `matplotlib` for plots.
 
 Health check:
 
 ```sh
-curl -s http://127.0.0.1:9999/health | jq .ok
+curl -s http://127.0.0.1:9696/health | jq .ok
 ```
 
 ## Orchestrated live passes
@@ -36,7 +36,7 @@ Use the helper to run multiple passes and produce plots to a timestamped folder:
 
 ```sh
 PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
-  --recall-api-url http://127.0.0.1:9999 \
+  --recall-api-url http://127.0.0.1:9696 \
   --start 100 --end 1000 --passes 5 \
   --q 50 --topk 3 \
   --out-dir benchmarks/outputs/live_runs
@@ -55,13 +55,13 @@ Notes:
 
 - Recall latency only:
 ```sh
-SOMA_API_URL=http://127.0.0.1:9999 BENCH_N=300 BENCH_Q=50 BENCH_TOPK=3 \
+SOMA_API_URL=http://127.0.0.1:9696 BENCH_N=300 BENCH_Q=50 BENCH_TOPK=3 \
   PYTHONPATH=. python benchmarks/recall_latency_bench.py | tee recall_300.json
 ```
 
 - Recall live bench:
 ```sh
-SOMABRAIN_API_URL=http://127.0.0.1:9999 \
+SOMABRAIN_API_URL=http://127.0.0.1:9696 \
   PYTHONPATH=. python benchmarks/recall_live_bench.py --output benchmarks/outputs/recall_live_results.json
 ```
 

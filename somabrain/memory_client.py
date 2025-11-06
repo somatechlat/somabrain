@@ -406,33 +406,7 @@ class MemoryClient:
                 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
             except Exception:
                 pass
-        # If running inside Docker and no endpoint provided, default to the
-        # host gateway which is commonly reachable as host.docker.internal on
-        # macOS/Windows. This helps tests running inside containers talk to
-        # a memory service running on the host machine (configure via
-        # SOMABRAIN_DOCKER_MEMORY_FALLBACK).
-        try:
-            in_docker = os.path.exists("/.dockerenv")
-        except Exception:
-            in_docker = False
-        if not base_url and in_docker:
-            try:
-                fallback = (
-                    getattr(shared_settings, "docker_memory_fallback", None)
-                    if shared_settings is not None
-                    else None
-                )
-            except Exception:
-                fallback = None
-            try:
-                base_url = (fallback or os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK") or "")
-                if base_url:
-                    logger.debug(
-                        "MemoryClient running in Docker, defaulting base_url to %r",
-                        base_url,
-                    )
-            except Exception:
-                pass
+        # Fail-fast: do not auto-default inside Docker; require explicit endpoint
         client_kwargs: dict[str, Any] = {
             "base_url": base_url,
             "headers": headers,

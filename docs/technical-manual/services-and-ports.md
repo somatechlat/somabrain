@@ -3,12 +3,11 @@
 This matrix summarizes the Docker Compose services and their default container ports, along with the typical host ports used by the helper scripts.
 
 Host ports
-- scripts/dev_up.sh: picks free ports automatically (API starts at 9696 and increments if busy). Writes .env and ports.json.
-- scripts/dev_up_9999.sh: uses a stable API host port 9999 and fixed 3010x/30108 host ports for infra. Writes .env and ports.9999.json.
+- scripts/dev_up.sh: sets a fixed API host port 9696 and writes .env and ports.json.
 
-| Service | Container Port | Default Host Port (9999 stack) |
+| Service | Container Port | Default Host Port |
 |---|---:|---:|
-| somabrain_app (API) | 9696 | 9999 |
+| somabrain_app (API) | 9696 | 9696 |
 | somabrain_redis | 6379 | 30100 |
 | somabrain_kafka (EXTERNAL listener) | 9094 | 30102 |
 | somabrain_kafka_exporter | 9308 | 30103 |

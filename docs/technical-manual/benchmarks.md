@@ -4,7 +4,7 @@
 
 A quick, repeatable benchmark to measure remember/recall latency percentiles against a running Somabrain API.
 
-- API: defaults to http://127.0.0.1:9999 (override with `SOMA_API_URL`)
+- API: defaults to http://127.0.0.1:9696 (override with `SOMA_API_URL`)
 - Memory: expected at 9595 (as configured for dev/prod-like compose)
 
 ### How to run
@@ -17,7 +17,7 @@ make up-prod-like
 make bench-recall
 
 # Or customize
-SOMA_API_URL=http://127.0.0.1:9999 BENCH_N=500 BENCH_Q=100 BENCH_TOPK=5 make bench-recall
+SOMA_API_URL=http://127.0.0.1:9696 BENCH_N=500 BENCH_Q=100 BENCH_TOPK=5 make bench-recall
 ```
 
 ### Output

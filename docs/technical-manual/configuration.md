@@ -49,7 +49,7 @@ Update this table whenever you introduce or deprecate environment knobs. Keep na
 
 ## Loading Order
 
-1. `.env` in the project root (written by `scripts/dev_up.sh` or `scripts/dev_up_9999.sh`).
+1. `.env` in the project root (written by `scripts/dev_up.sh`).
 2. Real environment variables provided by the shell, container, or orchestrator.
 3. Defaults inside `common.config.settings.Settings`.
 

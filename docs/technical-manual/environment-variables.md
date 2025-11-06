@@ -6,7 +6,7 @@ This page lists the key environment variables that control SomaBrain in both loc
 - SOMABRAIN_MODE: execution mode. Typical values: enterprise (dev), production (prod).
 - SOMABRAIN_HOST: bind address inside the container (default 0.0.0.0).
 - SOMABRAIN_PORT: container listen port (default 9696).
-- SOMABRAIN_HOST_PORT: host port mapped to the API. Set via .env by scripts/dev_up.sh or scripts/dev_up_9999.sh.
+- SOMABRAIN_HOST_PORT: host port mapped to the API. Set via .env by scripts/dev_up.sh.
 
 ### Enforcement and features
 - SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: 1 to enforce real backends (no dev fallbacks).
@@ -41,6 +41,5 @@ This page lists the key environment variables that control SomaBrain in both loc
 The scripts write sane defaults into .env for a single-node, dual-listener Kafka broker. Key variables include KAFKA_BROKER_HOST_PORT, KAFKA_CFG_LISTENERS, and KAFKA_CFG_ADVERTISED_LISTENERS.
 
 Notes
-- scripts/dev_up.sh writes .env with resolved values and a ports.json with the effective host-port mappings.
-- For a stable host port :9999 use scripts/dev_up_9999.sh; otherwise, the API host port defaults to 9696 or the next free port.
+- scripts/dev_up.sh writes .env with resolved values and a ports.json with the effective host-port mappings (API fixed at 9696).
 - Health and readiness reflect these flags: external_backends_required, full_stack, memory_ok, embedder_ok, retrieval_ready.

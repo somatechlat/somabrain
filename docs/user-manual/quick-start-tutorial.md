@@ -12,7 +12,7 @@
   - Verify wiring at `GET /diagnostics` and check `memory_endpoint`.
 - Authentication disabled (`SOMABRAIN_DISABLE_AUTH=1`) or a valid bearer token. If auth is enabled, add `-H "Authorization: Bearer <token>"` to the examples.
 
-Port note: If you started the stack with `scripts/dev_up.sh`, the API host port defaults to 9696 (or the next free port). If you used `scripts/dev_up_9999.sh`, it’s fixed at 9999. Check `.env` or `ports.json` for the effective `SOMABRAIN_HOST_PORT` and adjust the base URL accordingly.
+Port note: The API host port is fixed at 9696 when started via `scripts/dev_up.sh`. Check `.env` or `ports.json` if needed and adjust the base URL accordingly.
 
 ---
 

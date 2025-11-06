@@ -4,9 +4,7 @@ This guide shows how to run SomaBrain’s benchmarks locally in “developer pro
 
 ## Prerequisites
 
-- Stack up and healthy. Confirm the API port:
-  - Fixed profile: http://127.0.0.1:9999
-  - Dynamic/dev profile: http://127.0.0.1:9696
+- Stack up and healthy. API host port is fixed at http://127.0.0.1:9696
 - External memory backend reachable at http://127.0.0.1:9595 (containers use host.docker.internal)
 - Python 3.11 with project deps installed:
 
@@ -100,7 +98,7 @@ python benchmarks/capacity_curves.py
 
 ## Tips
 
-- Ports vary by profile. Prefer 9696 unless you intentionally run the 9999 profile. Verify with `/health`.
+- Port is fixed at 9696; verify with `/health`.
 - Hit-rate depends on payload fields. Using `content` in addition to `task` generally improves retrieval quality for live benches.
 - Persistence effects may need a short delay (~0.5–1.0s) for the external indexer to catch up.
 - Evidence of “no mocks”: use `benchmarks/run_live_benchmarks.py` to capture `/metrics` deltas for /remember and /recall and health snapshots.

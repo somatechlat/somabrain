@@ -28,7 +28,6 @@ FORBIDDEN_ROOT_FILES = [
     "somabrain.zip",
     ".DS_Store",
     "ports.json",
-    "ports.9999.json",
 ]
 
 # Required documentation structure

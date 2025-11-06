@@ -135,12 +135,6 @@ class Settings(BaseSettings):
     predictor_provider: str = Field(
         default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
     )
-    allow_backend_fallbacks: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_FALLBACKS", False)
-    )
-    allow_backend_auto_fallbacks: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_AUTO_FALLBACKS", False)
-    )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)
     )
@@ -174,9 +168,6 @@ class Settings(BaseSettings):
     memory_db_path: str = Field(
         default=os.getenv("MEMORY_DB_PATH", "./data/memory.db")
     )
-    docker_memory_fallback: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
-    )
 
     learning_rate_dynamic: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_LEARNING_RATE_DYNAMIC", False)
@@ -184,9 +175,7 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
-    allow_local_mirrors: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_LOCAL_MIRRORS", True)
-    )
+    # Deprecated fallback toggles removed: no local/durable fallbacks allowed
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior

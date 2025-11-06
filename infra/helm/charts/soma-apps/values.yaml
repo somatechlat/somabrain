@@ -41,8 +41,8 @@ sb:
   containerPort: 9696
   testService:
     enabled: false
-    # ClusterIP test service port exposed inside the cluster for CI/load tests
-    port: 9999
+    # ClusterIP test service port exposed inside the cluster for CI/load tests (matches main API port)
+    port: 9696
     targetPort: 9696
   ingress:
     enabled: false
