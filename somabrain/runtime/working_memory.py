@@ -1,4 +1,8 @@
-"""Redis-backed working memory ring buffer with in-process fallback."""
+"""Redis-backed working memory ring buffer.
+
+Strict mode: requires Redis by default. To explicitly allow local in-process
+buffer (for tests only), set `SOMABRAIN_ALLOW_LOCAL_WM=1`.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +10,7 @@ import collections
 import json
 
 from typing import Deque, Dict, List, Optional
+import os
 
 try:  # pragma: no cover - optional dependency
     import redis  # type: ignore
@@ -13,6 +18,16 @@ except Exception:  # pragma: no cover
     redis = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
+
+
+def _env_true(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    try:
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        return default
 
 
 class WorkingMemoryBuffer:
@@ -28,6 +43,7 @@ class WorkingMemoryBuffer:
         self._max_items = max_items
         self._use_redis = False
         self._local: Dict[str, Deque[Dict]] = {}
+        require_redis = not _env_true("SOMABRAIN_ALLOW_LOCAL_WM", False)
         if redis is not None:
             url = redis_url or get_redis_url()
             try:
@@ -42,6 +58,10 @@ class WorkingMemoryBuffer:
                 self._redis = None
         else:
             self._redis = None
+        if require_redis and not self._use_redis:
+            raise RuntimeError(
+                "WorkingMemoryBuffer requires Redis. Set SOMABRAIN_ALLOW_LOCAL_WM=1 to permit local fallback for tests."
+            )
 
     def record(self, session_id: str, item: Dict) -> None:
         if self._use_redis and self._redis is not None:

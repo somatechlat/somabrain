@@ -175,8 +175,6 @@ class MemoryWriteResponse(BaseModel):
     tenant: str
     namespace: str
     coordinate: Optional[List[float]] = None
-    queued: bool = False
-    breaker_open: bool = False
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     deduplicated: bool = False
@@ -303,7 +301,6 @@ class MemoryMetricsResponse(BaseModel):
     namespace: str
     wm_items: int
     circuit_open: bool
-    outbox_pending: int
 
 
 class MemoryBatchWriteItem(BaseModel):
@@ -356,8 +353,7 @@ class MemoryBatchWriteResponse(BaseModel):
     tenant: str
     namespace: str
     results: List[MemoryBatchWriteResult]
-    breaker_open: bool = False
-    queued: int = 0
+    
 
 
 class MemoryRecallSessionResponse(BaseModel):
@@ -425,18 +421,7 @@ def _serialize_coord(coord: Any) -> Optional[List[float]]:
     return None
 
 
-def _count_outbox_entries(memsvc: MemoryService) -> int:
-    try:
-        client = memsvc.client()
-        path = getattr(client, "_outbox_path", None)
-        if not path:
-            return 0
-        if not os.path.exists(path):
-            return 0
-        with open(path, "r", encoding="utf-8") as handle:
-            return sum(1 for line in handle if line.strip())
-    except Exception:
-        return 0
+# Removed: no local outbox support
 
 
 def _prune_sessions() -> None:
@@ -588,11 +573,7 @@ async def remember_memory(
         coord = await memsvc.aremember(payload.key, stored_payload)
         persisted_to_ltm = True
     except RuntimeError as exc:
-        breaker_state = memsvc._is_circuit_open()
-        raise HTTPException(
-            status_code=503,
-            detail={"message": str(exc), "breaker_open": breaker_state},
-        ) from exc
+        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
@@ -648,8 +629,6 @@ async def remember_memory(
         tenant=payload.tenant,
         namespace=payload.namespace,
         coordinate=coordinate_list,
-        queued=False,
-        breaker_open=breaker_state,
         promoted_to_wm=promoted_to_wm,
         persisted_to_ltm=persisted_to_ltm,
         deduplicated=False,
@@ -725,8 +704,6 @@ async def remember_memory_batch(
             tenant=payload.tenant,
             namespace=payload.namespace,
             results=[],
-            breaker_open=memsvc._is_circuit_open(),
-            queued=0,
         )
 
     try:
@@ -736,11 +713,7 @@ async def remember_memory_batch(
         )
         persisted_to_ltm = True
     except RuntimeError as exc:
-        breaker_state = memsvc._is_circuit_open()
-        raise HTTPException(
-            status_code=503,
-            detail={"message": str(exc), "breaker_open": breaker_state},
-        ) from exc
+        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
@@ -816,8 +789,6 @@ async def remember_memory_batch(
         tenant=payload.tenant,
         namespace=payload.namespace,
         results=results,
-        breaker_open=memsvc._is_circuit_open(),
-        queued=0,
     )
 
 
@@ -968,11 +939,7 @@ async def _perform_recall(
                 universe=payload.universe or "real",
             )
         except RuntimeError as exc:
-            breaker_state = memsvc._is_circuit_open()
-            raise HTTPException(
-                status_code=503,
-                detail={"message": str(exc), "breaker_open": breaker_state},
-            ) from exc
+            raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
         except Exception as exc:
             raise HTTPException(
                 status_code=502, detail=f"recall failed: {exc}"
@@ -1395,11 +1362,7 @@ async def memory_metrics(
     except Exception:
         wm_items = 0
 
-    outbox_pending = _count_outbox_entries(memsvc)
-    try:
-        memsvc._update_outbox_metric(outbox_pending)
-    except Exception:
-        pass
+    # No local outbox/journal; fail-fast semantics only
     try:
         record_memory_snapshot(tenant, namespace, items=wm_items)
     except Exception:
@@ -1410,7 +1373,6 @@ async def memory_metrics(
         namespace=namespace,
         wm_items=wm_items,
         circuit_open=memsvc._is_circuit_open(),
-        outbox_pending=outbox_pending,
     )
 
 

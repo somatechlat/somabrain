@@ -39,7 +39,6 @@ import asyncio
 import json
 import os
 import time
-from pathlib import Path
 from typing import Any
 from threading import RLock
 from collections.abc import Iterable
@@ -136,27 +135,7 @@ class MemoryService:
         return True
 
     def _update_outbox_metric(self, pending: int) -> None:
-        if _metrics is None:
-            return
-        gauge = getattr(_metrics, "MEMORY_OUTBOX_PENDING_ITEMS", None)
-        if gauge is None:
-            return
-        try:
-            gauge.set(max(0, int(pending)))
-        except Exception:
-            pass
-
-    @staticmethod
-    def _journal_enabled() -> bool:
-        cfg = get_config()
-        allow = bool(getattr(cfg, "allow_journal_fallback", False))
-        override = os.getenv("ALLOW_JOURNAL_FALLBACK")
-        if override is not None:
-            allow = override.strip().lower() in ("1", "true", "yes", "on")
-        enforcement = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
-        if enforcement and enforcement.strip().lower() in ("1", "true", "yes", "on"):
-            allow = False
-        return allow
+        return
 
     def remember(self, key: str, payload: dict, universe: str | None = None):
         """Stores a memory payload. In V3, this fails fast if the remote is down."""
@@ -164,11 +143,7 @@ class MemoryService:
             payload["universe"] = universe
 
         if self._is_circuit_open():
-            self._journal_failure(
-                "remember",
-                {"key": key, "payload": payload, "universe": universe, "queued": True},
-            )
-            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+            raise RuntimeError("Memory service unavailable (circuit open)")
 
         try:
             result = self.client().remember(key, payload)
@@ -176,15 +151,7 @@ class MemoryService:
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning(
-                f"Memory operation 'remember' failed for key '{key}'. Journaling."
-            )
-            self._journal_failure(
-                "remember", {"key": key, "payload": payload, "universe": universe}
-            )
-            raise RuntimeError(
-                "Memory service unavailable; operation journaled."
-            ) from e
+            raise RuntimeError("Memory service unavailable") from e
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         """Async version of remember."""
@@ -192,11 +159,7 @@ class MemoryService:
             payload["universe"] = universe
 
         if self._is_circuit_open():
-            self._journal_failure(
-                "remember",
-                {"key": key, "payload": payload, "universe": universe, "queued": True},
-            )
-            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+            raise RuntimeError("Memory service unavailable (circuit open)")
 
         try:
             result = await self.client().aremember(key, payload)
@@ -204,15 +167,7 @@ class MemoryService:
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning(
-                f"Async memory operation 'aremember' failed for key '{key}'. Journaling."
-            )
-            self._journal_failure(
-                "remember", {"key": key, "payload": payload, "universe": universe}
-            )
-            raise RuntimeError(
-                "Memory service unavailable; operation journaled."
-            ) from e
+            raise RuntimeError("Memory service unavailable") from e
 
     async def aremember_bulk(
         self,
@@ -234,11 +189,7 @@ class MemoryService:
             return []
 
         if self._is_circuit_open():
-            self._journal_failure(
-                "remember_bulk",
-                {"items": journal_payload, "universe": universe, "queued": True},
-            )
-            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+            raise RuntimeError("Memory service unavailable (circuit open)")
 
         try:
             coords = await self.client().aremember_bulk(prepared)
@@ -246,102 +197,31 @@ class MemoryService:
             return list(coords)
         except Exception as e:
             self._mark_failure()
-            logger.warning(
-                "Async memory operation 'aremember_bulk' failed. Journaling."
-            )
-            self._journal_failure(
-                "remember_bulk",
-                {"items": journal_payload, "universe": universe},
-            )
-            raise RuntimeError(
-                "Memory service unavailable; operation journaled."
-            ) from e
+            raise RuntimeError("Memory service unavailable") from e
 
     def link(self, from_coord, to_coord, link_type="related", weight=1.0):
         """Creates a link between memories. Fails fast and journals on error."""
         if self._is_circuit_open():
-            self._journal_failure(
-                "link",
-                {
-                    "from_coord": from_coord,
-                    "to_coord": to_coord,
-                    "link_type": link_type,
-                    "weight": weight,
-                    "queued": True,
-                },
-            )
-            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+            raise RuntimeError("Memory service unavailable (circuit open)")
         try:
             result = self.client().link(from_coord, to_coord, link_type, weight)
             self._mark_success()
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning("Memory operation 'link' failed. Journaling.")
-            self._journal_failure(
-                "link",
-                {
-                    "from_coord": from_coord,
-                    "to_coord": to_coord,
-                    "link_type": link_type,
-                    "weight": weight,
-                },
-            )
-            raise RuntimeError(
-                "Memory service unavailable; operation journaled."
-            ) from e
+            raise RuntimeError("Memory service unavailable") from e
 
     async def alink(self, from_coord, to_coord, link_type="related", weight=1.0):
         """Async version of link."""
         if self._is_circuit_open():
-            self._journal_failure(
-                "link",
-                {
-                    "from_coord": from_coord,
-                    "to_coord": to_coord,
-                    "link_type": link_type,
-                    "weight": weight,
-                    "queued": True,
-                },
-            )
-            raise RuntimeError("Memory circuit breaker open; operation journaled.")
+            raise RuntimeError("Memory service unavailable (circuit open)")
         try:
             result = await self.client().alink(from_coord, to_coord, link_type, weight)
             self._mark_success()
             return result
         except Exception as e:
             self._mark_failure()
-            logger.warning("Async memory operation 'alink' failed. Journaling.")
-            self._journal_failure(
-                "link",
-                {
-                    "from_coord": from_coord,
-                    "to_coord": to_coord,
-                    "link_type": link_type,
-                    "weight": weight,
-                },
-            )
-            raise RuntimeError(
-                "Memory service unavailable; operation journaled."
-            ) from e
-
-    def _journal_failure(self, op: str, data: dict):
-        """Writes a failed operation to the journal for the sync worker to pick up."""
-        if not self._journal_enabled():
-            raise RuntimeError(
-                "Journal fallback disabled; configure allow_journal_fallback to enable migration."
-            )
-        try:
-            from somabrain import journal
-
-            journal_dir = getattr(get_config(), "journal_dir", "./data/somabrain")
-            event_type = "mem" if op == "remember" else op
-            event = {"op": op, "type": event_type, **data}
-            journal.append_event(journal_dir, self.namespace, event)
-        except Exception:
-            logger.exception(
-                "Failed to write to journal. Memory operation may be lost."
-            )
+            raise RuntimeError("Memory service unavailable") from e
 
     def _health_check(self) -> bool:
         try:
@@ -373,138 +253,7 @@ class MemoryService:
             cls._last_failure_time = time.monotonic()
         return False
 
-    async def _process_outbox(self) -> int:
-        """Replay queued outbox entries for this namespace in the background."""
-        if hasattr(asyncio, "to_thread"):
-            return await asyncio.to_thread(self._process_outbox_sync)
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._process_outbox_sync)
-
-    def _process_outbox_sync(self) -> int:
-        client = self.client()
-        path_str = getattr(client, "_outbox_path", None)
-        if not path_str:
-            self._update_outbox_metric(0)
-            return 0
-        path = Path(path_str)
-        if not path.exists():
-            self._update_outbox_metric(0)
-            return 0
-        tmp_path = path.with_suffix(path.suffix + ".processing")
-        try:
-            if tmp_path.exists():
-                tmp_path.unlink()
-        except Exception:
-            pass
-        try:
-            path.rename(tmp_path)
-        except FileNotFoundError:
-            self._update_outbox_metric(0)
-            return 0
-        except OSError:
-            # Another process may be touching the file; skip this cycle.
-            self._update_outbox_metric(0)
-            return 0
-
-        processed = 0
-        remaining: list[dict] = []
-        try:
-            with tmp_path.open("r", encoding="utf-8") as handle:
-                for line in handle:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        entry = json.loads(line)
-                    except Exception:
-                        continue
-                    try:
-                        success = self._handle_outbox_entry(client, entry)
-                    except Exception:
-                        success = False
-                        self._mark_failure()
-                        remaining.append(entry)
-                    else:
-                        if success:
-                            processed += 1
-                            self._mark_success()
-                        else:
-                            remaining.append(entry)
-        finally:
-            writeback_ok = False
-            try:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                if remaining:
-                    with path.open("a", encoding="utf-8") as handle:
-                        for entry in remaining:
-                            json.dump(entry, handle)
-                            handle.write("\n")
-                else:
-                    path.touch(exist_ok=True)
-                writeback_ok = True
-            except Exception:
-                writeback_ok = False
-            finally:
-                if writeback_ok:
-                    try:
-                        tmp_path.unlink()
-                    except FileNotFoundError:
-                        pass
-                else:
-                    try:
-                        if tmp_path.exists():
-                            tmp_path.rename(path)
-                    except Exception:
-                        pass
-
-        self._update_outbox_metric(len(remaining))
-        return processed
-
-    def _handle_outbox_entry(self, client, entry: dict) -> bool:
-        op = str(entry.get("op") or "").strip().lower()
-        payload_obj = entry.get("payload")
-        payload = payload_obj if isinstance(payload_obj, dict) else {}
-        try:
-            if op in {"remember", "aremember", "store"}:
-                coord_key = payload.get("coord_key") or payload.get("key")
-                if not coord_key:
-                    inner = payload.get("payload") or {}
-                    coord_key = (
-                        inner.get("task") or inner.get("id") or os.urandom(4).hex()
-                    )
-                body = payload.get("payload") or payload
-                client.remember(coord_key, body)
-                return True
-            if op in {"remember_bulk", "aremember_bulk"}:
-                items_data = payload.get("items") if isinstance(payload, dict) else None
-                if not items_data:
-                    return False
-                items = []
-                for item in items_data:
-                    if not isinstance(item, dict):
-                        continue
-                    coord_key = item.get("coord_key") or item.get("key")
-                    if not coord_key:
-                        inner = item.get("payload") or {}
-                        coord_key = inner.get("task") or os.urandom(4).hex()
-                    items.append((coord_key, item.get("payload") or {}))
-                if not items:
-                    return False
-                client.remember_bulk(items, request_id=payload.get("request_id"))
-                return True
-            if op in {"link", "alink"}:
-                from_coord = payload.get("from_coord") or payload.get("from")
-                to_coord = payload.get("to_coord") or payload.get("to")
-                if from_coord is None or to_coord is None:
-                    return False
-                link_type = payload.get("link_type", "related")
-                weight = payload.get("weight", 1.0)
-                client.link(from_coord, to_coord, link_type, weight)
-                return True
-        except Exception as exc:
-            logger.debug("Failed to replay outbox entry '%s': %r", op or "?", exc)
-            raise
-        return False
+    # Journal/outbox fallback removed: no background replay
 
     def coord_for_key(self, key: str, universe: str | None = None):
         return self.client().coord_for_key(key, universe)
