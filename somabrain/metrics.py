@@ -660,11 +660,8 @@ LTM_STORE_LAT = Histogram(
     "Latency of LTM store operations",
     registry=registry,
 )
-LTM_STORE_QUEUED = Counter(
-    "somabrain_ltm_store_queued_total",
-    "Count of LTM store operations queued due to backend unavailability",
-    registry=registry,
-)
+ # Removed queued write semantics (fail-fast); metric deprecated.
+ # (Previously: somabrain_ltm_store_queued_total)
 
 # Executive details
 EXEC_K_SELECTED = Histogram(

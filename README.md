@@ -34,7 +34,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 ### Learning & Neuromodulation
 - **AdaptationEngine** (`somabrain/learning/adaptation.py`) provides decoupled gains for retrieval (α, β, γ, τ) and utility (λ, μ, ν), driven by tenant-specific feedback. Configured gains/bounds are mirrored in metrics and the adaptation state API.
 - **Neuromodulators** (`somabrain/neuromodulators.py`) supply dopamine/serotonin/noradrenaline/acetylcholine levels that can modulate learning rate (enable with `SOMABRAIN_LEARNING_RATE_DYNAMIC`).
-- **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, feedback counts, and queue health (`somabrain_ltm_store_queued_total`).
+- **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, and feedback counts.
 
 ---
 

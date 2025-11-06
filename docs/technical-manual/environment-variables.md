@@ -34,7 +34,7 @@ This page lists the key environment variables that control SomaBrain in both loc
 - SOMA_OPA_FAIL_CLOSED: 1 to make OPA required for readiness.
 
 ### Outbox/journaling (durability under outages)
-- SOMABRAIN_JOURNAL_DIR: persistent journal path (mounted volume in Compose).
+ 
 - SOMABRAIN_OUTBOX_BATCH_SIZE, SOMABRAIN_OUTBOX_MAX_DELAY, SOMABRAIN_OUTBOX_POLL_INTERVAL, SOMABRAIN_OUTBOX_MAX_RETRIES: outbox worker tuning.
 
 ### Kafka KRaft (single-node dev defaults)

@@ -118,6 +118,16 @@ SOMABRAIN_MODE=enterprise
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
 FLAGS
 
+# App-level sane defaults to avoid compose warnings
+cat <<'APPVARS' >> $ENVFILE
+SOMABRAIN_HOST=0.0.0.0
+SOMABRAIN_WORKERS=1
+SOMABRAIN_DEFAULT_TENANT=sandbox
+SOMABRAIN_MEMORY_ENABLE_WEIGHTING=0
+SOMABRAIN_MEMORY_PHASE_PRIORS=
+SOMABRAIN_MEMORY_QUALITY_EXP=1.0
+APPVARS
+
 # In-cluster service URLs for containers
 cat <<'INCLUSTER' >> $ENVFILE
 SOMABRAIN_REDIS_URL=redis://somabrain_redis:6379/0
@@ -158,8 +168,8 @@ KRAFT
 
 # Resolve advertised external listener host (default localhost unless KAFKA_EXTERNAL_HOST is set)
 EXT_HOST=${KAFKA_EXTERNAL_HOST:-localhost}
-sed -i '' -e "s#__EXT_HOST__#${EXT_HOST}:${KAFKA_BROKER_HOST_PORT}#g" "$ENVFILE" 2>/dev/null || \
-    sed -i -e "s#__EXT_HOST__#${EXT_HOST}:${KAFKA_BROKER_HOST_PORT}#g" "$ENVFILE"
+sed -i '' -e "s#__EXT_HOST__#${EXT_HOST}:${KAFKA_BROKER_PORT}#g" "$ENVFILE" 2>/dev/null || \
+    sed -i -e "s#__EXT_HOST__#${EXT_HOST}:${KAFKA_BROKER_PORT}#g" "$ENVFILE"
 
 echo "Wrote $ENVFILE:" && sed -n '1,200p' $ENVFILE
 
