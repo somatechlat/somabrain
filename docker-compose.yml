@@ -57,7 +57,10 @@ services:
       KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
       KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID}
     volumes:
-      - kafka_data:/var/lib/kafka
+      # Persist Kafka broker data in the correct data directory.
+      # The apache/kafka image uses /var/lib/kafka/data for logs; mounting at that
+      # exact path avoids Docker creating an anonymous volume that overrides persistence.
+      - kafka_data:/var/lib/kafka/data
     command:
       - bash
       - -c
@@ -299,6 +302,9 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY}
       SOMABRAIN_JOURNAL_DIR: ${SOMABRAIN_JOURNAL_DIR}
+      # Ensure the worker can access the external memory backend on port 9595
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
 
 volumes:
   kafka_data:
