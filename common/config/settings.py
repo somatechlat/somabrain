@@ -237,8 +237,8 @@ class Settings(BaseSettings):
             return True
 
     @property
-    def mode_memstore_auth_required(self) -> bool:
-        """Whether memstore HTTP calls must carry a token.
+    def mode_memory_auth_required(self) -> bool:
+        """Whether memory-service HTTP calls must carry a token.
 
         - dev: True (dev token or approved proxy)
         - staging: True

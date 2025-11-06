@@ -1042,12 +1042,12 @@ async def _startup_mode_banner() -> None:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
         api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        mem_auth = bool(getattr(_shared, "mode_memstore_auth_required", True)) if _shared else True
+        mem_auth = bool(getattr(_shared, "mode_memory_auth_required", True)) if _shared else True
         opa_closed = bool(getattr(_shared, "mode_opa_fail_closed", True)) if _shared else True
         log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
         bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
         lg.warning(
-            "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memstore_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
+            "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
             mode,
             mode_norm,
             api_auth,

@@ -56,12 +56,12 @@ class ContextBuilder:
     def __init__(
         self,
         embed_fn: Callable[[str], Iterable[float]],
-        memstore: Optional[object] = None,
+        memory: Optional[object] = None,
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memstore = memstore or MemoryRecallClient()
+        self._memory = memory or MemoryRecallClient()
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default placeholder)
@@ -233,17 +233,17 @@ class ContextBuilder:
         return [float(v) for v in raw]
 
     def _search(self, query_text: str, embedding: List[float], top_k: int) -> List[Dict]:
-        # Prefer text search on the live memstore when possible, with tenant scoping
+        # Prefer text search on the live memory service when possible, with tenant scoping
         try:
             filters = {"tenant": self._tenant_id} if getattr(self, "_tenant_id", None) else None
-            results = self._memstore.search_text(query_text, top_k=top_k, filters=filters)
+            results = self._memory.search_text(query_text, top_k=top_k, filters=filters)
             if results:
                 return results
         except Exception:
             pass
         # Fallback to legacy vector search path
         try:
-            return self._memstore.search(embedding, top_k=top_k)
+            return self._memory.search(embedding, top_k=top_k)
         except Exception:
             return []
 

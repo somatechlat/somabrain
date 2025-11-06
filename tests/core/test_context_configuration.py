@@ -12,7 +12,7 @@ def _dummy_embed(_: str):
     return [1.0, 0.0]
 
 
-class _DummyMemstore:
+class _DummyMemory:
     def search(self, embedding, top_k=5):
         return []
 
@@ -21,7 +21,7 @@ def test_tau_configuration_overrides(monkeypatch) -> None:
     monkeypatch.setenv("SOMABRAIN_RECALL_TAU_INCREMENT_UP", "0.2")
     monkeypatch.setenv("SOMABRAIN_RECALL_TAU_INCREMENT_DOWN", "0.1")
     monkeypatch.setenv("SOMABRAIN_RECALL_TAU_MAX", "1.5")
-    builder = ContextBuilder(_dummy_embed, memstore=_DummyMemstore())
+    builder = ContextBuilder(_dummy_embed, memory=_DummyMemory())
     builder._weights = RetrievalWeights(alpha=1.0, beta=0.0, gamma=0.0, tau=0.6)
     memories = [
         MemoryRecord(

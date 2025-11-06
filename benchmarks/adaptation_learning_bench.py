@@ -53,7 +53,7 @@ try:
     from somabrain.embeddings import TinyDeterministicEmbedder  # type: ignore
 except Exception:
     TinyDeterministicEmbedder = None  # type: ignore
-    # Local minimal fallback to ensure memstore seeding works without imports
+    # Local minimal fallback to ensure memory seeding works without imports
     import hashlib  # type: ignore
     import numpy as _np  # type: ignore
 
@@ -83,7 +83,7 @@ ART_DIR = pathlib.Path("artifacts/learning")
 ART_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default memory HTTP endpoint follows centralized settings/env
-DEFAULT_MEMSTORE_URL = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "").strip() or os.getenv("MEMORY_SERVICE_URL", "").strip() or ""
+DEFAULT_MEMORY_URL = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "").strip() or os.getenv("MEMORY_SERVICE_URL", "").strip() or ""
 
 
 def _headers(session_id: Optional[str] = None) -> Dict[str, str]:
@@ -209,12 +209,12 @@ def _stable_coord_from_key(key: str) -> str:
     return f"{x},{y},{z}"
 
 
-def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, timeout: float = 10.0, memory_type: str = "semantic", *, tenant: Optional[str] = None) -> dict:
-    """Store a single memory into the memstore via POST /memories.
+def memory_store(coord: str, payload: dict, base_url: Optional[str] = None, timeout: float = 10.0, memory_type: str = "semantic", *, tenant: Optional[str] = None) -> dict:
+    """Store a single memory into the memory service via POST /memories.
 
     Payload is an arbitrary JSON object. We include tenant and content fields for retrieval.
     """
-    url = f"{(base_url or DEFAULT_MEMSTORE_URL).rstrip('/')}/memories"
+    url = f"{(base_url or DEFAULT_MEMORY_URL).rstrip('/')}/memories"
     # Ensure coord is a supported 3D coordinate string; if not, derive deterministically from key
     coord_key = str(coord)
     coord_value = coord_key if ("," in coord_key and len(coord_key.split(",")) >= 3) else _stable_coord_from_key(coord_key)
@@ -256,22 +256,22 @@ def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, ti
         resp.raise_for_status()
     except requests.HTTPError:
         if resp.status_code in (401, 403):
-            raise RuntimeError(f"memstore unauthorized ({resp.status_code}): check SOMABRAIN_MEMORY_HTTP_TOKEN")
+            raise RuntimeError(f"memory service unauthorized ({resp.status_code}): check SOMABRAIN_MEMORY_HTTP_TOKEN")
         try:
             # Surface server details to aid debugging
-            print("memstore_store error:", resp.status_code, resp.text[:500])
+            print("memory_store error:", resp.status_code, resp.text[:500])
         except Exception:
             pass
         raise
     return resp.json()
 
 
-def memstore_auth_check(base_url: Optional[str] = None, timeout: float = 5.0) -> Tuple[bool, Optional[str]]:
+def memory_auth_check(base_url: Optional[str] = None, timeout: float = 5.0) -> Tuple[bool, Optional[str]]:
     """Lightweight auth probe against /memories/search to verify token acceptance.
 
     Returns (ok, error_detail).
     """
-    url = f"{(base_url or DEFAULT_MEMSTORE_URL).rstrip('/')}/memories/search"
+    url = f"{(base_url or DEFAULT_MEMORY_URL).rstrip('/')}/memories/search"
     headers = {"Content-Type": "application/json"}
     token = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "").strip()
     if token:
@@ -290,8 +290,8 @@ def memstore_auth_check(base_url: Optional[str] = None, timeout: float = 5.0) ->
         return False, str(exc)
 
 
-def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) -> int:
-    """Seed N synthetic facts directly into the memstore used by evaluate() via /memories.
+def seed_memory(n: int, *, tenant: str, memory_url: Optional[str] = None) -> int:
+    """Seed N synthetic facts directly into the memory service used by evaluate() via /memories.
 
     Returns the number of successful writes.
     """
@@ -303,10 +303,10 @@ def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) ->
         coord = f"mem-{tenant}-{i}"
         payload = {"content": text, "tenant": tenant, "kind": "synthetic", "text": text, "title": f"A{i}", "universe": "real", "namespace": tenant}
         try:
-            memstore_store(coord, payload, base_url=memstore_url, tenant=tenant)
+            memory_store(coord, payload, base_url=memory_url, tenant=tenant)
             success += 1
         except Exception as exc:
-            print(f"seed_memstore[{i}] failed: {exc}")
+            print(f"seed_memory[{i}] failed: {exc}")
             # Simple backoff on rate limits
             try:
                 if "429" in str(exc):
@@ -314,15 +314,15 @@ def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) ->
             except Exception:
                 pass
         if i % 200 == 0:
-            print(f"Memstore seeding progress: {i}/{n} (ok={success})")
+            print(f"Memory seeding progress: {i}/{n} (ok={success})")
     return success
 
 
-def seed_target_memstore(*, tenant: str, content: str, memstore_url: Optional[str] = None) -> None:
-    """Seed a single target memory directly into the memstore used by evaluate()."""
+def seed_target_memory_service(*, tenant: str, content: str, memory_url: Optional[str] = None) -> None:
+    """Seed a single target memory directly into the memory service used by evaluate()."""
     coord = f"target-{tenant}-{uuid.uuid4().hex[:8]}"
     payload = {"content": content, "tenant": tenant, "kind": "target", "text": content, "title": "target"}
-    memstore_store(coord, payload, base_url=memstore_url)
+    memory_store(coord, payload, base_url=memory_url)
 
 
 def fetch_adaptation_state(tenant_id: Optional[str] = None) -> dict:
@@ -345,9 +345,9 @@ def run_adaptation(
     target_text: Optional[str] = None,
     target_query: Optional[str] = None,
     seed_target: bool = False,
-    seed_memstore_count: int = 0,
-    memstore_url: Optional[str] = None,
-    seed_target_memstore_flag: bool = False,
+    seed_memory_count: int = 0,
+    memory_url: Optional[str] = None,
+    seed_target_memory_flag: bool = False,
     do_reset: bool = False,
     base_lr_override: Optional[float] = None,
     constraints_override: Optional[Dict[str, float]] = None,
@@ -376,22 +376,22 @@ def run_adaptation(
             _post("context/adaptation/reset", reset_payload, headers=_headers())
         except Exception as exc:
             print(f"Warning: reset failed or not available: {exc}")
-    # Optionally seed memstore corpus for evaluate() retrieval
-    memstore_auth_ok: Optional[bool] = None
-    memstore_seeded_count: int = 0
-    if seed_memstore_count > 0 or (track_target and seed_target_memstore_flag):
-        ok, detail = memstore_auth_check(memstore_url)
-        memstore_auth_ok = ok
+    # Optionally seed memory corpus for evaluate() retrieval
+    memory_auth_ok: Optional[bool] = None
+    memory_seeded_count: int = 0
+    if seed_memory_count > 0 or (track_target and seed_target_memory_flag):
+        ok, detail = memory_auth_check(memory_url)
+        memory_auth_ok = ok
         if not ok:
-            print(f"Memstore auth check failed: {detail}")
-        if ok and seed_memstore_count > 0:
+            print(f"Memory auth check failed: {detail}")
+        if ok and seed_memory_count > 0:
             try:
-                memstore_seeded_count = seed_memstore(seed_memstore_count, tenant=tenant_id, memstore_url=memstore_url)
-                print(f"Memstore seeded ok={memstore_seeded_count}/{seed_memstore_count} for tenant={tenant_id}")
+                memory_seeded_count = seed_memory(seed_memory_count, tenant=tenant_id, memory_url=memory_url)
+                print(f"Memory seeded ok={memory_seeded_count}/{seed_memory_count} for tenant={tenant_id}")
             except Exception as exc:
-                print(f"Warning: memstore seeding failed: {exc}")
+                print(f"Warning: memory seeding failed: {exc}")
 
-    # Optionally seed a target memory for rank tracking (memstore and/or internal memory)
+    # Optionally seed a target memory for rank tracking (app memory and/or external memory service)
     if track_target and seed_target and target_text:
         try:
             # Seed into app memory for completeness
@@ -399,10 +399,10 @@ def run_adaptation(
         except Exception as exc:
             print(f"Warning: failed to seed target memory into app memory: {exc}")
         try:
-            if seed_target_memstore_flag and (memstore_auth_ok or memstore_auth_ok is None):
-                seed_target_memstore(tenant=tenant_id, content=target_text, memstore_url=memstore_url)
+            if seed_target_memory_flag and (memory_auth_ok or memory_auth_ok is None):
+                seed_target_memory_service(tenant=tenant_id, content=target_text, memory_url=memory_url)
         except Exception as exc:
-            print(f"Warning: failed to seed target memory into memstore: {exc}")
+            print(f"Warning: failed to seed target memory into memory service: {exc}")
 
     # If tracking and a target-specific query is provided, prefer it
     if track_target and target_query:
@@ -579,11 +579,11 @@ def run_adaptation(
     # Attach retrieval counts
     if retrieval_counts:
         result["retrieval_count"] = retrieval_counts
-    # Attach memstore auth/seeding meta if we attempted any interaction
-    if seed_memstore_count > 0 or (track_target and seed_target_memstore_flag):
+    # Attach memory auth/seeding meta if we attempted any interaction
+    if seed_memory_count > 0 or (track_target and seed_target_memory_flag):
         if isinstance(result.get("meta"), dict):
-            result["meta"]["memstore_auth_ok"] = bool(memstore_auth_ok) if memstore_auth_ok is not None else None
-            result["meta"]["memstore_seeded_ok"] = int(memstore_seeded_count)
+            result["meta"]["memory_auth_ok"] = bool(memory_auth_ok) if memory_auth_ok is not None else None
+            result["meta"]["memory_seeded_ok"] = int(memory_seeded_count)
     return result
 
 
@@ -760,12 +760,12 @@ def main():
     ap.add_argument("--plot", action="store_true", help="Render matplotlib plot")
     ap.add_argument("--query", type=str, default="measure my adaptation progress", help="Evaluation query text")
     ap.add_argument("--tenant", type=str, default=None, help="Override base tenant (suffix will be auto-appended)")
-    # Memstore seeding and config
-    ap.add_argument("--seed-memstore", type=int, default=0, help="Seed N synthetic memories directly into memstore for evaluate retrieval")
+    # Memory service seeding and config
+    ap.add_argument("--seed-memory", type=int, default=0, help="Seed N synthetic memories directly into the memory service for evaluate retrieval")
     ap.add_argument(
-        "--memstore-url",
+        "--memory-url",
         type=str,
-        default=os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", DEFAULT_MEMSTORE_URL),
+        default=os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", DEFAULT_MEMORY_URL),
         help="Override memory HTTP endpoint",
     )
 
@@ -792,7 +792,7 @@ def main():
     ap.add_argument("--target-text", type=str, default="Author777 wrote Book777", help="Target memory content to seed and track")
     ap.add_argument("--target-query", type=str, default=None, help="Use a specific query when tracking; defaults to target-text if provided")
     ap.add_argument("--seed-target", action="store_true", help="Seed the target memory into the run's tenant before starting")
-    ap.add_argument("--seed-target-memstore", action="store_true", help="Also seed the target memory directly into memstore")
+    ap.add_argument("--seed-target-memory", action="store_true", help="Also seed the target memory directly into the memory service")
     # Optional adaptation reset and overrides
     ap.add_argument("--reset-adaptation", action="store_true", help="Reset adaptation state for the run (uses overrides if provided)")
     ap.add_argument("--base-lr", type=float, default=None, help="Override base learning rate on reset")
@@ -875,9 +875,9 @@ def main():
         target_text=(args.target_text if args.track_target else None),
         target_query=(args.target_query if args.target_query else (args.target_text if args.track_target else None)),
         seed_target=bool(args.seed_target and args.track_target),
-        seed_memstore_count=int(args.seed_memstore),
-        memstore_url=(args.memstore_url or DEFAULT_MEMSTORE_URL),
-        seed_target_memstore_flag=bool(args.seed_target_memstore and args.track_target),
+        seed_memstore_count=int(args.seed_memory),
+        memstore_url=(args.memory_url or DEFAULT_MEMORY_URL),
+        seed_target_memstore_flag=bool(args.seed_target_memory and args.track_target),
         do_reset=bool(args.reset_adaptation),
         base_lr_override=(float(args.base_lr) if args.base_lr is not None else None),
         constraints_override=constraints_override,

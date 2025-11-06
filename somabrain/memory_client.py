@@ -481,7 +481,7 @@ class MemoryClient:
         if shared_settings is not None:
             try:
                 mem_auth_required = bool(
-                    getattr(shared_settings, "mode_memstore_auth_required", True)
+                    getattr(shared_settings, "mode_memory_auth_required", True)
                 )
             except Exception:
                 mem_auth_required = True

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-# export_memstore_env.sh
+# export_memory_env.sh
 # Extract the Memory HTTP endpoint and token from the current stack env-file
 # and write a host-friendly export file you can "source" to run host tools.
 
@@ -8,10 +8,10 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
 ENVFILE=".env"
-OUTFILE="scripts/.memstore.env"
+OUTFILE="scripts/.memory.env"
 
 if [[ ! -f "$ENVFILE" ]]; then
-  echo "[export_memstore_env] Missing $ENVFILE. Run scripts/dev_up_9999.sh or scripts/dev_up.sh first." >&2
+  echo "[export_memory_env] Missing $ENVFILE. Run scripts/dev_up_9999.sh or scripts/dev_up.sh first." >&2
   exit 1
 fi
 
@@ -35,7 +35,7 @@ export SOMABRAIN_MEMORY_HTTP_ENDPOINT="$MEM_ENDPOINT_HOST"
 export SOMABRAIN_MEMORY_HTTP_TOKEN="${MEM_TOKEN:-}"
 EOF
 
-echo "[export_memstore_env] Wrote $OUTFILE"
+echo "[export_memory_env] Wrote $OUTFILE"
 echo "  SOMABRAIN_MEMORY_HTTP_ENDPOINT=$MEM_ENDPOINT_HOST"
 if [[ -n "${MEM_TOKEN:-}" ]]; then
   echo "  SOMABRAIN_MEMORY_HTTP_TOKEN set (length ${#MEM_TOKEN})"
@@ -50,20 +50,20 @@ STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/js
 
 case "$STATUS" in
   200|404|422)
-    echo "[export_memstore_env] Auth probe OK (status $STATUS)."
+    echo "[export_memory_env] Auth probe OK (status $STATUS)."
     ;;
   401|403)
-    echo "[export_memstore_env] Auth probe FAILED (status $STATUS). Token may be missing or invalid for $MEM_ENDPOINT_HOST." >&2
+    echo "[export_memory_env] Auth probe FAILED (status $STATUS). Token may be missing or invalid for $MEM_ENDPOINT_HOST." >&2
     ;;
   000)
-    echo "[export_memstore_env] Unable to reach $MEM_ENDPOINT_HOST. Is the memory service listening on port 9595?" >&2
+    echo "[export_memory_env] Unable to reach $MEM_ENDPOINT_HOST. Is the memory service listening on port 9595?" >&2
     ;;
   *)
-    echo "[export_memstore_env] Probe returned status $STATUS (informational).";
+    echo "[export_memory_env] Probe returned status $STATUS (informational).";
     ;;
 esac
 
 echo
 echo "Usage:"
 echo "  source $OUTFILE"
-echo "  python benchmarks/adaptation_learning_bench.py --memstore-url \"$MEM_ENDPOINT_HOST\" --seed-memstore 1000 --iterations 300 --plot"
+echo "  python benchmarks/adaptation_learning_bench.py --memory-url \"$MEM_ENDPOINT_HOST\" --seed-memory 1000 --iterations 300 --plot"

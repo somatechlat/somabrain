@@ -20,10 +20,10 @@ _utility_weights = UtilityWeights()
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
-    memstore = MemoryRecallClient()
+    memory = MemoryRecallClient()
     return ContextBuilder(
         embed_fn=_embedder.embed,
-        memstore=memstore,
+        memory=memory,
         weights=_retrieval_weights,
         working_memory=_working_memory,
     )
