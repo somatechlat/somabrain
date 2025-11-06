@@ -19,14 +19,7 @@ groups:
           summary: "Working memory utilization high"
           description: "WM utilization exceeds 85% for 5 minutes"
 
-      - alert: JournalVsAdmits
-        expr: (sum(rate(somabrain_journal_append_total[1m])) == 0) and (sum(rate(somabrain_wm_admit_total[1m])) > 10)
-        for: 2m
-        labels:
-          severity: critical
-        annotations:
-          summary: "Journal appends stopped while WM admits high"
-          description: "No journal appends but WM admits > 10/min for 2 minutes"
+      # Journal fallback removed: drop journal vs admits alert
 
       - alert: QuotaDenies
         expr: sum(rate(somabrain_quota_denied_total[1m])) > 0

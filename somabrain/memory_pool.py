@@ -1,9 +1,8 @@
 """Multi-tenant memory pool for SomaBrain.
 
-The pool hands out one `MemoryClient` instance per namespace. Journal replay is
-no longer performed here (handled by the MemorySyncWorker/migration helpers).
-All operations are HTTP-first via the external memory service; no local/stub
-mirrors are used.
+The pool hands out one `MemoryClient` instance per namespace. There is no
+local journal replay or stub mirror. All operations are HTTP-first via the
+external memory service.
 """
 
 from __future__ import annotations
@@ -35,8 +34,6 @@ class MultiTenantMemory:
             cfg2 = replace(self.cfg)
             cfg2.namespace = ns
 
-            # V3: The pool no longer replays the journal. This is now the sole
-            # responsibility of the MemorySyncWorker.
             client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
             self._pool[ns] = client
 

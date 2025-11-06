@@ -13,7 +13,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 | **Tiered Memory** | Multi-tenant working memory + long-term storage coordinated by `TieredMemory`, powered by governed `SuperposedTrace` vectors and cleanup indexes. |
 | **Contextual Reasoning** | `/context/evaluate` builds prompts, weights memories, and returns residuals; `/context/feedback` updates tenant-specific retrieval and utility weights in Redis. |
 | **Adaptive Learning** | Decoupled gains and bounds per parameter, configurable via settings/env, surfaced in Prometheus metrics and the adaptation state API. |
-| **Observability Built-In** | `/health`, `/metrics`, structured logs, and journaling. Queued writes and adaptation behaviour emit explicit metrics so you can see when the brain deviates. |
+| **Observability Built-In** | `/health`, `/metrics`, and structured logs. Adaptation behaviour emits explicit metrics so you can see when the brain deviates. |
 | **Hard Tenancy** | Each request resolves a tenant namespace (`somabrain/tenant.py`); quotas and rate limits are enforced before the memory service is called. |
 | **Complete Docs** | Four-manual documentation suite (User, Technical, Development, Onboarding) plus a canonical improvement log (`docs/CANONICAL_IMPROVEMENTS.md`). |
 
@@ -47,7 +47,7 @@ HTTP Client
 FastAPI Runtime (somabrain/app.py)
    │   ├─ Authentication & tenancy guards
    │   ├─ ContextBuilder / Planner / AdaptationEngine
-   │   ├─ MemoryService (HTTP + journaling)
+    │   ├─ MemoryService (HTTP)
    │   └─ Prometheus metrics, structured logs
    ▼
 Working Memory (MultiTenantWM) ──► Redis
@@ -105,7 +105,7 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, and embedder.
-| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Journals if the backend is unavailable and sets `breaker_open`/`queued` flags.
+| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Fails fast with 503 if the backend is unavailable.
 | `POST /remember/batch` | Bulk ingestion with per-item success/failure counts.
 | `POST /recall` | Retrieves working-memory and long-term matches with scores from `UnifiedScorer`.
 | `POST /context/evaluate` | Builds a prompt, returns weighted memories, residual vector, and working-memory snapshot.
@@ -183,9 +183,7 @@ Inspect tenant learning state:
 $ curl -s http://localhost:9999/context/adaptation/state | jq
 ```
 
-Metrics are available at `http://localhost:9999/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
-
-Journaling and durability: writes are journaled to `/var/lib/somabrain/journal` when external backends are unavailable. The Compose stack mounts a persistent volume (`somabrain_journal_data`) at that path so journaled events survive container restarts. You can replay journals into your memory backend with `scripts/migrate_journal_to_backend.py` or `scripts/journal_to_outbox.py`.
+Metrics are available at `http://localhost:9999/metrics`; adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
 
 ---
 

@@ -54,7 +54,6 @@ from somabrain.embeddings import make_embedder
 from somabrain.events import extract_event_fields
 from somabrain.exec_controller import ExecConfig, ExecutiveController
 from somabrain.hippocampus import ConsolidationConfig, Hippocampus
-from somabrain.journal import append_event
 from somabrain.memory_pool import MultiTenantMemory
 from somabrain.microcircuits import MCConfig, MultiColumnWM
 from somabrain.mt_context import MultiTenantHRRContext
@@ -2952,65 +2951,19 @@ async def remember(body: dict, request: Request):
     import time as _t
 
     _s0 = _t.perf_counter()
-    breaker_open = False
-    queued = False
     try:
         await memsvc.aremember(key, payload)
     except RuntimeError as e:
-        # Previously this silently succeeded which hid actual backend outages.
-        # In enterprise/full-stack mode (memory required) surface a 503 so callers
-        # know the write is only queued and not yet persisted remotely.
-        if shared_settings is not None:
-            try:
-                require_memory = bool(getattr(shared_settings, "require_memory", True))
-            except Exception:
-                require_memory = True
-        else:
-            try:
-                require_memory = os.getenv("SOMABRAIN_REQUIRE_MEMORY") in (
-                    "1",
-                    "true",
-                    "True",
-                    None,
-                )
-            except Exception:
-                require_memory = True
-        # Mark operational state flags before deciding response behavior
-        try:
-            breaker_open = True
-            queued = True
-        except Exception:
-            pass
-        try:
-            M.LTM_STORE_QUEUED.inc()
-        except Exception:
-            pass
-        if require_memory:
-            # Include operational flags in the error payload for clients that want to react.
-            raise HTTPException(
-                status_code=503,
-                detail={
-                    "message": "memory backend unavailable; write queued",
-                    "breaker_open": True,
-                    "queued": True,
-                },
-            ) from e
-        # If memory not strictly required we degrade to previous soft behavior.
-        pass
+        # Fail-fast: do not queue or journal. Always surface 503.
+        raise HTTPException(
+            status_code=503,
+            detail={"message": "memory backend unavailable"},
+        ) from e
     try:
         M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
     except Exception:
         pass
-    # Journal append (best-effort)
-    try:
-        if getattr(cfg, "persistent_journal_enabled", False):
-            append_event(
-                str(getattr(cfg, "journal_dir", "./data/somabrain")),
-                ctx.namespace,
-                {"type": "mem", "key": key, "payload": payload},
-            )
-    except Exception:
-        pass
+    # No journaling: writes must succeed against the real backend
     # also admit to WM
     text = payload.get("task") or ""
     import time as _t
@@ -3089,8 +3042,6 @@ async def remember(body: dict, request: Request):
         "trace_id": trace_id,
         "deadline_ms": deadline_ms,
         "idempotency_key": idempotency_key,
-        "breaker_open": breaker_open or None,
-        "queued": queued or None,
     }
 
 
