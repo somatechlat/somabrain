@@ -29,7 +29,7 @@ from typing import Callable, Optional
 
 import numpy as np
 
-# Prefer the optional top-level arc_cache helper; fall back to a no-op decorator if unavailable
+# Prefer the optional top-level arc_cache helper; if unavailable, caching is disabled
 try:  # pragma: no cover - trivial import guard
     from arc_cache import arc_cache  # type: ignore
 except Exception:  # pragma: no cover

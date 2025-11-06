@@ -18,7 +18,7 @@ class BeliefUpdatePublisher:
     """Lightweight producer for BeliefUpdate events to cog.<domain>.updates.
 
     Uses fastavro schemaless serde when available; otherwise, falls back to JSON bytes.
-    This class is best-effort: if Kafka is down or deps are missing, it becomes a no-op.
+    Requires Kafka to be configured and reachable; does not silently degrade.
     """
 
     def __init__(self) -> None:
@@ -27,7 +27,7 @@ class BeliefUpdatePublisher:
         self._producer: Optional[KafkaProducer] = None
         bootstrap = _bootstrap_from_env()
         if not bootstrap:
-            return
+            raise RuntimeError("SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher")
         # Try Avro first
         try:
             from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -49,17 +49,13 @@ class BeliefUpdatePublisher:
 
             self._value_serializer = _ser
 
-        try:
-            self._producer = KafkaProducer(
-                bootstrap_servers=bootstrap,
-                acks="1",
-                linger_ms=5,
-                value_serializer=self._value_serializer,
-            )
-            self.enabled = True
-        except Exception:
-            self._producer = None
-            self.enabled = False
+        self._producer = KafkaProducer(
+            bootstrap_servers=bootstrap,
+            acks="1",
+            linger_ms=5,
+            value_serializer=self._value_serializer,
+        )
+        self.enabled = True
 
     @staticmethod
     def _topic(domain: str) -> str:
@@ -85,7 +81,7 @@ class BeliefUpdatePublisher:
         ts: Optional[str] = None,
     ) -> None:
         if not self.enabled or not self._producer:
-            return
+            raise RuntimeError("BeliefUpdatePublisher not initialized")
         record = {
             "domain": domain if domain in ("state", "agent", "action") else "state",
             "ts": ts or self._now_iso(),
@@ -97,8 +93,4 @@ class BeliefUpdatePublisher:
             "latency_ms": int(latency_ms),
         }
         topic = self._topic(domain)
-        try:
-            self._producer.send(topic, value=record)
-        except Exception:
-            # Best-effort; swallow to avoid impacting hot path
-            pass
+        self._producer.send(topic, value=record)

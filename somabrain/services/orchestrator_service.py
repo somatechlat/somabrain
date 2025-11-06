@@ -29,11 +29,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-# Optional Kafka
-try:  # pragma: no cover - optional at runtime
-    from kafka import KafkaConsumer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
+# Require Kafka
+from kafka import KafkaConsumer  # type: ignore
 
 # Optional Avro serde
 try:  # pragma: no cover
@@ -43,11 +40,8 @@ except Exception:  # pragma: no cover
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
-# Outbox API (DB-backed)
-try:
-    from somabrain.db.outbox import enqueue_event  # type: ignore
-except Exception:  # pragma: no cover
-    enqueue_event = None  # type: ignore
+# Outbox API (DB-backed) required
+from somabrain.db.outbox import enqueue_event  # type: ignore
 
 
 @dataclass
@@ -165,8 +159,6 @@ class OrchestratorService:
             pass
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
-        if enqueue_event is None:
-            return  # no-op if outbox not wired
         gf = self._ctx.get(tenant)
         # Compose a minimal episodic payload for memory
         key = f"segment:{boundary.get('boundary_ts') or int(time.time()*1000)}"
@@ -216,10 +208,7 @@ class OrchestratorService:
             pass
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
-        if KafkaConsumer is None:
-            print("Kafka client not available; orchestrator service idle.")
-            while True:
-                time.sleep(60)
+        # Kafka client required; fail-fast
         consumer = KafkaConsumer(
             "cog.global.frame",
             "cog.segments",

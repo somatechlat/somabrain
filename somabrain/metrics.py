@@ -35,6 +35,7 @@ Functions:
 from __future__ import annotations
 
 import time
+import os
 from threading import Lock
 from typing import Any, Awaitable, Callable, Iterable
 import builtins as _builtins
@@ -49,13 +50,26 @@ try:
         Histogram as _PromHistogram,
         generate_latest,
     )
-except (
-    Exception
-):  # pragma: no cover - allow import without prometheus for lightweight checks
-    # Minimal shim so the module can be imported in environments without prometheus_client.
+except Exception:  # pragma: no cover
+    # Enforce "no fake fallbacks" by default. Allow a noop shim only in docs builds
+    # or when explicitly permitted via SOMABRAIN_ALLOW_METRICS_NOOP=1.
+    allow_noop = False
+    try:
+        allow_noop = bool(os.getenv("SPHINX_BUILD")) or (
+            (os.getenv("SOMABRAIN_ALLOW_METRICS_NOOP", "").strip().lower())
+            in ("1", "true", "yes", "on")
+        )
+    except Exception:
+        allow_noop = False
+
+    if not allow_noop:
+        raise ImportError(
+            "prometheus_client is required for somabrain.metrics; set SOMABRAIN_ALLOW_METRICS_NOOP=1 only for docs/tests if you must bypass"
+        )
+
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
-    class CollectorRegistry:
+    class CollectorRegistry:  # minimal shim for docs/tests only
         def __init__(self):
             self._names_to_collectors = {}
 
@@ -75,7 +89,6 @@ except (
         def observe(self, *a, **k):
             pass
 
-    CollectorRegistry = CollectorRegistry
     REGISTRY = CollectorRegistry()
     _PromCounter = _NoopMetric
     _PromGauge = _NoopMetric

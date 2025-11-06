@@ -551,8 +551,8 @@ class CognitiveErrorHandler:
             ]
         elif "memory" in str(error).lower():
             error_info["recovery_suggestions"] = [
-                "Check memory backend",
-                "Use local memory mode",
+                "Check external memory backend",
+                "Verify SOMABRAIN_MEMORY_HTTP_ENDPOINT and token",
             ]
         elif "rate" in str(error).lower():
             error_info["recovery_suggestions"] = [

@@ -21,24 +21,7 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 
-def _record_global_link(
-    namespace: str,
-    from_coord: tuple[float, float, float],
-    to_coord: tuple[float, float, float],
-    link_type: str = "related",
-    weight: float = 1.0,
-) -> None:
-    """Compatibility shim kept for callers but now a no-op in strict mode."""
-    logger.debug(
-        "global link mirror disabled",
-        extra={
-            "namespace": namespace,
-            "from_coord": from_coord,
-            "to_coord": to_coord,
-            "link_type": link_type,
-            "link_weight": weight,
-        },
-    )
+ 
 
 
 def _extract_text(payload: dict) -> str:
@@ -73,7 +56,7 @@ async def run_retrieval_pipeline(
 
         from somabrain import metrics as M
 
-        # Safe increment; metrics module may be a noop in some test envs
+        # Safe increment; metrics module is required in normal environments
         try:
             M.RETRIEVAL_REQUESTS.labels(
                 namespace=ctx.namespace, retrievers=retriever_set
@@ -858,20 +841,7 @@ async def run_retrieval_pipeline(
                 except Exception:
                     pass
             if mem_backend is None:
-                try:
-                    # Last-resort local backend to ensure persistence in tests/dev
-                    from somabrain.config import get_config as _get_config
-                    from somabrain.memory_pool import MultiTenantMemory
-
-                    mem_backend = MultiTenantMemory(_get_config())
-                    try:
-                        import somabrain.app as _app_mod
-
-                        _app_mod.mt_memory = mem_backend
-                    except Exception:
-                        pass
-                except Exception:
-                    mem_backend = None
+                raise RuntimeError("memory backend unavailable; persistence disabled")
             if mem_backend is not None:
                 try:
                     # Publish to runtime so subsequent calls see the same backend
@@ -931,9 +901,7 @@ async def run_retrieval_pipeline(
                             link_type="recall_session",
                             weight=1.0,
                         )
-                        _record_global_link(
-                            ctx.namespace, qcoord, sess_coord_t, "recall_session", 1.0
-                        )
+                        
                 except Exception:
                     pass
 
@@ -1053,13 +1021,7 @@ async def run_retrieval_pipeline(
                                 link_type="retrieved_with",
                                 weight=1.0,
                             )
-                            _record_global_link(
-                                ctx.namespace,
-                                sess_coord_t,
-                                doc_coord_t,
-                                "retrieved_with",
-                                1.0,
-                            )
+                            
                         except Exception:
                             pass
                         try:

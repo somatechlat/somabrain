@@ -45,31 +45,10 @@ from somabrain.metrics import (
 
 router = APIRouter()
 
-# Lazily-tolerant store initialization: if databases are temporarily unavailable
-# during import, degrade to no-op stores so routes still register and the API
-# surface is exposed. Persistence will be attempted again on first use.
-try:
-    _feedback_store = FeedbackStore()
-    _token_ledger = TokenLedger()
-except Exception as _e:  # pragma: no cover - import-time resilience
-    import logging as _logging
-
-    _logging.getLogger("somabrain.api").warning(
-        "context_route: feedback/token stores unavailable at import: %s", _e
-    )
-
-    class _NoopStore:  # minimal no-op fallback
-        def record(self, *args, **kwargs):
-            return None
-
-        def total_count(self) -> int:
-            return 0
-
-        def list_for_session(self, session_id: str):  # type: ignore[override]
-            return []
-
-    _feedback_store = _NoopStore()
-    _token_ledger = _NoopStore()
+# Strict store initialization: fail-fast if dependencies are unavailable.
+# This enforces real persistence backends and avoids silent degradations.
+_feedback_store = FeedbackStore()
+_token_ledger = TokenLedger()
 
 # Global counter for feedback applications across requests
 _feedback_counter = 0

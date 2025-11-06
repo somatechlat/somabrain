@@ -32,25 +32,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
 import threading
-try:  # optional OTel init
-    from observability.provider import init_tracing, get_tracer  # type: ignore
-except Exception:  # pragma: no cover
-    def init_tracing():
-        return None
-
-    def get_tracer(name: str):  # type: ignore
-        class _Noop:
-            def start_as_current_span(self, *_args, **_kwargs):
-                class _Span:
-                    def __enter__(self):
-                        return self
-
-                    def __exit__(self, *a):
-                        return False
-
-                return _Span()
-
-        return _Noop()
+from observability.provider import init_tracing, get_tracer  # type: ignore
 
 import somabrain.metrics as app_metrics
 
@@ -192,7 +174,7 @@ class SoftmaxIntegrator:
 
 class IntegratorHub:
     def __init__(self, group_id: str = "integrator-hub-v1") -> None:
-        # Initialize tracing (no-op safe)
+        # Initialize tracing (required)
         init_tracing()
         self._tracer = get_tracer("somabrain.integrator_hub")
         # Start lightweight health server on a side port for K8s probes

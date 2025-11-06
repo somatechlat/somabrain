@@ -24,22 +24,7 @@ from typing import Callable, Tuple
 import numpy as np
 
 from .quantum import QuantumLayer
-
-
-try:  # pragma: no cover - metrics import may fail in minimal environments
-    from somabrain.metrics.context_metrics import ContextMetrics
-except Exception:  # pragma: no cover
-
-    class ContextMetrics:  # type: ignore[too-many-ancestors]
-        """No-op metrics shim when Prometheus is unavailable."""
-
-        @staticmethod
-        def observe_state(*_args, **_kwargs) -> None:
-            return None
-
-        @staticmethod
-        def record_cleanup(*_args, **_kwargs) -> None:
-            return None
+from somabrain.metrics.context_metrics import ContextMetrics
 
 
 @dataclass

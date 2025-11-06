@@ -39,20 +39,15 @@ async def utility_guard(
     It is intentionally conservative and non-raising on missing constitution.
     """
     eng: Optional[ConstitutionEngine] = engine
-    # If no constitution engine is available or not loaded, act as a no-op guard.
-    # This matches the docstring promise: non-raising on missing constitution.
+    # Enforce presence of a loaded constitution engine; fail-closed otherwise.
     try:
         has_const = bool(eng and eng.get_constitution())
     except Exception:
         has_const = False
     if not has_const:
-        # Attach a neutral utility value for observability and allow the request.
-        try:
-            request.state.utility_value = 0.0
-            M.UTILITY_VALUE.set(0.0)
-        except Exception:
-            pass
-        return
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=503, detail="constitution engine unavailable")
 
     # extract confidence/cost/latency from request (middleware or handler should set these)
     conf = getattr(request.state, "model_confidence", None)

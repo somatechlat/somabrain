@@ -22,30 +22,26 @@ from somabrain.infrastructure import get_redis_url
 # Redis connection for state persistence
 def _get_redis():
     """Get Redis client for per-tenant state persistence.
-    Prefer the full URL via ``SOMABRAIN_REDIS_URL`` if provided (as set in the
-    Docker compose environment).  Fall back to ``REDIS_HOST``/``REDIS_PORT``
-    for compatibility with local development. If ``SOMABRAIN_ALLOW_FAKEREDIS``
-    is set to a truthy value, return an in-memory FakeRedis for tests.
+    Prefer ``SOMABRAIN_REDIS_URL`` when set. No implicit fake backends; an
+    in-memory fakeredis is only used when explicitly allowed via
+    ``SOMABRAIN_ALLOW_FAKEREDIS=1`` and external backends are NOT required.
     """
     import os
 
-    # First, honor an explicit request to use in-memory Redis for tests
-    allow_fake = os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")
-    # Under pytest, default to fake/none unless explicitly forced
-    if os.getenv("PYTEST_CURRENT_TEST") and os.getenv("SOMABRAIN_FORCE_EXTERNAL_REDIS", "0") not in {"1", "true", "True", "yes", "on"}:
-        allow_fake = "1"
-    if str(allow_fake).strip() in {"1", "true", "True", "yes", "on"}:
+    require_backends = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
+    require_backends = str(require_backends).strip().lower() in {"1", "true", "yes", "on"}
+
+    # Optional: explicit fakeredis for unit tests only (opt-in)
+    allow_fake = str(os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    if allow_fake and not require_backends:
         try:
             import fakeredis  # type: ignore
 
             return fakeredis.FakeRedis()
         except Exception:
-            # Explicitly requested fake Redis but it's not available –
-            # return None to avoid attempting a real network connection in tests.
             return None
 
-    require_backends = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
-    if str(require_backends).strip() in {"1", "true", "True", "yes", "on"}:
+    if require_backends:
         try:
             redis_url = get_redis_url()
             if redis_url:

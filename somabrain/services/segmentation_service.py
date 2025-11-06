@@ -37,12 +37,8 @@ import threading
 from typing import Dict, Optional, Tuple
 
 
-# Lazy imports for optional dependencies
-try:  # pragma: no cover - optional at runtime
-    from kafka import KafkaConsumer, KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
-    KafkaProducer = None  # type: ignore
+# Require Kafka client dependencies
+from kafka import KafkaConsumer, KafkaProducer  # type: ignore
 
 
 try:
@@ -53,30 +49,9 @@ except Exception:  # pragma: no cover - unit tests focus on core segmenter
     AvroSerde = None  # type: ignore
 
 
-try:
-    from somabrain import metrics  # type: ignore
-except Exception:  # pragma: no cover
-    metrics = None  # type: ignore
+from somabrain import metrics  # type: ignore
 
-try:
-    from observability.provider import init_tracing, get_tracer  # type: ignore
-except Exception:  # pragma: no cover
-    def init_tracing():
-        return None
-
-    def get_tracer(name: str):  # type: ignore
-        class _Noop:
-            def start_as_current_span(self, *_args, **_kwargs):
-                class _Span:
-                    def __enter__(self):
-                        return self
-
-                    def __exit__(self, *a):
-                        return False
-
-                return _Span()
-
-        return _Noop()
+from observability.provider import init_tracing, get_tracer  # type: ignore
 
 
 BOUNDARY_EMITTED = None
@@ -85,8 +60,6 @@ BOUNDARY_LATENCY = None
 
 def _init_metrics() -> None:
     global BOUNDARY_EMITTED, BOUNDARY_LATENCY
-    if metrics is None:
-        return
     if BOUNDARY_EMITTED is None:
         try:
             BOUNDARY_EMITTED = metrics.get_counter(
@@ -551,10 +524,7 @@ class SegmentationService:
             pass
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
-        if KafkaConsumer is None or KafkaProducer is None:
-            print("Kafka client not available; segmentation service idle.")
-            while True:
-                time.sleep(60)
+        # Kafka client required; fail-fast if unavailable
         # Select topics based on mode
         if self._mode == "cpd" or self._mode == "hazard":
             topics = [
