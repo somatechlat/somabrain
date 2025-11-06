@@ -358,6 +358,10 @@ services:
       interval: 30s
       timeout: 5s
       retries: 5
+    ports:
+      # Expose embedded services for local E2E tests
+      - "${REWARD_PRODUCER_HOST_PORT:-30183}:8083"
+      - "${LEARNER_ONLINE_HOST_PORT:-30184}:8084"
     cap_drop: ["ALL"]
     read_only: true
     security_opt:

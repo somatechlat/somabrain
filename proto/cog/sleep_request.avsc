@@ -1,0 +1,1 @@
+{"type": "record", "name": "SleepRequest", "namespace": "cog", "doc": "Request payload for util sleep endpoint.", "fields": [{"name": "duration_ms", "type": "int", "doc": "Sleep duration in milliseconds (0-5000)."}]}

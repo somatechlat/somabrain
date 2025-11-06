@@ -399,6 +399,30 @@ class SleepRunRequest(BaseModel):
     nrem: Optional[bool] = True
     rem: Optional[bool] = True
 
+# Request model for the cognitive sleep mode endpoint.
+class SleepModeRequest(BaseModel):
+    """Request payload for the `/brain/sleep_mode` endpoint.
+
+    Attributes:
+        nrem (bool, optional): Execute NREM consolidation if True.
+        rem (bool, optional): Execute REM synthesis if True.
+        ttl_ms (int, optional): Optional time‑to‑live for the sleep run in milliseconds.
+    """
+
+    nrem: Optional[bool] = True
+    rem: Optional[bool] = True
+    ttl_ms: Optional[int] = None
+
+# New request model for the utility sleep endpoint
+class SleepRequest(BaseModel):
+    """Request payload for the `/util/sleep` endpoint.
+
+    Attributes:
+        duration_ms (int): Desired sleep duration in milliseconds. Must be between 0 and 5000.
+    """
+
+    duration_ms: int = Field(..., ge=0, le=5000, description="Sleep duration in milliseconds (0‑5000)")
+
 
 class PlanSuggestRequest(BaseModel):
     task_key: str

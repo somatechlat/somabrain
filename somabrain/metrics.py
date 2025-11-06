@@ -677,6 +677,25 @@ REM_SYNTHESIZED = Counter(
     "Count of REM synthesized semantic memories",
     registry=registry,
 )
+    # Util sleep request counter and duration histogram
+    SLEEP_UTIL_REQUESTS = Counter(
+        "somabrain_sleep_requests_total",
+        "Number of sleep-related API calls",
+        ["mode"],
+        registry=registry,
+    )
+    SLEEP_DURATION = Histogram(
+        "somabrain_sleep_duration_seconds",
+        "Total duration of sleep in seconds",
+        ["phase"],
+        registry=registry,
+    )
+    SLEEP_COUNT = Counter(
+        "somabrain_sleep_count_total",
+        "Total number of sleep events",
+        ["phase"],
+        registry=registry,
+    )
 
 # Supervisor / Energy metrics
 FREE_ENERGY = Histogram(

@@ -105,6 +105,10 @@ api_token: ""
 # expose_alt_memory_endpoints: false  # /fnom/* and /fractal/*
 # expose_brain_demos: false           # /brain/* unified demo endpoints
 
+# Feature flags for the Unified Sleep System (default disabled for safety)
+ENABLE_UTIL_SLEEP: false
+ENABLE_BRAIN_SLEEP_MODE: false
+
 # Minimal Public API
 # When true, only essential endpoints are exposed externally:
 #   GET  /health

@@ -3093,6 +3093,46 @@ async def remember(body: dict, request: Request):
         "queued": queued or None,
     }
 
+# ---------------------------------------------------------------------------
+# Util Sleep Endpoint (simple latency injection)
+# ---------------------------------------------------------------------------
+
+@app.post("/util/sleep", response_model=S.SleepRunResponse)
+async def util_sleep(body: S.SleepRequest, request: Request) -> S.SleepRunResponse:
+    """Utility endpoint that sleeps for a configurable duration.
+
+    This is primarily used for testing latency and timeout handling. The
+    request payload must include ``duration_ms`` between 0 and 5000. The endpoint
+    respects the ``ENABLE_UTIL_SLEEP`` feature flag.
+    """
+    # Feature‑flag gating – if disabled, return 404 to avoid exposing the endpoint.
+    if not getattr(cfg, "ENABLE_UTIL_SLEEP", False):
+        raise HTTPException(status_code=404, detail="Util sleep endpoint disabled")
+    require_auth(request, cfg)
+    # Record request metric
+    try:
+        _mx.SLEEP_UTIL_REQUESTS.labels(mode="util").inc()
+    except Exception:
+        pass
+    # Perform the sleep asynchronously
+    secs = max(0.0, float(body.duration_ms) / 1000.0)
+    start = time.time()
+    await asyncio.sleep(secs)
+    elapsed = max(0.0, time.time() - start)
+    # Record duration metric if available
+    try:
+        _mx.SLEEP_DURATION.labels(phase="util").observe(elapsed)
+    except Exception:
+        pass
+    # Return a simple success payload; reuse SleepRunResponse fields.
+    return S.SleepRunResponse(
+        ok=True,
+        run_id=None,
+        started_at_ms=int(start * 1000),
+        mode="util",
+        details={"slept_ms": int(elapsed * 1000)},
+    )
+
 
 if not _MINIMAL_API:
 
@@ -3132,6 +3172,75 @@ if not _MINIMAL_API:
             ok=True,
             run_id=run_id,
             started_at_ms=int(time.time() * 1000),
+            mode=(
+                "nrem/rem"
+                if do_nrem and do_rem
+                else ("nrem" if do_nrem else ("rem" if do_rem else "none"))
+            ),
+            details=details,
+        )
+
+    # ---------------------------------------------------------------------------
+    # Brain Sleep Mode Endpoint (cognitive sleep cycles)
+    # ---------------------------------------------------------------------------
+
+    @app.post("/api/brain/sleep_mode", response_model=S.SleepRunResponse)
+    async def brain_sleep_mode(
+        body: S.SleepModeRequest, request: Request
+    ) -> S.SleepRunResponse:
+        """Endpoint to trigger cognitive sleep cycles (NREM/REM).
+
+        The request can enable NREM consolidation, REM synthesis, or both. An
+        optional ``ttl_ms`` can be used by callers to indicate a maximum allowed
+        runtime; the implementation currently ignores it but validates the field.
+        """
+        # Feature‑flag gating – hide endpoint when disabled.
+        if not getattr(cfg, "ENABLE_BRAIN_SLEEP_MODE", False):
+            raise HTTPException(status_code=404, detail="Brain sleep mode endpoint disabled")
+        require_auth(request, cfg)
+        # Record metric for invocation
+        try:
+            M.SLEEP_COUNT.labels(phase="brain").inc()
+        except Exception:
+            pass
+        # Retrieve tenant context
+        ctx = get_tenant(request, cfg.namespace)
+        # Reuse existing consolidation logic from the generic sleep_run endpoint.
+        do_nrem = getattr(body, "nrem", True) if hasattr(body, "nrem") else True
+        do_rem = getattr(body, "rem", True) if hasattr(body, "rem") else True
+        details: Dict[str, Any] = {}
+        start_ts = time.time()
+        if do_nrem:
+            details["nrem"] = CONS.run_nrem(
+                ctx.tenant_id,
+                cfg,
+                mt_wm,
+                mt_memory,
+                top_k=cfg.nrem_batch_size,
+                max_summaries=cfg.max_summaries_per_cycle,
+            )
+            _sleep_last.setdefault(ctx.tenant_id, {})["nrem"] = _time.time()
+        if do_rem:
+            details["rem"] = CONS.run_rem(
+                ctx.tenant_id,
+                cfg,
+                mt_wm,
+                mt_memory,
+                recomb_rate=cfg.rem_recomb_rate,
+                max_summaries=cfg.max_summaries_per_cycle,
+            )
+            _sleep_last.setdefault(ctx.tenant_id, {})["rem"] = _time.time()
+        run_id = f"sleep_{ctx.tenant_id}_{int(time.time() * 1000)}"
+        # Record duration metric
+        elapsed = max(0.0, time.time() - start_ts)
+        try:
+            M.SLEEP_DURATION.labels(phase="brain").observe(elapsed)
+        except Exception:
+            pass
+        return S.SleepRunResponse(
+            ok=True,
+            run_id=run_id,
+            started_at_ms=int(start_ts * 1000),
             mode=(
                 "nrem/rem"
                 if do_nrem and do_rem
