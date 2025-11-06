@@ -189,6 +189,18 @@ python -c "from somabrain.config import reload_config; reload_config()"
 cat ports.json | jq
 ```
 
+### Memory Environment Helper
+```bash
+# Generate host-friendly memory env exports (.memory.env) from .env
+scripts/export_memory_env.sh
+
+# Apply to current shell for host tools (benchmarks, curl, etc.)
+source scripts/.memory.env
+
+# Quick probe runs automatically; acceptable statuses are 200/404/422.
+# If you see 401/403, set a valid SOMABRAIN_MEMORY_HTTP_TOKEN.
+```
+
 ### Testing and Validation
 ```bash
 # Run specific test categories

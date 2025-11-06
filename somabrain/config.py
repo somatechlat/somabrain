@@ -144,7 +144,7 @@ class Config:
     rate_burst: int = 100
     write_daily_limit: int = 10000
     # Predictor configuration (added)
-    predictor_provider: str = "mahal"  # stub|mahal|slow|llm
+    predictor_provider: str = "mahal"  # mahal|slow|llm
     predictor_timeout_ms: int = 250
     predictor_llm_endpoint: Optional[str] = None
     predictor_llm_token: Optional[str] = None

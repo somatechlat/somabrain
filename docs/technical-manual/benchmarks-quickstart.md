@@ -50,6 +50,31 @@ python benchmarks/run_live_benchmarks.py \
 
 Artifacts land under `benchmarks/outputs/` with JSON summaries and plots. If matplotlib isn’t installed, plots are skipped gracefully.
 
+### Adaptation Learning Benchmark (full loop)
+
+The adaptation learning benchmark drives `/context/evaluate` + `/context/feedback` for N iterations and writes plots and timeseries. It can optionally seed the external memory service directly.
+
+```
+# Optional: make memory endpoint/token available to the host shell
+scripts/export_memory_env.sh && source scripts/.memory.env
+
+# Run with synthetic seeding into the memory service and a target to track
+python benchmarks/adaptation_learning_bench.py \
+  --iterations 1500 \
+  --sample-every 10 \
+  --seed-memory 500 \
+  --memory-url "$SOMABRAIN_MEMORY_HTTP_ENDPOINT" \
+  --seed-target --track-target --target-text "Author777 wrote Book777" \
+  --plot
+```
+
+Flags of interest:
+- `--seed-memory N`: seed N synthetic memories into the external memory service (via `/memories`).
+- `--memory-url URL`: explicit memory service URL (defaults to `SOMABRAIN_MEMORY_HTTP_ENDPOINT`).
+- `--seed-target-memory`: also seed the target record directly into the memory service.
+- `--seed`: seed via API `/remember` (app path), complementary to `--seed-memory`.
+- `--iterations`, `--sample-every`, `--top-k`: control loop length and sampling.
+
 ## Micro/algorithmic benches
 
 - Cognition core (quality and latency gates):

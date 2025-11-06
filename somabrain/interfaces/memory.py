@@ -1,9 +1,9 @@
 """Typed interface for memory backends used by the brain.
 
-This small Protocol defines the methods the refactor will expect from any
-memory backend implementation (HTTP-backed client, in-process stub, or test
-double). Introducing this Protocol makes subsequent refactors incremental and
-type-checkable without changing runtime behavior.
+This small Protocol defines the methods expected from a real
+HTTP-backed memory client. Introducing this Protocol makes subsequent
+refactors incremental and type-checkable without changing runtime
+behavior.
 """
 
 from __future__ import annotations

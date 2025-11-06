@@ -253,18 +253,9 @@ async def run_retrieval_pipeline(
             ]
             if coords_to_fetch:
                 payloads = mem_client.payloads_for_coords(coords_to_fetch, universe=universe) or []
-                # Fallback: synthesize minimal payloads when offline client cannot fetch
                 if not payloads:
-                    synthesized: list[dict] = []
-                    for idx, c3 in enumerate(coords_to_fetch):
-                        # Prefer provided key/id; else use stringified coord
-                        name = (
-                            (k if idx == 0 and k else None)
-                            or (i if idx == 0 and i else None)
-                            or f"{c3[0]},{c3[1]},{c3[2]}"
-                        )
-                        synthesized.append({"task": name, "coordinate": c3, "memory_type": "episodic"})
-                    payloads = synthesized
+                    # Strict mode: do not synthesize payloads; skip pinning when offline
+                    payloads = []
                 for p in payloads:
                     # Use high base score to keep ahead; final rerank will respect pinning below
                     coord = p.get("coordinate")

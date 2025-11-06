@@ -422,7 +422,7 @@ tests/
 ├── integration/        # Component interaction tests
 │   ├── api/           # End-to-end API workflows
 │   ├── database/      # Database integration patterns
-│   └── services/      # External service mocking
+│   └── services/      # External service integration/adapters
 ├── e2e/               # Full system tests
 │   ├── user_workflows/ # Complete user scenarios
 │   ├── performance/   # Load and stress testing

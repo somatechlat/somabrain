@@ -3412,7 +3412,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
     )
 
 
-# Graph links endpoint – returns semantic graph edges (placeholder implementation)
+# Graph links endpoint – returns semantic graph edges
 @app.post("/graph/links", response_model=S.GraphLinksResponse)
 async def graph_links(body: S.GraphLinksRequest, request: Request):
     ctx = get_tenant(request, cfg.namespace)
@@ -3462,30 +3462,7 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
     return S.GraphLinksResponse(edges=edges, universe=universe)
 
 
-@app.post("/reflect", response_model=S.ReflectResponse)
-async def reflect(request: Request) -> S.ReflectResponse:
-    _ = get_tenant(request, cfg.namespace)
-    require_auth(request, cfg)
-    return S.ReflectResponse(created=1, summaries=["reflection placeholder"])
-
-
-@app.post("/migrate/export", response_model=S.MigrateExportResponse)
-async def migrate_export(request: Request, body: S.MigrateExportRequest = None):
-    _ = get_tenant(request, cfg.namespace)
-    require_auth(request, cfg)
-    return S.MigrateExportResponse(
-        manifest={"timestamp": int(time.time())},
-        memories=[],
-        wm=[] if not (body and getattr(body, "include_wm", True)) else [],
-    )
-
-
-@app.post("/migrate/import", response_model=S.MigrateImportResponse)
-async def migrate_import(request: Request, payload: S.MigrateImportRequest):
-    _ = get_tenant(request, cfg.namespace)
-    require_auth(request, cfg)
-    wm_warmed = len(getattr(payload, "wm", []))
-    return S.MigrateImportResponse(imported=0, wm_warmed=wm_warmed)
+# Removed routes: /reflect, /migrate/export, /migrate/import (hard-removed)
 
 
 # Background task for outbox processing and circuit-breaker health checks

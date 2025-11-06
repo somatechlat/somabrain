@@ -12,7 +12,7 @@ This page lists the key environment variables that control SomaBrain in both loc
 - SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: 1 to enforce real backends (no dev fallbacks).
 - SOMABRAIN_FORCE_FULL_STACK: 1 to require all backing services for readiness.
 - SOMABRAIN_REQUIRE_MEMORY: 1 to require external memory to be reachable for readiness.
-- SOMABRAIN_PREDICTOR_PROVIDER: predictor backend (mahal|baseline|stub…).
+- SOMABRAIN_PREDICTOR_PROVIDER: predictor backend (mahal|baseline).
 
 ### External services (containers use Docker DNS names)
 - SOMABRAIN_REDIS_URL: e.g., redis://somabrain_redis:6379/0

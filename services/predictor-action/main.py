@@ -8,25 +8,7 @@ from typing import Any, Dict, Optional
 import threading
 import numpy as np
 
-try:
-    from observability.provider import init_tracing, get_tracer  # type: ignore
-except Exception:  # pragma: no cover
-    def init_tracing():
-        return None
-
-    def get_tracer(name: str):  # type: ignore
-        class _Noop:
-            def start_as_current_span(self, *_args, **_kwargs):
-                class _Span:
-                    def __enter__(self):
-                        return self
-
-                    def __exit__(self, *a):
-                        return False
-
-                return _Span()
-
-        return _Noop()
+from observability.provider import init_tracing, get_tracer  # type: ignore
 try:
     from kafka import KafkaProducer  # type: ignore
 except Exception:  # pragma: no cover

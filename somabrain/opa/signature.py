@@ -32,11 +32,9 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     environments). If the required classes are unavailable, an informative
     ``ImportError`` is raised.
     """
-    # If no private key path is provided (common in test environments),
-    # return a placeholder signature. This allows the OPA router to succeed
-    # without requiring actual cryptographic material.
+    # A valid private key path is required; no placeholders or fallbacks.
     if not private_key_path:
-        return "dummy_sig"
+        raise ValueError("private_key_path is required for OPA policy signing")
     # Import lazily – raise if missing.
     try:
         from cryptography.hazmat.primitives import hashes

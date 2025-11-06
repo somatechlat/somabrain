@@ -19,8 +19,16 @@ Usage:
         ...
 """
 
-# no typing imports required
 import os
+
+def _env_true(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    try:
+        return v.strip().lower() in ("1", "true", "yes", "on")
+    except Exception:
+        return default
 
 # Provide safe defaults when opentelemetry is not installed
 try:  # pragma: no cover - optional dependency
@@ -46,6 +54,8 @@ except Exception:  # pragma: no cover - fallback
 
 
 _tracer_provider_initialized = False
+_REQUIRE_TRACING = _env_true("SOMABRAIN_REQUIRE_TRACING", False)
+_ALLOW_NOOP_TRACING = _env_true("SOMABRAIN_ALLOW_NOOP_TRACING", False)
 
 
 def _parse_sampler():
@@ -71,6 +81,10 @@ def init_tracing():
     otlp = os.getenv("SOMABRAIN_OTLP_ENDPOINT")
 
     if not OTEL_AVAILABLE:
+        if _REQUIRE_TRACING and not _ALLOW_NOOP_TRACING:
+            raise RuntimeError(
+                "Tracing required but OpenTelemetry SDK not available. Install and configure OTel or unset SOMABRAIN_REQUIRE_TRACING."
+            )
         _tracer_provider_initialized = True
         return
 
@@ -107,6 +121,10 @@ def get_tracer(name: str):
         return trace.get_tracer(name)
 
     # No-op tracer replacement
+    if _REQUIRE_TRACING and not _ALLOW_NOOP_TRACING:
+        raise RuntimeError(
+            "Tracing required (SOMABRAIN_REQUIRE_TRACING=1) but OpenTelemetry is unavailable."
+        )
     class _NoopSpan:
         def __enter__(self):
             return self

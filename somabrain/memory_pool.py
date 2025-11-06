@@ -1,9 +1,9 @@
 """Multi-tenant memory pool for SomaBrain.
 
-The pool hands out `MemoryClient` instances per namespace and replays journal
-entries so each client sees consistent context even before the external memory
-service is reachable. When the HTTP service is down the pool relies on the
-client's stub mirror.
+The pool hands out one `MemoryClient` instance per namespace. Journal replay is
+no longer performed here (handled by the MemorySyncWorker/migration helpers).
+All operations are HTTP-first via the external memory service; no local/stub
+mirrors are used.
 """
 
 from __future__ import annotations

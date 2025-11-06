@@ -148,6 +148,12 @@ $ docker compose up -d
 $ curl -s http://localhost:9999/health | jq
 ```
 
+If you run host-side tools (benchmarks, curl) and want convenient access to the memory service URL/token, generate host-friendly exports and source them:
+
+```bash
+scripts/export_memory_env.sh && source scripts/.memory.env
+```
+
 Store and recall a memory:
 
 ```bash
@@ -230,6 +236,10 @@ Artifacts:
 - Results (JSON): `benchmarks/results/diffusion_predictors/<timestamp>/`
 - Plots (PNG): `benchmarks/plots/diffusion_predictors/<timestamp>/`
 The latest timestamp is recorded in `benchmarks/results/diffusion_predictors/latest.txt`.
+
+For live and adaptation learning benches, see Technical Manual → Benchmarks Quickstart:
+
+- docs/technical-manual/benchmarks-quickstart.md
 
 ## Documentation & Roadmap
 

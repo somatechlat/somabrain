@@ -69,7 +69,7 @@ SomaBrain normalizes `SOMABRAIN_MODE` into `{dev, staging, prod}`. The legacy `e
 
 Notes:
 - “Require external backends” is enforced across all modes by policy. Avoid stubs in production paths.
-- Memory service calls require tokens in all modes.
+- Memory service calls require tokens in all modes. The derived setting is `settings.mode_memory_auth_required`, and the startup banner prints `memory_auth=true|false` to reflect the effective policy.
 
 ## Local Backend-Enforcement Template
 

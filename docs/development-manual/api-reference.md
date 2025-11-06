@@ -41,8 +41,6 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 | GET | `/neuromodulators` | Fetch neuromodulator state | – | `schemas.NeuromodStateModel` |
 | POST | `/neuromodulators` | Adjust neuromodulator state | `schemas.NeuromodStateModel` | `schemas.NeuromodStateModel` |
 | POST | `/graph/links` | Query graph edges for transport | `schemas.GraphLinksRequest` | `schemas.GraphLinksResponse` |
-| POST | `/reflect` | Trigger reflective update cycle | `schemas.ReflectRequest` | `schemas.ReflectResponse` |
-| POST | `/migrate/export` | Export memory payloads | `schemas.MigrateExportRequest` | `schemas.MigrateExportResponse` |
 
 **Usage notes**:
 - Write endpoints honour backend enforcement—requests fail if backing services are unreachable.
