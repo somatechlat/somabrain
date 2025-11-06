@@ -11,7 +11,7 @@ ENVFILE=".env"
 OUTFILE="scripts/.memory.env"
 
 if [[ ! -f "$ENVFILE" ]]; then
-  echo "[export_memory_env] Missing $ENVFILE. Run scripts/dev_up_9999.sh or scripts/dev_up.sh first." >&2
+  echo "[export_memory_env] Missing $ENVFILE. Run scripts/dev_up.sh first." >&2
   exit 1
 fi
 

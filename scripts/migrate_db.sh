@@ -14,7 +14,7 @@ cd "$repo_root"
 
 if [[ "${1:-}" == "--build" ]]; then
   echo "[migrate] Building somabrain image..."
-  docker compose -f docker-compose.yml build somabrain_app somabrain_cog somabrain_outbox_publisher somabrain_outbox_db_applier
+  docker compose -f docker-compose.yml build somabrain_app somabrain_cog somabrain_outbox_publisher
 fi
 
 # Ensure Postgres is up first

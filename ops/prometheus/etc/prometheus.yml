@@ -9,7 +9,7 @@ scrape_configs:
   - job_name: 'somabrain'
     static_configs:
       - targets:
-          - 'host.docker.internal:9999'
+          - 'host.docker.internal:9696'
           - 'host.docker.internal:30103' # kafka-exporter
           - 'host.docker.internal:30107' # postgres-exporter
     # Note: 'host.docker.internal' resolves on Docker Desktop (macOS/Windows). On Linux hosts,

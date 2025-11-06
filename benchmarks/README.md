@@ -30,11 +30,11 @@ This folder contains a mix of pure numerics/micro-benchmarks and live end-to-end
 ## How to run (dev stack)
 
 1) Start the stack (from repo root):
-- Use Docker Compose per the deployment docs, ensuring API is reachable (e.g., http://127.0.0.1:9696 or :9999 depending on your profile).
+- Use the canonical script `./scripts/dev_up.sh`; API is always at http://127.0.0.1:9696.
 
 2) Live/E2E examples:
-- Recall latency (defaults to http://127.0.0.1:9999):
-  - SOMA_API_URL=http://127.0.0.1:9999 python benchmarks/recall_latency_bench.py
+- Recall latency (defaults to http://127.0.0.1:9696):
+  - SOMA_API_URL=http://127.0.0.1:9696 python benchmarks/recall_latency_bench.py
 - Recall live bench (defaults to http://127.0.0.1:9696):
   - SOMABRAIN_API_URL=http://127.0.0.1:9696 python benchmarks/recall_live_bench.py --output benchmarks/outputs/recall_live_results.json
 - HTTP harness (choose endpoint):
@@ -49,8 +49,8 @@ This folder contains a mix of pure numerics/micro-benchmarks and live end-to-end
 ## Environment variables
 
 - API base URLs:
-  - `SOMA_API_URL` for `recall_latency_bench.py` (default: http://127.0.0.1:9999)
-  - `SOMABRAIN_API_URL` for `recall_live_bench.py` (default: http://127.0.0.1:9696)
+  - `SOMA_API_URL` for `recall_latency_bench.py` (default: http://127.0.0.1:9696)
+    - `SOMABRAIN_API_URL` for `recall_live_bench.py` (default: http://127.0.0.1:9696)
 - Tenancy (when applicable): `SOMA_TENANT`, `SOMA_NAMESPACE`
 - DB DSN for DB bench (optional): `SOMABRAIN_POSTGRES_DSN`
 

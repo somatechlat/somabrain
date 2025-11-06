@@ -156,7 +156,7 @@ jobs:
           MEMORY_URL="http://127.0.0.1:${SOMAMEMORY_HOST_PORT:-9595}"
           MEMORY_READY=0
           OPA_PORT=${OPA_HOST_PORT:-30004}
-          API_PORT=${SOMABRAIN_HOST_PORT:-9999}
+          API_PORT=${SOMABRAIN_HOST_PORT:-9696}
           for i in {1..40}; do
             if curl -sSf "${MEMORY_URL}/health" >/dev/null 2>&1; then echo "memory up"; MEMORY_READY=1; break; fi; sleep 2
           done
@@ -201,7 +201,7 @@ jobs:
       - name: Check for real endpoints (no mocks)
         id: probe
         run: |
-          API_URL=${SOMA_API_URL:-http://127.0.0.1:9999}
+          API_URL=${SOMA_API_URL:-http://127.0.0.1:9696}
           MEM_URL=${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://127.0.0.1:9595}
           echo "Probing API: ${API_URL}"
           if curl -sSf "${API_URL}/health" >/dev/null 2>&1; then echo "api_ok=true" >> $GITHUB_OUTPUT; else echo "api_ok=false" >> $GITHUB_OUTPUT; fi

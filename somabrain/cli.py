@@ -1,19 +1,12 @@
 """
 Command Line Interface Module for SomaBrain.
 
-This module provides command-line interfaces for running the SomaBrain API server
-and performing journal maintenance operations. It includes utilities for launching
-the FastAPI application and managing persistent journals.
-
-Key Features:
-- FastAPI server launcher with configurable host/port
-- Journal rotation and compaction utilities
-- Environment variable support for configuration
-- Argument parsing for CLI commands
+Provides the console entry point for running the SomaBrain API server.
+All former journal maintenance commands have been removed under the
+strict fail-fast architecture (no local persistence fallbacks).
 
 Functions:
     run_api: Launch the FastAPI API server using uvicorn.
-    journal_cli: Command-line interface for journal maintenance operations.
 """
 
 from __future__ import annotations
@@ -66,5 +59,5 @@ def run_api() -> None:
     uvicorn.run("somabrain.app:app", host=host, port=port, reload=False)
 
 
-def journal_cli(argv: list[str] | None = None) -> int:  # legacy entrypoint retained
+def journal_cli(argv: list[str] | None = None) -> int:  # retained only to fail fast if invoked
     raise SystemExit("Journal CLI removed (fail-fast architecture).")

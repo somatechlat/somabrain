@@ -59,7 +59,6 @@ dev = [
 [project.scripts]
 somabrain-api = "somabrain.cli:run_api"
 somabrain-sleep = "somabrain.consolidation:main"
-somabrain-journal = "somabrain.cli:journal_cli"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }

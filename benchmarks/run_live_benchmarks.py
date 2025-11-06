@@ -7,7 +7,7 @@
 
 Usage:
     PYTHONPATH=. python benchmarks/run_live_benchmarks.py \
-        --recall-api-url http://127.0.0.1:9999 \
+        --recall-api-url http://127.0.0.1:9696 \
     --start 100 --end 1000 --passes 5 \
     --q 50 --topk 3 \
     --out-dir benchmarks/outputs/live_runs
@@ -165,7 +165,7 @@ def _linspace_int(start: int, end: int, count: int) -> List[int]:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Run multi-pass live benchmarks and plot results")
-    ap.add_argument("--recall-api-url", default=os.getenv("SOMA_API_URL", "http://127.0.0.1:9999"))
+    ap.add_argument("--recall-api-url", default=os.getenv("SOMA_API_URL", "http://127.0.0.1:9696"))
     ap.add_argument("--start", type=int, default=100)
     ap.add_argument("--end", type=int, default=1000)
     ap.add_argument("--passes", type=int, default=5)

@@ -11,7 +11,7 @@ fi
 
 # Allow overriding host, port, workers, and extra args
 HOST="${SOMABRAIN_HOST:-0.0.0.0}"
-PORT="${SOMABRAIN_PORT:-9999}"
+PORT="${SOMABRAIN_PORT:-9696}"
 WORKERS="${SOMABRAIN_WORKERS:-1}"
 EXTRA_ARGS="${SOMABRAIN_EXTRA_ARGS}"
 
@@ -20,7 +20,7 @@ echo "Starting SomaBrain API on $HOST:$PORT with $WORKERS worker(s)"
 echo "SOMABRAIN container starting on host: ${SOMABRAIN_HOST}, port: ${SOMABRAIN_PORT}"
 
 # Wait for critical dependencies (Kafka broker and OPA) to be reachable before starting
-echo "Checking dependencies: Kafka and OPA"
+echo "Checking dependencies: Kafka and OPA (fail-fast)"
 KAFKA_OK=0
 OPA_OK=0
 
@@ -50,10 +50,12 @@ for i in 1 2 3 4 5 6; do
 done
 
 if [ "$KAFKA_OK" -ne 1 ]; then
-  echo "Warning: Kafka bootstrap not reachable; the app will still start but audit may fallback to journal"
+  echo "ERROR: Kafka bootstrap not reachable; refusing to start (no fallbacks)." >&2
+  exit 1
 fi
 if [ "$OPA_OK" -ne 1 ]; then
-  echo "Warning: OPA not reachable; the app will still start but policy checks may fail closed"
+  echo "ERROR: OPA not reachable; refusing to start (no fallbacks)." >&2
+  exit 1
 fi
 
 # Optional: run database migrations (disabled by default). Enable by setting

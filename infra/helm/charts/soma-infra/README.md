@@ -23,8 +23,8 @@ kubectl create ns soma || true
 helm upgrade --install soma-infra ./infra/helm/charts/soma-infra -n soma -f infra/helm/charts/soma-infra/values.yaml
 ```
 
-3. For rapid local iteration you can use `scripts/start_dev_infra.sh` which
-   uses `docker-compose` and provides a faster developer loop.
+3. For rapid local iteration use `scripts/dev_up.sh`, which
+   uses Docker Compose and provides a faster developer loop.
 
 Notes
 -----

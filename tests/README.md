@@ -95,7 +95,7 @@ pytest -q --cov=somabrain --cov-report=term-missing --cov-report=html:htmlcov
 
 ## Troubleshooting
 
-- API health fails at 9999: many dev profiles expose the API on 9696. Verify with `/health` and export `SOMABRAIN_API_URL=http://127.0.0.1:9696`.
+- API health: API listens on host port 9696. Verify with `/health` and export `SOMABRAIN_API_URL=http://127.0.0.1:9696`.
 - Memory backend required: tests marked `integration` assume a real Memory HTTP service on `:9595`. Start it and export `SOMABRAIN_MEMORY_HTTP_ENDPOINT`.
 - Flaky reachability during bring-up: set `SOMA_API_URL_LOCK_BYPASS=1` to skip eager skips while you iterate, or re-run after services are ready.
 - Tenant headers: tests default to `SOMABRAIN_DEFAULT_TENANT` (e.g., `sandbox`). Ensure your stack recognizes this tenant or override per test.

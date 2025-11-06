@@ -3,7 +3,7 @@
 Recall Latency Benchmark
 
 Measures p50/p95 latency for simple remember/recall flows against a running
-Somabrain API (default http://127.0.0.1:9999) with a memory backend on 9595.
+Somabrain API (default http://127.0.0.1:9696) with a memory backend on 9595.
 
 Outputs a JSON summary with basic stats.
 """
@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Tuple
 
 import requests
 
-API = os.getenv("SOMA_API_URL", "http://127.0.0.1:9999")
+API = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696")
 TENANT = os.getenv("SOMA_TENANT", "sandbox")
 NAMESPACE = os.getenv("SOMA_NAMESPACE", "public")
 N = int(os.getenv("BENCH_N", "200"))

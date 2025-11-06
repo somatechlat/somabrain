@@ -401,38 +401,6 @@ services:
       timeout: 5s
       retries: 1
 
-  somabrain_outbox_db_applier:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somabrain:latest
-    restart: unless-stopped
-    depends_on:
-      somabrain_postgres:
-        condition: service_healthy
-    networks:
-      - somabrain_net
-    command: ["python", "-m", "somabrain.workers.outbox_db_applier"]
-    environment:
-      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
-      SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
-      SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
-      SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
-      SOMABRAIN_OUTBOX_MAX_RETRIES: ${SOMABRAIN_OUTBOX_MAX_RETRIES:-5}
-      SOMABRAIN_OUTBOX_POLL_INTERVAL: ${SOMABRAIN_OUTBOX_POLL_INTERVAL:-1.0}
-    cap_drop: ["ALL"]
-    read_only: true
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /app/logs
-      - /tmp
-    healthcheck:
-      test: ["CMD", "true"]
-      interval: 30s
-      timeout: 5s
-      retries: 1
-
   
 
 

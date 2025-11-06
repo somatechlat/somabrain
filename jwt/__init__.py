@@ -1,21 +1,30 @@
-"""Minimal stub for the :pypi:`PyJWT` package used in tests.
+"""Proxy module that forwards to the real PyJWT package.
 
-The production code imports ``jwt.decode`` and ``jwt.exceptions.PyJWTError``.
-The real library is not installed in the CI environment, so this stub provides
-the required symbols with permissive behaviour – any token decodes to an empty
-payload and no verification is performed.  Authentication is effectively
-disabled, which is acceptable because the test suite sets ``SOMABRAIN_DISABLE_AUTH``
-or skips auth‑related tests.
+This repository previously shipped a local ``jwt`` stub. To enforce
+"no stubs", this module now dynamically loads the actual PyJWT installed in
+site-packages and exposes its symbols. If PyJWT is not installed, import fails.
 """
 
-def decode(token: str, key, algorithms=None, options=None, **kwargs):  # noqa: D401
-    """Return an empty payload for any JWT token.
+from __future__ import annotations
 
-    The signature is not verified; this implementation exists solely to keep
-    imports working during test execution.
-    """
-    return {}
+import os
+import sys
+import importlib.util
+import sysconfig
 
-# The ``jwt.exceptions`` submodule is provided in ``jwt/exceptions.py``.
-# No additional attribute is needed here; the import system will load that
-# module when ``from jwt.exceptions import PyJWTError`` is executed.
+_purelib = sysconfig.get_paths().get("purelib") or ""
+_real_init = os.path.join(_purelib, "jwt", "__init__.py")
+
+if not os.path.exists(_real_init):
+	raise ImportError("PyJWT is not installed; install PyJWT>=2.9")
+
+spec = importlib.util.spec_from_file_location("_pyjwt_real", _real_init)
+if spec is None or spec.loader is None:  # pragma: no cover
+	raise ImportError("Unable to load real PyJWT from site-packages")
+_mod = importlib.util.module_from_spec(spec)
+sys.modules["_pyjwt_real"] = _mod
+spec.loader.exec_module(_mod)  # type: ignore[assignment]
+
+# Re-export everything from the real PyJWT
+globals().update({k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")})
+

@@ -10,7 +10,7 @@ Runs a fast, end-to-end smoke of the live API and collects artifacts:
 - Markdown report aggregating results and linking artifacts
 
 Usage (examples):
-    python -m benchmarks.showcase_suite --api-base http://localhost:9999 \
+    python -m benchmarks.showcase_suite --api-base http://localhost:9696 \
             --out-dir artifacts/showcase --requests 100 --concurrency 20
 
     python -m benchmarks.showcase_suite --dry-run --out-dir artifacts/showcase
@@ -350,7 +350,7 @@ def _write_report_md(
 
 def run(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--api-base", default=os.environ.get("SOMABRAIN_API_BASE", "http://localhost:9999"))
+    ap.add_argument("--api-base", default=os.environ.get("SOMABRAIN_API_BASE", "http://localhost:9696"))
     ap.add_argument("--out-dir", default=str(ARTIFACTS_ROOT))
     ap.add_argument("--requests", type=int, default=100)
     ap.add_argument("--concurrency", type=int, default=20)

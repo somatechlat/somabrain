@@ -200,7 +200,7 @@ class MemoryService:
             raise RuntimeError("Memory service unavailable") from e
 
     def link(self, from_coord, to_coord, link_type="related", weight=1.0):
-        """Creates a link between memories. Fails fast and journals on error."""
+        """Create a link between memories (fail-fast)."""
         if self._is_circuit_open():
             raise RuntimeError("Memory service unavailable (circuit open)")
         try:

@@ -58,9 +58,9 @@ Postgres ───────────────────────�
 Prometheus ─────────────────────► Metrics export
 ```
 
-Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. For local dev we reserve the 301xx host port range to avoid conflicts and keep things predictable:
+Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. The API always binds host port 9696 for consistency:
 
-- API: host 9999 -> container 9696
+- API: host 9696 -> container 9696
 - Redis: 30100 -> 6379
 - Kafka broker: 30102 -> 9092 (internal advertised as somabrain_kafka:9092)
 - Kafka exporter: 30103 -> 9308
@@ -145,7 +145,7 @@ $ git clone https://github.com/somatechlat/somabrain.git
 $ cd somabrain
 $ docker compose up -d
 # Ensure your memory backend is accessible at http://localhost:9595
-$ curl -s http://localhost:9999/health | jq
+$ curl -s http://localhost:9696/health | jq
 ```
 
 If you run host-side tools (benchmarks, curl) and want convenient access to the memory service URL/token, generate host-friendly exports and source them:
@@ -157,11 +157,11 @@ scripts/export_memory_env.sh && source scripts/.memory.env
 Store and recall a memory:
 
 ```bash
-$ curl -s http://localhost:9999/remember \
+$ curl -s http://localhost:9696/remember \
     -H "Content-Type: application/json" \
     -d '{"payload": {"task": "kb.paris", "content": "Paris is the capital of France."}}'
 
-$ curl -s http://localhost:9999/recall \
+$ curl -s http://localhost:9696/recall \
     -H "Content-Type: application/json" \
     -d '{"query": "capital of France", "top_k": 3}' | jq '.results'
 ```
@@ -169,7 +169,7 @@ $ curl -s http://localhost:9999/recall \
 Close the loop with feedback:
 
 ```bash
-$ curl -s http://localhost:9999/context/feedback \
+$ curl -s http://localhost:9696/context/feedback \
     -H "Content-Type: application/json" \
     -d '`
 {"session_id":"demo","query":"capital of France","prompt":"Summarise the capital of France.","response_text":"Paris is the capital of France.","utility":0.9,"reward":0.9}
@@ -180,10 +180,10 @@ $ curl -s http://localhost:9999/context/feedback \
 Inspect tenant learning state:
 
 ```bash
-$ curl -s http://localhost:9999/context/adaptation/state | jq
+$ curl -s http://localhost:9696/context/adaptation/state | jq
 ```
 
-Metrics are available at `http://localhost:9999/metrics`; adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
+Metrics are available at `http://localhost:9696/metrics`; adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
 
 ---
 
@@ -201,8 +201,8 @@ Quickstart:
 docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
 
 # Check health and scrape metrics
-curl -fsS http://127.0.0.1:9999/health | jq .
-curl -fsS http://127.0.0.1:9999/metrics | head -n 20
+curl -fsS http://127.0.0.1:9696/health | jq .
+curl -fsS http://127.0.0.1:9696/metrics | head -n 20
 ```
 
 For common queries, see the PromQL cheat sheet at the top of the monitoring guide.
