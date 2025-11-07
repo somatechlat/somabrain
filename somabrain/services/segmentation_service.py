@@ -642,7 +642,17 @@ def main() -> None:  # pragma: no cover - service entrypoint
     ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip().lower()
     composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     if not (ff in ("1", "true", "yes", "on") or composite):
-        print("Segmentation feature flag disabled; set SOMABRAIN_FF_COG_SEGMENTATION=1 or ENABLE_COG_THREADS=1 to enable.")
+        import logging
+        from somabrain.metrics import get_counter
+        logging.info("segmentation_service: disabled; set SOMABRAIN_FF_COG_SEGMENTATION=1 or ENABLE_COG_THREADS=1 to enable")
+        try:
+            _MX_SEG_DISABLED = get_counter(
+                "somabrain_segmentation_disabled_total",
+                "Count of segmentation service disabled exits",
+            )
+            _MX_SEG_DISABLED.inc()
+        except Exception:
+            pass
         return
     svc = SegmentationService()
     svc.run_forever()

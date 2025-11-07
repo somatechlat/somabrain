@@ -94,7 +94,6 @@ The Docker stack uses direct port access (standard container ports):
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1              # Enforce external backend usage
 SOMABRAIN_FORCE_FULL_STACK=1         # Require all backing services
 SOMABRAIN_REQUIRE_MEMORY=1           # Memory service must be available
-SOMABRAIN_DISABLE_AUTH=1             # Skip auth for local development
 SOMABRAIN_MODE=development           # Development mode identifier
 
 # Service access (standard container ports, direct to localhost)
@@ -239,7 +238,7 @@ SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1          # Enable mathematical validation
 SOMABRAIN_FORCE_FULL_STACK=1     # Require all services
 SOMABRAIN_REQUIRE_MEMORY=1       # Require memory backend
-SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)
+SOMABRAIN_MODE=development       # Dev mode governs auth policy
 ```
 
 ### 🐳 Docker Infrastructure:

@@ -182,7 +182,8 @@ def main() -> None:  # pragma: no cover
     except Exception:
         # Fallback to a simple loopless run if uvicorn not available
         import time as _time
-        print("uvicorn not installed; reward_producer HTTP won't start.")
+        import logging
+        logging.error("reward_producer: uvicorn not installed; HTTP endpoint not started")
         while True:
             _time.sleep(60)
 

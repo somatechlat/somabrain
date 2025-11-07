@@ -20,7 +20,7 @@
 **Authentication**
 
 - For static tokens set `SOMABRAIN_API_TOKEN=...` and supply `Authorization: Bearer <token>`.
-- To disable auth in isolated dev environments use `SOMABRAIN_DISABLE_AUTH=1`.
+– In dev mode, auth may be relaxed; otherwise include a valid Bearer token.
 - JWT validation uses HS or RS algorithms depending on `cfg.jwt_secret` / `cfg.jwt_public_key_path`. Configure `SOMABRAIN_JWT_ISSUER` / `SOMABRAIN_JWT_AUDIENCE` if needed.
 
 Example curl:

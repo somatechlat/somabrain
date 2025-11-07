@@ -711,12 +711,32 @@ def main() -> None:  # pragma: no cover - manual run path
     ff = os.getenv("SOMABRAIN_FF_COG_INTEGRATOR", "").strip().lower()
     composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
     if not (ff in ("1", "true", "yes", "on") or composite):
-        print(
-            "Integrator Hub feature flag disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 or ENABLE_COG_THREADS=1 to enable."
+        import logging
+        from somabrain.metrics import get_counter
+        logging.info(
+            "integrator_hub: disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 or ENABLE_COG_THREADS=1 to enable"
         )
+        try:
+            _MX_INT_DISABLED = get_counter(
+                "somabrain_integrator_disabled_total",
+                "Count of integrator hub disabled exits",
+            )
+            _MX_INT_DISABLED.inc()
+        except Exception:
+            pass
         return
     hub = IntegratorHub()
-    print("Starting Integrator Hub...")
+    import logging
+    from somabrain.metrics import get_counter
+    logging.info("Starting Integrator Hub...")
+    try:
+        _MX_INT_INIT = get_counter(
+            "somabrain_integrator_init_total",
+            "Number of Integrator Hub initializations",
+        )
+        _MX_INT_INIT.inc()
+    except Exception:
+        pass
     hub.run_forever()
 
 

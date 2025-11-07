@@ -45,7 +45,7 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 **Usage notes**:
 - Write endpoints honour backend enforcement—requests fail if backing services are unreachable.
 - Tenancy is selected via the `X-Soma-Tenant` header; defaults to the configured tenant when absent.
-- Authentication is disabled only when `SOMABRAIN_DISABLE_AUTH=1`.
+- Authentication is enabled except in dev mode per centralized settings.
 - Regenerate OpenAPI artifacts with `./scripts/export_openapi.py`.
 
 ### Base Information

@@ -132,7 +132,8 @@ class TeachFeedbackService:
         # Prefer confluent-kafka for production reliability
         if self._ck_producer is None and CKProducer is not None:
             try:
-                print(f"teach_proc: creating ck-producer bootstrap={self._bootstrap}", flush=True)
+                import logging
+                logging.info("teach_feedback_processor: creating ck-producer bootstrap=%s", self._bootstrap)
             except Exception:
                 pass
             self._ck_producer = CKProducer({
@@ -144,14 +145,16 @@ class TeachFeedbackService:
             })
         if self._producer is None and (KafkaProducer is not None):
             try:
-                print(f"teach_proc: creating producer bootstrap={self._bootstrap}", flush=True)
+                import logging
+                logging.info("teach_feedback_processor: creating producer bootstrap=%s", self._bootstrap)
             except Exception:
                 pass
             self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5, compression_type="gzip")
 
     def _emit_reward(self, frame_id: str, r_user: float) -> None:
         try:
-            print("teach_proc: _emit_reward called", flush=True)
+            import logging
+            logging.debug("teach_feedback_processor: _emit_reward called")
         except Exception:
             pass
         # Build reward record (legacy reward_event schema fields); compatible with Avro serde fallback
@@ -168,7 +171,8 @@ class TeachFeedbackService:
         # If confluent producer exists, use it
         if self._ck_producer is not None:
             try:
-                print("teach_proc: using ck-producer", flush=True)
+                import logging
+                logging.info("teach_feedback_processor: using confluent-kafka producer")
             except Exception:
                 pass
             payload = _enc(rec, self._serde_reward)
@@ -183,7 +187,8 @@ class TeachFeedbackService:
                 remaining = self._ck_producer.flush(5)
                 if delivered["ok"] and remaining == 0:
                     try:
-                        print(f"teach_proc: emitted reward for frame_id={frame_id} r_user={r_user}", flush=True)
+                        import logging
+                        logging.info("teach_feedback_processor: emitted reward frame_id=%s r_user=%s", frame_id, r_user)
                     except Exception:
                         pass
                     if self._mx_reward_ok is not None:
@@ -193,7 +198,8 @@ class TeachFeedbackService:
                             pass
                 else:
                     try:
-                        print(f"teach_proc: failed to emit reward via ck: err={delivered['err']} remaining={remaining}", flush=True)
+                        import logging
+                        logging.error("teach_feedback_processor: failed to emit via ck err=%s remaining=%s", delivered.get('err'), remaining)
                     except Exception:
                         pass
                     if self._mx_reward_fail is not None:
@@ -203,7 +209,8 @@ class TeachFeedbackService:
                             pass
             except Exception as e:
                 try:
-                    print(f"teach_proc: ck-produce error: {e}", flush=True)
+                    import logging
+                    logging.error("teach_feedback_processor: ck-produce error: %s", e)
                 except Exception:
                     pass
                 if self._mx_reward_fail is not None:
@@ -215,7 +222,8 @@ class TeachFeedbackService:
         if self._producer is None:
             return
         try:
-            print("teach_proc: using kafka-python producer", flush=True)
+            import logging
+            logging.info("teach_feedback_processor: using kafka-python producer")
         except Exception:
             pass
         try:
@@ -224,7 +232,8 @@ class TeachFeedbackService:
                 # Ensure timely delivery in small dev setups
                 fut.get(timeout=5)
                 try:
-                    print(f"teach_proc: emitted reward for frame_id={frame_id} r_user={r_user}", flush=True)
+                    import logging
+                    logging.info("teach_feedback_processor: emitted reward frame_id=%s r_user=%s", frame_id, r_user)
                 except Exception:
                     pass
                 if self._mx_reward_ok is not None:
@@ -244,7 +253,8 @@ class TeachFeedbackService:
                         pass
         except Exception:
             try:
-                print("teach_proc: failed to emit reward", flush=True)
+                import logging
+                logging.error("teach_feedback_processor: failed to emit reward")
             except Exception:
                 pass
             if self._mx_reward_fail is not None:
@@ -277,7 +287,8 @@ class TeachFeedbackService:
                             self._handle_payload(payload)
                     except Exception as e:
                         try:
-                            print(f"teach_proc: consumer error (ck): {e}", flush=True)
+                            import logging
+                            logging.error("teach_feedback_processor: consumer error (ck): %s", e)
                         except Exception:
                             pass
                         time.sleep(0.25)
@@ -311,7 +322,8 @@ class TeachFeedbackService:
                         self._handle_record(msg)
                 except Exception as e:
                     try:
-                        print(f"teach_proc: consumer error (kp): {e}", flush=True)
+                        import logging
+                        logging.error("teach_feedback_processor: consumer error (kp): %s", e)
                     except Exception:
                         pass
                     time.sleep(0.25)
@@ -331,7 +343,8 @@ class TeachFeedbackService:
             r_user = max(-1.0, min(1.0, _r_user_from_rating(rating)))
             # Minimal observability for smoke
             try:
-                print(f"teach_feedback: frame_id={frame_id} rating={rating} -> r_user={r_user}", flush=True)
+                import logging
+                logging.debug("teach_feedback: frame_id=%s rating=%s -> r_user=%s", frame_id, rating, r_user)
             except Exception:
                 pass
             if self._mx_count is not None:

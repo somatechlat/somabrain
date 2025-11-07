@@ -25,10 +25,8 @@ This page lists the key environment variables that control SomaBrain in both loc
   - Host runs: http://localhost:9595
   - Containers (Docker Desktop): http://host.docker.internal:9595
 - SOMABRAIN_MEMORY_HTTP_TOKEN: bearer token for the memory service (if required).
-- SOMABRAIN_DOCKER_MEMORY_FALLBACK: in-container default if the endpoint is not set.
 
 ### Auth and security
-- SOMABRAIN_DISABLE_AUTH: 1 to disable API auth in local dev.
 - SOMABRAIN_JWT_SECRET: JWT signing secret (required when auth enabled).
 - SOMABRAIN_API_TOKEN: optional static token if you use simple header-based auth.
 - SOMA_OPA_FAIL_CLOSED: 1 to make OPA required for readiness.

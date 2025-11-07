@@ -31,7 +31,7 @@ Call `GET /diagnostics`. It returns a sanitized snapshot including:
 
 If `memory_endpoint` shows `localhost` while `in_container` is `true`, switch to `http://host.docker.internal:9595` and restart the API container.
 
-Set `SOMABRAIN_DISABLE_AUTH=1` before starting the API. Authentication (`require_auth`) will be bypassed for all endpoints. Remember to unset the flag outside dev environments.
+Use development mode to relax authentication for local testing. Outside dev, authentication is required and enforced.
 
 ---
 

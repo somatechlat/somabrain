@@ -24,7 +24,6 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMABRAIN_HTTP_MAX_CONNS` | 64 | Max HTTP connections to backends | shared settings |
 | `SOMABRAIN_HTTP_KEEPALIVE` | 32 | Keepalive connections | shared settings |
 | `SOMABRAIN_HTTP_RETRIES` | 1 | Backend HTTP retry attempts | shared settings |
-| `SOMABRAIN_DISABLE_AUTH` | 0 | Bypass API auth (dev only) | app |
 | `SOMABRAIN_MINIMAL_PUBLIC_API` | 0 | Expose a reduced surface (experiments) | app |
 | `SOMABRAIN_PREDICTOR_PROVIDER` | `mahal` (Docker sets `mahal`) | Predictor backend selection | shared settings |
 | `SOMA_HEAT_METHOD` | `lanczos` (default in env.example, Helm, Compose) | Heat kernel approximation: `chebyshev` or `lanczos` | diffusion |
@@ -41,7 +40,6 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMABRAIN_MEMORY_ENABLE_WEIGHTING` | 0 | Enable memory weighting heuristics | shared settings |
 | `SOMABRAIN_MEMORY_PHASE_PRIORS` | unset | Phase weights for memory | shared settings |
 | `SOMABRAIN_MEMORY_QUALITY_EXP` | 1.0 | Memory quality exponent | shared settings |
-| `SOMABRAIN_DOCKER_MEMORY_FALLBACK` | unset | In-container fallback endpoint if main env is unset | shared settings |
 
 Update this table whenever you introduce or deprecate environment knobs. Keep names consistent with the code.
 
@@ -80,7 +78,6 @@ SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_FORCE_FULL_STACK=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://127.0.0.1:9595   # For direct host runs (uvicorn)
-SOMABRAIN_DISABLE_AUTH=1
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
 SOMABRAIN_REDIS_URL=redis://127.0.0.1:6379/0
 SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@127.0.0.1:5432/somabrain

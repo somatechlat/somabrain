@@ -42,7 +42,6 @@ data:
   SOMABRAIN_REDIS_HOST: "sb-redis.somabrain-prod.svc.cluster.local"
   SOMABRAIN_REDIS_PORT: "6379"
   SOMABRAIN_OPA_URL: "http://sb-opa.somabrain-prod.svc.cluster.local:8181"
-  SOMABRAIN_DISABLE_AUTH: "1"
   # Observability endpoints (optional)
   SOMABRAIN_OTLP_ENDPOINT: "http://otel-collector:4318" # adjust or remove
   # Tenancy / defaults

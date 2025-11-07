@@ -29,24 +29,13 @@ def _auth_disabled() -> bool:
     # Prefer centralized mode policy when available
     if shared_settings is not None:
         try:
-            # If mode declares API auth enabled, do not allow legacy disable flags
+            # If mode declares API auth enabled, enforce it; in dev mode, policy may disable
             mode_enabled = bool(getattr(shared_settings, "mode_api_auth_enabled", True))
-            if not mode_enabled:
-                # Dev mode: auth disabled by policy
-                return True
+            return not mode_enabled
         except Exception:
-            pass
-        # Fall back to legacy flag only when mode policy isn't available
-        try:
-            return bool(getattr(shared_settings, "disable_auth", False))
-        except Exception:
+            # If centralized settings unavailable/misconfigured, default to enforcing auth
             return False
-    env_flag = os.getenv("SOMABRAIN_DISABLE_AUTH")
-    if env_flag is not None:
-        try:
-            return env_flag.strip().lower() in _TRUE_VALUES
-        except Exception:
-            return False
+    # No environment escape hatch; rely on centralized settings only
     return False
 
 

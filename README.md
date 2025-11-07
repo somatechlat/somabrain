@@ -115,7 +115,7 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 | `POST /sleep/run` | Trigger NREM/REM consolidation cycles.
 | `GET/POST /neuromodulators` | Read or set neuromodulator levels (dopamine, serotonin, etc.).
 
-All endpoints require a Bearer token unless you set `SOMABRAIN_DISABLE_AUTH=1` for local experiments, and every call can be scoped with `X-Tenant-ID`.
+All endpoints require a Bearer token (auth may be disabled automatically in dev mode). Every call can be scoped with `X-Tenant-ID`.
 
 ### Full-Power Recall Defaults (2025-11)
 

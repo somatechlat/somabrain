@@ -803,7 +803,7 @@ LINK_DECAY_PRUNED = Counter(
 )
 
 
-# Audit pipeline metrics: observe whether events go to Kafka or the durable journal fallback
+# Audit pipeline metrics: Kafka publish path only (no local fallbacks)
 AUDIT_KAFKA_PUBLISH = Counter(
     "somabrain_audit_kafka_publish_total",
     "Audit events successfully published to Kafka (best-effort)",

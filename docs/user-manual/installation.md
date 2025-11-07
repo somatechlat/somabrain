@@ -68,13 +68,13 @@ source .venv/bin/activate
 pip install -U pip && pip install -e .[dev]
 
 export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595   # For direct host runs (uvicorn)
-export SOMABRAIN_DISABLE_AUTH=1            # dev only
+export SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
 export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
 
 uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reload
 ```
 
-Disable the auth bypass (`SOMABRAIN_DISABLE_AUTH`) before deploying to any shared environment.
+Do not relax auth outside development mode; use proper Bearer tokens in shared environments.
 
 ---
 
@@ -110,7 +110,7 @@ If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
 - `503 memory backend unavailable` – the memory HTTP service on port 9595 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
 - Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
 - Kafka slow to start – wait for the broker healthcheck (`somabrain_kafka` container) before sending recall requests.
-- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`) or set `SOMABRAIN_DISABLE_AUTH=1` only for isolated dev environments.
+- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`). In dev mode, auth may be relaxed by policy.
 
 ---
 

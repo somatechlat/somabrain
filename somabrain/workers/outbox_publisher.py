@@ -18,6 +18,7 @@ import json
 import os
 import time
 from typing import Any, Dict, Optional
+import logging
 
 from sqlalchemy.orm import Session
 
@@ -94,14 +95,15 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     session_factory = get_session_factory()
     producer = _make_producer()
     if producer is None:
-        print("[outbox_publisher] Kafka disabled or unavailable; events will remain pending.")
+        logging.error("outbox_publisher: Kafka unavailable; exiting fail-fast")
+        raise SystemExit(1)
     while True:
         with session_factory() as session:
             try:
                 n = _process_batch(session, producer, batch_size, max_retries)
             except Exception as e:
                 # Safety net: don't crash the loop on DB issues
-                print(f"[outbox_publisher] batch error: {e}")
+                logging.error("outbox_publisher: batch error: %s", e)
                 n = 0
         if n == 0:
             time.sleep(poll_interval)
