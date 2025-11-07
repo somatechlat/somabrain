@@ -1182,19 +1182,42 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
     except Exception:
         pass
     details = exc.errors() if hasattr(exc, "errors") else []
-    hint = {
-        "endpoint": "/remember",
-        "expected": {
-            "json": {
-                "coord": "optional 'x,y,z' string",
-                "payload": {
-                    "task": "string",
-                    "importance": 1,
-                    "memory_type": "episodic",
-                },
-            }
-        },
-    }
+    # Provide route‑specific hints to reduce confusion when validation fails
+    path = request.url.path if hasattr(request, "url") else ""
+    if "/memory/recall" in str(path):
+        hint = {
+            "endpoint": "/memory/recall",
+            "expected": {
+                "json": [
+                    "Either a JSON string body (e.g. \"hello world\")",
+                    {
+                        "query": "string",
+                        "top_k": 10,
+                        "retrievers": ["vector", "wm", "graph", "lexical"],
+                        "rerank": "auto|cosine|mmr|hrr",
+                        "persist": True,
+                        "universe": "optional"
+                    },
+                ]
+            },
+        }
+    elif "/memory/remember" in str(path):
+        hint = {
+            "endpoint": "/memory/remember",
+            "expected": {
+                "json": {
+                    "tenant": "string",
+                    "namespace": "string",
+                    "key": "string",
+                    "value": {"task": "string", "memory_type": "episodic"},
+                }
+            },
+        }
+    else:
+        hint = {
+            "endpoint": str(path) or "<unknown>",
+            "expected": {"json": "See OpenAPI schema for this route"},
+        }
     return JSONResponse(
         status_code=422,
         content={"detail": details, "hint": hint, "client": ip},

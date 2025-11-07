@@ -13,10 +13,10 @@ import os
 import time
 import uuid
 from threading import RLock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Annotated
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Body
 from pydantic import BaseModel, Field
 
 from somabrain.metrics import (
@@ -367,8 +367,33 @@ class MemoryRecallSessionResponse(BaseModel):
 
 
 def _runtime_module():
-    from somabrain import runtime as rt
+    """Return the canonical runtime module carrying singletons.
 
+    Prefer the initializer-loaded module name ("somabrain.runtime_module") when present
+    to ensure we reference the same object that `app.py` wires up. Fallback to the
+    package module ("somabrain.runtime"). As a final guard, scan `sys.modules` for any
+    module whose file path points to `somabrain/runtime.py` and return that instance.
+    """
+    import sys
+    # Prefer the explicit initializer alias if available
+    m = sys.modules.get("somabrain.runtime_module")
+    if m is not None:
+        return m
+    try:
+        from somabrain import runtime as rt  # type: ignore
+        return rt
+    except Exception:
+        pass
+    # Last resort: find a loaded module referencing runtime.py by filepath
+    for mod in list(sys.modules.values()):
+        try:
+            mf = getattr(mod, "__file__", "") or ""
+            if mf.endswith("somabrain/runtime.py"):
+                return mod
+        except Exception:
+            continue
+    # If nothing found, import the package module now
+    from somabrain import runtime as rt  # type: ignore
     return rt
 
 
@@ -1251,7 +1276,7 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
 
 
 @router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: object, request: Request) -> MemoryRecallResponse:
+async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
     """Unified recall endpoint backed by the retrieval pipeline.
 
     Accepts either a plain string (JSON string) or an object body. For object bodies,
@@ -1309,7 +1334,7 @@ async def recall_memory(payload: object, request: Request) -> MemoryRecallRespon
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
-async def recall_memory_stream(payload: object, request: Request) -> MemoryRecallResponse:
+async def recall_memory_stream(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
     # Provide a reasonable default chunking and reuse the unified recall.
     # We honor top_k from input if present; otherwise default to 10 and stream 5 per page.
     ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)

@@ -113,9 +113,10 @@ cat <<'FLAGS' >> $ENVFILE
 SOMABRAIN_FORCE_FULL_STACK=1
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_REQUIRE_MEMORY=1
-SOMABRAIN_MODE=enterprise
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
 FLAGS
+# Set mode with env override; default to dev for no‑auth development
+echo "SOMABRAIN_MODE=${SOMABRAIN_MODE:-dev}" >> $ENVFILE
 
 # App-level sane defaults to avoid compose warnings
 cat <<'APPVARS' >> $ENVFILE
