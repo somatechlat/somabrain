@@ -164,17 +164,18 @@ compose-clean:
 # Two canonical modes: dev (embedded small services) and prod-like (full stack)
 # ---------------------------------------------------------------------------
 
-# Force port normalization regardless of host env noise
-PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=9999
+# Force port normalization regardless of host env noise (standardize on 9696)
+PORT_OVERRIDES=REDIS_HOST_PORT=30100 KAFKA_EXPORTER_HOST_PORT=30103 PROMETHEUS_HOST_PORT=30105 POSTGRES_EXPORTER_HOST_PORT=30107 SOMABRAIN_HOST_PORT=9696
 
-COMPOSE_CMD=docker compose --env-file ./.env -p somabrain-9999
+# Use a stable compose project name without port suffix
+COMPOSE_CMD=docker compose --env-file ./.env -p somabrain
 
 up-prod-like:
 	@echo "Starting full prod-like stack (all services, real infra)..."
 	@$(PORT_OVERRIDES) $(COMPOSE_CMD) up -d
 	@echo ""
 	@echo "Prod-like URLs:"
-	@echo "- API:            http://127.0.0.1:9999/health"
+	@echo "- API:            http://127.0.0.1:9696/health"
 	@echo "- Redis:          redis://127.0.0.1:30100"
 	@echo "- Kafka broker:   127.0.0.1:30102 (internal clients should use somabrain_kafka:9092)"
 	@echo "- OPA:            http://127.0.0.1:30104/health"
@@ -197,8 +198,8 @@ up-dev:
 	@echo "Starting simplified dev mode (embed reward+learner under main API)..."
 	@SOMABRAIN_MODE=dev SOMABRAIN_EMBED_DEV_SERVICES=1 $(PORT_OVERRIDES) $(COMPOSE_CMD) up -d --remove-orphans somabrain_redis somabrain_kafka somabrain_opa somabrain_postgres somabrain_app
 	@echo "Dev URLs:"
-	@echo "- API:            http://127.0.0.1:9999/health"
-	@echo "- Reward:         http://127.0.0.1:9999/reward/health"
-	@echo "- Learner:        http://127.0.0.1:9999/learner/health"
+	@echo "- API:            http://127.0.0.1:9696/health"
+	@echo "- Reward:         http://127.0.0.1:9696/reward/health"
+	@echo "- Learner:        http://127.0.0.1:9696/learner/health"
 
 # (Removed) cognition overlay and Linux host-gateway helpers to keep a single compose entrypoint

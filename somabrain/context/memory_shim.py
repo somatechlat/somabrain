@@ -14,12 +14,12 @@ from somabrain.memory_client import MemoryClient
 
 
 class MemoryRecallClient:
-        """Adapter exposing a MemoryClient-compatible interface for context building.
+    """Adapter exposing a MemoryClient-compatible interface for context building.
 
-        Methods:
-            - search_text(query, top_k=10, filters=None) -> List[Dict]
-            - search(embedding, top_k=10) -> List[Dict] (not implemented; fails fast)
-        """
+    Methods:
+        - search_text(query, top_k=10, filters=None) -> List[Dict]
+        - search(embedding, top_k=10) -> List[Dict] (not implemented; fails fast)
+    """
 
     def __init__(self, namespace: Optional[str] = None) -> None:
         cfg = get_config()

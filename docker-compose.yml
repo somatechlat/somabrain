@@ -374,19 +374,25 @@ services:
       # Supervisor HTTP auth used by API for control; only on internal network
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
-    command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf"]
+    command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf", "-l", "/dev/stdout"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://admin:soma@localhost:9001"]
       interval: 30s
       timeout: 5s
       retries: 5
     cap_drop: ["ALL"]
-    read_only: true
+    # read_only disabled to allow supervisor tmp/log paths in minimal dev
     security_opt:
       - no-new-privileges:true
-    tmpfs:
-      - /app/logs
-      - /tmp
+    volumes:
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 1777
 
   somabrain_outbox_publisher:
     build:

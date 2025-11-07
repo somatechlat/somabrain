@@ -1106,8 +1106,12 @@ try:
     from somabrain.api import context_route as _context_route
 
     app.include_router(_context_route.router, prefix="/context")
-except Exception:
-    pass
+except Exception as _ctx_exc:
+    try:
+        _lg = logging.getLogger("somabrain")
+        _lg.warning("Context router not registered: %s", _ctx_exc, exc_info=True)
+    except Exception:
+        pass
 
 try:
     from somabrain.api.routers import persona as _persona_router

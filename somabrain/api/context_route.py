@@ -45,10 +45,23 @@ from somabrain.metrics import (
 
 router = APIRouter()
 
-# Strict store initialization: fail-fast if dependencies are unavailable.
-# This enforces real persistence backends and avoids silent degradations.
-_feedback_store = FeedbackStore()
-_token_ledger = TokenLedger()
+# Store initialization is lazy to avoid import-time failures that would
+# prevent the router from registering (and thus 404 the entire /context API).
+_feedback_store = None  # type: ignore[assignment]
+_token_ledger = None  # type: ignore[assignment]
+
+def _get_feedback_store() -> FeedbackStore:
+    global _feedback_store
+    if _feedback_store is None:
+        # Best-effort init; let endpoint-level try/except surface clear errors
+        _feedback_store = FeedbackStore()
+    return _feedback_store  # type: ignore[return-value]
+
+def _get_token_ledger() -> TokenLedger:
+    global _token_ledger
+    if _token_ledger is None:
+        _token_ledger = TokenLedger()
+    return _token_ledger  # type: ignore[return-value]
 
 # Global counter for feedback applications across requests
 _feedback_counter = 0
@@ -225,7 +238,8 @@ async def feedback_endpoint(
     }
     event_id = _make_event_id(payload.session_id)
     try:
-        _feedback_store.record(
+        store = _get_feedback_store()
+        store.record(
             event_id=event_id,
             session_id=payload.session_id,
             query=payload.query,
@@ -241,7 +255,8 @@ async def feedback_endpoint(
                 "tokens_used"
             )
         if tokens is not None:
-            _token_ledger.record(
+            ledger = _get_token_ledger()
+            ledger.record(
                 entry_id=f"{payload.session_id}:{uuid.uuid4().hex}",
                 session_id=payload.session_id,
                 tokens=float(tokens),
@@ -273,7 +288,12 @@ async def feedback_endpoint(
         raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
     if applied:
         try:
-            store_total = _feedback_store.total_count()
+            store_total = 0
+            try:
+                store = _get_feedback_store()
+                store_total = store.total_count()
+            except Exception:
+                store_total = 0
             adapter_total = getattr(adapter, "_feedback_count", 0)
             _feedback_counter = max(_feedback_counter, adapter_total, store_total)
         except Exception:
@@ -362,7 +382,8 @@ async def adaptation_state_endpoint(
     adapter_count = getattr(adapter, "_feedback_count", 0)
     store_total = 0
     try:
-        store_total = int(_feedback_store.total_count())
+        store = _get_feedback_store()
+        store_total = int(store.total_count())
     except Exception:
         store_total = 0
     history_len = max(int(_feedback_counter), int(adapter_count), int(store_total))

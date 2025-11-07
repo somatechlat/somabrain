@@ -44,28 +44,47 @@ unset KAFKA_HEAP_OPTS || true
 unset KAFKA_CLUSTER_ID || true
 
 # Function to find next available port starting from a given port
+# Track reserved ports to avoid collisions picked before services bind
+USED_PORTS=""
+
 find_free_port() {
     local start_port=$1
     local port=$start_port
-    while lsof -i :$port >/dev/null 2>&1; do
-        ((port++))
+    while :; do
+        # skip if already reserved in this script run
+        if echo ",$USED_PORTS," | grep -q ",$port,"; then
+            ((port++))
+            continue
+        fi
+        # skip if in use by another process
+        if lsof -i :$port >/dev/null 2>&1; then
+            ((port++))
+            continue
+        fi
         if [ $port -gt 65535 ]; then
             echo "ERROR: No available ports found starting from $start_port" >&2
             return 1
         fi
+        break
     done
+    # reserve and return
+    if [ -z "$USED_PORTS" ]; then
+        USED_PORTS="$port"
+    else
+        USED_PORTS="$USED_PORTS,$port"
+    fi
     echo $port
 }
 
-# Fixed container ports, host ports allocated from 30000+ range
-REDIS_PORT=$(find_free_port 30000)
-# Host port for EXTERNAL Kafka listener; choose a free one in 301xx range
-KAFKA_BROKER_PORT=$(find_free_port 30102)
-KAFKA_EXPORTER_PORT=$(find_free_port 30003)
-OPA_PORT=$(find_free_port 30004)
-PROMETHEUS_PORT=$(find_free_port 30005)
-POSTGRES_PORT=$(find_free_port 30006)
-POSTGRES_EXPORTER_PORT=$(find_free_port 30007)
+# Fixed container ports, use stable host port mappings for full-stack dev
+REDIS_PORT=30100
+# Host port for EXTERNAL Kafka listener
+KAFKA_BROKER_PORT=30102
+KAFKA_EXPORTER_PORT=30103
+OPA_PORT=30104
+PROMETHEUS_PORT=30105
+POSTGRES_PORT=30106
+POSTGRES_EXPORTER_PORT=30107
 API_HOST_PORT=9696
 
 echo "Port allocation (host ports):"
@@ -114,6 +133,9 @@ SOMABRAIN_FORCE_FULL_STACK=1
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
 SOMABRAIN_REQUIRE_MEMORY=1
 SOMABRAIN_PREDICTOR_PROVIDER=mahal
+# Enable full learning capabilities by default
+SOMABRAIN_LEARNING_LOOP_ENABLED=1
+SOMABRAIN_LEARNING_RATE_DYNAMIC=1
 FLAGS
 # Set mode with env override; default to dev for no‑auth development
 echo "SOMABRAIN_MODE=${SOMABRAIN_MODE:-dev}" >> $ENVFILE
@@ -175,8 +197,8 @@ echo "Wrote $ENVFILE:" && sed -n '1,200p' $ENVFILE
 
 echo "Cleaning any previous compose state (down --remove-orphans)"
 docker compose --env-file "$ENVFILE" -f docker-compose.yml down --remove-orphans || true
-echo "Bringing up docker compose (this will build the somabrain image)..."
-docker compose --env-file "$ENVFILE" -f docker-compose.yml up -d --build somabrain_app somabrain_outbox_publisher
+echo "Bringing up full docker compose stack (this will build the somabrain image)..."
+docker compose --env-file "$ENVFILE" -f docker-compose.yml up -d --build
 
 # Wait for somabrain health
 API_HOST_PORT_LOCAL=$(grep '^SOMABRAIN_HOST_PORT=' $ENVFILE | cut -d= -f2)
@@ -200,7 +222,7 @@ with open('.env') as f:
             env[k]=v
 ports={}
 ports.update(env)
-services=['somabrain_app','somabrain_redis','somabrain_kafka','somabrain_prometheus','somabrain_postgres','somabrain_kafka_exporter','somabrain_postgres_exporter','somabrain_opa']
+services=['somabrain_app','somabrain_cog','somabrain_redis','somabrain_kafka','somabrain_prometheus','somabrain_postgres','somabrain_kafka_exporter','somabrain_postgres_exporter','somabrain_opa','somabrain_schema_registry']
 port_map={'somabrain_app':'9696','somabrain_redis':'6379','somabrain_kafka':'9094','somabrain_prometheus':'9090','somabrain_postgres':'5432','somabrain_kafka_exporter':'9308','somabrain_postgres_exporter':'9187','somabrain_opa':'8181'}
 for s in services:
     try:
