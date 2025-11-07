@@ -102,6 +102,12 @@ _REWARD_VALUE = metrics.get_histogram(
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
+    # Feature flag gating (default off unless explicitly enabled or composite threads flag)
+    ff = os.getenv("SOMABRAIN_FF_REWARD_INGEST", "0").strip().lower() in {"1","true","yes","on"}
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {"1","true","yes","on"}
+    if not (ff or composite):
+        # Leave _ready False; health will show disabled
+        return
     global _producer, _producer_kind, _serde_inst, _ready
     prod = _make_producer()
     if isinstance(prod, tuple):
@@ -114,7 +120,7 @@ async def startup() -> None:  # pragma: no cover
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    return {"ok": bool(_ready)}
+    return {"ok": bool(_ready), "enabled": os.getenv("SOMABRAIN_FF_REWARD_INGEST", "0")}
 
 @app.get("/metrics")
 async def metrics_ep():  # type: ignore

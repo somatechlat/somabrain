@@ -332,7 +332,10 @@ class MemoryClient:
         token_value = None
         if self.cfg.http and getattr(self.cfg.http, "token", None):
             token_value = self.cfg.http.token
+            # Prefer standard Bearer auth, but include common alternatives for dev services
             headers["Authorization"] = f"Bearer {token_value}"
+            headers.setdefault("X-API-Key", token_value)
+            headers.setdefault("X-Auth-Token", token_value)
 
         # Propagate tenancy via standardized headers (best-effort)
         ns = str(getattr(self.cfg, "namespace", ""))

@@ -1,0 +1,18 @@
+# Per-tenant adaptation overrides
+# Specify tau decay rates and entropy caps.
+# Missing tenants inherit global env defaults.
+# Units:
+#   tau_decay_rate: multiplicative decay applied each successful feedback (tau *= 1 - rate)
+#   entropy_cap: maximum Shannon entropy over normalized (alpha, beta, gamma, tau) vector
+#
+# Example:
+# sandbox: conservative decay, moderate cap
+# demo: faster decay, tighter entropy cap
+
+sandbox:
+  tau_decay_rate: 0.02
+  entropy_cap: 1.25
+
+demo:
+  tau_decay_rate: 0.05
+  entropy_cap: 1.0

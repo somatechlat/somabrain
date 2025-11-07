@@ -230,13 +230,17 @@ _thread: Optional[threading.Thread] = None
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
+    ff = os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0").strip().lower() in {"1","true","yes","on"}
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {"1","true","yes","on"}
+    if not (ff or composite):
+        return
     _thread = threading.Thread(target=_svc.run, daemon=True)
     _thread.start()
 
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    return {"ok": True}
+    return {"ok": True, "enabled": os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0")}
 
 @app.get("/metrics")
 async def metrics_ep():  # type: ignore

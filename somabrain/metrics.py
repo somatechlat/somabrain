@@ -1054,6 +1054,32 @@ def update_learning_effective_lr(tenant_id: str, lr_eff: float):
     LEARNING_EFFECTIVE_LR.labels(tenant_id=tenant_id).set(lr_eff)
 
 
+# Phase‑1 adaptive knob metrics
+tau_decay_events = get_counter(
+    "somabrain_tau_decay_events_total",
+    "Tau decay applications per tenant",
+    labelnames=["tenant_id"],
+)
+entropy_cap_events = get_counter(
+    "somabrain_entropy_cap_events_total",
+    "Entropy cap sharpen events per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Retrieval entropy gauge per tenant
+LEARNING_RETRIEVAL_ENTROPY = get_gauge(
+    "somabrain_learning_retrieval_entropy",
+    "Entropy of retrieval weight distribution per tenant",
+    labelnames=["tenant_id"],
+)
+
+def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
+    try:
+        LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
+    except Exception:
+        pass
+
+
 def record_learning_rollback(tenant_id: str):
     """Increment rollback counter for tenant."""
     LEARNING_ROLLBACKS.labels(tenant_id=tenant_id).inc()

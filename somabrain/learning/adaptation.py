@@ -18,6 +18,59 @@ except Exception:  # pragma: no cover - optional dependency
 
 from somabrain.infrastructure import get_redis_url
 
+# Module-level cache for per-tenant overrides
+_TENANT_OVERRIDES: dict[str, dict] | None = None
+
+
+def _load_tenant_overrides() -> dict[str, dict]:
+    global _TENANT_OVERRIDES
+    if _TENANT_OVERRIDES is not None:
+        return _TENANT_OVERRIDES
+    path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+    overrides: dict[str, dict] = {}
+    # Attempt to load from YAML if available
+    if path and os.path.exists(path):
+        try:
+            import yaml  # type: ignore
+
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            if isinstance(data, dict):
+                overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+        except Exception:
+            # Fallback to JSON parse if YAML not available or fails
+            try:
+                import json as _json
+
+                with open(path, "r", encoding="utf-8") as f:
+                    data = _json.load(f)
+                if isinstance(data, dict):
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+            except Exception:
+                overrides = {}
+    # Optional: overrides via env JSON string
+    if not overrides:
+        raw = os.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+        if raw:
+            try:
+                import json as _json
+
+                data = _json.loads(raw)
+                if isinstance(data, dict):
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+            except Exception:
+                overrides = {}
+    _TENANT_OVERRIDES = overrides
+    return overrides
+
+
+def _get_tenant_override(tenant_id: str) -> dict:
+    try:
+        ov = _load_tenant_overrides()
+        return ov.get(str(tenant_id), {})
+    except Exception:
+        return {}
+
 
 # Redis connection for state persistence
 def _get_redis():
@@ -475,6 +528,74 @@ class AdaptationEngine:
             mu_bounds=self._constraints["mu"],
             nu_bounds=self._constraints["nu"],
         )
+
+        # Optional Phase‑1 adaptive knobs (tau decay + entropy cap), gated by env flags.
+        try:
+            enable_tau_decay = str(os.getenv("SOMABRAIN_ENABLE_TAU_DECAY", "0")).strip().lower() in {"1","true","yes","on"}
+            tau_decay_rate = float(os.getenv("SOMABRAIN_TAU_DECAY_RATE", "0") or 0.0)
+            # Per-tenant override
+            ov = _get_tenant_override(self._tenant_id)
+            if isinstance(ov.get("tau_decay_rate"), (int, float)):
+                tau_decay_rate = float(ov["tau_decay_rate"])  # override rate
+        except Exception:
+            enable_tau_decay = False
+            tau_decay_rate = 0.0
+        if enable_tau_decay and tau_decay_rate > 0.0:
+            old_tau = float(self._retrieval.tau)
+            new_tau = old_tau * (1.0 - tau_decay_rate)
+            # Implicit floor so tau never collapses completely (acts like exploration temperature)
+            self._retrieval.tau = max(new_tau, 0.05)
+            try:
+                from somabrain import metrics as _metrics
+                _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
+            except Exception:
+                pass
+
+        # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
+        try:
+            enable_entropy_cap = str(os.getenv("SOMABRAIN_ENABLE_ENTROPY_CAP", "0")).strip().lower() in {"1","true","yes","on"}
+            entropy_cap = float(os.getenv("SOMABRAIN_ENTROPY_CAP", "0") or 0.0)
+            # Per-tenant override
+            ov = _get_tenant_override(self._tenant_id)
+            if isinstance(ov.get("entropy_cap"), (int, float)):
+                entropy_cap = float(ov["entropy_cap"])  # override cap
+        except Exception:
+            enable_entropy_cap = False
+            entropy_cap = 0.0
+        if enable_entropy_cap and entropy_cap > 0.0:
+            import math
+            vec = [
+                max(1e-9, float(self._retrieval.alpha)),
+                max(1e-9, float(self._retrieval.beta)),
+                max(1e-9, float(self._retrieval.gamma)),
+                max(1e-9, float(self._retrieval.tau)),
+            ]
+            s = sum(vec)
+            probs = [v / s for v in vec]
+            entropy = -sum(p * math.log(p) for p in probs)
+            # Update entropy metric regardless of capping
+            try:
+                from somabrain import metrics as _metrics
+                _metrics.update_learning_retrieval_entropy(self._tenant_id, entropy)
+            except Exception:
+                pass
+            if entropy_cap > 0.0 and entropy > entropy_cap:
+                # Sharpen: scale all but largest weight toward zero by a factor derived from overflow
+                overflow = entropy - entropy_cap
+                largest_idx = max(range(len(vec)), key=lambda i: vec[i])
+                # Compute scaling factor (bounded) to reduce entropy gradually
+                scale = min(0.5, max(0.05, overflow / (entropy + 1e-9)))
+                for i in range(len(vec)):
+                    if i != largest_idx:
+                        vec[i] *= (1.0 - scale)
+                # Reassign back preserving original ordering
+                self._retrieval.alpha, self._retrieval.beta, self._retrieval.gamma, self._retrieval.tau = vec
+                try:
+                    from somabrain import metrics as _metrics
+                    _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
+                except Exception:
+                    pass
+
         # Track that a feedback event was applied
         try:
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
