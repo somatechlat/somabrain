@@ -55,6 +55,9 @@ def _bootstrap() -> str:
 
 
 def _serde() -> Optional[AvroSerde]:
+    # Allow forcing JSON payloads for integration debugging (bypass Avro)
+    if os.getenv("REWARD_FORCE_JSON", "").strip().lower() in {"1","true","yes","on"}:
+        return None
     if load_schema is None or AvroSerde is None:
         return None
     try:

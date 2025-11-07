@@ -394,9 +394,12 @@ services:
       # Feature flags for learning loop services
       SOMABRAIN_FF_REWARD_INGEST: "${SOMABRAIN_FF_REWARD_INGEST:-1}"
       SOMABRAIN_FF_LEARNER_ONLINE: "${SOMABRAIN_FF_LEARNER_ONLINE:-1}"
-      ENABLE_COG_THREADS: "${ENABLE_COG_THREADS:-1}"
+      SOMABRAIN_FF_NEXT_EVENT: "${SOMABRAIN_FF_NEXT_EVENT:-1}"
+      SOMABRAIN_FF_CONFIG_UPDATES: "${SOMABRAIN_FF_CONFIG_UPDATES:-1}"
       # Program-specific ports (supervisor will pass to processes)
       REWARD_PRODUCER_PORT: "${REWARD_PRODUCER_PORT:-8083}"
+      # Force JSON rewards to simplify learner consumption (debug)
+      REWARD_FORCE_JSON: "${REWARD_FORCE_JSON:-1}"
     ports:
       # Reward producer HTTP (host default 30083)
       - "${COG_REWARD_PRODUCER_HOST_PORT:-30083}:8083"

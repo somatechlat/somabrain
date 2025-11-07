@@ -36,6 +36,7 @@ from fastapi import FastAPI
 
 try:
     from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+    from kafka.errors import KafkaError  # type: ignore
 except Exception:  # pragma: no cover
     KafkaConsumer = None  # type: ignore
     KafkaProducer = None  # type: ignore
@@ -125,25 +126,69 @@ class LearnerService:
         # Metrics
         self._g_explore = metrics.get_gauge("soma_exploration_ratio", "Exploration ratio") if metrics else None
         self._g_regret = metrics.get_gauge("soma_policy_regret_estimate", "Estimated policy regret") if metrics else None
+        # Ensure topics exist in dev
+        try:
+            from kafka.admin import KafkaAdminClient, NewTopic  # type: ignore
+            adm = KafkaAdminClient(bootstrap_servers=self._bootstrap, client_id="learner-admin")
+            existing = set(adm.list_topics())
+            needed = [
+                (TOPIC_CFG, 1),
+            ]
+            to_create = []
+            for name, parts in needed:
+                if name not in existing:
+                    to_create.append(NewTopic(name=name, num_partitions=parts, replication_factor=1))
+            if to_create:
+                try:
+                    adm.create_topics(new_topics=to_create, validate_only=False)
+                    print(f"learner_online: created topics {[t.name for t in to_create]}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _ensure_clients(self) -> None:
         if KafkaConsumer is None or KafkaProducer is None:
             raise RuntimeError("Kafka client not available")
         if self._producer is None:
             self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5)
+            try:
+                print(f"learner_online: Kafka producer initialized bootstrap={self._bootstrap}")
+            except Exception:
+                pass
 
     def _emit_cfg(self, tenant: str, tau: float, lr: float = 0.05) -> None:
         if self._producer is None:
             return
         rec = {
+            "tenant": tenant,
             "learning_rate": float(lr),
             "exploration_temp": float(tau),
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         try:
-            self._producer.send(TOPIC_CFG, value=_enc(rec, self._serde_cfg))
-        except Exception:
-            pass
+            print(f"learner_online: sending config_update tenant={tenant} tau={tau:.3f}")
+            fut = self._producer.send(TOPIC_CFG, value=_enc(rec, self._serde_cfg))
+            try:
+                fut.get(timeout=3)
+            except KafkaError as ke:  # type: ignore
+                print(f"learner_online: emit delivery error {ke}")
+            except Exception:
+                # fall through to flush
+                pass
+            try:
+                self._producer.flush(timeout=3)
+            except Exception:
+                pass
+            try:
+                print(f"learner_online: emitted config_update tenant={tenant} tau={tau:.3f} lr={lr:.3f}")
+            except Exception:
+                pass
+        except Exception as e:
+            try:
+                print(f"learner_online: emit failed {e}")
+            except Exception:
+                pass
 
     @staticmethod
     def _tau_from_reward(ema: float) -> float:
@@ -160,6 +205,10 @@ class LearnerService:
         total = float(ev.get("total", 0.0))
         ema = self._ema_by_tenant.setdefault(tenant, _EMA(self._ema_alpha)).update(total)
         tau = self._tau_from_reward(ema)
+        try:
+            print(f"learner_online: observed reward total={total:.3f} ema={ema:.3f} mapped_tau={tau:.3f} tenant={tenant}")
+        except Exception:
+            pass
         # Metrics update
         try:
             if self._g_explore is not None:
@@ -168,14 +217,19 @@ class LearnerService:
                 self._g_regret.set(max(0.0, 1.0 - ema))
         except Exception:
             pass
+        # Emit config update for integrator consumption
         self._emit_cfg(tenant, tau)
 
     def run(self) -> None:  # pragma: no cover - integration loop
         self._ensure_clients()
+        consumer_topics = [TOPIC_REWARD]
+        # Optional topics gated by flags
+        if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {"1","true","yes","on"}:
+            consumer_topics.append(TOPIC_NEXT)
+        if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {"1","true","yes","on"}:
+            consumer_topics.append(TOPIC_GF)  # global frame as future contextual feature
         consumer = KafkaConsumer(
-            TOPIC_GF,
-            TOPIC_REWARD,
-            TOPIC_NEXT,
+            *consumer_topics,
             bootstrap_servers=self._bootstrap,
             value_deserializer=lambda m: m,
             auto_offset_reset="latest",

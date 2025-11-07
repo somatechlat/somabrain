@@ -17,6 +17,8 @@ This doc outlines the online learning loop and how to validate it locally.
 ## Feature Flags
 - `SOMABRAIN_FF_REWARD_INGEST` (default 1 in dev): Enables Reward Producer.
 - `SOMABRAIN_FF_LEARNER_ONLINE` (default 1 in dev): Enables Learner Online loop.
+- `SOMABRAIN_FF_NEXT_EVENT` (default 1 in dev): Enables NextEvent processing (reserved; future predictors).
+- `SOMABRAIN_FF_CONFIG_UPDATES` (default 1 in dev): Enables ConfigUpdate publication/consumption.
 - `ENABLE_COG_THREADS` (composite): Enables cognitive services if set.
 
 ## Ports (dev compose)

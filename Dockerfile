@@ -49,6 +49,8 @@ RUN pip install --no-cache-dir "PyJWT[crypto]"
 RUN pip install --no-cache-dir confluent-kafka kafka-python python-snappy || echo "kafka client install failed; continuing without it"
 # Install pydantic-settings package required by config shared package (pydantic v2 split)
 RUN pip install --no-cache-dir pydantic-settings
+# Install ASGI server used by service modules launched under supervisor
+RUN pip install --no-cache-dir "uvicorn[standard]"
 
 # Copy docs, scripts, and memory (for runtime import)
 COPY docs /app/docs

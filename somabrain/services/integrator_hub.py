@@ -206,15 +206,21 @@ class IntegratorHub:
         self._bu_schema = None
         self._gf_schema = None
         self._ic_schema = None
+        self._cfg_schema = None
         self._avro_bu = None
         self._avro_gf = None
         self._avro_bu_soma = None
         self._avro_ic = None
+        self._avro_cfg = None
         try:
             from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
 
             self._bu_schema = load_schema("belief_update")
             self._gf_schema = load_schema("global_frame")
+            try:
+                self._cfg_schema = load_schema("config_update")
+            except Exception:
+                self._cfg_schema = None
             # Optional compatibility schemas
             try:
                 self._ic_schema = load_schema("integrator_context")
@@ -239,16 +245,23 @@ class IntegratorHub:
                         self._avro_ic = AvroSerde(self._ic_schema)
                     except Exception:
                         self._avro_ic = None
+                if self._cfg_schema is not None:
+                    try:
+                        self._avro_cfg = AvroSerde(self._cfg_schema)
+                    except Exception:
+                        self._avro_cfg = None
             except Exception:
                 self._avro_bu = None
                 self._avro_gf = None
                 self._avro_bu_soma = None
                 self._avro_ic = None
+                self._avro_cfg = None
         except Exception:
             # Avro path unavailable; JSON fallback will be used
             self._bu_schema = None
             self._gf_schema = None
             self._ic_schema = None
+            self._cfg_schema = None
         # Kafka
         self._consumer: Optional[KafkaConsumer] = None
         self._producer: Optional[KafkaProducer] = None
@@ -314,6 +327,13 @@ class IntegratorHub:
             @app.get("/healthz")
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "integrator_hub"}
+
+            @app.get("/tau")
+            async def _tau_ep():  # type: ignore
+                try:
+                    return {"tau": float(self._sm._tau)}
+                except Exception:
+                    return {"tau": None}
 
             # Prometheus metrics endpoint (optional)
             try:
@@ -431,6 +451,14 @@ class IntegratorHub:
         return json.dumps(record).encode("utf-8")
 
     def _decode_config(self, payload: bytes) -> Optional[Dict[str, Any]]:
+        # Try Avro config_update first, then JSON fallback
+        if getattr(self, "_avro_cfg", None) is not None:
+            try:
+                rec = self._avro_cfg.deserialize(payload)  # type: ignore[attr-defined]
+                if isinstance(rec, dict):
+                    return rec
+            except Exception:
+                pass
         try:
             return json.loads(payload.decode("utf-8"))
         except Exception:
@@ -654,57 +682,63 @@ class IntegratorHub:
     def run_forever(self) -> None:
         self._ensure_clients()
         assert self._consumer is not None
-        for msg in self._consumer:
-            try:
-                topic = getattr(msg, "topic", "") or ""
-                # Config updates: adjust tau (and optionally other params)
-                if topic == "cog.config.updates":
-                    cfg = self._decode_config(msg.value)
-                    if isinstance(cfg, dict):
-                        temp = cfg.get("exploration_temp")
-                        if temp is not None:
-                            try:
-                                self._sm.set_tau(float(temp))
-                                INTEGRATOR_TAU.set(float(temp))
-                            except Exception:
-                                pass
-                    continue
-
-                # Decode event depending on topic (cog vs soma)
-                if topic.startswith("soma.belief."):
-                    ev = self._decode_update_soma(msg.value)
-                else:
-                    ev = self._decode_update(msg.value)
-                if not isinstance(ev, dict):
-                    INTEGRATOR_ERRORS.labels(stage="decode").inc()
-                    continue
-                dom = str(ev.get("domain", "state"))
-                INTEGRATOR_CONSUMED.labels(domain=dom).inc()
-                with self._tracer.start_as_current_span("integrator_process_update"):
-                    frame = self._process_update(ev)
-                if frame is None:
-                    continue
-                # Track frames seen for shadow ratio gauge
+        # Persistent outer loop: KafkaConsumer iterator stops after consumer_timeout_ms with no records.
+        while True:
+            for msg in self._consumer:
                 try:
-                    self._frames_seen += 1
-                except Exception:
-                    pass
-                # Publish primary global frame
-                self._publish_frame(frame)
-                # Publish SOMA integrator context if enabled
-                if self._soma_compat:
+                    topic = getattr(msg, "topic", "") or ""
+                    # Config updates: adjust tau (and optionally other params)
+                    if topic == "cog.config.updates":
+                        cfg = self._decode_config(msg.value)
+                        if isinstance(cfg, dict):
+                            temp = cfg.get("exploration_temp")
+                            if temp is not None:
+                                try:
+                                    self._sm.set_tau(float(temp))
+                                    INTEGRATOR_TAU.set(float(temp))
+                                    try:
+                                        print(f"integrator_hub: applied config_update tau={float(temp):.3f}")
+                                    except Exception:
+                                        pass
+                                except Exception:
+                                    pass
+                        continue
+
+                    # Decode event depending on topic (cog vs soma)
+                    if topic.startswith("soma.belief."):
+                        ev = self._decode_update_soma(msg.value)
+                    else:
+                        ev = self._decode_update(msg.value)
+                    if not isinstance(ev, dict):
+                        INTEGRATOR_ERRORS.labels(stage="decode").inc()
+                        continue
+                    dom = str(ev.get("domain", "state"))
+                    INTEGRATOR_CONSUMED.labels(domain=dom).inc()
+                    with self._tracer.start_as_current_span("integrator_process_update"):
+                        frame = self._process_update(ev)
+                    if frame is None:
+                        continue
+                    # Track frames seen for shadow ratio gauge
                     try:
-                        policy_allowed = bool(frame.pop("_policy_allowed", True))  # type: ignore
+                        self._frames_seen += 1
                     except Exception:
-                        policy_allowed = True
-                    leader_out = str(frame.get("leader", "state"))
-                    weights_out = dict(frame.get("weights", {})) if isinstance(frame.get("weights"), dict) else {}
-                    self._publish_soma_context(leader_out, weights_out, frame, policy_allowed)
-                # Cache and metrics
-                self._cache_frame(self._tenant_from(ev), frame)
-                INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
-            except Exception:
-                INTEGRATOR_ERRORS.labels(stage="loop").inc()
+                        pass
+                    # Publish primary global frame
+                    self._publish_frame(frame)
+                    # Publish SOMA integrator context if enabled
+                    if self._soma_compat:
+                        try:
+                            policy_allowed = bool(frame.pop("_policy_allowed", True))  # type: ignore
+                        except Exception:
+                            policy_allowed = True
+                        leader_out = str(frame.get("leader", "state"))
+                        weights_out = dict(frame.get("weights", {})) if isinstance(frame.get("weights"), dict) else {}
+                        self._publish_soma_context(leader_out, weights_out, frame, policy_allowed)
+                    # Cache and metrics
+                    self._cache_frame(self._tenant_from(ev), frame)
+                    INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
+                except Exception:
+                    INTEGRATOR_ERRORS.labels(stage="loop").inc()
 
 
 def main() -> None:  # pragma: no cover - manual run path
