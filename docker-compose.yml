@@ -126,6 +126,29 @@ services:
       timeout: 5s
       retries: 3
 
+  somabrain_kafka_init:
+    image: apache/kafka:3.7.0
+    restart: "no"
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command:
+      [
+        "--create",
+        "--if-not-exists",
+        "--topic",
+        "soma.audit",
+        "--bootstrap-server",
+        "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}",
+        "--partitions",
+        "2",
+        "--replication-factor",
+        "1",
+      ]
+
   somabrain_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
     restart: unless-stopped
@@ -287,6 +310,7 @@ services:
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
@@ -343,6 +367,7 @@ services:
       ENABLE_COG_THREADS: "${ENABLE_COG_THREADS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
@@ -383,6 +408,7 @@ services:
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
