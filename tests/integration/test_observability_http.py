@@ -29,7 +29,9 @@ def _try_get(urls: list[str], timeout: float = 3.0) -> requests.Response | None:
 
 @pytest.mark.integration
 def test_prometheus_ready() -> None:
-    ports = _get_port_candidates("PROMETHEUS_HOST_PORT", ["30005", "30008"])  # common mappings
+    ports = _get_port_candidates(
+        "PROMETHEUS_HOST_PORT", ["30005", "30008"]
+    )  # common mappings
     urls = [f"http://127.0.0.1:{p}/-/ready" for p in ports]
     r = _try_get(urls)
     if r is None:
@@ -39,7 +41,9 @@ def test_prometheus_ready() -> None:
 
 @pytest.mark.integration
 def test_kafka_exporter_metrics_head() -> None:
-    ports = _get_port_candidates("KAFKA_EXPORTER_HOST_PORT", ["30003", "30004"])  # common mappings
+    ports = _get_port_candidates(
+        "KAFKA_EXPORTER_HOST_PORT", ["30003", "30004"]
+    )  # common mappings
     urls = [f"http://127.0.0.1:{p}/metrics" for p in ports]
     r = _try_get(urls)
     if r is None:
@@ -49,7 +53,9 @@ def test_kafka_exporter_metrics_head() -> None:
 
 @pytest.mark.integration
 def test_postgres_exporter_metrics_head() -> None:
-    ports = _get_port_candidates("POSTGRES_EXPORTER_HOST_PORT", ["30007"])  # common mapping
+    ports = _get_port_candidates(
+        "POSTGRES_EXPORTER_HOST_PORT", ["30007"]
+    )  # common mapping
     urls = [f"http://127.0.0.1:{p}/metrics" for p in ports]
     r = _try_get(urls)
     if r is None:
@@ -60,7 +66,9 @@ def test_postgres_exporter_metrics_head() -> None:
 @pytest.mark.integration
 def test_opa_health() -> None:
     # Prefer standardized 30004, but tolerate 8181 as a legacy fallback
-    ports = _get_port_candidates("OPA_HOST_PORT", ["30004", "8181"])  # host mapping (container is 8181)
+    ports = _get_port_candidates(
+        "OPA_HOST_PORT", ["30004", "8181"]
+    )  # host mapping (container is 8181)
     urls = []
     for p in ports:
         urls.append(f"http://127.0.0.1:{p}/health?plugins")

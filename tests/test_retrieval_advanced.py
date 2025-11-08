@@ -54,7 +54,13 @@ def _coord_for_key(key: str, namespace: str = "testns"):
 async def test_exact_key_mode_pinned_top():
     _remember("alpha123", {"task": "Alpha doc", "memory_type": "episodic"})
     ctx = _Ctx()
-    req = RetrievalRequest(query="some other text", mode="key", key="alpha123", top_k=3, retrievers=["vector"]) 
+    req = RetrievalRequest(
+        query="some other text",
+        mode="key",
+        key="alpha123",
+        top_k=3,
+        retrievers=["vector"],
+    )
     resp = await run_retrieval_pipeline(req, ctx=ctx, universe=None, trace_id="t1")
     assert resp.candidates, "No candidates returned"
     top = resp.candidates[0]
@@ -69,7 +75,9 @@ async def test_auto_coord_mode():
     coord = _coord_for_key("beta777")
     coord_str = ",".join(str(float(c)) for c in coord[:3])
     ctx = _Ctx()
-    req = RetrievalRequest(query="ignored", mode="auto", coord=coord_str, top_k=3, retrievers=["vector"]) 
+    req = RetrievalRequest(
+        query="ignored", mode="auto", coord=coord_str, top_k=3, retrievers=["vector"]
+    )
     resp = await run_retrieval_pipeline(req, ctx=ctx, universe=None, trace_id="t2")
     assert resp.candidates, "No candidates returned"
     assert resp.candidates[0].retriever == "exact"
@@ -80,7 +88,7 @@ async def test_auto_key_heuristic_single_token():
     _remember("gamma999", {"task": "Gamma doc", "memory_type": "episodic"})
     ctx = _Ctx()
     # Using the key as the query; heuristic should treat as key (no spaces, len>=6)
-    req = RetrievalRequest(query="gamma999", top_k=3, retrievers=["vector"]) 
+    req = RetrievalRequest(query="gamma999", top_k=3, retrievers=["vector"])
     resp = await run_retrieval_pipeline(req, ctx=ctx, universe=None, trace_id="t3")
     assert resp.candidates, "No candidates returned"
     assert resp.candidates[0].retriever == "exact"
@@ -90,7 +98,9 @@ async def test_auto_key_heuristic_single_token():
 async def test_reranker_auto_selection_metric_present():
     _remember("delta888", {"task": "Delta doc", "memory_type": "episodic"})
     ctx = _Ctx()
-    req = RetrievalRequest(query="delta888", top_k=3, retrievers=["vector"])  # default rerank -> auto
+    req = RetrievalRequest(
+        query="delta888", top_k=3, retrievers=["vector"]
+    )  # default rerank -> auto
     resp = await run_retrieval_pipeline(req, ctx=ctx, universe=None, trace_id="t4")
     assert isinstance(resp.metrics, dict)
     assert resp.metrics.get("reranker_used") in ("hrr", "mmr", "cosine")

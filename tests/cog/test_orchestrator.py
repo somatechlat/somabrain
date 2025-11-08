@@ -18,7 +18,7 @@ def test_parse_global_frame_json_ok():
         "leader": "plan",
         "weights": {"plan": 0.9, "act": 0.1},
         "frame": {"tenant": "t1", "foo": "bar"},
-        "rationale": "softmax"
+        "rationale": "softmax",
     }
     raw = json.dumps(msg).encode("utf-8")
     gf = _parse_global_frame(raw, None)
@@ -52,28 +52,39 @@ def test_parse_segment_boundary_json_ok():
 def test_orchestrator_enqueues_snapshot(monkeypatch):
     events: List[Dict[str, Any]] = []
 
-    def fake_enqueue_event(topic: str, payload: Dict[str, Any], dedupe_key: str | None = None, tenant_id: str | None = None, session=None):
-        events.append({
-            "topic": topic,
-            "payload": payload,
-            "dedupe_key": dedupe_key,
-            "tenant_id": tenant_id,
-        })
+    def fake_enqueue_event(
+        topic: str,
+        payload: Dict[str, Any],
+        dedupe_key: str | None = None,
+        tenant_id: str | None = None,
+        session=None,
+    ):
+        events.append(
+            {
+                "topic": topic,
+                "payload": payload,
+                "dedupe_key": dedupe_key,
+                "tenant_id": tenant_id,
+            }
+        )
 
     # Monkeypatch the module-level symbol
     import somabrain.services.orchestrator_service as mod
+
     monkeypatch.setattr(mod, "enqueue_event", fake_enqueue_event)
 
     svc = OrchestratorService()
 
     # Seed GF context for tenant t1
-    gf_raw = json.dumps({
-        "ts": "2025-01-01T00:00:10Z",
-        "leader": "plan",
-        "weights": {"plan": 0.8, "act": 0.2},
-        "frame": {"tenant": "t1", "foo": "bar"},
-        "rationale": "ok",
-    }).encode("utf-8")
+    gf_raw = json.dumps(
+        {
+            "ts": "2025-01-01T00:00:10Z",
+            "leader": "plan",
+            "weights": {"plan": 0.8, "act": 0.2},
+            "frame": {"tenant": "t1", "foo": "bar"},
+            "rationale": "ok",
+        }
+    ).encode("utf-8")
     gf = _parse_global_frame(gf_raw, None)
     assert gf is not None
     svc._ctx["t1"] = gf  # type: ignore[attr-defined]

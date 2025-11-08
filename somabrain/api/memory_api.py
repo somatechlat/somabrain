@@ -290,10 +290,11 @@ class CutoverPlanResponse(BaseModel):
     last_top1_accuracy: Optional[float] = None
     last_margin: Optional[float] = None
     last_latency_p95_ms: Optional[float] = None
+
+
 def _tiered_enabled() -> bool:
     flag = os.getenv("ENABLE_TIERED_MEMORY", "0").strip().lower()
     return flag in ("1", "true", "yes", "on")
-
 
 
 class MemoryMetricsResponse(BaseModel):
@@ -353,7 +354,6 @@ class MemoryBatchWriteResponse(BaseModel):
     tenant: str
     namespace: str
     results: List[MemoryBatchWriteResult]
-    
 
 
 class MemoryRecallSessionResponse(BaseModel):
@@ -375,12 +375,14 @@ def _runtime_module():
     module whose file path points to `somabrain/runtime.py` and return that instance.
     """
     import sys
+
     # Prefer the explicit initializer alias if available
     m = sys.modules.get("somabrain.runtime_module")
     if m is not None:
         return m
     try:
         from somabrain import runtime as rt  # type: ignore
+
         return rt
     except Exception:
         pass
@@ -394,6 +396,7 @@ def _runtime_module():
             continue
     # If nothing found, import the package module now
     from somabrain import runtime as rt  # type: ignore
+
     return rt
 
 
@@ -1176,7 +1179,9 @@ def _map_retrieval_to_memory_items(candidates: List[dict]) -> List["MemoryRecall
     return items
 
 
-def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> RetrievalRequest:
+def _coerce_to_retrieval_request(
+    obj: object, default_top_k: int = 10
+) -> RetrievalRequest:
     # Resolve environment-backed defaults for full-power behavior with safe rollback
     def _env(name: str, default: str | None = None) -> str | None:
         try:
@@ -1201,16 +1206,14 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
         eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "cosine")
         eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", False)
         eff_retrievers = (
-            (_env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph") or "")
-            .split(",")
-        )
+            _env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph") or ""
+        ).split(",")
     else:
         eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "auto")
         eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", True)
         eff_retrievers = (
-            (_env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph,lexical") or "")
-            .split(",")
-        )
+            _env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph,lexical") or ""
+        ).split(",")
     eff_retrievers = [r.strip() for r in eff_retrievers if r and r.strip()]
 
     # Accept string or dict-like (including MemoryRecallRequest dict)
@@ -1218,7 +1221,11 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
         req = RetrievalRequest(query=obj, top_k=default_top_k)
         # Apply env-backed defaults when caller did not specify
         req.rerank = eff_rerank or req.rerank
-        req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+        req.persist = (
+            eff_persist
+            if req.persist is None or isinstance(req.persist, bool)
+            else req.persist
+        )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
         return req
@@ -1230,7 +1237,11 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
         )
         # Apply env-backed defaults when not provided by caller
         req.rerank = eff_rerank or req.rerank
-        req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+        req.persist = (
+            eff_persist
+            if req.persist is None or isinstance(req.persist, bool)
+            else req.persist
+        )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
         return req
@@ -1249,9 +1260,15 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
         req = RetrievalRequest(
             query=str(q),
             top_k=tk,
-            retrievers=list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers,
+            retrievers=(
+                list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers
+            ),
             rerank=str(rk) if isinstance(rk, str) else RetrievalRequest().rerank,
-            persist=bool(d.get("persist")) if d.get("persist") is not None else RetrievalRequest().persist,
+            persist=(
+                bool(d.get("persist"))
+                if d.get("persist") is not None
+                else RetrievalRequest().persist
+            ),
             universe=str(uni) if isinstance(uni, str) else None,
             mode=str(mode) if isinstance(mode, str) else None,
             id=str(idv) if isinstance(idv, str) else None,
@@ -1269,14 +1286,20 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
     # Fallback: stringify unknown payload
     req = RetrievalRequest(query=str(obj), top_k=default_top_k)
     req.rerank = eff_rerank or req.rerank
-    req.persist = eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
+    req.persist = (
+        eff_persist
+        if req.persist is None or isinstance(req.persist, bool)
+        else req.persist
+    )
     if not req.retrievers:
         req.retrievers = eff_retrievers or req.retrievers
     return req
 
 
 @router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
+async def recall_memory(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
     """Unified recall endpoint backed by the retrieval pipeline.
 
     Accepts either a plain string (JSON string) or an object body. For object bodies,
@@ -1292,11 +1315,18 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
 
     # Run pipeline
     import time as _time
+
     t0 = _time.perf_counter()
     from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
 
-    ret_resp = await run_retrieval_pipeline(ret_req, ctx=ctx, cfg=cfg, universe=ret_req.universe, trace_id=request.headers.get("X-Request-ID"))
-    dt_ms = round(( _time.perf_counter() - t0) * 1000.0, 3)
+    ret_resp = await run_retrieval_pipeline(
+        ret_req,
+        ctx=ctx,
+        cfg=cfg,
+        universe=ret_req.universe,
+        trace_id=request.headers.get("X-Request-ID"),
+    )
+    dt_ms = round((_time.perf_counter() - t0) * 1000.0, 3)
 
     # Map candidates to MemoryRecallItems
     # Convert RetrievalResponse (pydantic) to dict for portability
@@ -1311,6 +1341,7 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
     # Metric: count recall requests (retrieval-backed)
     try:
         from somabrain import metrics as M
+
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
     except Exception:
         pass
@@ -1334,7 +1365,9 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
-async def recall_memory_stream(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
+async def recall_memory_stream(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
     # Provide a reasonable default chunking and reuse the unified recall.
     # We honor top_k from input if present; otherwise default to 10 and stream 5 per page.
     ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)

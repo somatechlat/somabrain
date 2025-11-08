@@ -22,7 +22,9 @@ def test_softmax_integrator_picks_highest_confidence() -> None:
 
 def test_softmax_integrator_stale_evictions() -> None:
     sm = SoftmaxIntegrator(tau=1.0, stale_seconds=0.01)
-    sm.update("t", "state", DomainObs(ts=time.time() - 1.0, confidence=0.9, delta_error=0.1))
+    sm.update(
+        "t", "state", DomainObs(ts=time.time() - 1.0, confidence=0.9, delta_error=0.1)
+    )
     leader, weights, raw = sm.snapshot("t")
     # No recent observations -> default leader
     assert leader == "state"

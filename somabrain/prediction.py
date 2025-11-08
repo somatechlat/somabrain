@@ -86,6 +86,7 @@ class BasePredictor(Protocol):
         """
         ...
 
+
 def cosine_error(a: np.ndarray, b: np.ndarray) -> float:
     """
     Compute cosine error between two vectors.

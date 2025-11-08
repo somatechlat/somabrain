@@ -24,15 +24,17 @@ def _import_showcase_run() -> callable:
 def test_showcase_dry_run(tmp_path: Path) -> None:
     out_dir = tmp_path / "showcase"
     run = _import_showcase_run()
-    code = run([
-        "--dry-run",
-        "--out-dir",
-        str(out_dir),
-        "--requests",
-        "25",
-        "--concurrency",
-        "5",
-    ])
+    code = run(
+        [
+            "--dry-run",
+            "--out-dir",
+            str(out_dir),
+            "--requests",
+            "25",
+            "--concurrency",
+            "5",
+        ]
+    )
     assert code == 0
     # Check artifacts exist and have expected shape
     lat_path = out_dir / "latency.json"

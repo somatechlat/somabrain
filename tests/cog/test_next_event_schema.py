@@ -17,7 +17,9 @@ def test_next_event_schema_exists_and_fields() -> None:
     assert {"frame_id", "predicted_state", "confidence", "ts"}.issubset(fields)
 
 
-@pytest.mark.skipif(importlib.util.find_spec("fastavro") is None, reason="fastavro not installed")
+@pytest.mark.skipif(
+    importlib.util.find_spec("fastavro") is None, reason="fastavro not installed"
+)
 def test_next_event_round_trip_fastavro() -> None:
     from fastavro import parse_schema, schemaless_reader, schemaless_writer  # type: ignore
     import io

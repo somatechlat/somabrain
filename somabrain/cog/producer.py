@@ -27,7 +27,9 @@ class BeliefUpdatePublisher:
         self._producer: Optional[KafkaProducer] = None
         bootstrap = _bootstrap_from_env()
         if not bootstrap:
-            raise RuntimeError("SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher")
+            raise RuntimeError(
+                "SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher"
+            )
         # Try Avro first
         try:
             from libs.kafka_cog.avro_schemas import load_schema  # type: ignore

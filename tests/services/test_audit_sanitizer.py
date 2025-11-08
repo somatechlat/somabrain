@@ -18,7 +18,9 @@ def test_sanitize_masks_common_secret_fields():
     # tenant masked by heuristic
     assert out["tenant"] == audit._MASK
     # authorization preserves scheme but masks token
-    assert out["Authorization"].startswith("Bearer ") and out["Authorization"].endswith(audit._MASK)
+    assert out["Authorization"].startswith("Bearer ") and out["Authorization"].endswith(
+        audit._MASK
+    )
     # typical secret-like keys masked
     assert out["api_key"] == audit._MASK
     assert out["nested"]["password"] == audit._MASK

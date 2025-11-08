@@ -50,7 +50,11 @@ TOPIC = os.getenv("SOMABRAIN_TOPIC_REWARD_EVENTS", "cog.reward.events")
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL") or "somabrain_kafka:9092"
+    url = (
+        os.getenv("SOMA_KAFKA_BOOTSTRAP")
+        or os.getenv("SOMABRAIN_KAFKA_URL")
+        or "somabrain_kafka:9092"
+    )
     return url.replace("kafka://", "")
 
 
@@ -59,7 +63,9 @@ def _serde() -> Optional[AvroSerde]:
     # (or serde) is not available. This keeps the HTTP endpoint available
     # in local/dev images where the package may not be installed.
     if load_schema is None or AvroSerde is None:
-        print("reward_producer: Avro serde not available, falling back to JSON payloads")
+        print(
+            "reward_producer: Avro serde not available, falling back to JSON payloads"
+        )
         return None
     try:
         return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
@@ -80,8 +86,13 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
 def _make_producer():  # pragma: no cover - integration
     # Use confluent-kafka only; fail fast if unavailable
     if CProducer is None:
-        raise RuntimeError("confluent-kafka (librdkafka) is required for RewardProducer")
-    return ("ck", CProducer({"bootstrap.servers": _bootstrap(), "message.timeout.ms": 10000}))
+        raise RuntimeError(
+            "confluent-kafka (librdkafka) is required for RewardProducer"
+        )
+    return (
+        "ck",
+        CProducer({"bootstrap.servers": _bootstrap(), "message.timeout.ms": 10000}),
+    )
 
 
 app = FastAPI(title="Reward Producer")
@@ -90,18 +101,36 @@ _producer_kind: Optional[str] = None  # "ck" for confluent, "kp" for kafka-pytho
 _serde_inst: Optional[AvroSerde] = None
 _ready: bool = False
 _tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
-_REWARD_COUNT = metrics.get_counter("soma_reward_total", "Reward events posted") if metrics else None
-_REWARD_VALUE = metrics.get_histogram(
-    "somabrain_reward_value",
-    "Observed total reward values",
-) if metrics else None
+_REWARD_COUNT = (
+    metrics.get_counter("soma_reward_total", "Reward events posted")
+    if metrics
+    else None
+)
+_REWARD_VALUE = (
+    metrics.get_histogram(
+        "somabrain_reward_value",
+        "Observed total reward values",
+    )
+    if metrics
+    else None
+)
 
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     # Feature flag gating (default off unless explicitly enabled or composite threads flag)
-    ff = os.getenv("SOMABRAIN_FF_REWARD_INGEST", "0").strip().lower() in {"1","true","yes","on"}
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {"1","true","yes","on"}
+    ff = os.getenv("SOMABRAIN_FF_REWARD_INGEST", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     if not (ff or composite):
         # Leave _ready False; health will show disabled
         return
@@ -118,6 +147,7 @@ async def startup() -> None:  # pragma: no cover
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     return {"ok": bool(_ready), "enabled": os.getenv("SOMABRAIN_FF_REWARD_INGEST", "0")}
+
 
 @app.get("/metrics")
 async def metrics_ep():  # type: ignore
@@ -137,7 +167,9 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         r_latency = float(payload.get("r_latency", 0.0))
         r_safety = float(payload.get("r_safety", 0.0))
         r_cost = float(payload.get("r_cost", 0.0))
-        total = float(payload.get("total", r_task + r_user + r_safety - r_latency - r_cost))
+        total = float(
+            payload.get("total", r_task + r_user + r_safety - r_latency - r_cost)
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid payload: {e}")
     rec: Dict[str, Any] = {
@@ -186,7 +218,10 @@ def main() -> None:  # pragma: no cover
         # Fallback to a simple loopless run if uvicorn not available
         import time as _time
         import logging
-        logging.error("reward_producer: uvicorn not installed; HTTP endpoint not started")
+
+        logging.error(
+            "reward_producer: uvicorn not installed; HTTP endpoint not started"
+        )
         while True:
             _time.sleep(60)
 

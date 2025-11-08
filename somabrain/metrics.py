@@ -660,8 +660,8 @@ LTM_STORE_LAT = Histogram(
     "Latency of LTM store operations",
     registry=registry,
 )
- # Removed queued write semantics (fail-fast); metric deprecated.
- # (Previously: somabrain_ltm_store_queued_total)
+# Removed queued write semantics (fail-fast); metric deprecated.
+# (Previously: somabrain_ltm_store_queued_total)
 
 # Executive details
 EXEC_K_SELECTED = Histogram(
@@ -1072,6 +1072,7 @@ LEARNING_RETRIEVAL_ENTROPY = get_gauge(
     "Entropy of retrieval weight distribution per tenant",
     labelnames=["tenant_id"],
 )
+
 
 def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
     try:

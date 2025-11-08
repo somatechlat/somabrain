@@ -370,7 +370,10 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
     write_csv(latency, out_dir / "cognition_latency.csv")
     # Write provenance sidecar
     (out_dir / "cognition_provenance.json").write_text(
-        json.dumps(_provenance({"phase": "cognition_core", "dim": dim, "dtype": dtype}), indent=2)
+        json.dumps(
+            _provenance({"phase": "cognition_core", "dim": dim, "dtype": dtype}),
+            indent=2,
+        )
     )
 
     # Print gates
@@ -413,7 +416,9 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Cognition core benchmark: quality and latency gates")
+    parser = argparse.ArgumentParser(
+        description="Cognition core benchmark: quality and latency gates"
+    )
     parser.add_argument("--dim", type=int, default=8192)
     parser.add_argument("--dtype", choices=["float32", "float64"], default="float32")
     args = parser.parse_args()

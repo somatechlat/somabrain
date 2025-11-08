@@ -47,7 +47,9 @@ def render(run_dir: Path) -> int:
     recs = summ.get("recall_summaries") or []
     if recs:
         md.append("\n## Recall latency vs N")
-        md.append("N | p50 remember (ms) | p95 remember (ms) | p50 recall (ms) | p95 recall (ms) | errors")
+        md.append(
+            "N | p50 remember (ms) | p95 remember (ms) | p50 recall (ms) | p95 recall (ms) | errors"
+        )
         md.append("--:|--:|--:|--:|--:|--:")
         for r in recs:
             md.append(
@@ -74,7 +76,9 @@ def render(run_dir: Path) -> int:
         for key in ("vector", "mix", "graph"):
             sec = recall.get(key)
             if sec:
-                md.append(f"- {key}: latency_s={sec.get('latency_s')}, hit_rate={sec.get('hit_rate')}")
+                md.append(
+                    f"- {key}: latency_s={sec.get('latency_s')}, hit_rate={sec.get('hit_rate')}"
+                )
 
     out = run_dir / "report.md"
     out.write_text("\n".join(md))

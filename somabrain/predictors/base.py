@@ -44,7 +44,9 @@ class PredictorBase:
       - confidence(error) = exp(-alpha * error)
     """
 
-    def __init__(self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None):
+    def __init__(
+        self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
+    ):
         self.apply_A = apply_A
         self.dim = int(dim)
         self.cfg = cfg or PredictorConfig()
@@ -54,6 +56,7 @@ class PredictorBase:
         t = float(self.cfg.diffusion_t)
         if self._method == "lanczos":
             return graph_heat_lanczos(self.apply_A, x0, t, m=int(self.cfg.lanczos_m))
+
         # default chebyshev
         class _Cfg:
             truth_chebyshev_K = int(self.cfg.chebyshev_K)
@@ -69,7 +72,9 @@ class PredictorBase:
         d = a - b
         return float(np.mean(d * d))
 
-    def error_and_confidence(self, salience: np.ndarray, observed: np.ndarray) -> Tuple[float, float]:
+    def error_and_confidence(
+        self, salience: np.ndarray, observed: np.ndarray
+    ) -> Tuple[float, float]:
         err = self.mse(salience, observed)
         conf = float(np.exp(-self.cfg.alpha * max(0.0, err)))
         return err, conf
@@ -81,7 +86,9 @@ class HeatDiffusionPredictor(PredictorBase):
     It expects callers to supply a one-hot source vector and an observed vector.
     """
 
-    def step(self, source_idx: int, observed: np.ndarray) -> Tuple[np.ndarray, float, float]:
+    def step(
+        self, source_idx: int, observed: np.ndarray
+    ) -> Tuple[np.ndarray, float, float]:
         x0 = np.zeros(self.dim, dtype=float)
         x0[max(0, min(self.dim - 1, int(source_idx)))] = 1.0
         y = self.salience(x0)
@@ -158,7 +165,11 @@ def load_operator_from_file(path: str) -> Tuple[ApplyOp, int]:
             A = _to_ndarray(data.get("adjacency"))
         if L is None and ("matrix" in data):
             M = _to_ndarray(data.get("matrix"))
-            ty = str(data.get("type" or "")).strip().lower() if isinstance(data.get("type"), str) else ""
+            ty = (
+                str(data.get("type" or "")).strip().lower()
+                if isinstance(data.get("type"), str)
+                else ""
+            )
             if isinstance(M, np.ndarray):
                 if ty == "laplacian":
                     L = M
@@ -186,7 +197,9 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     """
     dom = (domain or "").strip().upper()
     # Graph source
-    graph_path = os.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or os.getenv("SOMABRAIN_GRAPH_FILE")
+    graph_path = os.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or os.getenv(
+        "SOMABRAIN_GRAPH_FILE"
+    )
     if graph_path:
         try:
             apply_A, dim = load_operator_from_file(graph_path)

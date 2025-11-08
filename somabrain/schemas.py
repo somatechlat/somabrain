@@ -347,9 +347,7 @@ class RetrievalRequest(BaseModel):
     # Default to full-power multi-retriever set. Can be overridden via API/env.
     retrievers: List[str] = ["vector", "wm", "graph", "lexical"]
     # Default to auto so the pipeline selects HRR→MMR→cosine based on availability.
-    rerank: str = (
-        "auto"  # "auto"|"cosine"|"mmr"|"hrr" (validated in pipeline)
-    )
+    rerank: str = "auto"  # "auto"|"cosine"|"mmr"|"hrr" (validated in pipeline)
     # Enable session learning by default; can be disabled via API/env.
     persist: bool = True
     universe: Optional[str] = None

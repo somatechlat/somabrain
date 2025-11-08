@@ -32,14 +32,18 @@ class AuditProducer:
         if not kafka_bootstrap:
             raise RuntimeError("Kafka bootstrap is required for AuditProducer")
         if not KAFKA_AVAILABLE:
-            raise RuntimeError("kafka-python not available; cannot create AuditProducer")
+            raise RuntimeError(
+                "kafka-python not available; cannot create AuditProducer"
+            )
         try:
             self._producer = KafkaProducer(
                 bootstrap_servers=[kafka_bootstrap],
                 value_serializer=lambda v: json.dumps(v).encode("utf-8"),
             )
         except Exception as exc:
-            raise RuntimeError("Failed to create Kafka producer for audit events") from exc
+            raise RuntimeError(
+                "Failed to create Kafka producer for audit events"
+            ) from exc
 
     def send(self, event: Dict[str, Any], ensure_durable: bool = True) -> None:
         payload = {"ts": time.time(), "event": event}

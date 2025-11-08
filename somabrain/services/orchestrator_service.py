@@ -60,7 +60,9 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _parse_global_frame(raw: bytes, serde: Optional[AvroSerde]) -> Optional[GlobalFrameCtx]:
+def _parse_global_frame(
+    raw: bytes, serde: Optional[AvroSerde]
+) -> Optional[GlobalFrameCtx]:
     try:
         data: Dict[str, Any]
         if serde is not None:
@@ -90,7 +92,9 @@ def _parse_global_frame(raw: bytes, serde: Optional[AvroSerde]) -> Optional[Glob
         return None
 
 
-def _parse_segment_boundary(raw: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
+def _parse_segment_boundary(
+    raw: bytes, serde: Optional[AvroSerde]
+) -> Optional[Dict[str, Any]]:
     try:
         if serde is not None:
             return serde.deserialize(raw)  # type: ignore[arg-type]
@@ -146,6 +150,7 @@ class OrchestratorService:
                 @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
+
             except Exception:
                 pass
 
@@ -153,6 +158,7 @@ class OrchestratorService:
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             import threading as _th
+
             th = _th.Thread(target=server.run, daemon=True)
             th.start()
         except Exception:
@@ -255,6 +261,7 @@ def main() -> None:  # pragma: no cover - entrypoint
     if ff not in ("1", "true", "yes", "on"):
         import logging
         from somabrain.metrics import get_counter
+
         logging.info("orchestrator_service: feature flag disabled; exiting")
         try:
             _MX_ORCH_DISABLED = get_counter(

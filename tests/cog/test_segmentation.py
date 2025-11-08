@@ -31,4 +31,3 @@ def test_segmenter_max_dwell():
     assert boundary_ts == "2600"
     assert dwell_ms == 1600
     assert evidence == "max_dwell"
-

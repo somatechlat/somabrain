@@ -60,7 +60,7 @@ def test_integrator_context_schema_roundtrip():
     schema = load_schema("integrator_context")
     serde = AvroSerde(schema)
     # Prepare a minimal global_frame bytes
-    gf_bytes = b"{\"ts\":\"now\",\"leader\":\"state\"}"
+    gf_bytes = b'{"ts":"now","leader":"state"}'
     rec = {
         "leader_stream": "state",
         "leader_score": 0.9,

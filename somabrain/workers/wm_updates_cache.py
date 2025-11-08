@@ -11,6 +11,7 @@ Keys: wm:updates:{tenant}:{domain}
 
 Feature flag: SOMABRAIN_FF_WM_UPDATES_CACHE=1
 """
+
 from __future__ import annotations
 
 import json
@@ -72,7 +73,12 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop
-    if os.getenv("SOMABRAIN_FF_WM_UPDATES_CACHE", "0").strip().lower() not in ("1", "true", "yes", "on"):
+    if os.getenv("SOMABRAIN_FF_WM_UPDATES_CACHE", "0").strip().lower() not in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
         print("wm_updates_cache: feature flag disabled; exiting.")
         return
     if KafkaConsumer is None:

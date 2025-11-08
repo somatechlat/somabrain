@@ -111,9 +111,9 @@ class TieredMemoryRegistry:
             return TieredRecallResult(
                 context=context,
                 payload=payload_copy,
-                coordinate=copy.deepcopy(coordinate)
-                if coordinate is not None
-                else None,
+                coordinate=(
+                    copy.deepcopy(coordinate) if coordinate is not None else None
+                ),
                 eta=bundle.wm_cfg.eta,
                 tau=bundle.wm_policy.threshold,
                 sparsity=bundle.sparsity,

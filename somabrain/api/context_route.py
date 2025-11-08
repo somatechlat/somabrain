@@ -50,6 +50,7 @@ router = APIRouter()
 _feedback_store = None  # type: ignore[assignment]
 _token_ledger = None  # type: ignore[assignment]
 
+
 def _get_feedback_store() -> FeedbackStore:
     global _feedback_store
     if _feedback_store is None:
@@ -57,11 +58,13 @@ def _get_feedback_store() -> FeedbackStore:
         _feedback_store = FeedbackStore()
     return _feedback_store  # type: ignore[return-value]
 
+
 def _get_token_ledger() -> TokenLedger:
     global _token_ledger
     if _token_ledger is None:
         _token_ledger = TokenLedger()
     return _token_ledger  # type: ignore[return-value]
+
 
 # Global counter for feedback applications across requests
 _feedback_counter = 0
@@ -422,18 +425,26 @@ async def adaptation_reset_endpoint(
     # Gate reset to dev mode only to avoid misuse in staging/prod.
     try:
         from common.config.settings import settings as _shared
+
         if getattr(_shared, "mode_normalized", "prod") != "dev":
-            raise HTTPException(status_code=403, detail="adaptation reset not allowed outside dev mode")
+            raise HTTPException(
+                status_code=403, detail="adaptation reset not allowed outside dev mode"
+            )
     except HTTPException:
         raise
     except Exception:
         # If settings cannot be imported, remain conservative and allow only when legacy disable_auth is true
         try:
             from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
+
             if not _legacy_auth_disabled():
-                raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+                raise HTTPException(
+                    status_code=403, detail="adaptation reset blocked (no mode info)"
+                )
         except Exception:
-            raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+            raise HTTPException(
+                status_code=403, detail="adaptation reset blocked (no mode info)"
+            )
     builder = get_context_builder()
     planner = get_context_planner()
     default_tenant = get_default_tenant()
@@ -485,9 +496,7 @@ async def adaptation_reset_endpoint(
         from somabrain.learning.adaptation import UtilityWeights
 
         ud = payload.utility_defaults
-        utility_defaults = UtilityWeights(
-            lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu
-        )
+        utility_defaults = UtilityWeights(lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu)
 
     adapter.reset(
         retrieval_defaults=retrieval_defaults,

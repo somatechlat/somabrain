@@ -33,9 +33,11 @@ import numpy as np
 try:  # pragma: no cover - trivial import guard
     from arc_cache import arc_cache  # type: ignore
 except Exception:  # pragma: no cover
+
     def arc_cache(*args, **kwargs):  # type: ignore
         def _decorator(fn):
             return fn
+
         return _decorator
 
 

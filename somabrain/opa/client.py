@@ -60,11 +60,7 @@ class OPAClient:
             # Legacy fallback for dev shells without explicit configuration.
             # Prefer explicit host port envs, defaulting to 30004 to align
             # with dev stack mapping.
-            host_port = (
-                os.getenv("OPA_HOST_PORT")
-                or os.getenv("OPA_PORT")
-                or "30004"
-            )
+            host_port = os.getenv("OPA_HOST_PORT") or os.getenv("OPA_PORT") or "30004"
             self.base_url = (
                 os.getenv("SOMA_OPA_URL")
                 or os.getenv("SOMABRAIN_OPA_FALLBACK")

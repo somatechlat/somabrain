@@ -21,10 +21,16 @@ except Exception:
             return json.loads(self._data.decode("utf-8"))
 
     def _post(url: str, json_body: Any) -> _Resp:
-        req = _rq.Request(url, data=json.dumps(json_body).encode("utf-8"), headers={"Content-Type": "application/json"})
+        req = _rq.Request(
+            url,
+            data=json.dumps(json_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
         with _rq.urlopen(req, timeout=10) as resp:  # type: ignore
             return _Resp(getattr(resp, "status", 200), resp.read())
+
 else:
+
     def _post(url: str, json_body: Any):  # type: ignore
         return requests.post(url, json=json_body, timeout=10)
 
@@ -59,16 +65,17 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
         except Exception:
             pass
 
+
 def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
     try:
         from confluent_kafka import Consumer  # type: ignore
     except Exception:
         return False
     conf = {
-        'bootstrap.servers': _bootstrap(),
-        'group.id': f'reward-smoke-ck-{int(time.time())}',
-        'auto.offset.reset': 'latest',
-        'enable.auto.commit': False,
+        "bootstrap.servers": _bootstrap(),
+        "group.id": f"reward-smoke-ck-{int(time.time())}",
+        "auto.offset.reset": "latest",
+        "enable.auto.commit": False,
     }
     c = Consumer(conf)
     try:
@@ -119,9 +126,19 @@ def main() -> int:
                 consumer = None
 
     # 1) POST a reward to the reward_producer
-    port = int(os.getenv("REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")))
+    port = int(
+        os.getenv(
+            "REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")
+        )
+    )
     url = f"http://127.0.0.1:{port}/reward/test-frame"
-    payload = {"r_task": 0.9, "r_user": 0.8, "r_latency": 0.1, "r_safety": 0.95, "r_cost": 0.05}
+    payload = {
+        "r_task": 0.9,
+        "r_user": 0.8,
+        "r_latency": 0.1,
+        "r_safety": 0.95,
+        "r_cost": 0.05,
+    }
     resp = _post(url, payload)
     code = getattr(resp, "status_code", 200)
     if code >= 300:
@@ -154,7 +171,9 @@ def main() -> int:
     # 2) Consume one record from cog.reward.events
     if consumer is None:
         # Prefer confluent-kafka consumer if available
-        ok = _consume_one_ck("cog.reward.events", timeout_s=45.0) or _consume_one("cog.reward.events", timeout_s=45.0)
+        ok = _consume_one_ck("cog.reward.events", timeout_s=45.0) or _consume_one(
+            "cog.reward.events", timeout_s=45.0
+        )
     else:
         ok = False
         start = time.time()
@@ -172,7 +191,9 @@ def main() -> int:
             except Exception:
                 pass
     if not ok:
-        print("no reward event observed on Kafka topic cog.reward.events within timeout")
+        print(
+            "no reward event observed on Kafka topic cog.reward.events within timeout"
+        )
         return 5
     print("reward smoke ok")
     return 0

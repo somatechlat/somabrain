@@ -106,13 +106,17 @@ async def _latency_smoke(
     }
 
 
-def _retrieval_quality_http(api_base: str, tenant: str = "showcase", token: Optional[str] = None) -> Dict[str, Any]:
+def _retrieval_quality_http(
+    api_base: str, tenant: str = "showcase", token: Optional[str] = None
+) -> Dict[str, Any]:
     """Minimal retrieval quality smoke against the live API.
 
     Seeds a tiny corpus via /remember and measures hit-rate on unified /recall variants.
     """
     if httpx is None:
-        raise RuntimeError("httpx is not available; install httpx or disable quality check")
+        raise RuntimeError(
+            "httpx is not available; install httpx or disable quality check"
+        )
 
     headers = {"X-Tenant-ID": tenant}
     if token:
@@ -165,7 +169,12 @@ def _retrieval_quality_http(api_base: str, tenant: str = "showcase", token: Opti
         r = client.post(
             api_base.rstrip("/") + "/recall",
             headers=headers,
-            json={"query": query, "top_k": top_k, "retrievers": retrievers, "persist": persist},
+            json={
+                "query": query,
+                "top_k": top_k,
+                "retrievers": retrievers,
+                "persist": persist,
+            },
         )
         dt = time.perf_counter() - t0
         r.raise_for_status()
@@ -206,7 +215,9 @@ def _scrape_metrics_text(metrics_url: str, timeout_s: float = 2.0) -> Dict[str, 
             if not line or line.startswith("#"):
                 continue
             # only capture simple counters without labels, or gauge-obvious lines
-            if line.startswith("somabrain_") or line.startswith("http_server_requests_"):
+            if line.startswith("somabrain_") or line.startswith(
+                "http_server_requests_"
+            ):
                 # strip labels: metric{...} value
                 try:
                     metric_part, val_part = line.split(" ", 1)
@@ -226,7 +237,9 @@ def _maybe_plot_latency(latencies: List[float], out_png: Path) -> Optional[str]:
         import matplotlib.pyplot as plt  # type: ignore
 
         plt.figure(figsize=(6, 3))
-        plt.plot([x * 1000.0 for x in latencies], marker=".", linestyle="none", alpha=0.6)
+        plt.plot(
+            [x * 1000.0 for x in latencies], marker=".", linestyle="none", alpha=0.6
+        )
         plt.title("Latency samples (ms)")
         plt.xlabel("request index")
         plt.ylabel("latency (ms)")
@@ -287,9 +300,13 @@ def _write_report_md(
         # Extract a few salient fields if present
         mode = diagnostics.get("mode")
         req_backends = diagnostics.get("external_backends_required")
-        mem_ep = diagnostics.get("memory_endpoint") or diagnostics.get("memory", {}).get("endpoint")
+        mem_ep = diagnostics.get("memory_endpoint") or diagnostics.get(
+            "memory", {}
+        ).get("endpoint")
         embedder = diagnostics.get("embedder")
-        predictor = diagnostics.get("predictor_provider") or diagnostics.get("predictor")
+        predictor = diagnostics.get("predictor_provider") or diagnostics.get(
+            "predictor"
+        )
         md.append(f"Mode: {mode}")
         if req_backends is not None:
             md.append(f"External backends required: {req_backends}")
@@ -299,10 +316,14 @@ def _write_report_md(
             md.append(f"Predictor: {predictor}")
         if embedder:
             md.append(f"Embedder: {embedder}")
-        md.append("Evidence of no mocks: external_backends_required should be true; memory endpoint should not be 127.0.0.1 inside containers; OPA decisions present in metrics.")
+        md.append(
+            "Evidence of no mocks: external_backends_required should be true; memory endpoint should not be 127.0.0.1 inside containers; OPA decisions present in metrics."
+        )
 
     md.append("## Latency smoke")
-    md.append(f"Requests: {latency.get('requests')} | Concurrency: {latency.get('concurrency')} | Endpoint: {latency.get('endpoint')}")
+    md.append(
+        f"Requests: {latency.get('requests')} | Concurrency: {latency.get('concurrency')} | Endpoint: {latency.get('endpoint')}"
+    )
     md.append(
         f"Mean: {latency.get('mean_s'):.4f}s | p50: {latency.get('p50_s'):.4f}s | p90: {latency.get('p90_s'):.4f}s | p99: {latency.get('p99_s'):.4f}s"
     )
@@ -350,15 +371,24 @@ def _write_report_md(
 
 def run(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--api-base", default=os.environ.get("SOMABRAIN_API_BASE", "http://localhost:9696"))
+    ap.add_argument(
+        "--api-base",
+        default=os.environ.get("SOMABRAIN_API_BASE", "http://localhost:9696"),
+    )
     ap.add_argument("--out-dir", default=str(ARTIFACTS_ROOT))
     ap.add_argument("--requests", type=int, default=100)
     ap.add_argument("--concurrency", type=int, default=20)
     ap.add_argument("--timeout", type=float, default=2.0)
-    ap.add_argument("--no-retrieval", action="store_true", help="Skip retrieval micro-bench")
+    ap.add_argument(
+        "--no-retrieval", action="store_true", help="Skip retrieval micro-bench"
+    )
     ap.add_argument("--tenant", default=os.environ.get("SOMA_TENANT", "showcase"))
     ap.add_argument("--token", default=os.environ.get("SOMA_API_TOKEN"))
-    ap.add_argument("--dry-run", action="store_true", help="Do not call network; emit synthetic data")
+    ap.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Do not call network; emit synthetic data",
+    )
     args = ap.parse_args(argv)
 
     out_dir = Path(args.out_dir)
@@ -452,7 +482,14 @@ def run(argv: Optional[List[str]] = None) -> int:
 
     # Markdown report
     _write_report_md(
-        out_dir, latency, retrieval, metrics, latency_plot, latency_hist, diagnostics, math_panels
+        out_dir,
+        latency,
+        retrieval,
+        metrics,
+        latency_plot,
+        latency_hist,
+        diagnostics,
+        math_panels,
     )
 
     print(f"Showcase artifacts written to: {out_dir}")

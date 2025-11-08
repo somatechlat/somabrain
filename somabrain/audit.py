@@ -35,7 +35,13 @@ def _schema_path() -> Optional[Path]:
     """Return path to docs audit schema if present (optional)."""
     try:
         here = Path(__file__).resolve().parent.parent
-        sp = here.parent / "docs" / "technical-manual" / "schemas" / "audit_event.schema.json"
+        sp = (
+            here.parent
+            / "docs"
+            / "technical-manual"
+            / "schemas"
+            / "audit_event.schema.json"
+        )
         if sp.exists():
             return sp
     except Exception:
@@ -70,7 +76,9 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
             try:
                 jsonschema.validate(instance=ev, schema=schema)
             except Exception:
-                LOGGER.debug("Audit event schema validation failed; continuing (no fallback)")
+                LOGGER.debug(
+                    "Audit event schema validation failed; continuing (no fallback)"
+                )
     except Exception:
         pass
 
@@ -170,6 +178,7 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if ev is None:
         return None
     try:
+
         def _walk(obj: Any) -> Any:
             if isinstance(obj, dict):
                 out: Dict[str, Any] = {}
@@ -177,7 +186,12 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
                     lk = str(k).lower()
                     if lk in _SENSITIVE_KEYS:
                         # For auth-like headers, preserve scheme (e.g., "Bearer ")
-                        if lk in ("authorization", "proxy-authorization", "cookie", "set-cookie"):
+                        if lk in (
+                            "authorization",
+                            "proxy-authorization",
+                            "cookie",
+                            "set-cookie",
+                        ):
                             out[k] = _mask_value(v)
                         else:
                             # Keys known to be sensitive are always masked regardless of value shape

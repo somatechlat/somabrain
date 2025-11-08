@@ -84,7 +84,9 @@ def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
     return json.dumps(rec).encode("utf-8")
 
 
-def _dec(payload: Optional[bytes], serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
+def _dec(
+    payload: Optional[bytes], serde: Optional[AvroSerde]
+) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
     if serde is not None:
@@ -121,10 +123,35 @@ class TeachFeedbackService:
         self._seen_frames = deque(maxlen=size)
         self._seen_set = set()
         # Metrics
-        self._mx_count = metrics.get_counter("somabrain_teach_feedback_total", "Teach feedback observed") if metrics else None
-        self._mx_ruser = metrics.get_histogram("somabrain_teach_r_user", "Teach-derived r_user values") if metrics else None
-        self._mx_reward_ok = metrics.get_counter("somabrain_reward_events_published_total", "Reward events successfully published") if metrics else None
-        self._mx_reward_fail = metrics.get_counter("somabrain_reward_events_failed_total", "Reward events publish failures") if metrics else None
+        self._mx_count = (
+            metrics.get_counter(
+                "somabrain_teach_feedback_total", "Teach feedback observed"
+            )
+            if metrics
+            else None
+        )
+        self._mx_ruser = (
+            metrics.get_histogram(
+                "somabrain_teach_r_user", "Teach-derived r_user values"
+            )
+            if metrics
+            else None
+        )
+        self._mx_reward_ok = (
+            metrics.get_counter(
+                "somabrain_reward_events_published_total",
+                "Reward events successfully published",
+            )
+            if metrics
+            else None
+        )
+        self._mx_reward_fail = (
+            metrics.get_counter(
+                "somabrain_reward_events_failed_total", "Reward events publish failures"
+            )
+            if metrics
+            else None
+        )
 
     def _ensure_clients(self) -> None:
         if KafkaConsumer is None:
@@ -133,27 +160,43 @@ class TeachFeedbackService:
         if self._ck_producer is None and CKProducer is not None:
             try:
                 import logging
-                logging.info("teach_feedback_processor: creating ck-producer bootstrap=%s", self._bootstrap)
+
+                logging.info(
+                    "teach_feedback_processor: creating ck-producer bootstrap=%s",
+                    self._bootstrap,
+                )
             except Exception:
                 pass
-            self._ck_producer = CKProducer({
-                "bootstrap.servers": self._bootstrap,
-                "socket.timeout.ms": 5000,
-                "message.timeout.ms": 5000,
-                # Avoid requiring python-snappy in host tools; keep interop simple
-                "compression.type": "none",
-            })
+            self._ck_producer = CKProducer(
+                {
+                    "bootstrap.servers": self._bootstrap,
+                    "socket.timeout.ms": 5000,
+                    "message.timeout.ms": 5000,
+                    # Avoid requiring python-snappy in host tools; keep interop simple
+                    "compression.type": "none",
+                }
+            )
         if self._producer is None and (KafkaProducer is not None):
             try:
                 import logging
-                logging.info("teach_feedback_processor: creating producer bootstrap=%s", self._bootstrap)
+
+                logging.info(
+                    "teach_feedback_processor: creating producer bootstrap=%s",
+                    self._bootstrap,
+                )
             except Exception:
                 pass
-            self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5, compression_type="gzip")
+            self._producer = KafkaProducer(
+                bootstrap_servers=self._bootstrap,
+                acks="1",
+                linger_ms=5,
+                compression_type="gzip",
+            )
 
     def _emit_reward(self, frame_id: str, r_user: float) -> None:
         try:
             import logging
+
             logging.debug("teach_feedback_processor: _emit_reward called")
         except Exception:
             pass
@@ -172,6 +215,7 @@ class TeachFeedbackService:
         if self._ck_producer is not None:
             try:
                 import logging
+
                 logging.info("teach_feedback_processor: using confluent-kafka producer")
             except Exception:
                 pass
@@ -188,7 +232,12 @@ class TeachFeedbackService:
                 if delivered["ok"] and remaining == 0:
                     try:
                         import logging
-                        logging.info("teach_feedback_processor: emitted reward frame_id=%s r_user=%s", frame_id, r_user)
+
+                        logging.info(
+                            "teach_feedback_processor: emitted reward frame_id=%s r_user=%s",
+                            frame_id,
+                            r_user,
+                        )
                     except Exception:
                         pass
                     if self._mx_reward_ok is not None:
@@ -199,7 +248,12 @@ class TeachFeedbackService:
                 else:
                     try:
                         import logging
-                        logging.error("teach_feedback_processor: failed to emit via ck err=%s remaining=%s", delivered.get('err'), remaining)
+
+                        logging.error(
+                            "teach_feedback_processor: failed to emit via ck err=%s remaining=%s",
+                            delivered.get("err"),
+                            remaining,
+                        )
                     except Exception:
                         pass
                     if self._mx_reward_fail is not None:
@@ -210,6 +264,7 @@ class TeachFeedbackService:
             except Exception as e:
                 try:
                     import logging
+
                     logging.error("teach_feedback_processor: ck-produce error: %s", e)
                 except Exception:
                     pass
@@ -223,6 +278,7 @@ class TeachFeedbackService:
             return
         try:
             import logging
+
             logging.info("teach_feedback_processor: using kafka-python producer")
         except Exception:
             pass
@@ -233,7 +289,12 @@ class TeachFeedbackService:
                 fut.get(timeout=5)
                 try:
                     import logging
-                    logging.info("teach_feedback_processor: emitted reward frame_id=%s r_user=%s", frame_id, r_user)
+
+                    logging.info(
+                        "teach_feedback_processor: emitted reward frame_id=%s r_user=%s",
+                        frame_id,
+                        r_user,
+                    )
                 except Exception:
                     pass
                 if self._mx_reward_ok is not None:
@@ -254,6 +315,7 @@ class TeachFeedbackService:
         except Exception:
             try:
                 import logging
+
                 logging.error("teach_feedback_processor: failed to emit reward")
             except Exception:
                 pass
@@ -288,7 +350,10 @@ class TeachFeedbackService:
                     except Exception as e:
                         try:
                             import logging
-                            logging.error("teach_feedback_processor: consumer error (ck): %s", e)
+
+                            logging.error(
+                                "teach_feedback_processor: consumer error (ck): %s", e
+                            )
                         except Exception:
                             pass
                         time.sleep(0.25)
@@ -323,7 +388,10 @@ class TeachFeedbackService:
                 except Exception as e:
                     try:
                         import logging
-                        logging.error("teach_feedback_processor: consumer error (kp): %s", e)
+
+                        logging.error(
+                            "teach_feedback_processor: consumer error (kp): %s", e
+                        )
                     except Exception:
                         pass
                     time.sleep(0.25)
@@ -344,7 +412,13 @@ class TeachFeedbackService:
             # Minimal observability for smoke
             try:
                 import logging
-                logging.debug("teach_feedback: frame_id=%s rating=%s -> r_user=%s", frame_id, rating, r_user)
+
+                logging.debug(
+                    "teach_feedback: frame_id=%s rating=%s -> r_user=%s",
+                    frame_id,
+                    rating,
+                    r_user,
+                )
             except Exception:
                 pass
             if self._mx_count is not None:
@@ -386,7 +460,12 @@ _thread: Optional[threading.Thread] = None
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
-    enabled = str(os.getenv("SOMABRAIN_ENABLE_TEACH_FEEDBACK", "0")).lower() in {"1", "true", "yes", "on"}
+    enabled = str(os.getenv("SOMABRAIN_ENABLE_TEACH_FEEDBACK", "0")).lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     if enabled:
         _thread = threading.Thread(target=_svc.run, daemon=True)
         _thread.start()
@@ -401,6 +480,7 @@ async def health() -> Dict[str, Any]:
 async def metrics_ep():  # type: ignore
     try:
         from somabrain import metrics as _m  # type: ignore
+
         return await _m.metrics_endpoint()
     except Exception:
         return {"status": "metrics not available"}

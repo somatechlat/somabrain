@@ -40,7 +40,7 @@ fig = go.Figure()
 for dtype, series in tiny.items():
     xs = list(series.keys())
     ys = [series[x] for x in xs]
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines+markers', name=dtype))
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", name=dtype))
 fig.update_layout(
     title="Tiny-floor amplitude by dtype and D",
     xaxis_title="D (log2)",
@@ -56,7 +56,7 @@ fig = go.Figure()
 for dtype, series in rt.items():
     xs = list(series.keys())
     ys = [series[x] for x in xs]
-    fig.add_trace(go.Scatter(x=xs, y=ys, mode='lines+markers', name=dtype))
+    fig.add_trace(go.Scatter(x=xs, y=ys, mode="lines+markers", name=dtype))
 fig.update_layout(
     title="Unitary FFT roundtrip error",
     xaxis_title="D",
@@ -76,9 +76,7 @@ for dtype, series in roles.items():
         vals.append(v)
 fig = go.Figure([go.Bar(x=labels, y=vals)])
 fig.update_layout(
-    title="Generated role L2 norms",
-    yaxis_title="L2 norm",
-    yaxis_range=[0.95, 1.05]
+    title="Generated role L2 norms", yaxis_title="L2 norm", yaxis_range=[0.95, 1.05]
 )
 fig.write_html(OUT_DIR / "role_norms.html")
 
@@ -95,7 +93,7 @@ fig = go.Figure([go.Bar(x=labels, y=vals)])
 fig.update_layout(
     title="Bind/Unbind cosines (should be ~1)",
     yaxis_title="cosine",
-    yaxis_range=[0.9, 1.01]
+    yaxis_range=[0.9, 1.01],
 )
 fig.write_html(OUT_DIR / "bind_unbind.html")
 

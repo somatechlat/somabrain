@@ -20,7 +20,9 @@ def _auth_headers() -> Dict[str, str]:
     token = (
         os.getenv("SOMABRAIN_API_TOKEN")
         or os.getenv("API_TOKEN")
-        or os.getenv("SOMABRAIN_JWT_SECRET")  # tolerate local JWT secret as a bearer in dev
+        or os.getenv(
+            "SOMABRAIN_JWT_SECRET"
+        )  # tolerate local JWT secret as a bearer in dev
     )
     return {"Authorization": f"Bearer {token}"} if token else {}
 
@@ -38,12 +40,19 @@ def _safe_get(url: str, timeout: float = 3.0, headers: Optional[Dict[str, str]] 
         return None
 
 
-def _safe_post(url: str, json: Dict[str, Any], timeout: float = 5.0, headers: Optional[Dict[str, str]] = None):
+def _safe_post(
+    url: str,
+    json: Dict[str, Any],
+    timeout: float = 5.0,
+    headers: Optional[Dict[str, str]] = None,
+):
     try:
         r = requests.post(url, json=json, headers=headers or {}, timeout=timeout)
         if r.status_code in (401, 403):
             if not headers:
-                r = requests.post(url, json=json, headers=_auth_headers(), timeout=timeout)
+                r = requests.post(
+                    url, json=json, headers=_auth_headers(), timeout=timeout
+                )
         r.raise_for_status()
         return r
     except Exception:
@@ -58,7 +67,9 @@ def test_diagnostics_fields_present():
         pytest.skip("Diagnostics endpoint not reachable")
     body = r.json()
     # Minimal schema assertions (environment-independent)
-    assert "external_backends_required" in body and isinstance(body["external_backends_required"], bool)
+    assert "external_backends_required" in body and isinstance(
+        body["external_backends_required"], bool
+    )
     assert "require_memory" in body and isinstance(body["require_memory"], bool)
     assert "memory_endpoint" in body and isinstance(body["memory_endpoint"], str)
     assert "api_version" in body and int(body["api_version"]) >= 1
@@ -106,7 +117,9 @@ def test_neuromodulators_roundtrip_and_learning_rate_effect():
         headers=headers,
     )
     if rset is None:
-        pytest.skip("/neuromodulators POST requires admin auth or is disabled; skipping LR effect check")
+        pytest.skip(
+            "/neuromodulators POST requires admin auth or is disabled; skipping LR effect check"
+        )
 
     # Apply a feedback event to force LR recomputation (dynamic LR uses dopamine)
     fb = _safe_post(

@@ -148,14 +148,20 @@ class SoftmaxIntegrator:
             return
         self._by_tenant.setdefault(t, {})[d] = obs
 
-    def snapshot(self, tenant: str) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
+    def snapshot(
+        self, tenant: str
+    ) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
         """Return (leader, weights, raw_map) for tenant.
 
         Stale observations older than stale_seconds are ignored.
         """
         t = (tenant or "public").strip() or "public"
         now = time.time()
-        raw = {k: v for k, v in self._by_tenant.get(t, {}).items() if (now - v.ts) <= self._stale}
+        raw = {
+            k: v
+            for k, v in self._by_tenant.get(t, {}).items()
+            if (now - v.ts) <= self._stale
+        }
         if not raw:
             return ("state", {"state": 1.0, "agent": 0.0, "action": 0.0}, {})
         # Softmax over available domains
@@ -198,8 +204,11 @@ class IntegratorHub:
         self._bootstrap = _strip_scheme(bs)
         self._redis_url = redis_url
         # Feature flags
-        self._soma_compat: bool = (
-            os.getenv("SOMA_COMPAT", "").strip().lower() in ("1", "true", "yes", "on")
+        self._soma_compat: bool = os.getenv("SOMA_COMPAT", "").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
         )
         # Serde
         # Lazy import for Avro helpers to avoid import-time dependency for unit tests
@@ -283,7 +292,9 @@ class IntegratorHub:
         except Exception:
             self._alpha = 2.0
         # Default ON: enforce confidence normalization from delta_error unless explicitly disabled
-        self._enforce_conf = (os.getenv("SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1").strip().lower() in ("1", "true", "yes", "on"))
+        self._enforce_conf = os.getenv(
+            "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
+        ).strip().lower() in ("1", "true", "yes", "on")
         # Redis cache (optional)
         self._cache = None
         if self._redis_url:
@@ -300,7 +311,9 @@ class IntegratorHub:
         try:
             from common.config.settings import settings as _settings  # type: ignore
 
-            self._opa_url = (_settings.opa_url or os.getenv("SOMABRAIN_OPA_URL") or "").strip()
+            self._opa_url = (
+                _settings.opa_url or os.getenv("SOMABRAIN_OPA_URL") or ""
+            ).strip()
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
             # Prefer mode-aware fail-closed if available
             try:
@@ -314,7 +327,8 @@ class IntegratorHub:
             self._opa_url = (os.getenv("SOMABRAIN_OPA_URL") or "").strip()
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
             self._opa_fail_closed = bool(
-                os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower() in ("1", "true", "yes", "on")
+                os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower()
+                in ("1", "true", "yes", "on")
             )
 
     def _start_health_server(self) -> None:
@@ -342,6 +356,7 @@ class IntegratorHub:
                 @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
+
             except Exception:
                 pass
 
@@ -352,6 +367,7 @@ class IntegratorHub:
             th.start()
         except Exception:
             pass
+
     def _ensure_clients(self) -> None:
         if not self._bootstrap:
             raise RuntimeError("Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")
@@ -364,11 +380,13 @@ class IntegratorHub:
             ]
             if self._soma_compat:
                 # Consume SOMA belief updates as well
-                topics.extend([
-                    "soma.belief.state",
-                    "soma.belief.agent",
-                    "soma.belief.action",
-                ])
+                topics.extend(
+                    [
+                        "soma.belief.state",
+                        "soma.belief.agent",
+                        "soma.belief.action",
+                    ]
+                )
             self._consumer = KafkaConsumer(
                 *topics,
                 bootstrap_servers=self._bootstrap,
@@ -431,7 +449,10 @@ class IntegratorHub:
             metadata = rec.get("metadata") or {}
             tenant = "public"
             if isinstance(metadata, dict):
-                tenant = str(metadata.get("tenant", "public") or "public").strip() or "public"
+                tenant = (
+                    str(metadata.get("tenant", "public") or "public").strip()
+                    or "public"
+                )
             mapped = {
                 "domain": stream,
                 "confidence": float(confidence),
@@ -472,17 +493,29 @@ class IntegratorHub:
         try:
             import random as _random
 
-            route_to_shadow = (self._shadow_ratio > 0.0) and (_random.random() < self._shadow_ratio)
+            route_to_shadow = (self._shadow_ratio > 0.0) and (
+                _random.random() < self._shadow_ratio
+            )
         except Exception:
             route_to_shadow = False
         try:
             if route_to_shadow:
-                self._producer.send("cog.integrator.context.shadow", value=self._encode_frame(frame))
+                self._producer.send(
+                    "cog.integrator.context.shadow", value=self._encode_frame(frame)
+                )
                 try:
                     INTEGRATOR_SHADOW_TOTAL.inc()
                     self._shadow_sent += 1
                     if self._frames_seen > 0:
-                        INTEGRATOR_SHADOW_RATIO.set(max(0.0, min(1.0, float(self._shadow_sent) / float(self._frames_seen))))
+                        INTEGRATOR_SHADOW_RATIO.set(
+                            max(
+                                0.0,
+                                min(
+                                    1.0,
+                                    float(self._shadow_sent) / float(self._frames_seen),
+                                ),
+                            )
+                        )
                 except Exception:
                     pass
             else:
@@ -555,7 +588,9 @@ class IntegratorHub:
             conf_norm = float(conf_in) if conf_in is not None else float("nan")
         except Exception:
             conf_norm = float("nan")
-        need_norm = self._enforce_conf or (not (isinstance(conf_in, (int, float)) and 0.0 <= conf_norm <= 1.0))
+        need_norm = self._enforce_conf or (
+            not (isinstance(conf_in, (int, float)) and 0.0 <= conf_norm <= 1.0)
+        )
         if need_norm:
             try:
                 conf_norm = math.exp(-max(0.0, float(derr)) * float(self._alpha))
@@ -563,7 +598,9 @@ class IntegratorHub:
                 conf_norm = 0.0
         conf = float(conf_norm)
         ts = time.time()
-        self._sm.update(tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev))
+        self._sm.update(
+            tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev)
+        )
         leader, weights, raw = self._sm.snapshot(tenant)
         # Leader switch metric
         try:
@@ -577,11 +614,16 @@ class IntegratorHub:
         try:
             import math as _math
 
-            ps = [max(1e-12, float(weights.get(k, 0.0))) for k in ("state", "agent", "action")]
+            ps = [
+                max(1e-12, float(weights.get(k, 0.0)))
+                for k in ("state", "agent", "action")
+            ]
             Z = sum(ps) or 1.0
             ps = [p / Z for p in ps]
             H = -sum(p * _math.log(p) for p in ps) / _math.log(3.0)
-            INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(max(0.0, min(1.0, float(H))))
+            INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(
+                max(0.0, min(1.0, float(H)))
+            )
         except Exception:
             pass
         # Build GlobalFrame per schema (map values must be string for frame)
@@ -602,7 +644,9 @@ class IntegratorHub:
         leader_adj = leader
         policy_allowed = True
         if self._opa_url and self._opa_policy:
-            allowed, new_leader, opa_note = self._opa_decide(tenant, leader, weights, ev)
+            allowed, new_leader, opa_note = self._opa_decide(
+                tenant, leader, weights, ev
+            )
             if not allowed:
                 # If fail-closed, drop frame; otherwise continue with original leader
                 if self._opa_fail_closed:
@@ -673,7 +717,11 @@ class IntegratorHub:
             note = ""
             if isinstance(new_leader, str) and new_leader:
                 note = f"; leader={new_leader}"
-            return allow, (str(new_leader) if isinstance(new_leader, str) else None), note
+            return (
+                allow,
+                (str(new_leader) if isinstance(new_leader, str) else None),
+                note,
+            )
         except Exception:
             INTEGRATOR_ERRORS.labels(stage="opa").inc()
             INTEGRATOR_OPA_LAT.observe(max(0.0, time.perf_counter() - t0))
@@ -697,7 +745,9 @@ class IntegratorHub:
                                     self._sm.set_tau(float(temp))
                                     INTEGRATOR_TAU.set(float(temp))
                                     try:
-                                        print(f"integrator_hub: applied config_update tau={float(temp):.3f}")
+                                        print(
+                                            f"integrator_hub: applied config_update tau={float(temp):.3f}"
+                                        )
                                     except Exception:
                                         pass
                                 except Exception:
@@ -714,7 +764,9 @@ class IntegratorHub:
                         continue
                     dom = str(ev.get("domain", "state"))
                     INTEGRATOR_CONSUMED.labels(domain=dom).inc()
-                    with self._tracer.start_as_current_span("integrator_process_update"):
+                    with self._tracer.start_as_current_span(
+                        "integrator_process_update"
+                    ):
                         frame = self._process_update(ev)
                     if frame is None:
                         continue
@@ -732,8 +784,14 @@ class IntegratorHub:
                         except Exception:
                             policy_allowed = True
                         leader_out = str(frame.get("leader", "state"))
-                        weights_out = dict(frame.get("weights", {})) if isinstance(frame.get("weights"), dict) else {}
-                        self._publish_soma_context(leader_out, weights_out, frame, policy_allowed)
+                        weights_out = (
+                            dict(frame.get("weights", {}))
+                            if isinstance(frame.get("weights"), dict)
+                            else {}
+                        )
+                        self._publish_soma_context(
+                            leader_out, weights_out, frame, policy_allowed
+                        )
                     # Cache and metrics
                     self._cache_frame(self._tenant_from(ev), frame)
                     INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
@@ -743,10 +801,16 @@ class IntegratorHub:
 
 def main() -> None:  # pragma: no cover - manual run path
     ff = os.getenv("SOMABRAIN_FF_COG_INTEGRATOR", "").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     if not (ff in ("1", "true", "yes", "on") or composite):
         import logging
         from somabrain.metrics import get_counter
+
         logging.info(
             "integrator_hub: disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 or ENABLE_COG_THREADS=1 to enable"
         )
@@ -762,6 +826,7 @@ def main() -> None:  # pragma: no cover - manual run path
     hub = IntegratorHub()
     import logging
     from somabrain.metrics import get_counter
+
     logging.info("Starting Integrator Hub...")
     try:
         _MX_INT_INIT = get_counter(

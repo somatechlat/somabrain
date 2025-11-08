@@ -49,7 +49,10 @@ def main() -> int:
     for t in topics:
         val = _consume_one(t, timeout_s=60)
         if val is None:
-            print(f"E2E SMOKE: no message observed on topic '{t}' within timeout", file=sys.stderr)
+            print(
+                f"E2E SMOKE: no message observed on topic '{t}' within timeout",
+                file=sys.stderr,
+            )
             ok = False
         else:
             print(f"E2E SMOKE: observed message on '{t}': {val[:128]!r}")

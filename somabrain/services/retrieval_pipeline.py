@@ -21,9 +21,6 @@ except Exception:
 logger = logging.getLogger(__name__)
 
 
- 
-
-
 def _extract_text(payload: dict) -> str:
     return str(payload.get("task") or payload.get("fact") or "").strip()
 
@@ -235,13 +232,17 @@ async def run_retrieval_pipeline(
             k = exact_inputs.get("key") or None
             if k:
                 try:
-                    coords_to_fetch.append(mem_client.coord_for_key(k, universe=universe))
+                    coords_to_fetch.append(
+                        mem_client.coord_for_key(k, universe=universe)
+                    )
                 except Exception:
                     pass
             i = exact_inputs.get("id") or None
             if i and i != k:
                 try:
-                    coords_to_fetch.append(mem_client.coord_for_key(i, universe=universe))
+                    coords_to_fetch.append(
+                        mem_client.coord_for_key(i, universe=universe)
+                    )
                 except Exception:
                     pass
             # Dedup coords
@@ -249,10 +250,16 @@ async def run_retrieval_pipeline(
             coords_to_fetch = [
                 (float(x), float(y), float(z))
                 for (x, y, z) in coords_to_fetch
-                if not ((float(x), float(y), float(z)) in seen_c or seen_c.add((float(x), float(y), float(z))))
+                if not (
+                    (float(x), float(y), float(z)) in seen_c
+                    or seen_c.add((float(x), float(y), float(z)))
+                )
             ]
             if coords_to_fetch:
-                payloads = mem_client.payloads_for_coords(coords_to_fetch, universe=universe) or []
+                payloads = (
+                    mem_client.payloads_for_coords(coords_to_fetch, universe=universe)
+                    or []
+                )
                 if not payloads:
                     # Strict mode: do not synthesize payloads; skip pinning when offline
                     payloads = []
@@ -390,20 +397,28 @@ async def run_retrieval_pipeline(
         else:
             ns_eff = None
         from somabrain.services import retrieval_cache as _rc
+
         cached = _rc.get_candidates(ns_eff, req.query) or (
             _rc.get_candidates_any(ns_eff) if ns_eff else []
         )
         if cached:
             import re as _re
+
             try:
                 import numpy as _np
             except Exception:
                 _np = None  # type: ignore
+
             def _tok(s: str) -> list[str]:
                 return _re.findall(r"\w+", (s or "").lower())
+
             qtokens = set(_tok(req.query))
             # Populate missing vector list
-            if "vector" in retrievers and not lists_by_retriever.get("vector") and rt_embedder is not None:
+            if (
+                "vector" in retrievers
+                and not lists_by_retriever.get("vector")
+                and rt_embedder is not None
+            ):
                 v_out: list[RetrievalCandidate] = []
                 qv = None
                 if _np is not None:
@@ -426,7 +441,10 @@ async def run_retrieval_pipeline(
                     v_out.append(
                         RetrievalCandidate(
                             coord=(
-                                ",".join(str(float(c)) for c in (entry.get("coordinate") or [])[:3])
+                                ",".join(
+                                    str(float(c))
+                                    for c in (entry.get("coordinate") or [])[:3]
+                                )
                                 if isinstance(entry.get("coordinate"), (list, tuple))
                                 else None
                             ),
@@ -461,7 +479,10 @@ async def run_retrieval_pipeline(
                     l_out.append(
                         RetrievalCandidate(
                             coord=(
-                                ",".join(str(float(c)) for c in (p.get("coordinate") or [])[:3])
+                                ",".join(
+                                    str(float(c))
+                                    for c in (p.get("coordinate") or [])[:3]
+                                )
                                 if isinstance(p.get("coordinate"), (list, tuple))
                                 else None
                             ),
@@ -491,11 +512,19 @@ async def run_retrieval_pipeline(
                         namespace=ns_eff,
                     )
                     if g_from_links:
-                        if "vector" in retrievers and not lists_by_retriever.get("vector"):
-                            lists_by_retriever["vector"] = list(g_from_links)[: max(1, int(top_k))]
+                        if "vector" in retrievers and not lists_by_retriever.get(
+                            "vector"
+                        ):
+                            lists_by_retriever["vector"] = list(g_from_links)[
+                                : max(1, int(top_k))
+                            ]
                             cands += lists_by_retriever["vector"]
-                        if "lexical" in retrievers and not lists_by_retriever.get("lexical"):
-                            lists_by_retriever["lexical"] = list(g_from_links)[: max(1, int(top_k))]
+                        if "lexical" in retrievers and not lists_by_retriever.get(
+                            "lexical"
+                        ):
+                            lists_by_retriever["lexical"] = list(g_from_links)[
+                                : max(1, int(top_k))
+                            ]
                             cands += lists_by_retriever["lexical"]
                 except Exception:
                     pass
@@ -520,6 +549,7 @@ async def run_retrieval_pipeline(
         try:
             import time as _time
             from somabrain import metrics as M
+
             if _t0 is not None:
                 try:
                     M.RETRIEVAL_LATENCY.labels(**_metrics_ctx).observe(
@@ -527,7 +557,9 @@ async def run_retrieval_pipeline(
                     )
                 except Exception:
                     try:
-                        M.RETRIEVAL_LATENCY.observe(max(0.0, _time.perf_counter() - _t0))
+                        M.RETRIEVAL_LATENCY.observe(
+                            max(0.0, _time.perf_counter() - _t0)
+                        )
                     except Exception:
                         pass
             try:
@@ -644,9 +676,12 @@ async def run_retrieval_pipeline(
     ]
     # Ensure exact hits are pinned to the front (dedup by key/coord)
     if pinned_exact:
+
         def _kid(c: RetrievalCandidate) -> str:
             return str(
-                c.coord or c.key or (c.payload.get("task") if isinstance(c.payload, dict) else "")
+                c.coord
+                or c.key
+                or (c.payload.get("task") if isinstance(c.payload, dict) else "")
             )
 
         seen = set()
@@ -682,7 +717,9 @@ async def run_retrieval_pipeline(
             from somabrain.services.recall_service import diversify_payloads
 
             # Do not rerank pinned exacts; only rerank the rest
-            payloads = [c.payload for c in (out[len(pinned_exact) :] if pinned_exact else out)]
+            payloads = [
+                c.payload for c in (out[len(pinned_exact) :] if pinned_exact else out)
+            ]
             ordered = diversify_payloads(
                 embed=lambda t: _rt.embedder.embed(t),
                 query=req.query,
@@ -692,7 +729,10 @@ async def run_retrieval_pipeline(
                 lam=0.5,
             )
             # Map back by object id
-            id2cand = {id(c.payload): c for c in (out[len(pinned_exact) :] if pinned_exact else out)}
+            id2cand = {
+                id(c.payload): c
+                for c in (out[len(pinned_exact) :] if pinned_exact else out)
+            }
             reranked = [id2cand.get(id(p)) for p in ordered if id2cand.get(id(p))]
             out = (out[: len(pinned_exact)] if pinned_exact else []) + reranked
         except Exception:
@@ -842,7 +882,9 @@ async def run_retrieval_pipeline(
                 memsvc = MemoryService(mem_backend, ctx.namespace)
                 persist_records: list[dict] = []
                 # Build session payload with provenance and top candidates summary
-                sess_key = f"recall_session::{trace_id or ''}::{int(_time.time() * 1000)}"
+                sess_key = (
+                    f"recall_session::{trace_id or ''}::{int(_time.time() * 1000)}"
+                )
                 sess_payload = {
                     "task": f"Recall session for '{req.query[:64]}'",
                     "memory_type": "episodic",
@@ -892,7 +934,7 @@ async def run_retrieval_pipeline(
                             link_type="recall_session",
                             weight=1.0,
                         )
-                        
+
                 except Exception:
                     pass
 
@@ -1012,7 +1054,7 @@ async def run_retrieval_pipeline(
                                 link_type="retrieved_with",
                                 weight=1.0,
                             )
-                            
+
                         except Exception:
                             pass
                         try:

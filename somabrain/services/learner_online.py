@@ -25,6 +25,7 @@ Serialization:
 - If Avro schemas are available (reward_event, config_update) they are used.
 - Otherwise falls back to JSON. (Config updates forced JSON for debugging if LEARNER_FORCE_JSON=1)
 """
+
 from __future__ import annotations
 
 import json
@@ -65,7 +66,11 @@ TOPIC_NEXT = os.getenv("SOMABRAIN_TOPIC_NEXT_EVENTS", "cog.next.events")
 
 def _bootstrap() -> str:
     # Prefer in-network bootstrap set by compose/k8s, then fall back to SOMABRAIN_KAFKA_URL
-    url = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL") or "somabrain_kafka:9092"
+    url = (
+        os.getenv("SOMA_KAFKA_BOOTSTRAP")
+        or os.getenv("SOMABRAIN_KAFKA_URL")
+        or "somabrain_kafka:9092"
+    )
     return url.replace("kafka://", "")
 
 
@@ -75,12 +80,16 @@ def _serde(name: str) -> Optional[AvroSerde]:
     # process from crashing in minimal dev images where `libs/` wasn't
     # copied into the container build.
     if load_schema is None or AvroSerde is None:
-        print(f"learner_online: Avro serde not available for {name}, falling back to JSON")
+        print(
+            f"learner_online: Avro serde not available for {name}, falling back to JSON"
+        )
         return None
     try:
         return AvroSerde(load_schema(name))  # type: ignore[arg-type]
     except Exception as e:
-        print(f"learner_online: avro serde load failed for {name}, falling back to JSON: {e}")
+        print(
+            f"learner_online: avro serde load failed for {name}, falling back to JSON: {e}"
+        )
         return None
 
 
@@ -93,7 +102,9 @@ def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
     return json.dumps(rec).encode("utf-8")
 
 
-def _dec(payload: Optional[bytes], serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
+def _dec(
+    payload: Optional[bytes], serde: Optional[AvroSerde]
+) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
     if serde is not None:
@@ -136,8 +147,16 @@ class LearnerService:
         self._stop = threading.Event()
         self._ema_by_tenant: Dict[str, _EMA] = {}
         # Metrics
-        self._g_explore = metrics.get_gauge("soma_exploration_ratio", "Exploration ratio") if metrics else None
-        self._g_regret = metrics.get_gauge("soma_policy_regret_estimate", "Estimated policy regret") if metrics else None
+        self._g_explore = (
+            metrics.get_gauge("soma_exploration_ratio", "Exploration ratio")
+            if metrics
+            else None
+        )
+        self._g_regret = (
+            metrics.get_gauge("soma_policy_regret_estimate", "Estimated policy regret")
+            if metrics
+            else None
+        )
         self._topic_checked = False
 
     def _print_effective_config(self) -> None:
@@ -182,7 +201,9 @@ class LearnerService:
     def _ensure_producer(self) -> None:
         if self._producer is None:
             if CfProducer is None:
-                raise RuntimeError("confluent-kafka Producer required for learner_online")
+                raise RuntimeError(
+                    "confluent-kafka Producer required for learner_online"
+                )
             conf = {
                 "bootstrap.servers": self._bootstrap,
                 "socket.timeout.ms": 10000,
@@ -191,14 +212,18 @@ class LearnerService:
             }
             self._producer = CfProducer(conf)
             self._producer_mode = "confluent"
-            print(f"learner_online: confluent producer initialized bootstrap={self._bootstrap}")
+            print(
+                f"learner_online: confluent producer initialized bootstrap={self._bootstrap}"
+            )
 
     def _ensure_topic(self) -> None:
         if self._topic_checked:
             return
         self._topic_checked = True
         if CfAdminClient is None or CfNewTopic is None:
-            print("learner_online: confluent AdminClient unavailable, skipping topic ensure")
+            print(
+                "learner_online: confluent AdminClient unavailable, skipping topic ensure"
+            )
             return
         try:
             admin = CfAdminClient({"bootstrap.servers": self._bootstrap})
@@ -262,16 +287,29 @@ class LearnerService:
             self._producer.flush(15)
             dur_ms = (time.time() - start) * 1000.0
             if not delivered["ok"]:
-                print(f"learner_online: emit failed delivery-timeout tenant={tenant} tau={tau:.3f} ms={dur_ms:.1f}")
+                print(
+                    f"learner_online: emit failed delivery-timeout tenant={tenant} tau={tau:.3f} ms={dur_ms:.1f}"
+                )
         except Exception as e:
-            print(f"learner_online: emit failed {repr(e)} tenant={tenant} tau={tau:.3f}")
+            print(
+                f"learner_online: emit failed {repr(e)} tenant={tenant} tau={tau:.3f}"
+            )
 
     def _observe_reward(self, ev: Dict[str, Any]) -> None:
-        tenant = str(ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")).strip() or "public"
+        tenant = (
+            str(
+                ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+            ).strip()
+            or "public"
+        )
         total = float(ev.get("total", 0.0))
-        ema = self._ema_by_tenant.setdefault(tenant, _EMA(self._ema_alpha)).update(total)
+        ema = self._ema_by_tenant.setdefault(tenant, _EMA(self._ema_alpha)).update(
+            total
+        )
         tau = self._tau_from_reward(ema)
-        print(f"learner_online: reward total={total:.3f} ema={ema:.3f} tau={tau:.3f} tenant={tenant}")
+        print(
+            f"learner_online: reward total={total:.3f} ema={ema:.3f} tau={tau:.3f} tenant={tenant}"
+        )
         try:
             if self._g_explore is not None:
                 self._g_explore.set(tau / 1.0)
@@ -296,9 +334,19 @@ class LearnerService:
         self._ensure_topic()
         self._print_effective_config()
         topics = [TOPIC_REWARD]
-        if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {"1","true","yes","on"}:
+        if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
             topics.append(TOPIC_GF)
-        if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {"1","true","yes","on"}:
+        if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
             topics.append(TOPIC_NEXT)
         # Use confluent_kafka.Consumer
         conf = {
@@ -320,7 +368,9 @@ class LearnerService:
                             ktau = float(os.getenv("LEARNER_KEEPALIVE_TAU", "0.7"))
                         except Exception:
                             ktau = 0.7
-                        self._emit_cfg(os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"), ktau)
+                        self._emit_cfg(
+                            os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"), ktau
+                        )
                     continue
                 if msg.error():
                     # skip errors but log
@@ -330,6 +380,7 @@ class LearnerService:
                     except Exception:
                         pass
                     continue
+
                 # build a small adapter message with .topic and .value to reuse handler
                 class _MsgAdapter:
                     def __init__(self, m):
@@ -362,8 +413,18 @@ _thread: Optional[threading.Thread] = None
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
-    ff = os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0").strip().lower() in {"1","true","yes","on"}
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {"1","true","yes","on"}
+    ff = os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     if not (ff or composite):
         return
     _thread = threading.Thread(target=_svc.run, daemon=True)
@@ -379,6 +440,7 @@ async def health() -> Dict[str, Any]:
 async def metrics_ep():  # type: ignore
     try:
         from somabrain import metrics as _m  # type: ignore
+
         return await _m.metrics_endpoint()
     except Exception:
         return {"status": "metrics not available"}
@@ -388,6 +450,7 @@ def main() -> None:  # pragma: no cover
     port = int(os.getenv("LEARNER_ONLINE_PORT", "8084"))
     try:
         import uvicorn  # type: ignore
+
         uvicorn.run(app, host="0.0.0.0", port=port)
     except Exception:
         while True:

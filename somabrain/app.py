@@ -245,9 +245,11 @@ def _apply_diversity_reranking(
 
         doc_norms = [np.linalg.norm(v) for v in doc_vecs]
         relevance_scores = [
-            np.dot(query_vec, doc_vecs[i]) / (q_norm * doc_norms[i])
-            if doc_norms[i] > 0
-            else 0.0
+            (
+                np.dot(query_vec, doc_vecs[i]) / (q_norm * doc_norms[i])
+                if doc_norms[i] > 0
+                else 0.0
+            )
             for i in range(len(valid_candidates))
         ]
 
@@ -264,10 +266,12 @@ def _apply_diversity_reranking(
                     max_sim = 0.0
                 else:
                     similarities = [
-                        np.dot(doc_vecs[idx], doc_vecs[sel_idx])
-                        / (doc_norms[idx] * doc_norms[sel_idx])
-                        if doc_norms[idx] > 0 and doc_norms[sel_idx] > 0
-                        else 0.0
+                        (
+                            np.dot(doc_vecs[idx], doc_vecs[sel_idx])
+                            / (doc_norms[idx] * doc_norms[sel_idx])
+                            if doc_norms[idx] > 0 and doc_norms[sel_idx] > 0
+                            else 0.0
+                        )
                         for sel_idx in selected
                     ]
                     max_sim = max(similarities) if similarities else 0.0
@@ -824,9 +828,13 @@ try:
     async def _startup_diagnostics() -> None:
         try:
             _log = _logging.getLogger("somabrain")
-            mem_ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+            mem_ep = str(
+                getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
+            ).strip()
             token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
-            in_docker = bool(_os.path.exists("/.dockerenv")) or (_os.getenv("RUNNING_IN_DOCKER") == "1")
+            in_docker = bool(_os.path.exists("/.dockerenv")) or (
+                _os.getenv("RUNNING_IN_DOCKER") == "1"
+            )
             # Prefer shared settings for mode and policy flags
             try:
                 from common.config.settings import settings as _shared
@@ -838,24 +846,42 @@ try:
             try:
                 if _shared is not None:
                     mode = str(getattr(_shared, "mode", "") or "").strip()
-                    ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+                    ext_req = bool(
+                        getattr(_shared, "mode_require_external_backends", False)
+                    )
                     require_memory = bool(getattr(_shared, "require_memory", True))
                 else:
                     mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
-                    ext_req = (_os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower() in ("1","true","yes","on")) or (
-                        _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower() in ("1","true","yes","on")
+                    ext_req = (
+                        _os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower()
+                        in ("1", "true", "yes", "on")
+                    ) or (
+                        _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower()
+                        in ("1", "true", "yes", "on")
                     )
-                    require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in ("1","true","yes","on")
+                    require_memory = _os.getenv(
+                        "SOMABRAIN_REQUIRE_MEMORY", "1"
+                    ).lower() in ("1", "true", "yes", "on")
             except Exception:
                 pass
 
             _log.info(
                 "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
-                mem_ep or "<unset>", token_present, in_docker, mode or "prod", ext_req, require_memory,
+                mem_ep or "<unset>",
+                token_present,
+                in_docker,
+                mode or "prod",
+                ext_req,
+                require_memory,
             )
 
-            if in_docker and mem_ep and (
-                mem_ep.startswith("http://127.0.0.1") or mem_ep.startswith("http://localhost")
+            if (
+                in_docker
+                and mem_ep
+                and (
+                    mem_ep.startswith("http://127.0.0.1")
+                    or mem_ep.startswith("http://localhost")
+                )
             ):
                 _log.warning(
                     "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
@@ -863,6 +889,7 @@ try:
         except Exception:
             # never fail startup on diagnostics
             pass
+
 except Exception:
     pass
 
@@ -940,11 +967,14 @@ if not _SUPERVISOR_URL:
     pwd = os.getenv("SUPERVISOR_HTTP_PASS", "soma")
     _SUPERVISOR_URL = f"http://{user}:{pwd}@somabrain_cog:9001/RPC2"
 
+
 def _supervisor() -> ServerProxy:
     try:
         return ServerProxy(_SUPERVISOR_URL, allow_none=True)  # type: ignore[arg-type]
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"supervisor client init failed: {e}")
+        raise HTTPException(
+            status_code=503, detail=f"supervisor client init failed: {e}"
+        )
 
 
 def _admin_guard_dep(request: Request):
@@ -1015,6 +1045,7 @@ async def service_restart(name: str):
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
+
 """
 Embedding of services inside the API process has been removed for production parity.
 All cognitive services run as real OS processes under a supervisor in the
@@ -1040,11 +1071,25 @@ async def _startup_mode_banner() -> None:
     try:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
-        api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        mem_auth = bool(getattr(_shared, "mode_memory_auth_required", True)) if _shared else True
-        opa_closed = bool(getattr(_shared, "mode_opa_fail_closed", True)) if _shared else True
-        log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
+        api_auth = (
+            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+        )
+        mem_auth = (
+            bool(getattr(_shared, "mode_memory_auth_required", True))
+            if _shared
+            else True
+        )
+        opa_closed = (
+            bool(getattr(_shared, "mode_opa_fail_closed", True)) if _shared else True
+        )
+        log_level = (
+            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
+        )
+        bundle = (
+            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
+            if _shared
+            else "prod"
+        )
         lg.warning(
             "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
             mode,
@@ -1193,14 +1238,14 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
             "endpoint": "/memory/recall",
             "expected": {
                 "json": [
-                    "Either a JSON string body (e.g. \"hello world\")",
+                    'Either a JSON string body (e.g. "hello world")',
                     {
                         "query": "string",
                         "top_k": 10,
                         "retrievers": ["vector", "wm", "graph", "lexical"],
                         "rerank": "auto|cosine|mmr|hrr",
                         "persist": True,
-                        "universe": "optional"
+                        "universe": "optional",
                     },
                 ]
             },
@@ -2126,7 +2171,9 @@ async def health(request: Request) -> S.HealthResponse:
                 and (opa_ok if opa_required else True)
             )
         else:
-            base_ok = predictor_ok and memory_ok and embedder_ok and kafka_ok and postgres_ok
+            base_ok = (
+                predictor_ok and memory_ok and embedder_ok and kafka_ok and postgres_ok
+            )
             enforced_ready = (not backend_enforced_flag) or (
                 base_ok and (opa_ok if opa_required else True)
             )
@@ -2174,7 +2221,9 @@ async def health(request: Request) -> S.HealthResponse:
     try:
         if shared_settings is not None:
             try:
-                enforce_fd = bool(getattr(shared_settings, "enforce_fd_invariants", False))
+                enforce_fd = bool(
+                    getattr(shared_settings, "enforce_fd_invariants", False)
+                )
             except Exception:
                 enforce_fd = False
         if not enforce_fd:
@@ -2213,9 +2262,13 @@ async def health(request: Request) -> S.HealthResponse:
         pass
 
     # Observability readiness derived from real backend connectivity
-    metrics_required = ["kafka", "postgres"] + (["opa"] if resp.get("opa_required") else [])
-    metrics_ready = bool(resp.get("kafka_ok")) and bool(resp.get("postgres_ok")) and (
-        bool(resp.get("opa_ok")) if resp.get("opa_required") else True
+    metrics_required = ["kafka", "postgres"] + (
+        ["opa"] if resp.get("opa_required") else []
+    )
+    metrics_ready = (
+        bool(resp.get("kafka_ok"))
+        and bool(resp.get("postgres_ok"))
+        and (bool(resp.get("opa_ok")) if resp.get("opa_required") else True)
     )
     resp["metrics_ready"] = bool(metrics_ready)
     resp["metrics_required"] = metrics_required
@@ -2242,24 +2295,38 @@ async def healthz(request: Request) -> dict:
 async def diagnostics() -> dict:
     try:
         import os as _os
-        in_docker = bool(_os.path.exists("/.dockerenv")) or (_os.getenv("RUNNING_IN_DOCKER") == "1")
+
+        in_docker = bool(_os.path.exists("/.dockerenv")) or (
+            _os.getenv("RUNNING_IN_DOCKER") == "1"
+        )
     except Exception:
         in_docker = False
     ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
     # Prefer shared settings for mode and flags
     try:
         from common.config.settings import settings as _shared
+
         mode = str(getattr(_shared, "mode", "") or "").strip()
         ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
         require_memory = bool(getattr(_shared, "require_memory", True))
     except Exception:
         mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
-        ext_req = (_os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower() in ("1","true","yes","on")) or (
-            _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower() in ("1","true","yes","on")
+        ext_req = (
+            _os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower()
+            in ("1", "true", "yes", "on")
+        ) or (
+            _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower()
+            in ("1", "true", "yes", "on")
         )
-        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in ("1","true","yes","on")
+        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
     try:
         from common.config.settings import settings as _shared
+
         shared_present = True
         shared_mem = getattr(_shared, "memory_http_endpoint", None)
     except Exception:
@@ -2274,7 +2341,9 @@ async def diagnostics() -> dict:
         "env_memory_endpoint": _os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", ""),
         "shared_settings_present": shared_present,
         "shared_settings_memory_endpoint": str(shared_mem or ""),
-        "memory_token_present": bool(getattr(getattr(cfg, "http", object()), "token", None)),
+        "memory_token_present": bool(
+            getattr(getattr(cfg, "http", object()), "token", None)
+        ),
         "api_version": int(API_VERSION),
     }
 
@@ -2319,7 +2388,9 @@ if not _MINIMAL_API:
     def _cog_http_base() -> str:
         return "http://somabrain_cog"
 
-    async def _probe_service_http(path: str, port: int, *, timeout: float = 1.5) -> bool:
+    async def _probe_service_http(
+        path: str, port: int, *, timeout: float = 1.5
+    ) -> bool:
         try:
             import httpx  # type: ignore
 
@@ -2344,7 +2415,10 @@ if not _MINIMAL_API:
             from fastapi import HTTPException as _HE
 
             # Maintain test semantics: 404 means endpoint not mounted in this mode
-            raise _HE(status_code=404, detail="Embedded reward endpoint not mounted (non-dev mode)")
+            raise _HE(
+                status_code=404,
+                detail="Embedded reward endpoint not mounted (non-dev mode)",
+            )
         return {"ok": True}
 
     @app.get("/learner/health")
@@ -2353,7 +2427,10 @@ if not _MINIMAL_API:
         if not ok:
             from fastapi import HTTPException as _HE
 
-            raise _HE(status_code=404, detail="Embedded learner endpoint not mounted (non-dev mode)")
+            raise _HE(
+                status_code=404,
+                detail="Embedded learner endpoint not mounted (non-dev mode)",
+            )
         return {"ok": True}
 
     @app.post("/reward/reward/{frame_id}")
@@ -2369,14 +2446,19 @@ if not _MINIMAL_API:
                     # Preserve test's semantics: skip-worthy but we return 503 upstream
                     from fastapi import HTTPException as _HE
 
-                    raise _HE(status_code=503, detail="Reward producer unavailable (Kafka not ready)")
+                    raise _HE(
+                        status_code=503,
+                        detail="Reward producer unavailable (Kafka not ready)",
+                    )
                 r.raise_for_status()
                 return r.json()
         except Exception:
             # Align with test skip semantics when the producer is not reachable
             from fastapi import HTTPException as _HE
 
-            raise _HE(status_code=503, detail="Reward producer unavailable (Kafka not ready)")
+            raise _HE(
+                status_code=503, detail="Reward producer unavailable (Kafka not ready)"
+            )
 
 
 @app.post("/recall", response_model=S.RecallResponse)
@@ -3435,11 +3517,13 @@ _background_task = None
 async def _init_fail_fast_state():
     """Initialize circuit breaker state (no sync worker)."""
     from somabrain.services.memory_service import MemoryService
+
     MemoryService._circuit_open = False
     MemoryService._failure_count = 0
     MemoryService._last_failure_time = 0.0
     MemoryService._failure_threshold = 3
     MemoryService._reset_interval = 60
+
 
 @app.on_event("shutdown")
 async def _noop_shutdown():

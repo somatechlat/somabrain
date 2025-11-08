@@ -30,7 +30,9 @@ def _parse_env_file(path: Path) -> Dict[str, str]:
         k = k.strip()
         v = v.strip()
         # Strip optional surrounding quotes
-        if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+        if (v.startswith('"') and v.endswith('"')) or (
+            v.startswith("'") and v.endswith("'")
+        ):
             v = v[1:-1]
         env[k] = v
     return env

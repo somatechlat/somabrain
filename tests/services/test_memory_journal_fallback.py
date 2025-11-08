@@ -40,7 +40,9 @@ class FakeMT:
 
 
 @pytest.mark.unit
-def test_journal_fallback_writes_event(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_journal_fallback_writes_event(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     # Enable journal fallback and disable strict external backend requirement
     monkeypatch.setenv("ALLOW_JOURNAL_FALLBACK", "1")
     monkeypatch.delenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", raising=False)
@@ -54,6 +56,7 @@ def test_journal_fallback_writes_event(tmp_path: Path, monkeypatch: pytest.Monke
     # Patch get_config in both config module and memory_service module to return our modified instance
     monkeypatch.setattr(cfg_mod, "get_config", lambda: cfg)
     import somabrain.services.memory_service as mem_svc_mod
+
     monkeypatch.setattr(mem_svc_mod, "get_config", lambda: cfg)
 
     svc = MemoryService(mt_memory=FakeMT(), namespace="testns")

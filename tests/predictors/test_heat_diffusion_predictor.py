@@ -22,9 +22,14 @@ def test_chebyshev_matches_expm_small_graph(monkeypatch):
     monkeypatch.setenv("SOMA_HEAT_METHOD", "chebyshev")
     n = 5
     L = make_line_graph_laplacian(n)
-    x0 = np.zeros(n); x0[0] = 1.0
+    x0 = np.zeros(n)
+    x0[0] = 1.0
     t = 0.3
-    pred = HeatDiffusionPredictor(apply_A=matvec_from_matrix(L), dim=n, cfg=PredictorConfig(diffusion_t=t, chebyshev_K=40))
+    pred = HeatDiffusionPredictor(
+        apply_A=matvec_from_matrix(L),
+        dim=n,
+        cfg=PredictorConfig(diffusion_t=t, chebyshev_K=40),
+    )
     y = pred.salience(x0)
     y_exact = _exact_heat(L, x0, t)
     assert_allclose(y, y_exact, rtol=1e-3, atol=1e-4)
@@ -34,9 +39,14 @@ def test_lanczos_matches_expm_small_graph(monkeypatch):
     monkeypatch.setenv("SOMA_HEAT_METHOD", "lanczos")
     n = 5
     L = make_line_graph_laplacian(n)
-    x0 = np.zeros(n); x0[0] = 1.0
+    x0 = np.zeros(n)
+    x0[0] = 1.0
     t = 0.3
-    pred = HeatDiffusionPredictor(apply_A=matvec_from_matrix(L), dim=n, cfg=PredictorConfig(diffusion_t=t, lanczos_m=20))
+    pred = HeatDiffusionPredictor(
+        apply_A=matvec_from_matrix(L),
+        dim=n,
+        cfg=PredictorConfig(diffusion_t=t, lanczos_m=20),
+    )
     y = pred.salience(x0)
     y_exact = _exact_heat(L, x0, t)
     assert_allclose(y, y_exact, rtol=2e-3, atol=2e-4)
@@ -45,7 +55,8 @@ def test_lanczos_matches_expm_small_graph(monkeypatch):
 def test_error_confidence_monotonic():
     n = 5
     L = make_line_graph_laplacian(n)
-    x0 = np.zeros(n); x0[0] = 1.0
+    x0 = np.zeros(n)
+    x0[0] = 1.0
     pred = HeatDiffusionPredictor(apply_A=matvec_from_matrix(L), dim=n)
     y = pred.salience(x0)
     # observed identical -> error 0, confidence ~1

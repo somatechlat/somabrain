@@ -26,7 +26,9 @@ def test_segmenter_leader_change_and_max_dwell():
 
 
 def test_cpd_segmenter_triggers_on_z_threshold():
-    cpd = CPDSegmenter(max_dwell_ms=0, min_samples=5, z_threshold=2.0, min_gap_ms=0, min_std=0.01)
+    cpd = CPDSegmenter(
+        max_dwell_ms=0, min_samples=5, z_threshold=2.0, min_gap_ms=0, min_std=0.01
+    )
     tenant = "t2"
     domain = "state"
     base_ts = "2025-01-01T00:00:00Z"

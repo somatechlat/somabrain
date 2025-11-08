@@ -2,6 +2,7 @@
 
 Single source of truth for deployment modes and derived policies.
 """
+
 from __future__ import annotations
 
 import os
@@ -19,6 +20,7 @@ class DeploymentMode(str, Enum):
 @dataclass(frozen=True)
 class DeploymentProfile:
     """Immutable deployment profile derived from mode."""
+
     mode: DeploymentMode
     auth_enabled: bool
     opa_fail_closed: bool
@@ -31,7 +33,7 @@ class DeploymentProfile:
 
 class ModeConfig:
     """Central mode configuration with strict validation."""
-    
+
     PROFILES = {
         DeploymentMode.DEV: DeploymentProfile(
             mode=DeploymentMode.DEV,
@@ -64,13 +66,13 @@ class ModeConfig:
             persistence_enabled=True,
         ),
     }
-    
+
     def __init__(self, mode_str: str | None = None):
         mode_str = mode_str or os.getenv("SOMABRAIN_MODE", "enterprise")
         self.mode = self._parse_mode(mode_str)
         self.profile = self.PROFILES[self.mode]
         self._validate()
-    
+
     def _parse_mode(self, mode: str | None) -> DeploymentMode:
         m = (mode or "").strip().lower()
         if m in ("dev", "development"):
@@ -80,7 +82,7 @@ class ModeConfig:
         if m in ("prod", "production", "enterprise", "main"):
             return DeploymentMode.PRODUCTION
         raise ValueError(f"Invalid mode: {mode}. Use dev, staging, or production")
-    
+
     def _validate(self):
         if self.mode == DeploymentMode.PRODUCTION and not self.profile.auth_enabled:
             raise ValueError("CRITICAL: Auth cannot be disabled in production")

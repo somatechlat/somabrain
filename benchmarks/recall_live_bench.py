@@ -37,6 +37,7 @@ def _post_json(
     resp.raise_for_status()
     return resp.json(), resp.elapsed.total_seconds()
 
+
 def _remember_batch_memory_api(
     base: str,
     tenant: str,
@@ -99,7 +100,9 @@ def run(api_url: str, corpus: List[str], output: Path, use_memory_api: bool = Tr
     write_times = []
     if use_memory_api:
         try:
-            resp, dt = _remember_batch_memory_api(api_url, tenant, namespace, corpus, headers)
+            resp, dt = _remember_batch_memory_api(
+                api_url, tenant, namespace, corpus, headers
+            )
             # Approximate per-item write time from batch
             n = max(1, len(corpus))
             write_times = [dt / n for _ in range(n)]
@@ -155,7 +158,9 @@ def run(api_url: str, corpus: List[str], output: Path, use_memory_api: bool = Tr
             "layer": "all",
         }
         try:
-            mem_resp, dt_mem = _post_json(api_url, "/memory/recall", recall_payload, headers)
+            mem_resp, dt_mem = _post_json(
+                api_url, "/memory/recall", recall_payload, headers
+            )
             # Normalize shape to match previous result structure
             norm_results = [
                 {"payload": item.get("payload", {})}
@@ -182,7 +187,9 @@ def run(api_url: str, corpus: List[str], output: Path, use_memory_api: bool = Tr
             hr_mix = _hit_rate(mix_resp.get("results", []), ground_truth)
 
             payload_graph = {"query": query, "top_k": top_k}
-            graph_resp, dt_graph = _post_json(api_url, "/recall", payload_graph, headers)
+            graph_resp, dt_graph = _post_json(
+                api_url, "/recall", payload_graph, headers
+            )
             hr_graph = _hit_rate(graph_resp.get("results", []), ground_truth)
     else:
         # Legacy top-level /recall paths (pipeline params ignored by server)

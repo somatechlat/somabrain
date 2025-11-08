@@ -26,7 +26,9 @@ def _get(path: str) -> requests.Response:
     return resp
 
 
-def _post(path: str, payload: dict, headers: Dict[str, str] | None = None) -> requests.Response:
+def _post(
+    path: str, payload: dict, headers: Dict[str, str] | None = None
+) -> requests.Response:
     resp = requests.post(
         f"{BASE_URL}/{path.lstrip('/')}",
         json=payload,

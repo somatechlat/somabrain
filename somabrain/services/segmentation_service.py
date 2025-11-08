@@ -113,6 +113,7 @@ def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
 
 # --- CPD mode support -------------------------------------------------------
 
+
 @dataclass
 class Update:
     ts: str
@@ -192,7 +193,9 @@ class Segmenter:
         except Exception:
             return _now_ms()
 
-    def observe(self, ts: str, leader: str, tenant: Optional[str] = None) -> Optional[Tuple[str, str, int, str]]:
+    def observe(
+        self, ts: str, leader: str, tenant: Optional[str] = None
+    ) -> Optional[Tuple[str, str, int, str]]:
         """Observe a frame for a tenant and possibly emit a boundary.
 
         Backward compatible: if tenant is None, use 'public' bucket.
@@ -277,7 +280,14 @@ class CPDSegmenter:
     - "max_dwell" when no CPD but dwell exceeds threshold
     """
 
-    def __init__(self, max_dwell_ms: int, min_samples: int, z_threshold: float, min_gap_ms: int, min_std: float = 0.02):
+    def __init__(
+        self,
+        max_dwell_ms: int,
+        min_samples: int,
+        z_threshold: float,
+        min_gap_ms: int,
+        min_std: float = 0.02,
+    ):
         self.max_dwell_ms = max(0, int(max_dwell_ms))
         self.min_samples = max(1, int(min_samples))
         self.z = float(z_threshold)
@@ -291,7 +301,9 @@ class CPDSegmenter:
     def _parse_ts(ts: str) -> int:
         return Segmenter._parse_ts(ts)
 
-    def observe(self, ts: str, tenant: str, domain: str, delta_error: float) -> Optional[Tuple[str, str, int, str]]:
+    def observe(
+        self, ts: str, tenant: str, domain: str, delta_error: float
+    ) -> Optional[Tuple[str, str, int, str]]:
         key = ((tenant or "public").strip() or "public", (domain or "").strip())
         if not key[1]:
             return None
@@ -318,7 +330,11 @@ class CPDSegmenter:
             z = abs((float(delta_error) - st.mean) / std)
             if z >= self.z:
                 # Respect min_gap guard
-                if last_change is not None and self.min_gap_ms > 0 and (now_ms - last_change) < self.min_gap_ms:
+                if (
+                    last_change is not None
+                    and self.min_gap_ms > 0
+                    and (now_ms - last_change) < self.min_gap_ms
+                ):
                     return None
                 self._last_change_ms[key] = now_ms
                 dwell = now_ms - (last_change or now_ms)
@@ -391,7 +407,9 @@ class HazardSegmenter:
         # log pdf of Normal
         return -0.5 * (z * z) - (math.log(s) + 0.5 * math.log(2 * math.pi))
 
-    def observe(self, ts: str, tenant: str, domain: str, delta_error: float) -> Optional[Tuple[str, str, int, str]]:
+    def observe(
+        self, ts: str, tenant: str, domain: str, delta_error: float
+    ) -> Optional[Tuple[str, str, int, str]]:
         key = ((tenant or "public").strip() or "public", (domain or "").strip())
         if not key[1]:
             return None
@@ -429,6 +447,7 @@ class HazardSegmenter:
         pV_pred = self.lmb * pS_prev + (1.0 - self.lmb) * pV_prev
         # Emission log-likelihoods (avoid underflow)
         import math as _math
+
         log_like_S = self._log_norm_pdf(x, mu, sigma)
         log_like_V = self._log_norm_pdf(x, mu, self.k * sigma)
         # Update (log-domain)
@@ -438,7 +457,11 @@ class HazardSegmenter:
         new_state = 0 if log_post_S >= log_post_V else 1
         # Boundary on state flip with min gap
         if new_state != prev_state:
-            if last_change is None or (self.min_gap_ms == 0) or ((now_ms - last_change) >= self.min_gap_ms):
+            if (
+                last_change is None
+                or (self.min_gap_ms == 0)
+                or ((now_ms - last_change) >= self.min_gap_ms)
+            ):
                 self._map_state[key] = new_state
                 self._last_change_ms[key] = now_ms
                 dwell = now_ms - (last_change or now_ms)
@@ -492,7 +515,9 @@ class SegmentationService:
             min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
             min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
         )
-        self._mode = (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
+        self._mode = (
+            (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
+        )
 
     def _start_health_server(self) -> None:
         try:
@@ -512,6 +537,7 @@ class SegmentationService:
                 @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
+
             except Exception:
                 pass
 
@@ -554,7 +580,9 @@ class SegmentationService:
                         upd = _parse_update(msg.value, self._serde_update)
                         if upd is None:
                             continue
-                        out = self._cpd.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
+                        out = self._cpd.observe(
+                            upd.ts, upd.tenant, upd.domain, upd.delta_error
+                        )
                         if out is None:
                             continue
                         domain, boundary_ts, dwell_ms, evidence = out
@@ -570,16 +598,36 @@ class SegmentationService:
                                 self,
                                 "_hazard",
                                 HazardSegmenter(
-                                    max_dwell_ms=int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0"),
-                                    hazard_lambda=float(os.getenv("SOMABRAIN_HAZARD_LAMBDA", "0.02") or "0.02"),
-                                    vol_sigma_mult=float(os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0") or "3.0"),
-                                    min_samples=int(os.getenv("SOMABRAIN_HAZARD_MIN_SAMPLES", "20") or "20"),
-                                    min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
-                                    min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
+                                    max_dwell_ms=int(
+                                        os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0")
+                                        or "0"
+                                    ),
+                                    hazard_lambda=float(
+                                        os.getenv("SOMABRAIN_HAZARD_LAMBDA", "0.02")
+                                        or "0.02"
+                                    ),
+                                    vol_sigma_mult=float(
+                                        os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0")
+                                        or "3.0"
+                                    ),
+                                    min_samples=int(
+                                        os.getenv("SOMABRAIN_HAZARD_MIN_SAMPLES", "20")
+                                        or "20"
+                                    ),
+                                    min_gap_ms=int(
+                                        os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000")
+                                        or "1000"
+                                    ),
+                                    min_std=float(
+                                        os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02")
+                                        or "0.02"
+                                    ),
                                 ),
                             )
                         hz: HazardSegmenter = getattr(self, "_hazard")
-                        out = hz.observe(upd.ts, upd.tenant, upd.domain, upd.delta_error)
+                        out = hz.observe(
+                            upd.ts, upd.tenant, upd.domain, upd.delta_error
+                        )
                         if out is None:
                             continue
                         domain, boundary_ts, dwell_ms, evidence = out
@@ -589,7 +637,9 @@ class SegmentationService:
                         frame = _parse_frame(msg.value, self._serde_in)
                         if frame is None:
                             continue
-                        out = self._segmenter.observe(frame.ts, frame.leader, frame.tenant)
+                        out = self._segmenter.observe(
+                            frame.ts, frame.leader, frame.tenant
+                        )
                         if out is None:
                             continue
                         domain, boundary_ts, dwell_ms, evidence = out
@@ -615,7 +665,9 @@ class SegmentationService:
                     producer.send("cog.segments", value=payload)
                     if BOUNDARY_EMITTED is not None:
                         try:
-                            BOUNDARY_EMITTED.labels(domain=domain, evidence=evidence).inc()
+                            BOUNDARY_EMITTED.labels(
+                                domain=domain, evidence=evidence
+                            ).inc()
                         except Exception:
                             pass
                     if BOUNDARY_LATENCY is not None:
@@ -640,11 +692,19 @@ class SegmentationService:
 
 def main() -> None:  # pragma: no cover - service entrypoint
     ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     if not (ff in ("1", "true", "yes", "on") or composite):
         import logging
         from somabrain.metrics import get_counter
-        logging.info("segmentation_service: disabled; set SOMABRAIN_FF_COG_SEGMENTATION=1 or ENABLE_COG_THREADS=1 to enable")
+
+        logging.info(
+            "segmentation_service: disabled; set SOMABRAIN_FF_COG_SEGMENTATION=1 or ENABLE_COG_THREADS=1 to enable"
+        )
         try:
             _MX_SEG_DISABLED = get_counter(
                 "somabrain_segmentation_disabled_total",

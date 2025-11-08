@@ -288,7 +288,9 @@ class SuperposedTrace:
             elif score > second_score:
                 second_score = score
         if best_id is None or best_score < 0.0:
-            logger.debug("SuperposedTrace.cleanup: no candidate exceeded similarity threshold")
+            logger.debug(
+                "SuperposedTrace.cleanup: no candidate exceeded similarity threshold"
+            )
             best_id = None
             best_score = 0.0
         if second_score < 0.0:

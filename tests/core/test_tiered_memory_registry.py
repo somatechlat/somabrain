@@ -13,7 +13,15 @@ def test_tiered_registry_remember_and_recall_simple() -> None:
     val = np.asarray([1, 0, 0, 0, 0, 0, 0, 0], dtype=np.float32)
     payload = {"task": "unit-key"}
 
-    reg.remember(tenant, ns, anchor_id="a1", key_vector=key, value_vector=val, payload=payload, coordinate=[0,0,0])
+    reg.remember(
+        tenant,
+        ns,
+        anchor_id="a1",
+        key_vector=key,
+        value_vector=val,
+        payload=payload,
+        coordinate=[0, 0, 0],
+    )
 
     # Query close to the anchor
     q = np.asarray([0.99, 0.01, 0, 0, 0, 0, 0, 0], dtype=np.float32)
@@ -27,6 +35,7 @@ def test_tiered_registry_remember_and_recall_simple() -> None:
     assert 0.0 <= res.eta <= 1.0
     assert res.sparsity >= 0.0
     assert isinstance(res.backend, str)
+
 
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.services.config_service import ConfigEvent

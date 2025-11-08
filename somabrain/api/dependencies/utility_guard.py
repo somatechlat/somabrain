@@ -48,11 +48,14 @@ async def utility_guard(
     dev_mode = False
     try:
         if _shared_settings is not None:
-            dev_mode = (getattr(_shared_settings, "mode_normalized", "prod") == "dev")
+            dev_mode = getattr(_shared_settings, "mode_normalized", "prod") == "dev"
         else:
             import os as _os
 
-            dev_mode = (_os.getenv("SOMABRAIN_MODE", "").strip().lower() in ("dev", "development"))
+            dev_mode = _os.getenv("SOMABRAIN_MODE", "").strip().lower() in (
+                "dev",
+                "development",
+            )
     except Exception:
         dev_mode = False
 

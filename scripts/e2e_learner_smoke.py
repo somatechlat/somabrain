@@ -20,10 +20,16 @@ except Exception:
             return json.loads(self._data.decode("utf-8"))
 
     def _post(url: str, body: Any) -> _Resp:
-        req = _rq.Request(url, data=json.dumps(body).encode("utf-8"), headers={"Content-Type": "application/json"})
+        req = _rq.Request(
+            url,
+            data=json.dumps(body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
         with _rq.urlopen(req, timeout=10) as resp:  # type: ignore
             return _Resp(getattr(resp, "status", 200), resp.read())
+
 else:
+
     def _post(url: str, body: Any):  # type: ignore
         return requests.post(url, json=body, timeout=10)
 
@@ -62,9 +68,19 @@ def _consume_one(topic: str, timeout_s: float) -> bool:
 def main() -> int:
     # Ensure reward -> config_update loop works end-to-end
     # 1) POST a reward to reward_producer
-    rport = int(os.getenv("REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")))
+    rport = int(
+        os.getenv(
+            "REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")
+        )
+    )
     url = f"http://127.0.0.1:{rport}/reward/test-frame-learner"
-    payload = {"r_task": 0.85, "r_user": 0.9, "r_latency": 0.1, "r_safety": 0.95, "r_cost": 0.05}
+    payload = {
+        "r_task": 0.85,
+        "r_user": 0.9,
+        "r_latency": 0.1,
+        "r_safety": 0.95,
+        "r_cost": 0.05,
+    }
     resp = _post(url, payload)
     code = getattr(resp, "status_code", 200)
     if code >= 300:

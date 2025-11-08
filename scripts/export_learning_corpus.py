@@ -18,15 +18,12 @@ from somabrain.learning.dataset import build_examples, iter_jsonl, export_exampl
 def _git_metadata() -> Dict[str, Any]:
     meta: Dict[str, Any] = {}
     try:
-        commit = (
-            subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                check=False,
-                capture_output=True,
-                text=True,
-            )
-            .stdout.strip()
-        )
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=False,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
         if commit:
             meta["commit"] = commit
     except Exception:

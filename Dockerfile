@@ -71,6 +71,12 @@ COPY memory /app/memory
 # Copy shared `common` helpers so imports like `from common...` work at runtime
 COPY common /app/common
 
+# Copy and install in-repo helper packages (e.g. libs.kafka_cog) so Avro
+# serde and other in-repo modules are importable at runtime. This ensures
+# services that import `libs.kafka_cog` find the package inside the image.
+COPY libs /app/libs
+RUN if [ -d "/app/libs" ]; then pip install --no-cache-dir /app/libs || echo "installing /app/libs failed"; fi
+
 # Ensure runtime imports from /app are visible
 ENV PYTHONPATH=/app:${PYTHONPATH:-}
 

@@ -12,11 +12,13 @@ from somabrain.predictors.base import load_operator_from_file
 
 def test_load_operator_from_adjacency_tmpfile(tmp_path: Path):
     # Simple 3-node line graph adjacency
-    A = np.array([
-        [0.0, 1.0, 0.0],
-        [1.0, 0.0, 1.0],
-        [0.0, 1.0, 0.0],
-    ])
+    A = np.array(
+        [
+            [0.0, 1.0, 0.0],
+            [1.0, 0.0, 1.0],
+            [0.0, 1.0, 0.0],
+        ]
+    )
     p = tmp_path / "graph.json"
     p.write_text(json.dumps({"adjacency": A.tolist()}))
     apply_A, dim = load_operator_from_file(str(p))
@@ -28,11 +30,13 @@ def test_load_operator_from_adjacency_tmpfile(tmp_path: Path):
 
 
 def test_load_operator_from_laplacian_tmpfile(tmp_path: Path):
-    L = np.array([
-        [ 1.0, -1.0,  0.0],
-        [-1.0,  2.0, -1.0],
-        [ 0.0, -1.0,  1.0],
-    ])
+    L = np.array(
+        [
+            [1.0, -1.0, 0.0],
+            [-1.0, 2.0, -1.0],
+            [0.0, -1.0, 1.0],
+        ]
+    )
     p = tmp_path / "graphL.json"
     p.write_text(json.dumps({"laplacian": L.tolist()}))
     apply_A, dim = load_operator_from_file(str(p))

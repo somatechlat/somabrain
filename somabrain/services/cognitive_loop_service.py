@@ -9,7 +9,12 @@ import numpy as np
 # Optional: publish BeliefUpdate events when feature flag enabled
 _FF_COG_UPDATES = False
 try:
-    _FF_COG_UPDATES = (os.getenv("SOMABRAIN_FF_COG_UPDATES", "").strip().lower() in ("1", "true", "yes", "on"))
+    _FF_COG_UPDATES = os.getenv("SOMABRAIN_FF_COG_UPDATES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 except Exception:
     _FF_COG_UPDATES = False
 

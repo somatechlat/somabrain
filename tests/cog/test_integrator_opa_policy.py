@@ -17,7 +17,9 @@ class _Resp:
         return self._body
 
 
-def _mk_hub(opa_url: str = "http://127.0.0.1:8181", policy: str = "soma.policy.integrator") -> IntegratorHub:
+def _mk_hub(
+    opa_url: str = "http://127.0.0.1:8181", policy: str = "soma.policy.integrator"
+) -> IntegratorHub:
     hub = IntegratorHub()
     # override internal OPA fields for testing
     hub._opa_url = opa_url

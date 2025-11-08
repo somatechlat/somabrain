@@ -44,6 +44,7 @@ def _bootstrap() -> Optional[str]:
         return None
     return url.replace("kafka://", "").strip()
 
+
 def _make_producer():  # pragma: no cover - optional at runtime
     bootstrap = _bootstrap()
     if not bootstrap:
@@ -101,7 +102,9 @@ def _publish_record(producer, topic: str, payload: Dict[str, Any]) -> None:
         raise e
 
 
-def _process_batch(session: Session, producer, batch_size: int, max_retries: int) -> int:
+def _process_batch(
+    session: Session, producer, batch_size: int, max_retries: int
+) -> int:
     events = (
         session.query(OutboxEvent)
         .filter(OutboxEvent.status == "pending")
@@ -138,12 +141,16 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     batch_size = int(os.getenv("SOMABRAIN_OUTBOX_BATCH_SIZE", "100") or 100)
     max_retries = int(os.getenv("SOMABRAIN_OUTBOX_MAX_RETRIES", "5") or 5)
     poll_interval = float(os.getenv("SOMABRAIN_OUTBOX_POLL_INTERVAL", "1.0") or 1.0)
-    create_retry_ms = int(os.getenv("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", "1000") or 1000)
+    create_retry_ms = int(
+        os.getenv("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", "1000") or 1000
+    )
     session_factory = get_session_factory()
     producer = _make_producer()
     # Robust startup: retry until producer is available
     while producer is None:
-        logging.warning("outbox_publisher: Kafka unavailable; retrying producer init...")
+        logging.warning(
+            "outbox_publisher: Kafka unavailable; retrying producer init..."
+        )
         time.sleep(create_retry_ms / 1000.0)
         producer = _make_producer()
     while True:

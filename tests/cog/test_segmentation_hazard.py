@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+
 def test_hazard_segmenter_boundary():
     from somabrain.services.segmentation_service import HazardSegmenter
 

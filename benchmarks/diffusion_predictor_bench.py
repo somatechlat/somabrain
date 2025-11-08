@@ -25,7 +25,9 @@ from scipy.linalg import expm
 try:
     import matplotlib.pyplot as plt
 except Exception as e:  # pragma: no cover
-    raise SystemExit("matplotlib is required to run this benchmark. Install it and retry.")
+    raise SystemExit(
+        "matplotlib is required to run this benchmark. Install it and retry."
+    )
 
 from somabrain.predictors.base import (
     HeatDiffusionPredictor,
@@ -59,7 +61,9 @@ def _ensure_dirs(ts: str) -> Tuple[Path, Path]:
     return res, plots
 
 
-def _predict(method: str, L: NDArray[np.float_], x0: NDArray[np.float_], t: float, K: int, m: int) -> Tuple[NDArray[np.float_], float]:
+def _predict(
+    method: str, L: NDArray[np.float_], x0: NDArray[np.float_], t: float, K: int, m: int
+) -> Tuple[NDArray[np.float_], float]:
     n = L.shape[0]
     cfg = PredictorConfig(diffusion_t=t, chebyshev_K=K, lanczos_m=m)
     pred = HeatDiffusionPredictor(apply_A=matvec_from_matrix(L), dim=n, cfg=cfg)
@@ -71,7 +75,9 @@ def _predict(method: str, L: NDArray[np.float_], x0: NDArray[np.float_], t: floa
     return y, dt
 
 
-def _exact(L: NDArray[np.float_], x0: NDArray[np.float_], t: float) -> NDArray[np.float_]:
+def _exact(
+    L: NDArray[np.float_], x0: NDArray[np.float_], t: float
+) -> NDArray[np.float_]:
     return expm(-t * L) @ x0
 
 
@@ -85,13 +91,16 @@ def accuracy_sweep(res_dir: Path, plots_dir: Path) -> Dict[str, List[TrialResult
     for n in ns:
         L = make_line_graph_laplacian(n)
         for t in ts:
-            x0 = np.zeros(n, dtype=float); x0[0] = 1.0
+            x0 = np.zeros(n, dtype=float)
+            x0[0] = 1.0
             y_exact = _exact(L, x0, t)
             # Chebyshev sweep
             for K in cheb_Ks:
                 y, rt = _predict("chebyshev", L, x0, t, K=K, m=20)
                 mse = float(np.mean((y - y_exact) ** 2))
-                results["chebyshev"].append(TrialResult("chebyshev", n, t, K, 20, mse, rt))
+                results["chebyshev"].append(
+                    TrialResult("chebyshev", n, t, K, 20, mse, rt)
+                )
             # Lanczos sweep
             for m in lanc_m:
                 y, rt = _predict("lanczos", L, x0, t, K=40, m=m)
@@ -131,7 +140,8 @@ def runtime_sweep(res_dir: Path, plots_dir: Path) -> List[TrialResult]:
     results: List[TrialResult] = []
     for n in ns:
         L = make_line_graph_laplacian(n)
-        x0 = np.zeros(n, dtype=float); x0[n // 2] = 1.0
+        x0 = np.zeros(n, dtype=float)
+        x0[n // 2] = 1.0
         for method, K, m in cfgs:
             y, rt = _predict(method, L, x0, t, K=K, m=m)
             # Skip exact for large n to keep it fast; record mse=nan
@@ -162,7 +172,8 @@ def example_heatmap(res_dir: Path, plots_dir: Path) -> None:
     n = 32
     t = 0.3
     L = make_line_graph_laplacian(n)
-    x0 = np.zeros(n, dtype=float); x0[n // 4] = 1.0
+    x0 = np.zeros(n, dtype=float)
+    x0[n // 4] = 1.0
     y_cheb, _ = _predict("chebyshev", L, x0, t, K=40, m=20)
     y_lanc, _ = _predict("lanczos", L, x0, t, K=40, m=20)
     y_exact = _exact(L, x0, t)

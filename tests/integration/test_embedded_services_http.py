@@ -24,7 +24,11 @@ def test_reward_health_embedded() -> None:
     if r.status_code == 403:
         pytest.skip("Embedded reward endpoint forbidden (likely non-dev mode)")
     r.raise_for_status()
-    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    body = (
+        r.json()
+        if r.headers.get("content-type", "").startswith("application/json")
+        else {}
+    )
     assert body.get("ok") is True
 
 
@@ -41,5 +45,9 @@ def test_learner_health_embedded() -> None:
     if r.status_code == 403:
         pytest.skip("Embedded learner endpoint forbidden (likely non-dev mode)")
     r.raise_for_status()
-    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+    body = (
+        r.json()
+        if r.headers.get("content-type", "").startswith("application/json")
+        else {}
+    )
     assert body.get("ok") is True

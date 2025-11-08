@@ -19,7 +19,13 @@ def test_post_reward_embedded() -> None:
     # Embedded reward producer is mounted under /reward, and defines POST /reward/{frame_id}
     # Therefore the full path is /reward/reward/{frame_id}
     url = f"{base}/reward/reward/{frame_id}"
-    payload = {"r_task": 0.8, "r_user": 0.9, "r_latency": 0.1, "r_safety": 0.95, "r_cost": 0.05}
+    payload = {
+        "r_task": 0.8,
+        "r_user": 0.9,
+        "r_latency": 0.1,
+        "r_safety": 0.95,
+        "r_cost": 0.05,
+    }
     try:
         r = requests.post(url, json=payload, timeout=5)
     except Exception as exc:

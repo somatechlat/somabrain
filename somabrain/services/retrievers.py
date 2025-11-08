@@ -124,7 +124,9 @@ def retrieve_vector(
                 if ns_eff is None:
                     ns_eff = getattr(mem_client, "namespace", None)
                 if ns_eff is None:
-                    ns_eff = getattr(getattr(mem_client, "cfg", None), "namespace", None)
+                    ns_eff = getattr(
+                        getattr(mem_client, "cfg", None), "namespace", None
+                    )
                 cached = retrieval_cache.get_candidates(ns_eff, query)
                 if not cached and ns_eff is not None:
                     # Namespace-wide conservative fallback
@@ -154,7 +156,11 @@ def retrieve_vector(
                             score = float(entry.get("score") or 0.0)
                         rescored.append(
                             RetrievalCandidate(
-                                coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                                coord=(
+                                    str(p.get("coordinate"))
+                                    if p.get("coordinate")
+                                    else None
+                                ),
                                 key=str(p.get("task") or p.get("id") or "") or None,
                                 score=score,
                                 retriever="vector",
@@ -203,7 +209,11 @@ def retrieve_vector(
                         score = float(entry.get("score") or 0.0)
                     rescored.append(
                         RetrievalCandidate(
-                            coord=str(p.get("coordinate")) if p.get("coordinate") else None,
+                            coord=(
+                                str(p.get("coordinate"))
+                                if p.get("coordinate")
+                                else None
+                            ),
                             key=str(p.get("task") or p.get("id") or "") or None,
                             score=score,
                             retriever="vector",
@@ -227,7 +237,6 @@ def retrieve_graph(
     limit: int = 20,
     universe: str | None = None,
     namespace: str | None = None,
-
 ) -> list[RetrievalCandidate]:
     """Graph retriever with retrieval-aware traversal.
 

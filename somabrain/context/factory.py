@@ -17,13 +17,20 @@ from somabrain.embeddings import make_embedder
 _embedder = None
 try:
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
-    if (os.getenv("SOMABRAIN_ALLOW_TINY_EMBEDDER", "").strip().lower() in ("1","true","yes","on")):
+    if os.getenv("SOMABRAIN_ALLOW_TINY_EMBEDDER", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
         from somabrain.embeddings import TinyDeterministicEmbedder
+
         _embedder = TinyDeterministicEmbedder(dim=256)
     else:
         _embedder = make_embedder(get_config(), quantum=None)
 except Exception:
     from somabrain.embeddings import TinyDeterministicEmbedder
+
     _embedder = TinyDeterministicEmbedder(dim=256)
 _working_memory = WorkingMemoryBuffer()
 _retrieval_weights = RetrievalWeights()

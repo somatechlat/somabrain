@@ -36,7 +36,9 @@ def _load_tenant_overrides() -> dict[str, dict]:
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             if isinstance(data, dict):
-                overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                overrides = {
+                    str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
+                }
         except Exception:
             # Fallback to JSON parse if YAML not available or fails
             try:
@@ -45,7 +47,11 @@ def _load_tenant_overrides() -> dict[str, dict]:
                 with open(path, "r", encoding="utf-8") as f:
                     data = _json.load(f)
                 if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                    overrides = {
+                        str(k): (v or {})
+                        for k, v in data.items()
+                        if isinstance(v, dict)
+                    }
             except Exception:
                 overrides = {}
     # Optional: overrides via env JSON string
@@ -57,7 +63,11 @@ def _load_tenant_overrides() -> dict[str, dict]:
 
                 data = _json.loads(raw)
                 if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                    overrides = {
+                        str(k): (v or {})
+                        for k, v in data.items()
+                        if isinstance(v, dict)
+                    }
             except Exception:
                 overrides = {}
     _TENANT_OVERRIDES = overrides
@@ -82,10 +92,20 @@ def _get_redis():
     import os
 
     require_backends = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
-    require_backends = str(require_backends).strip().lower() in {"1", "true", "yes", "on"}
+    require_backends = str(require_backends).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
     # Optional: explicit fakeredis for unit tests only (opt-in)
-    allow_fake = str(os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")).strip().lower() in {"1", "true", "yes", "on"}
+    allow_fake = str(os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
     if allow_fake and not require_backends:
         try:
             import fakeredis  # type: ignore
@@ -531,7 +551,9 @@ class AdaptationEngine:
 
         # Optional Phase‑1 adaptive knobs (tau decay + entropy cap), gated by env flags.
         try:
-            enable_tau_decay = str(os.getenv("SOMABRAIN_ENABLE_TAU_DECAY", "0")).strip().lower() in {"1","true","yes","on"}
+            enable_tau_decay = str(
+                os.getenv("SOMABRAIN_ENABLE_TAU_DECAY", "0")
+            ).strip().lower() in {"1", "true", "yes", "on"}
             tau_decay_rate = float(os.getenv("SOMABRAIN_TAU_DECAY_RATE", "0") or 0.0)
             # Per-tenant override
             ov = _get_tenant_override(self._tenant_id)
@@ -547,13 +569,16 @@ class AdaptationEngine:
             self._retrieval.tau = max(new_tau, 0.05)
             try:
                 from somabrain import metrics as _metrics
+
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
             except Exception:
                 pass
 
         # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
-            enable_entropy_cap = str(os.getenv("SOMABRAIN_ENABLE_ENTROPY_CAP", "0")).strip().lower() in {"1","true","yes","on"}
+            enable_entropy_cap = str(
+                os.getenv("SOMABRAIN_ENABLE_ENTROPY_CAP", "0")
+            ).strip().lower() in {"1", "true", "yes", "on"}
             entropy_cap = float(os.getenv("SOMABRAIN_ENTROPY_CAP", "0") or 0.0)
             # Per-tenant override
             ov = _get_tenant_override(self._tenant_id)
@@ -564,6 +589,7 @@ class AdaptationEngine:
             entropy_cap = 0.0
         if enable_entropy_cap and entropy_cap > 0.0:
             import math
+
             vec = [
                 max(1e-9, float(self._retrieval.alpha)),
                 max(1e-9, float(self._retrieval.beta)),
@@ -576,6 +602,7 @@ class AdaptationEngine:
             # Update entropy metric regardless of capping
             try:
                 from somabrain import metrics as _metrics
+
                 _metrics.update_learning_retrieval_entropy(self._tenant_id, entropy)
             except Exception:
                 pass
@@ -587,11 +614,17 @@ class AdaptationEngine:
                 scale = min(0.5, max(0.05, overflow / (entropy + 1e-9)))
                 for i in range(len(vec)):
                     if i != largest_idx:
-                        vec[i] *= (1.0 - scale)
+                        vec[i] *= 1.0 - scale
                 # Reassign back preserving original ordering
-                self._retrieval.alpha, self._retrieval.beta, self._retrieval.gamma, self._retrieval.tau = vec
+                (
+                    self._retrieval.alpha,
+                    self._retrieval.beta,
+                    self._retrieval.gamma,
+                    self._retrieval.tau,
+                ) = vec
                 try:
                     from somabrain import metrics as _metrics
+
                     _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
                 except Exception:
                     pass
@@ -758,7 +791,9 @@ class AdaptationEngine:
 
 # Re-export RetrievalWeights for external imports (tests expect it here)
 try:
-    from somabrain.context.builder import RetrievalWeights as RetrievalWeights  # noqa: F401
+    from somabrain.context.builder import (
+        RetrievalWeights as RetrievalWeights,
+    )  # noqa: F401
 except Exception:
     pass
 
