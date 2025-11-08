@@ -69,11 +69,19 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _serde(name: str) -> AvroSerde:
-    # Require Avro serde for production — do not fall back to JSON
+def _serde(name: str) -> Optional[AvroSerde]:
+    # Prefer Avro serde, but fall back to JSON when the in-repo `libs`
+    # package (or serde) is not available. This prevents the learner
+    # process from crashing in minimal dev images where `libs/` wasn't
+    # copied into the container build.
     if load_schema is None or AvroSerde is None:
-        raise RuntimeError(f"Avro serde required for {name}; install libs.kafka_cog.avro_schemas and serde")
-    return AvroSerde(load_schema(name))  # type: ignore[arg-type]
+        print(f"learner_online: Avro serde not available for {name}, falling back to JSON")
+        return None
+    try:
+        return AvroSerde(load_schema(name))  # type: ignore[arg-type]
+    except Exception as e:
+        print(f"learner_online: avro serde load failed for {name}, falling back to JSON: {e}")
+        return None
 
 
 def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:

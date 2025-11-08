@@ -54,11 +54,18 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _serde() -> AvroSerde:
-    # Require Avro serde in production — no JSON fallback allowed
+def _serde() -> Optional[AvroSerde]:
+    # Prefer Avro serde, but fall back to JSON if the in-repo `libs` package
+    # (or serde) is not available. This keeps the HTTP endpoint available
+    # in local/dev images where the package may not be installed.
     if load_schema is None or AvroSerde is None:
-        raise RuntimeError("Avro serde is required for RewardProducer; install libs.kafka_cog.avro_schemas and serde")
-    return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
+        print("reward_producer: Avro serde not available, falling back to JSON payloads")
+        return None
+    try:
+        return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
+    except Exception as e:
+        print(f"reward_producer: avro serde load failed, falling back to JSON: {e}")
+        return None
 
 
 def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
