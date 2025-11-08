@@ -32,7 +32,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
 import threading
-from observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
 
 import somabrain.metrics as app_metrics
 

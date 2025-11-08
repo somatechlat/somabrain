@@ -60,7 +60,5 @@ def run_api() -> None:
     uvicorn.run("somabrain.app:app", host=host, port=port, reload=False)
 
 
-def journal_cli(
-    argv: list[str] | None = None,
-) -> int:  # retained only to fail fast if invoked
+def journal_cli() -> int:  # retained only to fail fast if invoked
     raise SystemExit("Journal CLI removed (fail-fast architecture).")

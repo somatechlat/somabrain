@@ -1,3 +1,96 @@
+"""Top‑level no‑op observability provider used for unit tests.
+
+The production code expects ``observability.provider`` to expose ``init_tracing``
+and ``get_tracer`` (returning an object with ``start_as_current_span``).  This
+module implements a minimal stub that does nothing but satisfies the API, so
+imports succeed in the test environment.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+
+def init_tracing() -> None:
+    """No‑op tracing initializer for tests."""
+
+
+class _NoOpSpan:
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> "_NoOpSpan":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        return None
+
+
+class _NoOpTracer:
+    def start_as_current_span(self, name: str) -> _NoOpSpan:
+        return _NoOpSpan(name)
+
+
+def get_tracer(name: str) -> _NoOpTracer:  # pragma: no cover
+    return _NoOpTracer()
+"""Minimal no‑op tracing provider used for unit tests.
+
+The production code imports ``observability.provider`` for OpenTelemetry
+instrumentation.  In the test environment the ``observability`` package may not be
+installed, which caused ``ModuleNotFoundError`` during test collection.  This
+module implements a tiny stub that satisfies the expected API:
+
+* ``init_tracing()`` – a no‑op placeholder.
+* ``get_tracer(name)`` – returns a ``_NoOpTracer`` instance.
+* ``_NoOpTracer.start_as_current_span(name)`` – context manager that does
+  nothing but allows ``with tracer.start_as_current_span(...):`` syntax.
+
+The implementation deliberately avoids any external dependencies, keeping the
+runtime footprint minimal while preserving the original code paths.
+"""
+
+from __future__ import annotations
+
+from contextlib import contextmanager
+from typing import Any, Generator
+
+
+def init_tracing() -> None:
+    """Initialize tracing infrastructure.
+
+    In production this would configure OpenTelemetry exporters.  For the test
+    suite we simply provide a no‑op implementation.
+    """
+
+
+class _NoOpSpan:
+    """A dummy span that does nothing on exit."""
+
+    def __init__(self, name: str):
+        self.name = name
+
+    def __enter__(self) -> "_NoOpSpan":
+        return self
+
+    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
+        # No cleanup required.
+        return None
+
+
+class _NoOpTracer:
+    """Tracer exposing ``start_as_current_span`` compatible with OpenTelemetry."""
+
+    def start_as_current_span(self, name: str) -> _NoOpSpan:
+        return _NoOpSpan(name)
+
+
+def get_tracer(name: str) -> _NoOpTracer:  # pragma: no cover – exercised via imports
+    """Return a no‑op tracer instance.
+
+    The ``name`` argument is accepted for API compatibility but ignored.
+    """
+
+    return _NoOpTracer()
 """OpenTelemetry provider initializer for SomaBrain.
 
 This module is intentionally lightweight and safe to import when OpenTelemetry

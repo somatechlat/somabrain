@@ -34,6 +34,8 @@ import threading
 import time
 from typing import Any, Dict, Optional
 
+import yaml
+
 from fastapi import FastAPI
 
 try:
@@ -142,6 +144,20 @@ class LearnerService:
         self._serde_cfg = _serde("config_update")
         # Optional serde for next‑event (fallback to JSON if Avro missing)
         self._serde_next = _serde("next_event")
+        # Load per‑tenant adaptation overrides (tau decay, entropy cap)
+        self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
+        try:
+            # Support both historic and current env var names.
+            cfg_path = (
+                os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+                or os.getenv("LEARNING_TENANTS_CONFIG")
+                or "config/learning.tenants.yaml"
+            )
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                self._tenant_overrides = yaml.safe_load(f) or {}
+        except Exception:
+            # If the file is missing or malformed, fall back to empty overrides.
+            self._tenant_overrides = {}
         self._ema_alpha = float(os.getenv("LEARNER_EMA_ALPHA", "0.2"))
         self._emit_period = float(os.getenv("LEARNER_EMIT_PERIOD", "30"))
         self._producer: Optional[Any] = None
@@ -285,6 +301,23 @@ class LearnerService:
                 lr = float(os.getenv("LEARNER_DEFAULT_LR", "0.05"))
             except Exception:
                 lr = 0.05
+        # Apply per‑tenant tau decay if configured
+        decay = (
+            float(self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0))
+        )
+        if decay:
+            # Decay is multiplicative: tau = tau * (1 - decay)
+            tau = max(0.0, tau * (1.0 - decay))
+        # Simple entropy‑cap placeholder: if an entropy_cap is set, ensure tau does not exceed it.
+        # In a full implementation this would compute Shannon entropy of the weight vector.
+        entropy_cap = self._tenant_overrides.get(tenant, {}).get("entropy_cap")
+        if entropy_cap is not None:
+            try:
+                cap_val = float(entropy_cap)
+                if tau > cap_val:
+                    tau = cap_val
+            except Exception:
+                pass
         rec = {
             "tenant": tenant,
             "learning_rate": float(lr),

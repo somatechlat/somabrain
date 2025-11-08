@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 from enum import Enum
 from dataclasses import dataclass
-from typing import Literal
 
 
 class DeploymentMode(str, Enum):

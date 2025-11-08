@@ -134,7 +134,7 @@ class MemoryService:
         cls._last_reset_attempt = now
         return True
 
-    def _update_outbox_metric(self, pending: int) -> None:
+    def _update_outbox_metric(self) -> None:
         return
 
     def remember(self, key: str, payload: dict, universe: str | None = None):

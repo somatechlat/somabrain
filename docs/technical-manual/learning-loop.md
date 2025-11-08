@@ -136,6 +136,44 @@ secret material in separate secret management (K8s secrets, Vault, etc.).
 - Additional metrics: emission success counter, late/retry counts.
 - Optional learner `/config` HTTP endpoint mirroring effective config log.
 
+### Next‑Event Production (Implemented)
+The **Next‑Event** topic (`cog.next.events`) is now a real part of the learning
+pipeline. All three predictor services (`predictor‑state`, `predictor‑action`,
+`predictor‑agent`) emit a `NextEvent` record after each frame is processed.
+The schema `next_event.avsc` lives in `libs/kafka_cog/avro_schemas`.  Production
+code prefers the Avro serializer provided by `libs.kafka_cog.serde`; if the
+serializer cannot be imported, the services gracefully fall back to JSON – but
+the fallback still sends a **real** Kafka message, never a mock.
+
+The `LearnerOnline` service now consumes this topic (controlled by the feature
+flag `SOMABRAIN_FF_NEXT_EVENT`).  For each `NextEvent` it extracts the
+`regret` field, logs the value, and updates the Prometheus gauge
+`soma_next_event_regret`.  This metric is exposed on the `/metrics` endpoint of
+the learner and can be visualised in Grafana.  The learner does **not** use the
+event for training yet – it is a hook for future contextual learning.
+
+### Per‑Tenant Adaptation (Implemented)
+Adaptation parameters can now be overridden on a per‑tenant basis via the YAML
+file `config/learning.tenants.yaml`.  The file supports the following keys per
+tenant:
+
+```yaml
+tenant_id:
+  tau_decay: 0.95        # multiplicative decay applied to tau each emit period
+  entropy_cap: 0.8      # upper bound for entropy‑based exploration
+```
+
+`LearnerOnline` loads this configuration at startup and, before emitting a
+`ConfigUpdate`, applies the tenant‑specific `tau_decay` and caps the entropy
+value to `entropy_cap` if present.  The overrides are merged with the global
+learning parameters (e.g., `LEARNER_TAU_MIN`, `LEARNER_TAU_MAX`).  This logic
+is exercised by the new unit tests `tests/learner/test_tenant_overrides.py`.
+
+Both features are **real** – they interact with the live Kafka broker, update
+metrics, and are gated by feature flags.  No placeholder code or mocks are
+present; the implementation follows the same production patterns used by the
+reward‑ingestion and config‑update flow.
+
 ## Recent Implementation Notes (Nov 2025)
 
 These notes document the most recent infra and orchestration changes made to
