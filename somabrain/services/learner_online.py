@@ -36,10 +36,14 @@ from typing import Any, Dict, Optional
 from fastapi import FastAPI
 
 try:
-    from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+    from confluent_kafka import Producer as CfProducer  # type: ignore
+    from confluent_kafka import Consumer as CfConsumer  # type: ignore
+    from confluent_kafka.admin import AdminClient as CfAdminClient, NewTopic as CfNewTopic  # type: ignore
 except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
-    KafkaProducer = None  # type: ignore
+    CfProducer = None  # type: ignore
+    CfConsumer = None  # type: ignore
+    CfAdminClient = None  # type: ignore
+    CfNewTopic = None  # type: ignore
 
 try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -53,24 +57,23 @@ try:
 except Exception:  # pragma: no cover
     metrics = None  # type: ignore
 
-TOPIC_REWARD = "cog.reward.events"
-TOPIC_CFG = "cog.config.updates"
-TOPIC_GF = "cog.global.frame"
-TOPIC_NEXT = "cog.next.events"
+TOPIC_REWARD = os.getenv("SOMABRAIN_TOPIC_REWARD_EVENTS", "cog.reward.events")
+TOPIC_CFG = os.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
+TOPIC_GF = os.getenv("SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame")
+TOPIC_NEXT = os.getenv("SOMABRAIN_TOPIC_NEXT_EVENTS", "cog.next.events")
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    # Prefer in-network bootstrap set by compose/k8s, then fall back to SOMABRAIN_KAFKA_URL
+    url = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL") or "somabrain_kafka:9092"
     return url.replace("kafka://", "")
 
 
-def _serde(name: str) -> Optional[AvroSerde]:
+def _serde(name: str) -> AvroSerde:
+    # Require Avro serde for production — do not fall back to JSON
     if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema(name))  # type: ignore[arg-type]
-    except Exception:
-        return None
+        raise RuntimeError(f"Avro serde required for {name}; install libs.kafka_cog.avro_schemas and serde")
+    return AvroSerde(load_schema(name))  # type: ignore[arg-type]
 
 
 def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
@@ -116,36 +119,116 @@ class LearnerService:
     def __init__(self) -> None:
         self._bootstrap = _bootstrap()
         self._serde_reward = _serde("reward_event")
-        # Force JSON for config updates if LEARNER_FORCE_JSON set
-        self._serde_cfg = None if os.getenv("LEARNER_FORCE_JSON", "").lower() in {"1","true","yes","on"} else _serde("config_update")
+        # Require Avro serde for config updates (no JSON fallback)
+        self._serde_cfg = _serde("config_update")
         self._ema_alpha = float(os.getenv("LEARNER_EMA_ALPHA", "0.2"))
         self._emit_period = float(os.getenv("LEARNER_EMIT_PERIOD", "30"))
-        self._producer: Optional[KafkaProducer] = None
+        self._producer: Optional[Any] = None
+        self._producer_mode: str = ""
         self._stop = threading.Event()
         self._ema_by_tenant: Dict[str, _EMA] = {}
         # Metrics
         self._g_explore = metrics.get_gauge("soma_exploration_ratio", "Exploration ratio") if metrics else None
         self._g_regret = metrics.get_gauge("soma_policy_regret_estimate", "Estimated policy regret") if metrics else None
+        self._topic_checked = False
+
+    def _print_effective_config(self) -> None:
+        try:
+            # Reflect current effective learner + Kafka settings (no secrets)
+            def _f(name: str, default: str) -> float:
+                try:
+                    return float(os.getenv(name, default))
+                except Exception:
+                    return float(default)
+
+            cfg = {
+                "bootstrap": self._bootstrap,
+                "producer_mode": self._producer_mode or "unknown",
+                "topics": {
+                    "reward": TOPIC_REWARD,
+                    "config": TOPIC_CFG,
+                    "global_frame": TOPIC_GF,
+                    "next": TOPIC_NEXT,
+                },
+                "ema_alpha": self._ema_alpha,
+                "emit_period_s": self._emit_period,
+                "tau_min": _f("LEARNER_TAU_MIN", "0.1"),
+                "tau_max": _f("LEARNER_TAU_MAX", "1.0"),
+                "default_lr": _f("LEARNER_DEFAULT_LR", "0.05"),
+                "keepalive_tau": _f("LEARNER_KEEPALIVE_TAU", "0.7"),
+                "serde": {
+                    "reward": "avro" if self._serde_reward else "json",
+                    "config": "avro" if self._serde_cfg else "json",
+                },
+                "flags": {
+                    "FF_LEARNER_ONLINE": os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0"),
+                    "FF_NEXT_EVENT": os.getenv("SOMABRAIN_FF_NEXT_EVENT", "0"),
+                    "FF_CONFIG_UPDATES": os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "0"),
+                },
+            }
+            print("learner_online: effective_config " + json.dumps(cfg, sort_keys=True))
+        except Exception:
+            # Never fail the process due to config printing
+            pass
 
     def _ensure_producer(self) -> None:
-        if KafkaProducer is None:
-            raise RuntimeError("KafkaProducer unavailable")
         if self._producer is None:
-            self._producer = KafkaProducer(bootstrap_servers=self._bootstrap, acks="1", linger_ms=5)
-            print(f"learner_online: producer initialized bootstrap={self._bootstrap}")
+            if CfProducer is None:
+                raise RuntimeError("confluent-kafka Producer required for learner_online")
+            conf = {
+                "bootstrap.servers": self._bootstrap,
+                "socket.timeout.ms": 10000,
+                "message.send.max.retries": 1,
+                "queue.buffering.max.ms": 50,
+            }
+            self._producer = CfProducer(conf)
+            self._producer_mode = "confluent"
+            print(f"learner_online: confluent producer initialized bootstrap={self._bootstrap}")
 
-    @staticmethod
-    def _tau_from_reward(ema: float) -> float:
+    def _ensure_topic(self) -> None:
+        if self._topic_checked:
+            return
+        self._topic_checked = True
+        if CfAdminClient is None or CfNewTopic is None:
+            print("learner_online: confluent AdminClient unavailable, skipping topic ensure")
+            return
+        try:
+            admin = CfAdminClient({"bootstrap.servers": self._bootstrap})
+            md = admin.list_topics(timeout=5)
+            existing = set(md.topics.keys()) if md and hasattr(md, "topics") else set()
+            if TOPIC_CFG not in existing:
+                print(f"learner_online: creating missing topic {TOPIC_CFG}")
+                newt = CfNewTopic(TOPIC_CFG, num_partitions=1, replication_factor=1)
+                fs = admin.create_topics([newt])
+                # wait for futures
+                for _, f in fs.items():
+                    try:
+                        f.result(timeout=10)
+                    except Exception as e:
+                        print(f"learner_online: create topic failed {e}")
+            else:
+                print(f"learner_online: topic {TOPIC_CFG} already exists")
+        except Exception as e:
+            print(f"learner_online: topic ensure failed {repr(e)}")
+
+    def _tau_from_reward(self, ema: float) -> float:
         try:
             r = max(0.0, min(1.0, float(ema)))
         except Exception:
             r = 0.5
         tau = 0.8 - 0.5 * (r - 0.5)
-        return max(0.1, min(1.0, tau))
+        tmin = float(os.getenv("LEARNER_TAU_MIN", "0.1"))
+        tmax = float(os.getenv("LEARNER_TAU_MAX", "1.0"))
+        return max(tmin, min(tmax, tau))
 
-    def _emit_cfg(self, tenant: str, tau: float, lr: float = 0.05) -> None:
+    def _emit_cfg(self, tenant: str, tau: float, lr: Optional[float] = None) -> None:
         if self._producer is None:
             return
+        if lr is None:
+            try:
+                lr = float(os.getenv("LEARNER_DEFAULT_LR", "0.05"))
+            except Exception:
+                lr = 0.05
         rec = {
             "tenant": tenant,
             "learning_rate": float(lr),
@@ -153,12 +236,27 @@ class LearnerService:
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         try:
-            fut = self._producer.send(TOPIC_CFG, value=_enc(rec, self._serde_cfg))
-            fut.get(timeout=5)
-            self._producer.flush()
-            print(f"learner_online: emitted config_update tenant={tenant} tau={tau:.3f} lr={lr:.3f}")
+            start = time.time()
+            payload = _enc(rec, self._serde_cfg)
+            # confluent-kafka produce + flush
+            delivered = {"ok": False}
+
+            def _cb(err, msg):
+                if err is None:
+                    delivered["ok"] = True
+                    print(
+                        f"learner_online: emitted config_update tenant={tenant} tau={tau:.3f} lr={lr:.3f} part={msg.partition()} off={msg.offset()}"
+                    )
+                else:
+                    print(f"learner_online: delivery error {err}")
+
+            self._producer.produce(TOPIC_CFG, payload, callback=_cb)
+            self._producer.flush(15)
+            dur_ms = (time.time() - start) * 1000.0
+            if not delivered["ok"]:
+                print(f"learner_online: emit failed delivery-timeout tenant={tenant} tau={tau:.3f} ms={dur_ms:.1f}")
         except Exception as e:
-            print(f"learner_online: emit failed {e}")
+            print(f"learner_online: emit failed {repr(e)} tenant={tenant} tau={tau:.3f}")
 
     def _observe_reward(self, ev: Dict[str, Any]) -> None:
         tenant = str(ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")).strip() or "public"
@@ -184,39 +282,60 @@ class LearnerService:
                 self._observe_reward(ev)
 
     def run(self) -> None:
-        if KafkaConsumer is None:
-            raise RuntimeError("KafkaConsumer unavailable")
+        if CfConsumer is None:
+            raise RuntimeError("confluent-kafka Consumer required for learner_online")
         self._ensure_producer()
+        self._ensure_topic()
+        self._print_effective_config()
         topics = [TOPIC_REWARD]
         if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {"1","true","yes","on"}:
             topics.append(TOPIC_GF)
         if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {"1","true","yes","on"}:
             topics.append(TOPIC_NEXT)
-        consumer = KafkaConsumer(
-            *topics,
-            bootstrap_servers=self._bootstrap,
-            value_deserializer=lambda m: m,
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            group_id=os.getenv("SOMABRAIN_CONSUMER_GROUP", "learner-online"),
-            consumer_timeout_ms=1000,
-        )
+        # Use confluent_kafka.Consumer
+        conf = {
+            "bootstrap.servers": self._bootstrap,
+            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "learner-online"),
+            "auto.offset.reset": "latest",
+        }
+        consumer = CfConsumer(conf)
+        consumer.subscribe(topics)
         last_emit = time.time()
         try:
             while not self._stop.is_set():
-                polled = consumer.poll(timeout_ms=500)
-                if polled is None:
+                msg = consumer.poll(timeout=0.5)
+                if msg is None:
                     now = time.time()
                     if now - last_emit >= self._emit_period:
                         last_emit = now
-                        self._emit_cfg(os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"), 0.7)
+                        try:
+                            ktau = float(os.getenv("LEARNER_KEEPALIVE_TAU", "0.7"))
+                        except Exception:
+                            ktau = 0.7
+                        self._emit_cfg(os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"), ktau)
                     continue
-                if isinstance(polled, dict):
-                    for tp, records in polled.items():
-                        for rec in records:
-                            self._handle_record(rec)
-                else:
-                    self._handle_record(polled)
+                if msg.error():
+                    # skip errors but log
+                    try:
+                        err = msg.error()
+                        print(f"learner_online: consumer error {err}")
+                    except Exception:
+                        pass
+                    continue
+                # build a small adapter message with .topic and .value to reuse handler
+                class _MsgAdapter:
+                    def __init__(self, m):
+                        self._m = m
+
+                    @property
+                    def topic(self):
+                        return self._m.topic()
+
+                    @property
+                    def value(self):
+                        return self._m.value()
+
+                self._handle_record(_MsgAdapter(msg))
         finally:
             try:
                 consumer.close()

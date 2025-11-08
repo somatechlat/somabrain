@@ -23,15 +23,15 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
 
-try:  # kafka optional import (kafka-python)
-    from kafka import KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaProducer = None  # type: ignore
-
 try:  # preferred kafka client (confluent-kafka / librdkafka)
     from confluent_kafka import Producer as CProducer  # type: ignore
+    from confluent_kafka import Consumer as CConsumer  # type: ignore
+    from confluent_kafka.admin import AdminClient as CAdminClient, NewTopic  # type: ignore
 except Exception:  # pragma: no cover
     CProducer = None  # type: ignore
+    CConsumer = None  # type: ignore
+    CAdminClient = None  # type: ignore
+    NewTopic = None  # type: ignore
 
 try:  # avro optional import
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -46,24 +46,19 @@ except Exception:  # pragma: no cover
     metrics = None  # type: ignore
 
 
-TOPIC = "cog.reward.events"
+TOPIC = os.getenv("SOMABRAIN_TOPIC_REWARD_EVENTS", "cog.reward.events")
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL") or "somabrain_kafka:9092"
     return url.replace("kafka://", "")
 
 
-def _serde() -> Optional[AvroSerde]:
-    # Allow forcing JSON payloads for integration debugging (bypass Avro)
-    if os.getenv("REWARD_FORCE_JSON", "").strip().lower() in {"1","true","yes","on"}:
-        return None
+def _serde() -> AvroSerde:
+    # Require Avro serde in production — no JSON fallback allowed
     if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
-    except Exception:
-        return None
+        raise RuntimeError("Avro serde is required for RewardProducer; install libs.kafka_cog.avro_schemas and serde")
+    return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
 
 
 def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
@@ -76,18 +71,10 @@ def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
 
 
 def _make_producer():  # pragma: no cover - integration
-    # Prefer confluent-kafka if available (more robust with KRaft)
-    if CProducer is not None:
-        try:
-            return ("ck", CProducer({"bootstrap.servers": _bootstrap(), "message.timeout.ms": 10000}))
-        except Exception:
-            pass
-    if KafkaProducer is not None:
-        try:
-            return ("kp", KafkaProducer(bootstrap_servers=_bootstrap(), acks="1", linger_ms=5))
-        except Exception:
-            pass
-    return None
+    # Use confluent-kafka only; fail fast if unavailable
+    if CProducer is None:
+        raise RuntimeError("confluent-kafka (librdkafka) is required for RewardProducer")
+    return ("ck", CProducer({"bootstrap.servers": _bootstrap(), "message.timeout.ms": 10000}))
 
 
 app = FastAPI(title="Reward Producer")
