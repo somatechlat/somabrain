@@ -81,6 +81,18 @@ Canonical topics
 - Wire tests to inject reward events and validate schema registry compatibility
 - Acceptance: POST/emit produces an Avro record on soma.reward.events; CI smoke validates ≥1 record
 
+#### Sprint 1 — Recent Progress (Nov 2025)
+
+- Implemented local infra and orchestration improvements to stabilize reward ingestion and e2e validation:
+	- Canonical image now installs the in-repo `libs` package (Avro serde available at runtime).
+	- Increased Kafka healthcheck tolerance in compose to avoid spurious `unhealthy` states during broker startup.
+	- Added `make smoke-e2e` and `make start-servers` Makefile targets and a `scripts/e2e_smoke.sh` script to run quick POST→consume validation.
+	- Verified end-to-end: POST reward → message present on `cog.reward.events` → `learner_online` emits `cog.config.updates` → `integrator_hub` applied update (observed in logs).
+
+Next Sprint 1 steps:
+- Add a CI job to run the smoke-e2e in a runner (or lightweight compose) so PRs validate the loop automatically.
+- Convert smoke test to assert on `cog.config.updates` and integrator `/tau` for stricter acceptance.
+
 ### Sprint 2 — Next-Event Heads
 - Finalize next_event.avsc; ensure predictors emit NextEvent with error metric (e.g., Brier loss)
 - Unit tests for prediction head; metrics somabrain_predictor_*_next_total increase

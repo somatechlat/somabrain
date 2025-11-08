@@ -96,8 +96,9 @@ services:
       - "${KAFKA_BROKER_HOST_PORT}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT}"
     healthcheck:
       test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1"]
-      interval: 15s
-      timeout: 10s
+      interval: 20s
+      timeout: 20s
+      start_period: 60s
       retries: 6
     networks:
       - somabrain_net

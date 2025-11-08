@@ -160,6 +160,28 @@ compose-clean:
 	- docker network rm $(PROJECT)_default 2>/dev/null || true
 	@echo "Compose project cleaned."
 
+# Run an end-to-end smoke test: POST reward and verify it's in the Kafka topic.
+.PHONY: smoke-e2e
+smoke-e2e:
+	@echo "Running end-to-end smoke (POST reward -> verify event)"
+	@sh ./scripts/e2e_smoke.sh
+
+# Top-level start: build image, bring up full prod-like stack, run smoke test
+.PHONY: start-servers
+start-servers:
+	@echo "Building image and starting full stack..."
+	@$(COMPOSE_CMD) build
+	@$(PORT_OVERRIDES) $(COMPOSE_CMD) up -d
+	@echo "Waiting for API health..."
+	@for i in $$(seq 1 40); do \
+		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
+			echo "API healthy"; \
+			break; \
+		fi; \
+		sleep 1; \
+		done
+	@$(MAKE) smoke-e2e
+
 # ---------------------------------------------------------------------------
 # Two canonical modes: dev (embedded small services) and prod-like (full stack)
 # ---------------------------------------------------------------------------

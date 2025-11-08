@@ -140,6 +140,8 @@ class LearnerService:
         self._serde_reward = _serde("reward_event")
         # Require Avro serde for config updates (no JSON fallback)
         self._serde_cfg = _serde("config_update")
+        # Optional serde for next‑event (fallback to JSON if Avro missing)
+        self._serde_next = _serde("next_event")
         self._ema_alpha = float(os.getenv("LEARNER_EMA_ALPHA", "0.2"))
         self._emit_period = float(os.getenv("LEARNER_EMIT_PERIOD", "30"))
         self._producer: Optional[Any] = None
@@ -154,6 +156,14 @@ class LearnerService:
         )
         self._g_regret = (
             metrics.get_gauge("soma_policy_regret_estimate", "Estimated policy regret")
+            if metrics
+            else None
+        )
+        # Gauge for regret derived from next_event confidence (1 - confidence)
+        self._g_next_regret = (
+            metrics.get_gauge(
+                "soma_next_event_regret", "Regret derived from next_event confidence"
+            )
             if metrics
             else None
         )
@@ -229,11 +239,11 @@ class LearnerService:
             admin = CfAdminClient({"bootstrap.servers": self._bootstrap})
             md = admin.list_topics(timeout=5)
             existing = set(md.topics.keys()) if md and hasattr(md, "topics") else set()
+            # Ensure config updates topic exists
             if TOPIC_CFG not in existing:
                 print(f"learner_online: creating missing topic {TOPIC_CFG}")
                 newt = CfNewTopic(TOPIC_CFG, num_partitions=1, replication_factor=1)
                 fs = admin.create_topics([newt])
-                # wait for futures
                 for _, f in fs.items():
                     try:
                         f.result(timeout=10)
@@ -241,6 +251,19 @@ class LearnerService:
                         print(f"learner_online: create topic failed {e}")
             else:
                 print(f"learner_online: topic {TOPIC_CFG} already exists")
+            # Ensure next‑event topic exists (optional, only if flag enabled)
+            if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {"1", "true", "yes", "on"}:
+                if TOPIC_NEXT not in existing:
+                    print(f"learner_online: creating missing topic {TOPIC_NEXT}")
+                    newt = CfNewTopic(TOPIC_NEXT, num_partitions=1, replication_factor=1)
+                    fs = admin.create_topics([newt])
+                    for _, f in fs.items():
+                        try:
+                            f.result(timeout=10)
+                        except Exception as e:
+                            print(f"learner_online: create next topic failed {e}")
+                else:
+                    print(f"learner_online: topic {TOPIC_NEXT} already exists")
         except Exception as e:
             print(f"learner_online: topic ensure failed {repr(e)}")
 
@@ -319,6 +342,29 @@ class LearnerService:
             pass
         self._emit_cfg(tenant, tau)
 
+    def _observe_next_event(self, ev: Dict[str, Any]) -> None:
+        """Process a NextEvent record.
+
+        The current simple regret definition is ``1 - confidence`` (range 0‑1).
+        The value is logged and exposed via the ``soma_next_event_regret`` gauge.
+        Future work can feed this regret into the EMA‑based tau calculation.
+        """
+        tenant = (
+            str(ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"))
+            .strip()
+            or "public"
+        )
+        confidence = float(ev.get("confidence", 0.0))
+        regret = max(0.0, min(1.0, 1.0 - confidence))
+        print(
+            f"learner_online: next_event tenant={tenant} confidence={confidence:.3f} regret={regret:.3f}"
+        )
+        if self._g_next_regret is not None:
+            try:
+                self._g_next_regret.set(regret)
+            except Exception:
+                pass
+
     def _handle_record(self, msg: Any) -> None:
         topic = getattr(msg, "topic", "") or ""
         payload = getattr(msg, "value", None)
@@ -326,6 +372,15 @@ class LearnerService:
             ev = _dec(payload, self._serde_reward)
             if isinstance(ev, dict):
                 self._observe_reward(ev)
+        elif topic == TOPIC_NEXT:
+            ev = _dec(payload, self._serde_next)
+            if isinstance(ev, dict):
+                self._observe_next_event(ev)
+        elif topic == TOPIC_NEXT:
+            ev = _dec(payload, self._serde_next)
+            if isinstance(ev, dict):
+                # For now we only log the next‑event; future logic can use it for regret estimation
+                print(f"learner_online: received next_event {ev}")
 
     def run(self) -> None:
         if CfConsumer is None:

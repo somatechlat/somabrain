@@ -1,0 +1,51 @@
+name: Smoke E2E
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  smoke-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Bring up compose stack
+        uses: docker/compose-action@v2
+        with:
+          files: docker-compose.yml
+          run: up -d --build
+
+      - name: Wait for containers to initialize
+        run: |
+          # Wait for docker-compose services to appear and give them time to boot
+          for i in {1..60}; do
+            if docker compose ps --services | wc -l | grep -q '[1-9]'; then
+              break
+            fi
+            sleep 2
+          done
+          # Extra buffer time for services (APIs, Kafka) to become ready
+          sleep 15
+
+      - name: Run smoke-e2e
+        run: |
+          chmod +x scripts/e2e_smoke.sh || true
+          make smoke-e2e
+          # Verify that posting a reward results in a config update (τ)
+          python scripts/verify_config_update.py
+
+      - name: Tear down compose stack
+        if: always()
+        uses: docker/compose-action@v2
+        with:
+          files: docker-compose.yml
+          run: down --remove-orphans -v

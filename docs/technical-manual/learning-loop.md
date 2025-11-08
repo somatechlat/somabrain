@@ -136,6 +136,56 @@ secret material in separate secret management (K8s secrets, Vault, etc.).
 - Additional metrics: emission success counter, late/retry counts.
 - Optional learner `/config` HTTP endpoint mirroring effective config log.
 
+## Recent Implementation Notes (Nov 2025)
+
+These notes document the most recent infra and orchestration changes made to
+stabilize the real learning loop and provide a reproducible local/e2e smoke
+workflow.
+
+- Docker image: the runtime image now includes the repository `libs/`
+  package installed at build time. This makes `libs.kafka_cog.avro_schemas`
+  and `libs.kafka_cog.serde` importable inside containers so Avro serde is
+  available by default (instead of crashing when the in-repo package is
+  missing). See the top-level `Dockerfile` build step that copies `/libs`
+  and `pip install`s it.
+- Kafka healthcheck: the Compose healthcheck for the Kafka broker was made
+  more tolerant (longer timeout and a `start_period`) to avoid transient
+  `unhealthy` marks while the KRaft broker finishes initialization.
+- Makefile targets: two new convenience targets were added:
+  - `make smoke-e2e` — runs `scripts/e2e_smoke.sh` which posts a reward to
+    the host-mapped reward producer endpoint and verifies the event landed
+    in `cog.reward.events` via a consumer run inside the `somabrain_cog`
+    container.
+  - `make start-servers` — builds the canonical image, starts the full
+    prod-like compose stack, waits for the API health endpoint and then
+    runs the `smoke-e2e` target.
+- Smoke script: `scripts/e2e_smoke.sh` is a small, composable script used by
+  the Makefile and CI to exercise: POST reward → consume `cog.reward.events`.
+
+Usage examples
+
+Run the canonical stack and the smoke test (local dev):
+
+```bash
+# build + start + smoke end-to-end
+make start-servers
+
+# or run just the smoke test against already-running stack
+make smoke-e2e
+```
+
+Notes and follow-ups
+
+- CI: add a GitHub Actions job that runs a containerized compose up (or uses
+  the repo image built in the runner), then runs `make smoke-e2e`. This
+  will prevent regressions to the reward → learner loop.
+- Serialization fallbacks: services still prefer Avro when schemas and the
+  serde are present; when unavailable they will gracefully log and fall
+  back to JSON to keep the HTTP endpoints and learner threads up in minimal
+  dev images. The long-term plan is to have the canonical image always
+  include `libs` so Avro is the default for all CI and prod-like builds.
+
+
 ---
 This loop implementation follows the strict “no guesswork” rule: each value is
 explicitly bound to an environment variable or real-time Kafka data.
