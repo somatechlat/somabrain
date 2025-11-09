@@ -117,5 +117,6 @@ run/*.pid
 
 # IDE
 .idea/
+.continue/
 *.swp
 *.swo
