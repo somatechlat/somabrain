@@ -50,6 +50,11 @@ except Exception:  # pragma: no cover - test/import fallback
         return _NoopTracer()
 
 import somabrain.metrics as app_metrics
+try:
+    from somabrain.integrator.consistency import consistency_score  # type: ignore
+except Exception:  # pragma: no cover - optional import in tests
+    def consistency_score(agent_posterior, action_posterior):  # type: ignore
+        return None
 
 
 INTEGRATOR_CONSUMED = app_metrics.get_counter(
@@ -151,6 +156,13 @@ INTEGRATOR_CAND_WEIGHT = app_metrics.get_gauge(
     "somabrain_integrator_candidate_weight",
     "Candidate fusion weight from exp(-alpha * e_norm) (metrics-only)",
     labelnames=["tenant", "domain"],
+)
+
+# Cross-thread consistency (agent intent vs next action)
+INTEGRATOR_CONSISTENCY = app_metrics.get_gauge(
+    "somabrain_integrator_consistency",
+    "Feasibility consistency between agent intent and next action",
+    labelnames=["tenant"],
 )
 
 
@@ -687,6 +699,17 @@ class IntegratorHub:
             tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev)
         )
         leader, weights, raw = self._sm.snapshot(tenant)
+        # Cross-thread consistency metric (set when both posteriors available)
+        try:
+            a_ob = raw.get("agent")
+            x_ob = raw.get("action")
+            a_post = (a_ob.meta.get("posterior") if a_ob and isinstance(a_ob.meta, dict) else None)
+            x_post = (x_ob.meta.get("posterior") if x_ob and isinstance(x_ob.meta, dict) else None)
+            score = consistency_score(a_post, x_post)
+            if score is not None:
+                INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
+        except Exception:
+            pass
         # Metrics-only: compute normalized error and candidate exp(-alpha * e_norm) weights
         if self._norm_enabled:
             try:
@@ -899,6 +922,22 @@ class IntegratorHub:
                                         pass
                                 except Exception:
                                     pass
+                            # Observe optional per-domain lambda attribution (no behavior change yet)
+                            try:
+                                for dkey, label in (
+                                    ("lambda_state", "state"),
+                                    ("lambda_agent", "agent"),
+                                    ("lambda_action", "action"),
+                                ):
+                                    val = cfg.get(dkey)
+                                    if isinstance(val, (int, float)):
+                                        # Reuse candidate weight gauge namespace or create a dedicated gauge if needed.
+                                        # For simplicity, expose as somabrain_integrator_candidate_weight with domain label 'lambda_<domain>'
+                                        INTEGRATOR_CAND_WEIGHT.labels(
+                                            tenant=self._tenant_from(cfg), domain=f"lambda_{label}"
+                                        ).set(float(val))
+                            except Exception:
+                                pass
                         continue
 
                     # Decode event depending on topic (cog vs soma)

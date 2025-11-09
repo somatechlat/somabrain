@@ -164,6 +164,8 @@ class LearnerService:
         self._producer_mode: str = ""
         self._stop = threading.Event()
         self._ema_by_tenant: Dict[str, _EMA] = {}
+        # Track regret EWMA by tenant (from NextEvent)
+        self._regret_by_tenant: Dict[str, _EMA] = {}
         # Metrics
         self._g_explore = (
             metrics.get_gauge("soma_exploration_ratio", "Exploration ratio")
@@ -326,10 +328,26 @@ class LearnerService:
                     tau = cap_val
             except Exception:
                 pass
+        # Compute per-domain lambda values from observed regret EMA if available.
+        # Definition: lambda = clamp(0.1, 1.0, 1.0 - regret_ema)
+        lam_state = lam_agent = lam_action = None
+        try:
+            r_ema = self._regret_by_tenant.get(tenant)
+            if r_ema is not None and r_ema.get() is not None:
+                v = 1.0 - float(r_ema.get())
+                v = max(0.1, min(1.0, v))
+                lam_state = v
+                lam_agent = v
+                lam_action = v
+        except Exception:
+            lam_state = lam_agent = lam_action = None
         rec = {
             "tenant": tenant,
             "learning_rate": float(lr),
             "exploration_temp": float(tau),
+            "lambda_state": lam_state,
+            "lambda_agent": lam_agent,
+            "lambda_action": lam_action,
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         try:
@@ -409,6 +427,12 @@ class LearnerService:
         try:
             if hasattr(metrics, "record_regret"):
                 metrics.record_regret(tenant, regret)
+        except Exception:
+            pass
+        # Maintain local regret EMA for lambda computation
+        try:
+            ema = self._regret_by_tenant.setdefault(tenant, _EMA(0.15))
+            ema.update(regret)
         except Exception:
             pass
 

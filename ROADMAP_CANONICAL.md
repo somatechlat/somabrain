@@ -34,7 +34,7 @@ Notes
 
 Implemented (I): belief_update, global_frame, segment_boundary, integrator_context.
 
-Partial (P): next_event (error field labeling), reward_event (component set), config_update (tau only).
+Partial (P): next_event (error field labeling), reward_event (component set), config_update (tau + λ_d attribution fields populated by learner).
 
 Proposed (N):
 - predictor_calibration (ECE, Brier, T_d, ts)
@@ -71,7 +71,7 @@ Fusion Normalization (N):
 Calibration (N):
 - Temperature scaling T_d; metrics ECE_d, Brier_d; update only with min samples
 
-Consistency (N):
+Consistency (P):
 - κ = 1 − JSD(P_action|agent || empirical); inconsistency_rate alert >3%
 
 Segmentation HMM (N):
@@ -114,7 +114,7 @@ Add (N): ENABLE_FUSION_NORMALIZATION, ENABLE_HMM_SEGMENTATION, ENABLE_CALIBRATIO
 Sprint 0 Foundations (Done)
 Sprint 1 Reward Ingestion (Done)
 Sprint 2 Next-Event Heads (Partial): Include error metric labeling; acceptance: learner consumes; predictor error gauge <0.05 in controlled tests.
-Sprint 3 Online Learner Loop (Partial): Tau live updates; extend config_update for λ_d emission.
+Sprint 3 Online Learner Loop (Partial): Tau live updates; config_update extended with λ_d emission (inverse regret EMA per tenant, provisional mapping).
 Sprint 4 OPA & Shadow (Done): Shadow ~5%; veto metric increments; decision latency within SLO.
 Sprint 5 Observability Base (Done): Metrics + base alerts.
 Sprint 6 Canary & Rollout (Pending): p99 ≤22ms; regret ≤0.05; entropy stable; veto ≤5%.
@@ -122,7 +122,7 @@ Sprint 7 Fusion Normalization (N): w_d via exp(−α·e_norm_d); α adaptive; en
 Sprint 8 Consolidation & Single Entry (N): Predictors import shared utils; no local encode; CLoC drop ≥20%.
 Sprint 9 HMM Segmentation (N): Boundary F1 ≥0.9 (synthetic), false boundary <5%, latency ≤2 ticks.
 Sprint 10 Calibration Pipeline (N): ECE reduction ≥30%; temperature updates persisted; downgrade on breach.
-Sprint 11 Consistency Metrics (N): κ histogram; alert on mismatch scenario; remediation lowers rate <3%.
+Sprint 11 Consistency Metrics (Partial): feasibility gauge (binary) emitted; future κ histogram & alerting pending.
 Sprint 12 Reward Attribution (N): γ_d published; λ_d adjusts exploration; regret improves ≥5%.
 Sprint 13 Drift & Auto-Rollback (N): drift event triggers disable advanced fusion; stabilize within 2 windows.
 
@@ -152,6 +152,6 @@ Disable advanced flags individually; full revert with `featureFlags.enableCogThr
 
 ## 13) Status Summary (I/P/N)
 
-- Diffusion predictors (I), Integrator softmax (I/P), NextEvent emit (I/P), Reward ingest (P), Tau updates (P), OPA+shadow (I), Observability base (I), HMM (N), Fusion normalization (N), Calibration (N), Consistency (N), Attribution λ_d (N), Consolidation (N), Drift automation (N).
+- Diffusion predictors (I), Integrator softmax (I/P), NextEvent emit (I/P), Reward ingest (P), Tau updates (P), OPA+shadow (I), Observability base (I), HMM (N), Fusion normalization (N), Calibration (N), Consistency (P), Attribution λ_d (P), Consolidation (N), Drift automation (N).
 
 This canonical roadmap unifies implementation, math upgrades, consolidation, and production criteria in a single, truth-based plan.
