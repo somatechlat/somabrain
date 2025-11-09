@@ -26,16 +26,7 @@ _TRUE_VALUES = ("1", "true", "yes", "on")
 
 
 def _auth_disabled() -> bool:
-    # Prefer centralized mode policy when available
-    if shared_settings is not None:
-        try:
-            # If mode declares API auth enabled, enforce it; in dev mode, policy may disable
-            mode_enabled = bool(getattr(shared_settings, "mode_api_auth_enabled", True))
-            return not mode_enabled
-        except Exception:
-            # If centralized settings unavailable/misconfigured, default to enforcing auth
-            return False
-    # No environment escape hatch; rely on centralized settings only
+    # Auth disable capability removed: always enforce auth in strict mode.
     return False
 
 
@@ -63,9 +54,7 @@ def _jwt_algorithms(cfg: Config) -> list[str]:
 
 def require_auth(request: Request, cfg: Config) -> None:
     """Validate authentication for API requests."""
-    # Allow tests/dev to disable auth via env or consolidated settings.
-    if _auth_disabled():
-        return
+    # Auth always enforced; no early return.
     auth = request.headers.get("Authorization", "")
 
     jwt_key = _get_jwt_key(cfg)
@@ -105,9 +94,7 @@ def require_auth(request: Request, cfg: Config) -> None:
 
 
 def require_admin_auth(request: Request, cfg: Config) -> None:
-    # Allow tests/dev to disable admin auth as well
-    if _auth_disabled():
-        return
+    # Admin auth always enforced.
     if not cfg.api_token:
         return
     token_header = request.headers.get("Authorization", "")

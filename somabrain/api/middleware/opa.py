@@ -79,26 +79,16 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return await call_next(request)
             except Exception as exc:
-                # Respect fail-closed posture if configured
+                # Strict: default fail-closed if OPA evaluation fails
                 if shared_settings is not None:
                     try:
-                        # Prefer mode policy when available
                         fail_closed = bool(
-                            getattr(shared_settings, "mode_opa_fail_closed", False)
+                            getattr(shared_settings, "mode_opa_fail_closed", True)
                         )
                     except Exception:
-                        try:
-                            fail_closed = bool(
-                                getattr(shared_settings, "opa_fail_closed", False)
-                            )
-                        except Exception:
-                            fail_closed = False
+                        fail_closed = True
                 else:
-                    fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                        "1",
-                        "true",
-                        "yes",
-                    )
+                    fail_closed = True
                 if fail_closed:
                     LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
                     app_metrics.OPA_DENY_TOTAL.inc()
@@ -150,25 +140,16 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 # Treat unexpected status as a safe‑allow fallback
                 app_metrics.OPA_ALLOW_TOTAL.inc()
         except Exception as exc:
-            # Failure to contact OPA – honor fail-closed posture if enabled
+            # Failure to contact OPA – strict fail-closed by default
             if shared_settings is not None:
                 try:
                     fail_closed = bool(
-                        getattr(shared_settings, "mode_opa_fail_closed", False)
+                        getattr(shared_settings, "mode_opa_fail_closed", True)
                     )
                 except Exception:
-                    try:
-                        fail_closed = bool(
-                            getattr(shared_settings, "opa_fail_closed", False)
-                        )
-                    except Exception:
-                        fail_closed = False
+                    fail_closed = True
             else:
-                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                    "1",
-                    "true",
-                    "yes",
-                )
+                fail_closed = True
             if fail_closed:
                 LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
                 app_metrics.OPA_DENY_TOTAL.inc()

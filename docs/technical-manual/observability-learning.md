@@ -94,7 +94,7 @@ Environment:
 
 - `SOMABRAIN_OPA_URL`: Base URL for OPA (e.g., `http://opa:8181`).
 - `SOMABRAIN_OPA_POLICY`: Data path (e.g., `soma.policy.integrator`).
-- `SOMA_OPA_FAIL_CLOSED`: If true, deny on OPA errors; otherwise allow.
+- OPA posture: Fail-closed by default; latency and deny counters are instrumented.
 
 Integrator sends candidate leader, weights and event to OPA and increments
 allow/deny counters. Deny with fail-closed drops the frame; otherwise the frame

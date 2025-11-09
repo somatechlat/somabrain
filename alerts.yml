@@ -10,6 +10,27 @@ groups:
           summary: "High average request latency"
           description: "Average request latency > 500 ms for 3m"
 
+      # Retrieval empty rate sustained high (ratio of empty responses to requests)
+      - alert: RetrievalEmptyRateHigh
+        expr: (sum by (namespace) (increase(somabrain_retrieval_empty_total[5m]))
+              / clamp_min(sum by (namespace) (increase(somabrain_retrieval_requests[5m])), 1)) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High retrieval empty rate"
+          description: "Empty retrieval ratio > 30% over 5m for namespace {{ $labels.namespace }} (value: {{ $value }}). Investigate retriever health or indexing coverage."
+
+      # Retrieval p95 latency elevated (end-to-end pipeline latency)
+      - alert: RetrievalLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le)) > 0.40
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Retrieval p95 latency high"
+          description: "Retrieval pipeline p95 latency > 400ms over 10m (value: {{ $value }}s). Check ANN, fusion, or persistence backpressure."
+
       - alert: WMUtilizationHigh
         expr: somabrain_wm_utilization > 0.85
         for: 5m
@@ -130,23 +151,23 @@ groups:
           description: "EWMA regret above 0.08 for 15m (value: {{ $value }}). Consider rollback or parameter tuning."
 
       # Drift detection alerts from service counters
-        - alert: FusionDriftDetected
-          expr: increase(somabrain_drift_events_total[5m]) > 0
+      - alert: FusionDriftDetected
+        expr: increase(somabrain_drift_events_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
-            summary: "Fusion drift detected"
-            description: "Entropy/regret breach for {{ $labels.domain }} {{ $labels.tenant }}; normalization auto-disable may trigger. Events: {{ $value }}"
+          summary: "Fusion drift detected"
+          description: "Entropy/regret breach for {{ $labels.domain }} {{ $labels.tenant }}; normalization auto-disable may trigger. Events: {{ $value }}"
 
-        - alert: NormalizationAutoDisabled
-          expr: increase(somabrain_integrator_norm_disabled_total[15m]) > 0
-          for: 1m
-          labels:
-            severity: critical
-          annotations:
-            summary: "Fusion normalization auto-disabled"
-            description: "Integrator disabled normalization due to drift for tenant(s). Investigate entropy/regret trends and rollback rationale."
+      - alert: NormalizationAutoDisabled
+        expr: increase(somabrain_integrator_norm_disabled_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fusion normalization auto-disabled"
+          description: "Integrator disabled normalization due to drift for tenant(s). Investigate entropy/regret trends and rollback rationale."
 
       # Calibration Drift: ECE sustained above threshold (0.15) per domain/tenant
       - alert: CalibrationDrift

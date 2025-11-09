@@ -7,5 +7,5 @@
 - Actions:
   - Raise OPA timeout threshold only if minimal; otherwise fallback to permissive mode (fail-open) temporarily.
   - Cache last allow decision per tenant for short window.
-- Rollback: set `SOMA_OPA_FAIL_CLOSED=0` until stability returns.
+- Rollback: temporarily disable OPA gate only via controlled configuration change (no env flag). Prefer fixing the OPA dependency.
 - Reference: `integrator_hub.py` `_opa_decide`.

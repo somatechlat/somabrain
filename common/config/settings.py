@@ -66,12 +66,9 @@ class Settings(BaseSettings):
     """
 
     # Core infra -----------------------------------------------------------
-    # Use plain strings for DSNs to remain permissive across environments
-    # (the test/dev envs use sqlite:// which PostgresDsn would reject).
+    # Postgres DSN is required; no SQLite fallback permitted in strict mode.
     postgres_dsn: str = Field(
-        default_factory=lambda: os.getenv(
-            "SOMABRAIN_POSTGRES_DSN", "sqlite:///./data/somabrain.db"
-        )
+        default_factory=lambda: os.getenv("SOMABRAIN_POSTGRES_DSN", "")
     )
     redis_url: str = Field(
         default_factory=lambda: os.getenv("SOMABRAIN_REDIS_URL")
@@ -127,9 +124,7 @@ class Settings(BaseSettings):
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
-    disable_auth: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_DISABLE_AUTH", False)
-    )
+    # Auth is always-on in strict mode; legacy disable_auth removed.
     mode: str = Field(default=os.getenv("SOMABRAIN_MODE", "enterprise"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
@@ -148,9 +143,7 @@ class Settings(BaseSettings):
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
     )
-    opa_fail_closed: bool = Field(
-        default_factory=lambda: _bool_env("SOMA_OPA_FAIL_CLOSED", False)
-    )
+    # OPA posture derived from mode; env flag removed. Use mode_opa_fail_closed.
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
@@ -203,16 +196,16 @@ class Settings(BaseSettings):
     def mode_api_auth_enabled(self) -> bool:
         """Whether API auth should be enabled under the current mode.
 
-        - dev: False (policy relaxations for local development)
-        - staging: True
-        - prod: True
+        Strict: Always True across all modes.
         """
         try:
             from somabrain.mode import get_mode_config
 
-            return get_mode_config().profile.auth_enabled
+            # Even if mode declares dev relaxations, enforce auth in strict mode
+            _ = get_mode_config()
+            return True
         except Exception:
-            return self.mode_normalized != "dev"
+            return True
 
     @property
     def mode_require_external_backends(self) -> bool:
@@ -295,7 +288,7 @@ class Settings(BaseSettings):
         try:
             if os.getenv("SOMABRAIN_DISABLE_AUTH") is not None:
                 notes.append(
-                    "SOMABRAIN_DISABLE_AUTH is deprecated; auth enablement is derived from SOMABRAIN_MODE (mode_api_auth_enabled)."
+                    "SOMABRAIN_DISABLE_AUTH is removed; auth is always required in strict mode."
                 )
         except Exception:
             pass

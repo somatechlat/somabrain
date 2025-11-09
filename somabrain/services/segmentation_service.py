@@ -45,8 +45,8 @@ except Exception as e:  # pragma: no cover
 
 
 try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    from somabrain.libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+    from somabrain.libs.kafka_cog.serde import AvroSerde  # type: ignore
 except Exception as e:  # pragma: no cover - strict mode requires Avro
     raise RuntimeError(f"segmentation_service: Avro libs unavailable: {e}")
 
@@ -54,22 +54,7 @@ except Exception as e:  # pragma: no cover - strict mode requires Avro
 from somabrain import metrics  # type: ignore
 from somabrain.common.infra import assert_ready
 
-# Tracing provider (fallback to no-op if observability package not on sys.path)
-try:
-    from observability.provider import init_tracing, get_tracer  # type: ignore
-except Exception:  # pragma: no cover
-    from contextlib import contextmanager
-
-    def init_tracing() -> None:  # type: ignore
-        return None
-
-    class _NoopTracer:
-        @contextmanager
-        def start_as_current_span(self, name: str):  # type: ignore
-            yield None
-
-    def get_tracer(name: str) -> _NoopTracer:  # type: ignore
-        return _NoopTracer()
+from somabrain.observability import init_tracing, get_tracer  # type: ignore
 
 
 BOUNDARY_EMITTED = None

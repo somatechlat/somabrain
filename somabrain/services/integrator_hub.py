@@ -35,22 +35,10 @@ from somabrain.common.kafka import make_producer, encode, TOPICS  # Avro-only st
 from somabrain.common.infra import assert_ready  # fail-fast infra gate
 import threading
 
-# Tracing provider (fallback to no-op if observability package is unavailable)
 try:
-    from observability.provider import init_tracing, get_tracer  # type: ignore
-except Exception:  # pragma: no cover - test/import fallback
-    from contextlib import contextmanager
-
-    def init_tracing() -> None:  # type: ignore
-        return None
-
-    class _NoopTracer:
-        @contextmanager
-        def start_as_current_span(self, name: str):  # type: ignore
-            yield None
-
-    def get_tracer(name: str) -> _NoopTracer:  # type: ignore
-        return _NoopTracer()
+    from somabrain.observability import init_tracing, get_tracer  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(f"observability provider unavailable (strict): {e}")
 
 
 import somabrain.metrics as app_metrics
@@ -461,7 +449,8 @@ class IntegratorHub:
         # OPA (optional)
         self._opa_url: Optional[str] = None
         self._opa_policy: Optional[str] = None
-        self._opa_fail_closed: bool = False
+        # Fail-closed posture default (strict) – no env override
+        self._opa_fail_closed: bool = True
         try:
             from common.config.settings import settings as _settings  # type: ignore
 
@@ -469,21 +458,15 @@ class IntegratorHub:
                 _settings.opa_url or os.getenv("SOMABRAIN_OPA_URL") or ""
             ).strip()
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
-            # Prefer mode-aware fail-closed if available
+            # Derive posture from mode (always True under strict mode policies)
             try:
-                self._opa_fail_closed = bool(_settings.mode_opa_fail_closed())
+                self._opa_fail_closed = bool(getattr(_settings, "mode_opa_fail_closed", True))
             except Exception:
-                self._opa_fail_closed = bool(
-                    os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower()
-                    in ("1", "true", "yes", "on")
-                )
+                self._opa_fail_closed = True
         except Exception:
             self._opa_url = (os.getenv("SOMABRAIN_OPA_URL") or "").strip()
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
-            self._opa_fail_closed = bool(
-                os.getenv("SOMA_OPA_FAIL_CLOSED", "false").lower()
-                in ("1", "true", "yes", "on")
-            )
+            self._opa_fail_closed = True
 
     def _start_health_server(self) -> None:
         try:

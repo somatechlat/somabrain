@@ -557,6 +557,16 @@ RETRIEVAL_PERSIST = get_counter(
     "Retrieval session persistence outcomes",
     labelnames=["status"],
 )
+RETRIEVAL_EMPTY = get_counter(
+    "somabrain_retrieval_empty_total",
+    "Retrieval requests returning zero candidates",
+    labelnames=["namespace", "retrievers"],
+)
+RETRIEVER_HITS = get_counter(
+    "somabrain_retriever_hits_total",
+    "Per-retriever non-empty candidate lists",
+    labelnames=["namespace", "retriever"],
+)
 
 # Fusion metrics (retrieval enhancements)
 RETRIEVAL_FUSION_APPLIED = Counter(

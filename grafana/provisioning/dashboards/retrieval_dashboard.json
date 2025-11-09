@@ -1,0 +1,71 @@
+{
+  "id": null,
+  "title": "Somabrain • Retrieval",
+  "tags": ["somabrain", "retrieval"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Retrieval p95 latency (s)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Empty retrieval ratio (%) by namespace",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {"defaults": {"unit": "percent"}},
+      "targets": [
+        {
+          "expr": "100 * (sum by (namespace) (rate(somabrain_retrieval_empty_total[5m])) / clamp_min(sum by (namespace) (rate(somabrain_retrieval_requests[5m])), 1))",
+          "legendFormat": "{{namespace}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Retriever hits per second by retriever",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {
+          "expr": "sum by (namespace, retriever) (rate(somabrain_retriever_hits_total[5m]))",
+          "legendFormat": "{{namespace}} • {{retriever}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Candidates after rerank (p50/p95)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(somabrain_retrieval_candidates_total_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(somabrain_retrieval_candidates_total_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Fusion sources (avg)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "targets": [
+        {
+          "expr": "sum(rate(somabrain_retrieval_fusion_sources_sum[5m])) / clamp_min(sum(rate(somabrain_retrieval_fusion_sources_count[5m])), 1)",
+          "legendFormat": "avg sources"
+        }
+      ]
+    }
+  ]
+}

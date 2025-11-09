@@ -29,7 +29,7 @@ This page lists the key environment variables that control SomaBrain in both loc
 ### Auth and security
 - SOMABRAIN_JWT_SECRET: JWT signing secret (required when auth enabled).
 - SOMABRAIN_API_TOKEN: optional static token if you use simple header-based auth.
-- SOMA_OPA_FAIL_CLOSED: 1 to make OPA required for readiness.
+- SOMA_OPA_FAIL_CLOSED: (removed) OPA runs fail-closed by default; posture derived from mode.
 
 ### Outbox/journaling (durability under outages)
  

@@ -72,7 +72,8 @@ def event_loop():
 def test_config() -> TestConfig:
     """Provide test configuration."""
     return TestConfig(
-        database_url="sqlite:///:memory:",
+        # Strict mode: require Postgres for tests; set SOMABRAIN_POSTGRES_DSN.
+        database_url=os.getenv("SOMABRAIN_POSTGRES_DSN", "postgresql://soma:soma_pass@127.0.0.1:5432/somabrain_test"),
         redis_url="redis://localhost:6379/1",
         vector_dimensions=384,  # Smaller for faster tests
         similarity_threshold=0.3
@@ -609,12 +610,13 @@ from somabrain.config import TestConfig
 async def test_database():
     """Create test database with migrations."""
 
-    # Create temporary database file
-    db_fd, db_path = tempfile.mkstemp()
-    database_url = f"sqlite:///{db_path}"
+    # Strict mode: use provided Postgres DSN; skip if unavailable.
+    database_url = os.getenv("SOMABRAIN_POSTGRES_DSN")
+    if not database_url:
+        pytest.skip("Postgres DSN (SOMABRAIN_POSTGRES_DSN) required for integration tests")
 
     try:
-        # Run migrations
+        # Run migrations against Postgres
         alembic_cfg = Config("alembic.ini")
         alembic_cfg.set_main_option("sqlalchemy.url", database_url)
         command.upgrade(alembic_cfg, "head")
@@ -630,9 +632,8 @@ async def test_database():
         }
 
     finally:
-        # Cleanup
-        os.close(db_fd)
-        os.unlink(db_path)
+        # No local file cleanup required for Postgres DSN
+        pass
 
 @pytest.fixture
 async def database_manager(test_database):

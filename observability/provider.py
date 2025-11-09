@@ -1,38 +1,64 @@
-"""Minimal stub for ``observability.provider`` used in the test suite.
+"""OpenTelemetry tracing provider for SomaBrain (strict mode).
 
-The production code expects the ``observability.provider`` module to expose
-``init_tracing`` and ``get_tracer`` (returning an object with a
-``start_as_current_span`` context manager).  For unit tests we provide a no‑op
-implementation that satisfies the import without pulling in the heavy
-OpenTelemetry dependencies.
+This module initializes a real OpenTelemetry TracerProvider and exposes
+``init_tracing`` and ``get_tracer``. No no-op fallbacks are provided.
+If OpenTelemetry is not installed or not configured, initialization fails
+fast to enforce mandatory observability.
 """
 
 from __future__ import annotations
 
-from typing import Any
+import os
+from typing import Optional
+
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter,
+)
+
+_initialized: bool = False
 
 
-def init_tracing() -> None:
-    """No‑op initializer – does nothing in the test environment."""
+def init_tracing(service_name: Optional[str] = None) -> None:
+    """Initialize OpenTelemetry tracing with OTLP HTTP exporter.
+
+    Requires the following environment variables (strict):
+    - ``OTEL_EXPORTER_OTLP_ENDPOINT``: e.g. ``http://localhost:4318``
+    - ``OTEL_SERVICE_NAME`` (or pass via ``service_name``)
+    """
+
+    global _initialized
+    if _initialized:
+        return
+
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    if not endpoint:
+        raise RuntimeError(
+            "OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)"
+        )
+
+    svc = (service_name or os.getenv("OTEL_SERVICE_NAME") or os.getenv("SERVICE_NAME") or "").strip()
+    if not svc:
+        raise RuntimeError("OTEL_SERVICE_NAME (or service_name) is required for tracing")
+
+    provider = TracerProvider(resource=Resource.create({"service.name": svc}))
+    exporter = OTLPSpanExporter(endpoint=endpoint)
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+    trace.set_tracer_provider(provider)
+    _initialized = True
 
 
-class _NoOpSpan:
-    def __init__(self, name: str):
-        self.name = name
+def get_tracer(name: str):
+    """Return a real tracer; raises if provider is not initialized."""
 
-    def __enter__(self) -> "_NoOpSpan":
-        return self
-
-    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        return None
-
-
-class _NoOpTracer:
-    def start_as_current_span(self, name: str) -> _NoOpSpan:
-        return _NoOpSpan(name)
-
-
-def get_tracer(name: str) -> _NoOpTracer:  # pragma: no cover
-    """Return a stub tracer; ``name`` is ignored for compatibility."""
-
-    return _NoOpTracer()
+    provider = trace.get_tracer_provider()
+    # Detect uninitialized/default provider to avoid silent no-ops
+    if provider is None or provider.__class__.__name__ in {"ProxyTracerProvider", "DefaultTracerProvider"}:
+        raise RuntimeError(
+            "TracerProvider not initialized. Call observability.provider.init_tracing() first."
+        )
+    return trace.get_tracer(name)

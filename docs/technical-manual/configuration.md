@@ -32,7 +32,7 @@ Authoritative settings come from `common/config/settings.py`. New code should im
 | `SOMABRAIN_KAFKA_URL` | unset | Kafka bootstrap (e.g. `kafka://somabrain_kafka:9092`) | shared settings |
 | `SOMABRAIN_OPA_URL` | unset | OPA base URL | shared settings |
 | `SOMA_OPA_TIMEOUT` | 2.0 | OPA request timeout (seconds) | shared settings |
-| `SOMA_OPA_FAIL_CLOSED` | 0 (dev), 1 (non‑dev) | Treat OPA failures as deny | shared settings (mode-derived) |
+| `SOMA_OPA_FAIL_CLOSED` | removed | Deprecated: OPA posture is fail-closed by policy | removed |
 | `SOMABRAIN_POSTGRES_DSN` | unset | Postgres DSN | shared settings |
 | `SOMABRAIN_AUTO_MIGRATE` | 0 (dev only) | When `1`, API runs `alembic upgrade heads` on startup; use one-shot migration job in prod | app entrypoint |
 | `SOMABRAIN_JWT_SECRET` | unset | API JWT HMAC secret | shared settings |

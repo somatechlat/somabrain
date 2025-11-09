@@ -46,7 +46,7 @@ This runbook covers day-two operations for the cognitive threads: the three Pred
   - Enforce confidence normalization: SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1 (default)
   - Alpha (confidence mapping): SOMABRAIN_INTEGRATOR_ALPHA=2.0
   - Softmax temperature: dynamic via cog.config.updates exploration_temp
-  - OPA (optional): SOMABRAIN_OPA_URL, SOMABRAIN_OPA_POLICY, SOMA_OPA_FAIL_CLOSED
+  - OPA (required): SOMABRAIN_OPA_URL, SOMABRAIN_OPA_POLICY (fail-closed enforced)
 
 ## Observability
 

@@ -1079,9 +1079,7 @@ async def _startup_mode_banner() -> None:
             if _shared
             else True
         )
-        opa_closed = (
-            bool(getattr(_shared, "mode_opa_fail_closed", True)) if _shared else True
-        )
+        opa_closed = True  # Strict: always fail-closed
         log_level = (
             str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
         )
@@ -1144,7 +1142,7 @@ async def _init_constitution() -> None:
         pass
 
 
-# Optional routers (fail-open if dependencies are missing).
+# Optional routers (strict posture; dependencies must be present for critical routes).
 # NOTE: Legacy retrieval router has been fully removed in favor of unified /memory/recall.
 
 try:
@@ -2142,11 +2140,7 @@ async def health(request: Request) -> S.HealthResponse:
             except Exception:
                 opa_required = False
         else:
-            opa_required = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                "1",
-                "true",
-                "yes",
-            )
+                opa_required = True
         opa_ok = True
         if opa_required:
             try:

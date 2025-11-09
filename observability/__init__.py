@@ -1,17 +1,10 @@
-"""Stub ``observability`` package used by the test suite.
+"""Observability package public surface.
 
-The production code expects ``observability.provider`` to exist.  In the
-repository we provide a minimal implementation in ``observability/provider.py``.
-This ``__init__`` module imports that provider and registers it as a submodule
-so that ``from observability.provider import init_tracing, get_tracer`` works
-without any external dependencies.
+Strict mode: expose only the tracing initializer and tracer accessor.
+Tests and services import ``observability.provider``; we forward to the
+implementation while avoiding any implicit fallback stubs.
 """
 
-import importlib
-import sys
+from .provider import init_tracing, get_tracer  # noqa: F401
 
-# Load the provider implementation from the sibling ``provider.py``.
-_provider = importlib.import_module("observability.provider")
-
-# Expose it as ``observability.provider`` for import statements.
-sys.modules[__name__ + ".provider"] = _provider
+__all__ = ["init_tracing", "get_tracer"]

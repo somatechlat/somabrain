@@ -178,7 +178,7 @@ Emission: P(leader_change | TRANSITION) > P(leader_change | STABLE)
 **OPA Integration** (optional):
 - Policy path: `SOMABRAIN_OPA_POLICY` (e.g., `soma.policy.integrator`)
 - Can override leader selection or deny frame publication
-- Fail-closed mode: `SOMA_OPA_FAIL_CLOSED=1`
+- Fail-closed mode: enforced by policy (env flag removed)
 
 ### 3. SegmentationService
 

@@ -6,70 +6,53 @@ from typing import Any, Dict
 
 
 def _repo_root() -> Path:
+    """Resolve repository root strictly.
+
+    Strict mode: no heuristic fallbacks; assumes canonical layout.
+    """
     here = Path(__file__).resolve()
-    # libs/kafka_cog/ -> project root
     return here.parent.parent.parent
 
 
 def load_schema(name: str) -> Dict[str, Any]:
-    """
-    Load an Avro schema JSON dict from proto/cog/<name>.avsc.
+    """Strict Avro schema loader.
 
-    Args:
-        name: base filename without extension, e.g. "belief_update".
-
-    Returns:
-        Parsed schema as a Python dict.
+    Resolves `proto/cog/<name>.avsc` and returns JSON dict. Raises if the file
+    is missing, unreadable, or not a dict. No silent optional fallbacks.
     """
     root = _repo_root()
-    path = root / "proto" / "cog" / f"{name}.avsc"
+    stem = name.strip()
+    if not stem:
+        raise ValueError("Empty schema name")
+    path = root / "proto" / "cog" / f"{stem}.avsc"
     if not path.exists():
-        raise FileNotFoundError(f"Schema file not found: {path}")
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        raise FileNotFoundError(f"Avro schema not found: {path}")
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        raise RuntimeError(f"Failed to read schema '{stem}': {e}") from e
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Invalid schema format for '{stem}' (expected object)")
+    return data
 
 
 def load_all() -> Dict[str, Dict[str, Any]]:
-    out: Dict[str, Dict[str, Any]] = {
-        "belief_update": load_schema("belief_update"),
-        "global_frame": load_schema("global_frame"),
-        "segment_boundary": load_schema("segment_boundary"),
-        # Extended contracts for learning loop
-        "reward_event": load_schema("reward_event"),
-        "next_event": load_schema("next_event"),
-        "config_update": load_schema("config_update"),
-    }
-    # Optional compatibility schemas (present if files exist)
-    try:
-        out["integrator_context"] = load_schema("integrator_context")
-    except FileNotFoundError:
-        pass
-    try:
-        out["segment_event"] = load_schema("segment_event")
-    except FileNotFoundError:
-        pass
-    try:
-        out["belief_update_soma"] = load_schema("belief_update_soma")
-    except FileNotFoundError:
-        pass
-    # Teach/feedback optional contracts
-    try:
-        out["teach_capsule"] = load_schema("teach_capsule")
-    except FileNotFoundError:
-        pass
-    try:
-        out["teach_feedback"] = load_schema("teach_feedback")
-    except FileNotFoundError:
-        pass
-    # New roadmap contracts (optional)
-    try:
-        out["fusion_drift_event"] = load_schema("fusion_drift_event")
-    except FileNotFoundError:
-        pass
-    try:
-        out["predictor_calibration"] = load_schema("predictor_calibration")
-    except FileNotFoundError:
-        pass
+    """Load a fixed set of required schemas only.
+
+    Strict mode: no optional suppression; missing required schema raises.
+    """
+    required = [
+        "belief_update",
+        "global_frame",
+        "segment_boundary",
+        "reward_event",
+        "next_event",
+        "config_update",
+    ]
+    out: Dict[str, Dict[str, Any]] = {}
+    for name in required:
+        out[name] = load_schema(name)
     return out
 
 

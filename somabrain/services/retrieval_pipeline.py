@@ -116,31 +116,6 @@ async def run_retrieval_pipeline(
             )
         except Exception:
             pass
-    # Fallback: if runtime singletons are not wired (common in some dev setups),
-    # try to import the application module singletons so seeded /remember calls
-    # and the pipeline operate on the same memory/embedder instances.
-    if mem_client is None:
-        try:
-            import somabrain.app as _app_mod
-
-            if hasattr(_app_mod, "mt_memory") and _app_mod.mt_memory is not None:
-                from somabrain.services.memory_service import MemoryService
-
-                memsvc = MemoryService(_app_mod.mt_memory, ctx.namespace)
-                mem_client = memsvc.client()
-                # ensure runtime module points to the same backend for later calls
-                try:
-                    _rt.mt_memory = _app_mod.mt_memory
-                except Exception:
-                    pass
-        except Exception:
-            try:
-                logger.info(
-                    "retrieval_pipeline: fallback import somabrain.app failed (no app singletons available)"
-                )
-            except Exception:
-                pass
-            pass
     # Log diagnostic state (helpful when running in dev mode)
     try:
         logger.info(
@@ -153,25 +128,11 @@ async def run_retrieval_pipeline(
         )
     except Exception:
         pass
-    # Ensure we have an embedder available (fall back to app.embedder)
+    # Strict mode: rely solely on runtime wiring; no application-level singleton fallbacks.
     try:
         rt_embedder = getattr(_rt, "embedder", None)
     except Exception:
         rt_embedder = None
-    if rt_embedder is None:
-        try:
-            import somabrain.app as _app_mod2
-
-            app_embedder = getattr(_app_mod2, "embedder", None)
-            if app_embedder is not None:
-                rt_embedder = app_embedder
-                try:
-                    # best-effort to keep runtime in sync for later calls
-                    setattr(_rt, "embedder", app_embedder)
-                except Exception:
-                    pass
-        except Exception:
-            rt_embedder = None
     # Simple query expansion (optional)
     expansions = [req.query]
     try:
@@ -390,148 +351,9 @@ async def run_retrieval_pipeline(
             # Unknown retriever; skip
             continue
 
-    # If nothing retrieved: return an empty result set instead of failing the request.
-    try:
-        if ctx is not None:
-            ns_eff = getattr(ctx, "namespace", None)
-        else:
-            ns_eff = None
-        from somabrain.services import retrieval_cache as _rc
+    # Strict mode: removed all cache-based backfill and implicit graph harvesting; results remain empty when retrievers produce no candidates.
 
-        cached = _rc.get_candidates(ns_eff, req.query) or (
-            _rc.get_candidates_any(ns_eff) if ns_eff else []
-        )
-        if cached:
-            import re as _re
-
-            try:
-                import numpy as _np
-            except Exception:
-                _np = None  # type: ignore
-
-            def _tok(s: str) -> list[str]:
-                return _re.findall(r"\w+", (s or "").lower())
-
-            qtokens = set(_tok(req.query))
-            # Populate missing vector list
-            if (
-                "vector" in retrievers
-                and not lists_by_retriever.get("vector")
-                and rt_embedder is not None
-            ):
-                v_out: list[RetrievalCandidate] = []
-                qv = None
-                if _np is not None:
-                    try:
-                        qv = rt_embedder.embed(req.query)
-                        qn = float(_np.linalg.norm(qv)) or 1.0
-                    except Exception:
-                        qv = None
-                for entry in cached:
-                    p = entry.get("payload") or {}
-                    txt = _extract_text(p) if isinstance(p, dict) else str(p)
-                    score = float(entry.get("score") or 0.0)
-                    if qv is not None and _np is not None and txt:
-                        try:
-                            pv = rt_embedder.embed(txt)
-                            pn = float(_np.linalg.norm(pv)) or 1.0
-                            score = float(_np.dot(qv, pv) / (qn * pn))
-                        except Exception:
-                            pass
-                    v_out.append(
-                        RetrievalCandidate(
-                            coord=(
-                                ",".join(
-                                    str(float(c))
-                                    for c in (entry.get("coordinate") or [])[:3]
-                                )
-                                if isinstance(entry.get("coordinate"), (list, tuple))
-                                else None
-                            ),
-                            key=str(p.get("task") or p.get("id") or "") or None,
-                            score=float(score),
-                            retriever="vector",
-                            payload=p if isinstance(p, dict) else {"raw": p},
-                        )
-                    )
-                if v_out:
-                    lists_by_retriever["vector"] = v_out[: max(1, int(top_k))]
-                    cands += lists_by_retriever["vector"]
-            # Populate missing lexical list
-            if "lexical" in retrievers and not lists_by_retriever.get("lexical"):
-                l_out: list[RetrievalCandidate] = []
-                scored: list[tuple[float, dict]] = []
-                for entry in cached:
-                    p = entry.get("payload") or {}
-                    if not isinstance(p, dict):
-                        continue
-                    txt = _extract_text(p)
-                    if not txt:
-                        continue
-                    ptoks = set(_tok(txt))
-                    ov = qtokens & ptoks
-                    if not ov:
-                        continue
-                    sc = sum(max(1.0, float(len(t)) / 6.0) for t in ov)
-                    scored.append((float(sc), p))
-                scored.sort(key=lambda t: t[0], reverse=True)
-                for sc, p in scored[: max(1, int(top_k))]:
-                    l_out.append(
-                        RetrievalCandidate(
-                            coord=(
-                                ",".join(
-                                    str(float(c))
-                                    for c in (p.get("coordinate") or [])[:3]
-                                )
-                                if isinstance(p.get("coordinate"), (list, tuple))
-                                else None
-                            ),
-                            key=str(p.get("task") or p.get("id") or "") or None,
-                            score=float(sc),
-                            retriever="lexical",
-                            payload=p,
-                        )
-                    )
-                if l_out:
-                    lists_by_retriever["lexical"] = l_out
-                    cands += l_out
-            # If no cache is visible (e.g., different worker), attempt to harvest via graph
-            # even when 'graph' was not requested, leveraging learned links from warm-up.
-            if (not cached) and (mem_client is not None) and (rt_embedder is not None):
-                try:
-                    hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
-                    limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
-                    g_from_links = retrieve_graph(
-                        req.query,
-                        top_k,
-                        mem_client=mem_client,
-                        embedder=rt_embedder,
-                        hops=hops,
-                        limit=limit,
-                        universe=universe,
-                        namespace=ns_eff,
-                    )
-                    if g_from_links:
-                        if "vector" in retrievers and not lists_by_retriever.get(
-                            "vector"
-                        ):
-                            lists_by_retriever["vector"] = list(g_from_links)[
-                                : max(1, int(top_k))
-                            ]
-                            cands += lists_by_retriever["vector"]
-                        if "lexical" in retrievers and not lists_by_retriever.get(
-                            "lexical"
-                        ):
-                            lists_by_retriever["lexical"] = list(g_from_links)[
-                                : max(1, int(top_k))
-                            ]
-                            cands += lists_by_retriever["lexical"]
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
-    # If nothing retrieved even after conservative fallbacks: return an empty result set.
+    # If nothing retrieved: return an empty result set.
     if not cands:
         lists_by_retriever = {}
         fused = []  # type: ignore[assignment]
@@ -569,6 +391,13 @@ async def run_retrieval_pipeline(
                     M.RETRIEVAL_CANDIDATES.observe(0)
                 except Exception:
                     pass
+            # Empty retrieval counter
+            try:
+                M.RETRIEVAL_EMPTY.labels(
+                    namespace=ctx.namespace, retrievers=retriever_set
+                ).inc()
+            except Exception:
+                pass
         except Exception:
             pass
         return RetrievalResponse(
@@ -830,13 +659,27 @@ async def run_retrieval_pipeline(
                     M.RETRIEVAL_LATENCY.observe(max(0.0, _time.perf_counter() - _t0))
                 except Exception:
                     pass
+        size = len(out)
         try:
-            M.RETRIEVAL_CANDIDATES.labels(**_metrics_ctx).observe(len(out))
+            M.RETRIEVAL_CANDIDATES.labels(**_metrics_ctx).observe(size)
         except Exception:
             try:
-                M.RETRIEVAL_CANDIDATES.observe(len(out))
+                M.RETRIEVAL_CANDIDATES.observe(size)
             except Exception:
                 pass
+        # Per-retriever hit metrics (non-empty lists)
+        try:
+            from somabrain import metrics as M2
+            for rname, lst in lists_by_retriever.items():
+                if lst:
+                    try:
+                        M2.RETRIEVER_HITS.labels(
+                            namespace=ctx.namespace, retriever=rname
+                        ).inc()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
     except Exception:
         pass
 
