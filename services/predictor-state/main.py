@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
+from somabrain.services.calibration_service import calibration_service
 
 # Diffusion predictor
 from somabrain.predictors.base import (
@@ -136,6 +137,18 @@ def run_forever() -> None:  # pragma: no cover
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
+                
+                # Calibration tracking
+                if calibration_service.enabled:
+                    # In production, this would use actual accuracy from feedback
+                    # For now, use confidence as a proxy for demo purposes
+                    calibration_service.record_prediction(
+                        domain="state", 
+                        tenant=tenant,
+                        confidence=float(confidence),
+                        accuracy=float(1.0 - delta_error)  # Proxy for actual accuracy
+                    )
+                
                 rec = {
                     "domain": "state",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -145,6 +158,10 @@ def run_forever() -> None:  # pragma: no cover
                     "posterior": {},
                     "model_ver": model_ver,
                     "latency_ms": int(5 + 5 * random.random()),
+                    "calibration": {
+                        "enabled": calibration_service.enabled,
+                        "temperature": calibration_service.get_calibration_status("state", tenant).get("temperature", 1.0)
+                    } if calibration_service.enabled else {}
                 }
                 prod.send(TOPIC, value=encode(rec, belief_schema))
                 if _EMITTED is not None:

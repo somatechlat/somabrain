@@ -52,6 +52,7 @@ except Exception:  # pragma: no cover - test/import fallback
 
 
 import somabrain.metrics as app_metrics
+import math as _math
 
 try:
     from somabrain.integrator.consistency import consistency_score  # type: ignore
@@ -150,6 +151,21 @@ INTEGRATOR_TAU = app_metrics.get_gauge(
 INTEGRATOR_ALPHA = app_metrics.get_gauge(
     "somabrain_integrator_alpha",
     "Current integrator alpha parameter for error->confidence mapping",
+)
+INTEGRATOR_ALPHA_TARGET = app_metrics.get_gauge(
+    "somabrain_integrator_alpha_target",
+    "Target regret/entropy composite driving adaptive alpha",
+)
+INTEGRATOR_KAPPA = app_metrics.get_gauge(
+    "somabrain_integrator_kappa",
+    "Consistency kappa (1 - JSD) across agent/action posteriors",
+    labelnames=["tenant"],
+)
+INTEGRATOR_KAPPA_HIST = app_metrics.get_histogram(
+    "somabrain_integrator_kappa_hist",
+    "Distribution of consistency kappa (1 - JSD)",
+    labelnames=["tenant"],
+    buckets=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
 )
 INTEGRATOR_NORMALIZED_ERROR = app_metrics.get_gauge(
     "somabrain_integrator_normalized_error",
@@ -358,6 +374,8 @@ class IntegratorHub:
         self._opa_deny_count: int = 0
         # Track leader switches per tenant
         self._last_leader: Dict[str, str] = {}
+        # Track recent kappa per tenant for rationale context
+        self._last_kappa: Dict[str, float] = {}
         # Confidence enforcement from delta_error
         try:
             self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
@@ -371,7 +389,8 @@ class IntegratorHub:
         self._enforce_conf = os.getenv(
             "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
         ).strip().lower() in ("1", "true", "yes", "on")
-        # Metrics-only normalization seam (no decision impact when disabled)
+        
+        # Fusion normalization with adaptive alpha
         self._norm_enabled = os.getenv(
             "ENABLE_FUSION_NORMALIZATION", "0"
         ).strip().lower() in (
@@ -380,6 +399,20 @@ class IntegratorHub:
             "yes",
             "on",
         )
+        
+        # Adaptive alpha for fusion normalization
+        try:
+            self._adaptive_alpha = float(os.getenv("INTEGRATOR_ADAPTIVE_ALPHA", "2.0"))
+            self._alpha_min = float(os.getenv("INTEGRATOR_ALPHA_MIN", "0.1"))
+            self._alpha_max = float(os.getenv("INTEGRATOR_ALPHA_MAX", "5.0"))
+            self._alpha_target_regret = float(os.getenv("INTEGRATOR_TARGET_REGRET", "0.15"))
+            self._alpha_eta = float(os.getenv("INTEGRATOR_ALPHA_ETA", "0.05"))  # step size
+        except Exception:
+            self._adaptive_alpha = 2.0
+            self._alpha_min = 0.1
+            self._alpha_max = 5.0
+            self._alpha_target_regret = 0.15
+            self._alpha_eta = 0.05
         # Rolling stats per domain for delta_error normalization (Welford)
         self._stats = {
             "state": {"n": 0, "mean": 0.0, "m2": 0.0},
@@ -722,10 +755,28 @@ class IntegratorHub:
             score = consistency_score(a_post, x_post)
             if score is not None:
                 INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
+                # Derive kappa (1 - JSD) if distributions present
+                try:
+                    kappa = self._compute_kappa(a_post, x_post)
+                    if kappa is not None:
+                        INTEGRATOR_KAPPA.labels(tenant=tenant).set(float(kappa))
+                        try:
+                            INTEGRATOR_KAPPA_HIST.labels(tenant=tenant).observe(
+                                float(max(0.0, min(1.0, kappa)))
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            self._last_kappa[tenant] = float(kappa)
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
         except Exception:
             pass
         # Normalization pathway: compute normalized error and candidate weights; optionally use for selection
         fused_weights: Optional[Dict[str, float]] = None
+        adaptive_regret_sample: Optional[float] = None
         if self._norm_enabled:
             try:
                 # Emit normalized error for the current domain
@@ -760,6 +811,11 @@ class IntegratorHub:
                 fused_weights = {d: float(v / Zc) for d, v in cand_exps.items()}
                 for d, v in fused_weights.items():
                     INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(v)
+                # Simple regret proxy: 1 - max weight (confidence of leader proxy)
+                try:
+                    adaptive_regret_sample = max(0.0, 1.0 - max(fused_weights.values()))
+                except Exception:
+                    adaptive_regret_sample = None
             except Exception:
                 pass
         # If normalization flag enabled and we computed fused_weights, use it for leader selection and rationale
@@ -769,6 +825,21 @@ class IntegratorHub:
             norm_weights.update({k: float(v) for k, v in fused_weights.items()})
             weights = norm_weights
             leader = max(weights.items(), key=lambda kv: kv[1])[0]
+        # Adaptive alpha update (after fused weights computed)
+        if self._norm_enabled and adaptive_regret_sample is not None:
+            try:
+                # Composite target: move alpha up if regret_mean > target, down otherwise
+                diff = float(adaptive_regret_sample) - float(self._alpha_target_regret)
+                self._adaptive_alpha = max(
+                    self._alpha_min,
+                    min(self._alpha_max, self._adaptive_alpha + self._alpha_eta * diff),
+                )
+                # Apply to operational alpha used in confidence normalization
+                self._alpha = float(self._adaptive_alpha)
+                INTEGRATOR_ALPHA.set(self._alpha)
+                INTEGRATOR_ALPHA_TARGET.set(float(self._alpha_target_regret))
+            except Exception:
+                pass
         # Leader switch metric
         try:
             last = self._last_leader.get(tenant)
@@ -778,6 +849,7 @@ class IntegratorHub:
         except Exception:
             pass
         # Observe entropy of weights (normalize by log(3) so range is 0..1)
+        H_norm = None
         try:
             import math as _math
 
@@ -788,9 +860,8 @@ class IntegratorHub:
             Z = sum(ps) or 1.0
             ps = [p / Z for p in ps]
             H = -sum(p * _math.log(p) for p in ps) / _math.log(3.0)
-            INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(
-                max(0.0, min(1.0, float(H)))
-            )
+            H_norm = max(0.0, min(1.0, float(H)))
+            INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(H_norm)
         except Exception:
             pass
         # Build GlobalFrame per schema (map values must be string for frame)
@@ -808,6 +879,18 @@ class IntegratorHub:
             pass
         fusion_note = "fusion=normalized" if (self._norm_enabled and fused_weights) else "fusion=softmax"
         rationale = f"{fusion_note} tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
+        # Append recent kappa/entropy context if available
+        try:
+            k = self._last_kappa.get(tenant)
+            if k is not None:
+                rationale += f"; kappa={k:.3f}"
+        except Exception:
+            pass
+        try:
+            if H_norm is not None:
+                rationale += f" H={H_norm:.3f}"
+        except Exception:
+            pass
         # Optional OPA gating/adjustment
         leader_adj = leader
         policy_allowed = True
@@ -869,6 +952,51 @@ class IntegratorHub:
         except Exception:
             pass
         return gf
+
+    @staticmethod
+    def _compute_kappa(agent_post: Any, action_post: Any) -> Optional[float]:
+        """Compute kappa = 1 - JSD(P_agent || P_action) if both are dicts of probabilities.
+
+        Expects each posterior to hold a probability mapping under keys 'intent_probs' and
+        'action_probs' respectively (fallback to direct mapping if already probability dict).
+        Returns None if cannot compute.
+        """
+        try:
+            if not isinstance(agent_post, dict) or not isinstance(action_post, dict):
+                return None
+            # Extract probability maps
+            ap = agent_post.get("intent_probs") if "intent_probs" in agent_post else agent_post
+            xp = action_post.get("action_probs") if "action_probs" in action_post else action_post
+            if not isinstance(ap, dict) or not isinstance(xp, dict):
+                return None
+            # Unified key set
+            keys = set(ap.keys()) | set(xp.keys())
+            if not keys:
+                return None
+            # Normalize each distribution
+            def _norm(m: Dict[str, Any]) -> Dict[str, float]:
+                vals = {k: float(m.get(k, 0.0)) for k in keys}
+                Z = sum(vals.values()) or 1.0
+                return {k: max(0.0, vals[k] / Z) for k in keys}
+            pa = _norm(ap)
+            px = _norm(xp)
+            # Mixture
+            pm = {k: 0.5 * (pa[k] + px[k]) for k in keys}
+            def _kl(p: Dict[str, float], q: Dict[str, float]) -> float:
+                acc = 0.0
+                for k in keys:
+                    pk = max(1e-12, p[k])
+                    qk = max(1e-12, q[k])
+                    acc += pk * _math.log(pk / qk)
+                return acc
+            jsd = 0.5 * _kl(pa, pm) + 0.5 * _kl(px, pm)
+            # Normalize JSD by log(|keys|) to keep in [0,1]
+            denom = _math.log(float(len(keys))) if len(keys) > 1 else 1.0
+            jsd_norm = min(1.0, max(0.0, jsd / denom))
+            kappa = 1.0 - jsd_norm
+            return kappa
+        except Exception:
+            return None
 
     def _opa_decide(
         self,

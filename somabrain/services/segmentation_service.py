@@ -71,10 +71,12 @@ except Exception:  # pragma: no cover
 
 BOUNDARY_EMITTED = None
 BOUNDARY_LATENCY = None
+P_TRANSITION = None
+P_VOLATILE = None
 
 
 def _init_metrics() -> None:
-    global BOUNDARY_EMITTED, BOUNDARY_LATENCY
+    global BOUNDARY_EMITTED, BOUNDARY_LATENCY, P_TRANSITION, P_VOLATILE
     if BOUNDARY_EMITTED is None:
         try:
             BOUNDARY_EMITTED = metrics.get_counter(
@@ -92,6 +94,24 @@ def _init_metrics() -> None:
             )
         except Exception:
             BOUNDARY_LATENCY = None
+    if P_TRANSITION is None:
+        try:
+            P_TRANSITION = metrics.get_gauge(
+                "somabrain_seg_p_transition",
+                "Hazard HMM transition probability (lambda)",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            P_TRANSITION = None
+    if P_VOLATILE is None:
+        try:
+            P_VOLATILE = metrics.get_histogram(
+                "somabrain_seg_p_volatile",
+                "Posterior probability of VOLATILE state",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            P_VOLATILE = None
 
 
 @dataclass
@@ -470,6 +490,22 @@ class HazardSegmenter:
         log_post_S = _math.log(max(eps, pS_pred)) + log_like_S
         log_post_V = _math.log(max(eps, pV_pred)) + log_like_V
         new_state = 0 if log_post_S >= log_post_V else 1
+        # Expose transition probability and posterior volatile probability
+        try:
+            if P_TRANSITION is not None:
+                P_TRANSITION.labels(tenant=key[0], domain=key[1]).set(self.lmb)
+        except Exception:
+            pass
+        # Convert log-posteriors to normalized probabilities using log-sum-exp
+        try:
+            import math as _m
+            m = max(log_post_S, log_post_V)
+            zs = _m.exp(log_post_S - m) + _m.exp(log_post_V - m)
+            pV = _m.exp(log_post_V - m) / max(1e-18, zs)
+            if P_VOLATILE is not None:
+                P_VOLATILE.labels(tenant=key[0], domain=key[1]).observe(float(pV))
+        except Exception:
+            pass
         # Boundary on state flip with min gap
         if new_state != prev_state:
             if (
@@ -495,6 +531,12 @@ class SegmentationService:
         _init_metrics()
         init_tracing()
         self._tracer = get_tracer("somabrain.segmentation_service")
+        
+        # Feature flags for roadmap
+        hmm_enabled = os.getenv("ENABLE_HMM_SEGMENTATION", "0").lower() in {
+            "1", "true", "yes", "on"
+        }
+        
         # Start health server for k8s probes
         try:
             if os.getenv("HEALTH_PORT"):
@@ -510,7 +552,7 @@ class SegmentationService:
                 sb_schema = load_schema("segment_boundary")
                 self._serde_in = AvroSerde(gf_schema)
                 self._serde_out = AvroSerde(sb_schema)
-                # Optional for CPD mode
+                # Optional for CPD/HMM modes
                 try:
                     bu_schema = load_schema("belief_update")
                     self._serde_update = AvroSerde(bu_schema)
@@ -520,8 +562,20 @@ class SegmentationService:
             self._serde_in = None
             self._serde_out = None
             self._serde_update = None
+            
         max_dwell_ms = int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0")
+        
+        # Select segmentation mode based on feature flags
+        if hmm_enabled:
+            self._mode = "hmm"
+            print("HMM segmentation enabled via feature flag")
+        else:
+            self._mode = (
+                (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
+            )
+            
         self._segmenter = Segmenter(max_dwell_ms=max_dwell_ms)
+        
         # CPD mode parameters
         self._cpd = CPDSegmenter(
             max_dwell_ms=max_dwell_ms,
@@ -530,8 +584,15 @@ class SegmentationService:
             min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
             min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
         )
-        self._mode = (
-            (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
+        
+        # HMM mode parameters with tenant-aware configuration
+        self._hazard = HazardSegmenter(
+            max_dwell_ms=max_dwell_ms,
+            hazard_lambda=float(os.getenv("SOMABRAIN_HAZARD_LAMBDA", "0.02") or "0.02"),
+            vol_sigma_mult=float(os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0") or "3.0"),
+            min_samples=int(os.getenv("SOMABRAIN_HAZARD_MIN_SAMPLES", "20") or "20"),
+            min_gap_ms=int(os.getenv("SOMABRAIN_HAZARD_MIN_GAP_MS", "1000") or "1000"),
+            min_std=float(os.getenv("SOMABRAIN_HAZARD_MIN_STD", "0.02") or "0.02"),
         )
 
     def _start_health_server(self) -> None:

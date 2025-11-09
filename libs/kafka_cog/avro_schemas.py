@@ -61,6 +61,15 @@ def load_all() -> Dict[str, Dict[str, Any]]:
         out["teach_feedback"] = load_schema("teach_feedback")
     except FileNotFoundError:
         pass
+    # New roadmap contracts (optional)
+    try:
+        out["fusion_drift_event"] = load_schema("fusion_drift_event")
+    except FileNotFoundError:
+        pass
+    try:
+        out["predictor_calibration"] = load_schema("predictor_calibration")
+    except FileNotFoundError:
+        pass
     return out
 
 

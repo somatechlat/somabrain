@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "PredictorCalibration",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "tenant", "type": "string" },
+    { "name": "domain", "type": "string" },
+    { "name": "temperature", "type": "float" },
+    { "name": "ece", "type": "float" },
+    { "name": "brier", "type": "float" },
+    { "name": "samples", "type": "int" },
+    { "name": "needs_calibration", "type": "boolean" },
+    { "name": "ts", "type": "string" }
+  ]
+}

@@ -19,18 +19,29 @@ except Exception:  # pragma: no cover
 
 
 def _bootstrap_url() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
-    return url.replace("kafka://", "")
+    """Get bootstrap servers from environment."""
+    return (
+        os.getenv("SOMA_KAFKA_BOOTSTRAP") 
+        or os.getenv("SOMABRAIN_KAFKA_URL") 
+        or "localhost:30001"
+    ).replace("kafka://", "")
 
 
 def make_producer() -> Optional[KafkaProducer]:  # pragma: no cover - integration path
+    """Create Kafka producer."""
     if KafkaProducer is None:
         return None
-    return KafkaProducer(bootstrap_servers=_bootstrap_url(), acks="1", linger_ms=5)
+    return KafkaProducer(
+        bootstrap_servers=_bootstrap_url(), 
+        acks="1", 
+        linger_ms=5,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    )
 
 
 @lru_cache(maxsize=32)
 def get_serde(schema_name: str) -> Optional[AvroSerde]:
+    """Get Avro serde for schema with caching."""
     if load_schema is None or AvroSerde is None:
         return None
     try:
@@ -40,6 +51,7 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
 
 
 def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
+    """Encode record with Avro/JSON fallback."""
     serde = get_serde(schema_name) if schema_name else None
     if serde is not None:
         try:
@@ -49,12 +61,37 @@ def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
     return json.dumps(record).encode("utf-8")
 
 
+def decode(data: bytes, schema_name: Optional[str] = None) -> Dict[str, Any]:
+    """Decode data with Avro/JSON fallback."""
+    if schema_name:
+        serde = get_serde(schema_name)
+        if serde:
+            try:
+                return serde.deserialize(data)
+            except Exception:
+                pass
+    
+    try:
+        return json.loads(data.decode("utf-8"))
+    except Exception:
+        return {}
+
+
+# Shared topic definitions - consolidated from ROADMAP
 TOPICS = {
     "state": "cog.state.updates",
-    "agent": "cog.agent.updates",
+    "agent": "cog.agent.updates", 
     "action": "cog.action.updates",
     "next": "cog.next.events",
     "soma_state": "soma.belief.state",
     "soma_agent": "soma.belief.agent",
     "soma_action": "soma.belief.action",
+    "global_frame": "cog.global.frame",
+    "segments": "cog.segments",
+    "reward": "cog.reward.events",
+    "config": "cog.config.updates",
+    "integrator_context": "soma.integrator.context",
+    # Roadmap drift & calibration telemetry topics
+    "fusion_drift": "cog.fusion.drift.events",
+    "predictor_calibration": "cog.predictor.calibration",
 }

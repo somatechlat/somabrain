@@ -1,0 +1,101 @@
+"""
+Docker Compose configuration with roadmap features enabled.
+
+This extends the main docker-compose.yml with roadmap feature flags.
+"""
+
+version: '3.8'
+
+x-roadmap-features: &roadmap-features
+  ENABLE_HMM_SEGMENTATION: "1"
+  ENABLE_FUSION_NORMALIZATION: "1" 
+  ENABLE_CALIBRATION: "1"
+  ENABLE_CONSISTENCY_CHECKS: "1"
+  ENABLE_RUNTIME_CONSOLIDATION: "1"
+  ENABLE_DRIFT_DETECTION: "1"
+  ENABLE_AUTO_ROLLBACK: "1"
+  
+  # HMM segmentation parameters
+  SOMABRAIN_HAZARD_LAMBDA: "0.02"
+  SOMABRAIN_HAZARD_VOL_MULT: "3.0"
+  SOMABRAIN_HAZARD_MIN_SAMPLES: "20"
+  SOMABRAIN_HAZARD_MIN_GAP_MS: "1000"
+  
+  # Calibration parameters
+  CALIBRATION_MIN_SAMPLES: "50"
+  CALIBRATION_ECE_THRESHOLD: "0.1"
+  
+  # Fusion normalization parameters
+  INTEGRATOR_ADAPTIVE_ALPHA: "2.5"
+  INTEGRATOR_ALPHA_MIN: "0.1"
+  INTEGRATOR_ALPHA_MAX: "5.0"
+
+services:
+  somabrain_cog:
+    extends:
+      file: docker-compose.yml
+      service: somabrain_cog
+    environment:
+      <<: *roadmap-features
+      SOMABRAIN_SEGMENT_MODE: "hmm"  # Use HMM segmentation
+      
+  somabrain_app:
+    extends:
+      file: docker-compose.yml
+      service: somabrain_app
+    environment:
+      <<: *roadmap-features
+      
+  # Calibration service (new)
+  somabrain_calibration:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    environment:
+      <<: *roadmap-features
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      CALIBRATION_SERVICE_PORT: "8085"
+    ports:
+      - "30085:8085"
+    command: ["python", "-m", "somabrain.services.calibration_service"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      
+  # Drift monitoring service (new)
+  somabrain_drift:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    environment:
+      <<: *roadmap-features
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      DRIFT_SERVICE_PORT: "8086"
+    ports:
+      - "30086:8086"
+    command: ["python", "-m", "somabrain.monitoring.drift_detector"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+networks:
+  somabrain_net:
+    driver: bridge

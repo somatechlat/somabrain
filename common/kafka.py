@@ -1,60 +1,52 @@
+"""Compatibility shim for legacy imports.
+
+This file previously duplicated logic that now lives in
+`somabrain/common/kafka.py`. To consolidate runtime code while preserving
+existing import paths (modules that do `from common.kafka import ...`), we
+re-export the public surface from the canonical module inside the package.
+
+Do not add new logic here; extend `somabrain/common/kafka.py` instead.
+"""
+
 from __future__ import annotations
 
-import json
-import os
-from functools import lru_cache
-from typing import Any, Dict, Optional
+# Re-export symbols from the consolidated module
+from somabrain.common.kafka import (  # type: ignore F401
+    TOPICS,
+    make_producer,
+    encode,
+    decode,
+    get_serde,
+)
 
-try:  # Optional runtime dependency; tests may not install kafka-python
-    from kafka import KafkaProducer  # type: ignore
+# Backwards compatibility: some callers may expect KafkaConfig / SharedKafkaClient.
+# Provide lightweight aliases if they exist in the consolidated module; otherwise
+# define minimal no-op stand-ins to avoid import errors.
+try:  # pragma: no cover - alias pass-through
+    from somabrain.common.kafka import KafkaConfig, SharedKafkaClient  # type: ignore F401
 except Exception:  # pragma: no cover
-    KafkaProducer = None  # type: ignore
+    from dataclasses import dataclass
+    from typing import Optional, Any, Dict
 
-try:  # Avro serde utilities (optional)
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    @dataclass
+    class KafkaConfig:  # type: ignore
+        bootstrap_servers: str = "localhost:30001"
+        client_id: str = "somabrain"
+        group_id: Optional[str] = None
+        enable_auto_commit: bool = True
+        auto_offset_reset: str = "latest"
+        acks: str = "1"
+        linger_ms: int = 5
 
+    class SharedKafkaClient:  # type: ignore
+        @staticmethod
+        def get_config() -> KafkaConfig:
+            return KafkaConfig()
 
-def _bootstrap_url() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
-    return url.replace("kafka://", "")
+        @staticmethod
+        def make_event_producer() -> Any:
+            return make_producer()
 
-
-def make_producer() -> Optional[KafkaProducer]:  # pragma: no cover - integration path
-    if KafkaProducer is None:
-        return None
-    return KafkaProducer(bootstrap_servers=_bootstrap_url(), acks="1", linger_ms=5)
-
-
-@lru_cache(maxsize=32)
-def get_serde(schema_name: str) -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema(schema_name))  # type: ignore[arg-type]
-    except Exception:  # pragma: no cover
-        return None
-
-
-def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
-    serde = get_serde(schema_name) if schema_name else None
-    if serde is not None:
-        try:
-            return serde.serialize(record)
-        except Exception:  # pragma: no cover
-            pass
-    return json.dumps(record).encode("utf-8")
-
-
-TOPICS = {
-    "state": "cog.state.updates",
-    "agent": "cog.agent.updates",
-    "action": "cog.action.updates",
-    "next": "cog.next.events",
-    "soma_state": "soma.belief.state",
-    "soma_agent": "soma.belief.agent",
-    "soma_action": "soma.belief.action",
-}
+        @staticmethod
+        def create_health_check() -> Dict[str, Any]:
+            return {"bootstrap_servers": KafkaConfig().bootstrap_servers}

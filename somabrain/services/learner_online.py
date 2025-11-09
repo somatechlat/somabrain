@@ -164,8 +164,13 @@ class LearnerService:
         self._producer_mode: str = ""
         self._stop = threading.Event()
         self._ema_by_tenant: Dict[str, _EMA] = {}
-        # Track regret EWMA by tenant (from NextEvent)
-        self._regret_by_tenant: Dict[str, _EMA] = {}
+        # Track regret EWMA by tenant:domain (from NextEvent)
+        # Structure: { tenant: { domain: _EMA } }
+        self._regret_by_td: Dict[str, Dict[str, _EMA]] = {}
+        # Track reward component share EMA per tenant for β_i learning
+        # Structure: { tenant: { component: EMA_value } }
+        self._beta_by_tenant: Dict[str, Dict[str, float]] = {}
+        self._beta_alpha: float = float(os.getenv("LEARNER_BETA_EMA_ALPHA", "0.2"))
         # Metrics
         self._g_explore = (
             metrics.get_gauge("soma_exploration_ratio", "Exploration ratio")
@@ -180,7 +185,28 @@ class LearnerService:
         # Gauge for regret derived from next_event confidence (1 - confidence)
         self._g_next_regret = (
             metrics.get_gauge(
-                "soma_next_event_regret", "Regret derived from next_event confidence"
+                "soma_next_event_regret",
+                "Regret derived from next_event confidence",
+                labelnames=["tenant", "domain"],
+            )
+            if metrics
+            else None
+        )
+        # Reward attribution metrics
+        self._g_beta = (
+            metrics.get_gauge(
+                "somabrain_reward_component_beta",
+                "Learned reward component weight (EMA share)",
+                labelnames=["tenant", "component"],
+            )
+            if metrics
+            else None
+        )
+        self._g_gamma = (
+            metrics.get_gauge(
+                "somabrain_domain_gamma",
+                "Derived domain attribution from reward components",
+                labelnames=["tenant", "domain"],
             )
             if metrics
             else None
@@ -333,19 +359,58 @@ class LearnerService:
                     tau = cap_val
             except Exception:
                 pass
-        # Compute per-domain lambda values from observed regret EMA if available.
-        # Definition: lambda = clamp(0.1, 1.0, 1.0 - regret_ema)
+        # Compute per-domain lambda values from observed domain regret EMA if available.
+        # Definition: lambda_d = clamp(0.1, 1.0, 1.0 - regret_ema_d)
         lam_state = lam_agent = lam_action = None
         try:
-            r_ema = self._regret_by_tenant.get(tenant)
-            if r_ema is not None and r_ema.get() is not None:
-                v = 1.0 - float(r_ema.get())
-                v = max(0.1, min(1.0, v))
-                lam_state = v
-                lam_agent = v
-                lam_action = v
+            rmap = self._regret_by_td.get(tenant) or {}
+            def _lam_for(d: str) -> Optional[float]:
+                ema = rmap.get(d)
+                if ema is None or ema.get() is None:
+                    return None
+                v = 1.0 - float(ema.get())
+                return max(0.1, min(1.0, v))
+            lam_state = _lam_for("state")
+            lam_agent = _lam_for("agent")
+            lam_action = _lam_for("action")
         except Exception:
             lam_state = lam_agent = lam_action = None
+        # Derive domain attribution gamma from current β map
+        gamma_state = gamma_agent = gamma_action = None
+        try:
+            bmap = self._beta_by_tenant.get(tenant) or {}
+            # Aggregate component betas by domain via simple mapping heuristics
+            def _dom_of(comp: str) -> str:
+                c = comp.lower()
+                if "state" in c:
+                    return "state"
+                if "agent" in c or "intent" in c:
+                    return "agent"
+                if "action" in c or "next" in c:
+                    return "action"
+                return "other"
+            agg = {"state": 0.0, "agent": 0.0, "action": 0.0}
+            total = 0.0
+            for k, v in bmap.items():
+                d = _dom_of(k)
+                if d in agg:
+                    agg[d] += float(v)
+                    total += float(v)
+            if total > 0:
+                gamma_state = agg["state"] / total
+                gamma_agent = agg["agent"] / total
+                gamma_action = agg["action"] / total
+            # emit metrics
+            if self._g_gamma is not None:
+                try:
+                    self._g_gamma.labels(tenant=tenant, domain="state").set(gamma_state or 0.0)
+                    self._g_gamma.labels(tenant=tenant, domain="agent").set(gamma_agent or 0.0)
+                    self._g_gamma.labels(tenant=tenant, domain="action").set(gamma_action or 0.0)
+                except Exception:
+                    pass
+        except Exception:
+            gamma_state = gamma_agent = gamma_action = None
+
         rec = {
             "tenant": tenant,
             "learning_rate": float(lr),
@@ -353,6 +418,9 @@ class LearnerService:
             "lambda_state": lam_state,
             "lambda_agent": lam_agent,
             "lambda_action": lam_action,
+            "gamma_state": gamma_state,
+            "gamma_agent": gamma_agent,
+            "gamma_action": gamma_action,
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
         try:
@@ -404,6 +472,28 @@ class LearnerService:
                 self._g_regret.set(max(0.0, 1.0 - ema))
         except Exception:
             pass
+        # Normalize and learn β_i from components (EMA of shares)
+        try:
+            comps = ev.get("components") or {}
+            if isinstance(comps, dict) and comps:
+                # numeric filter
+                vals = {k: float(v) for k, v in comps.items() if isinstance(v, (int, float))}
+                s = sum(vals.values())
+                if s > 0:
+                    shares = {k: (v / s) for k, v in vals.items()}
+                    bmap = self._beta_by_tenant.setdefault(tenant, {})
+                    a = max(0.0, min(1.0, self._beta_alpha))
+                    for k, w in shares.items():
+                        old = bmap.get(k)
+                        newv = (a * w + (1 - a) * old) if (old is not None) else w
+                        bmap[k] = newv
+                        if self._g_beta is not None:
+                            try:
+                                self._g_beta.labels(tenant=tenant, component=k).set(newv)
+                            except Exception:
+                                pass
+        except Exception:
+            pass
         self._emit_cfg(tenant, tau)
 
     def _observe_next_event(self, ev: Dict[str, Any]) -> None:
@@ -419,14 +509,15 @@ class LearnerService:
             ).strip()
             or "public"
         )
+        domain = str(ev.get("domain") or ev.get("frame_id", "state")).split(":")[0].strip().lower() or "state"
         confidence = float(ev.get("confidence", 0.0))
         regret = max(0.0, min(1.0, 1.0 - confidence))
         print(
-            f"learner_online: next_event tenant={tenant} confidence={confidence:.3f} regret={regret:.3f}"
+            f"learner_online: next_event tenant={tenant} domain={domain} confidence={confidence:.3f} regret={regret:.3f}"
         )
         if self._g_next_regret is not None:
             try:
-                self._g_next_regret.set(regret)
+                self._g_next_regret.labels(tenant=tenant, domain=domain).set(regret)
             except Exception:
                 pass
         # Record regret KPI histogram + EWMA
@@ -435,9 +526,10 @@ class LearnerService:
                 metrics.record_regret(tenant, regret)
         except Exception:
             pass
-        # Maintain local regret EMA for lambda computation
+        # Maintain local regret EMA per domain for lambda computation
         try:
-            ema = self._regret_by_tenant.setdefault(tenant, _EMA(0.15))
+            rmap = self._regret_by_td.setdefault(tenant, {})
+            ema = rmap.setdefault(domain, _EMA(0.15))
             ema.update(regret)
         except Exception:
             pass

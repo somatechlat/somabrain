@@ -79,6 +79,16 @@ groups:
           summary: "No GlobalFrame messages observed"
           description: "cog.global.frame has no publishes for 5 minutes."
 
+      # Consistency kappa sustained low (requires integrator metric somabrain_kappa)
+      - alert: ConsistencyKappaLow
+        expr: avg_over_time(somabrain_kappa[10m]) < 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consistency kappa low"
+          description: "Average κ below 0.2 over 10m (value: {{ $value }}). Investigate predictor alignment and fusion weights."
+
       # OPA veto ratio sustained above 10%
       - alert: OpaVetoRatioElevated
         expr: somabrain_integrator_opa_veto_ratio > 0.10
@@ -108,6 +118,26 @@ groups:
         annotations:
           summary: "Learning regret EWMA high"
           description: "EWMA regret above 0.08 for 15m (value: {{ $value }}). Consider rollback or parameter tuning."
+
+      # Drift detection alerts from service counters
+      - alert: DriftEventsBurst
+        expr: increase(somabrain_drift_events_total[10m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Drift events increasing"
+          description: "Drift events exceeded 3 in 10m for {{ $labels.domain }} {{ $labels.tenant }} (value: {{ $value }})."
+
+      # HMM segmentation volatility sustained high
+      - alert: SegmentationVolatileHigh
+        expr: avg by (tenant, domain) (rate(somabrain_seg_p_volatile_bucket[5m])) > 0.6
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "High VOLATILE state probability"
+          description: "Posterior VOLATILE probability sustained high for {{ $labels.tenant }} {{ $labels.domain }}."
 
       # Kafka consumer lag (requires kafka_exporter)
       - alert: KafkaConsumerLagHigh

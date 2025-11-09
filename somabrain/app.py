@@ -1164,6 +1164,18 @@ try:
     app.include_router(_persona_router.router)
 except Exception:
     pass
+try:
+    from somabrain.api.routers import calibration as _calibration_router
+
+    app.include_router(_calibration_router.router)
+except Exception:
+    pass
+try:
+    from somabrain.api.routers import features as _features_router
+
+    app.include_router(_features_router.router)
+except Exception:
+    pass
 
 try:
     from somabrain.api.routers import link as _link_router
