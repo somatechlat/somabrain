@@ -20,7 +20,7 @@
 **Authentication**
 
 - For static tokens set `SOMABRAIN_API_TOKEN=...` and supply `Authorization: Bearer <token>`.
-- To disable auth in isolated dev environments use `SOMABRAIN_DISABLE_AUTH=1`.
+– In dev mode, auth may be relaxed; otherwise include a valid Bearer token.
 - JWT validation uses HS or RS algorithms depending on `cfg.jwt_secret` / `cfg.jwt_public_key_path`. Configure `SOMABRAIN_JWT_ISSUER` / `SOMABRAIN_JWT_AUDIENCE` if needed.
 
 Example curl:
@@ -168,4 +168,4 @@ Use the same approach for feedback and planning—serialise the Pydantic models 
 - [Memory Operations](memory-operations.md) – Payload specifics and error cases.
 - [Cognitive Reasoning](cognitive-reasoning.md) – Context builder, planner, adaptation flows.
 - [Multi-tenant Usage](multi-tenant-usage.md) – Tenancy, universes, quotas.
-- [Technical Manual – API Surface](../../technical-manual/api-surface.md) – Complete endpoint inventory for operators.
+- [API Reference](../../development-manual/api-reference.md) – Complete endpoint inventory for operators.

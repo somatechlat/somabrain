@@ -4,6 +4,7 @@ Reads `providers.yaml` or `providers.json` from the repository root or
 from the path indicated by the `PROVIDERS_PATH` environment variable.
 Supports basic environment variable substitution of the form `${VAR}`.
 """
+
 from __future__ import annotations
 
 import json

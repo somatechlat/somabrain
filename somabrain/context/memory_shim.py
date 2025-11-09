@@ -1,6 +1,7 @@
 """Lightweight adapter to use the canonical MemoryClient for context building.
 
-Provides a minimal interface with `search_text` (and a stub `search`) so existing
+Provides a minimal interface with `search_text` (and a disabled `search` that
+fails fast) so existing
 ContextBuilder code can consume results without knowing about MemoryClient details.
 """
 
@@ -13,11 +14,11 @@ from somabrain.memory_client import MemoryClient
 
 
 class MemoryRecallClient:
-    """Adapter exposing a memstore-like interface backed by MemoryClient.
+    """Adapter exposing a MemoryClient-compatible interface for context building.
 
     Methods:
-      - search_text(query, top_k=10, filters=None) -> List[Dict]
-      - search(embedding, top_k=10) -> List[Dict] (not implemented; legacy fallback)
+        - search_text(query, top_k=10, filters=None) -> List[Dict]
+        - search(embedding, top_k=10) -> List[Dict] (not implemented; fails fast)
     """
 
     def __init__(self, namespace: Optional[str] = None) -> None:

@@ -3,7 +3,7 @@
 Usage:
     python3 benchmarks/scale/run_remember_recall_scaled.py --count 1000 --out artifacts/benchmarks/rr_1000.json
 
-This runs against SOMABRAIN_HOST_PORT from .env.local or default 9696.
+This runs against SOMABRAIN_HOST_PORT from .env or default 9696.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import time
 
 import httpx
 
-ENV_FILE = ".env.local"
+ENV_FILE = ".env"
 DEFAULT_PORT = 9696
 
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         "--port",
         type=int,
         default=None,
-        help="Port for Somabrain API (overrides .env.local)",
+        help="Port for Somabrain API (overrides .env)",
     )
     p.add_argument("--out", type=str, default="artifacts/benchmarks/rr.json")
     args = p.parse_args()

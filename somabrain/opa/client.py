@@ -4,14 +4,14 @@ from typing import Any, Dict
 
 import requests
 
+from somabrain.infrastructure import get_opa_url
+
 LOGGER = logging.getLogger("somabrain.opa")
 
 try:
     from common.config.settings import settings as shared_settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     shared_settings = None  # type: ignore
-
-from somabrain.infrastructure import get_opa_url
 
 
 def _policy_path_for_mode() -> str:
@@ -57,13 +57,10 @@ class OPAClient:
 
         self.base_url = get_opa_url()
         if not self.base_url:
-            # Legacy fallback for dev shells without explicit configuration
-            # Prefer explicit host port envs, defaulting to 30004 to align with dev stack mapping
-            host_port = (
-                os.getenv("OPA_HOST_PORT")
-                or os.getenv("OPA_PORT")
-                or "30004"
-            )
+            # Legacy fallback for dev shells without explicit configuration.
+            # Prefer explicit host port envs, defaulting to 30004 to align
+            # with dev stack mapping.
+            host_port = os.getenv("OPA_HOST_PORT") or os.getenv("OPA_PORT") or "30004"
             self.base_url = (
                 os.getenv("SOMA_OPA_URL")
                 or os.getenv("SOMABRAIN_OPA_FALLBACK")

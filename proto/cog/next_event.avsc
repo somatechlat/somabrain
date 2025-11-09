@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "NextEvent",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "frame_id", "type": "string" },
+    { "name": "tenant", "type": ["null", "string"], "default": null },
+    { "name": "predicted_state", "type": "string" },
+    { "name": "confidence", "type": "float" },
+    { "name": "regret", "type": ["null", "float"], "default": null },
+    { "name": "ts", "type": "string" }
+  ]
+}

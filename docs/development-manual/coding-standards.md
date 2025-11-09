@@ -996,7 +996,7 @@ def downgrade():
 
 ---
 
-**Common Errors**: See [FAQ](../../user-manual/faq.md) for development troubleshooting.
+**Common Errors**: See [FAQ](../user-manual/faq.md) for development troubleshooting.
 
 **References**:
 - [Local Setup Guide](local-setup.md) for development environment

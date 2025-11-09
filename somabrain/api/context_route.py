@@ -45,31 +45,26 @@ from somabrain.metrics import (
 
 router = APIRouter()
 
-# Lazily-tolerant store initialization: if databases are temporarily unavailable
-# during import, degrade to no-op stores so routes still register and the API
-# surface is exposed. Persistence will be attempted again on first use.
-try:
-    _feedback_store = FeedbackStore()
-    _token_ledger = TokenLedger()
-except Exception as _e:  # pragma: no cover - import-time resilience
-    import logging as _logging
+# Store initialization is lazy to avoid import-time failures that would
+# prevent the router from registering (and thus 404 the entire /context API).
+_feedback_store = None  # type: ignore[assignment]
+_token_ledger = None  # type: ignore[assignment]
 
-    _logging.getLogger("somabrain.api").warning(
-        "context_route: feedback/token stores unavailable at import: %s", _e
-    )
 
-    class _NoopStore:  # minimal no-op fallback
-        def record(self, *args, **kwargs):
-            return None
+def _get_feedback_store() -> FeedbackStore:
+    global _feedback_store
+    if _feedback_store is None:
+        # Best-effort init; let endpoint-level try/except surface clear errors
+        _feedback_store = FeedbackStore()
+    return _feedback_store  # type: ignore[return-value]
 
-        def total_count(self) -> int:
-            return 0
 
-        def list_for_session(self, session_id: str):  # type: ignore[override]
-            return []
+def _get_token_ledger() -> TokenLedger:
+    global _token_ledger
+    if _token_ledger is None:
+        _token_ledger = TokenLedger()
+    return _token_ledger  # type: ignore[return-value]
 
-    _feedback_store = _NoopStore()
-    _token_ledger = _NoopStore()
 
 # Global counter for feedback applications across requests
 _feedback_counter = 0
@@ -246,7 +241,8 @@ async def feedback_endpoint(
     }
     event_id = _make_event_id(payload.session_id)
     try:
-        _feedback_store.record(
+        store = _get_feedback_store()
+        store.record(
             event_id=event_id,
             session_id=payload.session_id,
             query=payload.query,
@@ -262,7 +258,8 @@ async def feedback_endpoint(
                 "tokens_used"
             )
         if tokens is not None:
-            _token_ledger.record(
+            ledger = _get_token_ledger()
+            ledger.record(
                 entry_id=f"{payload.session_id}:{uuid.uuid4().hex}",
                 session_id=payload.session_id,
                 tokens=float(tokens),
@@ -294,7 +291,12 @@ async def feedback_endpoint(
         raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
     if applied:
         try:
-            store_total = _feedback_store.total_count()
+            store_total = 0
+            try:
+                store = _get_feedback_store()
+                store_total = store.total_count()
+            except Exception:
+                store_total = 0
             adapter_total = getattr(adapter, "_feedback_count", 0)
             _feedback_counter = max(_feedback_counter, adapter_total, store_total)
         except Exception:
@@ -383,7 +385,8 @@ async def adaptation_state_endpoint(
     adapter_count = getattr(adapter, "_feedback_count", 0)
     store_total = 0
     try:
-        store_total = int(_feedback_store.total_count())
+        store = _get_feedback_store()
+        store_total = int(store.total_count())
     except Exception:
         store_total = 0
     history_len = max(int(_feedback_counter), int(adapter_count), int(store_total))
@@ -422,19 +425,26 @@ async def adaptation_reset_endpoint(
     # Gate reset to dev mode only to avoid misuse in staging/prod.
     try:
         from common.config.settings import settings as _shared
+
         if getattr(_shared, "mode_normalized", "prod") != "dev":
-            raise HTTPException(status_code=403, detail="adaptation reset not allowed outside dev mode")
+            raise HTTPException(
+                status_code=403, detail="adaptation reset not allowed outside dev mode"
+            )
     except HTTPException:
         raise
     except Exception:
         # If settings cannot be imported, remain conservative and allow only when legacy disable_auth is true
         try:
             from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
+
             if not _legacy_auth_disabled():
-                raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+                raise HTTPException(
+                    status_code=403, detail="adaptation reset blocked (no mode info)"
+                )
         except Exception:
-            raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
-    from pydantic import BaseModel as _BM  # local import to avoid global dependency
+            raise HTTPException(
+                status_code=403, detail="adaptation reset blocked (no mode info)"
+            )
     builder = get_context_builder()
     planner = get_context_planner()
     default_tenant = get_default_tenant()
@@ -486,9 +496,7 @@ async def adaptation_reset_endpoint(
         from somabrain.learning.adaptation import UtilityWeights
 
         ud = payload.utility_defaults
-        utility_defaults = UtilityWeights(
-            lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu
-        )
+        utility_defaults = UtilityWeights(lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu)
 
     adapter.reset(
         retrieval_defaults=retrieval_defaults,

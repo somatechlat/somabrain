@@ -94,7 +94,6 @@ The Docker stack uses direct port access (standard container ports):
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1              # Enforce external backend usage
 SOMABRAIN_FORCE_FULL_STACK=1         # Require all backing services
 SOMABRAIN_REQUIRE_MEMORY=1           # Memory service must be available
-SOMABRAIN_DISABLE_AUTH=1             # Skip auth for local development
 SOMABRAIN_MODE=development           # Development mode identifier
 
 # Service access (standard container ports, direct to localhost)
@@ -105,11 +104,15 @@ OPA_HOST_PORT=8181                   # OPA
 POSTGRES_HOST_PORT=5432              # Postgres
 
 # Container-internal URLs (used within compose network)
-SOMABRAIN_REDIS_HOST=somabrain_redis
-SOMABRAIN_REDIS_PORT=6379            # Container internal
-SOMABRAIN_KAFKA_HOST=somabrain_kafka
-SOMABRAIN_KAFKA_PORT=9092            # Container internal
+SOMABRAIN_REDIS_URL=redis://somabrain_redis:6379/0
+SOMABRAIN_KAFKA_URL=kafka://somabrain_kafka:9092    # Canonical app-level Kafka setting
 SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595
+
+# Database
+SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@somabrain_postgres:5432/somabrain
+
+# Dev-only auto-migrations (off by default). Prefer the one-shot job below.
+SOMABRAIN_AUTO_MIGRATE=0
 ```
 
 #### Manual Docker Compose
@@ -120,6 +123,19 @@ docker compose up -d somabrain_redis somabrain_postgres somabrain_kafka somabrai
 # Check service health
 docker compose ps
 docker compose logs somabrain_app
+```
+
+#### Database Migrations (Dev)
+```bash
+# Preferred: run one-shot Alembic migrations for dev
+./scripts/migrate_db.sh           # stamps/aligns if schema already exists
+
+# Or, run the dev migration service directly
+docker compose --profile dev run --rm somabrain_db_migrate
+
+# Optional (dev-only): enable auto-migrate on API startup
+echo "SOMABRAIN_AUTO_MIGRATE=1" >> .env
+docker compose up -d somabrain_app
 ```
 
 ### IDE Configuration
@@ -172,6 +188,18 @@ python -c "from somabrain.config import reload_config; reload_config()"
 cat ports.json | jq
 ```
 
+### Memory Environment Helper
+```bash
+# Generate host-friendly memory env exports (.memory.env) from .env
+scripts/export_memory_env.sh
+
+# Apply to current shell for host tools (benchmarks, curl, etc.)
+source scripts/.memory.env
+
+# Quick probe runs automatically; acceptable statuses are 200/404/422.
+# If you see 401/403, set a valid SOMABRAIN_MEMORY_HTTP_TOKEN.
+```
+
 ### Testing and Validation
 ```bash
 # Run specific test categories
@@ -210,7 +238,7 @@ SOMABRAIN_POSTGRES_DSN=postgresql://soma:soma_pass@localhost:5432/somabrain
 SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1          # Enable mathematical validation
 SOMABRAIN_FORCE_FULL_STACK=1     # Require all services
 SOMABRAIN_REQUIRE_MEMORY=1       # Require memory backend
-SOMABRAIN_DISABLE_AUTH=1         # Dev mode (disable for production)
+SOMABRAIN_MODE=development       # Dev mode governs auth policy
 ```
 
 ### 🐳 Docker Infrastructure:
@@ -279,7 +307,7 @@ PYTHONPATH=$(pwd) uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reloa
 ```bash
 # Complete environment reset
 docker compose down --remove-orphans --volumes
-rm -f .env.local ports.json
+rm -f .env ports.json
 ./scripts/dev_up.sh --rebuild
 
 # Python environment reset
@@ -348,10 +376,16 @@ docker compose exec postgres psql -U somabrain
 **Common Errors**:
 - ModuleNotFoundError → Ensure virtual environment activated and `pip install -e .` completed
 - Docker connection errors → Verify Docker daemon running and user has docker group permissions
-- Test failures → Check `.env.local` configuration and service health
+- Test failures → Check `.env` configuration and service health
 
 **References**:
 - [Coding Standards](coding-standards.md) for style guide and linting rules
 - [Testing Guidelines](testing-guidelines.md) for test strategy and frameworks
 - [Contribution Process](contribution-process.md) for PR workflow
 - [Architecture Overview](../technical-manual/architecture.md) for system understanding
+
+---
+
+## Notes on Linux host.docker.internal
+
+On some Linux hosts, `host.docker.internal` isn’t resolved automatically inside containers. If your memory service runs on the host, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP address explicitly (for example: `http://192.168.1.10:9595`).

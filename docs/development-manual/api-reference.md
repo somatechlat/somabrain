@@ -41,13 +41,11 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 | GET | `/neuromodulators` | Fetch neuromodulator state | – | `schemas.NeuromodStateModel` |
 | POST | `/neuromodulators` | Adjust neuromodulator state | `schemas.NeuromodStateModel` | `schemas.NeuromodStateModel` |
 | POST | `/graph/links` | Query graph edges for transport | `schemas.GraphLinksRequest` | `schemas.GraphLinksResponse` |
-| POST | `/reflect` | Trigger reflective update cycle | `schemas.ReflectRequest` | `schemas.ReflectResponse` |
-| POST | `/migrate/export` | Export memory payloads | `schemas.MigrateExportRequest` | `schemas.MigrateExportResponse` |
 
 **Usage notes**:
 - Write endpoints honour backend enforcement—requests fail if backing services are unreachable.
 - Tenancy is selected via the `X-Soma-Tenant` header; defaults to the configured tenant when absent.
-- Authentication is disabled only when `SOMABRAIN_DISABLE_AUTH=1`.
+- Authentication is enabled except in dev mode per centralized settings.
 - Regenerate OpenAPI artifacts with `./scripts/export_openapi.py`.
 
 ### Base Information
@@ -884,4 +882,4 @@ somabrain_memories_total{tenant="tenant_1"} 15432
 - [Testing Guidelines](testing-guidelines.md) for API testing examples
 - [Coding Standards](coding-standards.md) for API client implementation
 - [Contribution Process](contribution-process.md) for API changes
-- [User Manual API Integration](../../user-manual/api-integration.md) for usage examples
+- [API Integration](../user-manual/features/api-integration.md) for usage examples

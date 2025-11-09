@@ -3,6 +3,7 @@ ruff==0.13.0
 isort==6.0.1
 pre-commit==4.3.0
 pytest==8.4.2
+pytest-cov==6.0.0
 pytest-asyncio==0.24.0
 pytest-env==1.1.5
 pytest-forked==1.5.0
@@ -32,3 +33,6 @@ grpcio==1.75.0
 # matplotlib==3.7.5  # downgraded to avoid build issues on Python 3.13
 pyinstrument==5.1.1  # updated from 0.4.3 to a version available for Python 3.13
 py-spy==0.3.14
+
+# Type stubs for stricter MyPy on common deps
+types-redis==4.6.0.20241004

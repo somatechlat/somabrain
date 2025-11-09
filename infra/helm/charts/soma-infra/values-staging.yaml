@@ -1,5 +1,9 @@
 ## Staging overrides for soma-infra
 
+# Override mode for staging environment
+envCommon:
+  SOMABRAIN_MODE: "staging"
+
 auth:
   replicaCount: 2
 
@@ -21,8 +25,6 @@ vault:
       enabled: true
 
 kube-prometheus-stack:
-  grafana:
-    adminPassword: staging-admin
   prometheus:
     prometheusSpec:
       retention: 30d

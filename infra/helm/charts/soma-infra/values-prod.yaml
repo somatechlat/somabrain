@@ -1,5 +1,9 @@
 ## Production overrides for soma-infra
 
+# Override mode for production environment
+envCommon:
+  SOMABRAIN_MODE: "production"
+
 auth:
   replicaCount: 3
   resources:
@@ -47,8 +51,6 @@ vault:
       size: 50Gi
 
 kube-prometheus-stack:
-  grafana:
-    adminPassword: change-me-prod
   prometheus:
     prometheusSpec:
       retention: 60d

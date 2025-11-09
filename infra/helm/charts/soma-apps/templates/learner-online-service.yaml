@@ -1,0 +1,21 @@
+{{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "learner") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 4 }}
+spec:
+  type: {{ ternary "NodePort" "ClusterIP" .Values.expose.learnerNodePorts }}
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 4 }}
+  ports:
+    - name: health
+      port: 8084
+      targetPort: 8084
+      {{- if .Values.expose.learnerNodePorts }}
+      nodePort: {{ .Values.ports.learnerOnlineNodePort }}
+      {{- end }}
+{{- end }}

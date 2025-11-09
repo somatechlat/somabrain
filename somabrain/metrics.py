@@ -35,6 +35,7 @@ Functions:
 from __future__ import annotations
 
 import time
+import os
 from threading import Lock
 from typing import Any, Awaitable, Callable, Iterable
 import builtins as _builtins
@@ -47,15 +48,29 @@ try:
         Counter as _PromCounter,
         Gauge as _PromGauge,
         Histogram as _PromHistogram,
+        Summary as _PromSummary,
         generate_latest,
     )
-except (
-    Exception
-):  # pragma: no cover - allow import without prometheus for lightweight checks
-    # Minimal shim so the module can be imported in environments without prometheus_client.
+except Exception:  # pragma: no cover
+    # Enforce "no fake fallbacks" by default. Allow a noop shim only in docs builds
+    # or when explicitly permitted via SOMABRAIN_ALLOW_METRICS_NOOP=1.
+    allow_noop = False
+    try:
+        allow_noop = bool(os.getenv("SPHINX_BUILD")) or (
+            (os.getenv("SOMABRAIN_ALLOW_METRICS_NOOP", "").strip().lower())
+            in ("1", "true", "yes", "on")
+        )
+    except Exception:
+        allow_noop = False
+
+    if not allow_noop:
+        raise ImportError(
+            "prometheus_client is required for somabrain.metrics; set SOMABRAIN_ALLOW_METRICS_NOOP=1 only for docs/tests if you must bypass"
+        )
+
     CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
 
-    class CollectorRegistry:
+    class CollectorRegistry:  # minimal shim for docs/tests only
         def __init__(self):
             self._names_to_collectors = {}
 
@@ -75,7 +90,6 @@ except (
         def observe(self, *a, **k):
             pass
 
-    CollectorRegistry = CollectorRegistry
     REGISTRY = CollectorRegistry()
     _PromCounter = _NoopMetric
     _PromGauge = _NoopMetric
@@ -142,6 +156,15 @@ def _histogram(name: str, documentation: str, *args, **kwargs):
     return _PromHistogram(name, documentation, *args, **kwargs)
 
 
+def _summary(name: str, documentation: str, *args, **kwargs):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromSummary(name, documentation, *args, **kwargs)
+
+
 def get_counter(name: str, documentation: str, labelnames: list | None = None):
     """Get or create a Counter in the central registry.
 
@@ -188,6 +211,7 @@ _DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
 Counter = _counter
 Gauge = _gauge
 Histogram = _histogram
+Summary = _summary
 
 # Aliases used later (avoid interleaved imports)
 _Hist = Histogram
@@ -508,36 +532,41 @@ UNBIND_K_EST = Gauge(
     registry=registry,
 )
 
-# --- RAG/RAF metrics (PR-3) ---
-RAG_REQUESTS = get_counter(
-    "somabrain_rag_requests",
-    "RAG requests",
+# --- Retrieval metrics ---
+RECALL_REQUESTS = get_counter(
+    "somabrain_recall_requests_total",
+    "Number of /memory/recall requests",
+    labelnames=["namespace"],
+)
+RETRIEVAL_REQUESTS = get_counter(
+    "somabrain_retrieval_requests",
+    "Retrieval requests",
     labelnames=["namespace", "retrievers"],
 )
-RAG_RETRIEVE_LAT = get_histogram(
-    "somabrain_rag_retrieve_latency_seconds",
-    "RAG retrieve pipeline latency",
+RETRIEVAL_LATENCY = get_histogram(
+    "somabrain_retrieval_latency_seconds",
+    "Retrieval pipeline latency",
 )
-RAG_CANDIDATES = get_histogram(
-    "somabrain_rag_candidates_total",
-    "RAG candidate count after dedupe/rerank",
+RETRIEVAL_CANDIDATES = get_histogram(
+    "somabrain_retrieval_candidates_total",
+    "Retrieval candidate count after dedupe/rerank",
     buckets=[1, 3, 5, 10, 20, 50],
 )
-RAG_PERSIST = get_counter(
-    "somabrain_rag_persist_total",
-    "RAG session persistence outcomes",
+RETRIEVAL_PERSIST = get_counter(
+    "somabrain_retrieval_persist_total",
+    "Retrieval session persistence outcomes",
     labelnames=["status"],
 )
 
-# Fusion metrics (RAG enhancements)
-RAG_FUSION_APPLIED = Counter(
-    "somabrain_rag_fusion_applied_total",
+# Fusion metrics (retrieval enhancements)
+RETRIEVAL_FUSION_APPLIED = Counter(
+    "somabrain_retrieval_fusion_applied_total",
     "Times rank fusion was applied",
     ["method"],
     registry=registry,
 )
-RAG_FUSION_SOURCES = Histogram(
-    "somabrain_rag_fusion_sources",
+RETRIEVAL_FUSION_SOURCES = Histogram(
+    "somabrain_retrieval_fusion_sources",
     "Number of retriever sources fused",
     buckets=[1, 2, 3, 4, 5, 6],
     registry=registry,
@@ -580,6 +609,38 @@ PREDICTOR_FALLBACK = Counter(
     registry=registry,
 )
 
+# --- Planning KPIs ---
+PLANNING_LATENCY = Histogram(
+    "somabrain_planning_latency_seconds",
+    "Planning generation latency seconds",
+    ["backend"],
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.075, 0.1, 0.2, 0.3, 0.5, 1.0),
+    registry=registry,
+)
+PLANNING_LATENCY_P99 = Gauge(
+    "somabrain_planning_latency_p99",
+    "Approximate p99 planning latency seconds (rolling)",
+    registry=registry,
+)
+
+_planning_samples: list[float] = []
+_MAX_PLANNING_SAMPLES = 1000
+
+
+def record_planning_latency(backend: str, latency_seconds: float) -> None:
+    try:
+        PLANNING_LATENCY.labels(backend=str(backend)).observe(float(latency_seconds))
+        _planning_samples.append(float(latency_seconds))
+        if len(_planning_samples) > _MAX_PLANNING_SAMPLES:
+            del _planning_samples[: len(_planning_samples) - _MAX_PLANNING_SAMPLES]
+        if _planning_samples:
+            ordered = sorted(_planning_samples)
+            idx = max(0, int(0.99 * (len(ordered) - 1)))
+            PLANNING_LATENCY_P99.set(ordered[idx])
+    except Exception:
+        pass
+
+
 # Decision attribution / recall quality
 RECALL_MARGIN_TOP12 = Histogram(
     "somabrain_recall_margin_top1_top2",
@@ -604,6 +665,13 @@ RERANK_CONTRIB = Histogram(
 DIVERSITY_PAIRWISE_MEAN = Histogram(
     "somabrain_diversity_pairwise_mean",
     "Mean pairwise cosine distance among returned set",
+    registry=registry,
+)
+
+# Storage efficiency KPI: ratio of post-compression bytes to pre-compression bytes
+STORAGE_REDUCTION_RATIO = Gauge(
+    "somabrain_storage_reduction_ratio",
+    "Observed storage reduction ratio (post/pre). Higher is better if defined as retained fraction; dashboards invert to show savings.",
     registry=registry,
 )
 
@@ -635,11 +703,8 @@ LTM_STORE_LAT = Histogram(
     "Latency of LTM store operations",
     registry=registry,
 )
-LTM_STORE_QUEUED = Counter(
-    "somabrain_ltm_store_queued_total",
-    "Count of LTM store operations queued due to backend unavailability",
-    registry=registry,
-)
+# Removed queued write semantics (fail-fast); metric deprecated.
+# (Previously: somabrain_ltm_store_queued_total)
 
 # Executive details
 EXEC_K_SELECTED = Histogram(
@@ -780,37 +845,11 @@ LINK_DECAY_PRUNED = Counter(
     registry=registry,
 )
 
-# Journal metrics
-JOURNAL_APPEND = Counter(
-    "somabrain_journal_append_total",
-    "Journal append events",
-    registry=registry,
-)
-JOURNAL_REPLAY = Counter(
-    "somabrain_journal_replay_total",
-    "Journal events replayed",
-    registry=registry,
-)
-JOURNAL_SKIP = Counter(
-    "somabrain_journal_skip_total",
-    "Journal lines skipped due to parse errors",
-    registry=registry,
-)
-JOURNAL_ROTATE = Counter(
-    "somabrain_journal_rotate_total",
-    "Journal file rotations performed",
-    registry=registry,
-)
 
-# Audit pipeline metrics: observe whether events go to Kafka or the durable journal fallback
+# Audit pipeline metrics: Kafka publish path only (no local fallbacks)
 AUDIT_KAFKA_PUBLISH = Counter(
     "somabrain_audit_kafka_publish_total",
     "Audit events successfully published to Kafka (best-effort)",
-    registry=registry,
-)
-AUDIT_JOURNAL_FALLBACK = Counter(
-    "somabrain_audit_journal_fallback_total",
-    "Audit events written to the durable JSONL journal as a fallback",
     registry=registry,
 )
 
@@ -1058,6 +1097,65 @@ def update_learning_effective_lr(tenant_id: str, lr_eff: float):
     LEARNING_EFFECTIVE_LR.labels(tenant_id=tenant_id).set(lr_eff)
 
 
+# Phase‑1 adaptive knob metrics
+tau_decay_events = get_counter(
+    "somabrain_tau_decay_events_total",
+    "Tau decay applications per tenant",
+    labelnames=["tenant_id"],
+)
+entropy_cap_events = get_counter(
+    "somabrain_entropy_cap_events_total",
+    "Entropy cap sharpen events per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Retrieval entropy gauge per tenant
+LEARNING_RETRIEVAL_ENTROPY = get_gauge(
+    "somabrain_learning_retrieval_entropy",
+    "Entropy of retrieval weight distribution per tenant",
+    labelnames=["tenant_id"],
+)
+
+# Regret KPIs (next-event + policy)
+LEARNING_REGRET = get_histogram(
+    "somabrain_learning_regret",
+    "Regret distribution per tenant",
+    labelnames=["tenant_id"],
+    buckets=[i / 20.0 for i in range(0, 21)],
+)
+LEARNING_REGRET_EWMA = get_gauge(
+    "somabrain_learning_regret_ewma",
+    "EWMA regret per tenant",
+    labelnames=["tenant_id"],
+)
+
+_regret_ema: dict[str, float] = {}
+_REGRET_ALPHA = 0.15
+
+
+def record_regret(tenant_id: str, regret: float) -> None:
+    try:
+        t = tenant_id or "public"
+        r = max(0.0, min(1.0, float(regret)))
+        LEARNING_REGRET.labels(tenant_id=t).observe(r)
+        prev = _regret_ema.get(t)
+        if prev is None:
+            ema = r
+        else:
+            ema = _REGRET_ALPHA * r + (1.0 - _REGRET_ALPHA) * prev
+        _regret_ema[t] = ema
+        LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
+    except Exception:
+        pass
+
+
+def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
+    try:
+        LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
+    except Exception:
+        pass
+
+
 def record_learning_rollback(tenant_id: str):
     """Increment rollback counter for tenant."""
     LEARNING_ROLLBACKS.labels(tenant_id=tenant_id).inc()
@@ -1276,14 +1374,9 @@ CIRCUIT_BREAKER_STATE = Gauge(
     "The state of the memory service circuit breaker (1=open, 0=closed).",
     registry=registry,
 )
-MEMORY_OUTBOX_PENDING_ITEMS = Gauge(
-    "somabrain_memory_outbox_pending_items",
-    "Number of memory operations waiting in the outbox to be synced.",
-    registry=registry,
-)
 MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     "somabrain_memory_outbox_sync_total",
-    "Total number of memory sync operations from the outbox.",
+    "Total number of memory sync operations from the outbox (legacy gauge removed).",
     ["status"],
     registry=registry,
 )

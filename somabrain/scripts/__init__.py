@@ -61,9 +61,4 @@ def _try_load(name: str) -> Optional[ModuleType]:
     return None
 
 
-replay_journal = _try_load("replay_journal")
-
-# Don't import audit_probe here: it is a CLI-style script that may perform
-# sys.exit() or other side-effects when executed at import time. Only expose
-# replay_journal which is safe for tests to import and call.
-__all__ = ["replay_journal"]
+__all__: list[str] = []  # Legacy replay_journal removed; no script exports

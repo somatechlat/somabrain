@@ -7,7 +7,11 @@
 **Prerequisites**
 - Docker Desktop **or** a host with Docker Engine + Compose Plugin.
 - Python 3.11 (optional, for running the API directly).
-- An HTTP memory backend listening on `http://localhost:9595` (the API refuses writes when `SOMABRAIN_REQUIRE_MEMORY=1` and the backend is unavailable).
+- An HTTP memory backend listening on port 9595.
+
+Important when using Docker Desktop:
+- Inside containers, `127.0.0.1` refers to the container itself. Point the API to the host memory service using `http://host.docker.internal:9595`.
+- The provided Dockerfile and dev scripts default to this safe value; you can verify wiring at `GET /diagnostics`.
 
 ---
 
@@ -34,11 +38,20 @@ docker compose up -d
 docker compose logs -f somabrain_app
 ```
 
+Alternatively, use the helper script that writes a complete `.env`, builds the image if needed, and waits for health:
+
+```bash
+./scripts/dev_up.sh
+```
+
+On Linux hosts where `host.docker.internal` doesn’t resolve inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to the host IP explicitly (e.g., `http://192.168.1.10:9595`).
+
 Verify the stack:
 
 ```bash
 curl -s http://localhost:9696/health | jq
 curl -s http://localhost:9696/metrics | head
+curl -s http://localhost:9696/diagnostics | jq   # wiring snapshot (sanitized)
 ```
 
 A healthy response returns HTTP 200 with `memory_ok`, `embedder_ok`, and `predictor_ok` all `true`. If `ready` is `false`, the API is still booting or waiting for an external dependency (typically the memory service).
@@ -54,14 +67,14 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip && pip install -e .[dev]
 
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595
-export SOMABRAIN_DISABLE_AUTH=1            # dev only
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9595   # For direct host runs (uvicorn)
+export SOMABRAIN_MODE=development          # dev only (auth relaxed via mode)
 export SOMABRAIN_REQUIRE_MEMORY=0          # unless you have a live backend
 
 uvicorn somabrain.app:app --host 127.0.0.1 --port 9696 --reload
 ```
 
-Disable the auth bypass (`SOMABRAIN_DISABLE_AUTH`) before deploying to any shared environment.
+Do not relax auth outside development mode; use proper Bearer tokens in shared environments.
 
 ---
 
@@ -97,7 +110,7 @@ If any check fails, consult [FAQ](faq.md) and `docker compose logs`.
 - `503 memory backend unavailable` – the memory HTTP service on port 9595 was not reachable; either point `SOMABRAIN_MEMORY_HTTP_ENDPOINT` at a working endpoint or set `SOMABRAIN_REQUIRE_MEMORY=0` for non-production testing.
 - Port clashes on 9696 / 20001‑20007 – adjust exported ports in `.env`.
 - Kafka slow to start – wait for the broker healthcheck (`somabrain_kafka` container) before sending recall requests.
-- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`) or set `SOMABRAIN_DISABLE_AUTH=1` only for isolated dev environments.
+- Authentication failures – provide a Bearer token (see `.env` for `SOMABRAIN_API_TOKEN`). In dev mode, auth may be relaxed by policy.
 
 ---
 

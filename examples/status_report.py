@@ -30,9 +30,11 @@ MODULES: Dict[str, tuple[str, str]] = {
     "DensityMatrix": ("memory.density", "DensityMatrix"),
 }
 
+
 def check_docs() -> Dict[str, bool]:
     """Return a mapping of document label to availability."""
     return {name: path.is_file() for name, path in DOCS.items()}
+
 
 def check_modules() -> Dict[str, bool]:
     """Return a mapping of module label to import success."""
@@ -45,6 +47,7 @@ def check_modules() -> Dict[str, bool]:
             results[label] = False
     return results
 
+
 def render_table(title: str, status: Dict[str, bool]) -> None:
     print(title)
     print("=" * len(title))
@@ -52,6 +55,7 @@ def render_table(title: str, status: Dict[str, bool]) -> None:
         icon = "[OK]" if ok else "[FAIL]"
         state = "ready" if ok else "missing"
         print(f"  {icon} {name}: {state}")
+
 
 def main() -> int:
     doc_status = check_docs()
@@ -72,6 +76,7 @@ def main() -> int:
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -311,7 +311,6 @@ vault kv put somabrain/certificates/production \
 vault kv put somabrain/external/production \
   prometheus_url="https://prometheus.internal" \
   prometheus_token="prom_token_789" \
-  grafana_api_key="grafana_key_abc123" \
   slack_webhook="https://hooks.slack.com/services/..."
 ```
 

@@ -103,7 +103,11 @@ class TargetConfig:
 
         # If an explicit 'ok' is provided, require it to be True
         if "ok" in body:
-            return (True, None) if body.get("ok") else (False, f"Memory health check not OK for {self.label}")
+            return (
+                (True, None)
+                if body.get("ok")
+                else (False, f"Memory health check not OK for {self.label}")
+            )
 
         # Otherwise, accept 200 with any truthy subsystem signal
         for key in ("kv_store", "vector_store", "graph_store"):

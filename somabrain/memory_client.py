@@ -238,7 +238,7 @@ class MemoryClient:
         phase            : str   (e.g., "bootstrap", "general", "specialized")
         quality_score    : float (bounded recommendation: [0, 1])
         domains          : list[str] or comma string (topic / domain tags)
-        reasoning_chain  : list[str] | str (intermediate steps, RAG synthesis notes)
+        reasoning_chain  : list[str] | str (intermediate steps, retrieval synthesis notes)
 
     Feature Flags (env)
     -------------------
@@ -332,7 +332,10 @@ class MemoryClient:
         token_value = None
         if self.cfg.http and getattr(self.cfg.http, "token", None):
             token_value = self.cfg.http.token
+            # Prefer standard Bearer auth, but include common alternatives for dev services
             headers["Authorization"] = f"Bearer {token_value}"
+            headers.setdefault("X-API-Key", token_value)
+            headers.setdefault("X-Auth-Token", token_value)
 
         # Propagate tenancy via standardized headers (best-effort)
         ns = str(getattr(self.cfg, "namespace", ""))
@@ -398,7 +401,7 @@ class MemoryClient:
         # Hard requirement: if memory is required ensure an endpoint exists.
         require_memory_enabled = _require_memory_enabled()
         if require_memory_enabled and not base_url:
-            base_url = get_memory_http_endpoint()
+            base_url = get_memory_http_endpoint() or ""
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
         if base_url:
@@ -406,33 +409,7 @@ class MemoryClient:
                 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
             except Exception:
                 pass
-        # If running inside Docker and no endpoint provided, default to the
-        # host gateway which is commonly reachable as host.docker.internal on
-        # macOS/Windows. This helps tests running inside containers talk to
-        # a memory service running on the host machine (configure via
-        # SOMABRAIN_DOCKER_MEMORY_FALLBACK).
-        try:
-            in_docker = os.path.exists("/.dockerenv")
-        except Exception:
-            in_docker = False
-        if not base_url and in_docker:
-            try:
-                fallback = (
-                    getattr(shared_settings, "docker_memory_fallback", None)
-                    if shared_settings is not None
-                    else None
-                )
-            except Exception:
-                fallback = None
-            try:
-                base_url = fallback or os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
-                if base_url:
-                    logger.debug(
-                        "MemoryClient running in Docker, defaulting base_url to %r",
-                        base_url,
-                    )
-            except Exception:
-                pass
+        # Fail-fast: do not auto-default inside Docker; require explicit endpoint
         client_kwargs: dict[str, Any] = {
             "base_url": base_url,
             "headers": headers,
@@ -481,7 +458,7 @@ class MemoryClient:
         if shared_settings is not None:
             try:
                 mem_auth_required = bool(
-                    getattr(shared_settings, "mode_memstore_auth_required", True)
+                    getattr(shared_settings, "mode_memory_auth_required", True)
                 )
             except Exception:
                 mem_auth_required = True

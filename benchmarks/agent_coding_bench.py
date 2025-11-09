@@ -5,7 +5,7 @@ Agent Coding Benchmark (Synthetic, Real HTTP)
 Simulates an agent learning to build a tiny FastAPI app by:
 - Seeding relevant "tool" documents
 - Running a baseline retrieval (vector-only)
-- Persisting a RAG session (vector+wm)
+- Persisting a recall session (vector+wm)
 - Measuring improvement via graph-only retrieval after persistence
 - Measuring planning improvement by including 'retrieved_with' edges
 
@@ -66,17 +66,17 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     # Baseline vector-only
     t0 = time.perf_counter()
     r0 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["vector"], "persist": False},
     ).json()
     dt0 = time.perf_counter() - t0
-    hr0 = hit_rate(r0.get("candidates", []), truths)
+    hr0 = hit_rate(r0.get("results", []), truths)
 
     # Persist session
     t1 = time.perf_counter()
     r1 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={
             "query": query,
@@ -91,12 +91,12 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     # Graph-only after persist (requires hops >= 1; to reach docs via session, planner uses edges)
     t2 = time.perf_counter()
     r2 = client.post(
-        f"{base}/rag/retrieve",
+        f"{base}/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["graph"], "persist": False},
     ).json()
     dt2 = time.perf_counter() - t2
-    hr2 = hit_rate(r2.get("candidates", []), truths)
+    hr2 = hit_rate(r2.get("results", []), truths)
 
     # Planning baseline (without retrieved_with)
     p0 = client.post(
@@ -110,14 +110,14 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
     ).json()
     phr0 = plan_hit_rate(p0.get("plan", []), truths)
 
-    # Planning after persist (include rag edges)
+    # Planning after persist (include recall edges)
     p1 = client.post(
         f"{base}/plan/suggest",
         headers=headers,
         json={
             "task_key": query,
             "max_steps": 5,
-            "rel_types": ["rag_session", "retrieved_with", "depends_on", "related"],
+            "rel_types": ["recall_session", "retrieved_with", "depends_on", "related"],
         },
     ).json()
     phr1 = plan_hit_rate(p1.get("plan", []), truths)
@@ -128,17 +128,17 @@ def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
         "baseline": {
             "latency_s": dt0,
             "hit_rate": hr0,
-            "candidates": r0.get("candidates", []),
+            "results": r0.get("results", []),
         },
         "persist": {
             "latency_s": dt1,
             "session_coord": sess,
-            "candidates": r1.get("candidates", []),
+            "results": r1.get("results", []),
         },
         "post_persist_graph": {
             "latency_s": dt2,
             "hit_rate": hr2,
-            "candidates": r2.get("candidates", []),
+            "results": r2.get("results", []),
         },
         "plan": {
             "baseline": p0.get("plan", []),

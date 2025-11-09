@@ -24,14 +24,17 @@
 ### Port Assignments
 
 **Docker Compose (localhost):**
-- API: `9696`
-- Redis: `20001`
-- Kafka: `20002`
-- Kafka Exporter: `20003`
-- OPA: `20004`
-- Prometheus: `20005`
-- PostgreSQL: `20006`
-- PostgreSQL Exporter: `20007`
+Standard ports (host → container):
+- API: `9696` → `9696`
+- Redis: `30100` → `6379`
+- Kafka (EXTERNAL): `30102` → `9094` (INTERNAL listener remains `9092`)
+- Kafka Exporter: `30103` → `9308`
+- OPA: `30104` → `8181`
+- Prometheus: `30105` → `9090`
+- PostgreSQL: `30106` → `5432`
+- PostgreSQL Exporter: `30107` → `9187`
+
+Note: `scripts/dev_up.sh` sets a fixed host API port of `:9696`. The effective host ports are written to `.env` and to `ports.json`.
 
 **Kubernetes (LoadBalancer):**
 - API: `20020`
@@ -54,13 +57,17 @@ git clone https://github.com/somatechlat/somabrain.git
 cd somabrain
 
 # Configure environment
-cp .env.example .env.local
-# Edit .env.local with production values
+cp .env.example .env
+# Edit .env with environment-specific values
 
-# Start services with dynamic port assignment
-./scripts/dev_up.sh --rebuild
+# Or generate a default .env and start
+./scripts/generate_global_env.sh
+docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
 
-# Verify deployment
+# Alternatively, auto-assign free host ports in the 30000+ range
+./scripts/dev_up.sh
+
+# Verify deployment (unified /health endpoint)
 curl -fsS http://localhost:9696/health | jq
 ```
 
@@ -71,15 +78,15 @@ The compose stack binds container ports directly to localhost for backend-enforc
 | Service | Host Port | Notes |
 | --- | --- | --- |
 | SomaBrain API | 9696 | `http://localhost:9696` for health, metrics, OpenAPI |
-| Redis | 6379 | `redis://localhost:6379/0` working-memory cache |
-| Kafka | 9092 | Local bootstrap for audit/event streaming |
-| Kafka Exporter | 9308 | Metrics endpoint for Kafka observability |
-| OPA | 8181 | Policy decisions (`http://localhost:8181`) |
-| Prometheus | 9090 | Monitoring UI and scrape target |
-| Postgres | 5432 | Primary database access |
-| Postgres Exporter | 9187 | Database metrics |
+| Redis | 30100 | `redis://localhost:30100/0` working-memory cache |
+| Kafka (EXTERNAL) | 30102 | Host bootstrap; INTERNAL remains `somabrain_kafka:9092` |
+| Kafka Exporter | 30103 | Metrics endpoint for Kafka observability |
+| OPA | 30104 | Policy decisions (`http://localhost:30104`) |
+| Prometheus | 30105 | Monitoring UI and scrape target |
+| Postgres | 30106 | Primary database access |
+| Postgres Exporter | 30107 | Database metrics |
 
-Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env.local` and `ports.json` with available values.
+Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env` and `ports.json` with available values.
 
 #### Docker Image Hardening Notes
 
@@ -87,6 +94,7 @@ Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env.local` a
 - `.dockerignore` excludes tests, examples, build artefacts, and secrets to keep the context minimal.
 - Runtime image includes `somabrain/`, `scripts/`, `arc_cache.py`, and documentation required at runtime.
 - Containers run as a non-root user; ensure volumes and Kubernetes security contexts respect this constraint.
+ - Compose hardening: `somabrain_app` drops all capabilities, uses a read-only root filesystem, enables `no-new-privileges`, and mounts `/app/logs` as tmpfs for write access.
 
 #### Production Docker Compose
 ```yaml
@@ -144,8 +152,8 @@ docker build -t somabrain:latest .
 kind load docker-image somabrain:latest --name <cluster-name>
 
 # Deploy with centralized configuration
-kubectl apply -f k8s/somabrain-configmap.yaml
-kubectl apply -f k8s/somabrain-deployment.yaml
+kubectl apply -f infra/k8s/somabrain-configmap.yaml
+kubectl apply -f infra/k8s/somabrain-deployment.yaml
 
 # Check deployment status
 kubectl get pods -n somabrain
@@ -310,6 +318,8 @@ environment:
 | `POSTGRES_USER` | `soma` | **CHANGE IN PRODUCTION** | Database user |
 | `POSTGRES_PASSWORD` | `soma_dev_pass` | **CHANGE IN PRODUCTION** | Database password |
 | `SOMABRAIN_MEMORY_HTTP_TOKEN` | `dev-token` | **CHANGE IN PRODUCTION** | Memory service auth token |
+| `SOMABRAIN_JWT_SECRET` | (unset) | **REQUIRED** | JWT signing key for API auth |
+| `SOMABRAIN_API_TOKEN` | (unset) | **REQUIRED (or disable auth)** | Static API token if used |
 
 ### Security Configuration
 ```bash
@@ -343,18 +353,20 @@ redis-server --config /etc/redis/redis.conf \
   --requirepass ${REDIS_PASSWORD}
 ```
 
-### PostgreSQL Setup
-```sql
--- Create database and user
-CREATE DATABASE somabrain;
-CREATE USER somabrain WITH ENCRYPTED PASSWORD '${POSTGRES_PASSWORD}';
-GRANT ALL PRIVILEGES ON DATABASE somabrain TO somabrain;
+### Database Setup & Migrations
 
--- Apply migrations
-\c somabrain
-\i migrations/001_initial_schema.sql
-\i migrations/002_audit_tables.sql
+Create the database and user with your preferred method (manually or via IaC), then apply Alembic migrations. For Docker Compose dev stacks, use the one-shot migration job:
+
+```bash
+# Dev: apply Alembic migrations
+./scripts/migrate_db.sh            # or: docker compose --profile dev run --rm somabrain_db_migrate
 ```
+
+Notes:
+- The one-shot job targets the internal Postgres host `somabrain_postgres` and runs `alembic upgrade heads`.
+- If the schema already exists without Alembic history (legacy DB), the dev job automatically stamps heads to align. Do not use stamping in production.
+- For production/staging, run migrations explicitly in CI/CD or via a controlled job (no auto-stamp), and keep `SOMABRAIN_AUTO_MIGRATE=0`.
+- The API entrypoint supports a dev-only auto-migrate hook when `SOMABRAIN_AUTO_MIGRATE=1`, running `alembic upgrade heads` on startup. Prefer the one-shot job instead.
 
 ### Kafka Topics
 ```bash
@@ -377,20 +389,20 @@ kafka-topics.sh --create --topic metrics.streams \
 ### Health Check Validation
 ```bash
 # Basic health check
-curl -f http://api.somabrain.company.com/health
+curl -f http://api.somabrain.company.com/health | jq
 
-# Expected response (200 OK)
+# Expected response (200 OK, key fields)
 {
-  "status": "healthy",
-  "timestamp": "2025-10-15T12:00:00Z",
+  "ok": true,
+  "namespace": "<tenant>",
   "components": {
-    "redis": {"status": "healthy", "latency_ms": 1.2},
-    "postgres": {"status": "healthy", "latency_ms": 2.1},
-    "kafka": {"status": "healthy", "latency_ms": 0.8},
-    "opa": {"status": "healthy", "latency_ms": 1.0}
+    "memory": { "http": true, "items": <int> },
+    "wm_items": "tenant-scoped",
+    "api_version": "<semver>"
   },
-  "version": "v0.1.0",
-  "mode": "production"
+  "ready": true,
+  "memory_ok": true,
+  "embedder_ok": true
 }
 ```
 
@@ -454,14 +466,23 @@ scrape_configs:
       - targets: ['postgres-exporter:9187']
 ```
 
-### Grafana Dashboard Import
-```bash
-# Import SomaBrain dashboard
-curl -X POST http://grafana:3000/api/dashboards/db \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${GRAFANA_TOKEN}" \
-  -d @dashboards/somabrain-overview.json
-```
+<!-- Dashboard import instructions deleted. -->
+
+> Linux hosts: If running Prometheus inside Docker on Linux, `host.docker.internal` may not resolve by default. Options:
+> - Run Prometheus with host networking and scrape `localhost:PORT`.
+> - Add `--add-host=host.docker.internal:host-gateway` to the Prometheus container (compose `extra_hosts`).
+> - Use the provided override file to add the host-gateway mapping:
+>   
+>   ```bash
+>   For Linux hosts where `host.docker.internal` isn’t resolvable inside containers, set `SOMABRAIN_MEMORY_HTTP_ENDPOINT` in `.env` to your host IP (e.g., `http://192.168.1.10:9595`).
+>   ```
+>   
+>   Or via Makefile helpers:
+>   
+>   ```bash
+>   make compose-up-linux
+>   ```
+> - Expose scrape targets inside the compose network and reference service names.
 
 ## Backup & Recovery Setup
 
@@ -501,6 +522,49 @@ find /backups/somabrain -type d -mtime +30 -exec rm -rf {} \;
 ```
 
 ## Scaling Considerations
+
+### Maximum capacity configuration (production)
+
+For sustained peak throughput and lowest tail latency, configure the platform with these proven settings:
+
+- API process
+  - Replicas: 4–8 behind a load balancer (HPA min 4, max 20)
+  - Concurrency: uvicorn workers = CPU cores (2–4 per pod) with keep-alive 75s; enable HTTP pipelining at the ingress
+  - ENABLE_COG_THREADS: "1" across all cognitive services to keep the pipeline always-on
+  - OPA policy: mount policies from ops/opa/policies and run OPA fail-closed (mode_opa_fail_closed=true)
+  - Auth: mode_api_auth_enabled=true (JWT recommended) and rate limits tuned per tenant
+
+- Kafka
+  - Partitions: 12+ for audit and cognition topics to avoid producer backpressure
+  - Acks: all; linger.ms ~ 5–10ms for better batching under load
+  - Exporter enabled and scraped every 30s for saturation alerts
+
+- Redis
+  - Maxmemory: 8–16GiB with allkeys-lru; persistent snapshot + AOF for durability
+  - Use SOMABRAIN_REDIS_URL with pooled connections; pin CPU/memory in k8s
+
+- PostgreSQL
+  - Instance RAM: 8–16GiB; shared_buffers ~ 25% RAM; effective_cache_size ~ 60% RAM
+  - WAL on fast storage; enable pg_stat_statements and exporter
+  - Read replicas for reporting; primary reserved for writes and hot data
+
+- Prometheus/Alertmanager
+  - Retention: 15–30d; persistent volumes sized for retention targets
+  - PodMonitors for all components; alerts for API p95>2s, error rate>5%, memory>85%
+
+- OPA
+  - Serve on 8181, policies under ops/opa/policies; bundle or ConfigMap sync
+  - Enforce fail-closed in production; add liveness/readiness probes
+
+Operational flags to set in Helm values or environment:
+- SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1
+- SOMABRAIN_FORCE_FULL_STACK=1
+- SOMABRAIN_REQUIRE_MEMORY=1
+- ENABLE_COG_THREADS=1
+
+Capacity tips:
+- Scale API first; Kafka partitions next; then Redis memory. Validate with load tests and Prometheus SLOs.
+- Keep Prometheus retention manageable; ship long-term metrics to a remote store if needed.
 
 ### Horizontal Pod Autoscaler (HPA)
 ```yaml
@@ -586,16 +650,16 @@ kubectl patch deployment somabrain -n somabrain-prod -p '{"spec":{"template":{"s
 ### Current Deployment Status
 
 **Docker Compose Deployment** ✅
-- All 9 services running and healthy
-- Ports: 9696 (API), 20001-20007 (services)
+- All services running and healthy (API + Redis/Kafka/OPA/Postgres/Prometheus)
+- Ports: 9696 (API), 30100–30108 (services)
 - Configuration: Centralized in `.env` file
 - Access: http://localhost:9696
 
 **Kubernetes Deployment** ✅
-- 6/8 services running (Kafka/Outbox need external memory)
-- LoadBalancers: 20020 (API), 20021-20027 (services)
+- Helm charts are canonical (`infra/helm/charts/soma-infra` and `soma-apps`)
+- External access via NodePort/Ingress; defaults in `soma-apps/values.yaml`
 - Configuration: Centralized in ConfigMap/Secrets
-- Access: kubectl port-forward or LoadBalancer
+- Access: kubectl port-forward or Ingress/Service
 
 ### Configuration Files
 
@@ -604,8 +668,8 @@ kubectl patch deployment somabrain -n somabrain-prod -p '{"spec":{"template":{"s
 - `docker-compose.yml` - Service definitions
 
 **Kubernetes:**
-- `k8s/somabrain-configmap.yaml` - ConfigMap and Secrets
-- `k8s/somabrain-deployment.yaml` - All service deployments
+- `infra/k8s/somabrain-configmap.yaml` - ConfigMap and Secrets
+- `infra/k8s/somabrain-deployment.yaml` - All service deployments
 
 ### Quick Access Commands
 
@@ -627,8 +691,8 @@ curl http://localhost:9696/health
 **Kubernetes:**
 ```bash
 # Deploy
-kubectl apply -f k8s/somabrain-configmap.yaml
-kubectl apply -f k8s/somabrain-deployment.yaml
+kubectl apply -f infra/k8s/somabrain-configmap.yaml
+kubectl apply -f infra/k8s/somabrain-deployment.yaml
 
 # Check status
 kubectl get pods -n somabrain
@@ -673,3 +737,18 @@ Before deploying to production, ensure:
 - [Monitoring Guide](monitoring.md) for observability setup
 - [Security Configuration](security/) for hardening procedures
 - [Runbooks](runbooks/) for operational procedures
+
+---
+
+### Kafka EXTERNAL listener (WSL2/remote clients)
+By default, Kafka’s EXTERNAL listener is advertised as `localhost:${KAFKA_BROKER_HOST_PORT}` for host clients. For remote clients or WSL2, set the host/IP before running `scripts/dev_up.sh`:
+
+```bash
+KAFKA_EXTERNAL_HOST=192.168.1.10 ./scripts/dev_up.sh
+```
+
+### Cognitive-thread services
+The CI environment may run additional internal services for validation, but the standard local stack uses only the core services defined in `docker-compose.yml`.
+
+### OPA policies
+The dev policy at `ops/opa/policies/example.rego` is permissive. For production, use the deny-by-default example under `ops/opa/policies-prod/default.rego` and configure OPA to load that directory.

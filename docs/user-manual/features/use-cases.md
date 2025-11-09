@@ -26,9 +26,9 @@
 
 ---
 
-## 2. Retrieval-Augmented Generation (RAG)
+## 2. Retrieval and Context Building
 
-**Goal** Provide documents and summaries to a downstream model.
+**Goal** Provide documents and summaries to a downstream model using unified recall.
 
 **Workflow**
 

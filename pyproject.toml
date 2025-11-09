@@ -35,12 +35,15 @@ dependencies = [
   "cryptography>=41",
   "PyJWT[crypto]>=2.9",
   "pydantic-settings>=2.1",
+  "PyYAML>=6.0",
+  "alembic>=1.13",
 ]
 
 [project.optional-dependencies]
 controls = ["cryptography>=41"]
 dev = [
   "pytest>=7",
+  "pytest-cov>=4",
   "ruff>=0.5",
   "mypy>=1.5",
   "matplotlib>=3.8",
@@ -49,12 +52,13 @@ dev = [
   "py-spy>=0.3"
   ,"pytest-asyncio>=0.23"
   ,"PyYAML>=6.0"
+  ,"fastavro>=1.9"
+  ,"confluent-kafka>=2.4"
 ]
 
 [project.scripts]
 somabrain-api = "somabrain.cli:run_api"
 somabrain-sleep = "somabrain.consolidation:main"
-somabrain-journal = "somabrain.cli:journal_cli"
 
 [tool.setuptools]
 packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }
@@ -70,3 +74,29 @@ line_length = 88
 combine_as_imports = true
 known_first_party = ["somabrain"]
 default_section = "THIRDPARTY"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+# Keep lint focused on production code; tests/benchmarks/scripts are noisy and optional
+exclude = [
+  "tests",
+  "benchmarks",
+  "scripts",
+  "examples",
+  "docs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# Ignore long lines and import-order/style issues for now; focus on correctness
+# Also silence common false positives in this mixed-style repo
+ignore = [
+  "E501", # line length
+  "E402", # module import not at top (legacy try/except import patterns)
+  "E702", # multiple statements per line (semi-colon)
+  "I001", # import sorting
+  "F401", # unused imports (common in optional submodules)
+  "F811", # redefinition
+  "F841", # assigned but unused
+]

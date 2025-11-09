@@ -17,7 +17,7 @@ The SomaBrain API is the primary FastAPI service handling cognitive memory opera
 - `GET /metrics` - Prometheus metrics export
 - `POST /remember` - Store new memories with semantic encoding
 - `POST /recall` - Retrieve memories based on semantic queries
-- `POST /plan` - Generate reasoning plans based on stored knowledge
+- `POST /plan/suggest` - Generate reasoning plans based on stored knowledge
 
 ### Dependencies
 - **Redis**: Working memory cache and session state
@@ -303,12 +303,9 @@ curl -X POST https://api.somabrain.company.com/recall -d '{"query": "validation_
 
 ---
 
-## Monitoring Dashboard Links
+## Monitoring References
 
-- **Service Overview**: http://grafana.company.com/d/somabrain-api/
-- **Performance Metrics**: http://grafana.company.com/d/somabrain-perf/
-- **Infrastructure Health**: http://grafana.company.com/d/somabrain-infra/
-- **Error Analysis**: http://grafana.company.com/d/somabrain-errors/
+- Use Prometheus UI for ad-hoc queries and Alertmanager for alert triage.
 
 ## Alert Runbook Links
 

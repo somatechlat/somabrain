@@ -3,7 +3,7 @@
 Usage (from repo root):
     python3 benchmarks/scale/run_remember_recall.py
 
-It reads SOMABRAIN_HOST_PORT from .env.local if present, otherwise defaults to 9696.
+It reads SOMABRAIN_HOST_PORT from .env if present, otherwise defaults to 9696.
 Sends minimal valid RememberRequest bodies and then queries /recall.
 """
 
@@ -18,7 +18,7 @@ import httpx
 import uuid
 
 # Config
-ENV_FILE = ".env.local"
+ENV_FILE = ".env"
 DEFAULT_PORT = 9696
 
 

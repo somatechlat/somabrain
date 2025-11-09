@@ -1,9 +1,9 @@
 """Simple HTTP benchmark harness using httpx.
 
 Usage:
-  python benchmarks/http_bench.py --url http://localhost:9696/rag/retrieve --concurrency 8 --requests 200
+    python benchmarks/http_bench.py --url http://localhost:9696/recall --concurrency 8 --requests 200
 
-This sends POST requests with a simple RAGRequest body and prints latency percentiles.
+This sends POST requests with a simple RetrievalRequest body and prints latency percentiles.
 """
 
 import argparse
@@ -65,7 +65,7 @@ async def run(url: str, concurrency: int, total: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default="http://localhost:9696/rag/retrieve")
+    parser.add_argument("--url", default="http://localhost:9696/recall")
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--requests", type=int, default=100)
     args = parser.parse_args()

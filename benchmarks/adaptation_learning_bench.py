@@ -41,6 +41,7 @@ import pathlib
 import time
 import uuid
 from typing import Dict, List, Optional, Tuple, Callable, Any
+import hashlib
 
 import requests
 import random
@@ -52,7 +53,7 @@ try:
     from somabrain.embeddings import TinyDeterministicEmbedder  # type: ignore
 except Exception:
     TinyDeterministicEmbedder = None  # type: ignore
-    # Local minimal fallback to ensure memstore seeding works without imports
+    # Local minimal fallback to ensure memory seeding works without imports
     import hashlib  # type: ignore
     import numpy as _np  # type: ignore
 
@@ -82,7 +83,11 @@ ART_DIR = pathlib.Path("artifacts/learning")
 ART_DIR.mkdir(parents=True, exist_ok=True)
 
 # Default memory HTTP endpoint follows centralized settings/env
-DEFAULT_MEMSTORE_URL = os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "").strip() or os.getenv("MEMORY_SERVICE_URL", "").strip() or ""
+DEFAULT_MEMORY_URL = (
+    os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "").strip()
+    or os.getenv("MEMORY_SERVICE_URL", "").strip()
+    or ""
+)
 
 
 def _headers(session_id: Optional[str] = None) -> Dict[str, str]:
@@ -96,8 +101,12 @@ def _headers(session_id: Optional[str] = None) -> Dict[str, str]:
     return h
 
 
-def _get(path: str, timeout: float = 10.0, headers: Optional[Dict[str, str]] = None) -> requests.Response:
-    resp = requests.get(f"{DEFAULT_BASE}/{path.lstrip('/')}", timeout=timeout, headers=headers)
+def _get(
+    path: str, timeout: float = 10.0, headers: Optional[Dict[str, str]] = None
+) -> requests.Response:
+    resp = requests.get(
+        f"{DEFAULT_BASE}/{path.lstrip('/')}", timeout=timeout, headers=headers
+    )
     try:
         resp.raise_for_status()
     except requests.HTTPError as e:
@@ -110,7 +119,12 @@ def _get(path: str, timeout: float = 10.0, headers: Optional[Dict[str, str]] = N
     return resp
 
 
-def _post(path: str, payload: dict, timeout: float = 15.0, headers: Optional[Dict[str, str]] = None) -> requests.Response:
+def _post(
+    path: str,
+    payload: dict,
+    timeout: float = 15.0,
+    headers: Optional[Dict[str, str]] = None,
+) -> requests.Response:
     resp = requests.post(
         f"{DEFAULT_BASE}/{path.lstrip('/')}",
         json=payload,
@@ -166,7 +180,9 @@ def seed_memories(n: int, *, tenant: str, namespace: str = "wm") -> None:
             print(f"Seeded {i}/{n}")
 
 
-def seed_target_memory(*, tenant: str, content: str, task: Optional[str] = None, namespace: str = "wm") -> None:
+def seed_target_memory(
+    *, tenant: str, content: str, task: Optional[str] = None, namespace: str = "wm"
+) -> None:
     """Seed a single target memory to later track its retrieval rank."""
     h = _headers()
     body = {
@@ -192,40 +208,119 @@ def _embed_texts(texts: Iterable[str]) -> List[List[float]]:
     return [list(map(float, emb.embed(t))) for t in texts]
 
 
-def memstore_store(coord: str, payload: dict, base_url: Optional[str] = None, timeout: float = 10.0, memory_type: str = "semantic") -> dict:
-    """Store a single memory into the memstore via POST /memories.
+def _stable_coord_from_key(key: str) -> str:
+    """Derive a deterministic 3D coordinate string "x,y,z" in [-1,1]^3 from a string key.
+
+    Mirrors the logic used in somabrain.memory_client._stable_coord so POST /memories
+    receives the commonly supported coord format.
+    """
+    key_s = str(key)
+    h = hashlib.blake2b(key_s.encode("utf-8"), digest_size=12).digest()
+
+    def _to_unit_pair(i: int) -> float:
+        return (int.from_bytes(h[i : i + 4], "big") / 2**32) * 2 - 1
+
+    x = _to_unit_pair(0)
+    y = _to_unit_pair(4)
+    z = _to_unit_pair(8)
+    return f"{x},{y},{z}"
+
+
+def memory_store(
+    coord: str,
+    payload: dict,
+    base_url: Optional[str] = None,
+    timeout: float = 10.0,
+    memory_type: str = "semantic",
+    *,
+    tenant: Optional[str] = None,
+) -> dict:
+    """Store a single memory into the memory service via POST /memories.
 
     Payload is an arbitrary JSON object. We include tenant and content fields for retrieval.
     """
-    url = f"{(base_url or DEFAULT_MEMSTORE_URL).rstrip('/')}/memories"
-    body = {"coord": coord, "payload": payload, "memory_type": memory_type}
+    url = f"{(base_url or DEFAULT_MEMORY_URL).rstrip('/')}/memories"
+    # Ensure coord is a supported 3D coordinate string; if not, derive deterministically from key
+    coord_key = str(coord)
+    coord_value = (
+        coord_key
+        if ("," in coord_key and len(coord_key.split(",")) >= 3)
+        else _stable_coord_from_key(coord_key)
+    )
+
+    # Enrich payload with common fields expected by various memory services
+    p = dict(payload or {})
+    text = None
+    for k in ("task", "text", "content", "what", "fact", "headline"):
+        v = p.get(k)
+        if isinstance(v, str) and v.strip():
+            text = v.strip()
+            break
+    if not text:
+        text = str(p.get("title") or coord_key)
+    p.setdefault("text", text)
+    p.setdefault("content", text)
+    p.setdefault("id", p.get("memory_id") or coord_key)
+    try:
+        p.setdefault("timestamp", time.time())
+    except Exception:
+        pass
+    p.setdefault("universe", p.get("universe") or "real")
+    if tenant and not p.get("namespace"):
+        p["namespace"] = tenant
+
+    body = {
+        "coord": coord_value,
+        "payload": p,
+        "memory_type": memory_type,
+        "type": memory_type,
+    }
     headers = {}
     token = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
+    # Best-effort universe propagation, some services expect this
+    try:
+        headers.setdefault("X-Universe", str(p.get("universe") or "real"))
+    except Exception:
+        pass
     resp = requests.post(url, json=body, headers=headers, timeout=timeout)
     # Provide a cleaner message for common auth failures
     try:
         resp.raise_for_status()
     except requests.HTTPError:
         if resp.status_code in (401, 403):
-            raise RuntimeError(f"memstore unauthorized ({resp.status_code}): check SOMABRAIN_MEMORY_HTTP_TOKEN")
+            raise RuntimeError(
+                f"memory service unauthorized ({resp.status_code}): check SOMABRAIN_MEMORY_HTTP_TOKEN"
+            )
+        try:
+            # Surface server details to aid debugging
+            print("memory_store error:", resp.status_code, resp.text[:500])
+        except Exception:
+            pass
         raise
     return resp.json()
 
 
-def memstore_auth_check(base_url: Optional[str] = None, timeout: float = 5.0) -> Tuple[bool, Optional[str]]:
+def memory_auth_check(
+    base_url: Optional[str] = None, timeout: float = 5.0
+) -> Tuple[bool, Optional[str]]:
     """Lightweight auth probe against /memories/search to verify token acceptance.
 
     Returns (ok, error_detail).
     """
-    url = f"{(base_url or DEFAULT_MEMSTORE_URL).rstrip('/')}/memories/search"
+    url = f"{(base_url or DEFAULT_MEMORY_URL).rstrip('/')}/memories/search"
     headers = {"Content-Type": "application/json"}
     token = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN", "").strip()
     if token:
         headers["Authorization"] = f"Bearer {token}"
     try:
-        resp = requests.post(url, json={"query": "auth_probe", "top_k": 1}, headers=headers, timeout=timeout)
+        resp = requests.post(
+            url,
+            json={"query": "auth_probe", "top_k": 1},
+            headers=headers,
+            timeout=timeout,
+        )
         if resp.status_code in (401, 403):
             try:
                 detail = resp.json().get("detail", str(resp.text))
@@ -238,8 +333,8 @@ def memstore_auth_check(base_url: Optional[str] = None, timeout: float = 5.0) ->
         return False, str(exc)
 
 
-def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) -> int:
-    """Seed N synthetic facts directly into the memstore used by evaluate() via /memories.
+def seed_memory(n: int, *, tenant: str, memory_url: Optional[str] = None) -> int:
+    """Seed N synthetic facts directly into the memory service used by evaluate() via /memories.
 
     Returns the number of successful writes.
     """
@@ -249,22 +344,44 @@ def seed_memstore(n: int, *, tenant: str, memstore_url: Optional[str] = None) ->
     for i in range(1, n + 1):
         text = f"Author{i} wrote Book{i}"
         coord = f"mem-{tenant}-{i}"
-        payload = {"content": text, "tenant": tenant, "kind": "synthetic", "text": text, "title": f"A{i}"}
+        payload = {
+            "content": text,
+            "tenant": tenant,
+            "kind": "synthetic",
+            "text": text,
+            "title": f"A{i}",
+            "universe": "real",
+            "namespace": tenant,
+        }
         try:
-            memstore_store(coord, payload, base_url=memstore_url)
+            memory_store(coord, payload, base_url=memory_url, tenant=tenant)
             success += 1
         except Exception as exc:
-            print(f"seed_memstore[{i}] failed: {exc}")
+            print(f"seed_memory[{i}] failed: {exc}")
+            # Simple backoff on rate limits
+            try:
+                if "429" in str(exc):
+                    time.sleep(0.1)
+            except Exception:
+                pass
         if i % 200 == 0:
-            print(f"Memstore seeding progress: {i}/{n} (ok={success})")
+            print(f"Memory seeding progress: {i}/{n} (ok={success})")
     return success
 
 
-def seed_target_memstore(*, tenant: str, content: str, memstore_url: Optional[str] = None) -> None:
-    """Seed a single target memory directly into the memstore used by evaluate()."""
+def seed_target_memory_service(
+    *, tenant: str, content: str, memory_url: Optional[str] = None
+) -> None:
+    """Seed a single target memory directly into the memory service used by evaluate()."""
     coord = f"target-{tenant}-{uuid.uuid4().hex[:8]}"
-    payload = {"content": content, "tenant": tenant, "kind": "target", "text": content, "title": "target"}
-    memstore_store(coord, payload, base_url=memstore_url)
+    payload = {
+        "content": content,
+        "tenant": tenant,
+        "kind": "target",
+        "text": content,
+        "title": "target",
+    }
+    memory_store(coord, payload, base_url=memory_url)
 
 
 def fetch_adaptation_state(tenant_id: Optional[str] = None) -> dict:
@@ -287,9 +404,9 @@ def run_adaptation(
     target_text: Optional[str] = None,
     target_query: Optional[str] = None,
     seed_target: bool = False,
-    seed_memstore_count: int = 0,
-    memstore_url: Optional[str] = None,
-    seed_target_memstore_flag: bool = False,
+    seed_memory_count: int = 0,
+    memory_url: Optional[str] = None,
+    seed_target_memory_flag: bool = False,
     do_reset: bool = False,
     base_lr_override: Optional[float] = None,
     constraints_override: Optional[Dict[str, float]] = None,
@@ -318,22 +435,26 @@ def run_adaptation(
             _post("context/adaptation/reset", reset_payload, headers=_headers())
         except Exception as exc:
             print(f"Warning: reset failed or not available: {exc}")
-    # Optionally seed memstore corpus for evaluate() retrieval
-    memstore_auth_ok: Optional[bool] = None
-    memstore_seeded_count: int = 0
-    if seed_memstore_count > 0 or (track_target and seed_target_memstore_flag):
-        ok, detail = memstore_auth_check(memstore_url)
-        memstore_auth_ok = ok
+    # Optionally seed memory corpus for evaluate() retrieval
+    memory_auth_ok: Optional[bool] = None
+    memory_seeded_count: int = 0
+    if seed_memory_count > 0 or (track_target and seed_target_memory_flag):
+        ok, detail = memory_auth_check(memory_url)
+        memory_auth_ok = ok
         if not ok:
-            print(f"Memstore auth check failed: {detail}")
-        if ok and seed_memstore_count > 0:
+            print(f"Memory auth check failed: {detail}")
+        if ok and seed_memory_count > 0:
             try:
-                memstore_seeded_count = seed_memstore(seed_memstore_count, tenant=tenant_id, memstore_url=memstore_url)
-                print(f"Memstore seeded ok={memstore_seeded_count}/{seed_memstore_count} for tenant={tenant_id}")
+                memory_seeded_count = seed_memory(
+                    seed_memory_count, tenant=tenant_id, memory_url=memory_url
+                )
+                print(
+                    f"Memory seeded ok={memory_seeded_count}/{seed_memory_count} for tenant={tenant_id}"
+                )
             except Exception as exc:
-                print(f"Warning: memstore seeding failed: {exc}")
+                print(f"Warning: memory seeding failed: {exc}")
 
-    # Optionally seed a target memory for rank tracking (memstore and/or internal memory)
+    # Optionally seed a target memory for rank tracking (app memory and/or external memory service)
     if track_target and seed_target and target_text:
         try:
             # Seed into app memory for completeness
@@ -341,10 +462,12 @@ def run_adaptation(
         except Exception as exc:
             print(f"Warning: failed to seed target memory into app memory: {exc}")
         try:
-            if seed_target_memstore_flag and (memstore_auth_ok or memstore_auth_ok is None):
-                seed_target_memstore(tenant=tenant_id, content=target_text, memstore_url=memstore_url)
+            if seed_target_memory_flag and (memory_auth_ok or memory_auth_ok is None):
+                seed_target_memory_service(
+                    tenant=tenant_id, content=target_text, memory_url=memory_url
+                )
         except Exception as exc:
-            print(f"Warning: failed to seed target memory into memstore: {exc}")
+            print(f"Warning: failed to seed target memory into memory service: {exc}")
 
     # If tracking and a target-specific query is provided, prefer it
     if track_target and target_query:
@@ -384,27 +507,42 @@ def run_adaptation(
         s = fetch_adaptation_state(tenant_id=tenant_id)
         steps.append(i)
         alpha.append(s["retrieval"]["alpha"])  # type: ignore[index]
-        beta.append(s["retrieval"]["beta"])    # type: ignore[index]
+        beta.append(s["retrieval"]["beta"])  # type: ignore[index]
         gamma.append(s["retrieval"]["gamma"])  # type: ignore[index]
-        tau.append(s["retrieval"]["tau"])      # type: ignore[index]
-        lambda_.append(s["utility"]["lambda_"]) # type: ignore[index]
-        mu.append(s["utility"]["mu"])           # type: ignore[index]
-        nu.append(s["utility"]["nu"])           # type: ignore[index]
+        tau.append(s["retrieval"]["tau"])  # type: ignore[index]
+        lambda_.append(s["utility"]["lambda_"])  # type: ignore[index]
+        mu.append(s["utility"]["mu"])  # type: ignore[index]
+        nu.append(s["utility"]["nu"])  # type: ignore[index]
         lr.append(s.get("learning_rate", 0.0))
         hist.append(int(s.get("history_len", 0)))
         # Store gains and constraints time series lazily
         if "gains" not in aux_series:
-            aux_series["gains"] = {k: [] for k in ["alpha", "gamma", "lambda_", "mu", "nu"]}
+            aux_series["gains"] = {
+                k: [] for k in ["alpha", "gamma", "lambda_", "mu", "nu"]
+            }
         if "constraints" not in aux_series:
             # Track only key constraints to reduce clutter
-            aux_series["constraints"] = {k: [] for k in [
-                "alpha_min", "alpha_max", "gamma_min", "gamma_max",
-                "lambda_min", "lambda_max", "mu_min", "mu_max", "nu_min", "nu_max"
-            ]}
+            aux_series["constraints"] = {
+                k: []
+                for k in [
+                    "alpha_min",
+                    "alpha_max",
+                    "gamma_min",
+                    "gamma_max",
+                    "lambda_min",
+                    "lambda_max",
+                    "mu_min",
+                    "mu_max",
+                    "nu_min",
+                    "nu_max",
+                ]
+            }
         for k in aux_series["gains"].keys():
             aux_series["gains"][k].append(float(s.get("gains", {}).get(k, 0.0)))
         for k in aux_series["constraints"].keys():
-            aux_series["constraints"][k].append(float(s.get("constraints", {}).get(k, 0.0)))
+            aux_series["constraints"][k].append(
+                float(s.get("constraints", {}).get(k, 0.0))
+            )
 
     # Record initial state
     record_state(0)
@@ -428,6 +566,7 @@ def run_adaptation(
 
     # Default feedback function -> constant positive reinforcement
     if feedback_fn is None:
+
         def feedback_fn(step: int) -> Tuple[float, float]:  # type: ignore[no-redef]
             return (0.9, 0.9)
 
@@ -521,11 +660,13 @@ def run_adaptation(
     # Attach retrieval counts
     if retrieval_counts:
         result["retrieval_count"] = retrieval_counts
-    # Attach memstore auth/seeding meta if we attempted any interaction
-    if seed_memstore_count > 0 or (track_target and seed_target_memstore_flag):
+    # Attach memory auth/seeding meta if we attempted any interaction
+    if seed_memory_count > 0 or (track_target and seed_target_memory_flag):
         if isinstance(result.get("meta"), dict):
-            result["meta"]["memstore_auth_ok"] = bool(memstore_auth_ok) if memstore_auth_ok is not None else None
-            result["meta"]["memstore_seeded_ok"] = int(memstore_seeded_count)
+            result["meta"]["memory_auth_ok"] = (
+                bool(memory_auth_ok) if memory_auth_ok is not None else None
+            )
+            result["meta"]["memory_seeded_ok"] = int(memory_seeded_count)
     return result
 
 
@@ -567,9 +708,23 @@ def save_artifacts(data: dict, *, plot: bool = True) -> pathlib.Path:
         a_min = constraints.get("alpha_min")
         a_max = constraints.get("alpha_max")
         if a_min and len(a_min) == len(steps):
-            ax.hlines(a_min[0], steps[0], steps[-1], colors="#888", linestyles=":", label="alpha_min")
+            ax.hlines(
+                a_min[0],
+                steps[0],
+                steps[-1],
+                colors="#888",
+                linestyles=":",
+                label="alpha_min",
+            )
         if a_max and len(a_max) == len(steps):
-            ax.hlines(a_max[0], steps[0], steps[-1], colors="#666", linestyles="--", label="alpha_max")
+            ax.hlines(
+                a_max[0],
+                steps[0],
+                steps[-1],
+                colors="#666",
+                linestyles="--",
+                label="alpha_max",
+            )
     ax.set_title("Retrieval Weights")
     ax.set_xlabel("Step")
     ax.set_ylabel("Value")
@@ -586,9 +741,23 @@ def save_artifacts(data: dict, *, plot: bool = True) -> pathlib.Path:
         l_min = constraints.get("lambda_min")
         l_max = constraints.get("lambda_max")
         if l_min and len(l_min) == len(steps):
-            ax.hlines(l_min[0], steps[0], steps[-1], colors="#888", linestyles=":", label="lambda_min")
+            ax.hlines(
+                l_min[0],
+                steps[0],
+                steps[-1],
+                colors="#888",
+                linestyles=":",
+                label="lambda_min",
+            )
         if l_max and len(l_max) == len(steps):
-            ax.hlines(l_max[0], steps[0], steps[-1], colors="#666", linestyles="--", label="lambda_max")
+            ax.hlines(
+                l_max[0],
+                steps[0],
+                steps[-1],
+                colors="#666",
+                linestyles="--",
+                label="lambda_max",
+            )
     ax.set_title("Utility Weights")
     ax.set_xlabel("Step")
     ax.set_ylabel("Value")
@@ -602,9 +771,23 @@ def save_artifacts(data: dict, *, plot: bool = True) -> pathlib.Path:
     if gains:
         ax2 = ax.twinx()
         if gains.get("alpha"):
-            ax2.plot(steps, gains["alpha"], color="#cc99ff", lw=1.5, ls=":", label="gain_alpha")
+            ax2.plot(
+                steps,
+                gains["alpha"],
+                color="#cc99ff",
+                lw=1.5,
+                ls=":",
+                label="gain_alpha",
+            )
         if gains.get("lambda_"):
-            ax2.plot(steps, gains["lambda_"], color="#99ccff", lw=1.5, ls="--", label="gain_lambda")
+            ax2.plot(
+                steps,
+                gains["lambda_"],
+                color="#99ccff",
+                lw=1.5,
+                ls="--",
+                label="gain_lambda",
+            )
         ax2.set_ylabel("gains")
         # Merge legends
         lines1, labels1 = ax.get_legend_handles_labels()
@@ -620,7 +803,14 @@ def save_artifacts(data: dict, *, plot: bool = True) -> pathlib.Path:
     ax.plot(steps, hist_delta, color="teal", lw=2, label="history Δ")
     if ranks:
         ax2 = ax.twinx()
-        ax2.plot(steps, ranks, color="#d62728", lw=1.5, ls="-.", label="target rank (lower=better)")
+        ax2.plot(
+            steps,
+            ranks,
+            color="#d62728",
+            lw=1.5,
+            ls="-.",
+            label="target rank (lower=better)",
+        )
         ax2.set_ylabel("rank")
         # Merge legends
         l1, lb1 = ax.get_legend_handles_labels()
@@ -688,26 +878,57 @@ def _load_schedule(path: str) -> List[Tuple[float, float]]:
                     except Exception:
                         continue
     if not sched_csv:
-        raise ValueError("Unsupported schedule format; provide JSON(list) or CSV with utility,reward")
+        raise ValueError(
+            "Unsupported schedule format; provide JSON(list) or CSV with utility,reward"
+        )
     return sched_csv
 
 
 def main():
     ap = argparse.ArgumentParser(description="SomaBrain adaptation learning benchmark")
-    ap.add_argument("--iterations", type=int, default=3000, help="Number of feedback iterations")
-    ap.add_argument("--seed", type=int, default=0, help="Optional synthetic memories to seed via /remember")
-    ap.add_argument("--top-k", type=int, default=3, help="Top-K for evaluate() context")
-    ap.add_argument("--sample-every", type=int, default=10, help="Record adaptation state every N steps")
-    ap.add_argument("--sleep-ms", type=int, default=0, help="Sleep between iterations (ms)")
-    ap.add_argument("--plot", action="store_true", help="Render matplotlib plot")
-    ap.add_argument("--query", type=str, default="measure my adaptation progress", help="Evaluation query text")
-    ap.add_argument("--tenant", type=str, default=None, help="Override base tenant (suffix will be auto-appended)")
-    # Memstore seeding and config
-    ap.add_argument("--seed-memstore", type=int, default=0, help="Seed N synthetic memories directly into memstore for evaluate retrieval")
     ap.add_argument(
-        "--memstore-url",
+        "--iterations", type=int, default=3000, help="Number of feedback iterations"
+    )
+    ap.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+        help="Optional synthetic memories to seed via /remember",
+    )
+    ap.add_argument("--top-k", type=int, default=3, help="Top-K for evaluate() context")
+    ap.add_argument(
+        "--sample-every",
+        type=int,
+        default=10,
+        help="Record adaptation state every N steps",
+    )
+    ap.add_argument(
+        "--sleep-ms", type=int, default=0, help="Sleep between iterations (ms)"
+    )
+    ap.add_argument("--plot", action="store_true", help="Render matplotlib plot")
+    ap.add_argument(
+        "--query",
         type=str,
-        default=os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", DEFAULT_MEMSTORE_URL),
+        default="measure my adaptation progress",
+        help="Evaluation query text",
+    )
+    ap.add_argument(
+        "--tenant",
+        type=str,
+        default=None,
+        help="Override base tenant (suffix will be auto-appended)",
+    )
+    # Memory service seeding and config
+    ap.add_argument(
+        "--seed-memory",
+        type=int,
+        default=0,
+        help="Seed N synthetic memories directly into the memory service for evaluate retrieval",
+    )
+    ap.add_argument(
+        "--memory-url",
+        type=str,
+        default=os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", DEFAULT_MEMORY_URL),
         help="Override memory HTTP endpoint",
     )
 
@@ -719,28 +940,109 @@ def main():
         choices=["constant", "alternating", "random", "schedule"],
         help="How to generate feedback values per step",
     )
-    ap.add_argument("--utility", type=float, default=0.9, help="Utility value for constant/positive phase")
-    ap.add_argument("--reward", type=float, default=0.9, help="Reward value for constant/positive phase")
-    ap.add_argument("--neg-utility", type=float, default=0.1, help="Utility value for negative phase in alternating mode")
-    ap.add_argument("--neg-reward", type=float, default=0.1, help="Reward value for negative phase in alternating mode")
-    ap.add_argument("--utility-min", type=float, default=0.1, help="Min utility for random mode")
-    ap.add_argument("--utility-max", type=float, default=0.9, help="Max utility for random mode")
-    ap.add_argument("--reward-min", type=float, default=0.1, help="Min reward for random mode")
-    ap.add_argument("--reward-max", type=float, default=0.9, help="Max reward for random mode")
-    ap.add_argument("--rng-seed", type=int, default=None, help="Random seed for random mode")
-    ap.add_argument("--schedule-file", type=str, default=None, help="JSON/CSV file providing per-step utility/reward")
+    ap.add_argument(
+        "--utility",
+        type=float,
+        default=0.9,
+        help="Utility value for constant/positive phase",
+    )
+    ap.add_argument(
+        "--reward",
+        type=float,
+        default=0.9,
+        help="Reward value for constant/positive phase",
+    )
+    ap.add_argument(
+        "--neg-utility",
+        type=float,
+        default=0.1,
+        help="Utility value for negative phase in alternating mode",
+    )
+    ap.add_argument(
+        "--neg-reward",
+        type=float,
+        default=0.1,
+        help="Reward value for negative phase in alternating mode",
+    )
+    ap.add_argument(
+        "--utility-min", type=float, default=0.1, help="Min utility for random mode"
+    )
+    ap.add_argument(
+        "--utility-max", type=float, default=0.9, help="Max utility for random mode"
+    )
+    ap.add_argument(
+        "--reward-min", type=float, default=0.1, help="Min reward for random mode"
+    )
+    ap.add_argument(
+        "--reward-max", type=float, default=0.9, help="Max reward for random mode"
+    )
+    ap.add_argument(
+        "--rng-seed", type=int, default=None, help="Random seed for random mode"
+    )
+    ap.add_argument(
+        "--schedule-file",
+        type=str,
+        default=None,
+        help="JSON/CSV file providing per-step utility/reward",
+    )
     # Target rank tracking
-    ap.add_argument("--track-target", action="store_true", help="Track rank of a seeded target memory at each sample step")
-    ap.add_argument("--target-text", type=str, default="Author777 wrote Book777", help="Target memory content to seed and track")
-    ap.add_argument("--target-query", type=str, default=None, help="Use a specific query when tracking; defaults to target-text if provided")
-    ap.add_argument("--seed-target", action="store_true", help="Seed the target memory into the run's tenant before starting")
-    ap.add_argument("--seed-target-memstore", action="store_true", help="Also seed the target memory directly into memstore")
+    ap.add_argument(
+        "--track-target",
+        action="store_true",
+        help="Track rank of a seeded target memory at each sample step",
+    )
+    ap.add_argument(
+        "--target-text",
+        type=str,
+        default="Author777 wrote Book777",
+        help="Target memory content to seed and track",
+    )
+    ap.add_argument(
+        "--target-query",
+        type=str,
+        default=None,
+        help="Use a specific query when tracking; defaults to target-text if provided",
+    )
+    ap.add_argument(
+        "--seed-target",
+        action="store_true",
+        help="Seed the target memory into the run's tenant before starting",
+    )
+    ap.add_argument(
+        "--seed-target-memory",
+        action="store_true",
+        help="Also seed the target memory directly into the memory service",
+    )
     # Optional adaptation reset and overrides
-    ap.add_argument("--reset-adaptation", action="store_true", help="Reset adaptation state for the run (uses overrides if provided)")
-    ap.add_argument("--base-lr", type=float, default=None, help="Override base learning rate on reset")
-    ap.add_argument("--constraints-json", type=str, default=None, help="Path to JSON file with constraints to apply on reset")
-    ap.add_argument("--retrieval-defaults-json", type=str, default=None, help="Path to JSON file with retrieval defaults to apply on reset")
-    ap.add_argument("--utility-defaults-json", type=str, default=None, help="Path to JSON file with utility defaults to apply on reset")
+    ap.add_argument(
+        "--reset-adaptation",
+        action="store_true",
+        help="Reset adaptation state for the run (uses overrides if provided)",
+    )
+    ap.add_argument(
+        "--base-lr",
+        type=float,
+        default=None,
+        help="Override base learning rate on reset",
+    )
+    ap.add_argument(
+        "--constraints-json",
+        type=str,
+        default=None,
+        help="Path to JSON file with constraints to apply on reset",
+    )
+    ap.add_argument(
+        "--retrieval-defaults-json",
+        type=str,
+        default=None,
+        help="Path to JSON file with retrieval defaults to apply on reset",
+    )
+    ap.add_argument(
+        "--utility-defaults-json",
+        type=str,
+        default=None,
+        help="Path to JSON file with utility defaults to apply on reset",
+    )
     args = ap.parse_args()
 
     if args.seed > 0:
@@ -771,7 +1073,15 @@ def main():
         rmin, rmax = float(args.reward_min), float(args.reward_max)
         if args.rng_seed is not None:
             random.seed(int(args.rng_seed))
-        fb_meta.update({"utility_min": umin, "utility_max": umax, "reward_min": rmin, "reward_max": rmax, "rng_seed": args.rng_seed})
+        fb_meta.update(
+            {
+                "utility_min": umin,
+                "utility_max": umax,
+                "reward_min": rmin,
+                "reward_max": rmax,
+                "rng_seed": args.rng_seed,
+            }
+        )
 
         def provider(step: int) -> Tuple[float, float]:
             return random.uniform(umin, umax), random.uniform(rmin, rmax)
@@ -793,6 +1103,7 @@ def main():
     print(
         f"Running adaptation: iterations={args.iterations} top_k={args.top_k} sample_every={args.sample_every} mode={fb_mode}"
     )
+
     # Load optional JSON overrides
     def _load_json(path: Optional[str]) -> Optional[Dict[str, Any]]:
         if not path:
@@ -815,11 +1126,15 @@ def main():
         feedback_fn=provider,
         track_target=bool(args.track_target),
         target_text=(args.target_text if args.track_target else None),
-        target_query=(args.target_query if args.target_query else (args.target_text if args.track_target else None)),
+        target_query=(
+            args.target_query
+            if args.target_query
+            else (args.target_text if args.track_target else None)
+        ),
         seed_target=bool(args.seed_target and args.track_target),
-        seed_memstore_count=int(args.seed_memstore),
-        memstore_url=(args.memstore_url or DEFAULT_MEMSTORE_URL),
-        seed_target_memstore_flag=bool(args.seed_target_memstore and args.track_target),
+        seed_memory_count=int(args.seed_memory),
+        memory_url=(args.memory_url or DEFAULT_MEMORY_URL),
+        seed_target_memory_flag=bool(args.seed_target_memory and args.track_target),
         do_reset=bool(args.reset_adaptation),
         base_lr_override=(float(args.base_lr) if args.base_lr is not None else None),
         constraints_override=constraints_override,

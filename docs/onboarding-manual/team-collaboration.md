@@ -4,7 +4,7 @@
 
 **Audience**: Team members, contributors, and collaborators working on SomaBrain project.
 
-**Prerequisites**: Basic understanding of the project from [Project Context](project-context.md) and completed [Environment Setup](environment-setup.md).
+**Prerequisites**: Basic understanding of the project from [Project Context](project-context.md) and completed [Local Setup](../development-manual/local-setup.md).
 
 ---
 
@@ -558,4 +558,4 @@ Backlog → Triaged → In Progress → In Review → Testing → Done
 - [First Contribution](first-contribution.md) for hands-on collaboration practice
 - [Domain Knowledge](domain-knowledge.md) for technical context in discussions
 - [Contribution Process](../development-manual/contribution-process.md) for detailed workflow
-- [Pre-commit Checklist](checklists/pre-commit-checklist.md) for quality standards
+- [Coding Standards](../development-manual/coding-standards.md) for quality standards

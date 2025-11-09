@@ -92,7 +92,9 @@ try:
             dim=cfg.embed_dim,
             cfg=MCConfig(
                 columns=max(1, int(cfg.micro_circuits)),
-                per_col_capacity=max(16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))),
+                per_col_capacity=max(
+                    16, int(cfg.wm_size // max(1, int(cfg.micro_circuits)))
+                ),
                 vote_temperature=cfg.micro_vote_temperature,
                 recency_time_scale=cfg.wm_recency_time_scale,
                 recency_max_steps=cfg.wm_recency_max_steps,
@@ -112,22 +114,33 @@ try:
     try:
         if "somabrain.runtime_module" in sys.modules:
             _rt = sys.modules["somabrain.runtime_module"]
-            print(f"initialize_runtime: reusing existing somabrain.runtime_module -> {_rt} (id={id(_rt)})")
+            print(
+                f"initialize_runtime: reusing existing somabrain.runtime_module -> {_rt} (id={id(_rt)})"
+            )
         else:
             pkg_spec = importlib.util.find_spec("somabrain")
             if pkg_spec and getattr(pkg_spec, "submodule_search_locations", None):
                 pkg_path = list(pkg_spec.submodule_search_locations)[0]
             else:
-                pkg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "somabrain")
+                pkg_path = os.path.join(
+                    os.path.dirname(os.path.dirname(__file__)), "somabrain"
+                )
             _runtime_path = os.path.join(pkg_path, "runtime.py")
             print(f"initialize_runtime: loading runtime.py from path: {_runtime_path}")
-            _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+            _spec = importlib.util.spec_from_file_location(
+                "somabrain.runtime_module", _runtime_path
+            )
             _rt = importlib.util.module_from_spec(_spec)
             sys.modules[_spec.name] = _rt
             _spec.loader.exec_module(_rt)
-            print(f"initialize_runtime: loaded somabrain.runtime_module from file -> {_rt} (id={id(_rt)})")
+            print(
+                f"initialize_runtime: loaded somabrain.runtime_module from file -> {_rt} (id={id(_rt)})"
+            )
     except Exception:
-        print("initialize_runtime: could not load somabrain.runtime_module; pkg_path=", locals().get('pkg_path', None))
+        print(
+            "initialize_runtime: could not load somabrain.runtime_module; pkg_path=",
+            locals().get("pkg_path", None),
+        )
         print(traceback.format_exc())
         _rt = None
 
@@ -135,17 +148,40 @@ try:
         try:
             # show existing state for diagnostics
             try:
-                print("initialize_runtime: before set_singletons: embedder=", getattr(_rt, 'embedder', None), "mt_wm=", getattr(_rt, 'mt_wm', None), "mc_wm=", getattr(_rt, 'mc_wm', None))
+                print(
+                    "initialize_runtime: before set_singletons: embedder=",
+                    getattr(_rt, "embedder", None),
+                    "mt_wm=",
+                    getattr(_rt, "mt_wm", None),
+                    "mc_wm=",
+                    getattr(_rt, "mc_wm", None),
+                )
             except Exception:
                 pass
-            _rt.set_singletons(_embedder=embedder, _quantum=quantum, _mt_wm=mt_wm, _mc_wm=mc_wm, _mt_memory=mt_memory, _cfg=cfg)
+            _rt.set_singletons(
+                _embedder=embedder,
+                _quantum=quantum,
+                _mt_wm=mt_wm,
+                _mc_wm=mc_wm,
+                _mt_memory=mt_memory,
+                _cfg=cfg,
+            )
             try:
-                print("initialize_runtime: after set_singletons: embedder=", getattr(_rt, 'embedder', None), "mt_wm=", getattr(_rt, 'mt_wm', None), "mc_wm=", getattr(_rt, 'mc_wm', None))
+                print(
+                    "initialize_runtime: after set_singletons: embedder=",
+                    getattr(_rt, "embedder", None),
+                    "mt_wm=",
+                    getattr(_rt, "mt_wm", None),
+                    "mc_wm=",
+                    getattr(_rt, "mc_wm", None),
+                )
             except Exception:
                 pass
             print("initialize_runtime: set_singletons executed")
         except Exception:
-            print("initialize_runtime: set_singletons failed:\n", traceback.format_exc())
+            print(
+                "initialize_runtime: set_singletons failed:\n", traceback.format_exc()
+            )
     else:
         print("initialize_runtime: runtime module not loaded; skipping set_singletons")
 

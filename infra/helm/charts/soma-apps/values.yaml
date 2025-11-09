@@ -3,6 +3,31 @@ global:
   namespace: "somabrain"
   sharedInfraNamespace: "soma"
 
+featureFlags:
+  enableCogThreads: true
+  learnerEnabled: true
+
+# External exposure controls for Kubernetes
+expose:
+  # When true, expose the main API via NodePort using ports.apiNodePort
+  apiNodePort: false
+  # When true, expose health endpoints of cog-thread services via NodePort
+  healthNodePorts: false
+  # When true, expose learner services via NodePort
+  learnerNodePorts: false
+
+# Canonical NodePort assignments (host-exposed) in the 30200+ range
+ports:
+  apiNodePort: 30200
+  integratorNodePort: 30201
+  segmentationNodePort: 30202
+  predictorStateNodePort: 30203
+  predictorAgentNodePort: 30204
+  predictorActionNodePort: 30205
+  rewardProducerNodePort: 30206
+  learnerOnlineNodePort: 30207
+  orchestratorNodePort: 30208
+
 sb:
   enabled: true
   image:
@@ -16,12 +41,19 @@ sb:
   containerPort: 9696
   testService:
     enabled: false
-    # ClusterIP test service port exposed inside the cluster for CI/load tests
-    port: 9999
+    # ClusterIP test service port exposed inside the cluster for CI/load tests (matches main API port)
+    port: 9696
     targetPort: 9696
   ingress:
     enabled: false
   env: {}
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
 
 sa01:
   enabled: true
@@ -63,9 +95,173 @@ smf:
   env: {}
 
 envCommon:
+  # Deployment mode controls auth, backends, logging
+  SOMABRAIN_MODE: "production"
   # Memory endpoint is provisioned outside this chart; override as needed.
   SOMABRAIN_MEMORY_HTTP_ENDPOINT: ""
   SOMABRAIN_REDIS_URL: "redis://soma-infra-redis-master.soma.svc.cluster.local:6379/0"
   SOMABRAIN_KAFKA_URL: "kafka://soma-infra-kafka:9092"
   SOMABRAIN_POSTGRES_DSN: "postgresql://postgres:postgres@soma-postgres.svc.cluster.local:5432/somabrain"
   SOMABRAIN_OPA_URL: "http://soma-infra-opa.soma.svc.cluster.local:8181"
+
+## Cognitive Threads (mono-container)
+cog:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "150m"
+      memory: "192Mi"
+    limits:
+      cpu: "750m"
+      memory: "512Mi"
+  env:
+    ENABLE_COG_THREADS: "1"
+    SOMA_COMPAT: "1"
+    SOMABRAIN_STRICT_REAL: "1"
+    # Heat diffusion method: prefer Lanczos for speed/accuracy
+    SOMA_HEAT_METHOD: "lanczos"
+    # Enable teach feedback processor loop by default
+    SOMABRAIN_ENABLE_TEACH_FEEDBACK: "1"
+    # Integrator defaults
+    SOMABRAIN_INTEGRATOR_ENFORCE_CONF: "1"
+    SOMABRAIN_INTEGRATOR_ALPHA: "2.0"
+    # Segmentation defaults
+    SOMABRAIN_SEGMENT_MODE: "leader"
+    SOMABRAIN_SEGMENT_MAX_DWELL_MS: "0"
+    SOMABRAIN_CPD_MIN_SAMPLES: "20"
+    SOMABRAIN_CPD_Z: "4.0"
+    SOMABRAIN_CPD_MIN_GAP_MS: "1000"
+    SOMABRAIN_CPD_MIN_STD: "0.02"
+    SOMABRAIN_HAZARD_LAMBDA: "0.02"
+    SOMABRAIN_HAZARD_VOL_MULT: "3.0"
+    SOMABRAIN_HAZARD_MIN_SAMPLES: "20"
+  healthPorts:
+    integrator: 8091
+    segmentation: 8092
+    predictorState: 8093
+    predictorAgent: 8094
+    predictorAction: 8095
+    orchestrator: 8096
+
+orchestrator:
+  enabled: false
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+  env:
+    SOMABRAIN_FF_COG_ORCHESTRATOR: "1"
+    ENABLE_COG_THREADS: "1"
+
+# Learner stack (values-gated)
+rewardProducer:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "48Mi"
+    limits:
+      cpu: "200m"
+      memory: "192Mi"
+  env:
+    ENABLE_COG_THREADS: "1"
+    REWARD_PRODUCER_PORT: "8083"
+
+learnerOnline:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/somabrain
+    tag: latest
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+  env:
+    ENABLE_COG_THREADS: "1"
+    LEARNER_EMA_ALPHA: "0.2"
+    LEARNER_EMIT_PERIOD: "30"
+    LEARNER_ONLINE_PORT: "8084"
+
+prometheus:
+  podMonitor:
+    enabled: false
+    interval: 30s
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+  rules:
+    enabled: false
+    # Alert thresholds
+    frames_absent_minutes: 5
+    segments_absent_minutes: 5
+    leader_switches_rate_threshold: 0.2   # switches/sec
+    outbox_p90_seconds_threshold: 2.0
+    # KPI thresholds
+    reward_quality_min: 0.78
+    planning_p99_seconds_max: 0.02
+    storage_reduction_min: 0.40
+    extended:
+      enabled: false
+      # Requires a Kafka exporter providing kafka_consumergroup_lag metrics
+      consumerLag:
+        warning: 1000
+        critical: 5000
+      # Minutes without predictor emits to trigger warning
+      noEmitMinutes: 5
+
+autoscaling:
+  enabled: false
+  # Default HPA targets (override per component if needed)
+  cpu:
+    targetAverageUtilization: 70
+  minReplicas: 1
+  maxReplicas: 3
+
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+networkPolicy:
+  enabled: false
+
+# Baseline security context for all pods/containers
+securityContext:
+  pod:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile: RuntimeDefault
+  container:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: ["ALL"]
+
+
+# Optional JWT secret consumption (envFrom) for API auth
+jwt:
+  enabled: false
+  # Set to reference an externally managed secret name; when empty, defaults to "<release>-jwt"
+  secretName: ""

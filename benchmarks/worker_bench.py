@@ -1,21 +1,27 @@
-"""Worker-side synthetic RAG pipeline benchmark.
+"""Worker-side synthetic retrieval pipeline benchmark.
 
 Usage:
-  python benchmarks/worker_bench.py --iterations 100
+    python benchmarks/worker_bench.py --iterations 100
 
-This simulates calling internal retriever stubs and the fusion code paths without network IO.
+Notes:
+- This is a synthetic micro-benchmark that exercises internal retriever stubs and
+    fusion code paths only. It does NOT perform any network IO or call live services
+    (API, Kafka, Postgres). Therefore it is NOT an end-to-end benchmark and should
+    not be used to substantiate production latency/throughput claims. Use
+    `benchmarks/recall_latency_bench.py`, `benchmarks/recall_live_bench.py`, or
+    `benchmarks/http_bench.py` against a running stack for live measurements.
 """
 
 import argparse
 import time
 
-from somabrain.schemas import RAGRequest
-from somabrain.services.rag_pipeline import run_rag_pipeline
+from somabrain.schemas import RetrievalRequest
+from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
 import asyncio
 
 
 async def _run_async(iterations: int):
-    req = RAGRequest(query="benchmark test", top_k=10)
+    req = RetrievalRequest(query="benchmark test", top_k=10)
 
     # ctx-like stub used by the pipeline
     class Ctx:
@@ -24,7 +30,7 @@ async def _run_async(iterations: int):
 
     t0 = time.perf_counter()
     for i in range(iterations):
-        await run_rag_pipeline(
+        await run_retrieval_pipeline(
             req, ctx=Ctx(), cfg=None, universe=None, trace_id=f"b{i}"
         )
     t1 = time.perf_counter()

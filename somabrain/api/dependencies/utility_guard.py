@@ -7,6 +7,11 @@ from fastapi import Depends, Request
 from somabrain import metrics as M
 from somabrain.constitution import ConstitutionEngine
 
+try:  # Centralized settings for mode-aware behavior
+    from common.config.settings import settings as _shared_settings  # type: ignore
+except Exception:  # pragma: no cover - optional in some envs
+    _shared_settings = None  # type: ignore
+
 
 def compute_utility(
     p_confidence: float, cost: float, latency: float, const_params: dict
@@ -39,6 +44,31 @@ async def utility_guard(
     It is intentionally conservative and non-raising on missing constitution.
     """
     eng: Optional[ConstitutionEngine] = engine
+    # Determine mode; in dev, relax strict constitution requirement (no mocks otherwise)
+    dev_mode = False
+    try:
+        if _shared_settings is not None:
+            dev_mode = getattr(_shared_settings, "mode_normalized", "prod") == "dev"
+        else:
+            import os as _os
+
+            dev_mode = _os.getenv("SOMABRAIN_MODE", "").strip().lower() in (
+                "dev",
+                "development",
+            )
+    except Exception:
+        dev_mode = False
+
+    # Enforce presence of a loaded constitution engine; fail-closed outside dev.
+    try:
+        has_const = bool(eng and eng.get_constitution())
+    except Exception:
+        has_const = False
+    if not has_const and not dev_mode:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=503, detail="constitution engine unavailable")
+
     # extract confidence/cost/latency from request (middleware or handler should set these)
     conf = getattr(request.state, "model_confidence", None)
     if conf is None:
@@ -50,8 +80,10 @@ async def utility_guard(
     latency = float(getattr(request.state, "estimated_latency", 0.0))
 
     params = {}
-    if eng and eng.get_constitution():
-        params = eng.get_constitution().get("utility_params", {})
+    try:
+        params = eng.get_constitution().get("utility_params", {}) if eng else {}
+    except Exception:
+        params = {}
 
     u = compute_utility(conf, cost, latency, params)
     # attach for handler and metrics
@@ -60,7 +92,8 @@ async def utility_guard(
         M.UTILITY_VALUE.set(u)
     except Exception:
         pass
-    if u < 0:
+    # In dev mode, be permissive: allow negative utility or missing confidence.
+    if u < 0 and not dev_mode:
         try:
             M.UTILITY_NEGATIVE.inc()
         except Exception:
@@ -69,3 +102,7 @@ async def utility_guard(
         from fastapi import HTTPException
 
         raise HTTPException(status_code=403, detail="Rejected by utility guard")
+
+    # In dev mode, normalize extremely negative values to 0 to avoid confusing downstreams
+    if dev_mode and u < 0:
+        request.state.utility_value = 0.0

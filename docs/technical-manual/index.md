@@ -14,9 +14,13 @@
 - [Deployment](deployment.md) - Production deployment procedures
 - [Configuration](configuration.md) - Environment variables and runtime settings
 - [Monitoring](monitoring.md) - Dashboards, alerts, and observability
+- Cognitive Threads
+  - [Predictors](predictors.md) - Diffusion-backed predictors and configuration
+  - [Diffusion Benchmarks](benchmarks_diffusion.md) - Accuracy & performance of Chebyshev/Lanczos
 - [Runbooks](runbooks/) - Operational procedures
   - [Operations Overview](runbooks/operations-overview.md) - Day-two checklist
   - [SomaBrain API](runbooks/somabrain-api.md) - Main service operations
+  - [Cognitive Threads](runbooks/cog-threads-operations.md) - Predictors & Integrator operations
   - [Redis Operations](runbooks/redis-operations.md) - Cache management
   - [Kafka Operations](runbooks/kafka-operations.md) - Message broker troubleshooting
   - [Postgres Operations](runbooks/postgres-operations.md) - Database operations
@@ -25,10 +29,8 @@
   - [Incident Response](runbooks/incident-response.md) - General incident procedures
 - [Backup & Recovery](backup-and-recovery.md) - Disaster recovery procedures
 - [Security](security/) - Security policies and controls
-  - [Backend Enforcement Mode](security/strict-mode.md) - Enforces no-stub execution
   - [Secrets Policy](security/secrets-policy.md) - Secrets management
   - [RBAC Matrix](security/rbac-matrix.md) - Access control
-  - [Compliance & Proofs](security/compliance-and-proofs.md) - Audit artefacts
 
 ---
 
@@ -42,6 +44,14 @@ SomaBrain is a containerized cognitive memory platform with these core component
 - **Kafka**: Message broker for audit trails and event streaming
 - **OPA**: Policy engine for authorization and governance
 - **Prometheus**: Metrics collection and alerting
+
+## Retrieval API (Unified)
+
+- Primary endpoint: POST `/memory/recall`
+  - Backed by the unified retrieval pipeline (vector + WM + graph + lexical + fusion + rerank).
+  - Accepts either a JSON string (e.g., "find my favorite poem") or an object body (adds fields like retrievers, rerank, id/key/coord, mode, universe, top_k).
+  - Response remains compatible with the legacy MemoryRecallResponse shape for existing clients.
+
 
 ## Production Readiness
 

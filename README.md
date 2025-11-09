@@ -13,7 +13,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 | **Tiered Memory** | Multi-tenant working memory + long-term storage coordinated by `TieredMemory`, powered by governed `SuperposedTrace` vectors and cleanup indexes. |
 | **Contextual Reasoning** | `/context/evaluate` builds prompts, weights memories, and returns residuals; `/context/feedback` updates tenant-specific retrieval and utility weights in Redis. |
 | **Adaptive Learning** | Decoupled gains and bounds per parameter, configurable via settings/env, surfaced in Prometheus metrics and the adaptation state API. |
-| **Observability Built-In** | `/health`, `/metrics`, structured logs, and journaling. Queued writes and adaptation behaviour emit explicit metrics so you can see when the brain deviates. |
+| **Observability Built-In** | `/health`, `/metrics`, and structured logs. Adaptation behaviour emits explicit metrics so you can see when the brain deviates. |
 | **Hard Tenancy** | Each request resolves a tenant namespace (`somabrain/tenant.py`); quotas and rate limits are enforced before the memory service is called. |
 | **Complete Docs** | Four-manual documentation suite (User, Technical, Development, Onboarding) plus a canonical improvement log (`docs/CANONICAL_IMPROVEMENTS.md`). |
 
@@ -34,7 +34,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 ### Learning & Neuromodulation
 - **AdaptationEngine** (`somabrain/learning/adaptation.py`) provides decoupled gains for retrieval (α, β, γ, τ) and utility (λ, μ, ν), driven by tenant-specific feedback. Configured gains/bounds are mirrored in metrics and the adaptation state API.
 - **Neuromodulators** (`somabrain/neuromodulators.py`) supply dopamine/serotonin/noradrenaline/acetylcholine levels that can modulate learning rate (enable with `SOMABRAIN_LEARNING_RATE_DYNAMIC`).
-- **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, feedback counts, and queue health (`somabrain_ltm_store_queued_total`).
+- **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, and feedback counts.
 
 ---
 
@@ -47,7 +47,7 @@ HTTP Client
 FastAPI Runtime (somabrain/app.py)
    │   ├─ Authentication & tenancy guards
    │   ├─ ContextBuilder / Planner / AdaptationEngine
-   │   ├─ MemoryService (HTTP + journaling)
+    │   ├─ MemoryService (HTTP)
    │   └─ Prometheus metrics, structured logs
    ▼
 Working Memory (MultiTenantWM) ──► Redis
@@ -58,7 +58,45 @@ Postgres ───────────────────────�
 Prometheus ─────────────────────► Metrics export
 ```
 
-Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters on ports 9696 and 20001–20007. Bring your own memory HTTP backend (default `http://localhost:9595`).
+Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Postgres, Prometheus, and exporters. The API always binds host port 9696 for consistency:
+
+- API: host 9696 -> container 9696
+- Redis: 30100 -> 6379
+- Kafka broker: 30102 -> 9092 (internal advertised as somabrain_kafka:9092)
+- Kafka exporter: 30103 -> 9308
+- OPA: 30104 -> 8181
+- Prometheus: 30105 -> 9090
+- Postgres: 30106 -> 5432
+- Postgres exporter: 30107 -> 9187
+- Schema registry: 30108 -> 8081
+- Reward producer: 30183 -> 8083
+- Learner online: 30184 -> 8084
+
+Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config. For WSL2 or remote clients, set the EXTERNAL listener host before running dev scripts:
+
+```bash
+KAFKA_EXTERNAL_HOST=192.168.1.10 ./scripts/dev_up.sh
+```
+
+### Kubernetes external ports (NodePort)
+
+Kubernetes defaults to ClusterIP internally. If you need host access without an ingress/controller, enable NodePorts in the Helm chart using a centralized 30200+ range:
+
+- API: 30200 → 9696
+- Integrator health: 30201 → 8091
+- Segmentation health: 30202 → 8092
+- Predictor-State health: 30203 → 8093
+- Predictor-Agent health: 30204 → 8094
+- Predictor-Action health: 30205 → 8095
+- Reward Producer (optional): 30206 → 8083
+- Learner Online (optional): 30207 → 8084
+
+How to enable (values):
+- `.Values.expose.apiNodePort=true` → sets API service type to NodePort at `.Values.ports.apiNodePort`
+- `.Values.expose.healthNodePorts=true` → exposes all cog-thread health services at their respective NodePorts
+- `.Values.expose.learnerNodePorts=true` → exposes learner services at NodePorts
+
+All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml` under `.Values.ports.*`. Container and target ports remain internal and unchanged.
 
 ---
 
@@ -67,7 +105,7 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, and embedder.
-| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Journals if the backend is unavailable and sets `breaker_open`/`queued` flags.
+| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Fails fast with 503 if the backend is unavailable.
 | `POST /remember/batch` | Bulk ingestion with per-item success/failure counts.
 | `POST /recall` | Retrieves working-memory and long-term matches with scores from `UnifiedScorer`.
 | `POST /context/evaluate` | Builds a prompt, returns weighted memories, residual vector, and working-memory snapshot.
@@ -77,7 +115,25 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 | `POST /sleep/run` | Trigger NREM/REM consolidation cycles.
 | `GET/POST /neuromodulators` | Read or set neuromodulator levels (dopamine, serotonin, etc.).
 
-All endpoints require a Bearer token unless you set `SOMABRAIN_DISABLE_AUTH=1` for local experiments, and every call can be scoped with `X-Tenant-ID`.
+All endpoints require a Bearer token (auth may be disabled automatically in dev mode). Every call can be scoped with `X-Tenant-ID`.
+
+### Full-Power Recall Defaults (2025-11)
+
+By default, the recall API runs in full-capacity mode:
+
+- Retrievers: `vector, wm, graph, lexical`
+- Rerank: `auto` (prefers HRR → MMR → cosine depending on availability)
+- Session learning: enabled (`persist=true`) — recall sessions and `retrieved_with` links are recorded to improve future retrievals
+
+Override or rollback via environment variables (no code changes required):
+
+- `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
+- `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
+- `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
+- `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
+- `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+
+Tip: set `use_hrr=true` in config to enable HRR reranking when `rerank=auto`.
 
 ---
 
@@ -90,6 +146,12 @@ $ cd somabrain
 $ docker compose up -d
 # Ensure your memory backend is accessible at http://localhost:9595
 $ curl -s http://localhost:9696/health | jq
+```
+
+If you run host-side tools (benchmarks, curl) and want convenient access to the memory service URL/token, generate host-friendly exports and source them:
+
+```bash
+scripts/export_memory_env.sh && source scripts/.memory.env
 ```
 
 Store and recall a memory:
@@ -121,9 +183,61 @@ Inspect tenant learning state:
 $ curl -s http://localhost:9696/context/adaptation/state | jq
 ```
 
-Metrics are available at `http://localhost:9696/metrics`; queued writes appear under `somabrain_ltm_store_queued_total`, and adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
+Metrics are available at `http://localhost:9696/metrics`; adaptation gains/bounds under `somabrain_learning_gain` / `somabrain_learning_bound`.
 
 ---
+
+## Monitoring (no dashboards)
+
+Prometheus metrics and Alertmanager alerts only. See `docs/technical-manual/monitoring.md`.
+
+Quickstart:
+
+```bash
+# Generate .env from template
+./scripts/generate_global_env.sh
+
+# Start API locally with Compose
+docker compose --env-file ./.env -f docker-compose.yml up -d --build somabrain_app
+
+# Check health and scrape metrics
+curl -fsS http://127.0.0.1:9696/health | jq .
+curl -fsS http://127.0.0.1:9696/metrics | head -n 20
+```
+
+For common queries, see the PromQL cheat sheet at the top of the monitoring guide.
+
+Alertmanager playbooks and escalation examples: see `docs/monitoring/alertmanager-playbooks.md`.
+
+---
+
+## Cognitive Threads (Predictors, Integrator, Segmentation)
+
+Predictors are diffusion-backed and enabled by default so they’re always available unless explicitly disabled. Each service emits BeliefUpdate messages that IntegratorHub can consume to produce a GlobalFrame.
+
+- Always-on defaults: `SOMABRAIN_FF_PREDICTOR_STATE=1`, `SOMABRAIN_FF_PREDICTOR_AGENT=1`, `SOMABRAIN_FF_PREDICTOR_ACTION=1`
+- Heat diffusion method via `SOMA_HEAT_METHOD=chebyshev|lanczos`; tune `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`.
+- Provide production graph files via `SOMABRAIN_GRAPH_FILE_STATE`, `SOMABRAIN_GRAPH_FILE_AGENT`, `SOMABRAIN_GRAPH_FILE_ACTION` (or `SOMABRAIN_GRAPH_FILE`). Supported JSON formats: adjacency or laplacian matrices.
+- Integrator normalization (default ON): `SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1` derives confidence from `delta_error` for cross-domain consistency. Set to `0` only if you must use raw predictor confidences.
+
+See Technical Manual > Predictors for math, config, and tests.
+
+### Benchmarks
+
+Run diffusion predictor benchmarks and generate plots (clean, timestamped artifacts):
+
+```bash
+make bench-diffusion
+```
+
+Artifacts:
+- Results (JSON): `benchmarks/results/diffusion_predictors/<timestamp>/`
+- Plots (PNG): `benchmarks/plots/diffusion_predictors/<timestamp>/`
+The latest timestamp is recorded in `benchmarks/results/diffusion_predictors/latest.txt`.
+
+For live and adaptation learning benches, see Technical Manual → Benchmarks Quickstart:
+
+- docs/technical-manual/benchmarks-quickstart.md
 
 ## Documentation & Roadmap
 
@@ -132,6 +246,8 @@ Metrics are available at `http://localhost:9696/metrics`; queued writes appear u
 - **Development Manual** – Repository layout, coding standards, testing strategy, contribution workflow (`docs/development-manual/`).
 - **Onboarding Manual** – Project context, code walkthroughs, checklists (`docs/onboarding-manual/`).
 - **Canonical Improvements** – Living record of all hardening and transparency work (`docs/CANONICAL_IMPROVEMENTS.md`).
+- **Cognitive-Thread Configuration** – Feature flags, environment variables, and Helm overrides for the predictor, segmentation, and integrator services (`docs/cog-threads/configuration.md`).
+- **Predictor Service API** – Health probe behaviour and Kafka emission contract for the predictor services (`docs/cog-threads/predictor-api.md`).
 
 ---
 

@@ -340,19 +340,27 @@ class RecallResponse(BaseModel):
     results: List[Dict[str, Any]] = []
 
 
-# ----- RAG/RAF request and response models -----
-class RAGRequest(BaseModel):
+# ----- Retrieval request and response models -----
+class RetrievalRequest(BaseModel):
     query: str
     top_k: int = 10
-    retrievers: List[str] = ["vector", "wm", "graph"]
-    rerank: str = (
-        "cosine"  # "cosine"|"mmr"|"hrr" (validated loosely in pipeline for PR‑1)
-    )
-    persist: bool = False
+    # Default to full-power multi-retriever set. Can be overridden via API/env.
+    retrievers: List[str] = ["vector", "wm", "graph", "lexical"]
+    # Default to auto so the pipeline selects HRR→MMR→cosine based on availability.
+    rerank: str = "auto"  # "auto"|"cosine"|"mmr"|"hrr" (validated in pipeline)
+    # Enable session learning by default; can be disabled via API/env.
+    persist: bool = True
     universe: Optional[str] = None
+    # Advanced targeting (optional):
+    # mode: auto|id|key|coord|vector|wm|graph (auto by default)
+    mode: Optional[str] = None
+    # Direct lookup hints; when provided, exact matches are boosted to the top
+    id: Optional[str] = None
+    key: Optional[str] = None
+    coord: Optional[str] = None
 
 
-class RAGCandidate(BaseModel):
+class RetrievalCandidate(BaseModel):
     coord: Optional[str] = None
     key: Optional[str] = None
     score: float
@@ -360,8 +368,8 @@ class RAGCandidate(BaseModel):
     payload: Dict[str, Any]
 
 
-class RAGResponse(BaseModel):
-    candidates: List[RAGCandidate]
+class RetrievalResponse(BaseModel):
+    candidates: List[RetrievalCandidate]
     session_coord: Optional[str] = None
     namespace: str
     trace_id: str
@@ -380,11 +388,7 @@ class RememberResponse(BaseModel):
     trace_id: str
     deadline_ms: Optional[str] = None
     idempotency_key: Optional[str] = None
-    # Optional operational signals (not strictly required by older clients):
-    # - breaker_open: true when memory backend circuit is open
-    # - queued: true when the write was queued locally (e.g., backend down)
-    breaker_open: Optional[bool] = None
-    queued: Optional[bool] = None
+    # Fail-fast: no queued or breaker flags are exposed
 
 
 # Compact request/response models for previously-dynamic endpoints
@@ -593,6 +597,8 @@ class HealthResponse(BaseModel):
     predictor_ok: Optional[bool] = None
     memory_ok: Optional[bool] = None
     embedder_ok: Optional[bool] = None
+    # Retrieval readiness: lightweight probe combining embedder + vector recall path
+    retrieval_ready: Optional[bool] = None
     # Extended diagnostics
     opa_ok: Optional[bool] = None
     opa_required: Optional[bool] = None

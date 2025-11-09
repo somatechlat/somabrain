@@ -56,12 +56,12 @@ class ContextBuilder:
     def __init__(
         self,
         embed_fn: Callable[[str], Iterable[float]],
-        memstore: Optional[object] = None,
+        memory: Optional[object] = None,
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memstore = memstore or MemoryRecallClient()
+        self._memory = memory or MemoryRecallClient()
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default placeholder)
@@ -99,21 +99,13 @@ class ContextBuilder:
                 self._density_weight = float(
                     getattr(cfg, "recall_density_margin_weight", self._density_weight)
                 )
-                self._tau_min = float(
-                    getattr(cfg, "recall_tau_min", self._tau_min)
-                )
-                self._tau_max = float(
-                    getattr(cfg, "recall_tau_max", self._tau_max)
-                )
+                self._tau_min = float(getattr(cfg, "recall_tau_min", self._tau_min))
+                self._tau_max = float(getattr(cfg, "recall_tau_max", self._tau_max))
                 self._tau_increment_up = float(
-                    getattr(
-                        cfg, "recall_tau_increment_up", self._tau_increment_up
-                    )
+                    getattr(cfg, "recall_tau_increment_up", self._tau_increment_up)
                 )
                 self._tau_increment_down = float(
-                    getattr(
-                        cfg, "recall_tau_increment_down", self._tau_increment_down
-                    )
+                    getattr(cfg, "recall_tau_increment_down", self._tau_increment_down)
                 )
                 self._dup_ratio_threshold = float(
                     getattr(
@@ -125,6 +117,7 @@ class ContextBuilder:
         except Exception:
             # Fallback to defaults when configuration cannot be loaded
             pass
+
         def _env_float(name: str, current: float) -> float:
             value = os.getenv(name)
             if value is None:
@@ -232,18 +225,24 @@ class ContextBuilder:
             raise RuntimeError("embedding function returned empty vector")
         return [float(v) for v in raw]
 
-    def _search(self, query_text: str, embedding: List[float], top_k: int) -> List[Dict]:
-        # Prefer text search on the live memstore when possible, with tenant scoping
+    def _search(
+        self, query_text: str, embedding: List[float], top_k: int
+    ) -> List[Dict]:
+        # Prefer text search on the live memory service when possible, with tenant scoping
         try:
-            filters = {"tenant": self._tenant_id} if getattr(self, "_tenant_id", None) else None
-            results = self._memstore.search_text(query_text, top_k=top_k, filters=filters)
+            filters = (
+                {"tenant": self._tenant_id}
+                if getattr(self, "_tenant_id", None)
+                else None
+            )
+            results = self._memory.search_text(query_text, top_k=top_k, filters=filters)
             if results:
                 return results
         except Exception:
             pass
         # Fallback to legacy vector search path
         try:
-            return self._memstore.search(embedding, top_k=top_k)
+            return self._memory.search(embedding, top_k=top_k)
         except Exception:
             return []
 

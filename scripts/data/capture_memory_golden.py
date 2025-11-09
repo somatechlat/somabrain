@@ -25,7 +25,9 @@ def capture_memories(endpoint: str, tenant: str, output: Path) -> None:
     }
     resp = client.post("/remember", json=payload, headers={"X-Tenant-ID": tenant})
     resp.raise_for_status()
-    recall = client.post("/recall", json={"query": payload["task"]}, headers={"X-Tenant-ID": tenant})
+    recall = client.post(
+        "/recall", json={"query": payload["task"]}, headers={"X-Tenant-ID": tenant}
+    )
     recall.raise_for_status()
     data = recall.json()
     entry = {

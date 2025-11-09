@@ -36,7 +36,10 @@ OUT = Path(__file__).resolve().parent / "workbench_numerics_results.json"
 def _git_sha() -> str:
     try:
         return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(Path(__file__).resolve().parent.parent))
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"],
+                cwd=str(Path(__file__).resolve().parent.parent),
+            )
             .decode()
             .strip()
         )
@@ -59,13 +62,18 @@ def _provenance(extra: dict | None = None) -> dict:
     return prov
 
 
-def run(D_list: tuple[int, ...] = (128, 256, 1024), dtypes: tuple[str, ...] = ("float32", "float64")):
+def run(
+    D_list: tuple[int, ...] = (128, 256, 1024),
+    dtypes: tuple[str, ...] = ("float32", "float64"),
+):
     results = {
-        "provenance": _provenance({
-            "phase": "workbench_core",
-            "D_list": list(D_list),
-            "dtypes": list(dtypes),
-        }),
+        "provenance": _provenance(
+            {
+                "phase": "workbench_core",
+                "D_list": list(D_list),
+                "dtypes": list(dtypes),
+            }
+        ),
         "tiny_floor": {},
         "unitary_roundtrip": {},
         "role_norms": {},
@@ -111,7 +119,11 @@ def run(D_list: tuple[int, ...] = (128, 256, 1024), dtypes: tuple[str, ...] = ("
     print(f"Wrote workbench results to {OUT}")
 
 
-def extended_snr_capacity_run(D_list: tuple[int, ...] = (512, 1024), snr_db_list: tuple[float, ...] = (40.0, 20.0, 10.0, 0.0, -10.0), seeds: tuple[int, ...] = (0, 1, 2)):
+def extended_snr_capacity_run(
+    D_list: tuple[int, ...] = (512, 1024),
+    snr_db_list: tuple[float, ...] = (40.0, 20.0, 10.0, 0.0, -10.0),
+    seeds: tuple[int, ...] = (0, 1, 2),
+):
     """Run SNR sweep and capacity experiments and save to a separate JSON file."""
     outp = Path(__file__).resolve().parent / "results_numerics.json"
 
@@ -180,12 +192,14 @@ def extended_snr_capacity_run(D_list: tuple[int, ...] = (512, 1024), snr_db_list
     outp.write_text(
         json.dumps(
             {
-                "provenance": _provenance({
-                    "phase": "extended_snr_capacity",
-                    "D_list": list(D_list),
-                    "snr_db_list": list(map(float, snr_db_list)),
-                    "seeds": list(map(int, seeds)),
-                }),
+                "provenance": _provenance(
+                    {
+                        "phase": "extended_snr_capacity",
+                        "D_list": list(D_list),
+                        "snr_db_list": list(map(float, snr_db_list)),
+                        "seeds": list(map(int, seeds)),
+                    }
+                ),
                 "results": all_rows,
             },
             indent=2,
@@ -195,12 +209,49 @@ def extended_snr_capacity_run(D_list: tuple[int, ...] = (512, 1024), snr_db_list
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Numerics workbench and extended SNR capacity sweep")
-    parser.add_argument("--D", dest="D_list", nargs="*", type=int, default=[128, 256, 1024], help="Dimensions for core workbench")
-    parser.add_argument("--dtype", dest="dtypes", nargs="*", default=["float32", "float64"], choices=["float32", "float64"], help="Dtypes for core workbench")
-    parser.add_argument("--extended-D", dest="ext_D_list", nargs="*", type=int, default=[512, 1024], help="Dimensions for extended SNR capacity")
-    parser.add_argument("--snr", dest="snr_db_list", nargs="*", type=float, default=[40.0, 20.0, 10.0, 0.0, -10.0], help="SNR values in dB for extended sweep")
-    parser.add_argument("--seeds", dest="seeds", nargs="*", type=int, default=[0, 1, 2], help="Seeds for extended sweep")
+    parser = argparse.ArgumentParser(
+        description="Numerics workbench and extended SNR capacity sweep"
+    )
+    parser.add_argument(
+        "--D",
+        dest="D_list",
+        nargs="*",
+        type=int,
+        default=[128, 256, 1024],
+        help="Dimensions for core workbench",
+    )
+    parser.add_argument(
+        "--dtype",
+        dest="dtypes",
+        nargs="*",
+        default=["float32", "float64"],
+        choices=["float32", "float64"],
+        help="Dtypes for core workbench",
+    )
+    parser.add_argument(
+        "--extended-D",
+        dest="ext_D_list",
+        nargs="*",
+        type=int,
+        default=[512, 1024],
+        help="Dimensions for extended SNR capacity",
+    )
+    parser.add_argument(
+        "--snr",
+        dest="snr_db_list",
+        nargs="*",
+        type=float,
+        default=[40.0, 20.0, 10.0, 0.0, -10.0],
+        help="SNR values in dB for extended sweep",
+    )
+    parser.add_argument(
+        "--seeds",
+        dest="seeds",
+        nargs="*",
+        type=int,
+        default=[0, 1, 2],
+        help="Seeds for extended sweep",
+    )
     args = parser.parse_args()
 
     run(D_list=tuple(args.D_list), dtypes=tuple(args.dtypes))

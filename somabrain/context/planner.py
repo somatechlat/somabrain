@@ -51,6 +51,7 @@ class ContextPlanner:
                 )
             except Exception:
                 pass
+
         def _env_float(name: str, current: float) -> float:
             value = os.getenv(name)
             if value is None:

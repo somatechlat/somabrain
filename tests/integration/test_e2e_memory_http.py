@@ -1,4 +1,3 @@
-import os
 import time
 from typing import Any, Dict, Iterable
 
@@ -12,7 +11,9 @@ from somabrain.testing.test_targets import (
 )
 
 
-def _post_json(url: str, payload: Dict[str, Any], timeout: float = 10.0) -> Dict[str, Any]:
+def _post_json(
+    url: str, payload: Dict[str, Any], timeout: float = 10.0
+) -> Dict[str, Any]:
     r = requests.post(url, json=payload, timeout=timeout)
     r.raise_for_status()
     try:
@@ -23,7 +24,9 @@ def _post_json(url: str, payload: Dict[str, Any], timeout: float = 10.0) -> Dict
 
 @pytest.mark.integration
 @pytest.mark.learning
-@pytest.mark.parametrize("target", list_test_targets(), ids=target_ids(list_test_targets()))
+@pytest.mark.parametrize(
+    "target", list_test_targets(), ids=target_ids(list_test_targets())
+)
 class TestE2EMemoryHTTP:
     def test_health_backends_ok(self, target: TargetConfig) -> None:
         ok, reasons = target.probe()
@@ -88,7 +91,9 @@ class TestE2EMemoryHTTP:
                     found = True
                     break
 
-        assert found, f"Recall did not include the freshly stored memory. Response: {r2}"
+        assert (
+            found
+        ), f"Recall did not include the freshly stored memory. Response: {r2}"
 
     def test_remember_and_recall_five_memories(self, target: TargetConfig) -> None:
         ok, reasons = target.probe()
@@ -131,7 +136,9 @@ class TestE2EMemoryHTTP:
             found = False
             for p in candidates:
                 if isinstance(p, dict):
-                    t = str(p.get("task") or p.get("fact") or p.get("text") or "").lower()
+                    t = str(
+                        p.get("task") or p.get("fact") or p.get("text") or ""
+                    ).lower()
                     if t and (text_lower in t or t in text_lower):
                         found = True
                         break

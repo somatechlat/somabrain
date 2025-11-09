@@ -1,0 +1,26 @@
+{
+  "title": "SomaBrain Documentation",
+  "version": "3.0.2-KARPATHY-INFLUENCE",
+  "last_updated": "2025-01-27",
+  "owner": "Documentation Team",
+  "project": "SomaBrain",
+  "repository": "https://github.com/somatechlat/somabrain",
+  "standards": [
+    "ISO/IEC 12207:2017",
+    "ISO/IEC 15288:2015",
+    "ISO/IEC 29148:2018",
+    "ISO/IEC 29119:2013",
+    "ISO/IEC 42010:2011",
+    "ISO 21500:2012",
+    "ISO/IEC 27001:2013",
+    "IEEE 1016:2009"
+  ],
+  "badge": "![Version](https://img.shields.io/badge/version-3.0.2--KARPATHY--INFLUENCE-blue)",
+  "documentation_health": {
+    "linting": "markdownlint-cli2",
+    "link_checking": "enabled",
+    "accessibility": "wcag-2.1-aa",
+    "review_cycle": "quarterly",
+    "stale_threshold_days": 90
+  }
+}

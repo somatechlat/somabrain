@@ -1,0 +1,57 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $root := . -}}
+{{- /* Baseline network policies: deny-all then allow-list essentials */ -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "soma-apps.fullname" . }}-default-deny
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Allow egress to Kafka/Redis/OPA by label selector (assumes soma-infra services in ns 'soma')
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "soma-apps.fullname" . }}-allow-egress-infra
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.global.sharedInfraNamespace | default "soma" | quote }}
+      ports:
+        - port: 9092   # Kafka
+          protocol: TCP
+        - port: 6379   # Redis
+          protocol: TCP
+        - port: 8181   # OPA
+          protocol: TCP
+---
+# Allow ingress to health/metrics port from Prometheus only (if using PodMonitor/ServiceMonitor labels)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "soma-apps.fullname" . }}-allow-prometheus-scrape
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.global.sharedInfraNamespace | default "soma" | quote }}
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: kube-prometheus-stack-prometheus
+      ports:
+        - port: health
+          protocol: TCP
+{{- end }}

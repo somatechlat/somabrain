@@ -35,7 +35,7 @@
 ### Strict Real Mode
 **Definition**: Deployment configuration that prohibits stubs, mocks, or dummy data paths and enforces end-to-end realism.
 **Usage**: "Enable strict real mode in CI to prevent silent fallback to placeholder services."
-**See also**: [Backend Enforcement Mode (No-Stubs Contract)](technical-manual/security/strict-mode.md)
+**See also**: [Security Policies](technical-manual/security/secrets-policy.md)
 
 ### Multi-Tenant Working Memory
 **Definition**: In-memory layer that isolates active memories per tenant for sub-second retrieval.
@@ -114,7 +114,7 @@
 | BHDC | Binary Hyperdimensional Computing | SomaBrain's encoding approach for semantic vectors. |
 | DR | Disaster Recovery | See backup-and-recovery procedures for RTO/RPO. |
 | MFA | Multi-Factor Authentication | Mandatory for elevated roles per RBAC matrix. |
-| RAG | Retrieval-Augmented Generation | Optional reasoning enhancer; must operate without stubs when backend enforcement is active. |
+| Retrieval | Unified retrieval pipeline | Consolidated surface for recall across vector/graph/WM/lexical. |
 | SLA | Service-Level Agreement | Contractual uptime/latency commitments cited in release health gating. |
 | SLO | Service-Level Objective | Measurable performance targets validated in monitoring dashboards. |
 

@@ -24,15 +24,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field  # add field import
 from functools import lru_cache
-from typing import List, Optional, Any
+from typing import List, Optional, Any, cast
 
 from somabrain.infrastructure import get_memory_http_endpoint, get_redis_url
 
 try:
     # Shared BaseSettings instance exported from common/config.
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings as _shared_settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    shared_settings = None
+    _shared_settings = None  # type: ignore
+shared_settings: Any = _shared_settings
 
 # dynaconf is optional; we don't require it at runtime. Configuration is loaded
 # via `load_config()` using dataclass defaults and a YAML + environment override.
@@ -143,7 +144,7 @@ class Config:
     rate_burst: int = 100
     write_daily_limit: int = 10000
     # Predictor configuration (added)
-    predictor_provider: str = "stub"  # stub|mahal|slow|llm
+    predictor_provider: str = "mahal"  # mahal|slow|llm
     predictor_timeout_ms: int = 250
     predictor_llm_endpoint: Optional[str] = None
     predictor_llm_token: Optional[str] = None
@@ -223,7 +224,7 @@ class Config:
     diversity_k: int = 10
     diversity_lambda: float = 0.5
 
-    # RAG fusion weights
+    # Retrieval fusion weights
     retriever_weight_vector: float = 1.0
     retriever_weight_wm: float = 1.0
     retriever_weight_graph: float = 1.0
@@ -277,10 +278,7 @@ class Config:
     expose_brain_demos: bool = False
 
     # Persistence
-    persistent_journal_enabled: bool = False
-    journal_dir: str = "./data/somabrain"
-    allow_journal_fallback: bool = False
-    journal_redact_fields: list[str] = field(default_factory=list)
+    # Journal subsystem removed: no persistent journaling configuration retained.
 
     # Learning loop feature flag
     learning_loop_enabled: bool = False
@@ -288,10 +286,8 @@ class Config:
     # Public API
     minimal_public_api: bool = False
 
-    # Enable planner and graph augment by default for full test coverage
-    use_planner: bool = True
+    # Enable graph augment by default for full test coverage
     use_graph_augment: bool = True
-    use_microcircuits: bool = True
 
     # HybridBrain+ truth-budget integration (opt-in)
     hybrid_math_enabled: bool = False
@@ -413,7 +409,7 @@ def load_config() -> Config:
             import yaml
 
             with open(yaml_path, "r") as f:
-                data = yaml.safe_load(f) or {}
+                data = cast(dict[str, Any], yaml.safe_load(f) or {})
             for key, value in data.items():
                 if hasattr(cfg, key):
                     setattr(cfg, key, value)
@@ -503,11 +499,11 @@ def load_truth_budget(cfg: Config) -> None:
     @dataclass
     class TruthBudget:
         epsilon_total: float = 0.05
-        bind: dict = None
-        rho: dict = None
-        graph: dict = None
-        kernel: dict = None
-        bridge: dict = None
+        bind: Optional[dict] = None
+        rho: Optional[dict] = None
+        graph: Optional[dict] = None
+        kernel: Optional[dict] = None
+        bridge: Optional[dict] = None
 
         def to_dict(self) -> dict:
             return {
@@ -584,144 +580,11 @@ def load_truth_budget(cfg: Config) -> None:
         cfg.truth_budget = None
 
 
-@dataclass
-class _LocalTruthBudgetModel:
-    """Internal helper schema for truth-budget parsing.
-
-    Kept separate from the public TruthBudget to avoid class redefinition
-    conflicts and make it clear we map into the public API before returning.
-    """
-
-    epsilon_total: float = 0.05
-    bind_block_m: Optional[int] = None
-    wiener_lambda: Optional[float] = None
-    density_ev_target: Optional[float] = 0.9
-    density_r: Optional[int] = None
-    graph_appr_eps: Optional[float] = 1e-3
-    chebyshev_order_K: Optional[int] = 24
-    kernel_relerr: Optional[float] = 0.02
-    sinkhorn_tol: Optional[float] = 1e-3
-
-
-def _validate_and_map_truth_budget(
-    cfg: Config, data: dict[str, Any]
-) -> Optional[TruthBudget]:
-    """Validate minimal truth-budget keys and map into Config-level knobs.
-
-    Returns a TruthBudget instance or a TruthBudget with conservative defaults on parse error.
-    """
-    try:
-        model = _LocalTruthBudgetModel(
-            epsilon_total=float(data.get("epsilon_total", 0.05)),
-            bind_block_m=(
-                int(
-                    data.get("bind", {}).get(
-                        "block_size_m", data.get("bind", {}).get("block_m", 128)
-                    )
-                )
-                or 128
-            ),
-            wiener_lambda=(
-                float(data.get("bind", {}).get("wiener_lambda", 1e-4)) or 1e-4
-            ),
-            density_ev_target=(float(data.get("rho", {}).get("ev_target", 0.9)) or 0.9),
-            density_r=(int(data.get("rho", {}).get("r", 128)) or 128),
-            graph_appr_eps=(float(data.get("graph", {}).get("appr_eps", 1e-3)) or 1e-3),
-            chebyshev_order_K=(
-                int(
-                    data.get("kernel", {}).get(
-                        "chebyshev_order", data.get("kernel", {}).get("chebyshev_K", 24)
-                    )
-                )
-                or 24
-            ),
-            kernel_relerr=(
-                float(
-                    data.get("kernel", {}).get(
-                        "relerr", data.get("kernel", {}).get("rel_err", 0.02)
-                    )
-                )
-                or 0.02
-            ),
-            sinkhorn_tol=(
-                float(data.get("bridge", {}).get("sinkhorn_tol", 1e-3)) or 1e-3
-            ),
-        )
-        # Sanity clamps
-        if model.epsilon_total <= 0 or model.epsilon_total >= 1:
-            model.epsilon_total = 0.05
-        if model.density_ev_target is None or not (
-            0.0 < model.density_ev_target <= 1.0
-        ):
-            model.density_ev_target = 0.9
-        if model.bind_block_m is not None and model.bind_block_m < 8:
-            model.bind_block_m = 8
-        if model.chebyshev_order_K is not None and model.chebyshev_order_K < 4:
-            model.chebyshev_order_K = 4
-
-        # Map conservative defaults into cfg for runtime convenience (only set if not already set)
-        if model.bind_block_m and not getattr(cfg, "truth_bind_block_m", None):
-            setattr(cfg, "truth_bind_block_m", model.bind_block_m)
-        if model.wiener_lambda and not getattr(cfg, "truth_wiener_lambda", None):
-            setattr(cfg, "truth_wiener_lambda", model.wiener_lambda)
-        if model.density_r and not getattr(cfg, "truth_density_r", None):
-            setattr(cfg, "truth_density_r", model.density_r)
-        if model.chebyshev_order_K and not getattr(cfg, "truth_chebyshev_K", None):
-            setattr(cfg, "truth_chebyshev_K", model.chebyshev_order_K)
-        if model.graph_appr_eps and not getattr(cfg, "truth_graph_appr_eps", None):
-            setattr(cfg, "truth_graph_appr_eps", model.graph_appr_eps)
-        if model.kernel_relerr and not getattr(cfg, "truth_kernel_relerr", None):
-            setattr(cfg, "truth_kernel_relerr", model.kernel_relerr)
-        if model.sinkhorn_tol and not getattr(cfg, "truth_sinkhorn_tol", None):
-            setattr(cfg, "truth_sinkhorn_tol", model.sinkhorn_tol)
-        # Return the public TruthBudget instance for tests/callers with correct field names
-        tb_public = TruthBudget(
-            epsilon_total=model.epsilon_total,
-            bind_block_size_m=(
-                model.bind_block_m
-                if model.bind_block_m is not None
-                else TruthBudget().bind_block_size_m
-            ),
-            bind_wiener_lambda=(
-                model.wiener_lambda
-                if model.wiener_lambda is not None
-                else TruthBudget().bind_wiener_lambda
-            ),
-            density_ev_target=(
-                model.density_ev_target
-                if model.density_ev_target is not None
-                else TruthBudget().density_ev_target
-            ),
-            density_max_r=(
-                model.density_r
-                if model.density_r is not None
-                else TruthBudget().density_max_r
-            ),
-            appr_eps=(
-                model.graph_appr_eps
-                if model.graph_appr_eps is not None
-                else TruthBudget().appr_eps
-            ),
-            chebyshev_order_K=(
-                model.chebyshev_order_K
-                if model.chebyshev_order_K is not None
-                else TruthBudget().chebyshev_order_K
-            ),
-            chebyshev_relerr=(
-                model.kernel_relerr
-                if model.kernel_relerr is not None
-                else TruthBudget().chebyshev_relerr
-            ),
-            sinkhorn_tol=(
-                model.sinkhorn_tol
-                if model.sinkhorn_tol is not None
-                else TruthBudget().sinkhorn_tol
-            ),
-        )
-        return tb_public
-    except Exception:
-        # On parse error, return conservative defaults instead of None
-        return TruthBudget()
+"""
+Note: Removed duplicate _LocalTruthBudgetModel and alternate _validate_and_map_truth_budget
+implementation to eliminate mypy redefinition errors. The canonical implementation appears
+earlier in this module (takes raw: dict, returns TruthBudget) and is used by callers.
+"""
 
 
 def load_config_and_truth() -> Config:

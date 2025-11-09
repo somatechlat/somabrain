@@ -16,19 +16,9 @@ This guide will take you from zero to productive contributor in the SomaBrain co
 
 - [Project Context](project-context.md) - Mission, goals, and business context
 - [Codebase Walkthrough](codebase-walkthrough.md) - Repository tour and architecture patterns
-- [Environment Setup](environment-setup.md) - Step-by-step development environment
 - [First Contribution](first-contribution.md) - Complete walkthrough for your first PR
 - [Team Collaboration](team-collaboration.md) - Communication channels and processes
 - [Domain Knowledge](domain-knowledge.md) - Technical deep-dive and business logic
-- [Resources](resources/) - Quick references and useful links
-  - [Useful Links](resources/useful-links.md) - External references
-  - [Troubleshooting](resources/troubleshooting.md) - Common issues and solutions
-  - [Glossary](resources/glossary.md) - Technical terminology
-  - [Roadmap](resources/roadmap.md) - Canonical Brain 3.0 plan
-- [Checklists](checklists/) - Verification and quality gates
-  - [Setup Checklist](checklists/setup-checklist.md) - Environment verification
-  - [Pre-commit Checklist](checklists/pre-commit-checklist.md) - Code quality checks
-  - [PR Checklist](checklists/pr-checklist.md) - Pull request requirements
 
 ---
 
@@ -36,8 +26,8 @@ This guide will take you from zero to productive contributor in the SomaBrain co
 
 ### Day 1-2: Context & Setup
 1. Read [Project Context](project-context.md) to understand what SomaBrain does
-2. Follow [Environment Setup](environment-setup.md) to get your development environment running
-3. Complete [Setup Checklist](checklists/setup-checklist.md) to verify everything works
+2. Follow [Local Setup](../development-manual/local-setup.md) to get your development environment running
+3. Verify your setup works by running tests
 
 ### Day 3-4: Code Exploration
 1. Work through [Codebase Walkthrough](codebase-walkthrough.md) to understand the architecture
@@ -46,15 +36,15 @@ This guide will take you from zero to productive contributor in the SomaBrain co
 
 ### Day 5: First Contribution
 1. Follow [First Contribution](first-contribution.md) guide to make your first PR
-2. Use [PR Checklist](checklists/pr-checklist.md) before submitting
+2. Review [Contribution Process](../development-manual/contribution-process.md) before submitting
 3. Celebrate! 🎉
 
 ## Getting Help
 
 Stuck on something? Here's how to get help:
 
-1. **Check [Troubleshooting](resources/troubleshooting.md)** for common issues
-2. **Search [Glossary](resources/glossary.md)** for unfamiliar terms
+1. **Check [FAQ](../user-manual/faq.md)** for common issues
+2. **Search [Glossary](../glossary.md)** for unfamiliar terms
 3. **Ask in team channels** (see [Team Collaboration](team-collaboration.md))
 4. **Open a documentation issue** if something is unclear
 
@@ -70,9 +60,9 @@ Stuck on something? Here's how to get help:
 
 ---
 
-**Verification**: Complete all checklists before considering onboarding finished.
+**Verification**: Complete your first contribution before considering onboarding finished.
 
-**Common Errors**: See [Troubleshooting](resources/troubleshooting.md) for setup and development issues.
+**Common Errors**: See [FAQ](../user-manual/faq.md) for setup and development issues.
 
 **References**:
 - [Development Manual](../development-manual/index.md) for detailed technical guides

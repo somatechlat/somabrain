@@ -1,212 +1,157 @@
-# Roadmap Canonical — SomaBrain (Code-Aligned Edition)
+# Canonical Roadmap — Unified Cognitive Thread, Learning Layer, Tripartite Math, Consolidation
 
-Last updated: 2025-10-17  
-Source of truth: this document + repository state (tags: `bhce-core`, HEAD)
+Truth principle: Implemented (I), Partial (P), Not Implemented / Proposed (N). All future items have concrete acceptance tests; everything values-gated; single Docker image; no placeholders.
 
----
+## 1) Architecture (High-Level)
 
-## 0) Executive Summary
+```
++-------------------+      +-------------------+      +---------------------+
+|   Client/API      | ---> |   Orchestrator    | ---> |   Predictor Threads  |
+| (REST/gRPC)       |      | (Plan phase)      |      | (state/agent/action) |
++-------------------+      +-------------------+      +---------------------+
+	  |                         |                           |
+	  v                         v                           v
+  +----------------+       +----------------+         +-------------------+
+  | reward_prod    |       | segmentation   |         |  integrator_hub   |
+  | (Kafka)        |       | (HMM formal)   |         |  (fusion, OPA)    |
+  +----------------+       +----------------+         +-------------------+
+	  |                         |                           |
+	  v                         v                           v
+  +---------------------------------------------------------------------+
+  |                       learner_online (Bandit/RL)                    |
+  |  consumes: reward_event, next_event, integrator_context             |
+  |  produces: config_update (tau, λ_d), calibration, drift events      |
+  +---------------------------------------------------------------------+
+```
 
-SomaBrain today runs on a **BHDC hyperdimensional core**, a **multi-tenant working-memory tier**, and an **HTTP long-term memory client**. The runtime already benefits from sparse permutation binding, a unified scoring stack, backend-enforced guardrails, and comprehensive metrics hooks. However, several roadmap promises (tiered SuperposedTrace recall, ANN cleanup, hot-reload supervisors, Kong enforcement, blue/green cutovers) remain scoped but **not wired into production paths**.
+Notes
+- Transport: Kafka; OPA is HTTP with short timeouts; optional Redis cache (I/P).
+- Shadow ratio routes eval traffic (I).
+- Single image policy enforced (I).
+- Consolidated runtime/entry utilities to remove duplication (N).
 
-V3 success hinges on three fronts:
+## 2) Contracts & Topics (Avro)
 
-1. **Productionise governance math:** move from legacy WM+HTTP recall to the SuperposedTrace/TieredMemory stack, backed by ANN cleanup and real interference metrics.
-2. **Close the control loop:** finish hot-reload plumbing (ConfigService events → memory plane), run the ParameterSupervisor against live telemetry, and expose `/memory/cutover`.
-3. **Operational hardening:** eliminate journal fallbacks in backend-enforced mode, deliver observability on η/τ/SNR, and complete Kong edge policies.
+Implemented (I): belief_update, global_frame, segment_boundary, integrator_context.
 
-This document supersedes prior narrative-only roadmaps. Every claim is backed by code in `somabrain/`. Deviations are explicit gaps with owners and milestones.
+Partial (P): next_event (error field labeling), reward_event (component set), config_update (tau + λ_d attribution fields populated by learner).
 
----
+Proposed (N):
+- predictor_calibration (ECE, Brier, T_d, ts)
+- fusion_drift_event (entropy+regret signature)
+- config_update extension with per-domain λ_d
 
-## 1) Guiding Principles (Code-Verified)
+Canonical topics
+- Inputs: cog.state.updates, cog.agent.updates, cog.action.updates
+- Core: cog.global.frame, cog.segments, cog.integrator.context
+- Learning: soma.reward.events, soma.next.events, soma.config.updates
 
-- **Mathematical truth first:** BHDC permutation binding (`somabrain/quantum.py`) is the only production binding path. Numerical invariants are recorded via `MathematicalMetrics`.
-- **Backend-enforced default:** When `require_external_backends` is asserted (settings or env), stub fallbacks raise immediately. Journaling still exists in the memory service and is a critical gap (see §7).
-- **Configurability with guardrails:** ConfigService merges layers in-process; no external store yet. Supervisor is implemented but idle.
-- **No mock shortcuts:** Tests rely on real modules (`tests/test_superposed_trace.py`, `tests/test_hierarchical_memory.py`, `tests/unit/test_memory_client_recency.py`).
+## 3) Consolidation & Single Entry
 
----
+Current duplication (P): per-service `_bootstrap`, `_make_producer`, `_serde`, `_encode`, tracing init, NextEvent construction.
 
-## 2) Current System Snapshot
+Actions (N):
+- `common/kafka.py` for producer, topic names, Avro serde cache
+- `common/events.py` for NextEvent builder and regret calculation
+- `common/observability.py` thin wrapper around provider
+- `services/entry.py` dispatcher for single entry based on env (ENABLE_COG_THREADS)
 
-| Layer | Reality today | Notes |
-| --- | --- | --- |
-| **Ingress** | FastAPI (`somabrain/api/memory_api.py`, `…/config_api.py`) behind planned Kong manifests | Kong configs exist but miss schema/audit plugins; no cutover route. |
-| **Working Memory** | `MultiTenantWM` + `UnifiedScorer` (`somabrain/mt_wm.py`, `somabrain/scoring.py`) | Capacity, recency, density-aware cleanup implemented. No SuperposedTrace wiring. |
-| **Long-Term Memory** | `MemoryClient` proxy to HTTP service (`somabrain/memory_client.py`) | Still uses journal fallback on failures; ANN search delegated to backend. |
-| **Governance Math** | `SuperposedTrace`, `TieredMemory` exist with decay/rotation/cleanup (`somabrain/memory/superposed_trace.py`, `hierarchical.py`) | Not instantiated in FastAPI pipeline; cleanup is linear scan over anchors. |
-| **Control Plane** | `ConfigService` + `ParameterSupervisor` + `CutoverController` implemented (`somabrain/services/*.py`) | No runtime scheduler/subscribers. Config API limited to GET/PATCH. |
-| **Metrics** | Extensive collectors in `somabrain/metrics.py`; `record_memory_snapshot` called with item counts only | η/sparsity/margin/config_version gauges unused; ANN latency histogram unpopulated. |
-| **Runbooks & Automation** | Scripts and docs reference blue/green, journal migration | `scripts/journal_to_outbox.py` missing; no automation for cutover controller. |
+Acceptance
+- Predictors import shared modules; no local encode/serde; CLoC in predictor mains reduced ≥20%.
 
----
+## 4) Mathematical Foundations
 
-## 3) Math & Scoring Reality
+Predictor Threads (I): diffusion backbone emitting (delta_error, confidence).
 
-### Implemented
-- **BHDC binding & permutation unbinding** (`QuantumLayer.bind/unbind`).
-- **UnifiedScorer** combining cosine, FD projection, and recency, with clamp telemetry (`somabrain/scoring.py`).
-- **Working-memory density factor** reduces scores based on cleanup overlap (`somabrain/wm.py`).
-- **Metrics instrumentation** for spectral invariants (`somabrain/quantum.py`), scorer components, cleanup calls (`somabrain/metrics.py`).
+Fusion Normalization (N):
+- e_norm_d = (error_d − μ_d)/(σ_d+ε)
+- w_d = exp(−α·e_norm_d)/Σ exp(−α·e_norm_k), α in [α_lo, α_hi]
+- α adaptive via learner: α_{t+1} = clip(α_t + η·(regret_mean − target), bounds)
 
-### Missing / Pending
-- Production rollout of `SuperposedTrace` and `TieredMemory` (currently unit-tested only).
-- ANN cleanup networks (HNSW/FAISS) for WM/LTM; `_cleanup` is a simple dict iteration.
-- Live SNR tracking; `snr_estimate` metric defined but unused.
+Calibration (N):
+- Temperature scaling T_d; metrics ECE_d, Brier_d; update only with min samples
 
----
+Consistency (P):
+- κ = 1 − JSD(P_action|agent || empirical); inconsistency_rate alert >3%
 
-## 4) API Surfaces (Effective Behaviour)
+Segmentation HMM (N):
+- States: STABLE, TRANSITION; Observations: entropy_delta, error_delta, dwell_norm
+- Online Viterbi; boundary when P(TRANSITION) > τ_seg; latency ≤2 ticks
 
-### Memory API (`somabrain/api/memory_api.py`)
-- `/memory/remember`, `/memory/remember/batch` write to LTM via `MemoryService` (`aremember`, `aremember_bulk`) and opportunistically admit items into WM using the embedder.
-- `/memory/recall` performs WM cosine recall and LTM HTTP recall separately, merges results, and tracks WM/LTM latencies.
-- `/memory/recall/stream`, `/memory/context/{session}` deliver session caching.
-- `/metrics` exposes Prometheus metrics gathered via `record_memory_snapshot`.
+Regret (P→N):
+- regret_d = max(0, c_target_d − c'_d); aggregate Σ γ_d·regret_d; learner maintains c_target_d
 
-### Config API (`somabrain/api/config_api.py`)
-- `/config/memory` GET returns merged config snapshot.
-- `/config/memory` PATCH writes to namespace layer with in-memory audit.
-- **Not implemented:** `/memory/cutover`, supervisor triggers, Kong ACL enforcement.
+## 5) Reward & Attribution
 
----
+Implemented (P): reward_event ingestion with components.
 
-## 5) Observability & SLO Tracking
+Proposed (N):
+- Normalize components; learn β_i; derive γ_d domain attribution; emit λ_d in config_update
 
-Implemented collectors:
-- `somabrain_memory_items`, `somabrain_eta`, `somabrain_sparsity`, `somabrain_cosine_margin_mean`, `somabrain_config_version`.
-- Stage latency histograms for WM/LTM recall, ANN latency buckets, supervisor change counters.
+Acceptance
+- λ_d adjustments reduce domain regret ≥5% vs baseline without raising entropy beyond threshold.
 
-Gaps:
-- `record_memory_snapshot` only sets WM items.
-- No ANN latency samples (no ANN path).
-- No automated updates for η/sparsity/margin/config_version after config patches.
-- `observe_ann_latency` unused; `mark_controller_change` only triggered in tests.
+## 6) Observability & SLOs
 
----
+Implemented (I/P): health/metrics; planning latency histogram + p99 gauge; regret EWMA; OPA veto ratio; entropy; predictor emits and error histogram.
 
-## 6) Security & Multi-Tenancy Reality
+Add (N):
+- normalized_error_d gauge; fusion_weight_d; α; ECE_d; Brier_d; κ; P(TRANSITION); drift gauge
 
-- JWT/OIDC enforcement is expected via Kong; manifests include JWT + rate-limit plugins but lack tenant header injection, schema validation, or audit logging.
-- Within FastAPI, tenant IDs are trusted from request body; no RBAC hooks yet.
-- Backend-enforced switch disables local stub fallbacks but journal fallback still persists data locally when upstream fails.
+Alerts (augment) (N):
+- Calibration Drift (ECE_d > threshold); Fusion Weight Instability; Consistency Degradation; Segmentation Flood/Drought; Drift Trigger (entropy band + regret spike)
 
----
+Dashboards (extend) (N): predictor quality, fusion stability, segmentation state, learning (tau, λ_d, α, regret)
 
-## 7) Known Gaps & Remediation Tracks
+## 7) Feature Flags (values-gated)
 
-1. **Tiered Governance Integration**
-   - Instantiate `TieredMemory` per tenant/namespace.
-   - Route `/remember` and `/recall` through SuperposedTrace.
-   - Surface confidence, margin, and rotation seeds in responses/metrics.
+Existing (I): ENABLE_COG_THREADS, SOMABRAIN_FF_PREDICTOR_*, learnerEnabled.
 
-2. **Cleanup & ANN Indexing**
-   - Replace dict cleanup with ANN (candidate: FAISS or HNSWLib).
-   - Maintain indices per namespace with hot-updates from SuperposedTrace anchors.
-   - Export ANN latency and accuracy metrics.
+Add (N): ENABLE_FUSION_NORMALIZATION, ENABLE_HMM_SEGMENTATION, ENABLE_CALIBRATION, ENABLE_CONSISTENCY_CHECKS, ENABLE_RUNTIME_CONSOLIDATION.
 
-3. **Control Plane Activation**
-   - Extend Config API with `/memory/cutover`.
-   - Add async subscriber in memory service to apply ConfigService deltas (with dampers).
-   - Schedule `ParameterSupervisor.evaluate` against Prometheus snapshots.
+## 8) Sprints & Acceptance Tests
 
-4. **Strict-Real & Durability**
-   - Implement `scripts/journal_to_outbox.py` + `somabrain/db/outbox.py`.
-   - Gate journal fallback behind explicit allow-list; fail fast otherwise.
-   - Emit `somabrain_audit_journal_fallback_total` when fallback used.
+Sprint 0 Foundations (Done)
+Sprint 1 Reward Ingestion (Done)
+Sprint 2 Next-Event Heads (Partial): Include error metric labeling; acceptance: learner consumes; predictor error gauge <0.05 in controlled tests.
+Sprint 3 Online Learner Loop (Partial): Tau live updates; config_update extended with λ_d emission (inverse regret EMA per tenant, provisional mapping).
+Sprint 4 OPA & Shadow (Done): Shadow ~5%; veto metric increments; decision latency within SLO.
+Sprint 5 Observability Base (Done): Metrics + base alerts.
+Sprint 6 Canary & Rollout (Pending): p99 ≤22ms; regret ≤0.05; entropy stable; veto ≤5%.
+Sprint 7 Fusion Normalization (N): w_d via exp(−α·e_norm_d); α adaptive; entropy within band; regression <2%.
+Sprint 8 Consolidation & Single Entry (N): Predictors import shared utils; no local encode; CLoC drop ≥20%.
+Sprint 9 HMM Segmentation (N): Boundary F1 ≥0.9 (synthetic), false boundary <5%, latency ≤2 ticks.
+Sprint 10 Calibration Pipeline (N): ECE reduction ≥30%; temperature updates persisted; downgrade on breach.
+Sprint 11 Consistency Metrics (Partial): feasibility gauge (binary) emitted; future κ histogram & alerting pending.
+Sprint 12 Reward Attribution (N): γ_d published; λ_d adjusts exploration; regret improves ≥5%.
+Sprint 13 Drift & Auto-Rollback (N): drift event triggers disable advanced fusion; stabilize within 2 windows.
 
-5. **Kong Edge Hardening**
-   - Inject tenant IDs via request-transformer.
-   - Add schema validation and audit logging.
-   - Ensure `/memory/cutover` route is exposed with RBAC.
+## 9) Production Readiness & Ops
 
-6. **Telemetry Completion**
-   - Populate η/sparsity/margin/config_version metrics on config changes.
-   - Record ANN and overall SNR metrics from TieredMemory.
-   - Build dashboards for margin vs capacity, ANN health, blue/green readiness.
+Hardening (N): unified health schema; graceful shutdown across producer/tracer; bounded queues; SLA tracking for segmentation/integrator.
 
----
+Playbooks (N): calibration drift; consistency alert; segmentation flood; drift rollback; OPA latency spikes.
 
-## 8) Milestones (Delivered & Upcoming)
+## 10) Risks & Mitigations
 
-### Delivered (code verified)
-- **BHDC Core (A1)** — `somabrain/quantum.py`, tests for spectral/orthogonality.
-- **Unified Scorer (A2)** — `somabrain/scoring.py`, WM density adjustments.
-- **Config Foundations (C1)** — `ConfigService`, `ParameterSupervisor`, tests.
-- **Metrics Base (E1)** — Governance gauges and `scripts/prove_enhancement.py`.
+- Overfitting α → bounds + EMA smoothing.
+- Calibration sparsity → minimum sample gate and fallback.
+- HMM latency → start with fixed priors; fallback to heuristic.
+- Metric sprawl → namespace discipline and pruning.
+- Coupling latency → async consistency checks; fail-open until stable.
 
-### Upcoming (execution required)
-| Milestone | Goal | Owner modules | Exit criteria |
-| --- | --- | --- | --- |
-| **M1: Tiered Memory Activation** | Replace WM/LTM recall with `TieredMemory` | `somabrain/api/memory_api.py`, `somabrain/memory/hierarchical.py` | `/recall` emits layer+margin; WM/LTM share SuperposedTrace; tests updated. |
-| **M2: ANN Cleanup** | Introduce HNSW/FAISS indices | new `somabrain/ann/`, `superposed_trace.py` | Cleanup latency <40 ms; top-1 uplift vs baseline recorded in CI bench. |
-| **M3: Control Loop Live** | Hook supervisor + cutover endpoints | `somabrain/services/*`, config API, runtime scheduler | Supervisor adjusts η/τ/ef; `/memory/cutover` transitions namespaces; metrics show controller changes. |
-| **M4: Strict-Real Durability** | Remove silent journaling | `somabrain/services/memory_service.py`, new migration script | Production mode raises on failure; migration tool clears journals; metrics for fallback. |
-| **M5: Edge Enforcement** | Harden Kong manifests | `infra/gateway/*.yaml` | Tenant header injection, schema validation, audit logs deployed. |
-| **M6: Observability Closure** | Feed full telemetry set | `somabrain/metrics.py`, updated callers | Dashboards populated; CI asserts metric emission. |
+## 11) Non-Goals / Constraints
 
----
+- No multi-image split; remain single image.
+- No heavy online deep training.
+- No persistent per-user state beyond current memory subsystem.
 
-## 9) Execution Waves & Sprints (Simple, Precise)
+## 12) Rollback Plan
 
-**Wave 1 — Governance Activation (Weeks 1–2)**
-- ✅ *Sprint 1A:* TieredMemory now fronts recall with governed margin/confidence (`somabrain/api/memory_api.py`) and snapshot tests cover tiered hits.
-- ✅ *Sprint 1B:* Cleanup index is pluggable (`somabrain/services/ann.py`, env-driven HNSW fallback) and wired through `TieredMemoryRegistry`.
-- ✅ *Sprint 1C:* `/memory/recall` feeds η/sparsity/margin into `record_memory_snapshot`; governance payloads carry `governed_margin` for benches.
+Disable advanced flags individually; full revert with `featureFlags.enableCogThreads=false` and `learnerEnabled=false`. Automated rollback on drift trigger.
 
-**Wave 2 — Control Loop & Durability (Weeks 3–4)**
-- ✅ *Sprint 2A:* ConfigService now dispatches events via `config_runtime`, TieredMemory hot-reloads (`somabrain/api/memory_api.py`, `somabrain/services/tiered_memory_registry.py`), and `/config/cutover/*` endpoints drive the controller.
-- ✅ *Sprint 2B:* ParameterSupervisor runs from the runtime dispatcher, consumes recall telemetry, and patches config while emitting controller-change metrics.
-- ✅ *Sprint 2C:* Added `scripts/journal_to_outbox.py`, disabled journal fallback by default (`allow_journal_fallback`), and wired backend-enforced documentation.
+## 13) Status Summary (I/P/N)
 
-**Wave 3 — Edge & Learning Integrations (Weeks 5–6)**
-- ✅ *Sprint 3A:* Hardened Kong manifests (tenant headers, schema validation, audit streaming) in `infra/gateway/`.
-- ✅ *Sprint 3B:* Pluggable ANN backend now tunable with rebuild job + admin endpoint (`somabrain/services/ann.py`, `tiered_memory_registry.py`, `/memory/admin/rebuild-ann`).
-- ✅ *Sprint 3C:* Drafted learning-loop design (`docs/development-manual/learning-loop.md`), shipped dataset builder (`somabrain/learning/dataset.py`) and export CLI.
+- Diffusion predictors (I), Integrator softmax (I/P), NextEvent emit (I/P), Reward ingest (P), Tau updates (P), OPA+shadow (I), Observability base (I), HMM (N), Fusion normalization (N), Calibration (N), Consistency (P), Attribution λ_d (P), Consolidation (N), Drift automation (N).
 
-Each sprint ships independently, keeps interfaces minimal, and updates this roadmap with results and metrics.
-
----
-
-## 9) Testing & Bench Coverage
-
-- **Unit tests:** BHDC invariants (`tests/test_quantum_layer.py`), SuperposedTrace, TieredMemory, ConfigService, ParameterSupervisor, unified scorer recency behaviour.
-- **Integration gaps:** no end-to-end tests for TieredMemory recall or config hot-reload.
-- **Benchmarks:** `scripts/prove_enhancement.py` compares baseline vs enhanced metrics but requires updated datasets reflecting ANN/TieredMemory once implemented.
-
-Planned additions:
-- Property tests for interference scaling (SuperposedTrace).
-- Integration suite for supervisor-driven config adjustments.
-- Bench job validating ANN uplift and latency regressions.
-
----
-
-## 10) Immediate Action Items
-
-1. **Design doc & spike:** Outline TieredMemory adoption plan (tenants, persistence strategy) and create integration tests.
-2. **Stand up ANN prototype:** Choose FAISS/HNSW binding, design anchor ingestion + async rebuild path. *(In progress via pluggable backend; finalize benchmark + config knobs.)*
-3. **Implement journal migration script** and flip backend-enforced default once validated. ✅ (Script shipped; backend-enforced mode now rejects journaling.)
-5. **Update Kong manifests** with tenant injection, schema validation, audit logging.
-6. **Wire telemetry emitters** for η/sparsity/margin/config_version and confirm dashboards.
-
----
-
-## 11) Ownership & Tracking
-
-- **Math & Governance:** Math core team (owners: `somabrain/quantum.py`, `somabrain/memory/superposed_trace.py`).
-- **Memory Service & API:** Platform integrations (owners: `somabrain/api/memory_api.py`, `somabrain/services/memory_service.py`).
-- **Control Plane:** Control systems team (`somabrain/services/config_service.py`, `parameter_supervisor.py`, `cutover_controller.py`).
-- **Edge & Observability:** Infra/SRE (Kong manifests, Prometheus dashboards, journaling remediation).
-
-Track milestones via GitHub project **“Brain v3 – Implementation”**, using these labels: `math-governance`, `tiered-memory`, `ann-cleanup`, `control-plane`, `backend-enforced`, `edge`.
-
----
-
-## 12) Canonical References
-
-- **Implementation:** See referenced modules in this doc; repository tags `bhce-core`, `v2.9`.
-- **Docs:** ADR-003 (BHDC adoption), Technical Architecture manual (`docs/technical-manual/architecture.md`) for conceptual background.
-- **Tests:** `tests/` directory for coverage, `scripts/prove_enhancement.py` for CI bench.
-
-This roadmap is authoritative. Update it with every delivered milestone or scope change; link commits and PRs directly. No external spreadsheets or shadow docs.
+This canonical roadmap unifies implementation, math upgrades, consolidation, and production criteria in a single, truth-based plan.

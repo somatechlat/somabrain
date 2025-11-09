@@ -1,3 +1,25 @@
+## 2025-11-06 — Full-Power Recall Defaults
+
+- Default retrieval behavior now enables the strongest recall and learning path:
+  - retrievers: `vector, wm, graph, lexical`
+  - rerank: `auto` (HRR → MMR → cosine based on availability)
+  - persist: `true` (records recall sessions and `retrieved_with` links)
+- Safe rollback and tuning via environment variables:
+  - `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
+  - `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
+  - `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
+  - `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
+  - `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+- The unified retrieval pipeline remains authoritative; exact pinning, rank fusion, reranking, and session learning are unchanged aside from defaults.
+
+## V3.0.3-EXTRA-MILE
+
+- Unified recall under POST `/memory/recall` backed by the retrieval pipeline (vector, WM, lexical, graph, fusion, rerank).
+  - Input: accepts either a JSON string or an object (legacy MemoryRecallRequest + fields id/key/coord/mode/rerank/retrievers).
+  - Output: remains MemoryRecallResponse for compatibility; adds non-breaking extras internally (session, metrics).
+- Legacy retrieval router endpoints fully removed from the public API.
+- Docs and runbooks updated to prefer `/memory/recall` for all retrieval operations.
+
 # SomaBrain Changelog
 
 **Purpose**: Chronological record of all changes, improvements, and fixes in SomaBrain releases.
@@ -27,10 +49,41 @@ All notable changes to SomaBrain are documented in this file. This project adher
 
 ### 🚀 Added
 - Complete documentation restructure following 4-manual standard
+- CI Avro schema compatibility checker for `proto/cog/avro` to prevent breaking changes
+- E2E smoke for teach→reward (`scripts/e2e_teach_feedback_smoke.py`)
+
+### 🔧 Changed
+- Default best-mode settings enabled in Helm and Compose:
+  - `SOMABRAIN_STRICT_REAL=1` to enforce real backends
+  - `SOMA_HEAT_METHOD=lanczos` for diffusion-based salience
+  - `SOMABRAIN_ENABLE_TEACH_FEEDBACK=1` to map TeachFeedback→r_user RewardEvent
+
+### ⚠️ Deprecated
+- Helm template placeholders for components consolidated into the mono "cog" container are marked deprecated and inert:
+  - predictor-{state,agent,action} deployments/services
+  - integrator, orchestrator, segmentation deployments/services
+  These files contain only comments and will be removed in the next minor release.
+## V3.0.3 — Diffusion-backed Predictors and Integrator Normalization
+
+- New: `somabrain/predictors/base.py` with `PredictorBase` and `HeatDiffusionPredictor`
+- Refactor: `services/predictor-{state,agent,action}/main.py` now compute delta_error via diffusion and confidence = exp(-alpha·error)
+- Config: `SOMA_HEAT_METHOD`, `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`, `SOMABRAIN_PREDICTOR_DIM`
+- Integrator: Optional confidence normalization from `delta_error` via `SOMABRAIN_INTEGRATOR_ENFORCE_CONF` and `SOMABRAIN_INTEGRATOR_ALPHA`
+- Metrics: `somabrain_predictor_error{domain}`, `somabrain_integrator_leader_total{leader}`
+- Tests: `tests/predictors/test_heat_diffusion_predictor.py` (Chebyshev/Lanczos vs. exact expm; monotonic confidence)
+- Docs: New `docs/technical-manual/predictors.md`; updated `karpathy-architecture.md` and `architecture.md`
+ - Production wiring: optional JSON graph files via `SOMABRAIN_GRAPH_FILE[_STATE|_AGENT|_ACTION]` with loader `load_operator_from_file()`; services now use `build_predictor_from_env()`
+ - Benchmarks: Added `benchmarks/diffusion_predictor_bench.py`, Makefile target `bench-diffusion`, and docs at `docs/technical-manual/benchmarks_diffusion.md`
+
 - Comprehensive onboarding guide for new developers and agent coders
 - Automated backup and recovery procedures
 - Production-ready Kubernetes Helm charts
 - Performance benchmarking suite with canonical test cases
+ - Kafka teach feedback pipeline:
+   - New Avro contracts: `teach_feedback.avsc`, `teach_capsule.avsc`
+   - Processor service: `somabrain.services.teach_feedback_processor`
+   - Topic: `cog.teach.feedback` → maps `rating` to `r_user` and publishes `RewardEvent`
+   - Smoke script: `scripts/e2e_teach_feedback_smoke.py`
 
 ### 🔧 Changed
 - Improved metrics bridge architecture for better package compatibility
@@ -43,6 +96,12 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - Created Development Manual with coding standards and contribution process
 - Created Onboarding Manual for new team members and contractors
 - Added comprehensive runbooks for all major system components
+ - Documented teach feedback pipeline in Technical Manual and User Manual
+
+### 💥 Removed
+- Legacy environment variants and overlays removed:
+  - Dropped support for `.env.local` and other per-variant env files. Use a single canonical `.env`.
+  - Deleted `docker-compose.9999.yml` and other overlay compose files. Single `docker-compose.yml` is the source of truth.
 
 ---
 
@@ -110,7 +169,7 @@ All notable changes to SomaBrain are documented in this file. This project adher
 - **Docker Compose**: Complete local development stack with service orchestration
 - **Kubernetes Ready**: Helm chart preparation for cloud-native deployment
 - **CI/CD Pipeline**: Automated testing, linting, and quality gates
-- **Monitoring Stack**: Prometheus metrics, Grafana dashboards, and alerting rules
+- **Monitoring Stack**: Prometheus metrics and alerting rules
 
 ### Launch Snapshot
 
@@ -262,5 +321,4 @@ SomaBrain follows these principles for breaking changes:
 **References**:
 - [Semantic Versioning Specification](https://semver.org/) for versioning policy understanding
 - [Migration Guides](#migration-guides) for upgrade procedures
-- [Release Notes](../releases/) for detailed version information
-- [API Documentation](../development-manual/api-reference.md) for current API specification
+- [API Documentation](development-manual/api-reference.md) for current API specification

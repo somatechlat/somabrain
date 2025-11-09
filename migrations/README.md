@@ -10,5 +10,5 @@ alembic upgrade head
 alembic revision -m "message"
 ```
 
-The environment reads Postgres DSNs from `SOMABRAIN_POSTGRES_DSN` / `SOMABRAIN_DB_URL`,
+The environment reads Postgres DSNs from `SOMABRAIN_POSTGRES_DSN`,
 falling back to the local SQLite cache (`data/somabrain.db`).

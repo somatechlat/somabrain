@@ -21,7 +21,7 @@ def span(name: str, **attrs):
     """Return a span context manager.
 
     Usage:
-        with span("memstore.search", query=q):
+        with span("memory.search", query=q):
             ...
     """
     if OTEL_AVAILABLE and _tracer is not None:

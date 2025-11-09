@@ -6,14 +6,13 @@ SomaBrain system. It includes multiple predictor implementations ranging from si
 cosine similarity to sophisticated anomaly detection and LLM-based prediction.
 
 Key Features:
-- Multiple predictor implementations (stub, budgeted, Mahalanobis, LLM)
+- Multiple predictor implementations (budgeted, Mahalanobis, LLM)
 - Error calculation using cosine similarity and statistical methods
 - Time-bounded prediction with timeout handling
 - Asynchronous prediction support
 - Online learning for statistical predictors
 
 Predictor Types:
-- StubPredictor: Simple cosine similarity baseline
 - SlowPredictor: Test predictor with configurable latency
 - BudgetedPredictor: Time-bounded wrapper for any predictor
 - MahalanobisPredictor: Statistical anomaly detection using online mean/variance
@@ -27,7 +26,6 @@ Error Metrics:
 Classes:
     PredictionResult: Container for prediction results and error metrics.
     BasePredictor: Protocol defining the predictor interface.
-    StubPredictor: Baseline predictor using cosine similarity.
     SlowPredictor: Test predictor with configurable delay.
     BudgetedPredictor: Time-bounded predictor wrapper.
     MahalanobisPredictor: Statistical anomaly detector.
@@ -89,80 +87,38 @@ class BasePredictor(Protocol):
         ...
 
 
-class StubPredictor:
+def cosine_error(a: np.ndarray, b: np.ndarray) -> float:
     """
-    Baseline predictor using cosine similarity.
+    Compute cosine error between two vectors.
 
-    Simple predictor that echoes the expected vector and computes error
-    using cosine similarity. Serves as a baseline for comparison with
-    more sophisticated predictors.
+    Calculates 1 - cosine_similarity, providing an error metric where
+    0 indicates identical vectors and 1 indicates orthogonal vectors.
 
-    This predictor is useful for:
-    - Establishing baseline performance
-    - Testing prediction pipelines
-    - Fallback when advanced predictors fail
+    Args:
+        a (np.ndarray): First vector.
+        b (np.ndarray): Second vector.
+
+    Returns:
+        float: Cosine error in [0,1].
+
+    Note:
+        Returns 1.0 for zero-length vectors to avoid division by zero.
     """
-
-    def __init__(self):
-        """Initialize the stub predictor."""
-        pass
-
-    @staticmethod
-    def error_cosine(a: np.ndarray, b: np.ndarray) -> float:
-        """
-        Compute cosine error between two vectors.
-
-        Calculates 1 - cosine_similarity, providing an error metric where
-        0 indicates identical vectors and 1 indicates orthogonal vectors.
-
-        Args:
-            a (np.ndarray): First vector.
-            b (np.ndarray): Second vector.
-
-        Returns:
-            float: Cosine error in [0,1].
-
-        Note:
-            Returns 1.0 for zero-length vectors to avoid division by zero.
-        """
-        na = float(np.linalg.norm(a))
-        nb = float(np.linalg.norm(b))
-        if na <= 0 or nb <= 0:
-            return 1.0
-        sim = float(np.dot(a, b) / (na * nb))
-        return float(max(0.0, 1.0 - sim))
-
-    def predict_and_compare(
-        self, expected_vec: np.ndarray, actual_vec: np.ndarray
-    ) -> PredictionResult:
-        """
-        Predict by echoing expected vector and compute cosine error.
-
-        For MVP implementation, simply uses the expected vector as prediction
-        and computes cosine error against the actual vector.
-
-        Args:
-            expected_vec (np.ndarray): Expected vector (used as prediction).
-            actual_vec (np.ndarray): Actual vector for error calculation.
-
-        Returns:
-            PredictionResult: Result with echoed prediction and cosine error.
-        """
-        # For MVP, the predictor just echoes the expected vector
-        predicted = expected_vec
-        err = self.error_cosine(predicted, actual_vec)
-        return PredictionResult(
-            predicted_vec=predicted, actual_vec=actual_vec, error=err
-        )
+    na = float(np.linalg.norm(a))
+    nb = float(np.linalg.norm(b))
+    if na <= 0 or nb <= 0:
+        return 1.0
+    sim = float(np.dot(a, b) / (na * nb))
+    return float(max(0.0, 1.0 - sim))
 
 
 class SlowPredictor:
     """
     Test predictor that simulates latency for testing timeout behavior.
 
-    Wraps the StubPredictor with a configurable delay to simulate slow
-    prediction services. Useful for testing timeout handling and
-    performance under load.
+    Applies a configurable delay and then computes a cosine-error baseline
+    to simulate slow prediction services. Useful for testing timeout
+    handling and performance under load.
 
     Attributes:
         delay_ms (int): Delay in milliseconds before making prediction.
@@ -183,7 +139,8 @@ class SlowPredictor:
         """
         Make prediction after delay.
 
-        Sleeps for the configured delay, then uses StubPredictor logic.
+        Sleeps for the configured delay, then computes cosine error
+        between the expected and actual vectors.
 
         Args:
             expected_vec (np.ndarray): Expected vector.
@@ -194,7 +151,7 @@ class SlowPredictor:
         """
         time.sleep(self.delay_ms / 1000.0)
         predicted = expected_vec
-        err = StubPredictor.error_cosine(predicted, actual_vec)
+        err = cosine_error(predicted, actual_vec)
         return PredictionResult(
             predicted_vec=predicted, actual_vec=actual_vec, error=err
         )
@@ -387,7 +344,7 @@ class MahalanobisPredictor:
         x = expected_vec.astype("float32")
         self._update_stats(x)
         # Combine cosine residual to actual with bounded Mahalanobis surprise
-        cos_err = StubPredictor.error_cosine(expected_vec, actual_vec)
+        cos_err = cosine_error(expected_vec, actual_vec)
         surprise = self._mahal_bounded(actual_vec.astype("float32"))
         # Small blend to avoid large behavior change; can tune later
         err = float(min(1.0, max(0.0, 0.8 * cos_err + 0.2 * surprise)))
@@ -443,7 +400,7 @@ class LLMPredictor:
         Returns:
             PredictionResult: Result with LLM-adjusted error or fallback.
         """
-        base_err = StubPredictor.error_cosine(expected_vec, actual_vec)
+        base_err = cosine_error(expected_vec, actual_vec)
         if not self.endpoint:
             return PredictionResult(
                 predicted_vec=expected_vec, actual_vec=actual_vec, error=base_err

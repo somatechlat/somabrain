@@ -8,6 +8,29 @@
 
 ---
 
+## Quick PromQL cheat sheet
+
+Common queries without dashboards:
+
+```promql
+# Request rate by operation
+rate(somabrain_requests_total[5m]) by (operation)
+
+# API latency p95 by endpoint
+histogram_quantile(0.95, sum(rate(somabrain_http_request_duration_seconds_bucket[5m])) by (le, endpoint))
+
+# Error rate
+sum(rate(somabrain_http_requests_total{status=~"5.."}[5m])) / sum(rate(somabrain_http_requests_total[5m]))
+
+# Tenant request rate
+rate(somabrain_requests_total[5m]) by (tenant)
+
+# Memory writes per hour (moving)
+rate(somabrain_memories_stored_total[1h])
+```
+
+---
+
 ## Monitoring Architecture
 
 SomaBrain provides multi-layer monitoring capabilities designed for production observability:
@@ -19,12 +42,12 @@ SomaBrain provides multi-layer monitoring capabilities designed for production o
 **Log Aggregation**: Structured logging with correlation IDs
 **Health Checks**: Automated service health verification
 **Alerting**: Rule-based alerts for operational issues
-**Dashboards**: Grafana visualization for key metrics
+**Dashboards**: Prometheus UI and Alertmanager for alerts
 
 ### Metrics Collection Flow
 
 ```
-SomaBrain Services → Prometheus → Grafana → AlertManager → Notifications
+SomaBrain Services → Prometheus → AlertManager → Notifications
                  ↓
               Log Aggregation → ElasticSearch/Loki → Log Analysis
                  ↓
@@ -218,44 +241,25 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: 'somabrain_active'
+  # SomaBrain API metrics (FastAPI exports /metrics)
+  - job_name: 'somabrain_api'
     static_configs:
-      - targets: ['sb_somabrain:9696']
+      - targets: ['somabrain_app:9696']
     metrics_path: '/metrics'
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  - job_name: 'somabrain_host'
+  # Postgres exporter (provided by docker-compose service somabrain_postgres_exporter)
+  - job_name: 'postgres_exporter'
     static_configs:
-      - targets: ['host.docker.internal:9696']
-    metrics_path: '/metrics'
+      - targets: ['somabrain_postgres_exporter:9187']
     scrape_interval: 30s
     scrape_timeout: 10s
 
-  - job_name: 'redis_metrics'
+  # Kafka exporter (provided by docker-compose service somabrain_kafka_exporter)
+  - job_name: 'kafka_exporter'
     static_configs:
-      - targets: ['sb_redis:6379']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'postgres_metrics'
-    static_configs:
-      - targets: ['sb_postgres_exporter:9187']
-    metrics_path: '/metrics'
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'kafka_metrics'
-    static_configs:
-      - targets: ['sb_kafka_exporter:9308']
-    scrape_interval: 30s
-    scrape_timeout: 10s
-
-  - job_name: 'opa_metrics'
-    static_configs:
-      - targets: ['sb_opa:8181']
-    metrics_path: '/metrics'
+      - targets: ['somabrain_kafka_exporter:9308']
     scrape_interval: 30s
     scrape_timeout: 10s
 ```
@@ -281,7 +285,7 @@ groups:
       description: "SomaBrain API has error rate of {{ $value | humanizePercentage }} for more than 2 minutes"
 
   # High response time alert
-  - alert: SomaBrainHighLatency
+        <!-- Visualization sections removed. Use Prometheus UI and Alertmanager. -->
     expr: histogram_quantile(0.95, rate(somabrain_http_request_duration_seconds_bucket[5m])) > 2
     for: 3m
     labels:
@@ -337,11 +341,11 @@ groups:
 
 ---
 
-## Grafana Dashboards
+## Visualization examples (removed)
 
 ### Main SomaBrain Dashboard
 
-Import the provided Grafana dashboard configuration:
+Historical example only (kept for reference; not used in this project):
 
 ```json
 {
@@ -446,7 +450,7 @@ Import the provided Grafana dashboard configuration:
 }
 ```
 
----
+<!-- Visualization examples removed entirely per policy. -->
 
 ## Log Management
 
@@ -578,77 +582,56 @@ output {
 
 ---
 
-## Health Checks and Service Discovery
+## Health and diagnostics endpoints
 
-### Application Health Checks
+The API provides two operator-facing endpoints:
 
-SomaBrain provides comprehensive health endpoints:
+- `GET /health` and `GET /healthz` – readiness with dependency breakdown
+- `GET /diagnostics` – sanitized wiring snapshot (no secrets)
 
-```bash
-# Basic health check
-curl http://localhost:9696/health
+Example `/healthz` output:
+
+```json
 {
-  "status": "healthy",
-  "timestamp": "2025-10-15T14:30:45Z",
-  "version": "0.1.0",
-  "checks": {
-    "database": {"status": "healthy", "response_time_ms": 12},
-    "redis": {"status": "healthy", "response_time_ms": 5},
-    "vector_index": {"status": "healthy", "size_mb": 890}
-  }
-}
-
-# Detailed health check with dependencies
-curl http://localhost:9696/health/detailed
-{
-  "status": "healthy",
-  "components": {
-    "api_server": {
-      "status": "healthy",
-      "uptime_seconds": 86400,
-      "memory_usage_mb": 512,
-      "cpu_usage_percent": 15.3
-    },
-    "postgresql": {
-      "status": "healthy",
-      "connection_pool": {
-        "active": 12,
-        "idle": 8,
-        "max": 20
-      },
-      "query_performance": {
-        "avg_duration_ms": 23,
-        "slow_queries": 0
-      }
-    },
-    "redis": {
-      "status": "healthy",
-      "memory_usage_mb": 256,
-      "keyspace_hits_ratio": 0.97,
-      "connected_clients": 5
-    }
-  }
-}
-
-# Readiness check (for Kubernetes)
-curl http://localhost:9696/ready
-{
+  "ok": true,
+  "components": {"memory": {"http": true}, "wm_items": "tenant-scoped", "api_version": 1},
+  "namespace": "somabrain_ns:public",
   "ready": true,
-  "dependencies_ready": {
-    "database": true,
-    "redis": true,
-    "vector_index": true
-  }
-}
-
-# Liveness check (for Kubernetes)
-curl http://localhost:9696/live
-{
-  "alive": true,
-  "pid": 1234,
-  "uptime_seconds": 86400
+  "predictor_ok": true,
+  "memory_ok": true,
+  "embedder_ok": true,
+  "opa_ok": true,
+  "kafka_ok": true,
+  "postgres_ok": true,
+  "metrics_ready": true,
+  "metrics_required": ["kafka", "postgres"]
 }
 ```
+
+Semantics:
+- `components.memory.http` is the raw ping of the external memory service.
+- `*_ok` fields summarize key backends used by the current configuration.
+- `ready` is true only when all required backends are healthy.
+- `metrics_ready` reflects exportability of Kafka/Postgres (and OPA when required).
+
+Example `/diagnostics` output:
+
+```json
+{
+  "in_container": true,
+  "mode": "enterprise",
+  "external_backends_required": true,
+  "require_memory": true,
+  "memory_endpoint": "http://host.docker.internal:9595",
+  "env_memory_endpoint": "http://host.docker.internal:9595",
+  "shared_settings_present": true,
+  "shared_settings_memory_endpoint": "http://host.docker.internal:9595",
+  "memory_token_present": true,
+  "api_version": 1
+}
+```
+
+Use `/diagnostics` to confirm effective wiring during incidents (e.g., catching the `127.0.0.1`-inside-container trap). Startup logs also print these values and warn when the memory endpoint is a localhost URL inside Docker.
 
 ### Kubernetes Health Probes
 
@@ -869,7 +852,7 @@ groups:
 
 | Issue | Symptoms | Solution |
 |-------|----------|----------|
-| Metrics not appearing | Empty Grafana panels | Check Prometheus scraping configuration and network connectivity |
+| Metrics not appearing | No data in Prometheus UI | Check Prometheus scraping configuration and network connectivity |
 | High cardinality metrics | Prometheus performance issues | Review metric labels and use recording rules |
 | Missing alerts | No notifications for known issues | Verify AlertManager configuration and routing rules |
 | Log parsing errors | Incomplete log data in Kibana | Check Logstash filters and field mappings |
@@ -914,3 +897,57 @@ curl http://localhost:9696/metrics
 - [Deployment Guide](deployment.md) for production setup context
 - [Backup and Recovery](backup-and-recovery.md) for operational procedures
 - [Runbooks](runbooks/somabrain-api.md) for incident response procedures
+
+---
+
+## Cognitive Threads Metrics (Predictors & Integrator)
+
+Track the diffusion-backed predictors and Integrator decision quality:
+
+```promql
+# Predictor error (MSE) by domain (p90)
+histogram_quantile(0.90, sum by (le, domain) (rate(somabrain_predictor_error_bucket[5m])))
+
+# Integrator leader distribution (last 5m)
+sum by (leader) (rate(somabrain_integrator_leader_total[5m]))
+
+# Leader switches by tenant (last 1h)
+increase(somabrain_integrator_leader_switches_total[1h]) by (tenant)
+
+# Leader entropy (normalized 0..1), p95 by tenant (1h window)
+quantile_over_time(0.95, somabrain_integrator_leader_entropy[1h])
+
+# OPA decision latency (if OPA enabled)
+histogram_quantile(0.95, rate(somabrain_integrator_opa_latency_seconds_bucket[5m]))
+
+# Softmax temperature (tau)
+somabrain_integrator_tau
+```
+
+Suggested alerts:
+
+```yaml
+- alert: CognitiveThreadsHighPredictorError
+  expr: histogram_quantile(0.95, sum by (le) (rate(somabrain_predictor_error_bucket[5m]))) > 0.5
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "High predictor error at p95"
+
+- alert: CognitiveThreadsLeaderChurn
+  expr: increase(somabrain_integrator_leader_switches_total[15m]) > 20
+  for: 10m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Frequent leader switching in Integrator"
+
+- alert: CognitiveThreadsLowEntropy
+  expr: avg_over_time(somabrain_integrator_leader_entropy[30m]) < 0.05
+  for: 15m
+  labels:
+    severity: info
+  annotations:
+    summary: "Integrator leader entropy near zero (one domain dominating)"
+```

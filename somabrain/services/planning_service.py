@@ -13,13 +13,27 @@ def make_plan(
     rel_types: List[str],
     universe: Optional[str] = None,
 ) -> List[str]:
-    return bfs_plan(
-        task_key,
-        mem_client,
-        max_steps=max_steps,
-        rel_types=rel_types,
-        universe=universe,
-    )
+    import time
+
+    try:
+        from .. import metrics as M  # lazy to avoid import cycles in tests
+    except Exception:
+        M = None
+    t0 = time.perf_counter()
+    try:
+        return bfs_plan(
+            task_key,
+            mem_client,
+            max_steps=max_steps,
+            rel_types=rel_types,
+            universe=universe,
+        )
+    finally:
+        if "t0" in locals() and M is not None:
+            try:
+                M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
+            except Exception:
+                pass
 
 
 def make_plan_auto(
@@ -27,19 +41,33 @@ def make_plan_auto(
 ) -> List[str]:
     backend = str(getattr(cfg, "planner_backend", "bfs") or "bfs").lower()
     max_steps = int(getattr(cfg, "plan_max_steps", 5) or 5)
-    if backend == "rwr":
-        return _rwr(
+    import time
+
+    try:
+        from .. import metrics as M
+    except Exception:
+        M = None
+    t0 = time.perf_counter()
+    try:
+        if backend == "rwr":
+            return _rwr(
+                task_key,
+                mem_client,
+                steps=int(getattr(cfg, "rwr_steps", 20) or 20),
+                restart=float(getattr(cfg, "rwr_restart", 0.15) or 0.15),
+                universe=universe,
+                max_items=max_steps,
+            )
+        return _bfs(
             task_key,
             mem_client,
-            steps=int(getattr(cfg, "rwr_steps", 20) or 20),
-            restart=float(getattr(cfg, "rwr_restart", 0.15) or 0.15),
+            max_steps=max_steps,
+            rel_types=rel_types,
             universe=universe,
-            max_items=max_steps,
         )
-    return _bfs(
-        task_key,
-        mem_client,
-        max_steps=max_steps,
-        rel_types=rel_types,
-        universe=universe,
-    )
+    finally:
+        if "t0" in locals() and M is not None:
+            try:
+                M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
+            except Exception:
+                pass

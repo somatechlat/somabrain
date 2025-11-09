@@ -2,8 +2,8 @@
 
 This module mirrors the pattern used by other services in the SomaStack.
 It provides a single ``Settings`` class (pydantic ``BaseSettings``) that
-loads values from ``.env.local`` or the environment.  All new code should
-import ``Settings`` from here instead of calling ``os.getenv`` directly.
+loads values from the canonical ``.env`` file or the environment. All new code
+should import ``Settings`` from here instead of calling ``os.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
@@ -14,15 +14,20 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
+BaseSettings: Any  # forward-declare for mypy
 try:
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
-    from pydantic_settings import BaseSettings
+    import pydantic_settings as _ps  # type: ignore
     from pydantic import Field
+
+    BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
 except Exception:  # pragma: no cover - fallback for older envs
-    from pydantic import BaseSettings, Field
+    from pydantic import BaseSettings as _BS, Field
+
+    BaseSettings = _BS  # type: ignore[assignment]
 
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -56,8 +61,8 @@ class Settings(BaseSettings):
     """Application‑wide settings.
 
     The fields correspond to the environment variables that SomaBrain already
-    uses.  ``env_file`` points at the generated ``.env.local`` so developers
-    can run the service locally without manually exporting each variable.
+    uses.  ``env_file`` points at the generated ``.env`` so developers can run
+    the service locally without manually exporting each variable.
     """
 
     # Core infra -----------------------------------------------------------
@@ -106,7 +111,9 @@ class Settings(BaseSettings):
 
     # Auth / JWT -----------------------------------------------------------
     jwt_secret: Optional[str] = Field(default=os.getenv("SOMABRAIN_JWT_SECRET"))
-    jwt_public_key_path: Optional[Path] = Field(
+    # Use str for path to avoid mypy complaining about default type; callers
+    # can wrap with Path when needed.
+    jwt_public_key_path: Optional[str] = Field(
         default=os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
     )
 
@@ -128,13 +135,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
     )
     predictor_provider: str = Field(
-        default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "stub"
-    )
-    allow_backend_fallbacks: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_FALLBACKS", False)
-    )
-    allow_backend_auto_fallbacks: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_BACKEND_AUTO_FALLBACKS", False)
+        default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
     )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)
@@ -142,9 +143,7 @@ class Settings(BaseSettings):
 
     # OPA -----------------------------------------------------------------------------
     opa_url: str = Field(
-        default=os.getenv("SOMABRAIN_OPA_URL")
-        or os.getenv("SOMA_OPA_URL")
-        or ""
+        default=os.getenv("SOMABRAIN_OPA_URL") or os.getenv("SOMA_OPA_URL") or ""
     )
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
@@ -155,7 +154,8 @@ class Settings(BaseSettings):
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_FF_MEMORY_WEIGHTING", False)
+        or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
     )
     memory_phase_priors: str = Field(
         default=os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
@@ -166,12 +166,7 @@ class Settings(BaseSettings):
     memory_fast_ack: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_FAST_ACK", False)
     )
-    memory_db_path: str = Field(
-        default=os.getenv("MEMORY_DB_PATH", "./data/memory.db")
-    )
-    docker_memory_fallback: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_DOCKER_MEMORY_FALLBACK")
-    )
+    memory_db_path: str = Field(default=os.getenv("MEMORY_DB_PATH", "./data/memory.db"))
 
     learning_rate_dynamic: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_LEARNING_RATE_DYNAMIC", False)
@@ -179,9 +174,7 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
-    allow_local_mirrors: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_LOCAL_MIRRORS", True)
-    )
+    # Deprecated fallback toggles removed: no local/durable fallbacks allowed
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
@@ -195,15 +188,16 @@ class Settings(BaseSettings):
         Historically, the default was "enterprise"; we treat that as prod.
         """
         try:
-            m = (self.mode or "").strip().lower()
+            from somabrain.mode import get_mode_config
+
+            return get_mode_config().mode.value
         except Exception:
-            m = ""
-        if m in ("dev", "development"):  # allow synonyms
-            return "dev"
-        if m in ("stage", "staging"):
-            return "staging"
-        # enterprise/main/prod/empty -> prod
-        return "prod"
+            m = (self.mode or "").strip().lower()
+            if m in ("dev", "development"):
+                return "dev"
+            if m in ("stage", "staging"):
+                return "staging"
+            return "prod"
 
     @property
     def mode_api_auth_enabled(self) -> bool:
@@ -213,8 +207,12 @@ class Settings(BaseSettings):
         - staging: True
         - prod: True
         """
-        m = self.mode_normalized
-        return m != "dev"
+        try:
+            from somabrain.mode import get_mode_config
+
+            return get_mode_config().profile.auth_enabled
+        except Exception:
+            return self.mode_normalized != "dev"
 
     @property
     def mode_require_external_backends(self) -> bool:
@@ -222,11 +220,16 @@ class Settings(BaseSettings):
 
         This mirrors the "no mocks" requirement and prevents silent fallbacks.
         """
-        return True
+        try:
+            from somabrain.mode import get_mode_config
+
+            return get_mode_config().profile.require_external_backends
+        except Exception:
+            return True
 
     @property
-    def mode_memstore_auth_required(self) -> bool:
-        """Whether memstore HTTP calls must carry a token.
+    def mode_memory_auth_required(self) -> bool:
+        """Whether memory-service HTTP calls must carry a token.
 
         - dev: True (dev token or approved proxy)
         - staging: True
@@ -242,17 +245,27 @@ class Settings(BaseSettings):
         - staging: True
         - prod: True
         """
-        return self.mode_normalized != "dev"
+        try:
+            from somabrain.mode import get_mode_config
+
+            return get_mode_config().profile.opa_fail_closed
+        except Exception:
+            return self.mode_normalized != "dev"
 
     @property
     def mode_log_level(self) -> str:
         """Recommended root log level by mode."""
-        m = self.mode_normalized
-        if m == "dev":
-            return "DEBUG"
-        if m == "staging":
-            return "INFO"
-        return "WARNING"
+        try:
+            from somabrain.mode import get_mode_config
+
+            return get_mode_config().profile.log_level
+        except Exception:
+            m = self.mode_normalized
+            if m == "dev":
+                return "DEBUG"
+            if m == "staging":
+                return "INFO"
+            return "WARNING"
 
     @property
     def mode_opa_policy_bundle(self) -> str:
@@ -289,7 +302,14 @@ class Settings(BaseSettings):
         # Warn on unknown modes
         try:
             raw = (self.mode or "").strip().lower()
-            if raw and raw not in ("dev", "development", "stage", "staging", "prod", "enterprise"):
+            if raw and raw not in (
+                "dev",
+                "development",
+                "stage",
+                "staging",
+                "prod",
+                "enterprise",
+            ):
                 notes.append(
                     f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
                 )
@@ -299,10 +319,9 @@ class Settings(BaseSettings):
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep
-    # case-insensitive env names. The `env_file` is preserved so `.env.local`
-    # will be loaded during local development.
+    # case-insensitive env names. The `env_file` points to the canonical `.env`.
     model_config = {
-        "env_file": ".env.local",
+        "env_file": ".env",
         "case_sensitive": False,
         "extra": "allow",
     }

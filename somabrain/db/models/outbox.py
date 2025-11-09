@@ -10,9 +10,7 @@ from sqlalchemy import (
     JSON,
     func,
 )
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from somabrain.storage.db import Base
 
 
 class OutboxEvent(Base):

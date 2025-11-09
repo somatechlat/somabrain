@@ -1,7 +1,0 @@
-{
-  "metrics": {
-    "top1_accuracy": 0.92,
-    "cosine_margin": 0.14,
-    "recall_latency_p95": 0.082
-  }
-}

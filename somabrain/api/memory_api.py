@@ -13,10 +13,10 @@ import os
 import time
 import uuid
 from threading import RLock
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Annotated
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Body
 from pydantic import BaseModel, Field
 
 from somabrain.metrics import (
@@ -31,7 +31,12 @@ from somabrain.runtime.config_runtime import (
     ensure_supervisor_worker,
     register_config_listener,
     submit_metrics_snapshot,
+    get_cutover_controller,
 )
+from somabrain.config import get_config
+from somabrain.tenant import get_tenant
+from somabrain.auth import require_auth
+from somabrain.schemas import RetrievalRequest
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -170,8 +175,6 @@ class MemoryWriteResponse(BaseModel):
     tenant: str
     namespace: str
     coordinate: Optional[List[float]] = None
-    queued: bool = False
-    breaker_open: bool = False
     promoted_to_wm: bool = False
     persisted_to_ltm: bool = False
     deduplicated: bool = False
@@ -264,12 +267,41 @@ class MemoryRecallResponse(BaseModel):
     conversation_id: Optional[str] = None
 
 
+class CutoverOpenRequest(BaseModel):
+    tenant: str = Field(..., min_length=1)
+    from_namespace: str = Field(..., min_length=1)
+    to_namespace: str = Field(..., min_length=1)
+
+
+class CutoverActionRequest(BaseModel):
+    tenant: str = Field(..., min_length=1)
+    reason: Optional[str] = None
+
+
+class CutoverPlanResponse(BaseModel):
+    tenant: str
+    from_namespace: str
+    to_namespace: str
+    status: str
+    ready: bool
+    created_at: float
+    approved_at: Optional[float] = None
+    notes: List[str] = Field(default_factory=list)
+    last_top1_accuracy: Optional[float] = None
+    last_margin: Optional[float] = None
+    last_latency_p95_ms: Optional[float] = None
+
+
+def _tiered_enabled() -> bool:
+    flag = os.getenv("ENABLE_TIERED_MEMORY", "0").strip().lower()
+    return flag in ("1", "true", "yes", "on")
+
+
 class MemoryMetricsResponse(BaseModel):
     tenant: str
     namespace: str
     wm_items: int
     circuit_open: bool
-    outbox_pending: int
 
 
 class MemoryBatchWriteItem(BaseModel):
@@ -322,8 +354,6 @@ class MemoryBatchWriteResponse(BaseModel):
     tenant: str
     namespace: str
     results: List[MemoryBatchWriteResult]
-    breaker_open: bool = False
-    queued: int = 0
 
 
 class MemoryRecallSessionResponse(BaseModel):
@@ -337,7 +367,35 @@ class MemoryRecallSessionResponse(BaseModel):
 
 
 def _runtime_module():
-    from somabrain import runtime as rt
+    """Return the canonical runtime module carrying singletons.
+
+    Prefer the initializer-loaded module name ("somabrain.runtime_module") when present
+    to ensure we reference the same object that `app.py` wires up. Fallback to the
+    package module ("somabrain.runtime"). As a final guard, scan `sys.modules` for any
+    module whose file path points to `somabrain/runtime.py` and return that instance.
+    """
+    import sys
+
+    # Prefer the explicit initializer alias if available
+    m = sys.modules.get("somabrain.runtime_module")
+    if m is not None:
+        return m
+    try:
+        from somabrain import runtime as rt  # type: ignore
+
+        return rt
+    except Exception:
+        pass
+    # Last resort: find a loaded module referencing runtime.py by filepath
+    for mod in list(sys.modules.values()):
+        try:
+            mf = getattr(mod, "__file__", "") or ""
+            if mf.endswith("somabrain/runtime.py"):
+                return mod
+        except Exception:
+            continue
+    # If nothing found, import the package module now
+    from somabrain import runtime as rt  # type: ignore
 
     return rt
 
@@ -391,18 +449,7 @@ def _serialize_coord(coord: Any) -> Optional[List[float]]:
     return None
 
 
-def _count_outbox_entries(memsvc: MemoryService) -> int:
-    try:
-        client = memsvc.client()
-        path = getattr(client, "_outbox_path", None)
-        if not path:
-            return 0
-        if not os.path.exists(path):
-            return 0
-        with open(path, "r", encoding="utf-8") as handle:
-            return sum(1 for line in handle if line.strip())
-    except Exception:
-        return 0
+# Removed: no local outbox support
 
 
 def _prune_sessions() -> None:
@@ -554,11 +601,7 @@ async def remember_memory(
         coord = await memsvc.aremember(payload.key, stored_payload)
         persisted_to_ltm = True
     except RuntimeError as exc:
-        breaker_state = memsvc._is_circuit_open()
-        raise HTTPException(
-            status_code=503,
-            detail={"message": str(exc), "breaker_open": breaker_state},
-        ) from exc
+        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
@@ -614,8 +657,6 @@ async def remember_memory(
         tenant=payload.tenant,
         namespace=payload.namespace,
         coordinate=coordinate_list,
-        queued=False,
-        breaker_open=breaker_state,
         promoted_to_wm=promoted_to_wm,
         persisted_to_ltm=persisted_to_ltm,
         deduplicated=False,
@@ -691,8 +732,6 @@ async def remember_memory_batch(
             tenant=payload.tenant,
             namespace=payload.namespace,
             results=[],
-            breaker_open=memsvc._is_circuit_open(),
-            queued=0,
         )
 
     try:
@@ -702,11 +741,7 @@ async def remember_memory_batch(
         )
         persisted_to_ltm = True
     except RuntimeError as exc:
-        breaker_state = memsvc._is_circuit_open()
-        raise HTTPException(
-            status_code=503,
-            detail={"message": str(exc), "breaker_open": breaker_state},
-        ) from exc
+        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
@@ -782,8 +817,6 @@ async def remember_memory_batch(
         tenant=payload.tenant,
         namespace=payload.namespace,
         results=results,
-        breaker_open=memsvc._is_circuit_open(),
-        queued=0,
     )
 
 
@@ -934,11 +967,7 @@ async def _perform_recall(
                 universe=payload.universe or "real",
             )
         except RuntimeError as exc:
-            breaker_state = memsvc._is_circuit_open()
-            raise HTTPException(
-                status_code=503,
-                detail={"message": str(exc), "breaker_open": breaker_state},
-            ) from exc
+            raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
         except Exception as exc:
             raise HTTPException(
                 status_code=502, detail=f"recall failed: {exc}"
@@ -970,7 +999,7 @@ async def _perform_recall(
     tiered_margin_value: Optional[float] = None
     tiered_eta_value: Optional[float] = None
     tiered_sparsity_value: Optional[float] = None
-    if query_vec is not None:
+    if _tiered_enabled() and query_vec is not None:
         try:
             tiered_hit = _TIERED_REGISTRY.recall(
                 payload.tenant,
@@ -1081,6 +1110,20 @@ async def _perform_recall(
     except Exception:
         pass
 
+    # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
+    try:
+        controller = get_cutover_controller()
+        await controller.record_shadow_metrics(
+            payload.tenant,
+            payload.namespace,
+            top1_accuracy=top_confidence,
+            margin=float(tiered_margin_value or 0.0),
+            latency_p95_ms=duration * 1000.0,
+        )
+    except Exception:
+        # Best-effort: ignore when no plan is open or namespaces do not match.
+        pass
+
     return MemoryRecallResponse(
         tenant=payload.tenant,
         namespace=payload.namespace,
@@ -1098,16 +1141,247 @@ async def _perform_recall(
     )
 
 
+def _as_float_list(coord: object) -> Optional[List[float]]:
+    if isinstance(coord, (list, tuple)) and len(coord) >= 3:
+        try:
+            return [float(coord[0]), float(coord[1]), float(coord[2])]
+        except Exception:
+            return None
+    if isinstance(coord, str):
+        try:
+            parts = [float(x.strip()) for x in coord.split(",")]
+            if len(parts) >= 3:
+                return [parts[0], parts[1], parts[2]]
+        except Exception:
+            return None
+    return None
+
+
+def _map_retrieval_to_memory_items(candidates: List[dict]) -> List["MemoryRecallItem"]:
+    items: List[MemoryRecallItem] = []
+    for c in candidates:
+        # candidate dict shape mirrors RetrievalCandidate model
+        retr = str(c.get("retriever") or "vector")
+        layer = "wm" if retr == "wm" else "ltm"
+        payload = c.get("payload") if isinstance(c.get("payload"), dict) else {}
+        score = c.get("score")
+        coord = _as_float_list(c.get("coord") or payload.get("coordinate"))
+        items.append(
+            MemoryRecallItem(
+                layer=layer,
+                score=float(score) if isinstance(score, (int, float)) else None,
+                payload=payload,
+                coordinate=coord,
+                source=retr,
+                confidence=float(score) if isinstance(score, (int, float)) else None,
+            )
+        )
+    return items
+
+
+def _coerce_to_retrieval_request(
+    obj: object, default_top_k: int = 10
+) -> RetrievalRequest:
+    # Resolve environment-backed defaults for full-power behavior with safe rollback
+    def _env(name: str, default: str | None = None) -> str | None:
+        try:
+            v = os.getenv(name)
+            return v if v is not None and v != "" else default
+        except Exception:
+            return default
+
+    def _env_bool(name: str, default: bool) -> bool:
+        v = _env(name)
+        if v is None:
+            return default
+        s = v.strip().lower()
+        return s in ("1", "true", "yes", "on")
+
+    # Master switch: full power on by default; set 0/false to revert to conservative
+    full_power = _env_bool("SOMABRAIN_RECALL_FULL_POWER", True)
+    simple_defaults = _env_bool("SOMABRAIN_RECALL_SIMPLE_DEFAULTS", False)
+
+    # Compute effective defaults
+    if simple_defaults or not full_power:
+        eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "cosine")
+        eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", False)
+        eff_retrievers = (
+            _env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph") or ""
+        ).split(",")
+    else:
+        eff_rerank = _env("SOMABRAIN_RECALL_DEFAULT_RERANK", "auto")
+        eff_persist = _env_bool("SOMABRAIN_RECALL_DEFAULT_PERSIST", True)
+        eff_retrievers = (
+            _env("SOMABRAIN_RECALL_DEFAULT_RETRIEVERS", "vector,wm,graph,lexical") or ""
+        ).split(",")
+    eff_retrievers = [r.strip() for r in eff_retrievers if r and r.strip()]
+
+    # Accept string or dict-like (including MemoryRecallRequest dict)
+    if isinstance(obj, str):
+        req = RetrievalRequest(query=obj, top_k=default_top_k)
+        # Apply env-backed defaults when caller did not specify
+        req.rerank = eff_rerank or req.rerank
+        req.persist = (
+            eff_persist
+            if req.persist is None or isinstance(req.persist, bool)
+            else req.persist
+        )
+        if not req.retrievers:
+            req.retrievers = eff_retrievers or req.retrievers
+        return req
+    if isinstance(obj, MemoryRecallRequest):
+        req = RetrievalRequest(
+            query=obj.query,
+            top_k=int(obj.top_k or default_top_k),
+            universe=obj.universe,
+        )
+        # Apply env-backed defaults when not provided by caller
+        req.rerank = eff_rerank or req.rerank
+        req.persist = (
+            eff_persist
+            if req.persist is None or isinstance(req.persist, bool)
+            else req.persist
+        )
+        if not req.retrievers:
+            req.retrievers = eff_retrievers or req.retrievers
+        return req
+    if isinstance(obj, dict):
+        d = dict(obj)
+        q = d.get("query") or d.get("q") or ""
+        rk = d.get("rerank")
+        retr = d.get("retrievers")
+        # Advanced hints
+        mode = d.get("mode")
+        idv = d.get("id")
+        keyv = d.get("key")
+        coord = d.get("coord")
+        uni = d.get("universe")
+        tk = int(d.get("top_k") or default_top_k)
+        req = RetrievalRequest(
+            query=str(q),
+            top_k=tk,
+            retrievers=(
+                list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers
+            ),
+            rerank=str(rk) if isinstance(rk, str) else RetrievalRequest().rerank,
+            persist=(
+                bool(d.get("persist"))
+                if d.get("persist") is not None
+                else RetrievalRequest().persist
+            ),
+            universe=str(uni) if isinstance(uni, str) else None,
+            mode=str(mode) if isinstance(mode, str) else None,
+            id=str(idv) if isinstance(idv, str) else None,
+            key=str(keyv) if isinstance(keyv, str) else None,
+            coord=str(coord) if isinstance(coord, str) else None,
+        )
+        # If caller omitted fields, enforce env-backed defaults
+        if not isinstance(retr, list) or not retr:
+            req.retrievers = eff_retrievers or req.retrievers
+        if not isinstance(rk, str) or not rk:
+            req.rerank = eff_rerank or req.rerank
+        if d.get("persist") is None:
+            req.persist = eff_persist
+        return req
+    # Fallback: stringify unknown payload
+    req = RetrievalRequest(query=str(obj), top_k=default_top_k)
+    req.rerank = eff_rerank or req.rerank
+    req.persist = (
+        eff_persist
+        if req.persist is None or isinstance(req.persist, bool)
+        else req.persist
+    )
+    if not req.retrievers:
+        req.retrievers = eff_retrievers or req.retrievers
+    return req
+
+
 @router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: MemoryRecallRequest) -> MemoryRecallResponse:
-    return await _perform_recall(payload)
+async def recall_memory(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
+    """Unified recall endpoint backed by the retrieval pipeline.
+
+    Accepts either a plain string (JSON string) or an object body. For object bodies,
+    accepts the legacy MemoryRecallRequest fields as well as RetrievalRequest fields.
+    """
+    await _ensure_config_runtime_started()
+    cfg = get_config()
+    ctx = get_tenant(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    # Coerce incoming payload to a RetrievalRequest
+    ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
+
+    # Run pipeline
+    import time as _time
+
+    t0 = _time.perf_counter()
+    from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
+
+    ret_resp = await run_retrieval_pipeline(
+        ret_req,
+        ctx=ctx,
+        cfg=cfg,
+        universe=ret_req.universe,
+        trace_id=request.headers.get("X-Request-ID"),
+    )
+    dt_ms = round((_time.perf_counter() - t0) * 1000.0, 3)
+
+    # Map candidates to MemoryRecallItems
+    # Convert RetrievalResponse (pydantic) to dict for portability
+    ret_dict = ret_resp.dict() if hasattr(ret_resp, "dict") else ret_resp  # type: ignore
+    cands = ret_dict.get("candidates") or []
+    items = _map_retrieval_to_memory_items(cands)
+
+    # Counts by retriever
+    wm_hits = sum(1 for it in items if it.layer == "wm")
+    ltm_hits = sum(1 for it in items if it.layer != "wm")
+
+    # Metric: count recall requests (retrieval-backed)
+    try:
+        from somabrain import metrics as M
+
+        M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
+    except Exception:
+        pass
+
+    # Prepare response
+    return MemoryRecallResponse(
+        tenant=ctx.tenant_id,
+        namespace=ctx.namespace,
+        results=items,
+        wm_hits=wm_hits,
+        ltm_hits=ltm_hits,
+        duration_ms=dt_ms,
+        session_id=str(ret_dict.get("session_coord") or ""),
+        scoring_mode=None,
+        chunk_index=0,
+        has_more=False,
+        total_results=len(items),
+        chunk_size=None,
+        conversation_id=None,
+    )
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
-async def recall_memory_stream(payload: MemoryRecallRequest) -> MemoryRecallResponse:
-    default_chunk_size = payload.chunk_size or min(payload.top_k, 5)
-    updated_payload = payload.copy(update={"chunk_size": default_chunk_size})
-    return await _perform_recall(updated_payload, default_chunk_size=default_chunk_size)
+async def recall_memory_stream(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
+    # Provide a reasonable default chunking and reuse the unified recall.
+    # We honor top_k from input if present; otherwise default to 10 and stream 5 per page.
+    ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
+    chunk_size = min(max(1, int(ret_req.top_k)), 5)
+    # Call the unified recall first
+    base = await recall_memory(payload, request)
+    # Apply chunking on top of the full results for streaming semantics
+    start_index = 0
+    end_index = min(len(base.results), chunk_size)
+    base.results = base.results[start_index:end_index]
+    base.has_more = end_index < base.total_results
+    base.chunk_index = 0
+    base.chunk_size = chunk_size
+    return base
 
 
 @router.get("/context/{session_id}", response_model=MemoryRecallSessionResponse)
@@ -1146,11 +1420,7 @@ async def memory_metrics(
     except Exception:
         wm_items = 0
 
-    outbox_pending = _count_outbox_entries(memsvc)
-    try:
-        memsvc._update_outbox_metric(outbox_pending)
-    except Exception:
-        pass
+    # No local outbox/journal; fail-fast semantics only
     try:
         record_memory_snapshot(tenant, namespace, items=wm_items)
     except Exception:
@@ -1161,7 +1431,6 @@ async def memory_metrics(
         namespace=namespace,
         wm_items=wm_items,
         circuit_open=memsvc._is_circuit_open(),
-        outbox_pending=outbox_pending,
     )
 
 
@@ -1175,3 +1444,64 @@ async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
 class AnnRebuildRequest(BaseModel):
     tenant: str
     namespace: Optional[str] = None
+
+
+def _plan_to_response(plan) -> CutoverPlanResponse:
+    last = plan.last_shadow_metrics
+    return CutoverPlanResponse(
+        tenant=plan.tenant,
+        from_namespace=plan.from_namespace,
+        to_namespace=plan.to_namespace,
+        status=plan.status,
+        ready=plan.ready,
+        created_at=plan.created_at,
+        approved_at=plan.approved_at,
+        notes=list(plan.notes or []),
+        last_top1_accuracy=(last.top1_accuracy if last else None),
+        last_margin=(last.margin if last else None),
+        last_latency_p95_ms=(last.latency_p95_ms if last else None),
+    )
+
+
+@router.post("/cutover/open", response_model=CutoverPlanResponse)
+async def cutover_open(payload: CutoverOpenRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.open_plan(
+        payload.tenant, payload.from_namespace, payload.to_namespace
+    )
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/approve", response_model=CutoverPlanResponse)
+async def cutover_approve(payload: CutoverActionRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.approve(payload.tenant)
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/execute", response_model=CutoverPlanResponse)
+async def cutover_execute(payload: CutoverActionRequest) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = await controller.execute(payload.tenant)
+    return _plan_to_response(plan)
+
+
+@router.post("/cutover/cancel")
+async def cutover_cancel(payload: CutoverActionRequest) -> Dict[str, Any]:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    await controller.cancel(payload.tenant, reason=payload.reason or "")
+    return {"ok": True}
+
+
+@router.get("/cutover/status/{tenant}", response_model=CutoverPlanResponse)
+async def cutover_status(tenant: str) -> CutoverPlanResponse:
+    await _ensure_config_runtime_started()
+    controller = get_cutover_controller()
+    plan = controller.get_plan(tenant)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="no active plan for tenant")
+    return _plan_to_response(plan)

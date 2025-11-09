@@ -17,6 +17,10 @@ spec:
       labels:
 {{ include "soma-apps.labels" (dict "root" $root "component" "sb") | indent 8 }}
     spec:
+      {{- if .Values.securityContext.pod.enabled }}
+      securityContext:
+{{ include "soma-apps.podSecurityContext" . | indent 8 }}
+      {{- end }}
       containers:
         - name: sb
           image: "{{ .Values.sb.image.repository }}:{{ .Values.sb.image.tag }}"
@@ -24,6 +28,22 @@ spec:
           ports:
             - containerPort: {{ .Values.sb.containerPort }}
               name: http
+          {{- if .Values.securityContext.container.enabled }}
+          securityContext:
+{{ include "soma-apps.containerSecurityContext" . | indent 12 }}
+          {{- end }}
+          {{- $hasEnvFrom := or .Values.memory (and .Values.jwt .Values.jwt.enabled) }}
+          {{- if $hasEnvFrom }}
+          envFrom:
+            {{- if .Values.memory }}
+            - secretRef:
+                name: {{ include "soma-apps.memorySecretName" $root }}
+            {{- end }}
+            {{- if and .Values.jwt .Values.jwt.enabled }}
+            - secretRef:
+                name: {{ include "soma-apps.jwtSecretName" $root }}
+            {{- end }}
+          {{- end }}
           env:
 {{- range $key, $value := $root.Values.envCommon }}
             - name: {{ $key }}
@@ -35,14 +55,16 @@ spec:
 {{- end }}
           readinessProbe:
             httpGet:
-              path: /health
+              path: /healthz
               port: {{ .Values.sb.containerPort }}
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /health
+              path: /healthz
               port: {{ .Values.sb.containerPort }}
             initialDelaySeconds: 10
             periodSeconds: 20
+          resources:
+{{ toYaml .Values.sb.resources | indent 12 }}
 {{- end }}

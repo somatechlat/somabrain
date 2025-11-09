@@ -4,7 +4,7 @@
 
 **Audience**: New developers, agent coders, and contributors joining the SomaBrain project.
 
-**Prerequisites**: Basic understanding of Python, FastAPI, and modern web development. Completed [Environment Setup](environment-setup.md).
+**Prerequisites**: Basic understanding of Python, FastAPI, and modern web development. Completed [Local Setup](../development-manual/local-setup.md).
 
 ---
 
@@ -422,7 +422,7 @@ tests/
 ├── integration/        # Component interaction tests
 │   ├── api/           # End-to-end API workflows
 │   ├── database/      # Database integration patterns
-│   └── services/      # External service mocking
+│   └── services/      # External service integration/adapters
 ├── e2e/               # Full system tests
 │   ├── user_workflows/ # Complete user scenarios
 │   ├── performance/   # Load and stress testing
@@ -702,7 +702,7 @@ class DatabasePool:
 | Tests fail intermittently | Check for async race conditions and proper cleanup |
 
 **References**:
-- [Environment Setup](environment-setup.md) for development configuration
+- [Local Setup](../development-manual/local-setup.md) for development configuration
 - [Domain Knowledge](domain-knowledge.md) for deep technical understanding
 - [First Contribution](first-contribution.md) for hands-on practice
 - [Development Manual](../development-manual/index.md) for detailed technical guides

@@ -94,7 +94,15 @@ class TieredMemoryRegistry:
         with bundle.lock:
             if not bundle.payloads:
                 return None
+            start = time.perf_counter()
             context = bundle.memory.recall(qvec)
+            duration = time.perf_counter() - start
+            try:
+                from somabrain.metrics import observe_ann_latency  # type: ignore
+
+                observe_ann_latency(namespace, duration)
+            except Exception:
+                pass
             if context.anchor_id is None or context.score <= 0.0:
                 return None
             payload = bundle.payloads.get(context.anchor_id)
@@ -103,9 +111,9 @@ class TieredMemoryRegistry:
             return TieredRecallResult(
                 context=context,
                 payload=payload_copy,
-                coordinate=copy.deepcopy(coordinate)
-                if coordinate is not None
-                else None,
+                coordinate=(
+                    copy.deepcopy(coordinate) if coordinate is not None else None
+                ),
                 eta=bundle.wm_cfg.eta,
                 tau=bundle.wm_policy.threshold,
                 sparsity=bundle.sparsity,

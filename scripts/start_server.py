@@ -7,11 +7,15 @@ singletons initialized, avoiding import-time backend-enforcement failures.
 import os
 import sys
 import uvicorn
+import yaml
+import logging.config
 
 # Ensure /app is on sys.path for imports
 sys.path.insert(0, "/app")
 
 HOST = os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+
+
 # Be resilient to empty or invalid env values
 def _int_env(name: str, default: int) -> int:
     raw = os.getenv(name)
@@ -24,6 +28,7 @@ def _int_env(name: str, default: int) -> int:
         return int(raw)
     except Exception:
         return default
+
 
 PORT = _int_env("SOMABRAIN_PORT", 9696)
 WORKERS = _int_env("SOMABRAIN_WORKERS", 1)
@@ -42,10 +47,24 @@ except Exception as e:
 # Use programmatic Uvicorn run so imports happen in this process
 
 if WORKERS != 1:
-    print("Warning: WORKERS != 1. For backend enforcement, workers should be 1 so runtime singletons are initialized in-process. Overriding WORKERS=1.")
+    print(
+        "Warning: WORKERS != 1. For backend enforcement, workers should be 1 so runtime singletons are initialized in-process. Overriding WORKERS=1."
+    )
 
-# Use programmatic Server to avoid uvicorn spawning worker subprocesses that
-# would not inherit the initialized singletons in this parent process.
-config = uvicorn.Config("somabrain.app:app", host=HOST, port=PORT, workers=1)
+# Apply optional logging config if provided
+LOG_CONFIG = os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
+if os.path.exists(LOG_CONFIG):
+    try:
+        with open(LOG_CONFIG, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        logging.config.dictConfig(cfg)
+    except Exception as e:
+        print("start_server: failed to apply logging config:", e)
+
+# Use programmatic Server to avoid uvicorn spawning worker subprocesses that would
+# not inherit the initialized singletons in this parent process.
+config = uvicorn.Config(
+    "somabrain.app:app", host=HOST, port=PORT, workers=1, log_config=None
+)
 server = uvicorn.Server(config)
 server.run()

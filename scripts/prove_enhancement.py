@@ -90,7 +90,9 @@ def _extract_metrics(data: Dict[str, Any]) -> Dict[str, float]:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify benchmark uplift")
     parser.add_argument("--baseline", required=True, type=Path, help="baseline report")
-    parser.add_argument("--candidate", required=True, type=Path, help="candidate report")
+    parser.add_argument(
+        "--candidate", required=True, type=Path, help="candidate report"
+    )
     parser.add_argument(
         "--accuracy-tolerance",
         type=float,

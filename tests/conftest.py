@@ -1,6 +1,6 @@
 """Pytest configuration for environment bootstrapping.
 
-This file loads environment variables from `.env.local` (if present) so tests
+This file loads environment variables from `.env` (if present) so tests
 automatically discover the correct host port mappings for services brought up by
 scripts/dev_up.sh. We avoid relying on long shell commands or passing params via
 the console; tests derive their runtime config from the repo's env files.
@@ -30,7 +30,9 @@ def _parse_env_file(path: Path) -> Dict[str, str]:
         k = k.strip()
         v = v.strip()
         # Strip optional surrounding quotes
-        if (v.startswith('"') and v.endswith('"')) or (v.startswith("'") and v.endswith("'")):
+        if (v.startswith('"') and v.endswith('"')) or (
+            v.startswith("'") and v.endswith("'")
+        ):
             v = v[1:-1]
         env[k] = v
     return env
@@ -38,7 +40,8 @@ def _parse_env_file(path: Path) -> Dict[str, str]:
 
 def _bootstrap_env_from_dotenv() -> None:
     root = Path(__file__).resolve().parents[1]
-    dotenv = root / ".env.local"
+    # Load canonical .env only
+    dotenv = root / ".env"
     if dotenv.exists():
         loaded = _parse_env_file(dotenv)
         # Only set variables that are not already defined in the environment
@@ -83,3 +86,6 @@ def _bootstrap_env_from_dotenv() -> None:
 
 # Eagerly load on import so all tests see a consistent environment
 _bootstrap_env_from_dotenv()
+
+# Removed duplicate schema test ignore after renaming to unique filename.
+collect_ignore: list[str] = []

@@ -26,7 +26,9 @@ import httpx
 def _git_sha() -> str:
     try:
         return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL)
+            subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL
+            )
             .decode()
             .strip()
         )
@@ -62,7 +64,10 @@ def load_manifest() -> Dict:
 
 def autoseed(base: str, tenant: str, count: int) -> Dict:
     """Create a synthetic book/author set via /remember and return a manifest dict."""
-    items = [{"i": i, "book": f"Book{i}", "author": f"Author{i}"} for i in range(1, count + 1)]
+    items = [
+        {"i": i, "book": f"Book{i}", "author": f"Author{i}"}
+        for i in range(1, count + 1)
+    ]
     client = httpx.Client(timeout=20.0)
     for it in items:
         fact = f"{it['author']} wrote {it['book']}"
@@ -77,7 +82,9 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
                 "importance": 1,
             }
         }
-        r = client.post(base.rstrip("/") + "/remember", json=body, headers=_headers(tenant))
+        r = client.post(
+            base.rstrip("/") + "/remember", json=body, headers=_headers(tenant)
+        )
         if r.status_code != 200:
             raise RuntimeError(f"/remember failed: {r.status_code} {r.text}")
     manifest = {
@@ -95,9 +102,11 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
     return manifest
 
 
-def eval_precision_at_1(base_url: str, tenant: str, items: List[Dict], top_k: int) -> Dict[str, int]:
+def eval_precision_at_1(
+    base_url: str, tenant: str, items: List[Dict], top_k: int
+) -> Dict[str, int]:
     client = httpx.Client(timeout=20.0)
-    url = base_url.rstrip("/") + "/rag/retrieve"
+    url = base_url.rstrip("/") + "/recall"
     correct = 0
     total = 0
     for it in items:
@@ -108,7 +117,7 @@ def eval_precision_at_1(base_url: str, tenant: str, items: List[Dict], top_k: in
             total += 1
             if r.status_code == 200:
                 j = r.json()
-                cands = j.get("candidates", [])
+                cands = j.get("results", [])
                 # check if top-1 candidate payload contains the author string
                 expected = str(it.get("author") or f"Author{it['i']}")
                 found = any(expected in str(c.get("payload", {})) for c in cands[:1])
@@ -120,18 +129,34 @@ def eval_precision_at_1(base_url: str, tenant: str, items: List[Dict], top_k: in
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Evaluate learning speed (precision@1 vs N)")
-    ap.add_argument("--base", default=os.environ.get("SOMABRAIN_BASE", "http://localhost:9696"))
-    ap.add_argument("--tenant", default=os.environ.get("SOMABRAIN_TENANT", "learnbench"))
+    ap = argparse.ArgumentParser(
+        description="Evaluate learning speed (precision@1 vs N)"
+    )
+    ap.add_argument(
+        "--base", default=os.environ.get("SOMABRAIN_BASE", "http://localhost:9696")
+    )
+    ap.add_argument(
+        "--tenant", default=os.environ.get("SOMABRAIN_TENANT", "learnbench")
+    )
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument(
         "--checkpoints",
         default="10,50,100,500,1000",
         help="Comma-separated checkpoints to evaluate; 'max' is appended automatically",
     )
-    ap.add_argument("--autoseed", type=int, default=0, help="If >0, auto-seed this many items")
-    ap.add_argument("--plot", action="store_true", help="Save a matplotlib learning curve PNG next to the JSON artifact")
-    ap.add_argument("--show", action="store_true", help="If plotting, also display the figure window")
+    ap.add_argument(
+        "--autoseed", type=int, default=0, help="If >0, auto-seed this many items"
+    )
+    ap.add_argument(
+        "--plot",
+        action="store_true",
+        help="Save a matplotlib learning curve PNG next to the JSON artifact",
+    )
+    ap.add_argument(
+        "--show",
+        action="store_true",
+        help="If plotting, also display the figure window",
+    )
     args = ap.parse_args()
 
     # Resolve dataset

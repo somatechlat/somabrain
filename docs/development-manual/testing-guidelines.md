@@ -550,6 +550,44 @@ export const server = setupServer(...handlers);
 
 ## Integration Testing
 
+### Live stack integration (API + Memory + Observability)
+
+The repository includes pragmatic integration tests that exercise the live API surface and attached services. To run them locally in a production-like layout:
+
+- Use Docker Compose to bring up the stack with Kafka, Postgres, Redis, OPA, Prometheus, exporters, and the API.
+Note: A real external Memory HTTP service on port 9595 is required; dev/mocked memory services are not used.
+- The API exposes proxy endpoints for the reward/learner services under `/reward/health`, `/learner/health`, and `/reward/reward/{frame_id}` to provide a stable ingress in dev.
+
+Steps:
+
+1) Start the stack
+
+```
+scripts/dev_up.sh
+```
+
+This script writes a `.env` with free host ports, starts Compose, waits for `/health`, and writes `ports.json`. Configure the API to use your real memory endpoint (e.g., `http://host.docker.internal:9595` on Docker Desktop, or a cluster service URL). Host-run tests commonly use `http://127.0.0.1:9595` when the real service is running on the host.
+
+2) Run the integration suite
+
+```
+pytest -q tests/integration
+```
+
+What the tests cover:
+
+- `test_e2e_memory_http.py`: exercises `POST /remember` and `POST /recall` and asserts the newly stored item is recallable; also verifies `/health` and backend readiness flags.
+- `test_embedded_services_http.py`: probes `/reward/health` and `/learner/health` (proxied into the cog container). These only return 200 when the internal services are up under Supervisor.
+- `test_reward_post_embedded.py`: posts a reward via `/reward/reward/{frame_id}` (forwarded to the internal reward producer); returns 200 when Kafka is reachable.
+- `test_observability_http.py`: hits Prometheus, Kafka exporter, Postgres exporter, and OPA on the published host ports from `.env`.
+
+Design notes:
+
+- Tests skip only when a dependency is deliberately not reachable; under Compose they run fully and assert behavior, not just reachability.
+    The memory backend is an external component; ensure it’s reachable on port 9595 before running tests. Backend enforcement remains enabled.
+- The API proxy endpoints are light wrappers that preserve the production architecture boundary: Supervisor manages internal processes; the API forwards where appropriate in dev.
+
+
 ### Database Integration Tests
 
 ```python
@@ -1649,11 +1687,18 @@ jobs:
         docker compose -f docker-compose.test.yml down -v
 ```
 
+### Schema compatibility and E2E smokes
+
+- Avro schema compatibility is enforced in CI. Any changes to Avro records under `proto/cog/avro` must be backward-compatible (new fields require defaults; existing fields cannot be removed or change type incompatibly). The CI step runs a compatibility checker and will fail non-compliant PRs.
+- A lightweight E2E smoke validates the teach→reward pipeline: a `TeachFeedback` message is produced, and a compatible `RewardEvent` with mapped `r_user` is observed. See `scripts/e2e_teach_feedback_smoke.py`.
+
+When modifying schemas or the processor logic, update unit tests in `tests/services/test_teach_feedback_processor.py` and ensure the E2E smoke passes locally before pushing.
+
 **Verification**: Testing standards are properly implemented when tests are comprehensive, fast, deterministic, and provide high confidence in code quality.
 
 ---
 
-**Common Errors**: See [FAQ](../../user-manual/faq.md) for testing troubleshooting.
+**Common Errors**: See [FAQ](../user-manual/faq.md) for testing troubleshooting.
 
 **References**:
 - [Coding Standards](coding-standards.md) for test code quality

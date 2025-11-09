@@ -6,8 +6,13 @@
 
 **Prerequisites**
 - Followed the [Installation Guide](installation.md) and confirmed `/health` returns HTTP 200.
-- A memory backend listening on `http://localhost:9595`. When the backend is unavailable and `SOMABRAIN_REQUIRE_MEMORY=1`, `/remember` returns HTTP 503.
-- Authentication disabled (`SOMABRAIN_DISABLE_AUTH=1`) or a valid bearer token. If auth is enabled, add `-H "Authorization: Bearer <token>"` to the examples.
+- A memory backend listening on port 9595.
+  - For host runs (uvicorn on your machine): `http://localhost:9595`.
+  - For Docker containers (macOS/Windows): `http://host.docker.internal:9595`.
+  - Verify wiring at `GET /diagnostics` and check `memory_endpoint`.
+- A valid bearer token. In dev mode auth may be relaxed; otherwise add `-H "Authorization: Bearer <token>"` to the examples.
+
+Port note: The API host port is fixed at 9696 when started via `scripts/dev_up.sh`. Check `.env` or `ports.json` if needed and adjust the base URL accordingly.
 
 ---
 
@@ -117,7 +122,8 @@ The retrieval and utility weights are now updated and persisted to Redis. Inspec
 |---------|--------------|-----|
 | `503 memory backend unavailable` when calling `/remember` | HTTP memory service not reachable | Start the backend on port 9595 or disable the requirement for dev testing |
 | `/recall` returns empty lists | Write queued or memory backend empty | Check `/remember` response flags and the memory service logs |
-| `401 missing bearer token` | Auth enabled | Set `SOMABRAIN_DISABLE_AUTH=1` for local testing or provide the correct API token |
+| `401 missing bearer token` | Auth enabled | Provide the correct API token; dev mode may relax auth for local testing |
 | High latency (>1 s) | Kafka/Redis not ready | Wait for health probes, then retry |
+| `/healthz` shows `"memory_ok": false` in Docker | Using `127.0.0.1` inside the container | Set `SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595` and verify via `GET /diagnostics` |
 
-If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical-manual/troubleshooting.md) for deeper diagnostics.
+If problems persist, consult the [FAQ](faq.md) and the [Technical Manual](../technical-manual/index.md) for deeper diagnostics.

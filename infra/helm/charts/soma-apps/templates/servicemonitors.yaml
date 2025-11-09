@@ -1,0 +1,80 @@
+{{- if .Values.prometheus.serviceMonitor.enabled -}}
+{{- $root := . -}}
+{{- $ns := $root.Values.global.namespace -}}
+
+{{- if .Values.cog.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "cog") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: integrator
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+    - port: segmentation
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+    - port: pred-state
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+    - port: pred-agent
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+    - port: pred-action
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+    - port: orchestrator
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+
+{{- if and .Values.featureFlags.learnerEnabled .Values.rewardProducer.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "reward") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "reward") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+{{- if and .Values.featureFlags.learnerEnabled .Values.learnerOnline.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "learner") }}
+  namespace: {{ $ns }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "learner") | indent 6 }}
+  namespaceSelector:
+    matchNames: ["{{ $ns }}"]
+  endpoints:
+    - port: health
+      path: /metrics
+      interval: {{ $root.Values.prometheus.serviceMonitor.interval }}
+{{- end }}
+{{- end }}
