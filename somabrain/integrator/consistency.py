@@ -11,8 +11,10 @@ _ALLOWED: Dict[str, set[str]] = {
 }
 
 
-def consistency_score(agent_posterior: Dict[str, object] | None,
-                      action_posterior: Dict[str, object] | None) -> Optional[float]:
+def consistency_score(
+    agent_posterior: Dict[str, object] | None,
+    action_posterior: Dict[str, object] | None,
+) -> Optional[float]:
     """Return 1.0 if action is feasible for intent, 0.0 if infeasible, None if unknown.
 
     - agent_posterior is expected to contain key "intent" (str)

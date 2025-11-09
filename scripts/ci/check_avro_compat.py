@@ -8,6 +8,7 @@ from pathlib import Path
 # - If there is an older schema with the same (aliased) name, any NEW fields must have defaults
 # This is a conservative approximation; a registry-based check is recommended.
 
+
 def load_schema(p: Path):
     with p.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -61,10 +62,14 @@ def main():
         new = load_schema(new_reward)
         problems = check_backward_compatible(old, new)
         if problems:
-            print("RewardEvent compatibility issues:\n  - " + "\n  - ".join(problems), file=sys.stderr)
+            print(
+                "RewardEvent compatibility issues:\n  - " + "\n  - ".join(problems),
+                file=sys.stderr,
+            )
             sys.exit(2)
 
     print("Avro schema checks passed.")
+
 
 if __name__ == "__main__":
     main()

@@ -14,6 +14,7 @@ def make_plan(
     universe: Optional[str] = None,
 ) -> List[str]:
     import time
+
     try:
         from .. import metrics as M  # lazy to avoid import cycles in tests
     except Exception:
@@ -28,9 +29,9 @@ def make_plan(
             universe=universe,
         )
     finally:
-        if 't0' in locals() and M is not None:
+        if "t0" in locals() and M is not None:
             try:
-                M.record_planning_latency('bfs', max(0.0, time.perf_counter() - t0))
+                M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
             except Exception:
                 pass
 
@@ -41,6 +42,7 @@ def make_plan_auto(
     backend = str(getattr(cfg, "planner_backend", "bfs") or "bfs").lower()
     max_steps = int(getattr(cfg, "plan_max_steps", 5) or 5)
     import time
+
     try:
         from .. import metrics as M
     except Exception:
@@ -64,7 +66,7 @@ def make_plan_auto(
             universe=universe,
         )
     finally:
-        if 't0' in locals() and M is not None:
+        if "t0" in locals() and M is not None:
             try:
                 M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
             except Exception:

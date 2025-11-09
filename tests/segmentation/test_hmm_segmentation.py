@@ -1,4 +1,8 @@
-from somabrain.segmentation.hmm import HMMParams, online_viterbi_probs, detect_boundaries
+from somabrain.segmentation.hmm import (
+    HMMParams,
+    online_viterbi_probs,
+    detect_boundaries,
+)
 
 
 def test_hmm_boundary_detection_synthetic():
@@ -15,4 +19,6 @@ def test_hmm_boundary_detection_synthetic():
     boundaries = detect_boundaries(probs, threshold=0.6)
     # Expect at least one boundary near index len(stable)
     assert boundaries, "No boundary detected in synthetic sequence"
-    assert any(abs(b - len(stable)) <= 1 for b in boundaries), "Boundary not near transition point"
+    assert any(
+        abs(b - len(stable)) <= 1 for b in boundaries
+    ), "Boundary not near transition point"

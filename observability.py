@@ -17,7 +17,7 @@ sys.modules[__name__ + ".provider"] = _provider
 # Optional: expose attributes for direct access if someone imports ``observability``
 # and expects to find ``get_tracer`` or ``init_tracing`` at the top level.
 try:
-	init_tracing = getattr(_provider, "init_tracing")  # type: ignore[attr-defined]
-	get_tracer = getattr(_provider, "get_tracer")  # type: ignore[attr-defined]
+    init_tracing = getattr(_provider, "init_tracing")  # type: ignore[attr-defined]
+    get_tracer = getattr(_provider, "get_tracer")  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover - best effort exposure only
-	pass
+    pass

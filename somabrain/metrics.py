@@ -626,6 +626,7 @@ PLANNING_LATENCY_P99 = Gauge(
 _planning_samples: list[float] = []
 _MAX_PLANNING_SAMPLES = 1000
 
+
 def record_planning_latency(backend: str, latency_seconds: float) -> None:
     try:
         PLANNING_LATENCY.labels(backend=str(backend)).observe(float(latency_seconds))
@@ -638,6 +639,7 @@ def record_planning_latency(backend: str, latency_seconds: float) -> None:
             PLANNING_LATENCY_P99.set(ordered[idx])
     except Exception:
         pass
+
 
 # Decision attribution / recall quality
 RECALL_MARGIN_TOP12 = Histogram(
@@ -1129,6 +1131,7 @@ LEARNING_REGRET_EWMA = get_gauge(
 
 _regret_ema: dict[str, float] = {}
 _REGRET_ALPHA = 0.15
+
 
 def record_regret(tenant_id: str, regret: float) -> None:
     try:

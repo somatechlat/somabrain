@@ -36,9 +36,30 @@ def run_forever() -> None:  # pragma: no cover
     init_tracing()
     tracer = get_tracer("somabrain.predictor.state")
     # Metrics (lazy and optional)
-    _EMITTED = _metrics.get_counter("somabrain_predictor_state_emitted_total", "BeliefUpdate records emitted (state)") if _metrics else None
-    _NEXT_EMITTED = _metrics.get_counter("somabrain_predictor_state_next_total", "NextEvent records emitted (state)") if _metrics else None
-    _ERR_HIST = _metrics.get_histogram("somabrain_predictor_error", "Per-update prediction error (MSE)", labelnames=["domain"]) if _metrics else None
+    _EMITTED = (
+        _metrics.get_counter(
+            "somabrain_predictor_state_emitted_total",
+            "BeliefUpdate records emitted (state)",
+        )
+        if _metrics
+        else None
+    )
+    _NEXT_EMITTED = (
+        _metrics.get_counter(
+            "somabrain_predictor_state_next_total", "NextEvent records emitted (state)"
+        )
+        if _metrics
+        else None
+    )
+    _ERR_HIST = (
+        _metrics.get_histogram(
+            "somabrain_predictor_error",
+            "Per-update prediction error (MSE)",
+            labelnames=["domain"],
+        )
+        if _metrics
+        else None
+    )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
         if os.getenv("HEALTH_PORT"):
@@ -58,6 +79,7 @@ def run_forever() -> None:  # pragma: no cover
                 @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
+
             except Exception:
                 pass
 
@@ -68,8 +90,18 @@ def run_forever() -> None:  # pragma: no cover
     except Exception:
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
-    ff = (os.getenv("SOMABRAIN_FF_PREDICTOR_STATE", "1").strip().lower() in ("1", "true", "yes", "on"))
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in ("1", "true", "yes", "on")
+    ff = os.getenv("SOMABRAIN_FF_PREDICTOR_STATE", "1").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     if not ff:
         if not composite:
             print("predictor-state: feature flag disabled; exiting.")
@@ -85,7 +117,12 @@ def run_forever() -> None:  # pragma: no cover
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = os.getenv("STATE_MODEL_VER", "v1")
     period = float(os.getenv("STATE_UPDATE_PERIOD", "0.5"))
-    soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in ("1", "true", "yes", "on")
+    soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
     # Diffusion-backed predictor setup (supports production graph via env)
     predictor, dim = build_predictor_from_env("state")
     source_idx = 0
@@ -96,7 +133,9 @@ def run_forever() -> None:  # pragma: no cover
                 # Build observed vector as next one-hot (simple deterministic proxy)
                 observed = np.zeros(dim, dtype=float)
                 observed[(source_idx + 1) % dim] = 1.0
-                _, delta_error, confidence = predictor.step(source_idx=source_idx, observed=observed)
+                _, delta_error, confidence = predictor.step(
+                    source_idx=source_idx, observed=observed
+                )
                 rec = {
                     "domain": "state",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -127,7 +166,10 @@ def run_forever() -> None:  # pragma: no cover
                             "timestamp": ts_ms,
                             "delta_error": float(delta_error),
                             "info_gain": None,
-                            "metadata": {k: str(v) for k, v in (rec.get("evidence") or {}).items()},
+                            "metadata": {
+                                k: str(v)
+                                for k, v in (rec.get("evidence") or {}).items()
+                            },
                         }
                         payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
@@ -135,7 +177,9 @@ def run_forever() -> None:  # pragma: no cover
                         pass
                 # NextEvent emission (derived): predicted_state based on stability
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
-                next_ev = build_next_event("state", tenant, float(confidence), predicted_state)
+                next_ev = build_next_event(
+                    "state", tenant, float(confidence), predicted_state
+                )
                 prod.send(NEXT_TOPIC, value=encode(next_ev, next_schema))
                 if _NEXT_EMITTED is not None:
                     try:

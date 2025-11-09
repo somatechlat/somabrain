@@ -32,6 +32,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
 import threading
+
 # Tracing provider (fallback to no-op if observability package is unavailable)
 try:
     from observability.provider import init_tracing, get_tracer  # type: ignore
@@ -49,10 +50,13 @@ except Exception:  # pragma: no cover - test/import fallback
     def get_tracer(name: str) -> _NoopTracer:  # type: ignore
         return _NoopTracer()
 
+
 import somabrain.metrics as app_metrics
+
 try:
     from somabrain.integrator.consistency import consistency_score  # type: ignore
 except Exception:  # pragma: no cover - optional import in tests
+
     def consistency_score(agent_posterior, action_posterior):  # type: ignore
         return None
 
@@ -368,7 +372,9 @@ class IntegratorHub:
             "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
         ).strip().lower() in ("1", "true", "yes", "on")
         # Metrics-only normalization seam (no decision impact when disabled)
-        self._norm_enabled = os.getenv("ENABLE_FUSION_NORMALIZATION", "0").strip().lower() in (
+        self._norm_enabled = os.getenv(
+            "ENABLE_FUSION_NORMALIZATION", "0"
+        ).strip().lower() in (
             "1",
             "true",
             "yes",
@@ -703,8 +709,16 @@ class IntegratorHub:
         try:
             a_ob = raw.get("agent")
             x_ob = raw.get("action")
-            a_post = (a_ob.meta.get("posterior") if a_ob and isinstance(a_ob.meta, dict) else None)
-            x_post = (x_ob.meta.get("posterior") if x_ob and isinstance(x_ob.meta, dict) else None)
+            a_post = (
+                a_ob.meta.get("posterior")
+                if a_ob and isinstance(a_ob.meta, dict)
+                else None
+            )
+            x_post = (
+                x_ob.meta.get("posterior")
+                if x_ob and isinstance(x_ob.meta, dict)
+                else None
+            )
             score = consistency_score(a_post, x_post)
             if score is not None:
                 INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
@@ -717,7 +731,7 @@ class IntegratorHub:
                 s = self._stats.get(domain) or {"n": 0}
                 if s.get("n", 0) > 1:
                     var = max(0.0, float(s["m2"]) / float(s["n"] - 1))
-                    std = (var ** 0.5) if var > 0.0 else 1.0
+                    std = (var**0.5) if var > 0.0 else 1.0
                     e_norm = (derr - float(s["mean"])) / max(1e-9, std)
                 else:
                     e_norm = 0.0
@@ -731,8 +745,10 @@ class IntegratorHub:
                     ss = self._stats.get(d) or {"n": 0}
                     if ss.get("n", 0) > 1:
                         var = max(0.0, float(ss["m2"]) / float(ss["n"] - 1))
-                        std = (var ** 0.5) if var > 0.0 else 1.0
-                        e_nd = (float(ob.delta_error) - float(ss["mean"])) / max(1e-9, std)
+                        std = (var**0.5) if var > 0.0 else 1.0
+                        e_nd = (float(ob.delta_error) - float(ss["mean"])) / max(
+                            1e-9, std
+                        )
                     else:
                         e_nd = 0.0
                     try:
@@ -741,7 +757,9 @@ class IntegratorHub:
                         cand_exps[d] = 1.0
                 Zc = sum(cand_exps.values()) or 1.0
                 for d, v in cand_exps.items():
-                    INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(float(v / Zc))
+                    INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(
+                        float(v / Zc)
+                    )
             except Exception:
                 pass
         # Leader switch metric
@@ -934,7 +952,8 @@ class IntegratorHub:
                                         # Reuse candidate weight gauge namespace or create a dedicated gauge if needed.
                                         # For simplicity, expose as somabrain_integrator_candidate_weight with domain label 'lambda_<domain>'
                                         INTEGRATOR_CAND_WEIGHT.labels(
-                                            tenant=self._tenant_from(cfg), domain=f"lambda_{label}"
+                                            tenant=self._tenant_from(cfg),
+                                            domain=f"lambda_{label}",
                                         ).set(float(val))
                             except Exception:
                                 pass

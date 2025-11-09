@@ -124,20 +124,20 @@ def check_forbidden_dirs():
 def main():
     """Run all structure checks."""
     all_errors = []
-    
+
     all_errors.extend(check_forbidden_patterns())
     all_errors.extend(check_forbidden_root_files())
     all_errors.extend(check_required_docs())
     all_errors.extend(check_forbidden_docs())
     all_errors.extend(check_forbidden_dirs())
-    
+
     if all_errors:
         print("❌ Project structure violations found:\n")
         for error in all_errors:
             print(f"  {error}")
         print("\nRun cleanup: rm -rf .mypy_cache .ruff_cache __pycache__")
         sys.exit(1)
-    
+
     print("✓ Project structure is clean")
     sys.exit(0)
 

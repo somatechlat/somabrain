@@ -278,10 +278,17 @@ class LearnerService:
             else:
                 print(f"learner_online: topic {TOPIC_CFG} already exists")
             # Ensure next‑event topic exists (optional, only if flag enabled)
-            if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {"1", "true", "yes", "on"}:
+            if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }:
                 if TOPIC_NEXT not in existing:
                     print(f"learner_online: creating missing topic {TOPIC_NEXT}")
-                    newt = CfNewTopic(TOPIC_NEXT, num_partitions=1, replication_factor=1)
+                    newt = CfNewTopic(
+                        TOPIC_NEXT, num_partitions=1, replication_factor=1
+                    )
                     fs = admin.create_topics([newt])
                     for _, f in fs.items():
                         try:
@@ -312,9 +319,7 @@ class LearnerService:
             except Exception:
                 lr = 0.05
         # Apply per‑tenant tau decay if configured
-        decay = (
-            float(self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0))
-        )
+        decay = float(self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0))
         if decay:
             # Decay is multiplicative: tau = tau * (1 - decay)
             tau = max(0.0, tau * (1.0 - decay))
@@ -409,8 +414,9 @@ class LearnerService:
         Future work can feed this regret into the EMA‑based tau calculation.
         """
         tenant = (
-            str(ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"))
-            .strip()
+            str(
+                ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+            ).strip()
             or "public"
         )
         confidence = float(ev.get("confidence", 0.0))

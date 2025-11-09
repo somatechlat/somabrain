@@ -16,15 +16,16 @@ _purelib = sysconfig.get_paths().get("purelib") or ""
 _real_init = os.path.join(_purelib, "jwt", "__init__.py")
 
 if not os.path.exists(_real_init):
-	raise ImportError("PyJWT is not installed; install PyJWT>=2.9")
+    raise ImportError("PyJWT is not installed; install PyJWT>=2.9")
 
 spec = importlib.util.spec_from_file_location("_pyjwt_real", _real_init)
 if spec is None or spec.loader is None:  # pragma: no cover
-	raise ImportError("Unable to load real PyJWT from site-packages")
+    raise ImportError("Unable to load real PyJWT from site-packages")
 _mod = importlib.util.module_from_spec(spec)
 sys.modules["_pyjwt_real"] = _mod
 spec.loader.exec_module(_mod)  # type: ignore[assignment]
 
 # Re-export everything from the real PyJWT
-globals().update({k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")})
-
+globals().update(
+    {k: v for k, v in _mod.__dict__.items() if not k.startswith("__loader__")}
+)

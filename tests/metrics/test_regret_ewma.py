@@ -2,12 +2,12 @@ import importlib
 
 
 def test_regret_ewma_smoothing(monkeypatch):
-    m = importlib.import_module('somabrain.metrics')
-    alpha = getattr(m, '_REGRET_ALPHA', 0.15)
+    m = importlib.import_module("somabrain.metrics")
+    alpha = getattr(m, "_REGRET_ALPHA", 0.15)
     # Reset internal state
-    if hasattr(m, '_regret_ema'):
+    if hasattr(m, "_regret_ema"):
         m._regret_ema.clear()
-    tenant = 'sandbox'
+    tenant = "sandbox"
     # First sample initializes EMA
     m.record_regret(tenant, 0.2)
     first = m._regret_ema[tenant]

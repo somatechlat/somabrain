@@ -5,6 +5,7 @@ Revises: cf8b36c30d81
 Create Date: 2025-10-26 12:00:00.000000
 
 """
+
 from __future__ import annotations
 
 from typing import Sequence
@@ -31,7 +32,12 @@ def upgrade() -> None:
         sa.Column("weights", sa.JSON(), nullable=False),
         sa.Column("frame", sa.JSON(), nullable=False),
         sa.Column("rationale", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ix_cog_global_frames_tenant_ts",
@@ -48,7 +54,12 @@ def upgrade() -> None:
         sa.Column("domain", sa.String(length=32), nullable=False),
         sa.Column("dwell_ms", sa.Integer(), nullable=False),
         sa.Column("evidence", sa.String(length=64), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.func.now(),
+            nullable=False,
+        ),
     )
     op.create_index(
         "ix_cog_segments_boundary_ts",

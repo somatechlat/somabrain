@@ -11,7 +11,19 @@ SCHEMA_DIR = ROOT / "proto" / "cog"
 @pytest.mark.parametrize(
     "name,required_fields",
     [
-        ("reward_event.avsc", {"frame_id", "r_task", "r_user", "r_latency", "r_safety", "r_cost", "total", "ts"}),
+        (
+            "reward_event.avsc",
+            {
+                "frame_id",
+                "r_task",
+                "r_user",
+                "r_latency",
+                "r_safety",
+                "r_cost",
+                "total",
+                "ts",
+            },
+        ),
         ("next_event.avsc", {"frame_id", "predicted_state", "confidence", "ts"}),
         ("config_update.avsc", {"learning_rate", "exploration_temp", "ts"}),
     ],

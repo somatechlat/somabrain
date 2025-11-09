@@ -7,6 +7,7 @@ decorator compatible with the expected `arc_cache(max_size=...)` API.
 If you need real ARC semantics later, replace the implementation
 with an appropriate library transparently.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache, wraps

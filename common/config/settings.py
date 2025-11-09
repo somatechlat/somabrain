@@ -22,9 +22,11 @@ try:
     # that when available to maintain the previous BaseSettings behaviour.
     import pydantic_settings as _ps  # type: ignore
     from pydantic import Field
+
     BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
 except Exception:  # pragma: no cover - fallback for older envs
     from pydantic import BaseSettings as _BS, Field
+
     BaseSettings = _BS  # type: ignore[assignment]
 
 
@@ -141,9 +143,7 @@ class Settings(BaseSettings):
 
     # OPA -----------------------------------------------------------------------------
     opa_url: str = Field(
-        default=os.getenv("SOMABRAIN_OPA_URL")
-        or os.getenv("SOMA_OPA_URL")
-        or ""
+        default=os.getenv("SOMABRAIN_OPA_URL") or os.getenv("SOMA_OPA_URL") or ""
     )
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
@@ -154,7 +154,8 @@ class Settings(BaseSettings):
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_FF_MEMORY_WEIGHTING", False) or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_FF_MEMORY_WEIGHTING", False)
+        or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
     )
     memory_phase_priors: str = Field(
         default=os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
@@ -165,9 +166,7 @@ class Settings(BaseSettings):
     memory_fast_ack: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_FAST_ACK", False)
     )
-    memory_db_path: str = Field(
-        default=os.getenv("MEMORY_DB_PATH", "./data/memory.db")
-    )
+    memory_db_path: str = Field(default=os.getenv("MEMORY_DB_PATH", "./data/memory.db"))
 
     learning_rate_dynamic: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_LEARNING_RATE_DYNAMIC", False)
@@ -190,6 +189,7 @@ class Settings(BaseSettings):
         """
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().mode.value
         except Exception:
             m = (self.mode or "").strip().lower()
@@ -209,6 +209,7 @@ class Settings(BaseSettings):
         """
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.auth_enabled
         except Exception:
             return self.mode_normalized != "dev"
@@ -221,6 +222,7 @@ class Settings(BaseSettings):
         """
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.require_external_backends
         except Exception:
             return True
@@ -245,6 +247,7 @@ class Settings(BaseSettings):
         """
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.opa_fail_closed
         except Exception:
             return self.mode_normalized != "dev"
@@ -254,6 +257,7 @@ class Settings(BaseSettings):
         """Recommended root log level by mode."""
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.log_level
         except Exception:
             m = self.mode_normalized
@@ -298,7 +302,14 @@ class Settings(BaseSettings):
         # Warn on unknown modes
         try:
             raw = (self.mode or "").strip().lower()
-            if raw and raw not in ("dev", "development", "stage", "staging", "prod", "enterprise"):
+            if raw and raw not in (
+                "dev",
+                "development",
+                "stage",
+                "staging",
+                "prod",
+                "enterprise",
+            ):
                 notes.append(
                     f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
                 )

@@ -30,7 +30,9 @@ class DummyGauge:
         pass
 
 
-def test_observe_next_event_regret(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
+def test_observe_next_event_regret(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture
+) -> None:
     """Ensure regret = 1 - confidence is stored in the gauge.
 
     The ``LearnerService`` creates the gauge lazily via ``somabrain.metrics``.
