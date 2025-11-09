@@ -724,7 +724,8 @@ class IntegratorHub:
                 INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
         except Exception:
             pass
-        # Metrics-only: compute normalized error and candidate exp(-alpha * e_norm) weights
+        # Normalization pathway: compute normalized error and candidate weights; optionally use for selection
+        fused_weights: Optional[Dict[str, float]] = None
         if self._norm_enabled:
             try:
                 # Emit normalized error for the current domain
@@ -756,12 +757,18 @@ class IntegratorHub:
                     except Exception:
                         cand_exps[d] = 1.0
                 Zc = sum(cand_exps.values()) or 1.0
-                for d, v in cand_exps.items():
-                    INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(
-                        float(v / Zc)
-                    )
+                fused_weights = {d: float(v / Zc) for d, v in cand_exps.items()}
+                for d, v in fused_weights.items():
+                    INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(v)
             except Exception:
                 pass
+        # If normalization flag enabled and we computed fused_weights, use it for leader selection and rationale
+        if self._norm_enabled and fused_weights is not None and fused_weights:
+            # Merge fused weights into the 3-domain map (fill missing domains with 0)
+            norm_weights = {"state": 0.0, "agent": 0.0, "action": 0.0}
+            norm_weights.update({k: float(v) for k, v in fused_weights.items()})
+            weights = norm_weights
+            leader = max(weights.items(), key=lambda kv: kv[1])[0]
         # Leader switch metric
         try:
             last = self._last_leader.get(tenant)
@@ -799,7 +806,8 @@ class IntegratorHub:
                 frame_map["leader_delta_error"] = f"{lob.delta_error:.6f}"
         except Exception:
             pass
-        rationale = f"softmax_tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
+        fusion_note = "fusion=normalized" if (self._norm_enabled and fused_weights) else "fusion=softmax"
+        rationale = f"{fusion_note} tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
         # Optional OPA gating/adjustment
         leader_adj = leader
         policy_allowed = True
