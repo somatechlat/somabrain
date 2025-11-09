@@ -149,8 +149,9 @@ The `LearnerOnline` service now consumes this topic (controlled by the feature
 flag `SOMABRAIN_FF_NEXT_EVENT`).  For each `NextEvent` it extracts the
 `regret` field, logs the value, and updates the Prometheus gauge
 `soma_next_event_regret`.  This metric is exposed on the `/metrics` endpoint of
-the learner and can be visualised in Grafana.  The learner does **not** use the
-event for training yet – it is a hook for future contextual learning.
+the learner and can be scraped directly by Prometheus or equivalent tooling.
+The learner does **not** use the event for training yet – it is a hook for
+future contextual learning.
 
 ### Per‑Tenant Adaptation (Implemented)
 Adaptation parameters can now be overridden on a per‑tenant basis via the YAML

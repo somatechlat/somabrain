@@ -1,1 +1,45 @@
+groups:
+	- name: somabrain.learning
+		interval: 30s
+		rules:
+			- alert: PredictorNoEmits
+				expr: increase(somabrain_predictor_state_emitted_total[5m]) + increase(somabrain_predictor_agent_emitted_total[5m]) + increase(somabrain_predictor_action_emitted_total[5m]) == 0
+				for: 2m
+				labels:
+					severity: warning
+				annotations:
+					summary: "No predictor emits in last 5m"
+					description: "All predictor domains silent; investigate Kafka or service health."
+			- alert: IntegratorLeaderSwitchSpike
+				expr: increase(somabrain_integrator_leader_switches_total[10m]) > 50
+				for: 1m
+				labels:
+					severity: warning
+				annotations:
+					summary: "Leader switch spike"
+					description: "Integrator leader switching excessively; potential instability in confidence signals."
+			- alert: OpaDenyRateHigh
+				expr: (increase(somabrain_integrator_opa_deny_total[10m]) / clamp_min(increase(somabrain_integrator_opa_allow_total[10m]),1)) > 0.2
+				for: 2m
+				labels:
+					severity: critical
+				annotations:
+					summary: "High OPA deny ratio (>20%)"
+					description: "OPA denies exceeding threshold; check policy changes and inputs."
+			- alert: ShadowRatioZero
+				expr: somabrain_integrator_shadow_ratio == 0
+				for: 15m
+				labels:
+					severity: info
+				annotations:
+					summary: "Shadow traffic inactive"
+					description: "Shadow ratio configured but no frames routed; verify SHADOW_RATIO or SOMABRAIN_SHADOW_RATIO."
+			- alert: TauStuckHigh
+				expr: somabrain_integrator_tau > 0.95
+				for: 10m
+				labels:
+					severity: warning
+				annotations:
+					summary: "Tau stuck near upper bound"
+					description: "Exploration temperature remains high; learner may not be receiving rewards."
 

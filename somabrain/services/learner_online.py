@@ -183,6 +183,14 @@ class LearnerService:
             if metrics
             else None
         )
+        self._hist_regret = (
+            metrics.LEARNING_REGRET if hasattr(metrics, "LEARNING_REGRET") else None
+        )
+        self._ewma_regret = (
+            metrics.LEARNING_REGRET_EWMA
+            if hasattr(metrics, "LEARNING_REGRET_EWMA")
+            else None
+        )
         self._topic_checked = False
 
     def _print_effective_config(self) -> None:
@@ -397,6 +405,12 @@ class LearnerService:
                 self._g_next_regret.set(regret)
             except Exception:
                 pass
+        # Record regret KPI histogram + EWMA
+        try:
+            if hasattr(metrics, "record_regret"):
+                metrics.record_regret(tenant, regret)
+        except Exception:
+            pass
 
     def _handle_record(self, msg: Any) -> None:
         topic = getattr(msg, "topic", "") or ""

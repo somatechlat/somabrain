@@ -53,6 +53,12 @@ def _topics() -> List[NewTopic]:
             topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
         ),
         NewTopic(
+            name="cog.next.events",
+            num_partitions=3,
+            replication_factor=1,
+            topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
+        ),
+        NewTopic(
             name="cog.config.updates",
             num_partitions=3,
             replication_factor=1,
@@ -63,6 +69,12 @@ def _topics() -> List[NewTopic]:
             num_partitions=3,
             replication_factor=1,
             topic_configs={"retention.ms": str(30 * 24 * 60 * 60 * 1000)},
+        ),
+        NewTopic(
+            name="cog.integrator.context.shadow",
+            num_partitions=3,
+            replication_factor=1,
+            topic_configs={"retention.ms": str(7 * 24 * 60 * 60 * 1000)},
         ),
     ]
 

@@ -32,7 +32,22 @@ from typing import Any, Dict, Optional, Tuple
 
 from kafka import KafkaConsumer, KafkaProducer  # type: ignore
 import threading
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
+# Tracing provider (fallback to no-op if observability package is unavailable)
+try:
+    from observability.provider import init_tracing, get_tracer  # type: ignore
+except Exception:  # pragma: no cover - test/import fallback
+    from contextlib import contextmanager
+
+    def init_tracing() -> None:  # type: ignore
+        return None
+
+    class _NoopTracer:
+        @contextmanager
+        def start_as_current_span(self, name: str):  # type: ignore
+            yield None
+
+    def get_tracer(name: str) -> _NoopTracer:  # type: ignore
+        return _NoopTracer()
 
 import somabrain.metrics as app_metrics
 
@@ -67,6 +82,20 @@ INTEGRATOR_ERRORS = app_metrics.get_counter(
 INTEGRATOR_OPA_LAT = app_metrics.get_histogram(
     "somabrain_integrator_opa_latency_seconds",
     "OPA decision latency for integrator gating",
+)
+
+# OPA decision counters
+INTEGRATOR_OPA_ALLOW_TOTAL = app_metrics.get_counter(
+    "somabrain_integrator_opa_allow_total",
+    "Count of OPA allow decisions in integrator",
+)
+INTEGRATOR_OPA_DENY_TOTAL = app_metrics.get_counter(
+    "somabrain_integrator_opa_deny_total",
+    "Count of OPA deny decisions in integrator",
+)
+INTEGRATOR_OPA_VETO_RATIO = app_metrics.get_gauge(
+    "somabrain_integrator_opa_veto_ratio",
+    "Ratio of OPA veto (deny) decisions to total decisions (rolling)",
 )
 
 # Entropy of domain weights (0 = degenerate, 1 = uniform across 3 domains)
@@ -281,9 +310,20 @@ class IntegratorHub:
             INTEGRATOR_TAU.set(1.0)
         except Exception:
             pass
-        self._shadow_ratio = float(os.getenv("SHADOW_RATIO", "0.0") or "0.0")
+        # Allow both legacy and namespaced env var for shadow routing ratio
+        try:
+            self._shadow_ratio = float(
+                os.getenv("SOMABRAIN_SHADOW_RATIO", "")
+                or os.getenv("SHADOW_RATIO", "0.0")
+                or "0.0"
+            )
+        except Exception:
+            self._shadow_ratio = 0.0
         self._frames_seen = 0
         self._shadow_sent = 0
+        # Local OPA decision counters for ratio calculations
+        self._opa_allow_count: int = 0
+        self._opa_deny_count: int = 0
         # Track leader switches per tenant
         self._last_leader: Dict[str, str] = {}
         # Confidence enforcement from delta_error
@@ -488,7 +528,7 @@ class IntegratorHub:
     def _publish_frame(self, frame: Dict[str, Any]) -> None:
         if not self._producer:
             return
-        # Shadow routing decision
+        # Shadow routing decision (duplicate to shadow topic, never suppress primary)
         route_to_shadow = False
         try:
             import random as _random
@@ -499,6 +539,9 @@ class IntegratorHub:
         except Exception:
             route_to_shadow = False
         try:
+            # Always send primary global frame
+            self._producer.send("cog.global.frame", value=self._encode_frame(frame))
+            # Optionally duplicate to shadow topic for evaluation
             if route_to_shadow:
                 self._producer.send(
                     "cog.integrator.context.shadow", value=self._encode_frame(frame)
@@ -518,8 +561,6 @@ class IntegratorHub:
                         )
                 except Exception:
                     pass
-            else:
-                self._producer.send("cog.global.frame", value=self._encode_frame(frame))
         except Exception:
             INTEGRATOR_ERRORS.labels(stage="publish").inc()
 
@@ -648,6 +689,20 @@ class IntegratorHub:
                 tenant, leader, weights, ev
             )
             if not allowed:
+                try:
+                    INTEGRATOR_OPA_DENY_TOTAL.inc()
+                except Exception:
+                    pass
+                # Update local counters and ratio gauge
+                try:
+                    self._opa_deny_count += 1
+                    total = self._opa_allow_count + self._opa_deny_count
+                    if total > 0:
+                        INTEGRATOR_OPA_VETO_RATIO.set(
+                            float(self._opa_deny_count) / float(total)
+                        )
+                except Exception:
+                    pass
                 # If fail-closed, drop frame; otherwise continue with original leader
                 if self._opa_fail_closed:
                     return None
@@ -655,6 +710,20 @@ class IntegratorHub:
                     policy_allowed = False
                     rationale += "; opa=deny"
             else:
+                try:
+                    INTEGRATOR_OPA_ALLOW_TOTAL.inc()
+                except Exception:
+                    pass
+                # Update local counters and ratio gauge
+                try:
+                    self._opa_allow_count += 1
+                    total = self._opa_allow_count + self._opa_deny_count
+                    if total > 0:
+                        INTEGRATOR_OPA_VETO_RATIO.set(
+                            float(self._opa_deny_count) / float(total)
+                        )
+                except Exception:
+                    pass
                 if new_leader and new_leader in ("state", "agent", "action"):
                     leader_adj = new_leader
                 rationale += f"; opa=allow{opa_note}"

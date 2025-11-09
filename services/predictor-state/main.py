@@ -194,8 +194,10 @@ def run_forever() -> None:  # pragma: no cover
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
                 next_ev = {
                     "frame_id": f"state:{rec['ts']}",
+                    "tenant": tenant,
                     "predicted_state": predicted_state,
                     "confidence": float(confidence),
+                    "regret": max(0.0, min(1.0, 1.0 - float(confidence))),
                     "ts": rec["ts"],
                 }
                 prod.send(NEXT_TOPIC, value=_encode(next_ev, next_serde))

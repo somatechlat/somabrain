@@ -51,7 +51,22 @@ except Exception:  # pragma: no cover - unit tests focus on core segmenter
 
 from somabrain import metrics  # type: ignore
 
-from observability.provider import init_tracing, get_tracer  # type: ignore
+# Tracing provider (fallback to no-op if observability package not on sys.path)
+try:
+    from observability.provider import init_tracing, get_tracer  # type: ignore
+except Exception:  # pragma: no cover
+    from contextlib import contextmanager
+
+    def init_tracing() -> None:  # type: ignore
+        return None
+
+    class _NoopTracer:
+        @contextmanager
+        def start_as_current_span(self, name: str):  # type: ignore
+            yield None
+
+    def get_tracer(name: str) -> _NoopTracer:  # type: ignore
+        return _NoopTracer()
 
 
 BOUNDARY_EMITTED = None

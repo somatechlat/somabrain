@@ -48,6 +48,7 @@ try:
         Counter as _PromCounter,
         Gauge as _PromGauge,
         Histogram as _PromHistogram,
+        Summary as _PromSummary,
         generate_latest,
     )
 except Exception:  # pragma: no cover
@@ -155,6 +156,15 @@ def _histogram(name: str, documentation: str, *args, **kwargs):
     return _PromHistogram(name, documentation, *args, **kwargs)
 
 
+def _summary(name: str, documentation: str, *args, **kwargs):
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromSummary(name, documentation, *args, **kwargs)
+
+
 def get_counter(name: str, documentation: str, labelnames: list | None = None):
     """Get or create a Counter in the central registry.
 
@@ -201,6 +211,7 @@ _DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
 Counter = _counter
 Gauge = _gauge
 Histogram = _histogram
+Summary = _summary
 
 # Aliases used later (avoid interleaved imports)
 _Hist = Histogram
@@ -597,6 +608,36 @@ PREDICTOR_FALLBACK = Counter(
     "Count of predictor timeouts/errors causing degrade",
     registry=registry,
 )
+
+# --- Planning KPIs ---
+PLANNING_LATENCY = Histogram(
+    "somabrain_planning_latency_seconds",
+    "Planning generation latency seconds",
+    ["backend"],
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.075, 0.1, 0.2, 0.3, 0.5, 1.0),
+    registry=registry,
+)
+PLANNING_LATENCY_P99 = Gauge(
+    "somabrain_planning_latency_p99",
+    "Approximate p99 planning latency seconds (rolling)",
+    registry=registry,
+)
+
+_planning_samples: list[float] = []
+_MAX_PLANNING_SAMPLES = 1000
+
+def record_planning_latency(backend: str, latency_seconds: float) -> None:
+    try:
+        PLANNING_LATENCY.labels(backend=str(backend)).observe(float(latency_seconds))
+        _planning_samples.append(float(latency_seconds))
+        if len(_planning_samples) > _MAX_PLANNING_SAMPLES:
+            del _planning_samples[: len(_planning_samples) - _MAX_PLANNING_SAMPLES]
+        if _planning_samples:
+            ordered = sorted(_planning_samples)
+            idx = max(0, int(0.99 * (len(ordered) - 1)))
+            PLANNING_LATENCY_P99.set(ordered[idx])
+    except Exception:
+        pass
 
 # Decision attribution / recall quality
 RECALL_MARGIN_TOP12 = Histogram(
@@ -1072,6 +1113,37 @@ LEARNING_RETRIEVAL_ENTROPY = get_gauge(
     "Entropy of retrieval weight distribution per tenant",
     labelnames=["tenant_id"],
 )
+
+# Regret KPIs (next-event + policy)
+LEARNING_REGRET = get_histogram(
+    "somabrain_learning_regret",
+    "Regret distribution per tenant",
+    labelnames=["tenant_id"],
+    buckets=[i / 20.0 for i in range(0, 21)],
+)
+LEARNING_REGRET_EWMA = get_gauge(
+    "somabrain_learning_regret_ewma",
+    "EWMA regret per tenant",
+    labelnames=["tenant_id"],
+)
+
+_regret_ema: dict[str, float] = {}
+_REGRET_ALPHA = 0.15
+
+def record_regret(tenant_id: str, regret: float) -> None:
+    try:
+        t = tenant_id or "public"
+        r = max(0.0, min(1.0, float(regret)))
+        LEARNING_REGRET.labels(tenant_id=t).observe(r)
+        prev = _regret_ema.get(t)
+        if prev is None:
+            ema = r
+        else:
+            ema = _REGRET_ALPHA * r + (1.0 - _REGRET_ALPHA) * prev
+        _regret_ema[t] = ema
+        LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
+    except Exception:
+        pass
 
 
 def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:

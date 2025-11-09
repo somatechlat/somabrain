@@ -79,6 +79,36 @@ groups:
           summary: "No GlobalFrame messages observed"
           description: "cog.global.frame has no publishes for 5 minutes."
 
+      # OPA veto ratio sustained above 10%
+      - alert: OpaVetoRatioElevated
+        expr: somabrain_integrator_opa_veto_ratio > 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OPA veto ratio elevated"
+          description: "OPA denies exceed 10% of decisions over 10m (value: {{ $value }}). Review policy or input drift."
+
+      # Planning latency p99 above 40ms
+      - alert: PlanningLatencyP99High
+        expr: somabrain_planning_latency_p99 > 0.040
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Planning p99 latency high"
+          description: "Planning latency p99 above 40ms for 10m (value: {{ $value }}s). Investigate graph or retrieval pressure."
+
+      # Regret EWMA above 0.08 indicates degraded policy feedback quality
+      - alert: LearningRegretEwmaHigh
+        expr: somabrain_learning_regret_ewma > 0.08
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Learning regret EWMA high"
+          description: "EWMA regret above 0.08 for 15m (value: {{ $value }}). Consider rollback or parameter tuning."
+
       # Kafka consumer lag (requires kafka_exporter)
       - alert: KafkaConsumerLagHigh
         expr: max by (consumergroup) (kafka_consumergroup_lag) > 1000
