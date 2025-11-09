@@ -86,3 +86,6 @@ def _bootstrap_env_from_dotenv() -> None:
 
 # Eagerly load on import so all tests see a consistent environment
 _bootstrap_env_from_dotenv()
+
+# Removed duplicate schema test ignore after renaming to unique filename.
+collect_ignore: list[str] = []

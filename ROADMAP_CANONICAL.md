@@ -1,132 +1,157 @@
-# Canonical Roadmap — Cognitive Thread + Era of Experience
+# Canonical Roadmap — Unified Cognitive Thread, Learning Layer, Tripartite Math, Consolidation
 
-This single roadmap combines the existing cognitive-thread plan with the “Era of Experience” learning layer. It preserves our single canonical Docker image policy, keeps all rollout values-gated, and defines clear acceptance tests per sprint.
+Truth principle: Implemented (I), Partial (P), Not Implemented / Proposed (N). All future items have concrete acceptance tests; everything values-gated; single Docker image; no placeholders.
 
-## 1) Architecture (high-level)
+## 1) Architecture (High-Level)
 
 ```
-+-------------------+      +-------------------+      +-------------------+
-|   Client/API      | ---> |   Orchestrator    | ---> |   Predictor Core   |
-| (REST/gRPC)       |      | (Plan phase)      |      | (state/agent/action)|
-+-------------------+      +-------------------+      +-------------------+
-	   |                         |                         |
-	   v                         v                         v
-   +----------------+        +----------------+        +----------------+
-   | reward_producer|        | segmentation   |        | integrator_hub |
-   | (Kafka prod)   |        | service (HMM)  |        | (softmax, OPA, |
-   +----------------+        +----------------+        |  Redis cache)  |
-	   |                         |                         |
-	   v                         v                         v
-   +---------------------------------------------------------------+
-   |                     learner_online (Bandit/RL)                |
-   |  consumes: reward_event, next_event, integrator_context       |
-   |  produces: config_update (temperature, weights)               |
-   +---------------------------------------------------------------+
-	   |                         ^                         |
-	   |                         |                         |
-	   +-------------------+-----+-------------------------+
-				  |
-				  v
-			+----------------+
-			|   OPA service  |
-			+----------------+
++-------------------+      +-------------------+      +---------------------+
+|   Client/API      | ---> |   Orchestrator    | ---> |   Predictor Threads  |
+| (REST/gRPC)       |      | (Plan phase)      |      | (state/agent/action) |
++-------------------+      +-------------------+      +---------------------+
+	  |                         |                           |
+	  v                         v                           v
+  +----------------+       +----------------+         +-------------------+
+  | reward_prod    |       | segmentation   |         |  integrator_hub   |
+  | (Kafka)        |       | (HMM formal)   |         |  (fusion, OPA)    |
+  +----------------+       +----------------+         +-------------------+
+	  |                         |                           |
+	  v                         v                           v
+  +---------------------------------------------------------------------+
+  |                       learner_online (Bandit/RL)                    |
+  |  consumes: reward_event, next_event, integrator_context             |
+  |  produces: config_update (tau, λ_d), calibration, drift events      |
+  +---------------------------------------------------------------------+
 ```
 
 Notes
-- Transport is Kafka; OPA is HTTP (with short timeouts, optional Redis caching).
-- A small configurable shadow ratio routes a fraction of frames to an evaluation path.
-- Single Docker image for all services; no per-service Dockerfiles.
+- Transport: Kafka; OPA is HTTP with short timeouts; optional Redis cache (I/P).
+- Shadow ratio routes eval traffic (I).
+- Single image policy enforced (I).
+- Consolidated runtime/entry utilities to remove duplication (N).
 
 ## 2) Contracts & Topics (Avro)
 
-Existing
-- belief_update.avsc, global_frame.avsc, segment_boundary.avsc, integrator_context.avsc
+Implemented (I): belief_update, global_frame, segment_boundary, integrator_context.
 
-New (to be added)
-- reward_event.avsc — fields for r_task, r_user, r_latency, r_safety, r_cost (typed and versioned)
-- next_event.avsc — schema for next-event predictions/errors (for learner feedback)
-- config_update.avsc — exploration temperature and optional per-domain weights
+Partial (P): next_event (error field labeling), reward_event (component set), config_update (tau only).
+
+Proposed (N):
+- predictor_calibration (ECE, Brier, T_d, ts)
+- fusion_drift_event (entropy+regret signature)
+- config_update extension with per-domain λ_d
 
 Canonical topics
 - Inputs: cog.state.updates, cog.agent.updates, cog.action.updates
-- Core: cog.global.frame, cog.segments, cog.integrator.context (optional)
-- Learning: soma.reward.events, soma.next.events, soma.config.updates (names configurable)
+- Core: cog.global.frame, cog.segments, cog.integrator.context
+- Learning: soma.reward.events, soma.next.events, soma.config.updates
 
-## 3) Feature Flags (values-gated)
-- ENABLE_COG_THREADS — composite enable for predictors, segmentation, integrator, orchestrator
-- Per-service flags: SOMABRAIN_FF_PREDICTOR_*, SOMABRAIN_FF_COG_* (integrator/segmentation/orchestrator)
-- learnerEnabled (values) — gates learner_online and the learning loop topics
+## 3) Consolidation & Single Entry
 
-## 4) Observability & SLOs
-- /healthz and /metrics on all services; PodMonitors optional
-- Alerts (baseline): no frames/segments, leader-switch spike, outbox p90 high
-- Alerts (extended): predictor no-emit, Kafka consumer lag
-- Dashboards: integrator entropy/leader switches, predictor emits, segments dwell, learning (rewards, exploration ratio, regret estimate, shadow ratio)
+Current duplication (P): per-service `_bootstrap`, `_make_producer`, `_serde`, `_encode`, tracing init, NextEvent construction.
 
-## 5) Single-Image Policy
-- One canonical Dockerfile for all services; deployments start the appropriate entrypoints
-- No per-service Dockerfiles or multi-image building/pushing
+Actions (N):
+- `common/kafka.py` for producer, topic names, Avro serde cache
+- `common/events.py` for NextEvent builder and regret calculation
+- `common/observability.py` thin wrapper around provider
+- `services/entry.py` dispatcher for single entry based on env (ENABLE_COG_THREADS)
 
----
+Acceptance
+- Predictors import shared modules; no local encode/serde; CLoC in predictor mains reduced ≥20%.
 
-## 6) Sprints & Acceptance Tests
+## 4) Mathematical Foundations
 
-### Sprint 0 — Foundations (Done/Verify)
-- Ensure existing services (predictors, segmentation, integrator, orchestrator) run with health/metrics and pass unit/integration tests
-- CI: lint/type/coverage; compose E2E smoke; kind install with in-cluster topic probe
-- Acceptance: green CI; topic probe sees cog.global.frame and cog.segments
+Predictor Threads (I): diffusion backbone emitting (delta_error, confidence).
 
-### Sprint 1 — Reward Ingestion
-- Add reward_event.avsc and publish via reward_producer
-- Wire tests to inject reward events and validate schema registry compatibility
-- Acceptance: POST/emit produces an Avro record on soma.reward.events; CI smoke validates ≥1 record
+Fusion Normalization (N):
+- e_norm_d = (error_d − μ_d)/(σ_d+ε)
+- w_d = exp(−α·e_norm_d)/Σ exp(−α·e_norm_k), α in [α_lo, α_hi]
+- α adaptive via learner: α_{t+1} = clip(α_t + η·(regret_mean − target), bounds)
 
-#### Sprint 1 — Recent Progress (Nov 2025)
+Calibration (N):
+- Temperature scaling T_d; metrics ECE_d, Brier_d; update only with min samples
 
-- Implemented local infra and orchestration improvements to stabilize reward ingestion and e2e validation:
-	- Canonical image now installs the in-repo `libs` package (Avro serde available at runtime).
-	- Increased Kafka healthcheck tolerance in compose to avoid spurious `unhealthy` states during broker startup.
-	- Added `make smoke-e2e` and `make start-servers` Makefile targets and a `scripts/e2e_smoke.sh` script to run quick POST→consume validation.
-	- Verified end-to-end: POST reward → message present on `cog.reward.events` → `learner_online` emits `cog.config.updates` → `integrator_hub` applied update (observed in logs).
+Consistency (N):
+- κ = 1 − JSD(P_action|agent || empirical); inconsistency_rate alert >3%
 
-Next Sprint 1 steps:
-- Add a CI job to run the smoke-e2e in a runner (or lightweight compose) so PRs validate the loop automatically.
-- Convert smoke test to assert on `cog.config.updates` and integrator `/tau` for stricter acceptance.
+Segmentation HMM (N):
+- States: STABLE, TRANSITION; Observations: entropy_delta, error_delta, dwell_norm
+- Online Viterbi; boundary when P(TRANSITION) > τ_seg; latency ≤2 ticks
 
-### Sprint 2 — Next-Event Heads
-- Finalize next_event.avsc; ensure predictors emit NextEvent with error metric (e.g., Brier loss)
-- Unit tests for prediction head; metrics somabrain_predictor_*_next_total increase
-- Acceptance: learner_online can consume NextEvent; predictor error gauge < 0.05 in controlled tests
+Regret (P→N):
+- regret_d = max(0, c_target_d − c'_d); aggregate Σ γ_d·regret_d; learner maintains c_target_d
 
-### Sprint 3 — Online Learner Loop
-- Add config_update.avsc; implement learner_online consuming reward_event + next_event (+ integrator context if needed)
-- Publish config_update to topic; integrator hub adjusts temperature (tau) live
-- Acceptance: tau (INTEGRATOR_TAU) changes within ~30s after updates; frames reflect new weights/entropy
+## 5) Reward & Attribution
 
-### Sprint 4 — OPA & Shadow Traffic
-- Confirm policy delivery via infra chart; document policy rollout
-- Validate shadow ratio routing and ensure integrator context shadow topic behavior
-- Acceptance: ~5% frames routed to shadow; OPA veto count metric increments under test policies; decision latency within SLO
+Implemented (P): reward_event ingestion with components.
 
-### Sprint 5 — Observability & Alerts
-- Extend dashboards with learning panels (rewards, exploration ratio, regret)
-- Enable extended alerts in staging; tune thresholds; Kafka consumer lag alert tied to exporter
-- Acceptance: dashboards populate; alerts fire in synthetic scenarios; runbook updated
+Proposed (N):
+- Normalize components; learn β_i; derive γ_d domain attribution; emit λ_d in config_update
 
-### Sprint 6 — Canary & Production Rollout
-- Enable flags for a subset of traffic; monitor KPIs; rollback path verified
-- Targets (examples): p99 planning ≤22ms; r_task ≥0.78; exploration-induced error ≤2%; OPA veto ≤5%; regret ≤0.05
-- Acceptance: all KPIs within thresholds over an agreed window; rollback documented and tested
+Acceptance
+- λ_d adjustments reduce domain regret ≥5% vs baseline without raising entropy beyond threshold.
 
----
+## 6) Observability & SLOs
 
-## 7) Non-Goals / Constraints
-- Do not introduce multiple images or per-service Dockerfiles
-- Avoid runtime behavior changes without flags; everything is values-gated
+Implemented (I/P): health/metrics; planning latency histogram + p99 gauge; regret EWMA; OPA veto ratio; entropy; predictor emits and error histogram.
 
-## 8) Rollback Plan
-Set `featureFlags.enableCogThreads` to `false` (and/or learnerEnabled=false) in Helm values; `helm upgrade` reverts to the previous behavior instantly.
+Add (N):
+- normalized_error_d gauge; fusion_weight_d; α; ECE_d; Brier_d; κ; P(TRANSITION); drift gauge
 
----
+Alerts (augment) (N):
+- Calibration Drift (ECE_d > threshold); Fusion Weight Instability; Consistency Degradation; Segmentation Flood/Drought; Drift Trigger (entropy band + regret spike)
 
-This is the single canonical roadmap for cognitive-thread + learning-layer production rollout. It supersedes prior drafts and remains aligned with the repository’s single-image policy and CI gates.
+Dashboards (extend) (N): predictor quality, fusion stability, segmentation state, learning (tau, λ_d, α, regret)
+
+## 7) Feature Flags (values-gated)
+
+Existing (I): ENABLE_COG_THREADS, SOMABRAIN_FF_PREDICTOR_*, learnerEnabled.
+
+Add (N): ENABLE_FUSION_NORMALIZATION, ENABLE_HMM_SEGMENTATION, ENABLE_CALIBRATION, ENABLE_CONSISTENCY_CHECKS, ENABLE_RUNTIME_CONSOLIDATION.
+
+## 8) Sprints & Acceptance Tests
+
+Sprint 0 Foundations (Done)
+Sprint 1 Reward Ingestion (Done)
+Sprint 2 Next-Event Heads (Partial): Include error metric labeling; acceptance: learner consumes; predictor error gauge <0.05 in controlled tests.
+Sprint 3 Online Learner Loop (Partial): Tau live updates; extend config_update for λ_d emission.
+Sprint 4 OPA & Shadow (Done): Shadow ~5%; veto metric increments; decision latency within SLO.
+Sprint 5 Observability Base (Done): Metrics + base alerts.
+Sprint 6 Canary & Rollout (Pending): p99 ≤22ms; regret ≤0.05; entropy stable; veto ≤5%.
+Sprint 7 Fusion Normalization (N): w_d via exp(−α·e_norm_d); α adaptive; entropy within band; regression <2%.
+Sprint 8 Consolidation & Single Entry (N): Predictors import shared utils; no local encode; CLoC drop ≥20%.
+Sprint 9 HMM Segmentation (N): Boundary F1 ≥0.9 (synthetic), false boundary <5%, latency ≤2 ticks.
+Sprint 10 Calibration Pipeline (N): ECE reduction ≥30%; temperature updates persisted; downgrade on breach.
+Sprint 11 Consistency Metrics (N): κ histogram; alert on mismatch scenario; remediation lowers rate <3%.
+Sprint 12 Reward Attribution (N): γ_d published; λ_d adjusts exploration; regret improves ≥5%.
+Sprint 13 Drift & Auto-Rollback (N): drift event triggers disable advanced fusion; stabilize within 2 windows.
+
+## 9) Production Readiness & Ops
+
+Hardening (N): unified health schema; graceful shutdown across producer/tracer; bounded queues; SLA tracking for segmentation/integrator.
+
+Playbooks (N): calibration drift; consistency alert; segmentation flood; drift rollback; OPA latency spikes.
+
+## 10) Risks & Mitigations
+
+- Overfitting α → bounds + EMA smoothing.
+- Calibration sparsity → minimum sample gate and fallback.
+- HMM latency → start with fixed priors; fallback to heuristic.
+- Metric sprawl → namespace discipline and pruning.
+- Coupling latency → async consistency checks; fail-open until stable.
+
+## 11) Non-Goals / Constraints
+
+- No multi-image split; remain single image.
+- No heavy online deep training.
+- No persistent per-user state beyond current memory subsystem.
+
+## 12) Rollback Plan
+
+Disable advanced flags individually; full revert with `featureFlags.enableCogThreads=false` and `learnerEnabled=false`. Automated rollback on drift trigger.
+
+## 13) Status Summary (I/P/N)
+
+- Diffusion predictors (I), Integrator softmax (I/P), NextEvent emit (I/P), Reward ingest (P), Tau updates (P), OPA+shadow (I), Observability base (I), HMM (N), Fusion normalization (N), Calibration (N), Consistency (N), Attribution λ_d (N), Consolidation (N), Drift automation (N).
+
+This canonical roadmap unifies implementation, math upgrades, consolidation, and production criteria in a single, truth-based plan.

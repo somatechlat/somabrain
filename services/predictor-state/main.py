@@ -1,32 +1,21 @@
 from __future__ import annotations
 
-import json
 import os
 import random
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 import threading
 import numpy as np
 
 from observability.provider import init_tracing, get_tracer  # type: ignore
 
-try:  # optional deps
-    from kafka import KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaProducer = None  # type: ignore
-
 try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
-
-try:
-    # Optional Prometheus metrics via shared module
     from somabrain import metrics as _metrics  # type: ignore
 except Exception:  # pragma: no cover
     _metrics = None  # type: ignore
+
+from somabrain.common.kafka import make_producer, encode, TOPICS
+from somabrain.common.events import build_next_event
 
 # Diffusion predictor
 from somabrain.predictors.base import (
@@ -38,56 +27,9 @@ from somabrain.predictors.base import (
 )
 
 
-TOPIC = "cog.state.updates"
-NEXT_TOPIC = "cog.next.events"
-SOMA_TOPIC = "soma.belief.state"
-
-
-def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
-    return url.replace("kafka://", "")
-
-
-def _make_producer():  # pragma: no cover - integration path
-    if KafkaProducer is None:
-        return None
-    return KafkaProducer(bootstrap_servers=_bootstrap(), acks="1", linger_ms=5)
-
-
-def _serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("belief_update"))  # type: ignore[arg-type]
-    except Exception:
-        return None
-
-
-def _next_serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("next_event"))  # type: ignore[arg-type]
-    except Exception:
-        return None
-
-
-def _soma_serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("belief_update_soma"))  # type: ignore[arg-type]
-    except Exception:
-        return None
-
-
-def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    return json.dumps(rec).encode("utf-8")
+TOPIC = TOPICS["state"]
+NEXT_TOPIC = TOPICS["next"]
+SOMA_TOPIC = TOPICS["soma_state"]
 
 
 def run_forever() -> None:  # pragma: no cover
@@ -132,13 +74,14 @@ def run_forever() -> None:  # pragma: no cover
         if not composite:
             print("predictor-state: feature flag disabled; exiting.")
             return
-    prod = _make_producer()
+    prod = make_producer()
     if prod is None:
         print("predictor-state: Kafka not available; exiting.")
         return
-    serde = _serde()
-    next_serde = _next_serde()
-    soma_serde = _soma_serde()
+    # Schema names used by encoder utility
+    belief_schema = "belief_update"
+    next_schema = "next_event"
+    soma_schema = "belief_update_soma"
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = os.getenv("STATE_MODEL_VER", "v1")
     period = float(os.getenv("STATE_UPDATE_PERIOD", "0.5"))
@@ -164,7 +107,7 @@ def run_forever() -> None:  # pragma: no cover
                     "model_ver": model_ver,
                     "latency_ms": int(5 + 5 * random.random()),
                 }
-                prod.send(TOPIC, value=_encode(rec, serde))
+                prod.send(TOPIC, value=encode(rec, belief_schema))
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
@@ -186,21 +129,14 @@ def run_forever() -> None:  # pragma: no cover
                             "info_gain": None,
                             "metadata": {k: str(v) for k, v in (rec.get("evidence") or {}).items()},
                         }
-                        payload = _encode(soma_rec, soma_serde)
+                        payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
                     except Exception:
                         pass
                 # NextEvent emission (derived): predicted_state based on stability
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
-                next_ev = {
-                    "frame_id": f"state:{rec['ts']}",
-                    "tenant": tenant,
-                    "predicted_state": predicted_state,
-                    "confidence": float(confidence),
-                    "regret": max(0.0, min(1.0, 1.0 - float(confidence))),
-                    "ts": rec["ts"],
-                }
-                prod.send(NEXT_TOPIC, value=_encode(next_ev, next_serde))
+                next_ev = build_next_event("state", tenant, float(confidence), predicted_state)
+                prod.send(NEXT_TOPIC, value=encode(next_ev, next_schema))
                 if _NEXT_EMITTED is not None:
                     try:
                         _NEXT_EMITTED.inc()

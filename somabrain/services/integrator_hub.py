@@ -137,6 +137,22 @@ INTEGRATOR_TAU = app_metrics.get_gauge(
     "Current softmax temperature (tau)",
 )
 
+# Fusion-normalization (metrics-only seam)
+INTEGRATOR_ALPHA = app_metrics.get_gauge(
+    "somabrain_integrator_alpha",
+    "Current integrator alpha parameter for error->confidence mapping",
+)
+INTEGRATOR_NORMALIZED_ERROR = app_metrics.get_gauge(
+    "somabrain_integrator_normalized_error",
+    "Per-domain normalized prediction error (z-score)",
+    labelnames=["domain"],
+)
+INTEGRATOR_CAND_WEIGHT = app_metrics.get_gauge(
+    "somabrain_integrator_candidate_weight",
+    "Candidate fusion weight from exp(-alpha * e_norm) (metrics-only)",
+    labelnames=["tenant", "domain"],
+)
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -331,10 +347,27 @@ class IntegratorHub:
             self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
         except Exception:
             self._alpha = 2.0
+        try:
+            INTEGRATOR_ALPHA.set(float(self._alpha))
+        except Exception:
+            pass
         # Default ON: enforce confidence normalization from delta_error unless explicitly disabled
         self._enforce_conf = os.getenv(
             "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
         ).strip().lower() in ("1", "true", "yes", "on")
+        # Metrics-only normalization seam (no decision impact when disabled)
+        self._norm_enabled = os.getenv("ENABLE_FUSION_NORMALIZATION", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        # Rolling stats per domain for delta_error normalization (Welford)
+        self._stats = {
+            "state": {"n": 0, "mean": 0.0, "m2": 0.0},
+            "agent": {"n": 0, "mean": 0.0, "m2": 0.0},
+            "action": {"n": 0, "mean": 0.0, "m2": 0.0},
+        }
         # Redis cache (optional)
         self._cache = None
         if self._redis_url:
@@ -622,6 +655,17 @@ class IntegratorHub:
         domain = str(ev.get("domain", "state")).strip().lower()
         tenant = self._tenant_from(ev)
         derr = float(ev.get("delta_error", 0.0))
+        # Update rolling stats for normalization (metrics-only)
+        try:
+            s = self._stats.get(domain)
+            if s is not None:
+                s["n"] += 1
+                n = s["n"]
+                delta = derr - s["mean"]
+                s["mean"] += delta / float(n)
+                s["m2"] += delta * (derr - s["mean"])
+        except Exception:
+            pass
         # Normalize confidence if enforcement enabled or missing/invalid
         conf_in = ev.get("confidence")
         conf_norm: float
@@ -643,6 +687,40 @@ class IntegratorHub:
             tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev)
         )
         leader, weights, raw = self._sm.snapshot(tenant)
+        # Metrics-only: compute normalized error and candidate exp(-alpha * e_norm) weights
+        if self._norm_enabled:
+            try:
+                # Emit normalized error for the current domain
+                s = self._stats.get(domain) or {"n": 0}
+                if s.get("n", 0) > 1:
+                    var = max(0.0, float(s["m2"]) / float(s["n"] - 1))
+                    std = (var ** 0.5) if var > 0.0 else 1.0
+                    e_norm = (derr - float(s["mean"])) / max(1e-9, std)
+                else:
+                    e_norm = 0.0
+                INTEGRATOR_NORMALIZED_ERROR.labels(domain=domain).set(float(e_norm))
+            except Exception:
+                pass
+            # Candidate weights over currently available domains (raw)
+            try:
+                cand_exps: Dict[str, float] = {}
+                for d, ob in raw.items():
+                    ss = self._stats.get(d) or {"n": 0}
+                    if ss.get("n", 0) > 1:
+                        var = max(0.0, float(ss["m2"]) / float(ss["n"] - 1))
+                        std = (var ** 0.5) if var > 0.0 else 1.0
+                        e_nd = (float(ob.delta_error) - float(ss["mean"])) / max(1e-9, std)
+                    else:
+                        e_nd = 0.0
+                    try:
+                        cand_exps[d] = math.exp(-float(self._alpha) * float(e_nd))
+                    except Exception:
+                        cand_exps[d] = 1.0
+                Zc = sum(cand_exps.values()) or 1.0
+                for d, v in cand_exps.items():
+                    INTEGRATOR_CAND_WEIGHT.labels(tenant=tenant, domain=d).set(float(v / Zc))
+            except Exception:
+                pass
         # Leader switch metric
         try:
             last = self._last_leader.get(tenant)

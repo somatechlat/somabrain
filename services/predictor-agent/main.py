@@ -14,21 +14,17 @@ try:
 except Exception:  # pragma: no cover
     KafkaProducer = None  # type: ignore
 
-try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+from somabrain.common.kafka import make_producer, encode, TOPICS
+from somabrain.common.events import build_next_event
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
 except Exception:  # pragma: no cover
     _metrics = None  # type: ignore
 
-TOPIC = "cog.agent.updates"
-NEXT_TOPIC = "cog.next.events"
-SOMA_TOPIC = "soma.belief.agent"
+TOPIC = TOPICS["agent"]
+NEXT_TOPIC = TOPICS["next"]
+SOMA_TOPIC = TOPICS["soma_agent"]
 
 
 def _bootstrap() -> str:
@@ -37,45 +33,23 @@ def _bootstrap() -> str:
 
 
 def _make_producer():
-    if KafkaProducer is None:
-        return None
-    return KafkaProducer(bootstrap_servers=_bootstrap(), acks="1", linger_ms=5)
+    return make_producer()
 
 
-def _serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("belief_update"))  # type: ignore[arg-type]
-    except Exception:
-        return None
+def _serde():
+    return "belief_update"
 
 
-def _next_serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("next_event"))  # type: ignore[arg-type]
-    except Exception:
-        return None
+def _next_serde():
+    return "next_event"
 
 
-def _soma_serde() -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema("belief_update_soma"))  # type: ignore[arg-type]
-    except Exception:
-        return None
+def _soma_serde():
+    return "belief_update_soma"
 
 
-def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    return json.dumps(rec).encode("utf-8")
+def _encode(rec: Dict[str, Any], schema_name: Optional[str]) -> bytes:
+    return encode(rec, schema_name)
 
 
 def run_forever() -> None:  # pragma: no cover
@@ -178,14 +152,7 @@ def run_forever() -> None:  # pragma: no cover
                         pass
                 # NextEvent emission (derived) from predicted intent
                 predicted_state = f"intent:{posterior['intent']}"
-                next_ev = {
-                    "frame_id": f"agent:{rec['ts']}",
-                    "tenant": tenant,
-                    "predicted_state": predicted_state,
-                    "confidence": float(confidence),
-                    "regret": max(0.0, min(1.0, 1.0 - float(confidence))),
-                    "ts": rec["ts"],
-                }
+                next_ev = build_next_event("agent", tenant, float(confidence), predicted_state)
                 prod.send(NEXT_TOPIC, value=_encode(next_ev, next_serde))
                 if _NEXT_EMITTED is not None:
                     try:
