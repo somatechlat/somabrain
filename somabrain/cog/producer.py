@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from kafka import KafkaProducer  # type: ignore
+from somabrain.common.kafka import make_producer, encode
 
 
 def _bootstrap_from_env() -> Optional[str]:
@@ -23,40 +23,14 @@ class BeliefUpdatePublisher:
 
     def __init__(self) -> None:
         self.enabled = False
-        self._value_serializer = None
-        self._producer: Optional[KafkaProducer] = None
+        self._producer = None
         bootstrap = _bootstrap_from_env()
         if not bootstrap:
             raise RuntimeError(
                 "SOMABRAIN_KAFKA_URL not configured for BeliefUpdatePublisher"
             )
-        # Try Avro first
-        try:
-            from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-            from libs.kafka_cog.serde import AvroSerde  # type: ignore
-
-            schema = load_schema("belief_update")
-            serde = AvroSerde(schema)
-
-            def _ser(record: Dict[str, Any]) -> bytes:
-                return serde.serialize(record)
-
-            self._value_serializer = _ser
-        except Exception:
-            # Fallback to JSON bytes
-            import json
-
-            def _ser(record: Dict[str, Any]) -> bytes:
-                return json.dumps(record).encode("utf-8")
-
-            self._value_serializer = _ser
-
-        self._producer = KafkaProducer(
-            bootstrap_servers=bootstrap,
-            acks="1",
-            linger_ms=5,
-            value_serializer=self._value_serializer,
-        )
+        # Strict: confluent-kafka producer and Avro-only serialization
+        self._producer = make_producer()
         self.enabled = True
 
     @staticmethod
@@ -95,4 +69,5 @@ class BeliefUpdatePublisher:
             "latency_ms": int(latency_ms),
         }
         topic = self._topic(domain)
-        self._producer.send(topic, value=record)
+        payload = encode(record, "belief_update")
+        self._producer.send(topic, value=payload)

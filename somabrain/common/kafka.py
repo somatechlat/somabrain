@@ -5,10 +5,10 @@ import os
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-try:  # Optional runtime dependency; tests may not install kafka-python
-    from kafka import KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaProducer = None  # type: ignore
+try:  # Strict mode: use confluent-kafka only
+    from confluent_kafka import Producer as CKProducer  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(f"common.kafka: confluent-kafka required: {e}")
 
 try:  # Avro serde utilities (optional)
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -27,16 +27,43 @@ def _bootstrap_url() -> str:
     ).replace("kafka://", "")
 
 
-def make_producer() -> Optional[KafkaProducer]:  # pragma: no cover - integration path
-    """Create Kafka producer."""
-    if KafkaProducer is None:
-        return None
-    return KafkaProducer(
-        bootstrap_servers=_bootstrap_url(), 
-        acks="1", 
-        linger_ms=5,
-        value_serializer=lambda v: json.dumps(v).encode("utf-8")
-    )
+class _ProducerShim:
+    """Shim to emulate kafka-python Producer.send API on top of confluent-kafka."""
+    def __init__(self, ck: CKProducer) -> None:
+        self._ck = ck
+
+    def send(self, topic: str, value: bytes):  # mimic kafka-python
+        if isinstance(value, (bytes, bytearray)):
+            payload = value
+        else:
+            # Allow dict payloads for non-Avro topics (temporary until schemas exist)
+            payload = json.dumps(value).encode("utf-8")
+        self._ck.produce(topic, value=payload)
+        # return an object with get(timeout) to mimic Future
+        class _Fut:
+            def get(self, timeout: float | int = 5):
+                self_inner = self
+                remaining = ck.flush(timeout)
+                if remaining != 0:
+                    raise TimeoutError("produce not fully flushed")
+                return None
+        ck = self._ck
+        return _Fut()
+
+    def flush(self, timeout: float | int = 5):
+        return self._ck.flush(timeout)
+
+    def close(self):
+        try:
+            self._ck.flush(5)
+        except Exception:
+            pass
+
+
+def make_producer() -> _ProducerShim:  # pragma: no cover - integration path
+    # Strict: no disable flag pathway; Kafka must be reachable.
+    ck = CKProducer({"bootstrap.servers": _bootstrap_url(), "compression.type": "none"})
+    return _ProducerShim(ck)
 
 
 @lru_cache(maxsize=32)
@@ -51,30 +78,23 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
 
 
 def encode(record: Dict[str, Any], schema_name: Optional[str]) -> bytes:
-    """Encode record with Avro/JSON fallback."""
-    serde = get_serde(schema_name) if schema_name else None
-    if serde is not None:
-        try:
-            return serde.serialize(record)
-        except Exception:  # pragma: no cover
-            pass
-    return json.dumps(record).encode("utf-8")
+    """Encode record Avro-only; raise if serde unavailable."""
+    if not schema_name:
+        raise ValueError("encode: schema_name required in strict mode")
+    serde = get_serde(schema_name)
+    if serde is None:
+        raise RuntimeError(f"encode: Avro serde unavailable for schema {schema_name}")
+    return serde.serialize(record)
 
 
 def decode(data: bytes, schema_name: Optional[str] = None) -> Dict[str, Any]:
-    """Decode data with Avro/JSON fallback."""
-    if schema_name:
-        serde = get_serde(schema_name)
-        if serde:
-            try:
-                return serde.deserialize(data)
-            except Exception:
-                pass
-    
-    try:
-        return json.loads(data.decode("utf-8"))
-    except Exception:
-        return {}
+    """Decode data Avro-only; raise if serde unavailable."""
+    if not schema_name:
+        raise ValueError("decode: schema_name required in strict mode")
+    serde = get_serde(schema_name)
+    if serde is None:
+        raise RuntimeError(f"decode: Avro serde unavailable for schema {schema_name}")
+    return serde.deserialize(data)
 
 
 # Shared topic definitions - consolidated from ROADMAP
@@ -91,6 +111,7 @@ TOPICS = {
     "reward": "cog.reward.events",
     "config": "cog.config.updates",
     "integrator_context": "soma.integrator.context",
+    "integrator_context_shadow": "cog.integrator.context.shadow",
     # Roadmap drift & calibration telemetry topics
     "fusion_drift": "cog.fusion.drift.events",
     "predictor_calibration": "cog.predictor.calibration",

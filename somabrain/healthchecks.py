@@ -26,31 +26,30 @@ def _strip_scheme(url: str) -> str:
 
 
 def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
-    """Return True if we can connect to the Kafka broker and fetch metadata.
+    """Return True if we can connect to the Kafka broker and fetch metadata (confluent-kafka).
 
-    Attempts a minimal metadata fetch using kafka-python with aggressive timeouts.
+    Uses a metadata-only Consumer subscribe to no topics and polls for cluster metadata.
+    Strict mode: kafka-python is not permitted.
     """
     if not bootstrap:
         return False
     servers = _strip_scheme(bootstrap)
     try:
-        # Prefer a metadata-only probe via KafkaConsumer; closes immediately.
-        from kafka import KafkaConsumer  # type: ignore
+        from confluent_kafka import Consumer  # type: ignore
 
-        consumer = KafkaConsumer(
-            bootstrap_servers=servers,
-            request_timeout_ms=int(max(100, timeout_s * 1000)),
-            api_version_auto_timeout_ms=int(max(100, timeout_s * 1000)),
-            metadata_max_age_ms=int(max(500, timeout_s * 2000)),
-            session_timeout_ms=int(max(6000, timeout_s * 6000)),
-            heartbeat_interval_ms=int(max(3000, timeout_s * 3000)),
-            consumer_timeout_ms=int(max(100, timeout_s * 1000)),
-        )
+        c = Consumer({
+            "bootstrap.servers": servers,
+            "group.id": "healthcheck-probe",
+            "session.timeout.ms": int(max(1500, timeout_s * 1500)),
+            "enable.auto.commit": False,
+        })
         try:
-            ok = bool(consumer.bootstrap_connected())
+            # metadata() without args returns cluster metadata
+            md = c.list_topics(timeout=timeout_s)
+            ok = bool(md and md.brokers)
         finally:
             try:
-                consumer.close()
+                c.close()
             except Exception:
                 pass
         return ok

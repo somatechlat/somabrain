@@ -10,6 +10,8 @@
     { "name": "r_safety", "type": "float" },
     { "name": "r_cost", "type": "float" },
     { "name": "total", "type": "float" },
+    { "name": "tenant", "type": ["null", "string"], "default": null },
+    { "name": "components", "type": ["null", {"type": "map", "values": "float"}], "default": null },
     { "name": "ts", "type": "string" }
   ]
 }

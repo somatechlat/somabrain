@@ -30,26 +30,23 @@ from typing import Any, Dict, Optional
 from collections import deque
 
 from fastapi import FastAPI
-
-try:
-    from kafka import KafkaConsumer, KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
-    KafkaProducer = None  # type: ignore
+from somabrain.common.infra import assert_ready
 
 try:
     from confluent_kafka import Producer as CKProducer  # type: ignore
     from confluent_kafka import Consumer as CKConsumer  # type: ignore
-except Exception:  # pragma: no cover
-    CKProducer = None  # type: ignore
-    CKConsumer = None  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(
+        f"teach_feedback_processor: confluent-kafka required in strict mode: {e}"
+    )
 
 try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(
+        f"teach_feedback_processor: Avro libs unavailable in strict mode: {e}"
+    )
 
 try:
     from somabrain import metrics  # type: ignore
@@ -66,36 +63,21 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _serde(name: str) -> Optional[AvroSerde]:
-    if load_schema is None or AvroSerde is None:
-        return None
-    try:
-        return AvroSerde(load_schema(name))  # type: ignore[arg-type]
-    except Exception:
-        return None
+def _serde(name: str) -> AvroSerde:
+    return AvroSerde(load_schema(name))  # type: ignore[arg-type]
 
 
-def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    return json.dumps(rec).encode("utf-8")
+def _enc(rec: Dict[str, Any], serde: AvroSerde) -> bytes:
+    return serde.serialize(rec)
 
 
 def _dec(
-    payload: Optional[bytes], serde: Optional[AvroSerde]
+    payload: Optional[bytes], serde: AvroSerde
 ) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
-    if serde is not None:
-        try:
-            return serde.deserialize(payload)  # type: ignore[arg-type]
-        except Exception:
-            pass
     try:
-        return json.loads(payload.decode("utf-8"))
+        return serde.deserialize(payload)  # type: ignore[arg-type]
     except Exception:
         return None
 
@@ -115,7 +97,6 @@ class TeachFeedbackService:
         self._bootstrap = _bootstrap()
         self._serde_fb = _serde("teach_feedback")
         self._serde_reward = _serde("reward_event")
-        self._producer: Optional[KafkaProducer] = None
         self._ck_producer: Optional[CKProducer] = None
         self._stop = threading.Event()
         # Basic dedup cache for recent frame_ids
@@ -154,9 +135,7 @@ class TeachFeedbackService:
         )
 
     def _ensure_clients(self) -> None:
-        if KafkaConsumer is None:
-            raise RuntimeError("Kafka client not available")
-        # Prefer confluent-kafka for production reliability
+        # confluent-kafka required; create producer
         if self._ck_producer is None and CKProducer is not None:
             try:
                 import logging
@@ -176,22 +155,7 @@ class TeachFeedbackService:
                     "compression.type": "none",
                 }
             )
-        if self._producer is None and (KafkaProducer is not None):
-            try:
-                import logging
-
-                logging.info(
-                    "teach_feedback_processor: creating producer bootstrap=%s",
-                    self._bootstrap,
-                )
-            except Exception:
-                pass
-            self._producer = KafkaProducer(
-                bootstrap_servers=self._bootstrap,
-                acks="1",
-                linger_ms=5,
-                compression_type="gzip",
-            )
+        # No kafka-python fallback in strict mode
 
     def _emit_reward(self, frame_id: str, r_user: float) -> None:
         try:
@@ -211,7 +175,7 @@ class TeachFeedbackService:
             "total": float(r_user),
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }
-        # If confluent producer exists, use it
+        # Use confluent-kafka producer only
         if self._ck_producer is not None:
             try:
                 import logging
@@ -274,61 +238,17 @@ class TeachFeedbackService:
                     except Exception:
                         pass
             return
-        if self._producer is None:
-            return
-        try:
-            import logging
-
-            logging.info("teach_feedback_processor: using kafka-python producer")
-        except Exception:
-            pass
-        try:
-            fut = self._producer.send(TOPIC_REWARD, value=_enc(rec, self._serde_reward))
+        # Strict mode: if producer unavailable, treat as failure
+        if self._mx_reward_fail is not None:
             try:
-                # Ensure timely delivery in small dev setups
-                fut.get(timeout=5)
-                try:
-                    import logging
-
-                    logging.info(
-                        "teach_feedback_processor: emitted reward frame_id=%s r_user=%s",
-                        frame_id,
-                        r_user,
-                    )
-                except Exception:
-                    pass
-                if self._mx_reward_ok is not None:
-                    try:
-                        self._mx_reward_ok.inc()
-                    except Exception:
-                        pass
-            except Exception:
-                try:
-                    self._producer.flush(timeout=2)
-                except Exception:
-                    pass
-                if self._mx_reward_fail is not None:
-                    try:
-                        self._mx_reward_fail.inc()
-                    except Exception:
-                        pass
-        except Exception:
-            try:
-                import logging
-
-                logging.error("teach_feedback_processor: failed to emit reward")
+                self._mx_reward_fail.inc()
             except Exception:
                 pass
-            if self._mx_reward_fail is not None:
-                try:
-                    self._mx_reward_fail.inc()
-                except Exception:
-                    pass
 
     def run(self) -> None:  # pragma: no cover - integration loop
         self._ensure_clients()
         group_id = os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
-        # Prefer confluent-kafka consumer if available
+        # Use confluent-kafka consumer only (strict mode)
         if CKConsumer is not None:
             conf = {
                 "bootstrap.servers": self._bootstrap,
@@ -363,43 +283,8 @@ class TeachFeedbackService:
                 except Exception:
                     pass
             return
-        # Fallback to kafka-python consumer
-        consumer = KafkaConsumer(
-            TOPIC_TEACH_FB,
-            bootstrap_servers=self._bootstrap,
-            value_deserializer=lambda m: m,
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            group_id=group_id,
-            consumer_timeout_ms=1000,
-        )
-        try:
-            while not self._stop.is_set():
-                try:
-                    msg = consumer.poll(timeout_ms=500)
-                    if msg is None:
-                        continue
-                    if isinstance(msg, dict):
-                        for _, records in msg.items():
-                            for rec in records:
-                                self._handle_record(rec)
-                    else:
-                        self._handle_record(msg)
-                except Exception as e:
-                    try:
-                        import logging
-
-                        logging.error(
-                            "teach_feedback_processor: consumer error (kp): %s", e
-                        )
-                    except Exception:
-                        pass
-                    time.sleep(0.25)
-        finally:
-            try:
-                consumer.close()
-            except Exception:
-                pass
+        # If not available, raise hard error in strict mode
+        raise RuntimeError("teach_feedback_processor: CKConsumer unavailable")
 
     def _handle_payload(self, payload: Optional[bytes]) -> None:
         ev = _dec(payload, self._serde_fb)
@@ -467,6 +352,8 @@ async def startup() -> None:  # pragma: no cover
         "on",
     }
     if enabled:
+        # Require Kafka readiness before starting worker thread
+        assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
         _thread = threading.Thread(target=_svc.run, daemon=True)
         _thread.start()
 

@@ -30,7 +30,9 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
-from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+from confluent_kafka import Consumer as CKConsumer, KafkaException  # type: ignore
+from somabrain.common.kafka import make_producer, encode, TOPICS  # Avro-only strict producer
+from somabrain.common.infra import assert_ready  # fail-fast infra gate
 import threading
 
 # Tracing provider (fallback to no-op if observability package is unavailable)
@@ -61,6 +63,12 @@ except Exception:  # pragma: no cover - optional import in tests
     def consistency_score(agent_posterior, action_posterior):  # type: ignore
         return None
 
+# Optional drift detector integration
+try:
+    from somabrain.monitoring.drift_detector import drift_detector as _DRIFT
+except Exception:  # pragma: no cover
+    _DRIFT = None  # type: ignore
+
 
 INTEGRATOR_CONSUMED = app_metrics.get_counter(
     "somabrain_integrator_updates_total",
@@ -86,6 +94,10 @@ INTEGRATOR_ERRORS = app_metrics.get_counter(
     "somabrain_integrator_errors_total",
     "Unhandled errors in integrator loop",
     labelnames=["stage"],
+)
+INTEGRATOR_NORM_DISABLED = app_metrics.get_counter(
+    "somabrain_integrator_norm_disabled_total",
+    "Count of normalization auto-disables due to drift",
 )
 
 # Optional OPA decision latency
@@ -155,6 +167,15 @@ INTEGRATOR_ALPHA = app_metrics.get_gauge(
 INTEGRATOR_ALPHA_TARGET = app_metrics.get_gauge(
     "somabrain_integrator_alpha_target",
     "Target regret/entropy composite driving adaptive alpha",
+)
+INTEGRATOR_ALPHA_ERROR = app_metrics.get_gauge(
+    "somabrain_integrator_alpha_error",
+    "Difference between observed regret and target (signed)",
+)
+INTEGRATOR_ALPHA_HIST = app_metrics.get_histogram(
+    "somabrain_integrator_alpha_hist",
+    "Distribution of adaptive alpha values",
+    buckets=(0.0, 0.2, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0),
 )
 INTEGRATOR_KAPPA = app_metrics.get_gauge(
     "somabrain_integrator_kappa",
@@ -348,9 +369,9 @@ class IntegratorHub:
             self._gf_schema = None
             self._ic_schema = None
             self._cfg_schema = None
-        # Kafka
-        self._consumer: Optional[KafkaConsumer] = None
-        self._producer: Optional[KafkaProducer] = None
+        # Kafka (strict mode: confluent-kafka only, Avro mandatory)
+        self._consumer: Optional[CKConsumer] = None
+        self._producer = None  # producer shim from common.kafka
         self._group_id = group_id
         # State
         self._sm = SoftmaxIntegrator(tau=1.0, stale_seconds=10.0)
@@ -393,6 +414,15 @@ class IntegratorHub:
         # Fusion normalization with adaptive alpha
         self._norm_enabled = os.getenv(
             "ENABLE_FUSION_NORMALIZATION", "0"
+        ).strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        # Drift detection flag
+        self._drift_enabled = os.getenv(
+            "ENABLE_DRIFT_DETECTION", "0"
         ).strip().lower() in (
             "1",
             "true",
@@ -494,50 +524,37 @@ class IntegratorHub:
 
     def _ensure_clients(self) -> None:
         if not self._bootstrap:
-            raise RuntimeError("Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")
+            raise RuntimeError("integrator_hub: Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")
         if self._consumer is None:
             topics = [
-                "cog.state.updates",
-                "cog.agent.updates",
-                "cog.action.updates",
-                "cog.config.updates",
+                TOPICS["state"],
+                TOPICS["agent"],
+                TOPICS["action"],
+                TOPICS["config"],
             ]
             if self._soma_compat:
-                # Consume SOMA belief updates as well
-                topics.extend(
-                    [
-                        "soma.belief.state",
-                        "soma.belief.agent",
-                        "soma.belief.action",
-                    ]
-                )
-            self._consumer = KafkaConsumer(
-                *topics,
-                bootstrap_servers=self._bootstrap,
-                group_id=self._group_id,
-                enable_auto_commit=True,
-                auto_offset_reset="latest",
-                consumer_timeout_ms=1000,
+                topics.extend([
+                    TOPICS["soma_state"],
+                    TOPICS["soma_agent"],
+                    TOPICS["soma_action"],
+                ])
+            self._consumer = CKConsumer(
+                {
+                    "bootstrap.servers": self._bootstrap,
+                    "group.id": self._group_id,
+                    "enable.auto.commit": True,
+                    "auto.offset.reset": "latest",
+                }
             )
+            self._consumer.subscribe(topics)
         if self._producer is None:
-            self._producer = KafkaProducer(
-                bootstrap_servers=self._bootstrap,
-                acks="1",
-                linger_ms=5,
-            )
+            self._producer = make_producer()
 
     def _decode_update(self, payload: bytes) -> Optional[Dict[str, Any]]:
-        # Try Avro first
-        if self._avro_bu is not None:
-            try:
-                return self._avro_bu.deserialize(payload)
-            except Exception:
-                pass
-        # Fallback to JSON
-        try:
-            return json.loads(payload.decode("utf-8"))
-        except Exception:
-            return None
+        # Strict: Avro-only belief_update
+        if self._avro_bu is None:
+            raise RuntimeError("integrator_hub: Avro serde unavailable for belief_update")
+        return self._avro_bu.deserialize(payload)
 
     def _decode_update_soma(self, payload: bytes) -> Optional[Dict[str, Any]]:
         """Decode a SOMA belief update and map to internal representation.
@@ -552,10 +569,7 @@ class IntegratorHub:
             except Exception:
                 rec = None
         if rec is None:
-            try:
-                rec = json.loads(payload.decode("utf-8"))
-            except Exception:
-                return None
+            raise RuntimeError("integrator_hub: Avro soma belief_update strict requirement failed")
         try:
             # Map SOMA fields
             stream = str(rec.get("stream") or rec.get("Stream") or "state").lower()
@@ -588,30 +602,21 @@ class IntegratorHub:
             return None
 
     def _encode_frame(self, record: Dict[str, Any]) -> bytes:
-        if self._avro_gf is not None:
-            try:
-                return self._avro_gf.serialize(record)
-            except Exception:
-                pass
-        return json.dumps(record).encode("utf-8")
+        if self._avro_gf is None:
+            raise RuntimeError("integrator_hub: Avro serde unavailable for global_frame")
+        return self._avro_gf.serialize(record)
 
     def _decode_config(self, payload: bytes) -> Optional[Dict[str, Any]]:
-        # Try Avro config_update first, then JSON fallback
-        if getattr(self, "_avro_cfg", None) is not None:
-            try:
-                rec = self._avro_cfg.deserialize(payload)  # type: ignore[attr-defined]
-                if isinstance(rec, dict):
-                    return rec
-            except Exception:
-                pass
-        try:
-            return json.loads(payload.decode("utf-8"))
-        except Exception:
-            return None
+        if getattr(self, "_avro_cfg", None) is None:
+            raise RuntimeError("integrator_hub: Avro serde unavailable for config_update")
+        rec = self._avro_cfg.deserialize(payload)  # type: ignore[attr-defined]
+        if not isinstance(rec, dict):
+            raise RuntimeError("integrator_hub: config_update decoded non-dict")
+        return rec
 
     def _publish_frame(self, frame: Dict[str, Any]) -> None:
         if not self._producer:
-            return
+            raise RuntimeError("integrator_hub: producer not initialized")
         # Shadow routing decision (duplicate to shadow topic, never suppress primary)
         route_to_shadow = False
         try:
@@ -624,11 +629,12 @@ class IntegratorHub:
             route_to_shadow = False
         try:
             # Always send primary global frame
-            self._producer.send("cog.global.frame", value=self._encode_frame(frame))
+            # Avro frame encode (global_frame)
+            self._producer.send(TOPICS["global_frame"], value=self._encode_frame(frame))
             # Optionally duplicate to shadow topic for evaluation
             if route_to_shadow:
                 self._producer.send(
-                    "cog.integrator.context.shadow", value=self._encode_frame(frame)
+                    TOPICS["integrator_context_shadow"], value=self._encode_frame(frame)
                 )
                 try:
                     INTEGRATOR_SHADOW_TOTAL.inc()
@@ -677,11 +683,10 @@ class IntegratorHub:
             "policy_decision": bool(policy_allowed),
         }
         try:
-            if self._avro_ic is not None:
-                payload = self._avro_ic.serialize(ic)
-            else:
-                payload = json.dumps(ic).encode("utf-8")
-            self._producer.send("soma.integrator.context", value=payload)
+            if self._avro_ic is None:
+                raise RuntimeError("integrator_hub: Avro serde unavailable for integrator_context")
+            payload = self._avro_ic.serialize(ic)
+            self._producer.send(TOPICS["integrator_context"], value=payload)
         except Exception:
             INTEGRATOR_ERRORS.labels(stage="publish_soma").inc()
 
@@ -838,6 +843,14 @@ class IntegratorHub:
                 self._alpha = float(self._adaptive_alpha)
                 INTEGRATOR_ALPHA.set(self._alpha)
                 INTEGRATOR_ALPHA_TARGET.set(float(self._alpha_target_regret))
+                try:
+                    INTEGRATOR_ALPHA_ERROR.set(float(diff))
+                except Exception:
+                    pass
+                try:
+                    INTEGRATOR_ALPHA_HIST.observe(float(self._alpha))
+                except Exception:
+                    pass
             except Exception:
                 pass
         # Leader switch metric
@@ -864,6 +877,20 @@ class IntegratorHub:
             INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(H_norm)
         except Exception:
             pass
+        # Feed drift detector and auto-disable normalization if drifting
+        if self._drift_enabled and _DRIFT is not None and H_norm is not None:
+            try:
+                # Use current leader's weight as confidence proxy
+                leader_conf = float(weights.get(leader, 0.0))
+                drifted = _DRIFT.add_observation(leader, tenant, leader_conf, float(H_norm))
+                if drifted and self._norm_enabled:
+                    self._norm_enabled = False
+                    try:
+                        INTEGRATOR_NORM_DISABLED.inc()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         # Build GlobalFrame per schema (map values must be string for frame)
         frame_map: Dict[str, str] = {
             "tenant": tenant,
@@ -1053,91 +1080,99 @@ class IntegratorHub:
 
     def run_forever(self) -> None:
         self._ensure_clients()
-        assert self._consumer is not None
-        # Persistent outer loop: KafkaConsumer iterator stops after consumer_timeout_ms with no records.
+        if self._consumer is None:
+            raise RuntimeError("integrator_hub: consumer not initialized")
         while True:
-            for msg in self._consumer:
-                try:
-                    topic = getattr(msg, "topic", "") or ""
-                    # Config updates: adjust tau (and optionally other params)
-                    if topic == "cog.config.updates":
-                        cfg = self._decode_config(msg.value)
-                        if isinstance(cfg, dict):
-                            temp = cfg.get("exploration_temp")
-                            if temp is not None:
+            try:
+                msg = self._consumer.poll(timeout=1.0)
+            except KafkaException:
+                INTEGRATOR_ERRORS.labels(stage="poll").inc()
+                continue
+            if msg is None:
+                continue
+            if msg.error():  # type: ignore
+                INTEGRATOR_ERRORS.labels(stage="msg_error").inc()
+                continue
+            try:
+                topic = msg.topic()
+                # Config updates: adjust tau (and optionally other params)
+                if topic == TOPICS["config"]:
+                    cfg = self._decode_config(msg.value())
+                    if isinstance(cfg, dict):
+                        temp = cfg.get("exploration_temp")
+                        if temp is not None:
+                            try:
+                                self._sm.set_tau(float(temp))
+                                INTEGRATOR_TAU.set(float(temp))
                                 try:
-                                    self._sm.set_tau(float(temp))
-                                    INTEGRATOR_TAU.set(float(temp))
-                                    try:
-                                        print(
-                                            f"integrator_hub: applied config_update tau={float(temp):.3f}"
-                                        )
-                                    except Exception:
-                                        pass
+                                    print(
+                                        f"integrator_hub: applied config_update tau={float(temp):.3f}"
+                                    )
                                 except Exception:
                                     pass
-                            # Observe optional per-domain lambda attribution (no behavior change yet)
-                            try:
-                                for dkey, label in (
-                                    ("lambda_state", "state"),
-                                    ("lambda_agent", "agent"),
-                                    ("lambda_action", "action"),
-                                ):
-                                    val = cfg.get(dkey)
-                                    if isinstance(val, (int, float)):
-                                        # Reuse candidate weight gauge namespace or create a dedicated gauge if needed.
-                                        # For simplicity, expose as somabrain_integrator_candidate_weight with domain label 'lambda_<domain>'
-                                        INTEGRATOR_CAND_WEIGHT.labels(
-                                            tenant=self._tenant_from(cfg),
-                                            domain=f"lambda_{label}",
-                                        ).set(float(val))
                             except Exception:
                                 pass
-                        continue
-
-                    # Decode event depending on topic (cog vs soma)
-                    if topic.startswith("soma.belief."):
-                        ev = self._decode_update_soma(msg.value)
-                    else:
-                        ev = self._decode_update(msg.value)
-                    if not isinstance(ev, dict):
-                        INTEGRATOR_ERRORS.labels(stage="decode").inc()
-                        continue
-                    dom = str(ev.get("domain", "state"))
-                    INTEGRATOR_CONSUMED.labels(domain=dom).inc()
-                    with self._tracer.start_as_current_span(
-                        "integrator_process_update"
-                    ):
-                        frame = self._process_update(ev)
-                    if frame is None:
-                        continue
-                    # Track frames seen for shadow ratio gauge
-                    try:
-                        self._frames_seen += 1
-                    except Exception:
-                        pass
-                    # Publish primary global frame
-                    self._publish_frame(frame)
-                    # Publish SOMA integrator context if enabled
-                    if self._soma_compat:
+                        # Observe optional per-domain lambda attribution (no behavior change yet)
                         try:
-                            policy_allowed = bool(frame.pop("_policy_allowed", True))  # type: ignore
+                            for dkey, label in (
+                                ("lambda_state", "state"),
+                                ("lambda_agent", "agent"),
+                                ("lambda_action", "action"),
+                            ):
+                                val = cfg.get(dkey)
+                                if isinstance(val, (int, float)):
+                                    INTEGRATOR_CAND_WEIGHT.labels(
+                                        tenant=self._tenant_from(cfg),
+                                        domain=f"lambda_{label}",
+                                    ).set(float(val))
                         except Exception:
-                            policy_allowed = True
-                        leader_out = str(frame.get("leader", "state"))
-                        weights_out = (
-                            dict(frame.get("weights", {}))
-                            if isinstance(frame.get("weights"), dict)
-                            else {}
-                        )
-                        self._publish_soma_context(
-                            leader_out, weights_out, frame, policy_allowed
-                        )
-                    # Cache and metrics
-                    self._cache_frame(self._tenant_from(ev), frame)
-                    INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
+                            pass
+                    continue
+
+                # Decode event depending on topic (cog vs soma)
+                val = msg.value()
+                if topic.startswith("soma.belief."):
+                    ev = self._decode_update_soma(val)
+                else:
+                    ev = self._decode_update(val)
+                if not isinstance(ev, dict):
+                    INTEGRATOR_ERRORS.labels(stage="decode").inc()
+                    continue
+                dom = str(ev.get("domain", "state"))
+                INTEGRATOR_CONSUMED.labels(domain=dom).inc()
+                with self._tracer.start_as_current_span(
+                    "integrator_process_update"
+                ):
+                    frame = self._process_update(ev)
+                if frame is None:
+                    continue
+                # Track frames seen for shadow ratio gauge
+                try:
+                    self._frames_seen += 1
                 except Exception:
-                    INTEGRATOR_ERRORS.labels(stage="loop").inc()
+                    pass
+                # Publish primary global frame
+                self._publish_frame(frame)
+                # Publish SOMA integrator context if enabled
+                if self._soma_compat:
+                    try:
+                        policy_allowed = bool(frame.pop("_policy_allowed", True))  # type: ignore
+                    except Exception:
+                        policy_allowed = True
+                    leader_out = str(frame.get("leader", "state"))
+                    weights_out = (
+                        dict(frame.get("weights", {}))
+                        if isinstance(frame.get("weights"), dict)
+                        else {}
+                    )
+                    self._publish_soma_context(
+                        leader_out, weights_out, frame, policy_allowed
+                    )
+                # Cache and metrics
+                self._cache_frame(self._tenant_from(ev), frame)
+                INTEGRATOR_PUBLISHED.labels(tenant=self._tenant_from(ev)).inc()
+            except Exception:
+                INTEGRATOR_ERRORS.labels(stage="loop").inc()
 
 
 def main() -> None:  # pragma: no cover - manual run path
@@ -1164,6 +1199,13 @@ def main() -> None:  # pragma: no cover - manual run path
         except Exception:
             pass
         return
+    # Fail-fast infra readiness (OPA optional at this phase)
+    try:
+        assert_ready(require_kafka=True, require_redis=True, require_postgres=True, require_opa=False)
+    except Exception as e:
+        import logging
+        logging.error(f"integrator_hub: infra readiness failure: {e}")
+        raise
     hub = IntegratorHub()
     import logging
     from somabrain.metrics import get_counter

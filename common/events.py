@@ -18,15 +18,16 @@ def build_next_event(
         predicted_state: Predicted future state string
         metadata: Additional metadata
         
-    Returns:
-        NextEvent dictionary
-    """
-    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    regret = max(0.0, min(1.0, 1.0 - float(confidence)))
     return {
         "frame_id": f"{domain}:{ts}",
         "tenant": tenant,
         "predicted_state": predicted_state,
+        "confidence": float(confidence),
+        "regret": regret,
+        "domain": domain,
+        "metadata": metadata or {},
+        "ts": ts,
+    }
         "confidence": float(confidence),
         "regret": regret,
         "ts": ts,

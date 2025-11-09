@@ -85,9 +85,7 @@ def _get_tenant_override(tenant_id: str) -> dict:
 # Redis connection for state persistence
 def _get_redis():
     """Get Redis client for per-tenant state persistence.
-    Prefer ``SOMABRAIN_REDIS_URL`` when set. No implicit fake backends; an
-    in-memory fakeredis is only used when explicitly allowed via
-    ``SOMABRAIN_ALLOW_FAKEREDIS=1`` and external backends are NOT required.
+    Strict mode: requires real Redis (SOMABRAIN_REDIS_URL). Test doubles removed.
     """
     import os
 
@@ -99,20 +97,7 @@ def _get_redis():
         "on",
     }
 
-    # Optional: explicit fakeredis for unit tests only (opt-in)
-    allow_fake = str(os.getenv("SOMABRAIN_ALLOW_FAKEREDIS", "0")).strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    if allow_fake and not require_backends:
-        try:
-            import fakeredis  # type: ignore
-
-            return fakeredis.FakeRedis()
-        except Exception:
-            return None
+    # No test double; return None if not available (caller must handle)
 
     if require_backends:
         try:

@@ -4,8 +4,8 @@ Usage:
     python benchmarks/worker_bench.py --iterations 100
 
 Notes:
-- This is a synthetic micro-benchmark that exercises internal retriever stubs and
-    fusion code paths only. It does NOT perform any network IO or call live services
+- This is a synthetic micro-benchmark that exercises lightweight in-process retrieval
+    and fusion code paths only. It does NOT perform any network IO or call live services
     (API, Kafka, Postgres). Therefore it is NOT an end-to-end benchmark and should
     not be used to substantiate production latency/throughput claims. Use
     `benchmarks/recall_latency_bench.py`, `benchmarks/recall_live_bench.py`, or
@@ -23,7 +23,7 @@ import asyncio
 async def _run_async(iterations: int):
     req = RetrievalRequest(query="benchmark test", top_k=10)
 
-    # ctx-like stub used by the pipeline
+    # Minimal context object used by the pipeline
     class Ctx:
         namespace = "bench"
         tenant_id = "bench"

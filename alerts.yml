@@ -81,7 +81,7 @@ groups:
 
       # Consistency kappa sustained low (requires integrator metric somabrain_kappa)
       - alert: ConsistencyKappaLow
-        expr: avg_over_time(somabrain_kappa[10m]) < 0.2
+        expr: avg_over_time(somabrain_integrator_kappa[10m]) < 0.2
         for: 10m
         labels:
           severity: warning
@@ -109,6 +109,16 @@ groups:
           summary: "Planning p99 latency high"
           description: "Planning latency p99 above 40ms for 10m (value: {{ $value }}s). Investigate graph or retrieval pressure."
 
+      # Fusion Alpha Error sustained high (>0.1 signed deviation from target)
+      - alert: FusionAlphaErrorHigh
+        expr: avg_over_time(somabrain_integrator_alpha_error[10m]) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusion alpha error high"
+          description: "Adaptive alpha error > 0.10 over 10m (value: {{ $value }}). Investigate regret target or normalization stability."
+
       # Regret EWMA above 0.08 indicates degraded policy feedback quality
       - alert: LearningRegretEwmaHigh
         expr: somabrain_learning_regret_ewma > 0.08
@@ -120,18 +130,97 @@ groups:
           description: "EWMA regret above 0.08 for 15m (value: {{ $value }}). Consider rollback or parameter tuning."
 
       # Drift detection alerts from service counters
-      - alert: DriftEventsBurst
-        expr: increase(somabrain_drift_events_total[10m]) > 3
+        - alert: FusionDriftDetected
+          expr: increase(somabrain_drift_events_total[5m]) > 0
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: "Drift events increasing"
-          description: "Drift events exceeded 3 in 10m for {{ $labels.domain }} {{ $labels.tenant }} (value: {{ $value }})."
+            summary: "Fusion drift detected"
+            description: "Entropy/regret breach for {{ $labels.domain }} {{ $labels.tenant }}; normalization auto-disable may trigger. Events: {{ $value }}"
+
+        - alert: NormalizationAutoDisabled
+          expr: increase(somabrain_integrator_norm_disabled_total[15m]) > 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Fusion normalization auto-disabled"
+            description: "Integrator disabled normalization due to drift for tenant(s). Investigate entropy/regret trends and rollback rationale."
+
+      # Calibration Drift: ECE sustained above threshold (0.15) per domain/tenant
+      - alert: CalibrationDrift
+        expr: avg_over_time(somabrain_calibration_ece[15m]) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Calibration drift"
+          description: "ECE above 0.15 over 15m for {{ $labels.domain }} {{ $labels.tenant }} (value: {{ $value }}). Consider temperature recalibration."
+
+      # Fusion Weight Instability: Stddev of candidate weights above 0.25 in last 10m
+      - alert: FusionWeightInstability
+        expr: (max_over_time(somabrain_integrator_candidate_weight[10m]) - min_over_time(somabrain_integrator_candidate_weight[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Fusion weight instability"
+          description: "Spread of candidate fusion weights > 0.5 over 10m for {{ $labels.tenant }} domain {{ $labels.domain }}."
+
+      # Segmentation Flood: boundaries too frequent (>8 in 5m)
+      - alert: SegmentationFlood
+        expr: increase(somabrain_segments_emitted_total[5m]) > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation flood"
+          description: ">8 segment boundaries emitted in 5m for {{ $labels.domain }} {{ $labels.evidence }}. Investigate volatility or threshold tuning."
+
+      # Segmentation Drought: no boundaries for prolonged period (30m dwell histogram inactivity)
+      - alert: SegmentationDrought
+        expr: increase(somabrain_segments_emitted_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation drought"
+          description: "No segment boundaries for 30m on any domain; verify segmentation service health and input stream continuity."
+
+      # Segmentation Acceptance: F1 below 0.90 over 15m (requires evaluator metrics)
+      - alert: SegmentationBoundaryF1Low
+        expr: avg_over_time(somabrain_segmentation_boundary_f1[15m]) < 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation boundary F1 low"
+          description: "Boundary F1 < 0.90 over 15m for tenant {{ $labels.tenant }} (value: {{ $value }})."
+
+      # Segmentation Acceptance: false boundary rate above 5% over 15m
+      - alert: SegmentationFalseBoundaryRateHigh
+        expr: avg_over_time(somabrain_segmentation_false_boundary_rate[15m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation false boundary rate high"
+          description: "False boundary rate > 5% over 15m for tenant {{ $labels.tenant }} (value: {{ $value }})."
+
+      # Segmentation Acceptance: dwell latency above 2 ticks on average over 15m
+      - alert: SegmentationLatencyHigh
+        expr: (rate(somabrain_segmentation_latency_ticks_sum[15m]) / clamp_min(rate(somabrain_segmentation_latency_ticks_count[15m]), 1)) > 2
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Segmentation dwell latency high"
+          description: "Average dwell latency between true changes > 2 ticks over 15m (value: {{ $value }})."
 
       # HMM segmentation volatility sustained high
       - alert: SegmentationVolatileHigh
-        expr: avg by (tenant, domain) (rate(somabrain_seg_p_volatile_bucket[5m])) > 0.6
+        expr: (sum by (tenant, domain) (rate(somabrain_seg_p_volatile_sum[10m])) / clamp_min(sum by (tenant, domain) (rate(somabrain_seg_p_volatile_count[10m])), 1)) > 0.6
         for: 10m
         labels:
           severity: info

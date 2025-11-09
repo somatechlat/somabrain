@@ -1,0 +1,42 @@
+import os
+import time
+
+from somabrain.monitoring.drift_detector import DriftDetector, DriftConfig
+from somabrain.services.integrator_hub import IntegratorHub
+
+
+def test_drift_auto_disables_normalization(monkeypatch):
+    os.environ["ENABLE_DRIFT_DETECTION"] = "1"
+    os.environ["ENABLE_FUSION_NORMALIZATION"] = "1"
+    os.environ["ENABLE_AUTO_ROLLBACK"] = "0"  # isolate integrator auto-disable path
+    # Kafka must be available in strict mode; this test does not use network
+
+    # Tight thresholds to trigger quickly
+    cfg = DriftConfig(entropy_threshold=0.2, regret_threshold=0.2, window_size=10, min_samples=3, cooldown_period=0)
+    det = DriftDetector(config=cfg)
+    # Patch integrator module drift reference to our detector
+    import somabrain.services.integrator_hub as ih
+    ih._DRIFT = det
+
+    hub = IntegratorHub()
+    # Force flags after construction
+    hub._norm_enabled = True
+    hub._drift_enabled = True
+
+    # Craft synthetic rounds to yield high entropy (~uniform weights) and low leader confidence
+    def push_round(delta_err: float):
+        for d in ("state", "agent", "action"):
+            ev = {"domain": d, "delta_error": delta_err, "evidence": {"tenant": "t1"}}
+            hub._process_update(ev)
+
+    for _ in range(4):
+        push_round(1.0)
+        time.sleep(0.01)
+
+    # After drift detection the normalization should be disabled
+    assert hub._norm_enabled is False, "Normalization should auto-disable on drift"
+
+    # Ensure drift detector recorded at least one drift event state
+    st = det.get_drift_status("state", "t1")
+    assert st["samples"] >= 3
+    assert st["stable"] is False

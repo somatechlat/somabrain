@@ -1,9 +1,9 @@
 """Database helpers for SomaBrain.
 
-Provides a lazily-initialized SQLAlchemy engine/session factory that defaults to
-Postgres when `SOMABRAIN_POSTGRES_DSN` is defined, otherwise falls back to a
-local SQLite database (useful for tests). The helpers centralise engine creation
-so modules can share pools safely without reconfiguring per import.
+Provides a lazily-initialized SQLAlchemy engine/session factory that requires a
+Postgres DSN (`SOMABRAIN_POSTGRES_DSN`). Strict mode removes the previous SQLite
+fallback; attempts to start without a Postgres URL now raise immediately. This
+prevents silent divergence between dev/test and production storage behaviour.
 """
 
 from __future__ import annotations
@@ -29,29 +29,26 @@ _SESSION_FACTORY: Optional[sessionmaker] = None
 
 
 def get_default_db_url() -> str:
-    """Return the configured database URL.
+    """Return the configured Postgres database URL or raise.
 
-    Preference order:
-    1. SOMABRAIN_POSTGRES_DSN (official name)
-    2. sqlite:///./data/somabrain.db (local fallback for tests/dev)
+    Strict mode: SQLite fallback removed. The URL must be provided via
+    `SOMABRAIN_POSTGRES_DSN` or settings.postgres_dsn. Empty / sqlite schemes
+    trigger a RuntimeError to fail fast.
     """
-
-    url = None
+    url: Optional[str] = None
     if shared_settings is not None:
         try:
-            url = (
-                str(getattr(shared_settings, "postgres_dsn", "") or "").strip() or None
-            )
+            raw = str(getattr(shared_settings, "postgres_dsn", "") or "").strip()
+            url = raw or None
         except Exception:
             url = None
     if not url:
-        url = os.getenv("SOMABRAIN_POSTGRES_DSN")
-    if url:
-        return url
-    # Ensure data directory exists for SQLite fallback
-    data_dir = pathlib.Path("./data")
-    data_dir.mkdir(parents=True, exist_ok=True)
-    return "sqlite:///" + str((data_dir / "somabrain.db").resolve())
+        url = (os.getenv("SOMABRAIN_POSTGRES_DSN") or "").strip() or None
+    if not url:
+        raise RuntimeError("storage.db: SOMABRAIN_POSTGRES_DSN not set (Postgres required)")
+    if url.startswith("sqlite://"):
+        raise RuntimeError("storage.db: SQLite DSN forbidden in strict mode")
+    return url
 
 
 def reset_engine(url: Optional[str] = None) -> None:

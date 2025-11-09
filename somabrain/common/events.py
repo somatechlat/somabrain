@@ -17,3 +17,14 @@ def build_next_event(
         "regret": regret,
         "ts": ts,
     }
+
+
+def compute_regret_from_confidence(confidence: float) -> float:
+    """Compute regret as 1 - confidence, clamped to [0,1].
+
+    This is used by drift detection to form a simple regret proxy.
+    """
+    try:
+        return max(0.0, min(1.0, 1.0 - float(confidence)))
+    except Exception:
+        return 1.0

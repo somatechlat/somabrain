@@ -92,20 +92,15 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            # Respect fail-open vs fail-closed posture via SOMA_OPA_FAIL_CLOSED
+            # Strict: derive fail-closed posture solely from shared settings/mode.
             if shared_settings is not None:
                 try:
-                    fail_closed = bool(
-                        getattr(shared_settings, "opa_fail_closed", False)
-                    )
+                    fail_closed = bool(getattr(shared_settings, "mode_opa_fail_closed", True))
                 except Exception:
-                    fail_closed = False
+                    fail_closed = True
             else:
-                fail_closed = os.getenv("SOMA_OPA_FAIL_CLOSED", "").lower() in (
-                    "1",
-                    "true",
-                    "yes",
-                )
+                # Without settings, stay conservative and deny on OPA failure.
+                fail_closed = True
             if fail_closed:
                 LOGGER.error("OPA evaluation failed (fail-closed deny): %s", e)
                 return False

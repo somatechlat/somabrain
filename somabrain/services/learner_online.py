@@ -22,8 +22,7 @@ Topics:
   (Future reserved inputs: cog.global.frame, cog.next.events)
 
 Serialization:
-- If Avro schemas are available (reward_event, config_update) they are used.
-- Otherwise falls back to JSON. (Config updates forced JSON for debugging if LEARNER_FORCE_JSON=1)
+Strict Avro-only for reward_event and config_update; next_event optional.
 """
 
 from __future__ import annotations
@@ -37,6 +36,7 @@ from typing import Any, Dict, Optional
 import yaml
 
 from fastapi import FastAPI
+from somabrain.common.infra import assert_ready
 
 try:
     from confluent_kafka import Producer as CfProducer  # type: ignore
@@ -77,31 +77,19 @@ def _bootstrap() -> str:
 
 
 def _serde(name: str) -> Optional[AvroSerde]:
-    # Prefer Avro serde, but fall back to JSON when the in-repo `libs`
-    # package (or serde) is not available. This prevents the learner
-    # process from crashing in minimal dev images where `libs/` wasn't
-    # copied into the container build.
+    # Strict: Avro serde required for critical topics
     if load_schema is None or AvroSerde is None:
-        print(
-            f"learner_online: Avro serde not available for {name}, falling back to JSON"
-        )
-        return None
+        raise RuntimeError(f"learner_online: Avro serde unavailable for {name}")
     try:
         return AvroSerde(load_schema(name))  # type: ignore[arg-type]
     except Exception as e:
-        print(
-            f"learner_online: avro serde load failed for {name}, falling back to JSON: {e}"
-        )
-        return None
+        raise RuntimeError(f"learner_online: avro serde load failed for {name}: {e}")
 
 
 def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    return json.dumps(rec).encode("utf-8")
+    if serde is None:
+        raise RuntimeError("learner_online: encode requires Avro serde")
+    return serde.serialize(rec)
 
 
 def _dec(
@@ -142,8 +130,11 @@ class LearnerService:
         self._serde_reward = _serde("reward_event")
         # Require Avro serde for config updates (no JSON fallback)
         self._serde_cfg = _serde("config_update")
-        # Optional serde for next‑event (fallback to JSON if Avro missing)
-        self._serde_next = _serde("next_event")
+        # Optional serde for next‑event (can be disabled via flag)
+        try:
+            self._serde_next = _serde("next_event")
+        except Exception:
+            self._serde_next = None
         # Load per‑tenant adaptation overrides (tau decay, entropy cap)
         self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
         try:
@@ -651,6 +642,8 @@ async def startup() -> None:  # pragma: no cover
     }
     if not (ff or composite):
         return
+    # Require Kafka before starting learner thread
+    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
     _thread = threading.Thread(target=_svc.run, daemon=True)
     _thread.start()
 

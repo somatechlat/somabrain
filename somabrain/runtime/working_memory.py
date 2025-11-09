@@ -1,7 +1,6 @@
 """Redis-backed working memory ring buffer.
 
-Strict mode: requires Redis by default. To explicitly allow local in-process
-buffer (for tests only), set `SOMABRAIN_ALLOW_LOCAL_WM=1`.
+Strict mode: requires Redis. Local in-process buffer fallback is removed.
 """
 
 from __future__ import annotations
@@ -43,7 +42,7 @@ class WorkingMemoryBuffer:
         self._max_items = max_items
         self._use_redis = False
         self._local: Dict[str, Deque[Dict]] = {}
-        require_redis = not _env_true("SOMABRAIN_ALLOW_LOCAL_WM", False)
+        require_redis = True
         if redis is not None:
             url = redis_url or get_redis_url()
             try:
@@ -60,7 +59,7 @@ class WorkingMemoryBuffer:
             self._redis = None
         if require_redis and not self._use_redis:
             raise RuntimeError(
-                "WorkingMemoryBuffer requires Redis. Set SOMABRAIN_ALLOW_LOCAL_WM=1 to permit local fallback for tests."
+                "WorkingMemoryBuffer requires Redis connectivity (strict mode)."
             )
 
     def record(self, session_id: str, item: Dict) -> None:
@@ -73,10 +72,7 @@ class WorkingMemoryBuffer:
             pipe.expire(key, self._ttl)
             pipe.execute()
         else:
-            buf = self._local.setdefault(
-                session_id, collections.deque(maxlen=self._max_items)
-            )
-            buf.appendleft(item)
+            raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
 
     def snapshot(self, session_id: str) -> List[Dict]:
         if self._use_redis and self._redis is not None:
@@ -90,16 +86,13 @@ class WorkingMemoryBuffer:
                 except Exception:
                     continue
             return list(reversed(snapshot))
-        buf = self._local.get(session_id)
-        if not buf:
-            return []
-        return list(reversed(buf))
+        raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
 
     def clear(self, session_id: str) -> None:
         if self._use_redis and self._redis is not None:
             self._redis.delete(self._redis_key(session_id))
         else:
-            self._local.pop(session_id, None)
+            raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
 
     def _redis_key(self, session_id: str) -> str:
         return f"{self._prefix}:{session_id}"

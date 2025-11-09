@@ -8,6 +8,8 @@
     { "name": "predicted_state", "type": "string" },
     { "name": "confidence", "type": "float" },
     { "name": "regret", "type": ["null", "float"], "default": null },
+    { "name": "domain", "type": ["null", "string"], "default": null },
+    { "name": "metadata", "type": ["null", {"type": "map", "values": ["null", "string", "float", "int", "boolean"]}], "default": null },
     { "name": "ts", "type": "string" }
   ]
 }

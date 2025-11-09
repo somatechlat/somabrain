@@ -22,6 +22,7 @@ import time
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
+from somabrain.common.infra import assert_ready
 
 try:  # preferred kafka client (confluent-kafka / librdkafka)
     from confluent_kafka import Producer as CProducer  # type: ignore
@@ -33,12 +34,13 @@ except Exception:  # pragma: no cover
     CAdminClient = None  # type: ignore
     NewTopic = None  # type: ignore
 
-try:  # avro optional import
+try:  # Avro required in strict mode
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(
+        f"reward_producer: Avro libs unavailable in strict mode: {e}. Avro is mandatory."
+    )
 
 try:
     from somabrain import metrics  # type: ignore
@@ -58,29 +60,14 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _serde() -> Optional[AvroSerde]:
-    # Prefer Avro serde, but fall back to JSON if the in-repo `libs` package
-    # (or serde) is not available. This keeps the HTTP endpoint available
-    # in local/dev images where the package may not be installed.
+def _serde() -> AvroSerde:
     if load_schema is None or AvroSerde is None:
-        print(
-            "reward_producer: Avro serde not available, falling back to JSON payloads"
-        )
-        return None
-    try:
-        return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
-    except Exception as e:
-        print(f"reward_producer: avro serde load failed, falling back to JSON: {e}")
-        return None
+        raise RuntimeError("reward_producer: Avro schema loader or serde missing")
+    return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
 
 
-def _encode(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    return json.dumps(rec).encode("utf-8")
+def _encode(rec: Dict[str, Any], serde: AvroSerde) -> bytes:
+    return serde.serialize(rec)
 
 
 def _make_producer():  # pragma: no cover - integration
@@ -135,6 +122,8 @@ async def startup() -> None:  # pragma: no cover
         # Leave _ready False; health will show disabled
         return
     global _producer, _producer_kind, _serde_inst, _ready
+    # Fail-fast: require Kafka before enabling
+    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
     prod = _make_producer()
     if isinstance(prod, tuple):
         _producer_kind, _producer = prod
@@ -159,7 +148,7 @@ async def metrics_ep():  # type: ignore
 
 @app.post("/reward/{frame_id}")
 async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    if _producer is None:
+    if _producer is None or _serde_inst is None:
         raise HTTPException(status_code=503, detail="Kafka unavailable")
     try:
         r_task = float(payload.get("r_task", 0.0))
@@ -170,6 +159,27 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         total = float(
             payload.get("total", r_task + r_user + r_safety - r_latency - r_cost)
         )
+        tenant = str(payload.get("tenant") or _tenant or "public").strip() or "public"
+        # Optional flexible components map: accept explicit components dict
+        # or synthesize from r_* fields when provided
+        comps_in = payload.get("components")
+        components: Optional[Dict[str, float]]
+        if isinstance(comps_in, dict):
+            # Filter numeric values only
+            components = {}
+            for k, v in comps_in.items():
+                try:
+                    components[str(k)] = float(v)  # type: ignore[assignment]
+                except Exception:
+                    continue
+        else:
+            components = {
+                "r_task": r_task,
+                "r_user": r_user,
+                "r_latency": r_latency,
+                "r_safety": r_safety,
+                "r_cost": r_cost,
+            }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"invalid payload: {e}")
     rec: Dict[str, Any] = {
@@ -180,18 +190,20 @@ async def post_reward(frame_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "r_safety": r_safety,
         "r_cost": r_cost,
         "total": total,
+        "tenant": tenant,
+        "components": components,
         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     try:
         if _producer_kind == "ck":
-            _producer.produce(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[call-arg]
+            _producer.produce(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[arg-type]
             # Flush briefly to make smoke tests deterministic
             try:
                 _producer.flush(2)  # type: ignore[attr-defined]
             except Exception:
                 pass
         else:
-            _producer.send(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[attr-defined]
+            _producer.send(TOPIC, value=_encode(rec, _serde_inst))  # type: ignore[arg-type,attr-defined]
         if _REWARD_COUNT is not None:
             try:
                 _REWARD_COUNT.inc()

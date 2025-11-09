@@ -37,19 +37,22 @@ import threading
 from typing import Dict, Optional, Tuple
 
 
-# Require Kafka client dependencies
-from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+# Strict mode: require confluent-kafka only (no kafka-python fallback)
+try:
+    from confluent_kafka import Consumer as CKConsumer, Producer as CKProducer  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(f"segmentation_service: confluent-kafka required in strict mode: {e}")
 
 
 try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover - unit tests focus on core segmenter
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+except Exception as e:  # pragma: no cover - strict mode requires Avro
+    raise RuntimeError(f"segmentation_service: Avro libs unavailable: {e}")
 
 
 from somabrain import metrics  # type: ignore
+from somabrain.common.infra import assert_ready
 
 # Tracing provider (fallback to no-op if observability package not on sys.path)
 try:
@@ -121,14 +124,11 @@ class Frame:
     tenant: str
 
 
-def _parse_frame(value: bytes, serde: Optional[AvroSerde]) -> Optional[Frame]:
+def _parse_frame(value: bytes, serde: AvroSerde) -> Optional[Frame]:
     if value is None:
         return None
     try:
-        if serde is not None:
-            data = serde.deserialize(value)  # type: ignore[arg-type]
-        else:
-            data = json.loads(value.decode("utf-8"))
+        data = serde.deserialize(value)  # type: ignore[arg-type]
         ts = str(data.get("ts") or "")
         leader = str(data.get("leader") or "")
         # tenant is nested in frame map from IntegratorHub
@@ -157,14 +157,11 @@ class Update:
     delta_error: float
 
 
-def _parse_update(value: bytes, serde: Optional[AvroSerde]) -> Optional[Update]:
+def _parse_update(value: bytes, serde: AvroSerde) -> Optional[Update]:
     if value is None:
         return None
     try:
-        if serde is not None:
-            data = serde.deserialize(value)  # type: ignore[arg-type]
-        else:
-            data = json.loads(value.decode("utf-8"))
+        data = serde.deserialize(value)  # type: ignore[arg-type]
         ts = str(data.get("ts") or "")
         tenant = str((data.get("tenant") or "public").strip() or "public")
         domain = str((data.get("domain") or "").strip())
@@ -543,25 +540,12 @@ class SegmentationService:
                 self._start_health_server()
         except Exception:
             pass
-        self._serde_in: Optional[AvroSerde] = None
-        self._serde_out: Optional[AvroSerde] = None
-        self._serde_update: Optional[AvroSerde] = None
-        try:
-            if load_schema is not None and AvroSerde is not None:
-                gf_schema = load_schema("global_frame")
-                sb_schema = load_schema("segment_boundary")
-                self._serde_in = AvroSerde(gf_schema)
-                self._serde_out = AvroSerde(sb_schema)
-                # Optional for CPD/HMM modes
-                try:
-                    bu_schema = load_schema("belief_update")
-                    self._serde_update = AvroSerde(bu_schema)
-                except Exception:
-                    self._serde_update = None
-        except Exception:
-            self._serde_in = None
-            self._serde_out = None
-            self._serde_update = None
+        gf_schema = load_schema("global_frame")
+        sb_schema = load_schema("segment_boundary")
+        bu_schema = load_schema("belief_update")
+        self._serde_in = AvroSerde(gf_schema)
+        self._serde_out = AvroSerde(sb_schema)
+        self._serde_update = AvroSerde(bu_schema)
             
         max_dwell_ms = int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0")
         
@@ -636,24 +620,23 @@ class SegmentationService:
             ]
         else:
             topics = ["cog.global.frame"]
-        consumer = KafkaConsumer(
-            *topics,
-            bootstrap_servers=_bootstrap(),
-            value_deserializer=lambda m: m,
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            group_id=os.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service"),
-        )
-        producer = KafkaProducer(
-            bootstrap_servers=_bootstrap(),
-            value_serializer=lambda m: m,
-            acks="all",
-        )
+        conf = {
+            "bootstrap.servers": _bootstrap(),
+            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service"),
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": True,
+        }
+        consumer = CKConsumer(conf)
+        consumer.subscribe(topics)
+        producer = CKProducer({"bootstrap.servers": _bootstrap(), "compression.type": "none"})
         try:
-            for msg in consumer:
+            while True:
+                msg = consumer.poll(0.5)
+                if msg is None or msg.error():
+                    continue
                 if self._mode == "cpd":
                     with self._tracer.start_as_current_span("segmentation_cpd"):
-                        upd = _parse_update(msg.value, self._serde_update)
+                        upd = _parse_update(msg.value(), self._serde_update)  # type: ignore
                         if upd is None:
                             continue
                         out = self._cpd.observe(
@@ -665,7 +648,7 @@ class SegmentationService:
                         tenant = upd.tenant
                 elif self._mode == "hazard":
                     with self._tracer.start_as_current_span("segmentation_hazard"):
-                        upd = _parse_update(msg.value, self._serde_update)
+                        upd = _parse_update(msg.value(), self._serde_update)  # type: ignore
                         if upd is None:
                             continue
                         # Initialize hazard segmenter lazily
@@ -710,7 +693,7 @@ class SegmentationService:
                         tenant = upd.tenant
                 else:
                     with self._tracer.start_as_current_span("segmentation_leader"):
-                        frame = _parse_frame(msg.value, self._serde_in)
+                        frame = _parse_frame(msg.value(), self._serde_in)  # type: ignore
                         if frame is None:
                             continue
                         out = self._segmenter.observe(
@@ -738,7 +721,8 @@ class SegmentationService:
                     continue
 
                 try:
-                    producer.send("cog.segments", value=payload)
+                    producer.produce("cog.segments", value=payload)
+                    producer.poll(0)
                     if BOUNDARY_EMITTED is not None:
                         try:
                             BOUNDARY_EMITTED.labels(
@@ -760,8 +744,7 @@ class SegmentationService:
             except Exception:
                 pass
             try:
-                producer.flush(2)
-                producer.close()
+                producer.flush(5)
             except Exception:
                 pass
 
@@ -790,6 +773,8 @@ def main() -> None:  # pragma: no cover - service entrypoint
         except Exception:
             pass
         return
+    # Require Kafka before starting segmentation loop
+    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
     svc = SegmentationService()
     svc.run_forever()
 

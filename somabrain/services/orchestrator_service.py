@@ -29,8 +29,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
-# Require Kafka
-from kafka import KafkaConsumer  # type: ignore
+# Strict mode: use confluent-kafka Consumer
+from confluent_kafka import Consumer as CKConsumer  # type: ignore
 
 # Optional Avro serde
 try:  # pragma: no cover
@@ -42,6 +42,7 @@ except Exception:  # pragma: no cover
 
 # Outbox API (DB-backed) required
 from somabrain.db.outbox import enqueue_event  # type: ignore
+from somabrain.common.infra import assert_ready
 
 
 @dataclass
@@ -214,24 +215,24 @@ class OrchestratorService:
             pass
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
-        # Kafka client required; fail-fast
-        consumer = KafkaConsumer(
-            "cog.global.frame",
-            "cog.segments",
-            bootstrap_servers=_bootstrap(),
-            value_deserializer=lambda m: m,
-            auto_offset_reset="latest",
-            enable_auto_commit=True,
-            group_id=os.getenv("SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"),
-        )
+        consumer = CKConsumer({
+            "bootstrap.servers": _bootstrap(),
+            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"),
+            "enable.auto.commit": True,
+            "auto.offset.reset": "latest",
+        })
+        consumer.subscribe(["cog.global.frame", "cog.segments"])  # Avro-only topics
         try:
-            for msg in consumer:
-                topic = getattr(msg, "topic", "") or ""
+            while True:
+                msg = consumer.poll(timeout=1.0)
+                if msg is None or msg.error():
+                    continue
+                topic = msg.topic()
+                payload = msg.value()
                 if topic == "cog.global.frame":
-                    gf = _parse_global_frame(msg.value, self._serde_gf)
+                    gf = _parse_global_frame(payload, self._serde_gf)
                     if gf is None:
                         continue
-                    # Update per-tenant context
                     ctx = self._ctx.get(gf.tenant)
                     if ctx is None:
                         self._ctx[gf.tenant] = gf
@@ -243,11 +244,10 @@ class OrchestratorService:
                         ctx.rationale = gf.rationale
                         ctx.count += 1
                 else:  # cog.segments
-                    sb = _parse_segment_boundary(msg.value, self._serde_sb)
+                    sb = _parse_segment_boundary(payload, self._serde_sb)
                     if not isinstance(sb, dict):
                         continue
                     tenant = str(sb.get("tenant") or "public").strip() or "public"
-                    # Enqueue episodic snapshot for this tenant
                     self._remember_snapshot(tenant, sb)
         finally:
             try:
@@ -272,6 +272,8 @@ def main() -> None:  # pragma: no cover - entrypoint
         except Exception:
             pass
         return
+    # Ensure Kafka and Postgres (for outbox) are reachable before starting
+    assert_ready(require_kafka=True, require_redis=False, require_postgres=True, require_opa=False)
     OrchestratorService().run_forever()
 
 

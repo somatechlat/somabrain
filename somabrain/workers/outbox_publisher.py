@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.storage.db import get_session_factory
+from somabrain.common.infra import assert_ready
 
 
 def _bootstrap() -> Optional[str]:
@@ -49,34 +50,15 @@ def _make_producer():  # pragma: no cover - optional at runtime
     bootstrap = _bootstrap()
     if not bootstrap:
         return None
-    # Try confluent-kafka first for better delivery semantics
     try:
         from confluent_kafka import Producer  # type: ignore
-
         conf = {
             "bootstrap.servers": bootstrap,
             "enable.idempotence": True,
             "acks": "all",
             "compression.type": "snappy",
-            # Reasonable defaults; delivery confirmation handled via flush()
         }
         return Producer(conf)
-    except Exception:
-        pass
-    # Fallback to kafka-python
-    try:
-        from kafka import KafkaProducer  # type: ignore
-
-        return KafkaProducer(
-            bootstrap_servers=bootstrap,
-            acks="all",
-            linger_ms=20,
-            retries=10,
-            retry_backoff_ms=200,
-            request_timeout_ms=10000,
-            max_block_ms=15000,
-            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-        )
     except Exception:
         return None
 
@@ -84,20 +66,8 @@ def _make_producer():  # pragma: no cover - optional at runtime
 def _publish_record(producer, topic: str, payload: Dict[str, Any]) -> None:
     if producer is None:
         raise RuntimeError("Kafka producer not available")
-    # Handle both confluent-kafka and kafka-python producers
     try:
-        # confluent-kafka Producer
-        from confluent_kafka import Producer as _CKP  # type: ignore
-
-        if isinstance(producer, _CKP):  # type: ignore[arg-type]
-            producer.produce(topic, value=json.dumps(payload).encode("utf-8"))
-            # Let the main loop flush per-batch
-            return
-    except Exception:
-        pass
-    # kafka-python path
-    try:
-        producer.send(topic, value=payload)
+        producer.produce(topic, value=json.dumps(payload).encode("utf-8"))
     except Exception as e:
         raise e
 
@@ -138,6 +108,8 @@ def _process_batch(
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop
+    # Require DB and Kafka to be ready before starting
+    assert_ready(require_kafka=True, require_redis=False, require_postgres=True, require_opa=False)
     batch_size = int(os.getenv("SOMABRAIN_OUTBOX_BATCH_SIZE", "100") or 100)
     max_retries = int(os.getenv("SOMABRAIN_OUTBOX_MAX_RETRIES", "5") or 5)
     poll_interval = float(os.getenv("SOMABRAIN_OUTBOX_POLL_INTERVAL", "1.0") or 1.0)

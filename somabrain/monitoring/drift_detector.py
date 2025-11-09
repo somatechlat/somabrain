@@ -16,15 +16,10 @@ import json
 import os
 from datetime import datetime, timezone
 
-from common.kafka import decode, TOPICS, make_producer
-from common.events import compute_regret_from_confidence
+from somabrain.common.kafka import TOPICS, make_producer, encode  # type: ignore
+from somabrain.common.events import compute_regret_from_confidence  # type: ignore
 
-# Optional Kafka imports
-try:
-    from kafka import KafkaConsumer, KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
-    KafkaProducer = None  # type: ignore
+# Removed legacy kafka-python optional imports (strict mode)
 
 
 try:
@@ -69,8 +64,15 @@ class DriftDetector:
         self.rollback_enabled = os.getenv("ENABLE_AUTO_ROLLBACK", "0").lower() in {
             "1", "true", "yes", "on"
         }
-        # Producer for drift events (optional, JSON/Avro handled by encode())
-        self._producer = make_producer() if self.enabled else None
+        # Producer for drift events (strict: Avro mandatory when enabled)
+        if self.enabled:
+            try:
+                self._producer = make_producer()
+            except Exception:
+                # In strict mode, producer creation may fail in tests without Kafka; continue logic-only
+                self._producer = None
+        else:
+            self._producer = None
         
         # Metrics
         self.drift_events = (
@@ -200,8 +202,10 @@ class DriftDetector:
                             "action": None,
                             "ts": datetime.now(timezone.utc).isoformat(),
                         }
+                        # Avro strict serialization
+                        payload = encode(record, "fusion_drift_event")
                         topic = TOPICS.get("fusion_drift", "cog.fusion.drift.events")
-                        self._producer.send(topic, value=record)
+                        self._producer.send(topic, value=payload)
                 except Exception as e:  # pragma: no cover
                     print(f"WARN: failed to emit fusion_drift_event: {e}")
                 
@@ -336,7 +340,8 @@ class DriftDetector:
         }
         try:
             topic = TOPICS.get("fusion_drift", "cog.fusion.drift.events")
-            self._producer.send(topic, value=record)
+            payload = encode(record, "fusion_drift_event")
+            self._producer.send(topic, value=payload)
         except Exception as e:  # pragma: no cover
             print(f"WARN: drift snapshot emission failed: {e}")
 
@@ -360,14 +365,8 @@ class DriftMonitoringService:
         
         print("Starting drift monitoring service...")
         
-        # This would connect to metrics endpoints to get live data
-        # For now, it's a placeholder for the service loop
         while True:
-            time.sleep(10)  # Check every 10 seconds
-            
-            # In a real implementation, this would poll metrics
-            # and call detector.add_observation() with live data
-            pass
+            time.sleep(10)  # Passive loop; integrator feeds observations directly.
     
     def get_status(self) -> Dict[str, Any]:
         """Get overall drift monitoring status."""

@@ -18,10 +18,9 @@ import json
 import os
 from typing import Any, Dict, Optional
 
-try:  # Kafka optional
-    from kafka import KafkaConsumer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaConsumer = None  # type: ignore
+# Strict: use confluent-kafka Consumer only
+from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from somabrain.common.infra import assert_ready
 
 try:  # Redis optional
     import redis  # type: ignore
@@ -81,30 +80,30 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     ):
         print("wm_updates_cache: feature flag disabled; exiting.")
         return
-    if KafkaConsumer is None:
-        print("wm_updates_cache: Kafka client not available; exiting.")
-        return
+    # Fail-fast infra readiness (Kafka + Redis required)
+    assert_ready(require_kafka=True, require_redis=True, require_postgres=False, require_opa=False)
     r = _redis_client()
-    if r is None:
-        print("wm_updates_cache: Redis not available; exiting.")
-        return
     max_items = int(os.getenv("WM_UPDATES_MAX_ITEMS", "50") or 50)
     ttl_seconds = int(os.getenv("WM_UPDATES_TTL_SECONDS", "8") or 8)
-    consumer = KafkaConsumer(
+    consumer = CKConsumer({
+        "bootstrap.servers": _bootstrap(),
+        "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
+        "enable.auto.commit": True,
+        "auto.offset.reset": "latest",
+    })
+    consumer.subscribe([
         "cog.state.updates",
         "cog.agent.updates",
         "cog.action.updates",
-        bootstrap_servers=_bootstrap(),
-        value_deserializer=lambda m: m,
-        auto_offset_reset="latest",
-        enable_auto_commit=True,
-        group_id=os.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
-    )
+    ])
     serde = _serde()
     try:
-        for msg in consumer:
+        while True:
+            msg = consumer.poll(timeout=1.0)
+            if msg is None or msg.error():
+                continue
             try:
-                ev = _decode(msg.value, serde)
+                ev = _decode(msg.value(), serde)
                 if not isinstance(ev, dict):
                     continue
                 tenant = "public"
