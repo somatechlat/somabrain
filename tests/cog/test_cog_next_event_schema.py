@@ -5,12 +5,11 @@ import json
 import pathlib
 import pytest
 
-
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SCHEMA_PATH = ROOT / "proto" / "cog" / "next_event.avsc"
 
 
-def test_next_event_schema_exists_and_fields() -> None:
+def test_cog_next_event_schema_exists_and_fields():
     assert SCHEMA_PATH.exists(), "next_event schema missing"
     data = json.loads(SCHEMA_PATH.read_text())
     fields = {f["name"] for f in data.get("fields", [])}
@@ -20,7 +19,7 @@ def test_next_event_schema_exists_and_fields() -> None:
 @pytest.mark.skipif(
     importlib.util.find_spec("fastavro") is None, reason="fastavro not installed"
 )
-def test_next_event_round_trip_fastavro() -> None:
+def test_cog_next_event_round_trip_fastavro():
     from fastavro import parse_schema, schemaless_reader, schemaless_writer  # type: ignore
     import io
 

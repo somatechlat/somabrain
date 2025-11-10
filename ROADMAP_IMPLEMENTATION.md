@@ -50,29 +50,14 @@ The following items are in varying states of completion. "Complete" here means u
 
 ### 📋 Configuration
 
-#### Environment Variables
-```bash
-# Core feature flags
-ENABLE_HMM_SEGMENTATION=1
-ENABLE_FUSION_NORMALIZATION=1
-ENABLE_CALIBRATION=1
-ENABLE_CONSISTENCY_CHECKS=1
-ENABLE_RUNTIME_CONSOLIDATION=1
-ENABLE_DRIFT_DETECTION=1
-ENABLE_AUTO_ROLLBACK=1
+#### Configuration Model (Updated)
+Runtime feature flags and tunables are now centralized and no longer set via ad-hoc ENABLE_* or SOMABRAIN_* env variables. Use:
 
-# HMM Parameters
-SOMABRAIN_HAZARD_LAMBDA=0.02
-SOMABRAIN_HAZARD_VOL_MULT=3.0
-SOMABRAIN_HAZARD_MIN_SAMPLES=20
+1. `data/feature_overrides.json` for local feature gating (dev only; prod ignores overrides).
+2. `somabrain/runtime_config.py` for runtime tunables (set dev overrides in `data/runtime_overrides.json`).
+3. Tenant-specific learning parameters remain in `config/learning.tenants.yaml`.
 
-# Calibration Parameters  
-CALIBRATION_MIN_SAMPLES=50
-CALIBRATION_ECE_THRESHOLD=0.1
-
-# Fusion Normalization
-INTEGRATOR_ADAPTIVE_ALPHA=2.5
-```
+Environment variables are reserved for infrastructure (ports, connection URLs, secrets) and deployment mode selection only.
 
 #### Tenant-Specific Configuration
 ```yaml
@@ -91,25 +76,19 @@ demo:
 
 ### 🔧 Usage
 
-#### Quick Start with All Features
+#### Quick Start (Centralized Stack)
 ```bash
-# Start with roadmap features enabled
-docker compose -f docker-compose-roadmap.yml up -d
+# Start full stack (features governed by overrides + runtime_config)
+docker compose up -d
 
-# Check feature status
+# Check active features
 curl http://localhost:9696/features
-curl http://localhost:8085/health  # Calibration
-curl http://localhost:8086/health  # Drift monitoring
 ```
 
-#### Individual Feature Activation
+#### Adjusting Individual Features (Dev)
+Edit `data/feature_overrides.json` (add/remove feature keys) and/or `data/runtime_overrides.json` for tunables, then restart affected services:
 ```bash
-# Enable specific features
-export ENABLE_HMM_SEGMENTATION=1
-export SOMABRAIN_SEGMENT_MODE=hmm
-
-# Start services with features
-docker compose up -d somabrain_cog
+docker compose restart somabrain_cog
 ```
 
 ### 📊 Metrics
@@ -127,8 +106,8 @@ docker compose up -d somabrain_cog
 
 #### Test HMM Segmentation
 ```bash
-# Enable HMM and observe segment boundaries
-docker compose -f docker-compose-roadmap.yml up somabrain_cog
+# Ensure segmenter feature in feature_overrides.json, then bring up stack
+docker compose up somabrain_cog
 
 # Watch for segment events
 kafkacat -b localhost:30001 -t cog.segments

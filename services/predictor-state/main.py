@@ -92,7 +92,11 @@ def run_forever() -> None:  # pragma: no cover
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
-    composite = os.getenv("ENABLE_COG_THREADS", "1").strip().lower() in ("1","true","yes","on")
+    try:
+        from somabrain import runtime_config as _rt
+        composite = _rt.get_bool("cog_composite", True)
+    except Exception:
+        composite = True
     if not (composite or feature_enabled("learner")):
         print("predictor-state: disabled by mode; exiting.")
         return
@@ -104,15 +108,11 @@ def run_forever() -> None:  # pragma: no cover
     belief_schema = "belief_update"
     next_schema = "next_event"
     soma_schema = "belief_update_soma"
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
-    model_ver = os.getenv("STATE_MODEL_VER", "v1")
-    period = float(os.getenv("STATE_UPDATE_PERIOD", "0.5"))
-    soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    from somabrain import runtime_config as _rt
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")  # tenancy stays env-driven
+    model_ver = _rt.get_str("state_model_ver", "v1")
+    period = _rt.get_float("state_update_period", 0.5)
+    soma_compat = _rt.get_bool("soma_compat", False)
     # Diffusion-backed predictor setup (supports production graph via env)
     predictor, dim = build_predictor_from_env("state")
     source_idx = 0

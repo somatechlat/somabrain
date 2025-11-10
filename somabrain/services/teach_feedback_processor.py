@@ -33,22 +33,6 @@ from fastapi import FastAPI
 from somabrain.common.infra import assert_ready
 
 try:
-    from confluent_kafka import Producer as CKProducer  # type: ignore
-    from confluent_kafka import Consumer as CKConsumer  # type: ignore
-except Exception as e:  # pragma: no cover
-    raise RuntimeError(
-        f"teach_feedback_processor: confluent-kafka required in strict mode: {e}"
-    )
-
-try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception as e:  # pragma: no cover
-    raise RuntimeError(
-        f"teach_feedback_processor: Avro libs unavailable in strict mode: {e}"
-    )
-
-try:
     from somabrain import metrics  # type: ignore
 except Exception:  # pragma: no cover
     metrics = None  # type: ignore
@@ -63,19 +47,34 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _serde(name: str) -> AvroSerde:
+def _serde(name: str):
+    try:
+        from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+        from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    except Exception as e:  # pragma: no cover
+        raise RuntimeError(
+            f"teach_feedback_processor: Avro libs unavailable in strict mode: {e}"
+        )
     return AvroSerde(load_schema(name))  # type: ignore[arg-type]
 
 
-def _enc(rec: Dict[str, Any], serde: AvroSerde) -> bytes:
+def _enc(rec: Dict[str, Any], serde) -> bytes:
+    # Allow tests to pass serde=None to exercise JSON fallback without Avro deps
+    if serde is None:
+        return json.dumps(rec).encode("utf-8")
     return serde.serialize(rec)
 
 
 def _dec(
-    payload: Optional[bytes], serde: AvroSerde
+    payload: Optional[bytes], serde
 ) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
+    if serde is None:
+        try:
+            return json.loads(payload.decode("utf-8"))
+        except Exception:
+            return None
     try:
         return serde.deserialize(payload)  # type: ignore[arg-type]
     except Exception:
@@ -97,7 +96,7 @@ class TeachFeedbackService:
         self._bootstrap = _bootstrap()
         self._serde_fb = _serde("teach_feedback")
         self._serde_reward = _serde("reward_event")
-        self._ck_producer: Optional[CKProducer] = None
+        self._ck_producer = None
         self._stop = threading.Event()
         # Basic dedup cache for recent frame_ids
         size = max(32, int(os.getenv("TEACH_DEDUP_CACHE_SIZE", "512")))
@@ -135,8 +134,15 @@ class TeachFeedbackService:
         )
 
     def _ensure_clients(self) -> None:
-        # confluent-kafka required; create producer
-        if self._ck_producer is None and CKProducer is not None:
+        # Import confluent-kafka lazily to avoid hard dependency during unit tests
+        try:
+            from confluent_kafka import Producer as CKProducer  # type: ignore
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError(
+                f"teach_feedback_processor: confluent-kafka required in strict mode: {e}"
+            )
+        # create producer
+        if self._ck_producer is None:
             try:
                 import logging
 
@@ -248,7 +254,11 @@ class TeachFeedbackService:
     def run(self) -> None:  # pragma: no cover - integration loop
         self._ensure_clients()
         group_id = os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
-        # Use confluent-kafka consumer only (strict mode)
+        # Use confluent-kafka consumer only (strict mode); import lazily
+        try:
+            from confluent_kafka import Consumer as CKConsumer  # type: ignore
+        except Exception as e:  # pragma: no cover
+            raise RuntimeError(f"teach_feedback_processor: CKConsumer unavailable: {e}")
         if CKConsumer is not None:
             conf = {
                 "bootstrap.servers": self._bootstrap,
@@ -338,17 +348,20 @@ class TeachFeedbackService:
 
 
 app = FastAPI(title="Teach Feedback Processor")
-_svc = TeachFeedbackService()
+_svc: Optional[TeachFeedbackService] = None
 _thread: Optional[threading.Thread] = None
 
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
+    global _svc
     from somabrain.modes import feature_enabled
     if feature_enabled("teach_feedback"):
         # Require Kafka readiness before starting worker thread
         assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+        if _svc is None:
+            _svc = TeachFeedbackService()
         _thread = threading.Thread(target=_svc.run, daemon=True)
         _thread.start()
 

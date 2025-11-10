@@ -145,9 +145,7 @@ cat <<'APPVARS' >> $ENVFILE
 SOMABRAIN_HOST=0.0.0.0
 SOMABRAIN_WORKERS=1
 SOMABRAIN_DEFAULT_TENANT=sandbox
-SOMABRAIN_MEMORY_ENABLE_WEIGHTING=0
-SOMABRAIN_MEMORY_PHASE_PRIORS=
-SOMABRAIN_MEMORY_QUALITY_EXP=1.0
+## Memory weighting/tunables centralized via runtime_config; no env injection here.
 APPVARS
 
 # In-cluster service URLs for containers

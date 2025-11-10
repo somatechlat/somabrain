@@ -6,7 +6,6 @@ and the metrics counter increments. Uses a high-entropy starting vector.
 
 from __future__ import annotations
 
-import os
 import math
 import pytest
 
@@ -21,8 +20,12 @@ def _entropy(alpha: float, beta: float, gamma: float, tau: float) -> float:
 
 
 def test_entropy_cap_sharpens(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("SOMABRAIN_ENABLE_ENTROPY_CAP", "1")
-    monkeypatch.setenv("SOMABRAIN_ENTROPY_CAP", "1.0")  # low cap to force sharpen
+    # Use centralized runtime overrides instead of env flags
+    from somabrain import runtime_config as rt
+    rt.set_overrides({
+        "entropy_cap_enabled": True,
+        "entropy_cap": 1.0,
+    })
     rw = RetrievalWeights()
     # Start with near-uniform weights for high entropy
     rw.alpha = 1.0

@@ -305,12 +305,11 @@ class IntegratorHub:
         self._bootstrap = _strip_scheme(bs)
         self._redis_url = redis_url
         # Feature flags
-        self._soma_compat: bool = os.getenv("SOMA_COMPAT", "").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
+        try:
+            from somabrain import runtime_config as _rt
+            self._soma_compat = bool(_rt.get_bool("soma_compat", False))
+        except Exception:
+            self._soma_compat = False
         # Serde
         # Lazy import for Avro helpers to avoid import-time dependency for unit tests
         self._bu_schema = None
@@ -404,7 +403,8 @@ class IntegratorHub:
         self._stable_since: Dict[str, float] = {}
         # Confidence enforcement from delta_error
         try:
-            self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
+            from somabrain import runtime_config as _rt
+            self._alpha = float(_rt.get_float("integrator_alpha", 2.0))
         except Exception:
             self._alpha = 2.0
         try:
@@ -412,36 +412,33 @@ class IntegratorHub:
         except Exception:
             pass
         # Default ON: enforce confidence normalization from delta_error unless explicitly disabled
-        self._enforce_conf = os.getenv(
-            "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
-        ).strip().lower() in ("1", "true", "yes", "on")
+        try:
+            from somabrain import runtime_config as _rt
+            self._enforce_conf = bool(_rt.get_bool("integrator_enforce_conf", True))
+        except Exception:
+            self._enforce_conf = True
         
         # Fusion normalization with adaptive alpha
-        self._norm_enabled = os.getenv(
-            "ENABLE_FUSION_NORMALIZATION", "0"
-        ).strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
+        try:
+            from somabrain import runtime_config as _rt
+            self._norm_enabled = bool(_rt.get_bool("fusion_normalization_enabled", False))
+        except Exception:
+            self._norm_enabled = False
         # Drift detection flag
-        self._drift_enabled = os.getenv(
-            "ENABLE_DRIFT_DETECTION", "0"
-        ).strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
+        try:
+            from somabrain import runtime_config as _rt
+            self._drift_enabled = bool(_rt.get_bool("drift_detection_enabled", False))
+        except Exception:
+            self._drift_enabled = False
         
         # Adaptive alpha for fusion normalization
         try:
-            self._adaptive_alpha = float(os.getenv("INTEGRATOR_ADAPTIVE_ALPHA", "2.0"))
-            self._alpha_min = float(os.getenv("INTEGRATOR_ALPHA_MIN", "0.1"))
-            self._alpha_max = float(os.getenv("INTEGRATOR_ALPHA_MAX", "5.0"))
-            self._alpha_target_regret = float(os.getenv("INTEGRATOR_TARGET_REGRET", "0.15"))
-            self._alpha_eta = float(os.getenv("INTEGRATOR_ALPHA_ETA", "0.05"))  # step size
+            from somabrain import runtime_config as _rt
+            self._adaptive_alpha = float(_rt.get_float("integrator_alpha", 2.0))
+            self._alpha_min = float(_rt.get_float("integrator_alpha_min", 0.1))
+            self._alpha_max = float(_rt.get_float("integrator_alpha_max", 5.0))
+            self._alpha_target_regret = float(_rt.get_float("integrator_target_regret", 0.15))
+            self._alpha_eta = float(_rt.get_float("integrator_alpha_eta", 0.05))
         except Exception:
             self._adaptive_alpha = 2.0
             self._alpha_min = 0.1

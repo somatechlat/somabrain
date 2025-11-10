@@ -1306,16 +1306,13 @@ class MemoryClient:
             except Exception:
                 weighting_enabled = False
         else:
-            env_toggle = os.getenv("SOMABRAIN_MEMORY_ENABLE_WEIGHTING")
-            if env_toggle is not None and env_toggle.lower() in ("1", "true", "yes"):
-                weighting_enabled = True
-                priors_env = os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
-                try:
-                    quality_exp = float(
-                        os.getenv("SOMABRAIN_MEMORY_QUALITY_EXP", "1.0")
-                    )
-                except Exception:
-                    quality_exp = 1.0
+            try:
+                from somabrain.config import runtime as _rt
+                weighting_enabled = _rt.get_bool("memory_enable_weighting", False)
+                priors_env = _rt.get_str("memory_phase_priors", "")
+                quality_exp = _rt.get_float("memory_quality_exp", 1.0)
+            except Exception:
+                weighting_enabled = False
         if not weighting_enabled:
             return
         try:
@@ -1520,11 +1517,11 @@ class MemoryClient:
             except Exception:
                 fast_ack = False
         else:
-            fast_ack = os.getenv("SOMABRAIN_MEMORY_FAST_ACK", "0") in (
-                "1",
-                "true",
-                "True",
-            )
+            try:
+                from somabrain.config import runtime as _rt
+                fast_ack = _rt.get_bool("memory_fast_ack", False)
+            except Exception:
+                fast_ack = False
         if fast_ack:
             # record to outbox immediately and schedule a background persist
             try:

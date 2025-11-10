@@ -309,8 +309,12 @@ class AdaptationEngine:
                 )
             except Exception:
                 pass
-        elif os.getenv("SOMABRAIN_LEARNING_RATE_DYNAMIC", "0") == "1":
-            dyn_lr = True
+        else:
+            try:
+                from somabrain import runtime_config as _rt
+                dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
+            except Exception:
+                pass
         self._enable_dynamic_lr = dyn_lr
         self._gains = gains or AdaptationGains.from_settings()
 
@@ -551,10 +555,17 @@ class AdaptationEngine:
 
         # Optional Phase‑1 adaptive knobs (tau decay + entropy cap), gated by env flags.
         try:
-            enable_tau_decay = str(
-                os.getenv("SOMABRAIN_ENABLE_TAU_DECAY", "0")
-            ).strip().lower() in {"1", "true", "yes", "on"}
-            tau_decay_rate = float(os.getenv("SOMABRAIN_TAU_DECAY_RATE", "0") or 0.0)
+            from somabrain import runtime_config as _rt
+            # Env fallback for legacy tests
+            env_enable = os.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
+            env_rate = os.getenv("SOMABRAIN_TAU_DECAY_RATE")
+            enable_tau_decay = (
+                (str(env_enable).strip().lower() in {"1","true","yes","on"})
+                if env_enable is not None else _rt.get_bool("tau_decay_enabled", False)
+            )
+            tau_decay_rate = (
+                float(env_rate) if env_rate is not None else _rt.get_float("tau_decay_rate", 0.0)
+            )
             # Per-tenant override
             # Cache per-tenant overrides to avoid repeated file reads
             if not hasattr(self, "_tenant_override") or self._tenant_id != getattr(self, "_tenant_override_id", None):
@@ -568,12 +579,24 @@ class AdaptationEngine:
             tau_decay_rate = 0.0
         # Annealing schedule supersedes legacy decay if enabled
         try:
-            anneal_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE", "").strip().lower()
-            anneal_rate = float(os.getenv("SOMABRAIN_TAU_ANNEAL_RATE", "0") or 0.0)
-            anneal_step_interval = int(
-                os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL", "10") or 10
+            from somabrain import runtime_config as _rt
+            # Env fallbacks for tests
+            env_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
+            env_rate = os.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
+            env_step = os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
+            env_tau_min = os.getenv("SOMABRAIN_TAU_MIN")
+            anneal_mode = (
+                str(env_mode).strip().lower() if env_mode is not None else _rt.get_str("tau_anneal_mode", "").strip().lower()
             )
-            tau_min = float(os.getenv("SOMABRAIN_TAU_MIN", "0.05") or 0.05)
+            anneal_rate = (
+                float(env_rate) if env_rate is not None else _rt.get_float("tau_anneal_rate", 0.0)
+            )
+            anneal_step_interval = (
+                int(env_step) if env_step is not None else int(_rt.get_float("tau_anneal_step_interval", 10))
+            )
+            tau_min = (
+                float(env_tau_min) if env_tau_min is not None else _rt.get_float("tau_min", 0.05)
+            )
             # Use cached overrides for annealing as well
             ov = getattr(self, "_tenant_override", {})
             if isinstance(ov.get("tau_anneal_mode"), str):
@@ -627,10 +650,16 @@ class AdaptationEngine:
 
         # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
-            enable_entropy_cap = str(
-                os.getenv("SOMABRAIN_ENABLE_ENTROPY_CAP", "0")
-            ).strip().lower() in {"1", "true", "yes", "on"}
-            entropy_cap = float(os.getenv("SOMABRAIN_ENTROPY_CAP", "0") or 0.0)
+            from somabrain import runtime_config as _rt
+            env_enable = os.getenv("SOMABRAIN_ENTROPY_CAP_ENABLED")
+            env_cap = os.getenv("SOMABRAIN_ENTROPY_CAP")
+            enable_entropy_cap = (
+                (str(env_enable).strip().lower() in {"1","true","yes","on"})
+                if env_enable is not None else _rt.get_bool("entropy_cap_enabled", False)
+            )
+            entropy_cap = (
+                float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
+            )
             # Per-tenant override
             ov = _get_tenant_override(self._tenant_id)
             if isinstance(ov.get("entropy_cap"), (int, float)):
@@ -702,7 +731,12 @@ class AdaptationEngine:
             pass
 
         # Persist state only if enabled via env flag
-        if str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+        try:
+            from somabrain import runtime_config as _rt
+            _persist_enabled = _rt.get_bool("learning_state_persistence", False)
+        except Exception:
+            _persist_enabled = False
+        if _persist_enabled:
             if not self._redis:
                 self._redis = _get_redis()
             self._persist_state()
@@ -737,7 +771,7 @@ class AdaptationEngine:
         except Exception:
             pass
         # Ensure state persisted even if metric update fails (duplicate call is safe) when enabled
-        if str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+        if _persist_enabled:
             self._persist_state()
         return True
 

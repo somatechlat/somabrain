@@ -27,6 +27,7 @@ Strict Avro-only for reward_event and config_update; next_event optional.
 
 from __future__ import annotations
 
+import json
 import os
 import threading
 import time
@@ -36,6 +37,7 @@ import yaml
 
 from fastapi import FastAPI
 from somabrain.common.infra import assert_ready
+from somabrain import runtime_config as rc
 
 try:
     from confluent_kafka import Producer as CfProducer  # type: ignore
@@ -76,19 +78,30 @@ def _bootstrap() -> str:
 
 
 def _serde(name: str) -> Optional[AvroSerde]:
-    # Strict: Avro serde required for critical topics
+    # Allow JSON input in non-strict mode for tests/dev when Avro is unavailable.
+    strict = rc.get_bool("learner_strict_avro", True)
     if load_schema is None or AvroSerde is None:
+        if not strict:
+            return None
         raise RuntimeError(f"learner_online: Avro serde unavailable for {name}")
     try:
         return AvroSerde(load_schema(name))  # type: ignore[arg-type]
     except Exception as e:
+        if not strict:
+            return None
         raise RuntimeError(f"learner_online: avro serde load failed for {name}: {e}")
 
 
 def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is None:
-        raise RuntimeError("learner_online: encode requires Avro serde")
-    return serde.serialize(rec)
+    if serde is not None:
+        try:
+            return serde.serialize(rec)
+        except Exception:
+            pass
+    try:
+        return json.dumps(rec).encode("utf-8")
+    except Exception:
+        raise RuntimeError("learner_online: encode failed (no serde and JSON fallback failed)")
 
 
 def _dec(
@@ -148,8 +161,8 @@ class LearnerService:
         except Exception:
             # If the file is missing or malformed, fall back to empty overrides.
             self._tenant_overrides = {}
-        self._ema_alpha = float(os.getenv("LEARNER_EMA_ALPHA", "0.2"))
-        self._emit_period = float(os.getenv("LEARNER_EMIT_PERIOD", "30"))
+        self._ema_alpha = rc.get_float("learner_ema_alpha", 0.2)
+        self._emit_period = rc.get_float("learner_emit_period_s", 30.0)
         self._producer: Optional[Any] = None
         self._producer_mode: str = ""
         self._stop = threading.Event()
@@ -160,7 +173,7 @@ class LearnerService:
         # Track reward component share EMA per tenant for β_i learning
         # Structure: { tenant: { component: EMA_value } }
         self._beta_by_tenant: Dict[str, Dict[str, float]] = {}
-        self._beta_alpha: float = float(os.getenv("LEARNER_BETA_EMA_ALPHA", "0.2"))
+        self._beta_alpha: float = rc.get_float("learner_beta_ema_alpha", 0.2)
         # Metrics
         self._g_explore = (
             metrics.get_gauge("soma_exploration_ratio", "Exploration ratio")
@@ -214,11 +227,11 @@ class LearnerService:
     def _print_effective_config(self) -> None:
         try:
             # Reflect current effective learner + Kafka settings (no secrets)
-            def _f(name: str, default: str) -> float:
+            def _f_rc(key: str, default: float) -> float:
                 try:
-                    return float(os.getenv(name, default))
+                    return rc.get_float(key, default)
                 except Exception:
-                    return float(default)
+                    return default
 
             cfg = {
                 "bootstrap": self._bootstrap,
@@ -231,18 +244,18 @@ class LearnerService:
                 },
                 "ema_alpha": self._ema_alpha,
                 "emit_period_s": self._emit_period,
-                "tau_min": _f("LEARNER_TAU_MIN", "0.1"),
-                "tau_max": _f("LEARNER_TAU_MAX", "1.0"),
-                "default_lr": _f("LEARNER_DEFAULT_LR", "0.05"),
-                "keepalive_tau": _f("LEARNER_KEEPALIVE_TAU", "0.7"),
+                "tau_min": _f_rc("learner_tau_min", 0.1),
+                "tau_max": _f_rc("learner_tau_max", 1.0),
+                "default_lr": _f_rc("learner_default_lr", 0.05),
+                "keepalive_tau": _f_rc("learner_keepalive_tau", 0.7),
                 "serde": {
                     "reward": "avro" if self._serde_reward else "json",
                     "config": "avro" if self._serde_cfg else "json",
                 },
                 "flags": {
-                    "FF_LEARNER_ONLINE": os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0"),
-                    "FF_NEXT_EVENT": os.getenv("SOMABRAIN_FF_NEXT_EVENT", "0"),
-                    "FF_CONFIG_UPDATES": os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "0"),
+                    "FF_LEARNER_ONLINE": "1",  # feature gating handled by somabrain.modes
+                    "FF_NEXT_EVENT": str(int(rc.get_bool("feature_next_event", True))),
+                    "FF_CONFIG_UPDATES": str(int(rc.get_bool("feature_config_updates", True))),
                 },
             }
             try:
@@ -512,7 +525,10 @@ class LearnerService:
         )
         if self._g_next_regret is not None:
             try:
-                self._g_next_regret.labels(tenant=tenant, domain=domain).set(regret)
+                if hasattr(self._g_next_regret, "labels"):
+                    self._g_next_regret.labels(tenant=tenant, domain=domain).set(regret)
+                elif hasattr(self._g_next_regret, "set"):
+                    self._g_next_regret.set(regret)
             except Exception:
                 pass
         # Record regret KPI histogram + EWMA
@@ -540,11 +556,9 @@ class LearnerService:
             ev = _dec(payload, self._serde_next)
             if isinstance(ev, dict):
                 self._observe_next_event(ev)
-        elif topic == TOPIC_NEXT:
-            ev = _dec(payload, self._serde_next)
-            if isinstance(ev, dict):
-                # For now we only log the next‑event; future logic can use it for regret estimation
-                print(f"learner_online: received next_event {ev}")
+        else:
+            # Unknown topic: ignore
+            return
 
     def run(self) -> None:
         if CfConsumer is None:
@@ -553,19 +567,9 @@ class LearnerService:
         self._ensure_topic()
         self._print_effective_config()
         topics = [TOPIC_REWARD]
-        if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
+        if rc.get_bool("feature_config_updates", True):
             topics.append(TOPIC_GF)
-        if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
+        if rc.get_bool("feature_next_event", True):
             topics.append(TOPIC_NEXT)
         # Use confluent_kafka.Consumer
         conf = {
@@ -584,7 +588,7 @@ class LearnerService:
                     if now - last_emit >= self._emit_period:
                         last_emit = now
                         try:
-                            ktau = float(os.getenv("LEARNER_KEEPALIVE_TAU", "0.7"))
+                            ktau = rc.get_float("learner_keepalive_tau", 0.7)
                         except Exception:
                             ktau = 0.7
                         self._emit_cfg(

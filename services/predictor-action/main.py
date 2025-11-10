@@ -112,7 +112,11 @@ def run_forever() -> None:  # pragma: no cover
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
-    composite = os.getenv("ENABLE_COG_THREADS", "1").strip().lower() in ("1","true","yes","on")
+    try:
+        from somabrain import runtime_config as _rt
+        composite = _rt.get_bool("cog_composite", True)
+    except Exception:
+        composite = True
     if not (composite or feature_enabled("learner")):
         print("predictor-action: disabled by mode; exiting.")
         return
@@ -123,15 +127,11 @@ def run_forever() -> None:  # pragma: no cover
     serde = _serde()
     next_serde = _next_serde()
     soma_serde = _soma_serde()
+    from somabrain import runtime_config as _rt
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
-    model_ver = os.getenv("ACTION_MODEL_VER", "v1")
-    period = float(os.getenv("ACTION_UPDATE_PERIOD", "0.9"))
-    soma_compat = os.getenv("SOMA_COMPAT", "0").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
+    model_ver = _rt.get_str("action_model_ver", "v1")
+    period = _rt.get_float("action_update_period", 0.9)
+    soma_compat = _rt.get_bool("soma_compat", False)
     actions = ["search", "quote", "checkout", "cancel"]
     # Diffusion-backed predictor setup (supports production graph via env)
     from somabrain.predictors.base import build_predictor_from_env

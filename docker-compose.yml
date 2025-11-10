@@ -321,19 +321,13 @@ services:
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
-      SOMABRAIN_MEMORY_ENABLE_WEIGHTING: "${SOMABRAIN_MEMORY_ENABLE_WEIGHTING:-0}"
-      SOMABRAIN_MEMORY_PHASE_PRIORS: "${SOMABRAIN_MEMORY_PHASE_PRIORS:-}"
-      SOMABRAIN_MEMORY_QUALITY_EXP: "${SOMABRAIN_MEMORY_QUALITY_EXP:-1.0}"
+      # Memory weighting is controlled by runtime config overrides (local only)
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
       # Mode: default to full-local for local compose
       SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
-      # Phase‑1 adaptive knobs (dev-only defaults)
-      SOMABRAIN_ENABLE_TAU_DECAY: "${SOMABRAIN_ENABLE_TAU_DECAY:-1}"
-      SOMABRAIN_TAU_DECAY_RATE: "${SOMABRAIN_TAU_DECAY_RATE:-0.02}"
-      SOMABRAIN_ENABLE_ENTROPY_CAP: "${SOMABRAIN_ENABLE_ENTROPY_CAP:-1}"
-      SOMABRAIN_ENTROPY_CAP: "${SOMABRAIN_ENTROPY_CAP:-1.2}"
+      # Adaptive knobs are controlled by runtime config overrides (local only)
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
     ports:
       - "${SOMABRAIN_HOST_PORT}:${SOMABRAIN_PORT}"
@@ -378,8 +372,7 @@ services:
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
       SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
       SOMA_HEAT_METHOD: "lanczos"
-      SOMABRAIN_ENABLE_TEACH_FEEDBACK: "1"
-      ENABLE_COG_THREADS: "${ENABLE_COG_THREADS:-1}"
+      # Centralized feature gating; composite toggles are handled via runtime config
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
@@ -390,10 +383,7 @@ services:
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Keep cognition in sync for observability (no functional dependency)
-      SOMABRAIN_ENABLE_TAU_DECAY: "${SOMABRAIN_ENABLE_TAU_DECAY:-1}"
-      SOMABRAIN_TAU_DECAY_RATE: "${SOMABRAIN_TAU_DECAY_RATE:-0.02}"
-      SOMABRAIN_ENABLE_ENTROPY_CAP: "${SOMABRAIN_ENABLE_ENTROPY_CAP:-1}"
-      SOMABRAIN_ENTROPY_CAP: "${SOMABRAIN_ENTROPY_CAP:-1.2}"
+      # Adaptive knobs are controlled by runtime config overrides (local only)
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
       # Program-specific ports (supervisor will pass to processes)
       REWARD_PRODUCER_PORT: "${REWARD_PRODUCER_PORT:-8083}"

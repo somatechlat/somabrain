@@ -48,7 +48,7 @@ def _resolve_mode() -> str:
     raw = (os.getenv("SOMABRAIN_MODE") or "").strip().lower()
     if not raw:
         return "full-local" if os.getenv("HOME") else "prod"
-    if raw in {"full", "local", "full_local"}:
+    if raw in {"full", "local", "full_local", "full-local", "dev"}:
         return "full-local"
     if raw in {"production", "prod", "enterprise"}:
         return "prod"
@@ -78,7 +78,7 @@ def _load_overrides() -> List[str]:
 
 def get_mode_config() -> ModeConfig:
     name = _resolve_mode()
-    # full-local: all feature surfaces on
+    # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
     if name == "full-local":
         return ModeConfig(
             name=name,
