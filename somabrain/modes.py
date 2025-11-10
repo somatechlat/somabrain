@@ -1,8 +1,8 @@
 """Unified runtime mode configuration for SomaBrain.
 
 This module produces a single source of truth mapping `SOMABRAIN_MODE` to a
-feature matrix consumed by services. All legacy ENABLE_* and feature flag envs
-have been removed; mode_config is authoritative.
+feature matrix consumed by services. It replaces scattered ENABLE_* and
+SOMABRAIN_FF_* environment flags.
 
 Modes:
   full-local : production parity on a single machine
@@ -125,8 +125,40 @@ def mode_config() -> ModeConfig:
     return get_mode_config()
 
 
-__all__ = [
-    "ModeConfig",
-    "mode_config",
-    "get_mode_config",
-]
+def _legacy_override(env: str, base: bool) -> bool:
+    val = os.getenv(env)
+    if val is None:
+        return base
+    v = val.strip().lower()
+    if v in {"1", "true", "yes", "on"}:
+        return True
+    if v in {"0", "false", "no", "off"}:
+        return False
+    return base
+
+
+def feature_enabled(key: str) -> bool:
+    """Unified feature resolution with legacy env var override.
+
+    key examples: integrator, reward_ingest, learner, drift, auto_rollback,
+    segmentation, hmm_segmentation, teach_feedback, metrics, health_http,
+    fusion_normalization, calibration, consistency_checks
+    """
+    cfg = mode_config()
+    mapping = {
+        "integrator": (cfg.enable_integrator, "SOMABRAIN_FF_COG_INTEGRATOR"),
+        "reward_ingest": (cfg.enable_reward_ingest, "SOMABRAIN_FF_REWARD_INGEST"),
+        "learner": (cfg.enable_learner, "SOMABRAIN_FF_LEARNER_ONLINE"),
+        "drift": (cfg.enable_drift, "ENABLE_DRIFT_DETECTION"),
+        "auto_rollback": (cfg.enable_auto_rollback, "ENABLE_AUTO_ROLLBACK"),
+        "segmentation": (cfg.enable_segmentation, "SOMABRAIN_FF_COG_SEGMENTATION"),
+        "hmm_segmentation": (cfg.enable_hmm_segmentation, "ENABLE_HMM_SEGMENTATION"),
+        "teach_feedback": (cfg.enable_teach_feedback, "SOMABRAIN_ENABLE_TEACH_FEEDBACK"),
+        "metrics": (cfg.enable_metrics, "ENABLE_METRICS"),
+        "health_http": (cfg.enable_health_http, "ENABLE_HEALTH_HTTP"),
+        "fusion_normalization": (cfg.fusion_normalization, "ENABLE_FUSION_NORMALIZATION"),
+        "calibration": (cfg.calibration_enabled, "ENABLE_CALIBRATION"),
+        "consistency_checks": (cfg.consistency_checks, "ENABLE_CONSISTENCY_CHECKS"),
+    }
+    base, env = mapping.get(key, (True, None))
+    return _legacy_override(env, base) if env else base

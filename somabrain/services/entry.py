@@ -2,11 +2,18 @@
 Runtime Orchestrator for SomaBrain cognitive services.
 
 Starts core services (integrator, segmentation, drift monitor, calibration,
-learner, orchestrator, wm updates cache) in background threads within a single
-process. Enablement is governed solely by the unified SOMABRAIN_MODE matrix.
+and learner) in background threads within a single process. Each service
+respects its own feature flags, and a composite flag `ENABLE_COG_THREADS=1`
+will enable defaults suitable for full-capacity local runs.
 
-Environment:
-- SOMABRAIN_MODE: prod | full-local | ci (drives all service enablement)
+Environment flags of interest:
+- ENABLE_COG_THREADS: enable composite mode ("1"/true)
+- SOMABRAIN_FF_COG_INTEGRATOR: enable integrator hub
+- SOMABRAIN_FF_COG_SEGMENTATION: enable segmentation service
+- ENABLE_DRIFT_DETECTION: enable drift monitoring loop
+- ENABLE_AUTO_ROLLBACK: enable rollback in drift detector
+- ENABLE_CALIBRATION: enable calibration service
+- SOMABRAIN_FF_LEARNER_ONLINE: enable learner online service
 
 Usage:
     python -m somabrain.services.entry
@@ -19,8 +26,6 @@ import signal
 import threading
 import time
 from typing import Callable, Optional
-
-from somabrain.modes import mode_config
 
 
 def _flag_on(name: str, default: str = "0") -> bool:
@@ -90,35 +95,35 @@ def _run_learner() -> None:
 
 
 def main() -> None:  # pragma: no cover
-    cfg = mode_config()
+    composite = _flag_on("ENABLE_COG_THREADS", "1")
     threads: list[threading.Thread] = []
 
     # Integrator Hub
-    if cfg.enable_integrator:
+    if composite or _flag_on("SOMABRAIN_FF_COG_INTEGRATOR"):
         threads.append(_start_thread(_run_integrator, "integrator_hub"))
     else:
         print("orchestrator: integrator disabled")
 
     # Segmentation Service
-    if cfg.enable_segmentation:
+    if composite or _flag_on("SOMABRAIN_FF_COG_SEGMENTATION"):
         threads.append(_start_thread(_run_segmentation, "segmentation_service"))
     else:
         print("orchestrator: segmentation disabled")
 
     # Drift Monitoring
-    if cfg.enable_drift:
+    if composite or _flag_on("ENABLE_DRIFT_DETECTION"):
         threads.append(_start_thread(_run_drift_monitor, "drift_monitor"))
     else:
         print("orchestrator: drift monitoring disabled")
 
     # Calibration Service
-    if cfg.calibration_enabled:
+    if composite or _flag_on("ENABLE_CALIBRATION"):
         threads.append(_start_thread(_run_calibration, "calibration_service"))
     else:
         print("orchestrator: calibration disabled")
 
     # Learner Online
-    if cfg.enable_learner:
+    if composite or _flag_on("SOMABRAIN_FF_LEARNER_ONLINE"):
         threads.append(_start_thread(_run_learner, "learner_online"))
     else:
         print("orchestrator: learner disabled")

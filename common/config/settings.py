@@ -147,7 +147,8 @@ class Settings(BaseSettings):
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_FF_MEMORY_WEIGHTING", False)
+        or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
     )
     memory_phase_priors: str = Field(
         default=os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")

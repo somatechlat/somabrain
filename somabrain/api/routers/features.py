@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
 
-from somabrain.modes import mode_config
+from config.feature_flags import FeatureFlags
 
 
 router = APIRouter(prefix="/features", tags=["features"])
@@ -14,8 +14,7 @@ router = APIRouter(prefix="/features", tags=["features"])
 
 @router.get("")
 async def features_status() -> Dict:
-    cfg = mode_config()
-    status = cfg.as_dict()
+    status = FeatureFlags.get_status()
     path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
     overrides: Dict = {}
     try:
@@ -23,7 +22,7 @@ async def features_status() -> Dict:
             overrides = json.load(f)
     except Exception:
         overrides = {}
-    return {"mode": cfg.name, "matrix": status, "overrides": overrides}
+    return {"status": status, "overrides": overrides}
 
 
 def _write_overrides(disabled: List[str]) -> None:
@@ -44,7 +43,11 @@ async def features_disable(body: Dict[str, List[str]]):
     names = body.get("names") or []
     if not isinstance(names, list):
         raise HTTPException(status_code=400, detail="names must be a list")
-    # Record conceptual disables only; no env mutation
+    for n in names:
+        try:
+            os.environ[str(n)] = "0"
+        except Exception:
+            pass
     _write_overrides(names)
     return {"ok": True, "disabled": names}
 
@@ -54,6 +57,10 @@ async def features_enable(body: Dict[str, List[str]]):
     names = body.get("names") or []
     if not isinstance(names, list):
         raise HTTPException(status_code=400, detail="names must be a list")
-    # Clearing overrides restores mode-derived defaults
+    for n in names:
+        try:
+            os.environ[str(n)] = "1"
+        except Exception:
+            pass
     _write_overrides([])
     return {"ok": True, "enabled": names}

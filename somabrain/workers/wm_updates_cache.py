@@ -9,7 +9,7 @@ Keys: wm:updates:{tenant}:{domain}
  - Store last N (configurable) items
  - Set TTL per key (default 8s)
 
-Enablement: governed by SOMABRAIN_MODE via mode_config (ties to integrator enablement)
+Feature flag: SOMABRAIN_FF_WM_UPDATES_CACHE=1
 """
 
 from __future__ import annotations
@@ -72,12 +72,13 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop
-    try:
-        from somabrain.modes import mode_config
-        if not mode_config().enable_integrator:
-            print("wm_updates_cache: disabled via mode; exiting.")
-            return
-    except Exception:
+    if os.getenv("SOMABRAIN_FF_WM_UPDATES_CACHE", "0").strip().lower() not in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    ):
+        print("wm_updates_cache: feature flag disabled; exiting.")
         return
     # Fail-fast infra readiness (Kafka + Redis required)
     assert_ready(require_kafka=True, require_redis=True, require_postgres=False, require_opa=False)

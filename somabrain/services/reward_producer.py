@@ -104,8 +104,10 @@ _REWARD_VALUE = (
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
-    from somabrain.modes import mode_config
-    if not mode_config().enable_reward_ingest:
+    # Feature flag gating (default off unless explicitly enabled or composite threads flag)
+    from somabrain.modes import feature_enabled
+    if not feature_enabled("reward_ingest"):
+        # Leave _ready False; health will show disabled
         return
     global _producer, _producer_kind, _serde_inst, _ready
     # Fail-fast: require Kafka before enabling
@@ -121,9 +123,9 @@ async def startup() -> None:  # pragma: no cover
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    from somabrain.modes import mode_config
+    from somabrain.modes import feature_enabled, mode_config
     cfg = mode_config()
-    return {"ok": bool(_ready), "enabled": str(int(cfg.enable_reward_ingest)), "mode": cfg.name}
+    return {"ok": bool(_ready), "enabled": str(int(feature_enabled("reward_ingest"))), "mode": cfg.name}
 
 
 @app.get("/metrics")

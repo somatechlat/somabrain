@@ -16,8 +16,8 @@ Design:
 
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
+- SOMABRAIN_FF_COG_ORCHESTRATOR: enable service (1/true)
 - SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
- - SOMABRAIN_MODE: governs enablement via mode_config
 
 """
 
@@ -257,13 +257,12 @@ class OrchestratorService:
 
 
 def main() -> None:  # pragma: no cover - entrypoint
-    from somabrain.modes import mode_config
-    cfg = mode_config()
-    if not cfg.enable_integrator:
+    ff = os.getenv("SOMABRAIN_FF_COG_ORCHESTRATOR", "0").strip().lower()
+    if ff not in ("1", "true", "yes", "on"):
         import logging
         from somabrain.metrics import get_counter
 
-        logging.info("orchestrator_service: disabled via mode; exiting")
+        logging.info("orchestrator_service: feature flag disabled; exiting")
         try:
             _MX_ORCH_DISABLED = get_counter(
                 "somabrain_orchestrator_disabled_total",

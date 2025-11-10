@@ -18,7 +18,7 @@ Design choices:
 
 Environment variables:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
-- SOMABRAIN_MODE: governs enablement via mode_config
+- SOMABRAIN_FF_COG_SEGMENTATION: enable/disable service (default off)
 - SOMABRAIN_SEGMENT_MODE: 'leader' (default) or 'cpd'
 - SOMABRAIN_SEGMENT_MAX_DWELL_MS: optional max dwell; emits boundary even if
     leader hasn't changed (default 0 meaning disabled)
@@ -731,8 +731,8 @@ class SegmentationService:
 
 
 def main() -> None:  # pragma: no cover - service entrypoint
-    from somabrain.modes import mode_config
-    if not mode_config().enable_segmentation:
+    from somabrain.modes import feature_enabled, mode_config
+    if not feature_enabled("segmentation"):
         import logging
         from somabrain.metrics import get_counter
 

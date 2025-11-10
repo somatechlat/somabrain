@@ -5,8 +5,9 @@ import importlib
 
 
 def test_rationale_includes_fusion_note(monkeypatch):
-    monkeypatch.setenv("SOMABRAIN_MODE", "full-local")
-    # Fresh import to pick up mode-based defaults
+    # Enable normalization behavior
+    monkeypatch.setenv("ENABLE_FUSION_NORMALIZATION", "1")
+    # Fresh import to pick up env flag at init
     mod = importlib.import_module("somabrain.services.integrator_hub")
     ih = mod.IntegratorHub()
 

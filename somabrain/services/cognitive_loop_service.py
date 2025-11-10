@@ -6,16 +6,28 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 
-# Optional: publish BeliefUpdate events (enabled if publisher is available)
-_BU_PUBLISHER = None
+# Optional: publish BeliefUpdate events when feature flag enabled
+_FF_COG_UPDATES = False
 try:
-    from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
-
-    _BU_PUBLISHER = BeliefUpdatePublisher()
-    if not getattr(_BU_PUBLISHER, "enabled", False):
-        _BU_PUBLISHER = None
+    _FF_COG_UPDATES = os.getenv("SOMABRAIN_FF_COG_UPDATES", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 except Exception:
-    _BU_PUBLISHER = None
+    _FF_COG_UPDATES = False
+
+_BU_PUBLISHER = None
+if _FF_COG_UPDATES:
+    try:
+        from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+
+        _BU_PUBLISHER = BeliefUpdatePublisher()
+        if not getattr(_BU_PUBLISHER, "enabled", False):
+            _BU_PUBLISHER = None
+    except Exception:
+        _BU_PUBLISHER = None
 
 
 def eval_step(

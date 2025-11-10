@@ -14,7 +14,7 @@ Environment:
 - LEARNER_EMA_ALPHA (default 0.2)
 - LEARNER_EMIT_PERIOD (seconds, default 30)
 - SOMABRAIN_DEFAULT_TENANT (fallback tenant label)
-- SOMABRAIN_MODE (mode_config governs enablement)
+- SOMABRAIN_FF_LEARNER_ONLINE (enable flag) or ENABLE_COG_THREADS composite flag
 
 Topics:
 - Input:  cog.reward.events
@@ -240,9 +240,9 @@ class LearnerService:
                     "config": "avro" if self._serde_cfg else "json",
                 },
                 "flags": {
-                        "FF_LEARNER_ONLINE": str(int(mode_config().enable_learner)),
-                        "FF_NEXT_EVENT": "1",  # always on under unified mode
-                        "FF_CONFIG_UPDATES": "1",  # always on under unified mode
+                    "FF_LEARNER_ONLINE": os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0"),
+                    "FF_NEXT_EVENT": os.getenv("SOMABRAIN_FF_NEXT_EVENT", "0"),
+                    "FF_CONFIG_UPDATES": os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "0"),
                 },
             }
             try:
@@ -298,8 +298,13 @@ class LearnerService:
                         print(f"learner_online: create topic failed {e}")
             else:
                 print(f"learner_online: topic {TOPIC_CFG} already exists")
-            # Ensure next‑event topic exists (always on under unified mode)
-            if True:
+            # Ensure next‑event topic exists (optional, only if flag enabled)
+            if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
+                "1",
+                "true",
+                "yes",
+                "on",
+            }:
                 if TOPIC_NEXT not in existing:
                     print(f"learner_online: creating missing topic {TOPIC_NEXT}")
                     newt = CfNewTopic(
@@ -548,9 +553,19 @@ class LearnerService:
         self._ensure_topic()
         self._print_effective_config()
         topics = [TOPIC_REWARD]
-            if True:  # always on under unified mode
+        if os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
             topics.append(TOPIC_GF)
-            if True:  # always on under unified mode
+        if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
             topics.append(TOPIC_NEXT)
         # Use confluent_kafka.Consumer
         conf = {
@@ -620,8 +635,8 @@ _thread: Optional[threading.Thread] = None
 async def startup() -> None:  # pragma: no cover
     global _thread
     global _svc
-    from somabrain.modes import mode_config
-    if not mode_config().enable_learner:
+    from somabrain.modes import feature_enabled
+    if not feature_enabled("learner"):
         return
     # Require Kafka before starting learner thread
     assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
@@ -633,9 +648,9 @@ async def startup() -> None:  # pragma: no cover
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    from somabrain.modes import mode_config
+    from somabrain.modes import feature_enabled, mode_config
     cfg = mode_config()
-    return {"ok": True, "enabled": str(int(cfg.enable_learner)), "mode": cfg.name}
+    return {"ok": True, "enabled": str(int(feature_enabled("learner"))), "mode": cfg.name}
 
 
 @app.get("/metrics")

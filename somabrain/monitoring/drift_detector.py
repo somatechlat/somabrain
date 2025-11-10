@@ -72,10 +72,9 @@ class DriftDetector:
         self.states: Dict[str, DriftState] = {}
         # Persistence path (warm restart of baselines + last_drift)
         self._store_path = os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
-        from somabrain.modes import mode_config
-        _mc = mode_config()
-        self.enabled = _mc.enable_drift
-        self.rollback_enabled = _mc.enable_auto_rollback
+        from somabrain.modes import feature_enabled
+        self.enabled = feature_enabled("drift")
+        self.rollback_enabled = feature_enabled("auto_rollback")
         # Producer for drift events (strict: fail-fast if enabled)
         if self.enabled:
             try:
@@ -364,10 +363,11 @@ class DriftDetector:
         # Best-effort: disable advanced features to stabilize system
         try:
             # Disable features only if mode permits rollback
-            from somabrain.modes import mode_config
-            if mode_config().enable_auto_rollback:
-                # Record conceptual disabled features for operators (no env mutation)
-                disabled = ["fusion_normalization", "consistency_checks", "calibration"]
+            from somabrain.modes import feature_enabled
+            if feature_enabled("auto_rollback"):
+                os.environ["ENABLE_FUSION_NORMALIZATION"] = "0"
+                os.environ["ENABLE_CONSISTENCY_CHECKS"] = "0"
+                os.environ["ENABLE_CALIBRATION"] = "0"
             # Persist overrides for operators/other services to detect
             overrides_path = os.getenv(
                 "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
@@ -383,7 +383,11 @@ class DriftDetector:
                         "tenant": tenant,
                         "domain": domain,
                         "trigger": trigger,
-                        "disabled": disabled if 'disabled' in locals() else [],
+                        "disabled": [
+                            "ENABLE_FUSION_NORMALIZATION",
+                            "ENABLE_CONSISTENCY_CHECKS",
+                            "ENABLE_CALIBRATION",
+                        ],
                     }
                     if yaml is not None:
                         f.write(yaml.safe_dump(blob, sort_keys=True))

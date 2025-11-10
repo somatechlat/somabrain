@@ -9,7 +9,7 @@ Environment:
 - SOMABRAIN_REDIS_URL: Redis URL (redis://host:port/db)
 - SOMABRAIN_OPA_URL: Optional OPA base URL for gating (POST /v1/data/<policy>)
 - SOMABRAIN_OPA_POLICY: Optional policy path (e.g., soma.policy.integrator)
-- SOMABRAIN_MODE: Governs enablement via mode_config
+- SOMABRAIN_FF_COG_INTEGRATOR: Feature flag (1/true to enable main())
 
 Topics:
 - Input:  cog.state.updates, cog.agent.updates, cog.action.updates
@@ -416,12 +416,24 @@ class IntegratorHub:
             "SOMABRAIN_INTEGRATOR_ENFORCE_CONF", "1"
         ).strip().lower() in ("1", "true", "yes", "on")
         
-        from somabrain.modes import mode_config
-        _mc = mode_config()
-        # Fusion normalization with adaptive alpha (mode derived)
-        self._norm_enabled = bool(_mc.fusion_normalization)
-        # Drift detection flag (mode derived)
-        self._drift_enabled = bool(_mc.enable_drift)
+        # Fusion normalization with adaptive alpha
+        self._norm_enabled = os.getenv(
+            "ENABLE_FUSION_NORMALIZATION", "0"
+        ).strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+        # Drift detection flag
+        self._drift_enabled = os.getenv(
+            "ENABLE_DRIFT_DETECTION", "0"
+        ).strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
         
         # Adaptive alpha for fusion normalization
         try:

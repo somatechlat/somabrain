@@ -345,8 +345,8 @@ _thread: Optional[threading.Thread] = None
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
-    from somabrain.modes import mode_config
-    if mode_config().enable_teach_feedback:
+    from somabrain.modes import feature_enabled
+    if feature_enabled("teach_feedback"):
         # Require Kafka readiness before starting worker thread
         assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
         _thread = threading.Thread(target=_svc.run, daemon=True)
@@ -355,8 +355,8 @@ async def startup() -> None:  # pragma: no cover
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    from somabrain.modes import mode_config
-    return {"ok": True, "enabled": str(int(mode_config().enable_teach_feedback)), "mode": mode_config().name}
+    from somabrain.modes import mode_config, feature_enabled
+    return {"ok": True, "enabled": str(int(feature_enabled("teach_feedback"))), "mode": mode_config().name}
 
 
 @app.get("/metrics")
