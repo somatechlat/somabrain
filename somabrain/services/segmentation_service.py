@@ -60,10 +60,14 @@ BOUNDARY_EMITTED = None
 BOUNDARY_LATENCY = None
 P_TRANSITION = None
 P_VOLATILE = None
+BOUNDARIES_PER_HOUR = None
+DUPLICATE_RATIO = None
+HMM_STATE_VOLATILE = None
+MAX_DWELL_EXCEEDED = None
 
 
 def _init_metrics() -> None:
-    global BOUNDARY_EMITTED, BOUNDARY_LATENCY, P_TRANSITION, P_VOLATILE
+    global BOUNDARY_EMITTED, BOUNDARY_LATENCY, P_TRANSITION, P_VOLATILE, BOUNDARIES_PER_HOUR, DUPLICATE_RATIO, HMM_STATE_VOLATILE, MAX_DWELL_EXCEEDED
     if BOUNDARY_EMITTED is None:
         try:
             BOUNDARY_EMITTED = metrics.get_counter(
@@ -99,6 +103,42 @@ def _init_metrics() -> None:
             )
         except Exception:
             P_VOLATILE = None
+    if BOUNDARIES_PER_HOUR is None:
+        try:
+            BOUNDARIES_PER_HOUR = metrics.get_gauge(
+                "somabrain_segmentation_boundaries_per_hour",
+                "Segmentation boundaries emitted per hour by tenant:domain",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            BOUNDARIES_PER_HOUR = None
+    if DUPLICATE_RATIO is None:
+        try:
+            DUPLICATE_RATIO = metrics.get_gauge(
+                "somabrain_segmentation_duplicate_ratio",
+                "Ratio of duplicate boundaries to total boundaries by tenant:domain",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            DUPLICATE_RATIO = None
+    if HMM_STATE_VOLATILE is None:
+        try:
+            HMM_STATE_VOLATILE = metrics.get_gauge(
+                "somabrain_segmentation_hmm_state_volatile",
+                "Current HMM state probability for VOLATILE (1=fully volatile, 0=fully stable)",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            HMM_STATE_VOLATILE = None
+    if MAX_DWELL_EXCEEDED is None:
+        try:
+            MAX_DWELL_EXCEEDED = metrics.get_counter(
+                "somabrain_segmentation_max_dwell_exceeded_total",
+                "Count of boundaries forced by max dwell threshold",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            MAX_DWELL_EXCEEDED = None
 
 
 @dataclass
@@ -513,11 +553,6 @@ class SegmentationService:
         init_tracing()
         self._tracer = get_tracer("somabrain.segmentation_service")
         
-        # Feature flags for roadmap
-        hmm_enabled = os.getenv("ENABLE_HMM_SEGMENTATION", "0").lower() in {
-            "1", "true", "yes", "on"
-        }
-        
         # Start health server for k8s probes
         try:
             if os.getenv("HEALTH_PORT"):
@@ -533,14 +568,14 @@ class SegmentationService:
             
         max_dwell_ms = int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0")
         
-        # Select segmentation mode based on feature flags
-        if hmm_enabled:
-            self._mode = "hmm"
-            print("HMM segmentation enabled via feature flag")
-        else:
-            self._mode = (
-                (os.getenv("SOMABRAIN_SEGMENT_MODE", "leader") or "leader").strip().lower()
-            )
+        # HMM segmentation enabled; add acceptance metrics instrumentation
+        # Mode can be extended later (leader/cpd/hazard) but we track quality KPIs now
+        self._mode = "hmm"
+        self._boundary_total: Dict[tuple, int] = {}
+        self._duplicate_total: Dict[tuple, int] = {}
+        self._last_boundary_ts: Dict[tuple, int] = {}
+        self._volatile_count: Dict[tuple, int] = {}
+        self._stable_count: Dict[tuple, int] = {}
             
         self._segmenter = Segmenter(max_dwell_ms=max_dwell_ms)
         
@@ -688,6 +723,52 @@ class SegmentationService:
                         domain, boundary_ts, dwell_ms, evidence = out
                         tenant = frame.tenant
 
+                # Quality metrics (acceptance KPIs)
+                key = (tenant, domain)
+                self._boundary_total[key] = self._boundary_total.get(key, 0) + 1
+                # Duplicate ratio: boundary emitted with same domain and evidence leader_change but zero dwell
+                is_duplicate = evidence == "leader_change" and int(dwell_ms) < 5
+                if is_duplicate:
+                    self._duplicate_total[key] = self._duplicate_total.get(key, 0) + 1
+                if DUPLICATE_RATIO is not None:
+                    try:
+                        dup = float(self._duplicate_total.get(key, 0))
+                        tot = float(self._boundary_total.get(key, 0))
+                        if tot > 0:
+                            DUPLICATE_RATIO.labels(tenant=tenant, domain=domain).set(max(0.0, min(1.0, dup / tot)))
+                    except Exception:
+                        pass
+                # Boundaries per hour (simple rate approximation)
+                try:
+                    now_ms = _now_ms()
+                    last_ts = self._last_boundary_ts.get(key)
+                    self._last_boundary_ts[key] = now_ms
+                    if last_ts is not None and BOUNDARIES_PER_HOUR is not None:
+                        gap_h = max(1e-3, (now_ms - last_ts) / 3600000.0)
+                        rate = 1.0 / gap_h
+                        BOUNDARIES_PER_HOUR.labels(tenant=tenant, domain=domain).set(rate)
+                except Exception:
+                    pass
+                # HMM volatility ratio (if hazard evidence)
+                if evidence == "hmm":
+                    try:
+                        self._volatile_count[key] = self._volatile_count.get(key, 0) + 1
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        self._stable_count[key] = self._stable_count.get(key, 0) + 1
+                    except Exception:
+                        pass
+                if HMM_STATE_VOLATILE is not None:
+                    try:
+                        vol = float(self._volatile_count.get(key, 0))
+                        st = float(self._stable_count.get(key, 0))
+                        total_states = vol + st
+                        if total_states > 0:
+                            HMM_STATE_VOLATILE.labels(tenant=tenant, domain=domain).set(vol / total_states)
+                    except Exception:
+                        pass
                 record = {
                     "tenant": tenant,
                     "domain": domain,
@@ -748,7 +829,7 @@ def main() -> None:  # pragma: no cover - service entrypoint
         except Exception:
             pass
         return
-    # Require Kafka before starting segmentation loop
+    # Infra readiness required in strict mode
     assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
     svc = SegmentationService()
     svc.run_forever()

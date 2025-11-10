@@ -9,7 +9,7 @@ Environment:
 - SOMABRAIN_REDIS_URL: Redis URL (redis://host:port/db)
 - SOMABRAIN_OPA_URL: Optional OPA base URL for gating (POST /v1/data/<policy>)
 - SOMABRAIN_OPA_POLICY: Optional policy path (e.g., soma.policy.integrator)
-- SOMABRAIN_FF_COG_INTEGRATOR: Feature flag (1/true to enable main())
+Feature gating is centralized (modes.feature_enabled("integrator")).
 
 Topics:
 - Input:  cog.state.updates, cog.agent.updates, cog.action.updates
@@ -131,6 +131,23 @@ INTEGRATOR_ENTROPY = app_metrics.get_histogram(
         0.9,
         1.0,
     ),
+)
+
+# Fusion normalization metrics
+INTEGRATOR_FUSION_WEIGHT_NORM_ERROR = app_metrics.get_gauge(
+    "somabrain_fusion_weight_norm_error",
+    "Normalized error per domain for fusion weighting",
+    labelnames=["tenant", "domain"],
+)
+INTEGRATOR_FUSION_ALPHA_ADAPTIVE = app_metrics.get_gauge(
+    "somabrain_fusion_alpha_adaptive",
+    "Current adaptive alpha parameter for fusion normalization",
+    labelnames=["tenant"],
+)
+INTEGRATOR_FUSION_SOFTMAX_WEIGHT = app_metrics.get_gauge(
+    "somabrain_fusion_softmax_weight",
+    "Final softmax weight assigned to each domain",
+    labelnames=["tenant", "domain"],
 )
 INTEGRATOR_ENTROPY_CAP_EVENTS = app_metrics.get_counter(
     "somabrain_integrator_entropy_cap_events_total",
@@ -366,7 +383,7 @@ class IntegratorHub:
                 self._avro_ic = None
                 self._avro_cfg = None
         except Exception:
-            # Avro path unavailable; JSON fallback will be used
+            # Avro path unavailable; strict mode requires Avro and decoders will raise
             self._bu_schema = None
             self._gf_schema = None
             self._ic_schema = None
@@ -418,12 +435,8 @@ class IntegratorHub:
         except Exception:
             self._enforce_conf = True
         
-        # Fusion normalization with adaptive alpha
-        try:
-            from somabrain import runtime_config as _rt
-            self._norm_enabled = bool(_rt.get_bool("fusion_normalization_enabled", False))
-        except Exception:
-            self._norm_enabled = False
+        # Fusion normalization with adaptive alpha - unconditionally enabled
+        self._norm_enabled = True
         # Drift detection flag
         try:
             from somabrain import runtime_config as _rt
@@ -502,6 +515,8 @@ class IntegratorHub:
                                 self._tenant_entropy_cap[str(tname)] = float(cap)
         except Exception:
             self._tenant_entropy_cap = {}
+        # Per-tenant domain attribution weights (lambda) default to 1.0
+        self._tenant_lambda: Dict[str, Dict[str, float]] = {}
 
     def _start_health_server(self) -> None:
         try:
@@ -809,6 +824,11 @@ class IntegratorHub:
                 else:
                     e_norm = 0.0
                 INTEGRATOR_NORMALIZED_ERROR.labels(domain=domain).set(float(e_norm))
+                # Also emit for new fusion metrics
+                try:
+                    INTEGRATOR_FUSION_WEIGHT_NORM_ERROR.labels(tenant=tenant, domain=domain).set(float(e_norm))
+                except Exception:
+                    pass
             except Exception:
                 pass
             # Candidate weights over currently available domains (raw)
@@ -846,6 +866,12 @@ class IntegratorHub:
             norm_weights.update({k: float(v) for k, v in fused_weights.items()})
             weights = norm_weights
             leader = max(weights.items(), key=lambda kv: kv[1])[0]
+            # Emit fusion weights
+            for domain, weight in weights.items():
+                try:
+                    INTEGRATOR_FUSION_SOFTMAX_WEIGHT.labels(tenant=tenant, domain=domain).set(weight)
+                except Exception:
+                    pass
         # Adaptive alpha update (after fused weights computed)
         if self._norm_enabled and adaptive_regret_sample is not None:
             try:
@@ -861,6 +887,8 @@ class IntegratorHub:
                 INTEGRATOR_ALPHA_TARGET.set(float(self._alpha_target_regret))
                 try:
                     INTEGRATOR_ALPHA_ERROR.set(float(diff))
+                    # New fusion metrics
+                    INTEGRATOR_FUSION_ALPHA_ADAPTIVE.labels(tenant=tenant).set(float(self._alpha))
                 except Exception:
                     pass
                 try:
@@ -1195,6 +1223,13 @@ class IntegratorHub:
                                         tenant=self._tenant_from(cfg),
                                         domain=f"lambda_{label}",
                                     ).set(float(val))
+                            # Persist lambda settings per tenant for use in fusion weighting
+                            tname = self._tenant_from(cfg)
+                            lmap = self._tenant_lambda.setdefault(tname, {"state": 1.0, "agent": 1.0, "action": 1.0})
+                            for d, key in (("state", "lambda_state"), ("agent", "lambda_agent"), ("action", "lambda_action")):
+                                v = cfg.get(key)
+                                if isinstance(v, (int, float)):
+                                    lmap[d] = max(0.1, min(2.0, float(v)))
                         except Exception:
                             pass
                     continue
@@ -1246,12 +1281,12 @@ class IntegratorHub:
 
 
 def main() -> None:  # pragma: no cover - manual run path
-    from somabrain.modes import mode_config
-    _mc = mode_config()
-    if not _mc.enable_integrator:
+    """Entrypoint for the Integrator Hub service with centralized feature gating only."""
+    from somabrain.modes import feature_enabled, mode_config
+    if not feature_enabled("integrator"):
         import logging
         from somabrain.metrics import get_counter
-        logging.info(f"integrator_hub: disabled via mode={_mc.name}")
+        logging.info(f"integrator_hub: disabled via mode={mode_config().name}")
         try:
             _MX_INT_DISABLED = get_counter(
                 "somabrain_integrator_disabled_total",
@@ -1261,19 +1296,21 @@ def main() -> None:  # pragma: no cover - manual run path
         except Exception:
             pass
         return
-    # Fail-fast infra readiness (OPA optional at this phase)
+    # Fail-fast infra readiness (OPA optional).
     try:
-        assert_ready(require_kafka=True, require_redis=True, require_postgres=True, require_opa=False)
+        assert_ready(
+            require_kafka=True,
+            require_redis=True,
+            require_postgres=True,
+            require_opa=False,
+        )
     except Exception as e:
         import logging
         logging.error(f"integrator_hub: infra readiness failure: {e}")
         raise
     hub = IntegratorHub()
-    import logging
-    from somabrain.metrics import get_counter
-
-    logging.info("Starting Integrator Hub...")
     try:
+        from somabrain.metrics import get_counter
         _MX_INT_INIT = get_counter(
             "somabrain_integrator_init_total",
             "Number of Integrator Hub initializations",
@@ -1281,6 +1318,8 @@ def main() -> None:  # pragma: no cover - manual run path
         _MX_INT_INIT.inc()
     except Exception:
         pass
+    import logging
+    logging.info("Starting Integrator Hub...")
     hub.run_forever()
 
 

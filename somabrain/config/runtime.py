@@ -56,7 +56,7 @@ def _defaults_for_mode(mode: str) -> Dict[str, Any]:
         "agent_model_ver": "v1",
         "action_model_ver": "v1",
         # Integrator normalization/consistency (metrics-facing)
-        "fusion_normalization_enabled": False,
+        "fusion_normalization_enabled": True,
         "drift_detection_enabled": False,
         "integrator_enforce_conf": True,
         "integrator_alpha": 2.0,

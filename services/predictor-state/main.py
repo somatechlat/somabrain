@@ -126,6 +126,16 @@ def run_forever() -> None:  # pragma: no cover
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
+                # Apply calibration temperature scaling if available
+                try:
+                    from somabrain.calibration.calibration_metrics import (
+                        calibration_tracker as _calib,
+                    )  # type: ignore
+                    scaler = _calib.temperature_scalers["state"][tenant]
+                    if getattr(scaler, "is_fitted", False):
+                        confidence = float(scaler.scale(float(confidence)))
+                except Exception:
+                    pass
                 
                 # Calibration tracking
                 if calibration_service.enabled:

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import os
+from dataclasses import replace
 import importlib
 
 
 def test_rationale_includes_fusion_note(monkeypatch):
-    # Enable normalization behavior
-    monkeypatch.setenv("ENABLE_FUSION_NORMALIZATION", "1")
-    # Fresh import to pick up env flag at init
+    # Enable normalization behavior via centralized mode config
+    import somabrain.modes as modes
+    base = modes.get_mode_config()
+    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, fusion_normalization=True))
+    # Fresh import to pick up patched mode
     mod = importlib.import_module("somabrain.services.integrator_hub")
     ih = mod.IntegratorHub()
 

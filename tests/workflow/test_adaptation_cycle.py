@@ -10,7 +10,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from somabrain.context.builder import RetrievalWeights
-from somabrain.learning.adaptation import AdaptationEngine, UtilityWeights
+from somabrain.learning.adaptation import (
+    AdaptationEngine,
+    UtilityWeights,
+    AdaptationGains,
+    AdaptationConstraints,
+)
 
 
 def test_feedback_updates_and_rollback_restores() -> None:
@@ -72,31 +77,43 @@ def test_dynamic_learning_rate_uses_dopamine_signal() -> None:
     assert abs(engine._lr - expected_lr) < 1e-6
 
 
-def test_environment_overrides_gains(monkeypatch) -> None:
-    monkeypatch.setenv("SOMABRAIN_LEARNING_GAIN_ALPHA", "2.0")
-    monkeypatch.setenv("SOMABRAIN_LEARNING_GAIN_GAMMA", "-1.0")
+def test_injected_gains_override() -> None:
     retrieval = RetrievalWeights(alpha=1.0, beta=0.2, gamma=0.4, tau=0.7)
+    gains = AdaptationGains(alpha=2.0, gamma=-1.0, lambda_=1.0, mu=-0.25, nu=-0.25)
     engine = AdaptationEngine(
         retrieval=retrieval,
         utility=UtilityWeights(lambda_=1.0, mu=0.3, nu=0.3),
         learning_rate=0.05,
+        gains=gains,
     )
     engine.apply_feedback(utility=1.0)
-    # The environment variable affects the gain multiplier, not the base increment
-    # With 2.0 gain multiplier, the increment is 0.05 * 2.0 = 0.1
-    # Starting from 1.0, new alpha should be 1.0 + 0.1 = 1.1
+    # With alpha gain 2.0: delta = 0.05 * 2.0 * 1.0 = 0.1 (alpha increases)
     assert retrieval.alpha == pytest.approx(1.1, rel=1e-6)
-    # gamma gain is steeper (negative), so gamma should drop by 0.05
-    assert retrieval.gamma == pytest.approx(0.3, rel=1e-6)
+    # With gamma gain -1.0: delta = 0.05 * -1.0 * 1.0 = -0.05 (gamma decreases)
+    assert retrieval.gamma == pytest.approx(0.35, rel=1e-6)
 
 
-def test_constraints_respect_environment(monkeypatch) -> None:
-    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_ALPHA_MIN", "0.6")
-    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_GAMMA_MIN", "0.2")
-    monkeypatch.setenv("SOMABRAIN_LEARNING_BOUNDS_LAMBDA_MIN", "0.8")
+def test_injected_constraints_respected() -> None:
     retrieval = RetrievalWeights(alpha=0.7, beta=0.2, gamma=0.3, tau=0.7)
     utility = UtilityWeights(lambda_=0.9, mu=0.3, nu=0.3)
-    engine = AdaptationEngine(retrieval=retrieval, utility=utility, learning_rate=0.05)
+    constraints = AdaptationConstraints(
+        alpha_min=0.6,
+        alpha_max=5.0,
+        gamma_min=0.2,
+        gamma_max=1.0,
+        lambda_min=0.8,
+        lambda_max=5.0,
+        mu_min=0.01,
+        mu_max=5.0,
+        nu_min=0.01,
+        nu_max=5.0,
+    )
+    engine = AdaptationEngine(
+        retrieval=retrieval,
+        utility=utility,
+        learning_rate=0.05,
+        constraints=constraints,
+    )
     engine.apply_feedback(utility=-1.0)
     assert retrieval.alpha >= 0.6
     assert retrieval.gamma >= 0.2

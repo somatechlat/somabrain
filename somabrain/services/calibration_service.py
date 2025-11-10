@@ -242,6 +242,14 @@ class CalibrationService:
         samples = int(metrics_data.get("samples", 0))
         if samples < 50:  # Need minimum samples for any fit
             return
+        # Ensure we have a baseline last_good_temperature for this key once samples are sufficient
+        try:
+            scaler = calibration_tracker.temperature_scalers[domain][tenant]
+            self._last_good_temperature.setdefault(
+                f"{domain}:{tenant}", float(getattr(scaler, "temperature", 1.0))
+            )
+        except Exception:
+            pass
         try:
             from ..calibration.calibration_metrics import calibration_tracker as _tracker  # type: ignore
             # Access raw confidences/accuracies window

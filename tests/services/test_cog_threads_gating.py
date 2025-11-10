@@ -1,15 +1,16 @@
-import os
 import builtins
 import pytest
+from dataclasses import replace
 
 
 def test_integrator_main_gates_on_flags(monkeypatch, capsys):
     # Import locally to ensure monkeypatching applies to the correct module
     import somabrain.services.integrator_hub as ih
 
-    # Ensure per-service flag is off and composite disabled
-    monkeypatch.setenv("SOMABRAIN_FF_COG_INTEGRATOR", "0")
-    monkeypatch.delenv("ENABLE_COG_THREADS", raising=False)
+    # Ensure per-service flag is off via centralized mode config
+    import somabrain.modes as modes
+    base = modes.get_mode_config()
+    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_integrator=False))
 
     # Dummy run_forever that should NOT be called in this mode
     called = {"run": False}
@@ -23,8 +24,9 @@ def test_integrator_main_gates_on_flags(monkeypatch, capsys):
     ih.main()
     assert called["run"] is False
 
-    # Now enable composite and ensure main attempts to run
-    monkeypatch.setenv("ENABLE_COG_THREADS", "1")
+    # Enable integrator via centralized mode config and bypass infra readiness
+    monkeypatch.setattr(ih, "assert_ready", lambda **kwargs: None)
+    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_integrator=True))
 
     def _exit(self):  # noqa: ARG001
         raise SystemExit(0)
@@ -36,10 +38,11 @@ def test_integrator_main_gates_on_flags(monkeypatch, capsys):
 
 def test_segmentation_main_gates_on_flags(monkeypatch):
     import somabrain.services.segmentation_service as ss
+    import somabrain.modes as modes
 
-    # Ensure per-service flag is off and composite disabled
-    monkeypatch.setenv("SOMABRAIN_FF_COG_SEGMENTATION", "0")
-    monkeypatch.delenv("ENABLE_COG_THREADS", raising=False)
+    # Ensure per-service flag is off via centralized config
+    base = modes.get_mode_config()
+    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_segmentation=False))
 
     ran = {"run": False}
 
@@ -52,8 +55,9 @@ def test_segmentation_main_gates_on_flags(monkeypatch):
     ss.main()
     assert ran["run"] is False
 
-    # With composite enabled, service should attempt to run
-    monkeypatch.setenv("ENABLE_COG_THREADS", "1")
+    # Enable via centralized config and bypass infra readiness
+    monkeypatch.setattr(ss, "assert_ready", lambda **kwargs: None)
+    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_segmentation=True))
 
     def _exit(self):  # noqa: ARG001
         raise SystemExit(0)

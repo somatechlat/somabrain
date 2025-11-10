@@ -61,6 +61,11 @@ bench-recall:
 test:
 	PYTHONPATH=. $(PYTEST) -q
 
+# Strict invariant scan (fails on banned patterns). Use in CI before tests.
+.PHONY: invariants
+invariants:
+	python scripts/strict_invariants.py
+
 .PHONY: test-live
 test-live:
 	SOMABRAIN_TEST_LIVE_STACK=1 SOMA_API_URL=$${SOMA_API_URL:-http://127.0.0.1:9696} PYTHONPATH=. $(PYTEST) -q

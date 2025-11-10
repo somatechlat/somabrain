@@ -25,8 +25,13 @@ from pathlib import Path
 class ModeConfig:
     name: str
     enable_integrator: bool
+    enable_orchestrator: bool
     enable_reward_ingest: bool
     enable_learner: bool
+    enable_next_event: bool
+    enable_wm_updates_cache: bool
+    enable_tiered_memory: bool
+    memory_weighting: bool
     enable_drift: bool
     enable_auto_rollback: bool
     enable_segmentation: bool
@@ -50,6 +55,8 @@ def _resolve_mode() -> str:
         return "full-local" if os.getenv("HOME") else "prod"
     if raw in {"full", "local", "full_local", "full-local", "dev"}:
         return "full-local"
+    if raw in {"ci", "test", "testing"}:
+        return "ci"
     if raw in {"production", "prod", "enterprise"}:
         return "prod"
     # Unknown -> prod (fail‑closed)
@@ -78,13 +85,43 @@ def _load_overrides() -> List[str]:
 
 def get_mode_config() -> ModeConfig:
     name = _resolve_mode()
+    if name == "ci":
+        # Deterministic minimal surface for CI tests
+        return ModeConfig(
+            name=name,
+            enable_integrator=True,
+            enable_orchestrator=False,
+            enable_reward_ingest=False,
+            enable_learner=False,
+            enable_next_event=False,
+            enable_wm_updates_cache=False,
+            enable_tiered_memory=False,
+            memory_weighting=False,
+            enable_drift=True,
+            enable_auto_rollback=False,
+            enable_segmentation=False,
+            enable_hmm_segmentation=False,
+            enable_teach_feedback=False,
+            enable_metrics=False,
+            enable_health_http=False,
+            avro_required=True,
+            fail_fast_kafka=True,
+            fusion_normalization=True,
+            calibration_enabled=True,
+            consistency_checks=True,
+        )
     # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
     if name == "full-local":
         return ModeConfig(
             name=name,
             enable_integrator=True,
+            enable_orchestrator=True,
             enable_reward_ingest=True,
             enable_learner=True,
+            enable_next_event=True,
+            enable_wm_updates_cache=True,
+            enable_tiered_memory=True,
+            memory_weighting=True,
             enable_drift=True,
             enable_auto_rollback=True,
             enable_segmentation=True,
@@ -102,8 +139,13 @@ def get_mode_config() -> ModeConfig:
     return ModeConfig(
         name="prod",
         enable_integrator=True,
+        enable_orchestrator=True,
         enable_reward_ingest=True,
         enable_learner=True,
+        enable_next_event=True,
+        enable_wm_updates_cache=True,
+        enable_tiered_memory=True,
+        memory_weighting=True,
         enable_drift=True,
         enable_auto_rollback=True,
         enable_segmentation=True,
@@ -134,8 +176,13 @@ def feature_enabled(key: str) -> bool:
     cfg = mode_config()
     mapping = {
         "integrator": cfg.enable_integrator,
+        "orchestrator": cfg.enable_orchestrator,
         "reward_ingest": cfg.enable_reward_ingest,
         "learner": cfg.enable_learner,
+        "next_event": cfg.enable_next_event,
+        "wm_updates_cache": cfg.enable_wm_updates_cache,
+        "tiered_memory": cfg.enable_tiered_memory,
+        "memory_weighting": cfg.memory_weighting,
         "drift": cfg.enable_drift,
         "auto_rollback": cfg.enable_auto_rollback,
         "segmentation": cfg.enable_segmentation,
@@ -154,3 +201,62 @@ def feature_enabled(key: str) -> bool:
         if key in disabled:
             return False
     return base
+
+
+def get_learning_config() -> dict:
+    """Return centralized learning gains + constraints (no env lookups).
+
+    Central source for AdaptationEngine numeric parameters. In ``full-local``
+    mode developer overrides may be supplied via the feature overrides file.
+    File format extension (JSON):
+        {
+          "disabled": [...],
+          "learning_gains": {"alpha": 1.2, "gamma": -0.6},
+          "learning_constraints": {"alpha_min": 0.2, "gamma_max": 0.9}
+        }
+
+    Only keys present are overridden; all other values remain defaults.
+    In ``ci`` and ``prod`` modes overrides are ignored for determinism and
+    strictness.
+    """
+    # Deterministic defaults chosen to match previous hard-coded values.
+    gains_defaults = {
+        "alpha": 1.0,
+        "gamma": -0.5,
+        "lambda_": 1.0,
+        "mu": -0.25,
+        "nu": -0.25,
+    }
+    constraints_defaults = {
+        "alpha_min": 0.1,
+        "alpha_max": 5.0,
+        "gamma_min": 0.0,
+        "gamma_max": 1.0,
+        "lambda_min": 0.1,
+        "lambda_max": 5.0,
+        "mu_min": 0.01,
+        "mu_max": 5.0,
+        "nu_min": 0.01,
+        "nu_max": 5.0,
+    }
+    cfg = mode_config()
+    # Apply developer overrides only in full-local mode
+    if cfg.name == "full-local":
+        try:
+            path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+            p = Path(path)
+            if p.exists():
+                data = json.loads(p.read_text(encoding="utf-8"))
+                lg = data.get("learning_gains") or {}
+                lc = data.get("learning_constraints") or {}
+                if isinstance(lg, dict):
+                    for k, v in lg.items():
+                        if k in gains_defaults and isinstance(v, (int, float)):
+                            gains_defaults[k] = float(v)
+                if isinstance(lc, dict):
+                    for k, v in lc.items():
+                        if k in constraints_defaults and isinstance(v, (int, float)):
+                            constraints_defaults[k] = float(v)
+        except Exception:
+            pass
+    return {"gains": gains_defaults, "constraints": constraints_defaults}

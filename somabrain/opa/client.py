@@ -33,14 +33,12 @@ def _policy_path_for_mode() -> str:
 
 
 class OPAClient:
-    """Simple OPA HTTP client.
+    """Strict OPA HTTP client (fail-closed by default).
 
-    Reads the OPA endpoint from the ``SOMA_OPA_URL`` environment variable.
-    The ``evaluate`` method sends a POST request to ``/v1/data/<policy_path>``
-    with a JSON ``input`` payload and expects a ``result`` containing an ``allow``
-    boolean. If OPA is unreachable or returns an error, the client falls back to
-    ``True`` (allow) and logs the incident – this mirrors the current development
-    stance where OPA enforcement is optional.
+    POSTs ``/v1/data/<policy_path>`` with JSON ``input`` and expects a ``result``
+    containing an ``allow`` boolean. Transport or server errors deny by default.
+    A permissive allow-on-error fallback is only enabled if environment variable
+    ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` is explicitly set (temporary escape hatch).
     """
 
     def __init__(self, policy_path: str | None = None) -> None:
@@ -74,10 +72,10 @@ class OPAClient:
         )
 
     def evaluate(self, input_data: Dict[str, Any]) -> bool:
-        """Evaluate the OPA policy with the given ``input_data``.
+        """Evaluate policy with ``input_data``.
 
-        Returns ``True`` if the policy permits the request, ``False`` otherwise.
-        Any transport or server error results in a safe ``True`` (allow) fallback.
+        Returns True if allowed, False otherwise. Failure denies unless
+        explicit override ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` present.
         """
         url = f"{self.base_url}/v1/data/{self.policy_path}"
         payload = {"input": input_data}
@@ -92,20 +90,12 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            # Strict: derive fail-closed posture solely from shared settings/mode.
-            if shared_settings is not None:
-                try:
-                    fail_closed = bool(getattr(shared_settings, "mode_opa_fail_closed", True))
-                except Exception:
-                    fail_closed = True
-            else:
-                # Without settings, stay conservative and deny on OPA failure.
-                fail_closed = True
-            if fail_closed:
-                LOGGER.error("OPA evaluation failed (fail-closed deny): %s", e)
-                return False
-            LOGGER.warning("OPA evaluation failed (fallback allow): %s", e)
-            return True
+            allow_override = os.getenv("SOMABRAIN_OPA_ALLOW_ON_ERROR") == "1"
+            if allow_override:
+                LOGGER.warning("OPA evaluation failed (override allow): %s", e)
+                return True
+            LOGGER.error("OPA evaluation failed (deny): %s", e)
+            return False
 
     def is_ready(self) -> bool:
         """Check OPA readiness via its /health endpoint.

@@ -16,8 +16,8 @@ Design:
 
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
-- SOMABRAIN_FF_COG_ORCHESTRATOR: enable service (1/true)
 - SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
+Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy env flags removed.
 
 """
 
@@ -31,6 +31,7 @@ from typing import Any, Dict, Optional
 
 # Strict mode: use confluent-kafka Consumer
 from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from somabrain.modes import feature_enabled
 
 # Optional Avro serde
 try:  # pragma: no cover
@@ -257,8 +258,7 @@ class OrchestratorService:
 
 
 def main() -> None:  # pragma: no cover - entrypoint
-    ff = os.getenv("SOMABRAIN_FF_COG_ORCHESTRATOR", "0").strip().lower()
-    if ff not in ("1", "true", "yes", "on"):
+    if not feature_enabled("orchestrator"):
         import logging
         from somabrain.metrics import get_counter
 

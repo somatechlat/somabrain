@@ -305,13 +305,9 @@ class LearnerService:
                         print(f"learner_online: create topic failed {e}")
             else:
                 print(f"learner_online: topic {TOPIC_CFG} already exists")
-            # Ensure next‑event topic exists (optional, only if flag enabled)
-            if os.getenv("SOMABRAIN_FF_NEXT_EVENT", "1").lower() in {
-                "1",
-                "true",
-                "yes",
-                "on",
-            }:
+            # Ensure next‑event topic exists (optional, only if flag enabled via modes)
+            from somabrain.modes import feature_enabled
+            if feature_enabled("next_event"):
                 if TOPIC_NEXT not in existing:
                     print(f"learner_online: creating missing topic {TOPIC_NEXT}")
                     newt = CfNewTopic(

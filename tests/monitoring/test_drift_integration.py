@@ -1,14 +1,19 @@
-import os
 import time
+from dataclasses import replace
 
 from somabrain.monitoring.drift_detector import DriftDetector, DriftConfig
 from somabrain.services.integrator_hub import IntegratorHub
 
 
 def test_drift_auto_disables_normalization(monkeypatch):
-    os.environ["ENABLE_DRIFT_DETECTION"] = "1"
-    os.environ["ENABLE_FUSION_NORMALIZATION"] = "1"
-    os.environ["ENABLE_AUTO_ROLLBACK"] = "0"  # isolate integrator auto-disable path
+    # Enable drift + normalization via centralized config; disable auto-rollback
+    import somabrain.modes as modes
+    base = modes.get_mode_config()
+    monkeypatch.setattr(
+        modes,
+        "get_mode_config",
+        lambda: replace(base, enable_drift=True, fusion_normalization=True, enable_auto_rollback=False),
+    )
     # Kafka must be available in strict mode; this test does not use network
 
     # Tight thresholds to trigger quickly
@@ -42,9 +47,14 @@ def test_drift_auto_disables_normalization(monkeypatch):
     assert st["stable"] is False
 
 def test_drift_rollback_event_emission(monkeypatch):
-    os.environ["ENABLE_DRIFT_DETECTION"] = "1"
-    os.environ["ENABLE_AUTO_ROLLBACK"] = "1"
-    os.environ["ENABLE_FUSION_NORMALIZATION"] = "1"
+    # Enable drift, auto-rollback, and normalization via centralized config
+    import somabrain.modes as modes
+    base = modes.get_mode_config()
+    monkeypatch.setattr(
+        modes,
+        "get_mode_config",
+        lambda: replace(base, enable_drift=True, enable_auto_rollback=True, fusion_normalization=True),
+    )
     cfg = DriftConfig(entropy_threshold=0.05, regret_threshold=0.05, window_size=10, min_samples=3, cooldown_period=0)
     det = DriftDetector(config=cfg)
     import somabrain.services.integrator_hub as ih

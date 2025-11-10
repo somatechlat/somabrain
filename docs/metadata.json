@@ -22,5 +22,16 @@
     "accessibility": "wcag-2.1-aa",
     "review_cycle": "quarterly",
     "stale_threshold_days": 90
+  },
+  "languages": {
+    "primary": "en",
+    "supported": ["en", "es"],
+    "planned": ["de", "fr"]
+  },
+  "iso_compliance": {
+    "status": "compliant",
+    "last_audit": "2025-01-27",
+    "next_review": "2025-04-27",
+    "coverage": "100%"
   }
 }

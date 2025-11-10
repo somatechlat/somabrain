@@ -293,8 +293,9 @@ class CutoverPlanResponse(BaseModel):
 
 
 def _tiered_enabled() -> bool:
-    flag = os.getenv("ENABLE_TIERED_MEMORY", "0").strip().lower()
-    return flag in ("1", "true", "yes", "on")
+    # Centralized feature gating with legacy env compatibility handled in modes
+    from somabrain.modes import feature_enabled
+    return feature_enabled("tiered_memory")
 
 
 class MemoryMetricsResponse(BaseModel):

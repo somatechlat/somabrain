@@ -1,0 +1,258 @@
+"""Unified Predictor Service
+
+Consolidates state / agent / action predictor loops into a single process
+with shared bootstrap, tracing, calibration scaling, and metrics.
+
+Goals:
+- Remove duplicated health server + tracing code across three separate mains.
+- Apply calibration temperature scaling uniformly.
+- Preserve existing per-domain topics and schema usage.
+- Maintain SOMA compatibility emission when enabled via runtime config.
+
+Strict mode assumptions:
+- Avro encode via `somabrain.common.kafka.encode` with schema names: belief_update,
+  belief_update_soma (optional), next_event.
+- Confluent Kafka producer from `somabrain.common.kafka.make_producer`.
+
+Environment / runtime_config keys (mirroring legacy mains):
+- *_update_period for each domain (state_update_period, agent_update_period, action_update_period)
+- *_model_ver for each domain
+- soma_compat flag to emit SOMA-compatible belief updates
+"""
+
+from __future__ import annotations
+
+import os
+import random
+import threading
+import time
+from typing import Dict, Any, Optional, Tuple
+
+import numpy as np
+
+from observability.provider import init_tracing, get_tracer  # type: ignore
+
+from somabrain.common.kafka import make_producer, encode, TOPICS
+from somabrain.common.events import build_next_event
+
+try:
+    from somabrain import metrics as _metrics  # type: ignore
+except Exception:  # pragma: no cover
+    _metrics = None  # type: ignore
+
+try:
+    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
+except Exception:  # pragma: no cover
+    _calib = None  # type: ignore
+
+try:
+    from somabrain.predictors.base import build_predictor_from_env  # type: ignore
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(f"predictor.unified: predictor base unavailable: {e}")
+
+
+DOMAIN_CONFIG = {
+    "state": {
+        "topic": TOPICS["state"],
+        "model_ver_key": "state_model_ver",
+        "period_key": "state_update_period",
+        "default_period": 0.5,
+        "posterior_fn": lambda _: {},
+        "next_state_fn": lambda delta_error: "stable" if delta_error < 0.3 else "shifting",
+    },
+    "agent": {
+        "topic": TOPICS["agent"],
+        "model_ver_key": "agent_model_ver",
+        "period_key": "agent_update_period",
+        "default_period": 0.7,
+        "posterior_fn": lambda _: {"intent": random.choice(["browse", "purchase", "support"])},
+        "next_state_fn": lambda posterior: f"intent:{posterior['intent']}",
+    },
+    "action": {
+        "topic": TOPICS["action"],
+        "model_ver_key": "action_model_ver",
+        "period_key": "action_update_period",
+        "default_period": 0.9,
+        "posterior_fn": lambda _: {"next_action": random.choice(["search", "quote", "checkout", "cancel"])},
+        "next_state_fn": lambda posterior: f"action:{posterior['next_action']}",
+    },
+}
+
+
+def _calibrated(domain: str, tenant: str, confidence: float) -> float:
+    if _calib is None:
+        return confidence
+    try:
+        scaler = _calib.temperature_scalers[domain][tenant]
+        if getattr(scaler, "is_fitted", False):
+            return float(scaler.scale(float(confidence)))
+    except Exception:
+        return confidence
+    return confidence
+
+
+def _maybe_health_server():  # pragma: no cover
+    try:
+        if os.getenv("HEALTH_PORT"):
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
+
+            app = FastAPI(title="Predictor Unified Health")
+
+            @app.get("/healthz")
+            async def _hz():  # type: ignore
+                return {"ok": True, "service": "predictor_unified"}
+
+            try:
+                from somabrain import metrics as _M  # type: ignore
+
+                @app.get("/metrics")
+                async def _metrics_ep():  # type: ignore
+                    return await _M.metrics_endpoint()
+            except Exception:
+                pass
+
+            port = int(os.getenv("HEALTH_PORT"))
+            server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning"))
+            threading.Thread(target=server.run, daemon=True).start()
+    except Exception:
+        pass
+
+
+def _get_runtime():
+    try:
+        from somabrain import runtime_config as _rt  # type: ignore
+        return _rt
+    except Exception:  # pragma: no cover
+        class _Stub:
+            @staticmethod
+            def get_float(k: str, d: float) -> float: return d
+            @staticmethod
+            def get_bool(k: str, d: bool) -> bool: return d
+            @staticmethod
+            def get_str(k: str, d: str) -> str: return d
+        return _Stub()
+
+
+def _metrics_handles():  # pragma: no cover
+    if _metrics is None:
+        return {}, None, None
+    counters = {
+        d: _metrics.get_counter(
+            f"somabrain_predictor_{d}_emitted_total",
+            f"BeliefUpdate records emitted ({d})",
+        ) for d in DOMAIN_CONFIG.keys()
+    }
+    next_counter = _metrics.get_counter(
+        "somabrain_predictor_next_total", "NextEvent records emitted (unified)"
+    )
+    err_hist = _metrics.get_histogram(
+        "somabrain_predictor_error", "Per-update prediction error (MSE)", labelnames=["domain"]
+    )
+    return counters, next_counter, err_hist
+
+
+def run_forever() -> None:  # pragma: no cover
+    init_tracing()
+    tracer = get_tracer("somabrain.predictor.unified")
+    _maybe_health_server()
+    rt = _get_runtime()
+    from somabrain.modes import feature_enabled  # type: ignore
+    try:
+        composite = rt.get_bool("cog_composite", True)
+    except Exception:
+        composite = True
+    if not (composite or feature_enabled("learner")):
+        print("predictor-unified: disabled by mode; exiting.")
+        return
+    prod = make_producer()
+    if prod is None:
+        print("predictor-unified: Kafka not available; exiting.")
+        return
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    soma_compat = rt.get_bool("soma_compat", False)
+    belief_schema = "belief_update"
+    soma_schema = "belief_update_soma"
+    next_schema = "next_event"
+    # Build predictors per domain
+    predictors: Dict[str, Tuple[Any, int]] = {}
+    for d in DOMAIN_CONFIG.keys():
+        predictors[d] = build_predictor_from_env(d)
+    # Per-domain source index seeds for simple synthetic activity
+    src_idx: Dict[str, int] = {"state": 0, "agent": 1, "action": 2}
+    counters, next_counter, err_hist = _metrics_handles()
+    last_emit: Dict[str, float] = {d: 0.0 for d in DOMAIN_CONFIG.keys()}
+    periods: Dict[str, float] = {}
+    model_versions: Dict[str, str] = {}
+    for d, cfg in DOMAIN_CONFIG.items():
+        periods[d] = rt.get_float(cfg["period_key"], cfg["default_period"])
+        model_versions[d] = rt.get_str(cfg["model_ver_key"], "v1")
+    try:
+        while True:
+            now = time.time()
+            for domain, (predictor, dim) in predictors.items():
+                per = periods[domain]
+                if now - last_emit[domain] < per:
+                    continue
+                last_emit[domain] = now
+                with tracer.start_as_current_span(f"predictor_emit_{domain}"):
+                    observed = np.zeros(dim, dtype=float)
+                    observed[(src_idx[domain] + 1) % dim] = 1.0
+                    _, delta_error, confidence = predictor.step(
+                        source_idx=src_idx[domain], observed=observed
+                    )
+                    src_idx[domain] = (src_idx[domain] + 1) % dim
+                    # Posterior + derived next state
+                    posterior = DOMAIN_CONFIG[domain]["posterior_fn"](predictor)
+                    if domain == "agent":
+                        next_state = DOMAIN_CONFIG[domain]["next_state_fn"](posterior)
+                    elif domain == "action":
+                        next_state = DOMAIN_CONFIG[domain]["next_state_fn"](posterior)
+                    else:
+                        next_state = DOMAIN_CONFIG[domain]["next_state_fn"](delta_error)
+                    confidence = _calibrated(domain, tenant, float(confidence))
+                    rec = {
+                        "domain": domain,
+                        "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "delta_error": float(delta_error),
+                        "confidence": float(confidence),
+                        "evidence": {"tenant": tenant, "source": "predictor-unified"},
+                        "posterior": posterior,
+                        "model_ver": model_versions[domain],
+                        "latency_ms": int(5 + 10 * random.random()),
+                    }
+                    prod.send(DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema))
+                    if counters.get(domain):
+                        try: counters[domain].inc()
+                        except Exception: pass
+                    if err_hist is not None:
+                        try: err_hist.labels(domain=domain).observe(float(delta_error))
+                        except Exception: pass
+                    if soma_compat:
+                        try:
+                            soma_rec = {
+                                "stream": domain.upper(),
+                                "timestamp": int(time.time() * 1000),
+                                "delta_error": float(delta_error),
+                                "info_gain": None,
+                                "metadata": {"tenant": tenant},
+                            }
+                            prod.send(TOPICS[f"soma_{domain}"], value=encode(soma_rec, soma_schema))
+                        except Exception:
+                            pass
+                    next_ev = build_next_event(domain, tenant, float(confidence), next_state)
+                    prod.send(TOPICS["next"], value=encode(next_ev, next_schema))
+                    if next_counter is not None:
+                        try: next_counter.inc()
+                        except Exception: pass
+            time.sleep(0.05)
+    finally:
+        try:
+            prod.flush(2)
+            prod.close()
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":  # pragma: no cover
+    run_forever()

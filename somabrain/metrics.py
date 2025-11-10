@@ -1403,3 +1403,49 @@ MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     ["status"],
     registry=registry,
 )
+
+# --- Segmentation HMM Metrics (Roadmap Completion) ---
+SEGMENTATION_BOUNDARIES_PER_HOUR = Gauge(
+    "somabrain_segmentation_boundaries_per_hour",
+    "Segmentation boundaries emitted per hour by tenant:domain",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)
+SEGMENTATION_DUPLICATE_RATIO = Gauge(
+    "somabrain_segmentation_duplicate_ratio",
+    "Ratio of duplicate boundaries to total boundaries by tenant:domain",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)
+SEGMENTATION_HMM_STATE_VOLATILE = Gauge(
+    "somabrain_segmentation_hmm_state_volatile",
+    "Current HMM state probability for VOLATILE (1=fully volatile, 0=fully stable)",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)
+SEGMENTATION_MAX_DWELL_EXCEEDED = Counter(
+    "somabrain_segmentation_max_dwell_exceeded_total",
+    "Count of boundaries forced by max dwell threshold",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)
+
+# --- Fusion Normalization Metrics (Roadmap Completion) ---
+FUSION_WEIGHT_NORM_ERROR = Gauge(
+    "somabrain_fusion_weight_norm_error",
+    "Normalized error per domain for fusion weighting",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)
+FUSION_ALPHA_ADAPTIVE = Gauge(
+    "somabrain_fusion_alpha_adaptive",
+    "Current adaptive alpha parameter for fusion normalization",
+    labelnames=["tenant"],
+    registry=registry,
+)
+FUSION_SOFTMAX_WEIGHT = Gauge(
+    "somabrain_fusion_softmax_weight",
+    "Final softmax weight assigned to each domain",
+    labelnames=["tenant", "domain"],
+    registry=registry,
+)

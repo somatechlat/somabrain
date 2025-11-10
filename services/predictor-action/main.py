@@ -10,11 +10,6 @@ import numpy as np
 
 from observability.provider import init_tracing, get_tracer  # type: ignore
 
-try:
-    from kafka import KafkaProducer  # type: ignore
-except Exception:  # pragma: no cover
-    KafkaProducer = None  # type: ignore
-
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
 
@@ -146,6 +141,16 @@ def run_forever() -> None:  # pragma: no cover
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
+                # Apply calibration temperature scaling if available
+                try:
+                    from somabrain.calibration.calibration_metrics import (
+                        calibration_tracker as _calib,
+                    )  # type: ignore
+                    scaler = _calib.temperature_scalers["action"][tenant]
+                    if getattr(scaler, "is_fitted", False):
+                        confidence = float(scaler.scale(float(confidence)))
+                except Exception:
+                    pass
                 posterior = {"next_action": random.choice(actions)}
                 rec = {
                     "domain": "action",

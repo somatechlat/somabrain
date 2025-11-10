@@ -9,7 +9,7 @@ Keys: wm:updates:{tenant}:{domain}
  - Store last N (configurable) items
  - Set TTL per key (default 8s)
 
-Feature flag: SOMABRAIN_FF_WM_UPDATES_CACHE=1
+Feature gating is centralized via somabrain.modes.feature_enabled("wm_updates_cache"); legacy SOMABRAIN_FF_WM_UPDATES_CACHE removed.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Dict, Optional
+from somabrain.modes import feature_enabled
 
 # Strict: use confluent-kafka Consumer only
 from confluent_kafka import Consumer as CKConsumer  # type: ignore
@@ -72,12 +73,7 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
 
 
 def run_forever() -> None:  # pragma: no cover - integration loop
-    if os.getenv("SOMABRAIN_FF_WM_UPDATES_CACHE", "0").strip().lower() not in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    ):
+    if not feature_enabled("wm_updates_cache"):
         print("wm_updates_cache: feature flag disabled; exiting.")
         return
     # Fail-fast infra readiness (Kafka + Redis required)

@@ -159,29 +159,17 @@ class AdaptationGains:
 
     @classmethod
     def from_settings(cls) -> "AdaptationGains":
-        gains = cls()
-        source = None
-        if shared_settings is not None:
-            source = shared_settings
-        fields = ("alpha", "gamma", "lambda_", "mu", "nu")
-        for field in fields:
-            value = None
-            if source is not None:
-                try:
-                    value = getattr(source, f"learning_gain_{field}")
-                except Exception:
-                    value = None
-            if value is None:
-                env_name = f"SOMABRAIN_LEARNING_GAIN_{field.upper().replace('_', '')}"
-                env_val = os.getenv(env_name)
-                if env_val is not None:
-                    try:
-                        value = float(env_val)
-                    except Exception:
-                        value = None
-            if value is not None:
-                gains = replace(gains, **{field: float(value)})
-        return gains
+        """Construct gains from centralized mode config (no env fallbacks)."""
+        try:
+            from somabrain import modes as _m
+            cfg = _m.get_learning_config().get("gains", {})
+            base = cls()
+            for k, v in cfg.items():
+                if hasattr(base, k) and isinstance(v, (int, float)):
+                    base = replace(base, **{k: float(v)})
+            return base
+        except Exception:
+            return cls()
 
 
 @dataclass(frozen=True)
@@ -199,38 +187,17 @@ class AdaptationConstraints:
 
     @classmethod
     def from_settings(cls) -> "AdaptationConstraints":
-        constraints = cls()
-        source = shared_settings if shared_settings is not None else None
-        fields = (
-            ("alpha_min", "ALPHA_MIN"),
-            ("alpha_max", "ALPHA_MAX"),
-            ("gamma_min", "GAMMA_MIN"),
-            ("gamma_max", "GAMMA_MAX"),
-            ("lambda_min", "LAMBDA_MIN"),
-            ("lambda_max", "LAMBDA_MAX"),
-            ("mu_min", "MU_MIN"),
-            ("mu_max", "MU_MAX"),
-            ("nu_min", "NU_MIN"),
-            ("nu_max", "NU_MAX"),
-        )
-        for attr, suffix in fields:
-            value = None
-            if source is not None:
-                try:
-                    value = getattr(source, f"learning_bounds_{attr}")
-                except Exception:
-                    value = None
-            if value is None:
-                env_name = f"SOMABRAIN_LEARNING_BOUNDS_{suffix}"
-                env_val = os.getenv(env_name)
-                if env_val is not None:
-                    try:
-                        value = float(env_val)
-                    except Exception:
-                        value = None
-            if value is not None:
-                constraints = replace(constraints, **{attr: float(value)})
-        return constraints
+        """Construct constraints from centralized mode config (no env fallbacks)."""
+        try:
+            from somabrain import modes as _m
+            cfg = _m.get_learning_config().get("constraints", {})
+            base = cls()
+            for k, v in cfg.items():
+                if hasattr(base, k) and isinstance(v, (int, float)):
+                    base = replace(base, **{k: float(v)})
+            return base
+        except Exception:
+            return cls()
 
 
 class AdaptationEngine:

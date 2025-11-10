@@ -138,18 +138,18 @@ Playbooks (N): calibration drift, segmentation flood/drought, κ degradation, OP
 
 Disable advanced flags; revert via orchestrator; automatic rollback on drift trigger.
 
-## 13) Status Summary (I/P/N)
+## 13) Status Summary (I/P/N) — Updated 2025-11-10
 
-- Diffusion (I), Integrator softmax (P), NextEvent emit (P), Reward ingest (P), Tau updates (P), OPA+shadow (I), Observability base (I), HMM (N), Fusion normalization (N), Calibration (N), Consistency (P), Attribution λ_d (P), Consolidation (N), Drift automation (N).
+- Diffusion (I), Integrator softmax (P), NextEvent emit (P), Reward ingest (P), Tau updates (I), OPA+shadow (P), Observability base (I), HMM (P), Fusion normalization (P), Calibration (P+), Consistency (P), Attribution λ_d (P), Consolidation (P), Drift automation (P).
 
 ## 14) AROMADP Strict‑Mode Enforcement (Truthful Inventory)
 
-- Kafka: KRaft broker configured; remove any disable gates; hard‑fail connect; standardize on confluent‑kafka (legacy kafka‑python present in calibration, drift_detector, predictor‑*; to be removed).
-- Avro‑only: JSON fallbacks exist in reward_producer, segmentation_service, teach_feedback_processor, wm_updates_cache; to be removed; add invariant test to block regressions.
-- Redis/Postgres: Required; ensure no local/fakeredis/SQLite fallbacks (none seen in compose; code scan via invariant test).
-- OPA: Middleware currently fail‑open; switch to fail‑closed with latency SLO and alerts.
-- Tracing/Metrics: Remove no‑ops; enforce provider; add spans across diffusion/predictor/integrator/segmentation.
-- Invariant audit: CI scanner for banned keywords (fallback, fakeredis, noop tracer, disable_auth, sqlite://, KafkaProducer from kafka‑python).
+- Kafka: KRaft broker configured; hard‑fail connect; standardized on confluent‑kafka (legacy kafka‑python removed from services).
+- Avro‑only: Encode paths are Avro‑only across services; residual JSON decoding only for internal payload parsing (no network path). Add/maintain invariant tests to block regressions.
+- Redis/Postgres: Required; no fakeredis/SQLite fallbacks in code paths.
+- OPA: Integrator uses fail‑closed posture; ensure readiness asserts when OPA configured; add latency SLO and alerts.
+- Tracing/Metrics: Enforce provider; spans added across integrator/segmentation; extend to predictors.
+- Invariant audit: Add CI scanner for banned keywords ("fallback", "fakeredis", "noop tracer", "disable_auth", "sqlite://", "KafkaProducer" from kafka‑python).
 
 Acceptance (Strict‑mode): zero banned keywords; Avro round‑trips for all schema topics; startup health abort ≤5s on infra failure; dashboards populated for α/entropy/regret/κ/ECE/segmentation; drift rollback only via real events; predictor mains CLoC −20%.
 
@@ -174,7 +174,7 @@ Shadow (48–72h) → Canary (10–20%) → GA; SLO: retrieval hit‑rate, laten
 ## 17) Phase Plan (Execution Order)
 
 Phase 0 (Strict‑mode foundations)
-- Avro‑only serialization; remove JSON fallbacks; standardize on confluent‑kafka; invariant scanner; fail‑fast infra (Kafka/Redis/Postgres/OPA).
+- Avro‑only serialization; remove JSON fallbacks; standardize on confluent‑kafka; invariant scanner; fail‑fast infra (Kafka/Redis/Postgres/OPA). Status: Ongoing; invariants + OPA readiness next.
 
 Phase 1 (Predictors)
 - Add state/agent/action predictors publishing PredictorUpdate with error metrics.
