@@ -32,7 +32,8 @@ def test_drift_state_persistence_round_trip(monkeypatch):
         det.add_observation(domain, tenant, confidence=0.05, entropy=0.95)
         # Drift should be detected and persisted
         assert Path(store_path).exists(), "Persistence file not created"
-        data = json.loads(Path(store_path).read_text())
+        import yaml
+        data = yaml.safe_load(Path(store_path).read_text())
         key = f"{domain}:{tenant}"
         assert key in data.get("entries", {}), "Entry not persisted"
         entry = data["entries"][key]

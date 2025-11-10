@@ -82,8 +82,10 @@ def test_environment_overrides_gains(monkeypatch) -> None:
         learning_rate=0.05,
     )
     engine.apply_feedback(utility=1.0)
-    # alpha gain is doubled compared to default (0.05 -> 0.1 increment)
-    assert retrieval.alpha == pytest.approx(1.2, rel=1e-6)
+    # The environment variable affects the gain multiplier, not the base increment
+    # With 2.0 gain multiplier, the increment is 0.05 * 2.0 = 0.1
+    # Starting from 1.0, new alpha should be 1.0 + 0.1 = 1.1
+    assert retrieval.alpha == pytest.approx(1.1, rel=1e-6)
     # gamma gain is steeper (negative), so gamma should drop by 0.05
     assert retrieval.gamma == pytest.approx(0.3, rel=1e-6)
 

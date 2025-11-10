@@ -59,9 +59,8 @@ def _serde(name: str):
 
 
 def _enc(rec: Dict[str, Any], serde) -> bytes:
-    # Allow tests to pass serde=None to exercise JSON fallback without Avro deps
     if serde is None:
-        return json.dumps(rec).encode("utf-8")
+        raise RuntimeError("teach_feedback_processor: Avro serde required for strict mode")
     return serde.serialize(rec)
 
 

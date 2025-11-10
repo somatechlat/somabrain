@@ -93,15 +93,9 @@ def _serde(name: str) -> Optional[AvroSerde]:
 
 
 def _enc(rec: Dict[str, Any], serde: Optional[AvroSerde]) -> bytes:
-    if serde is not None:
-        try:
-            return serde.serialize(rec)
-        except Exception:
-            pass
-    try:
-        return json.dumps(rec).encode("utf-8")
-    except Exception:
-        raise RuntimeError("learner_online: encode failed (no serde and JSON fallback failed)")
+    if serde is None:
+        raise RuntimeError("learner_online: Avro serde required for strict mode")
+    return serde.serialize(rec)
 
 
 def _dec(
