@@ -1,23 +1,24 @@
-"""Unified runtime mode configuration for SomaBrain.
+"""Unified runtime mode + feature resolution for SomaBrain.
 
-This module produces a single source of truth mapping `SOMABRAIN_MODE` to a
-feature matrix consumed by services. It replaces scattered ENABLE_* and
-SOMABRAIN_FF_* environment flags.
+Single source of truth for behaviour:
+    Modes (only two):
+        - full-local : production parity on a single machine (all features ON)
+        - prod       : production deployment (same semantics, external secrets/infra)
 
-Modes:
-  full-local : production parity on a single machine
-  prod       : production deployment (same semantics, external infra)
-  ci         : strict semantics, minimal optional surfaces
-
-All modes are strict (Avro-only, fail-fast). Differences are limited to
-endpoint exposure and optional experimental features.
+Strict defaults: Avro-only, fail‑fast Kafka, no mock backends. Legacy ENABLE_* or
+SOMABRAIN_FF_* env flags are removed. Optional operator overrides are persisted
+in a JSON file (``SOMABRAIN_FEATURE_OVERRIDES`` path, default ``./data/feature_overrides.json``)
+listing disabled feature keys. Overrides are applied only in ``full-local`` mode;
+in ``prod`` they are ignored (fail‑closed semantics).
 """
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, List
+import json
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -46,20 +47,38 @@ class ModeConfig:
 def _resolve_mode() -> str:
     raw = (os.getenv("SOMABRAIN_MODE") or "").strip().lower()
     if not raw:
-        # Default: full-local when running interactively (heuristic: presence of HOME)
         return "full-local" if os.getenv("HOME") else "prod"
     if raw in {"full", "local", "full_local"}:
         return "full-local"
-    if raw in {"production", "prod"}:
+    if raw in {"production", "prod", "enterprise"}:
         return "prod"
-    if raw in {"ci", "test", "testing"}:
-        return "ci"
-    # Fallback to prod for unknown values (fail-closed semantics)
+    # Unknown -> prod (fail‑closed)
     return "prod"
+
+
+def _load_overrides() -> List[str]:
+    """Load disabled feature keys from the overrides file.
+
+    File format (JSON): {"disabled": ["calibration", "fusion_normalization", ...]}
+    In full-local mode these are applied; ignored in prod.
+    """
+    path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    try:
+        p = Path(path)
+        if not p.exists():
+            return []
+        data = json.loads(p.read_text(encoding="utf-8"))
+        disabled = data.get("disabled")
+        if isinstance(disabled, list):
+            return [str(x).strip().lower() for x in disabled]
+    except Exception:
+        pass
+    return []
 
 
 def get_mode_config() -> ModeConfig:
     name = _resolve_mode()
+    # full-local: all feature surfaces on
     if name == "full-local":
         return ModeConfig(
             name=name,
@@ -79,29 +98,9 @@ def get_mode_config() -> ModeConfig:
             calibration_enabled=True,
             consistency_checks=True,
         )
-    if name == "ci":
-        # Minimal surfaces (no segmentation / teach feedback), still strict
-        return ModeConfig(
-            name=name,
-            enable_integrator=True,
-            enable_reward_ingest=True,
-            enable_learner=True,
-            enable_drift=True,
-            enable_auto_rollback=False,  # deterministic tests
-            enable_segmentation=False,
-            enable_hmm_segmentation=False,
-            enable_teach_feedback=False,
-            enable_metrics=True,
-            enable_health_http=False,
-            avro_required=True,
-            fail_fast_kafka=True,
-            fusion_normalization=True,
-            calibration_enabled=True,
-            consistency_checks=True,
-        )
-    # prod (default)
+    # prod: same semantics (strict, all ON) – operational differences handled outside python.
     return ModeConfig(
-        name=name,
+        name="prod",
         enable_integrator=True,
         enable_reward_ingest=True,
         enable_learner=True,
@@ -125,40 +124,33 @@ def mode_config() -> ModeConfig:
     return get_mode_config()
 
 
-def _legacy_override(env: str, base: bool) -> bool:
-    val = os.getenv(env)
-    if val is None:
-        return base
-    v = val.strip().lower()
-    if v in {"1", "true", "yes", "on"}:
-        return True
-    if v in {"0", "false", "no", "off"}:
-        return False
-    return base
-
-
 def feature_enabled(key: str) -> bool:
-    """Unified feature resolution with legacy env var override.
+    """Return whether a feature key is enabled under current mode + overrides.
 
-    key examples: integrator, reward_ingest, learner, drift, auto_rollback,
+    Supported keys: integrator, reward_ingest, learner, drift, auto_rollback,
     segmentation, hmm_segmentation, teach_feedback, metrics, health_http,
-    fusion_normalization, calibration, consistency_checks
+    fusion_normalization, calibration, consistency_checks.
     """
     cfg = mode_config()
     mapping = {
-        "integrator": (cfg.enable_integrator, "SOMABRAIN_FF_COG_INTEGRATOR"),
-        "reward_ingest": (cfg.enable_reward_ingest, "SOMABRAIN_FF_REWARD_INGEST"),
-        "learner": (cfg.enable_learner, "SOMABRAIN_FF_LEARNER_ONLINE"),
-        "drift": (cfg.enable_drift, "ENABLE_DRIFT_DETECTION"),
-        "auto_rollback": (cfg.enable_auto_rollback, "ENABLE_AUTO_ROLLBACK"),
-        "segmentation": (cfg.enable_segmentation, "SOMABRAIN_FF_COG_SEGMENTATION"),
-        "hmm_segmentation": (cfg.enable_hmm_segmentation, "ENABLE_HMM_SEGMENTATION"),
-        "teach_feedback": (cfg.enable_teach_feedback, "SOMABRAIN_ENABLE_TEACH_FEEDBACK"),
-        "metrics": (cfg.enable_metrics, "ENABLE_METRICS"),
-        "health_http": (cfg.enable_health_http, "ENABLE_HEALTH_HTTP"),
-        "fusion_normalization": (cfg.fusion_normalization, "ENABLE_FUSION_NORMALIZATION"),
-        "calibration": (cfg.calibration_enabled, "ENABLE_CALIBRATION"),
-        "consistency_checks": (cfg.consistency_checks, "ENABLE_CONSISTENCY_CHECKS"),
+        "integrator": cfg.enable_integrator,
+        "reward_ingest": cfg.enable_reward_ingest,
+        "learner": cfg.enable_learner,
+        "drift": cfg.enable_drift,
+        "auto_rollback": cfg.enable_auto_rollback,
+        "segmentation": cfg.enable_segmentation,
+        "hmm_segmentation": cfg.enable_hmm_segmentation,
+        "teach_feedback": cfg.enable_teach_feedback,
+        "metrics": cfg.enable_metrics,
+        "health_http": cfg.enable_health_http,
+        "fusion_normalization": cfg.fusion_normalization,
+        "calibration": cfg.calibration_enabled,
+        "consistency_checks": cfg.consistency_checks,
     }
-    base, env = mapping.get(key, (True, None))
-    return _legacy_override(env, base) if env else base
+    base = mapping.get(key, True)
+    # Apply overrides only in full-local mode
+    if cfg.name == "full-local":
+        disabled = _load_overrides()
+        if key in disabled:
+            return False
+    return base

@@ -1,84 +1,83 @@
 """
-Feature flags for roadmap implementation.
-Centralizes feature flag management for roadmap features.
+Feature flags view derived from central modes.
+
+This module exposes a stable API for the Features router and tooling while
+delegating the source of truth to `somabrain.modes`. Environment-variable based
+flags are removed; optional local overrides are persisted in a JSON file and
+applied only in `full-local` mode.
 """
 
 import os
-from typing import Dict, Any
+import json
+from pathlib import Path
+from typing import Dict, Any, List
+
+from somabrain.modes import mode_config, feature_enabled
 
 
 class FeatureFlags:
-    """Centralized feature flag management.
+    """Computed feature flag status.
 
-    All roadmap feature flags default to ON unless explicitly disabled by setting the
-    environment variable to one of {"0","false","off","no"}. This ensures full
-    capability testing without manual export spam.
+    Source of truth: `somabrain.modes`. Optional local overrides are stored in
+    ``SOMABRAIN_FEATURE_OVERRIDES`` JSON with shape {"disabled": [keys...]}
+    and are effective only in `full-local` mode.
     """
 
-    _NEG = {"0", "false", "off", "no"}
+    KEYS: List[str] = [
+        "hmm_segmentation",
+        "fusion_normalization",
+        "calibration",
+        "consistency_checks",
+        "drift_detection",
+        "auto_rollback",
+    ]
 
     @staticmethod
-    def _is_enabled(name: str) -> bool:
-        val = os.getenv(name)
-        if val is None:  # default ON
-            return True
-        return val.strip().lower() not in FeatureFlags._NEG
+    def _load_overrides() -> List[str]:
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        try:
+            p = Path(path)
+            if not p.exists():
+                return []
+            data = json.loads(p.read_text(encoding="utf-8"))
+            disabled = data.get("disabled")
+            if isinstance(disabled, list):
+                return [str(x).strip().lower() for x in disabled]
+        except Exception:
+            pass
+        return []
 
-    # HMM Segmentation
-    ENABLE_HMM_SEGMENTATION = _is_enabled.__func__("ENABLE_HMM_SEGMENTATION")  # type: ignore
-
-    # Fusion Normalization
-    ENABLE_FUSION_NORMALIZATION = _is_enabled.__func__("ENABLE_FUSION_NORMALIZATION")  # type: ignore
-
-    # Calibration Pipeline
-    ENABLE_CALIBRATION = _is_enabled.__func__("ENABLE_CALIBRATION")  # type: ignore
-
-    # Consistency Checks
-    ENABLE_CONSISTENCY_CHECKS = _is_enabled.__func__("ENABLE_CONSISTENCY_CHECKS")  # type: ignore
-
-    # Runtime Consolidation
-    ENABLE_RUNTIME_CONSOLIDATION = _is_enabled.__func__("ENABLE_RUNTIME_CONSOLIDATION")  # type: ignore
-
-    # Drift Detection
-    ENABLE_DRIFT_DETECTION = _is_enabled.__func__("ENABLE_DRIFT_DETECTION")  # type: ignore
-
-    # Auto Rollback
-    ENABLE_AUTO_ROLLBACK = _is_enabled.__func__("ENABLE_AUTO_ROLLBACK")  # type: ignore
-    
     @classmethod
     def get_status(cls) -> Dict[str, Any]:
-        """Get current feature flag status."""
-        return {
-            "hmm_segmentation": cls.ENABLE_HMM_SEGMENTATION,
-            "fusion_normalization": cls.ENABLE_FUSION_NORMALIZATION,
-            "calibration": cls.ENABLE_CALIBRATION,
-            "consistency_checks": cls.ENABLE_CONSISTENCY_CHECKS,
-            "runtime_consolidation": cls.ENABLE_RUNTIME_CONSOLIDATION,
-            "drift_detection": cls.ENABLE_DRIFT_DETECTION,
-            "auto_rollback": cls.ENABLE_AUTO_ROLLBACK,
-        }
-    
+        cfg = mode_config()
+        disabled = cls._load_overrides() if cfg.name == "full-local" else []
+        def resolved(k: str) -> bool:
+            # map UI keys -> feature_enabled keys
+            mapping = {
+                "hmm_segmentation": "hmm_segmentation",
+                "fusion_normalization": "fusion_normalization",
+                "calibration": "calibration",
+                "consistency_checks": "consistency_checks",
+                "drift_detection": "drift",
+                "auto_rollback": "auto_rollback",
+            }
+            fk = mapping.get(k, k)
+            val = feature_enabled(fk)
+            return val and (k not in disabled)
+
+        return {k: resolved(k) for k in cls.KEYS}
+
     @classmethod
-    def enable_roadmap_features(cls) -> None:  # retained for explicit forcing
-        """Force enable all roadmap features (idempotent)."""
-        for k in [
-            "ENABLE_HMM_SEGMENTATION",
-            "ENABLE_FUSION_NORMALIZATION",
-            "ENABLE_CALIBRATION",
-            "ENABLE_CONSISTENCY_CHECKS",
-            "ENABLE_RUNTIME_CONSOLIDATION",
-            "ENABLE_DRIFT_DETECTION",
-            "ENABLE_AUTO_ROLLBACK",
-        ]:
-            os.environ[k] = "1"
-        cls.__init_subclass__()
-
-
-# Re-export for backwards compatibility
-ENABLE_HMM_SEGMENTATION = FeatureFlags.ENABLE_HMM_SEGMENTATION
-ENABLE_FUSION_NORMALIZATION = FeatureFlags.ENABLE_FUSION_NORMALIZATION
-ENABLE_CALIBRATION = FeatureFlags.ENABLE_CALIBRATION
-ENABLE_CONSISTENCY_CHECKS = FeatureFlags.ENABLE_CONSISTENCY_CHECKS
-ENABLE_RUNTIME_CONSOLIDATION = FeatureFlags.ENABLE_RUNTIME_CONSOLIDATION
-ENABLE_DRIFT_DETECTION = FeatureFlags.ENABLE_DRIFT_DETECTION
-ENABLE_AUTO_ROLLBACK = FeatureFlags.ENABLE_AUTO_ROLLBACK
+    def set_overrides(cls, disabled: List[str]) -> None:
+        """Persist disabled keys to overrides file (full-local only)."""
+        cfg = mode_config()
+        if cfg.name != "full-local":
+            # ignore in prod
+            return
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        try:
+            p = Path(path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8")
+        except Exception:
+            pass

@@ -137,8 +137,8 @@ SOMABRAIN_PREDICTOR_PROVIDER=mahal
 SOMABRAIN_LEARNING_LOOP_ENABLED=1
 SOMABRAIN_LEARNING_RATE_DYNAMIC=1
 FLAGS
-# Set mode with env override; default to dev for no‑auth development
-echo "SOMABRAIN_MODE=${SOMABRAIN_MODE:-dev}" >> $ENVFILE
+# Set mode with env override; default to full-local (strict parity)
+echo "SOMABRAIN_MODE=${SOMABRAIN_MODE:-full-local}" >> $ENVFILE
 
 # App-level sane defaults to avoid compose warnings
 cat <<'APPVARS' >> $ENVFILE

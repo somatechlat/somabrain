@@ -125,7 +125,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
     # Auth is always-on in strict mode; legacy disable_auth removed.
-    mode: str = Field(default=os.getenv("SOMABRAIN_MODE", "enterprise"))
+    mode: str = Field(default=os.getenv("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
     )

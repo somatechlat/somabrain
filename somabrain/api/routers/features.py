@@ -43,11 +43,12 @@ async def features_disable(body: Dict[str, List[str]]):
     names = body.get("names") or []
     if not isinstance(names, list):
         raise HTTPException(status_code=400, detail="names must be a list")
-    for n in names:
-        try:
-            os.environ[str(n)] = "0"
-        except Exception:
-            pass
+    # Validate against known keys
+    invalid = [n for n in names if n not in FeatureFlags.KEYS]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"unknown feature keys: {invalid}")
+    # Persist overrides (ignored in prod mode)
+    FeatureFlags.set_overrides(names)
     _write_overrides(names)
     return {"ok": True, "disabled": names}
 
@@ -57,10 +58,7 @@ async def features_enable(body: Dict[str, List[str]]):
     names = body.get("names") or []
     if not isinstance(names, list):
         raise HTTPException(status_code=400, detail="names must be a list")
-    for n in names:
-        try:
-            os.environ[str(n)] = "1"
-        except Exception:
-            pass
+    # Enabling clears overrides for those keys; simplest: clear all when any enable request arrives.
+    FeatureFlags.set_overrides([])
     _write_overrides([])
     return {"ok": True, "enabled": names}

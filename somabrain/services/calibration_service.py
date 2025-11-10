@@ -28,9 +28,9 @@ class CalibrationService:
     """Service for managing predictor calibration."""
     
     def __init__(self):
-        self.enabled = os.getenv("ENABLE_CALIBRATION", "0").lower() in {
-            "1", "true", "yes", "on"
-        }
+        # Centralized feature gating
+        from somabrain.modes import feature_enabled
+        self.enabled = feature_enabled("calibration")
         # Producer for calibration snapshots (strict: fail-fast when enabled)
         if self.enabled:
             try:

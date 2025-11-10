@@ -362,39 +362,11 @@ class DriftDetector:
 
         # Best-effort: disable advanced features to stabilize system
         try:
-            # Disable features only if mode permits rollback
+            # Persist centralized overrides (local mode only)
+            from config.feature_flags import FeatureFlags
             from somabrain.modes import feature_enabled
             if feature_enabled("auto_rollback"):
-                os.environ["ENABLE_FUSION_NORMALIZATION"] = "0"
-                os.environ["ENABLE_CONSISTENCY_CHECKS"] = "0"
-                os.environ["ENABLE_CALIBRATION"] = "0"
-            # Persist overrides for operators/other services to detect
-            overrides_path = os.getenv(
-                "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
-            )
-            try:
-                import pathlib
-
-                p = pathlib.Path(overrides_path)
-                p.parent.mkdir(parents=True, exist_ok=True)
-                with p.open("w", encoding="utf-8") as f:
-                    blob = {
-                        "ts": int(time.time()),
-                        "tenant": tenant,
-                        "domain": domain,
-                        "trigger": trigger,
-                        "disabled": [
-                            "ENABLE_FUSION_NORMALIZATION",
-                            "ENABLE_CONSISTENCY_CHECKS",
-                            "ENABLE_CALIBRATION",
-                        ],
-                    }
-                    if yaml is not None:
-                        f.write(yaml.safe_dump(blob, sort_keys=True))
-                    else:
-                        f.write(str(blob))
-            except Exception:
-                pass
+                FeatureFlags.set_overrides(["fusion_normalization", "consistency_checks", "calibration"])
         except Exception:
             pass
 
