@@ -51,6 +51,8 @@ RUN pip install --no-cache-dir confluent-kafka kafka-python python-snappy || ech
 RUN pip install --no-cache-dir pydantic-settings
 # Install ASGI server used by service modules launched under supervisor
 RUN pip install --no-cache-dir "uvicorn[standard]"
+# Install fastavro for Avro deserialization in strict mode
+RUN pip install --no-cache-dir fastavro
 
 # Copy docs, scripts, and memory (for runtime import)
 COPY docs /app/docs
@@ -62,6 +64,8 @@ COPY services /app/services
 COPY config /app/config
 COPY alembic.ini /app/alembic.ini
 COPY migrations /app/migrations
+# Copy Avro/IDL schemas used at runtime by cognition services
+COPY proto /app/proto
 
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
 COPY somabrain /app/somabrain

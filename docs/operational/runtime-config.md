@@ -35,8 +35,11 @@ These overrides are only applied when mode name is `full-local`.
 ### Learning / Exploration
 - `learner_ema_alpha`, `learner_emit_period_s`, `learner_beta_ema_alpha`
 - `learner_tau_min`, `learner_tau_max`, `learner_default_lr`, `learner_keepalive_tau`
-- `tau_decay_enabled`, `tau_decay_rate`, `tau_anneal_mode`, `tau_anneal_rate`, `tau_anneal_step_interval`
+- `tau_decay_enabled`, `tau_decay_rate`
+- `tau_anneal_mode`, `tau_anneal_rate`, `tau_anneal_step_interval` (anneal supersedes decay when active)
 - `entropy_cap_enabled`, `entropy_cap`
+- `learning_state_persistence` (persist adaptation state to Redis)
+- `learning_rate_dynamic` (neuromodulator/dopamine influenced effective LR)
 
 ### Memory
 - `memory_enable_weighting`, `memory_phase_priors`, `memory_quality_exp`, `memory_fast_ack`
@@ -71,16 +74,25 @@ Centralizing tunables avoids divergent environment variables and ensures consist
 from somabrain import runtime_config as rc
 alpha = rc.get_float("integrator_alpha", 2.0)
 if rc.get_bool("fusion_normalization_enabled"):
-    apply_normalization(frame)
+  apply_normalization(frame)
+anneal_mode = rc.get_str("tau_anneal_mode")
+if anneal_mode:
+  schedule_tau_anneal(rc.get_float("tau_anneal_rate", 0.05))
 ```
 
 ## Testing Overrides
 In tests you can temporarily set overrides:
 ```python
 from somabrain import runtime_config as rc
-rc.set_overrides({"learner_emit_period_s": 5.0, "learner_tau_min": 0.2})
+rc.set_overrides({
+  "learner_emit_period_s": 5.0,
+  "learner_tau_min": 0.2,
+  "tau_anneal_mode": "exp",
+  "tau_anneal_rate": 0.05,
+  "learning_state_persistence": True
+})
 ```
 Ensure tests clean up if they rely on specific values.
 
 ---
-This file documents the central runtime configuration system to maintain a stable, production‑aligned default while enabling fast local iteration.
+This file documents the central runtime configuration system to maintain a stable, production‑aligned default while enabling fast local iteration. In `full-local` you can safely turn on all advanced learning features (entropy capping, anneal schedules, dynamic learning rate, persistence) for end‑to‑end validation.

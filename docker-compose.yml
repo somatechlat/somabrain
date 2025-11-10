@@ -213,6 +213,31 @@ services:
       - ./ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
 
+  somabrain_jaeger:
+    image: jaegertracing/all-in-one:1.53
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    networks:
+      - somabrain_net
+    ports:
+      - "${JAEGER_HOST_PORT:-30011}:16686"
+      - "14250:14250"
+      - "14268:14268"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   somabrain_postgres:
     image: postgres:15-alpine
     restart: unless-stopped
@@ -378,6 +403,9 @@ services:
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
+      # Enable OTEL tracing to Jaeger collector
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://somabrain_jaeger:4318"
+      OTEL_SERVICE_NAME: "somabrain-cog"
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT}"
       # Supervisor HTTP auth used by API for control; only on internal network
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
