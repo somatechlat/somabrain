@@ -68,7 +68,5 @@ vault:
 Observability
 -------------
 ServiceMonitor/PodMonitor resources can be enabled from the application chart
-(`infra/helm/charts/soma-apps`) to scrape metrics. You can also provide Grafana
-dashboards via your chosen Grafana deployment; see your platform’s dashboard
-provisioning docs. This repo ships Prometheus scrape examples for Docker Compose
-under `ops/prometheus/`.
+(`infra/helm/charts/soma-apps`) to scrape metrics. This repo ships Prometheus
+scrape examples for Docker Compose under `ops/prometheus/`.

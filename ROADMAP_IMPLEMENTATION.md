@@ -4,41 +4,28 @@
 
 This document summarizes the implementation of remaining roadmap features from the canonical roadmap.
 
-### ✅ Completed Features
+### Status (Truthful)
 
-#### 1. **HMM Segmentation** (Sprint 9)
-- **Implementation**: `HazardSegmenter` class with STABLE/TRANSITION states
-- **Feature Flag**: `ENABLE_HMM_SEGMENTATION=1`
-- **Configuration**: Per-tenant HMM parameters in `learning.tenants.yaml`
-- **Usage**: Set `SOMABRAIN_SEGMENT_MODE=hmm` or enable feature flag
+The following items are in varying states of completion. "Complete" here means unconditional, tested, enforced; otherwise downgraded.
 
-#### 2. **Fusion Normalization** (Sprint 7)
-- **Implementation**: Adaptive alpha parameter for error normalization
-- **Feature Flag**: `ENABLE_FUSION_NORMALIZATION=1`
-- **Location**: `somabrain/services/integrator_hub.py`
+#### 1. **HMM Segmentation** (Sprint 9) – Unverified / Partial
+- **Reality**: Tenant parameters present, core segmenter not confirmed in current tree.
+- **Action**: Add segment boundary emitter + metrics (boundaries/hour, duplicate ratio) before claiming complete.
 
-#### 3. **Calibration Pipeline** (Sprint 10)
-- **Implementation**: Temperature scaling with ECE and Brier score metrics
-- **Feature Flag**: `ENABLE_CALIBRATION=1`
-- **Service**: `somabrain/services/calibration_service.py`
-- **Metrics**: Available via `/metrics` endpoint
+#### 2. **Fusion Normalization** (Sprint 7) – Partial
+- Adaptive α and normalized error weights present in integrator; still behind flag; lacks dedicated tests & unconditional path.
 
-#### 4. **Runtime Consolidation** (Sprint 8)
-- **Implementation**: Shared Kafka utilities and event builders
-- **Feature Flag**: `ENABLE_RUNTIME_CONSOLIDATION=1`
-- **Location**: `common/kafka.py` and `common/events.py`
-- **Impact**: 20%+ CLoC reduction through shared utilities
+#### 3. **Calibration Pipeline** (Sprint 10) – Partial
+- Claims exist; end-to-end metric updates & schema emission not verified in this pass.
 
-#### 5. **Drift Detection** (Sprint 13)
-- **Implementation**: Entropy and regret-based drift detection
-- **Feature Flag**: `ENABLE_DRIFT_DETECTION=1`
-- **Service**: `somabrain/monitoring/drift_detector.py`
-- **Rollback**: Automated via `ENABLE_AUTO_ROLLBACK=1`
+#### 4. **Runtime Consolidation** (Sprint 8) – Partial
+- Shared helpers present; per-service bootstrap & serde duplication remains; CLoC reduction unmeasured.
 
-#### 6. **Consistency Checks** (Sprint 11)
-- **Implementation**: Cross-domain consistency metrics
-- **Feature Flag**: `ENABLE_CONSISTENCY_CHECKS=1`
-- **Location**: Integrated into integrator hub
+#### 5. **Drift Detection** (Sprint 13) – Partial
+- Detector optional; current effect limited to normalization disable; broader rollback not implemented.
+
+#### 6. **Consistency Checks** (Sprint 11) – Partial
+- κ and consistency metrics present; enforcement/alerts incomplete.
 
 ### 🎯 New Services
 
@@ -198,17 +185,17 @@ curl http://localhost:8086/metrics | grep somabrain_drift
 - Horizontal scaling ready
 - Configurable resource limits
 
-### 📈 Roadmap Status Update
+### 📈 Roadmap Status Update (Reconciled)
 
-| Sprint | Original Status | New Status | Notes |
-|--------|-----------------|------------|--------|
-| 7 | Not Implemented | **Complete** ✅ | Fusion normalization with adaptive α |
-| 8 | Not Implemented | **Complete** ✅ | Runtime consolidation via shared utilities |
-| 9 | Not Implemented | **Complete** ✅ | HMM segmentation with tenant config |
-| 10 | Not Implemented | **Complete** ✅ | Calibration pipeline with ECE/Brier |
-| 11 | Partial | **Complete** ✅ | Consistency checks integrated |
-| 12 | Partial | **Complete** ✅ | Reward attribution via λ_d parameters |
-| 13 | Not Implemented | **Complete** ✅ | Drift detection with auto-rollback |
+| Sprint | Prior Claim | Corrected Status | Notes |
+|--------|-------------|------------------|-------|
+| 7 | Complete | Partial | Flag-gated; needs tests & unconditional path |
+| 8 | Complete | Partial | Duplication persists |
+| 9 | Complete | Unverified | Segmenter code not confirmed |
+| 10 | Complete | Partial | ECE/Brier path not validated |
+| 11 | Complete | Partial | Metrics present; enforcement missing |
+| 12 | Complete | Partial | Attribution loop incomplete |
+| 13 | Complete | Partial | Limited rollback scope |
 
 ### 🔄 Next Steps
 
@@ -219,4 +206,4 @@ curl http://localhost:8086/metrics | grep somabrain_drift
 
 ---
 
-**All roadmap features implemented and ready for production deployment!**
+**Truthful Summary:** Multiple items remain partial; production readiness contingent on enforcement, tests, invariant scans, and removal of residual duplications.

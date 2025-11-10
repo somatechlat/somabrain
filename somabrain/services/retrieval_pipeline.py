@@ -249,6 +249,7 @@ async def run_retrieval_pipeline(
         except Exception:
             # Exact path is best-effort; continue with fused retrievals on failure
             pass
+    import time as _time  # local timing for per-retriever latency
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is None:
@@ -260,6 +261,7 @@ async def run_retrieval_pipeline(
                 # Skip WM if backend missing
                 continue
             try:
+                _r0 = _time.perf_counter()
                 lst_all: list[RetrievalCandidate] = []
                 for qx in expansions:
                     lst_all.extend(
@@ -276,6 +278,11 @@ async def run_retrieval_pipeline(
                         )
                     )
                 lists_by_retriever["wm"] = lst_all
+                try:
+                    from somabrain import metrics as M
+                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="wm").observe(max(0.0, _time.perf_counter() - _r0))
+                except Exception:
+                    pass
                 cands += lst_all
                 continue
             except Exception as exc:
@@ -288,6 +295,7 @@ async def run_retrieval_pipeline(
                 # Skip vector if memory client missing
                 continue
             try:
+                _r0 = _time.perf_counter()
                 lst_all: list[RetrievalCandidate] = []
                 for qx in expansions:
                     lst_all.extend(
@@ -301,6 +309,11 @@ async def run_retrieval_pipeline(
                         )
                     )
                 lists_by_retriever["vector"] = lst_all
+                try:
+                    from somabrain import metrics as M
+                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="vector").observe(max(0.0, _time.perf_counter() - _r0))
+                except Exception:
+                    pass
                 cands += lst_all
                 continue
             except Exception as exc:
@@ -315,6 +328,7 @@ async def run_retrieval_pipeline(
             try:
                 hops = int(getattr(_rt.cfg, "graph_hops", 1) or 1)
                 limit = int(getattr(_rt.cfg, "graph_limit", 20) or 20)
+                _r0 = _time.perf_counter()
                 lst = retrieve_graph(
                     req.query,
                     top_k,
@@ -326,6 +340,11 @@ async def run_retrieval_pipeline(
                     namespace=ctx.namespace,
                 )
                 lists_by_retriever["graph"] = lst
+                try:
+                    from somabrain import metrics as M
+                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="graph").observe(max(0.0, _time.perf_counter() - _r0))
+                except Exception:
+                    pass
                 cands += lst
                 continue
             except Exception as exc:
@@ -335,6 +354,7 @@ async def run_retrieval_pipeline(
                 # Skip lexical if memory client missing
                 continue
             try:
+                _r0 = _time.perf_counter()
                 lst_all: list[RetrievalCandidate] = []
                 for qx in expansions:
                     lst_all.extend(
@@ -343,6 +363,11 @@ async def run_retrieval_pipeline(
                         )
                     )
                 lists_by_retriever["lexical"] = lst_all
+                try:
+                    from somabrain import metrics as M
+                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="lexical").observe(max(0.0, _time.perf_counter() - _r0))
+                except Exception:
+                    pass
                 cands += lst_all
                 continue
             except Exception as exc:

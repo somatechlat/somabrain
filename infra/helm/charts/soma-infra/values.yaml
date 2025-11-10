@@ -79,12 +79,7 @@ kube-prometheus-stack:
     prometheusSpec:
       retention: 15d
 
-grafana:
-  dashboards:
-    enabled: false
-    # Namespace where Grafana runs (for dashboard sidecar). If using the
-    # kube-prometheus-stack dependency above, its default is the release namespace.
-    namespace: "soma"
+# Dashboard tooling intentionally excluded from this repository.
 
 # Global
 fullnameOverride: "soma-infra"

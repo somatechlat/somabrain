@@ -62,13 +62,7 @@ Rationale:
 
 ## Dashboards & Alerts
 
-While Grafana assets are intentionally removed from the repo, recommended panels:
-1. Planning Latency: Overlay histogram (backend=bfs,rwr) + p99 gauge.
-2. Regret: Histogram of `somabrain_learning_regret` + EWMA time‑series line.
-3. OPA: Veto ratio & decision latency heatmap.
-4. Shadow Routing: Shadow ratio vs configured flag; leader entropy distribution.
-
-Alert rules (see `alerts.yml`) already cover: planning p99 latency, OPA veto ratio, regret EWMA, frame absence. Extend later for drift (e.g. leader entropy collapse) if needed.
+Alert rules (see `alerts.yml`) cover planning p99 latency, OPA veto ratio, regret EWMA, frame absence. Extend later for drift (e.g. leader entropy collapse) if needed. Dashboards are maintained externally.
 
 ## Topic Seeding
 
@@ -102,9 +96,7 @@ is published with `opa=deny` in its rationale.
 
 ## Dashboards & Alerts
 
-Grafana is not included in development by default. If your environment provides
-Grafana, you can visualize Prometheus metrics using your own dashboards. Alerting
-can be configured in your Prometheus stack to watch the metrics listed above.
+System relies on Prometheus metrics and alert rules only. External dashboard development occurs out-of-repo.
 
 ## Topic Seeding
 

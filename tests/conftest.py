@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import subprocess
+import sys
+import pytest
 from typing import Dict
 import json
 
@@ -89,3 +92,57 @@ _bootstrap_env_from_dotenv()
 
 # Removed duplicate schema test ignore after renaming to unique filename.
 collect_ignore: list[str] = []
+
+
+# -------- Integration test gating (fail-fast on infra readiness) ---------
+_READINESS_CACHE: dict[str, tuple[bool, str]] = {}
+
+
+def _run_ci_readiness() -> tuple[bool, str]:
+    """Run the repository readiness check and return (ok, output)."""
+    root = Path(__file__).resolve().parents[1]
+    script = root / "scripts" / "ci_readiness.py"
+    if not script.exists():
+        return False, f"Missing readiness script: {script}"
+    try:
+        proc = subprocess.run(
+            [sys.executable, str(script)],
+            cwd=str(root),
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+    except Exception as e:  # noqa: BLE001
+        return False, f"Exception running readiness script: {type(e).__name__}: {e}"
+    ok = proc.returncode == 0
+    output = (proc.stdout or "") + (proc.stderr or "")
+    return ok, output.strip()
+
+
+@pytest.fixture(scope="session")
+def integration_env_ready() -> None:
+    """Ensure external services are ready before any integration test runs.
+
+    This enforces strict-real operation: if Kafka/Redis/Postgres/OPA are not
+    available, integration tests will fail fast with a clear diagnostic.
+    """
+    # Cache by key to avoid multiple runs in xdist or repeated sessions
+    key = "default"
+    if key not in _READINESS_CACHE:
+        _READINESS_CACHE[key] = _run_ci_readiness()
+    ok, output = _READINESS_CACHE[key]
+    if not ok:
+        pytest.fail(
+            "Infrastructure readiness failed for integration tests.\n"
+            + output,
+            pytrace=False,
+        )
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Inject readiness fixture into tests marked with @pytest.mark.integration."""
+    for item in items:
+        if item.get_closest_marker("integration") is not None:
+            # Ensure the readiness fixture runs before any integration test
+            item.fixturenames.append("integration_env_ready")

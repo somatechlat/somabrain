@@ -568,6 +568,14 @@ RETRIEVER_HITS = get_counter(
     labelnames=["namespace", "retriever"],
 )
 
+# Per-retriever latency (adapter execution time)
+RETRIEVER_LATENCY = get_histogram(
+    "somabrain_retriever_latency_seconds",
+    "Latency of individual retriever adapters",
+    labelnames=["namespace", "retriever"],
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0),
+)
+
 # Fusion metrics (retrieval enhancements)
 RETRIEVAL_FUSION_APPLIED = Counter(
     "somabrain_retrieval_fusion_applied_total",
@@ -1111,6 +1119,11 @@ def update_learning_effective_lr(tenant_id: str, lr_eff: float):
 tau_decay_events = get_counter(
     "somabrain_tau_decay_events_total",
     "Tau decay applications per tenant",
+    labelnames=["tenant_id"],
+)
+tau_anneal_events = get_counter(
+    "somabrain_tau_anneal_events_total",
+    "Tau annealing applications per tenant (any schedule)",
     labelnames=["tenant_id"],
 )
 entropy_cap_events = get_counter(

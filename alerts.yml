@@ -21,6 +21,16 @@ groups:
           summary: "High retrieval empty rate"
           description: "Empty retrieval ratio > 30% over 5m for namespace {{ $labels.namespace }} (value: {{ $value }}). Investigate retriever health or indexing coverage."
 
+      - alert: RetrievalEmptyRateCritical
+        expr: (sum by (namespace) (increase(somabrain_retrieval_empty_total[5m]))
+              / clamp_min(sum by (namespace) (increase(somabrain_retrieval_requests[5m])), 1)) > 0.50
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Retrieval empty rate very high"
+          description: "Empty retrieval ratio > 50% over 5m for namespace {{ $labels.namespace }} (value: {{ $value }}). Likely systemic outage."
+
       # Retrieval p95 latency elevated (end-to-end pipeline latency)
       - alert: RetrievalLatencyP95High
         expr: histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le)) > 0.40
@@ -30,6 +40,15 @@ groups:
         annotations:
           summary: "Retrieval p95 latency high"
           description: "Retrieval pipeline p95 latency > 400ms over 10m (value: {{ $value }}s). Check ANN, fusion, or persistence backpressure."
+
+      - alert: RetrievalLatencyP95Critical
+        expr: histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le)) > 0.80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Retrieval p95 latency very high"
+          description: "Retrieval pipeline p95 latency > 800ms over 5m (value: {{ $value }}s). Immediate investigation required."
 
       - alert: WMUtilizationHigh
         expr: somabrain_wm_utilization > 0.85

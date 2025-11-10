@@ -43,7 +43,6 @@ Raw manifests kept for reference and ad-hoc testing only. Do not use these along
 Kafka topic definitions and user configurations for event streaming.
 
 ### Observability (`observability/`)
-- Grafana provisioning
 - OpenTelemetry configuration
 - Prometheus configuration
 

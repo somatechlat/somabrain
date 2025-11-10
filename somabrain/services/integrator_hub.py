@@ -132,6 +132,11 @@ INTEGRATOR_ENTROPY = app_metrics.get_histogram(
         1.0,
     ),
 )
+INTEGRATOR_ENTROPY_CAP_EVENTS = app_metrics.get_counter(
+    "somabrain_integrator_entropy_cap_events_total",
+    "Events where integrator sharpened weights due to entropy cap breach",
+    labelnames=["tenant"],
+)
 
 # Shadow/Config metrics
 INTEGRATOR_SHADOW_TOTAL = app_metrics.get_counter(
@@ -467,6 +472,27 @@ class IntegratorHub:
             self._opa_url = (os.getenv("SOMABRAIN_OPA_URL") or "").strip()
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
             self._opa_fail_closed = True
+
+        # Per-tenant entropy cap overrides (loaded once). Not fatal if file missing.
+        self._tenant_entropy_cap: Dict[str, float] = {}
+        try:
+            cfg_path = (
+                os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+                or os.getenv("LEARNING_TENANTS_CONFIG")
+                or "config/learning.tenants.yaml"
+            )
+            import yaml  # type: ignore
+            if os.path.exists(cfg_path):
+                with open(cfg_path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                if isinstance(data, dict):
+                    for tname, vals in data.items():
+                        if isinstance(vals, dict):
+                            cap = vals.get("entropy_cap")
+                            if isinstance(cap, (int, float)) and cap > 0:
+                                self._tenant_entropy_cap[str(tname)] = float(cap)
+        except Exception:
+            self._tenant_entropy_cap = {}
 
     def _start_health_server(self) -> None:
         try:
@@ -860,6 +886,36 @@ class IntegratorHub:
             INTEGRATOR_ENTROPY.labels(tenant=tenant).observe(H_norm)
         except Exception:
             pass
+        # Enforce entropy cap (if configured) by sharpening non-leader weights.
+        try:
+            cap = self._tenant_entropy_cap.get(tenant)
+            if cap is not None and H_norm is not None and H_norm > cap:
+                # Scale non-leader weights downward proportionally to overflow while preserving leader weight.
+                overflow = H_norm - cap
+                scale = min(0.5, max(0.05, overflow / (H_norm + 1e-9)))
+                leader_w = float(weights.get(leader, 0.0))
+                adjusted: Dict[str, float] = {}
+                for d, w in weights.items():
+                    if d == leader:
+                        adjusted[d] = w
+                    else:
+                        adjusted[d] = max(0.0, w * (1.0 - scale))
+                Z_adj = sum(adjusted.values()) or 1.0
+                for d in adjusted:
+                    adjusted[d] = adjusted[d] / Z_adj
+                weights = adjusted
+                # Recompute leader after sharpening (typically unchanged, but safe)
+                leader = max(weights.items(), key=lambda kv: kv[1])[0]
+                INTEGRATOR_ENTROPY_CAP_EVENTS.labels(tenant=tenant).inc()
+                # Append rationale note
+                try:
+                    rationale_note = f"; entropy_cap={cap:.3f} sharpened"
+                except Exception:
+                    rationale_note = "; entropy_cap_sharpened"
+            else:
+                rationale_note = ""
+        except Exception:
+            rationale_note = ""
         # Feed drift detector and auto-disable normalization if drifting
         if self._drift_enabled and _DRIFT is not None and H_norm is not None:
             try:
@@ -888,7 +944,7 @@ class IntegratorHub:
         except Exception:
             pass
         fusion_note = "fusion=normalized" if (self._norm_enabled and fused_weights) else "fusion=softmax"
-        rationale = f"{fusion_note} tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}"
+        rationale = f"{fusion_note} tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}{rationale_note}"
         # Append recent kappa/entropy context if available
         try:
             k = self._last_kappa.get(tenant)

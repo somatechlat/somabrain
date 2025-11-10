@@ -13,7 +13,7 @@ SomaBrain is an event-driven, microservices-aligned system centered on a cogniti
 - Integrator Hub: `somabrain/services/integrator_hub.py` consumes belief updates, computes leader via softmax or normalized fusion, emits `global_frame`, and SOMA compatibility context. Integrates OPA gating and drift monitoring.
 - Learning/Calibration: `somabrain/services/calibration_service.py` enforces ECE improvements; future learner loops consume rewards and emit `config_update`.
 - Drift Monitoring: `somabrain/monitoring/drift_detector.py` aggregates entropy/regret and emits drift events, optionally triggering rollback.
-- Observability: Metrics under `somabrain/metrics`, alerts in `alerts.yml`, dashboards Provisioned via Prometheus/Grafana folders.
+- Observability: Metrics under `somabrain/metrics` and alerts in `alerts.yml`. Dashboard assets are external to this repository.
 - Orchestration: Docker Compose and Makefile manage Kafka, Schema Registry, Redis, Postgres, OPA, Prometheus.
 
 ## Transports & Contracts
