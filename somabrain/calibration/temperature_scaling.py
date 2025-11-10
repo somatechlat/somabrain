@@ -29,7 +29,7 @@ class TemperatureScaler:
         
     def fit(self, confidences: List[float], accuracies: List[float]) -> float:
         """
-        Fit temperature using the Platt scaling approach.
+        Fit temperature using bounded NLL minimization (golden-section).
         
         Args:
             confidences: Predicted confidences (0-1)
@@ -40,31 +40,46 @@ class TemperatureScaler:
         """
         if len(confidences) < self.min_samples:
             return 1.0
-            
-        confidences = np.array(confidences)
-        accuracies = np.array(accuracies)
-        
-        # Optimize temperature using Newton-Raphson
-        # We want to minimize negative log-likelihood
-        def nll(temp):
-            scaled_logits = np.log(confidences / (1 - confidences + 1e-10)) / temp
-            probs = 1 / (1 + np.exp(-scaled_logits))
-            return -np.mean(accuracies * np.log(probs + 1e-10) + 
-                           (1 - accuracies) * np.log(1 - probs + 1e-10))
-        
-        # Simple grid search for temperature
-        best_temp = 1.0
-        best_nll = nll(1.0)
-        
-        for temp in np.arange(0.1, 5.1, 0.1):
-            current_nll = nll(temp)
-            if current_nll < best_nll:
-                best_nll = current_nll
-                best_temp = temp
-                
-        self.temperature = best_temp
+
+        p = np.clip(np.asarray(confidences, dtype=float), 1e-8, 1 - 1e-8)
+        y = np.asarray(accuracies, dtype=float)
+
+        logits = np.log(p / (1 - p))
+
+        def nll(temp: float) -> float:
+            t = max(1e-6, float(temp))
+            z = logits / t
+            # Numerically stable sigmoid
+            probs = 1.0 / (1.0 + np.exp(-z))
+            probs = np.clip(probs, 1e-8, 1 - 1e-8)
+            return -float(np.mean(y * np.log(probs) + (1 - y) * np.log(1 - probs)))
+
+        # Golden-section search in [a, b]
+        a, b = 0.1, 5.0
+        phi = (5 ** 0.5 - 1) / 2  # ~0.618
+        c = b - phi * (b - a)
+        d = a + phi * (b - a)
+        fc = nll(c)
+        fd = nll(d)
+        tol = 1e-4
+        for _ in range(80):
+            if abs(b - a) < tol:
+                break
+            if fc < fd:
+                b, d, fd = d, c, fc
+                c = b - phi * (b - a)
+                fc = nll(c)
+            else:
+                a, c, fc = c, d, fd
+                d = a + phi * (b - a)
+                fd = nll(d)
+        # Choose best of bracket endpoints and interior points
+        cand = [(a, nll(a)), (b, nll(b)), (c, fc), (d, fd), (1.0, nll(1.0))]
+        best_temp, _ = min(cand, key=lambda kv: kv[1])
+
+        self.temperature = float(max(0.05, min(10.0, best_temp)))
         self.is_fitted = True
-        return best_temp
+        return self.temperature
     
     def scale(self, confidence: float) -> float:
         """Apply temperature scaling to confidence."""

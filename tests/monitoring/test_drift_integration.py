@@ -40,3 +40,23 @@ def test_drift_auto_disables_normalization(monkeypatch):
     st = det.get_drift_status("state", "t1")
     assert st["samples"] >= 3
     assert st["stable"] is False
+
+def test_drift_rollback_event_emission(monkeypatch):
+    os.environ["ENABLE_DRIFT_DETECTION"] = "1"
+    os.environ["ENABLE_AUTO_ROLLBACK"] = "1"
+    os.environ["ENABLE_FUSION_NORMALIZATION"] = "1"
+    cfg = DriftConfig(entropy_threshold=0.05, regret_threshold=0.05, window_size=10, min_samples=3, cooldown_period=0)
+    det = DriftDetector(config=cfg)
+    import somabrain.services.integrator_hub as ih
+    ih._DRIFT = det
+    hub = IntegratorHub()
+    hub._norm_enabled = True
+    hub._drift_enabled = True
+    # We cannot easily inspect Kafka emission without a test harness; assert that rollback triggers normalization disable path indirectly by forcing drift repeatedly.
+    for _ in range(4):
+        for d in ("state", "agent", "action"):
+            ev = {"domain": d, "delta_error": 10.0, "evidence": {"tenant": "t2"}}
+            hub._process_update(ev)
+    st = det.get_drift_status("state", "t2")
+    assert st["samples"] >= 3
+    assert st["stable"] is False

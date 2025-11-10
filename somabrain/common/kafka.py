@@ -114,5 +114,6 @@ TOPICS = {
     "integrator_context_shadow": "cog.integrator.context.shadow",
     # Roadmap drift & calibration telemetry topics
     "fusion_drift": "cog.fusion.drift.events",
+    "fusion_rollback": "cog.fusion.rollback.events",
     "predictor_calibration": "cog.predictor.calibration",
 }

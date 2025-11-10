@@ -170,6 +170,16 @@ INTEGRATOR_ALPHA_HIST = app_metrics.get_histogram(
     "Distribution of adaptive alpha values",
     buckets=(0.0, 0.2, 0.5, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0),
 )
+INTEGRATOR_REGRET_OBS_HIST = app_metrics.get_histogram(
+    "somabrain_integrator_regret_observed",
+    "Observed composite regret from fused weights (1 - max_w)",
+    buckets=(0.0, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5, 1.0),
+)
+INTEGRATOR_TIME_TO_STABILITY = app_metrics.get_gauge(
+    "somabrain_integrator_time_to_stability_seconds",
+    "Elapsed stable time where entropy and regret within targets",
+    labelnames=["tenant"],
+)
 INTEGRATOR_KAPPA = app_metrics.get_gauge(
     "somabrain_integrator_kappa",
     "Consistency kappa (1 - JSD) across agent/action posteriors",
@@ -390,6 +400,8 @@ class IntegratorHub:
         self._last_leader: Dict[str, str] = {}
         # Track recent kappa per tenant for rationale context
         self._last_kappa: Dict[str, float] = {}
+        # Stability tracking per tenant (for time-to-stability metric)
+        self._stable_since: Dict[str, float] = {}
         # Confidence enforcement from delta_error
         try:
             self._alpha = float(os.getenv("SOMABRAIN_INTEGRATOR_ALPHA", "2.0") or "2.0")
@@ -677,13 +689,11 @@ class IntegratorHub:
         except Exception:
             leader_score = 0.0
         # Encode embedded global_frame as bytes (prefer Avro if available)
+        # Strict mode: Avro encode must succeed; no JSON fallback
         try:
             gf_bytes = self._encode_frame(gf_record)
-        except Exception:
-            try:
-                gf_bytes = json.dumps(gf_record).encode("utf-8")
-            except Exception:
-                gf_bytes = b"{}"
+        except Exception as e:
+            raise RuntimeError(f"integrator_hub: strict Avro encode failed for global_frame: {e}")
         ic = {
             "leader_stream": str(leader),
             "leader_score": float(leader_score),
@@ -860,6 +870,10 @@ class IntegratorHub:
                     INTEGRATOR_ALPHA_HIST.observe(float(self._alpha))
                 except Exception:
                     pass
+                try:
+                    INTEGRATOR_REGRET_OBS_HIST.observe(max(0.0, min(1.0, float(adaptive_regret_sample))))
+                except Exception:
+                    pass
             except Exception:
                 pass
         # Leader switch metric
@@ -916,6 +930,26 @@ class IntegratorHub:
                 rationale_note = ""
         except Exception:
             rationale_note = ""
+        # Update stability timer metrics (entropy within cap and regret within target)
+        try:
+            reg_ok = (adaptive_regret_sample is not None) and (adaptive_regret_sample <= self._alpha_target_regret)
+            ent_ok = False
+            if H_norm is not None:
+                cap_val = self._tenant_entropy_cap.get(tenant)
+                thr = cap_val if isinstance(cap_val, (int, float)) else 0.3
+                ent_ok = H_norm <= float(thr)
+            now_t = time.time()
+            if reg_ok and ent_ok:
+                start = self._stable_since.get(tenant)
+                if start is None:
+                    self._stable_since[tenant] = now_t
+                else:
+                    INTEGRATOR_TIME_TO_STABILITY.labels(tenant=tenant).set(max(0.0, now_t - float(start)))
+            else:
+                self._stable_since[tenant] = now_t
+                INTEGRATOR_TIME_TO_STABILITY.labels(tenant=tenant).set(0.0)
+        except Exception:
+            pass
         # Feed drift detector and auto-disable normalization if drifting
         if self._drift_enabled and _DRIFT is not None and H_norm is not None:
             try:

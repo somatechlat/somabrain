@@ -31,12 +31,12 @@ class CalibrationService:
         self.enabled = os.getenv("ENABLE_CALIBRATION", "0").lower() in {
             "1", "true", "yes", "on"
         }
-        # Producer for calibration snapshots (resilient in tests)
+        # Producer for calibration snapshots (strict: fail-fast when enabled)
         if self.enabled:
             try:
                 self._producer = make_producer()
-            except Exception:
-                self._producer = None
+            except Exception as e:
+                raise RuntimeError(f"calibration_service: Kafka producer init failed (strict mode): {e}")
         else:
             self._producer = None
         # Persistence path (configurable via SOMABRAIN_CALIBRATION_STORE)
@@ -90,6 +90,13 @@ class CalibrationService:
                 "somabrain_calibration_downgrade_total",
                 "Count of calibration downgrades (rollback temperature)",
                 labelnames=["domain", "tenant", "reason"]
+            ) if metrics else None
+        )
+        self.improvement_ratio_gauge = (
+            metrics.get_gauge(
+                "somabrain_calibration_improvement_ratio",
+                "Post-vs-pre ECE improvement ratio (post_ece/pre_ece)",
+                labelnames=["domain", "tenant"]
             ) if metrics else None
         )
         # Store last stable temperature to allow rollback
@@ -266,6 +273,13 @@ class CalibrationService:
             if self.ece_post:
                 try:
                     self.ece_post.labels(domain=domain, tenant=tenant).set(post_ece)
+                except Exception:
+                    pass
+            if self.improvement_ratio_gauge and pre_ece > 0.0:
+                try:
+                    self.improvement_ratio_gauge.labels(domain=domain, tenant=tenant).set(
+                        float(post_ece / pre_ece)
+                    )
                 except Exception:
                     pass
             # Acceptance requirement: post_ece <= 0.7 * pre_ece (30% reduction) for large sample regime

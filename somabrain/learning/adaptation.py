@@ -8,8 +8,16 @@ from dataclasses import asdict, dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from somabrain.context.builder import RetrievalWeights
+    from somabrain.context.builder import RetrievalWeights as _RetrievalWeights
     from somabrain.feedback import Feedback
+
+
+@dataclass
+class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in tests.
+    alpha: float = 1.0
+    beta: float = 0.2
+    gamma: float = 0.1
+    tau: float = 0.7
 
 try:
     from common.config.settings import settings as shared_settings
@@ -18,15 +26,17 @@ except Exception:  # pragma: no cover - optional dependency
 
 from somabrain.infrastructure import get_redis_url
 
-# Module-level cache for per-tenant overrides
+# Module-level cache for per-tenant overrides and path used to load them
 _TENANT_OVERRIDES: dict[str, dict] | None = None
+_TENANT_OVERRIDES_PATH: str | None = None
 
 
 def _load_tenant_overrides() -> dict[str, dict]:
-    global _TENANT_OVERRIDES
-    if _TENANT_OVERRIDES is not None:
-        return _TENANT_OVERRIDES
+    global _TENANT_OVERRIDES, _TENANT_OVERRIDES_PATH
     path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+    # Reload if cache empty or path changed
+    if _TENANT_OVERRIDES is not None and path == _TENANT_OVERRIDES_PATH:
+        return _TENANT_OVERRIDES
     overrides: dict[str, dict] = {}
     # Attempt to load from YAML if available
     if path and os.path.exists(path):
@@ -71,6 +81,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
             except Exception:
                 overrides = {}
     _TENANT_OVERRIDES = overrides
+    _TENANT_OVERRIDES_PATH = path
     return overrides
 
 
@@ -314,8 +325,12 @@ class AdaptationEngine:
         except Exception:
             pass
 
-        # Load state from Redis if available
-        if self._redis and self._tenant_id:
+        # Load state from Redis only when explicitly enabled (test isolation by default)
+        if (
+            self._redis
+            and self._tenant_id
+            and str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}
+        ):
             self._load_state()
 
     # ---------------------------------------------------------------------
@@ -541,20 +556,71 @@ class AdaptationEngine:
             ).strip().lower() in {"1", "true", "yes", "on"}
             tau_decay_rate = float(os.getenv("SOMABRAIN_TAU_DECAY_RATE", "0") or 0.0)
             # Per-tenant override
-            ov = _get_tenant_override(self._tenant_id)
+            # Cache per-tenant overrides to avoid repeated file reads
+            if not hasattr(self, "_tenant_override") or self._tenant_id != getattr(self, "_tenant_override_id", None):
+                self._tenant_override = _get_tenant_override(self._tenant_id)
+                self._tenant_override_id = self._tenant_id
+            ov = getattr(self, "_tenant_override", {})
             if isinstance(ov.get("tau_decay_rate"), (int, float)):
                 tau_decay_rate = float(ov["tau_decay_rate"])  # override rate
         except Exception:
             enable_tau_decay = False
             tau_decay_rate = 0.0
-        if enable_tau_decay and tau_decay_rate > 0.0:
+        # Annealing schedule supersedes legacy decay if enabled
+        try:
+            anneal_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE", "").strip().lower()
+            anneal_rate = float(os.getenv("SOMABRAIN_TAU_ANNEAL_RATE", "0") or 0.0)
+            anneal_step_interval = int(
+                os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL", "10") or 10
+            )
+            tau_min = float(os.getenv("SOMABRAIN_TAU_MIN", "0.05") or 0.05)
+            # Use cached overrides for annealing as well
+            ov = getattr(self, "_tenant_override", {})
+            if isinstance(ov.get("tau_anneal_mode"), str):
+                anneal_mode = str(ov.get("tau_anneal_mode", anneal_mode)).strip().lower()
+            if isinstance(ov.get("tau_anneal_rate"), (int, float)):
+                anneal_rate = float(ov.get("tau_anneal_rate", anneal_rate))
+            if isinstance(ov.get("tau_min"), (int, float)):
+                tau_min = float(ov.get("tau_min", tau_min))
+            if isinstance(ov.get("tau_step_interval"), (int, float)):
+                anneal_step_interval = int(ov.get("tau_step_interval", anneal_step_interval))
+        except Exception:
+            anneal_mode = ""
+            anneal_rate = 0.0
+            anneal_step_interval = 10
+            tau_min = 0.05
+        applied_anneal = False
+        if anneal_mode and anneal_rate > 0.0:
+            old_tau = float(self._retrieval.tau)
+            new_tau = old_tau
+            if anneal_mode in {"exp", "exponential"}:
+                # Apply exponential multiplicative decay every feedback event
+                new_tau = old_tau * (1.0 - anneal_rate)
+                applied_anneal = True
+            elif anneal_mode in {"step"}:
+                # Apply at discrete intervals of feedback count (1-indexed)
+                next_count = getattr(self, "_feedback_count", 0) + 1
+                if next_count % max(1, anneal_step_interval) == 0:
+                    new_tau = old_tau * (1.0 - anneal_rate)
+                    applied_anneal = True
+            elif anneal_mode in {"linear"}:
+                # Linear subtract until floor
+                new_tau = old_tau - anneal_rate
+                applied_anneal = True
+            if applied_anneal:
+                self._retrieval.tau = max(tau_min, new_tau)
+                try:
+                    from somabrain import metrics as _metrics
+                    _metrics.tau_anneal_events.labels(tenant_id=self._tenant_id).inc()
+                except Exception:
+                    pass
+        # Legacy tau decay path only if no annealing applied
+        if not applied_anneal and enable_tau_decay and tau_decay_rate > 0.0:
             old_tau = float(self._retrieval.tau)
             new_tau = old_tau * (1.0 - tau_decay_rate)
-            # Implicit floor so tau never collapses completely (acts like exploration temperature)
             self._retrieval.tau = max(new_tau, 0.05)
             try:
                 from somabrain import metrics as _metrics
-
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
             except Exception:
                 pass
@@ -592,14 +658,29 @@ class AdaptationEngine:
             except Exception:
                 pass
             if entropy_cap > 0.0 and entropy > entropy_cap:
-                # Sharpen: scale all but largest weight toward zero by a factor derived from overflow
-                overflow = entropy - entropy_cap
+                # Iteratively sharpen non‑max components and renormalize to drive entropy below the cap.
                 largest_idx = max(range(len(vec)), key=lambda i: vec[i])
-                # Compute scaling factor (bounded) to reduce entropy gradually
-                scale = min(0.5, max(0.05, overflow / (entropy + 1e-9)))
-                for i in range(len(vec)):
-                    if i != largest_idx:
-                        vec[i] *= 1.0 - scale
+                attempts = 0
+                while entropy > entropy_cap and attempts < 10:
+                    overflow = entropy - entropy_cap
+                    scale = min(0.99, max(0.2, overflow / (entropy_cap + 1e-9)))
+                    for i in range(len(vec)):
+                        if i != largest_idx:
+                            vec[i] *= (1.0 - scale)
+                    s2 = sum(vec)
+                    if s2 > 0:
+                        vec = [v / s2 for v in vec]
+                    probs = [v / sum(vec) for v in vec]
+                    entropy = -sum(p * math.log(p) for p in probs)
+                    attempts += 1
+                # If still above cap due to pathological distributions, enforce a final strong sharpen
+                if entropy > entropy_cap:
+                    for i in range(len(vec)):
+                        if i != largest_idx:
+                            vec[i] *= 0.05
+                    s2 = sum(vec)
+                    if s2 > 0:
+                        vec = [v / s2 for v in vec]
                 # Reassign back preserving original ordering
                 (
                     self._retrieval.alpha,
@@ -620,11 +701,11 @@ class AdaptationEngine:
         except Exception:
             pass
 
-        # Persist state to Redis before metric update to guarantee persistence
-        # Ensure we have a Redis client (fallback to _get_redis) before persisting
-        if not self._redis:
-            self._redis = _get_redis()
-        self._persist_state()
+        # Persist state only if enabled via env flag
+        if str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+            if not self._redis:
+                self._redis = _get_redis()
+            self._persist_state()
         # Update shared metrics for this tenant (import inside to allow monkeypatching)
         try:
             from somabrain import metrics as _metrics
@@ -655,8 +736,9 @@ class AdaptationEngine:
                 pass
         except Exception:
             pass
-        # Ensure state persisted even if metric update fails (duplicate call is safe)
-        self._persist_state()
+        # Ensure state persisted even if metric update fails (duplicate call is safe) when enabled
+        if str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}:
+            self._persist_state()
         return True
 
     def rollback(self) -> bool:

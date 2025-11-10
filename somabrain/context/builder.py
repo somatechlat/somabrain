@@ -78,6 +78,8 @@ class ContextBuilder:
         self._tau_increment_up = 0.1
         self._tau_increment_down = 0.05
         self._dup_ratio_threshold = 0.5
+        # Per-tenant overrides cache (learning.tenants.yaml)
+        self._tenant_overrides_cache: Dict[str, Dict] = {}
         try:
             cfg = _get_config() if _get_config else None
             if cfg is not None:
@@ -306,6 +308,58 @@ class ContextBuilder:
             step = max(self._tau_increment_down, 0.0) * deficit
             new_tau = max(self._weights.tau - step, self._tau_min)
         self._weights.tau = new_tau
+
+        # ==== Apply per-tenant entropy cap on retrieval parameter vector (alpha,beta,gamma,tau) ====
+        try:
+            cap = self._get_entropy_cap_for_tenant(self._tenant_id)
+        except Exception:
+            cap = None
+        if isinstance(cap, (int, float)) and cap > 0.0:
+            try:
+                import math as _m
+
+                vec = [
+                    max(1e-9, float(self._weights.alpha)),
+                    max(1e-9, float(self._weights.beta)),
+                    max(1e-9, float(self._weights.gamma)),
+                    max(1e-9, float(self._weights.tau)),
+                ]
+                s = sum(vec)
+                probs = [v / s for v in vec]
+                H = -sum(p * _m.log(p) for p in probs)
+                if H > float(cap):
+                    # Iteratively sharpen non-max components while preserving max component
+                    largest_idx = max(range(len(vec)), key=lambda i: vec[i])
+                    attempts = 0
+                    entropy = H
+                    while entropy > float(cap) and attempts < 10:
+                        overflow = entropy - float(cap)
+                        scale = min(0.99, max(0.2, overflow / (float(cap) + 1e-9)))
+                        for i in range(len(vec)):
+                            if i != largest_idx:
+                                vec[i] *= (1.0 - scale)
+                        s2 = sum(vec)
+                        if s2 > 0:
+                            vec = [v / s2 for v in vec]
+                        probs = [v / sum(vec) for v in vec]
+                        entropy = -sum(p * _m.log(p) for p in probs)
+                        attempts += 1
+                    if entropy > float(cap):
+                        # Final strong sharpen if stubborn
+                        for i in range(len(vec)):
+                            if i != largest_idx:
+                                vec[i] *= 0.05
+                        s2 = sum(vec)
+                        if s2 > 0:
+                            vec = [v / s2 for v in vec]
+                    self._weights.alpha, self._weights.beta, self._weights.gamma, self._weights.tau = (
+                        float(vec[0]),
+                        float(vec[1]),
+                        float(vec[2]),
+                        float(vec[3]),
+                    )
+            except Exception:
+                pass
         # Emit metric for the current tenant (import inside to respect monkeypatch)
         from somabrain.metrics import (
             update_learning_retrieval_weights as _update_metric,
@@ -319,6 +373,55 @@ class ContextBuilder:
             tau=self._weights.tau,
         )
         return normalized.tolist()
+
+    # ---------------- Tenant overrides helpers ----------------
+    def _get_entropy_cap_for_tenant(self, tenant_id: str) -> Optional[float]:
+        """Read entropy_cap from SOMABRAIN_LEARNING_TENANTS_FILE or env overrides."""
+        t = tenant_id or "default"
+        ov = self._tenant_overrides_cache.get(t)
+        if ov is None:
+            ov = self._load_tenant_overrides().get(t, {})
+            self._tenant_overrides_cache[t] = ov
+        cap = ov.get("entropy_cap") if isinstance(ov, dict) else None
+        try:
+            return float(cap) if cap is not None else None
+        except Exception:
+            return None
+
+    def _load_tenant_overrides(self) -> Dict[str, Dict]:
+        """Load per-tenant overrides from YAML/JSON or env JSON string."""
+        path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        overrides: Dict[str, Dict] = {}
+        if path and os.path.exists(path):
+            try:
+                import yaml  # type: ignore
+
+                with open(path, "r", encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+                if isinstance(data, dict):
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+            except Exception:
+                try:
+                    import json as _json
+
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = _json.load(f)
+                    if isinstance(data, dict):
+                        overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                except Exception:
+                    overrides = {}
+        if not overrides:
+            raw = os.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+            if raw:
+                try:
+                    import json as _json
+
+                    data = _json.loads(raw)
+                    if isinstance(data, dict):
+                        overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                except Exception:
+                    overrides = {}
+        return overrides
 
     def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
         context_blocks: List[str] = []

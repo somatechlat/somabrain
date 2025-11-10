@@ -37,6 +37,9 @@ def test_no_strict_mode_fallbacks():
         # Skip virtual env or build artifacts if inside tree
         if "/.venv/" in str(p):
             continue
+        # Skip schemas / generated code or tests referencing failure messages explicitly
+        if p.name.endswith("_pb2.py") or p.name.endswith("_pb2.pyi"):
+            continue
         v = scan_file(p)
         if v:
             violations_total.append((p, v))

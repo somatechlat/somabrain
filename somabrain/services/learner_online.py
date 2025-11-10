@@ -621,13 +621,16 @@ class LearnerService:
 
 
 app = FastAPI(title="Learner Online")
-_svc = LearnerService()
+# Lazy service instance to avoid strict Avro schema requirement at import time during test collection.
+# Instantiated only on FastAPI startup or explicit main() run.
+_svc: Optional[LearnerService] = None
 _thread: Optional[threading.Thread] = None
 
 
 @app.on_event("startup")
 async def startup() -> None:  # pragma: no cover
     global _thread
+    global _svc
     ff = os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0").strip().lower() in {
         "1",
         "true",
@@ -644,6 +647,8 @@ async def startup() -> None:  # pragma: no cover
         return
     # Require Kafka before starting learner thread
     assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+    if _svc is None:
+        _svc = LearnerService()
     _thread = threading.Thread(target=_svc.run, daemon=True)
     _thread.start()
 

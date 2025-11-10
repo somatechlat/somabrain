@@ -36,6 +36,12 @@ class DriftConfig:
     window_size: int = 100         # Rolling window size
     min_samples: int = 20          # Minimum samples before detection
     cooldown_period: int = 60      # Seconds between rollbacks
+    adaptive: bool = True          # Enable adaptive baseline thresholds
+    ema_alpha: float = 0.05        # EMA smoothing factor for baselines
+
+    def __post_init__(self):
+        if not (0.0 < self.ema_alpha <= 1.0):
+            raise ValueError("ema_alpha must be in (0,1]")
 
 
 @dataclass
@@ -45,6 +51,9 @@ class DriftState:
     regret_history: deque[float]
     last_drift_time: float
     is_stable: bool = True
+    entropy_baseline: float = 0.0
+    regret_baseline: float = 0.0
+    baseline_initialized: bool = False
 
 
 class DriftDetector:
@@ -58,19 +67,20 @@ class DriftDetector:
     def __init__(self, config: DriftConfig = DriftConfig()):
         self.config = config
         self.states: Dict[str, DriftState] = {}
+        # Persistence path (warm restart of baselines + last_drift)
+        self._store_path = os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
         self.enabled = os.getenv("ENABLE_DRIFT_DETECTION", "0").lower() in {
             "1", "true", "yes", "on"
         }
         self.rollback_enabled = os.getenv("ENABLE_AUTO_ROLLBACK", "0").lower() in {
             "1", "true", "yes", "on"
         }
-        # Producer for drift events (strict: Avro mandatory when enabled)
+        # Producer for drift events (strict: fail-fast if enabled)
         if self.enabled:
             try:
                 self._producer = make_producer()
-            except Exception:
-                # In strict mode, producer creation may fail in tests without Kafka; continue logic-only
-                self._producer = None
+            except Exception as e:
+                raise RuntimeError(f"drift_detector: Kafka producer init failed (strict mode): {e}")
         else:
             self._producer = None
         
@@ -106,6 +116,13 @@ class DriftDetector:
                 labelnames=["domain", "tenant"]
             ) if metrics else None
         )
+
+        # Load persisted state (best-effort, strict parse)
+        try:
+            self._load_state()
+        except Exception:
+            # Corrupted or missing store; ignore (warm start semantics only)
+            pass
         
     def _get_state_key(self, domain: str, tenant: str) -> str:
         """Get state key for domain/tenant."""
@@ -122,6 +139,77 @@ class DriftDetector:
                 is_stable=True
             )
         return self.states[key]
+
+    # -------- Persistence (minimal JSON) --------
+    def _persist_state(self) -> None:
+        """Persist baselines and last_drift_time for warm restarts.
+
+        Format:
+        {
+          "version": 1,
+          "updated": <iso>,
+          "entries": {
+            "domain:tenant": {
+               "last_drift_time": <float>,
+               "entropy_baseline": <float>,
+               "regret_baseline": <float>,
+               "baseline_initialized": <bool>
+            }, ...
+          }
+        }
+        """
+        try:
+            import pathlib
+            p = pathlib.Path(self._store_path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            entries: Dict[str, Any] = {}
+            for k, st in self.states.items():
+                entries[k] = {
+                    "last_drift_time": float(st.last_drift_time),
+                    "entropy_baseline": float(st.entropy_baseline),
+                    "regret_baseline": float(st.regret_baseline),
+                    "baseline_initialized": bool(st.baseline_initialized),
+                }
+            blob = {
+                "version": 1,
+                "updated": datetime.now(timezone.utc).isoformat(),
+                "entries": entries,
+            }
+            with p.open("w", encoding="utf-8") as f:
+                json.dump(blob, f, indent=2)
+        except Exception:
+            pass
+
+    def _load_state(self) -> None:
+        """Load previously persisted drift state."""
+        import pathlib
+        p = pathlib.Path(self._store_path)
+        if not p.exists():
+            return
+        data = json.loads(p.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise RuntimeError("drift_detector: persisted state root not dict")
+        if int(data.get("version", 0)) != 1:
+            raise RuntimeError("drift_detector: incompatible state version")
+        entries = data.get("entries")
+        if not isinstance(entries, dict):
+            return
+        for k, v in entries.items():
+            if not isinstance(v, dict):
+                continue
+            # Parse key into domain/tenant
+            try:
+                domain, tenant = k.split(":", 1)
+            except Exception:
+                continue
+            st = self._get_or_create_state(domain, tenant)
+            try:
+                st.last_drift_time = float(v.get("last_drift_time", 0.0))
+                st.entropy_baseline = float(v.get("entropy_baseline", 0.0))
+                st.regret_baseline = float(v.get("regret_baseline", 0.0))
+                st.baseline_initialized = bool(v.get("baseline_initialized", False))
+            except Exception:
+                continue
     
     def add_observation(self, domain: str, tenant: str, 
                        confidence: float, entropy: float) -> bool:
@@ -165,10 +253,26 @@ class DriftDetector:
             # Detect drift
             avg_entropy = sum(state.entropy_history) / len(state.entropy_history)
             avg_regret = sum(state.regret_history) / len(state.regret_history)
+
+            # Adaptive baselines (EMA) for thresholds
+            if self.config.adaptive:
+                if not state.baseline_initialized:
+                    state.entropy_baseline = avg_entropy
+                    state.regret_baseline = avg_regret
+                    state.baseline_initialized = True
+                else:
+                    a = self.config.ema_alpha
+                    state.entropy_baseline = (1 - a) * state.entropy_baseline + a * avg_entropy
+                    state.regret_baseline = (1 - a) * state.regret_baseline + a * avg_regret
+                # Dynamic thresholds: baseline + fixed margin (retain safety margin)
+                entropy_thresh = max(self.config.entropy_threshold, state.entropy_baseline + 0.10)
+                regret_thresh = max(self.config.regret_threshold, state.regret_baseline + 0.10)
+            else:
+                entropy_thresh = self.config.entropy_threshold
+                regret_thresh = self.config.regret_threshold
             
             drift_detected = (
-                avg_entropy > self.config.entropy_threshold or
-                avg_regret > self.config.regret_threshold
+                avg_entropy > entropy_thresh or avg_regret > regret_thresh
             )
             
             if drift_detected:
@@ -208,11 +312,19 @@ class DriftDetector:
                         self._producer.send(topic, value=payload)
                 except Exception as e:  # pragma: no cover
                     print(f"WARN: failed to emit fusion_drift_event: {e}")
+                # Persist immediately on drift detection
+                try:
+                    self._persist_state()
+                except Exception:
+                    pass
                 
                 return True
             
             # Mark as stable
             state.is_stable = True
+            # Persist periodically (non-drift path) every ~window_size updates per key
+            if len(state.entropy_history) == self.config.window_size:
+                self._persist_state()
             return False
     
     def _trigger_rollback(self, domain: str, tenant: str, trigger: str) -> None:
@@ -268,7 +380,7 @@ class DriftDetector:
         except Exception:
             pass
 
-        # Emit conservative config update to reduce exploration
+        # Emit conservative config update to reduce exploration (Avro-only)
         try:
             if self._producer:
                 cfg = {
@@ -282,7 +394,28 @@ class DriftDetector:
                     "gamma_action": None,
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
-                self._producer.send(TOPICS.get("config", "cog.config.updates"), value=cfg)
+                payload_cfg = encode(cfg, "config_update")
+                self._producer.send(TOPICS.get("config", "cog.config.updates"), value=payload_cfg)
+        except Exception:
+            pass
+
+        # Emit structured rollback event (Avro-only)
+        try:
+            if self._producer:
+                rollback = {
+                    "tenant": tenant,
+                    "domain": domain,
+                    "trigger": trigger,
+                    "action": "rollback_to_baseline",
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                }
+                payload_rb = encode(rollback, "fusion_rollback_event")
+                self._producer.send(TOPICS.get("fusion_rollback", "cog.fusion.rollback.events"), value=payload_rb)
+        except Exception as e:
+            print(f"WARN: failed to emit fusion_rollback_event: {e}")
+        # Persist state after rollback (contains updated last_drift_time)
+        try:
+            self._persist_state()
         except Exception:
             pass
     
@@ -344,6 +477,29 @@ class DriftDetector:
             self._producer.send(topic, value=payload)
         except Exception as e:  # pragma: no cover
             print(f"WARN: drift snapshot emission failed: {e}")
+        # Persist snapshot baseline updates occasionally
+        try:
+            self._persist_state()
+        except Exception:
+            pass
+
+    # --- Export helpers ---
+    def export_state(self) -> Dict[str, Any]:
+        """Return current persisted fields as a dict for operators/tests.
+
+        Structure matches entries payload in persistence file.
+        { "domain:tenant": { "last_drift_time": float, "entropy_baseline": float,
+                              "regret_baseline": float, "baseline_initialized": bool } }
+        """
+        out: Dict[str, Any] = {}
+        for k, st in self.states.items():
+            out[k] = {
+                "last_drift_time": float(st.last_drift_time),
+                "entropy_baseline": float(st.entropy_baseline),
+                "regret_baseline": float(st.regret_baseline),
+                "baseline_initialized": bool(st.baseline_initialized),
+            }
+        return out
 
 
 # Global drift detector instance

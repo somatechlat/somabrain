@@ -1,0 +1,11 @@
+{
+  "ts": 1762742302,
+  "tenant": "t2",
+  "domain": "state",
+  "trigger": "drift_detected",
+  "disabled": [
+    "ENABLE_FUSION_NORMALIZATION",
+    "ENABLE_CONSISTENCY_CHECKS",
+    "ENABLE_CALIBRATION"
+  ]
+}

@@ -12,8 +12,9 @@ The following items are in varying states of completion. "Complete" here means u
 - **Reality**: Tenant parameters present, core segmenter not confirmed in current tree.
 - **Action**: Add segment boundary emitter + metrics (boundaries/hour, duplicate ratio) before claiming complete.
 
-#### 2. **Fusion Normalization** (Sprint 7) – Partial
+#### 2. **Fusion Normalization & Tau Annealing** (Sprint 7) – Partial
 - Adaptive α and normalized error weights present in integrator; still behind flag; lacks dedicated tests & unconditional path.
+- NEW: Tau annealing (exponential | step | linear) implemented with per-tenant overrides (`tau_anneal_mode`, `tau_anneal_rate`, `tau_min`, `tau_step_interval`) and metrics (`somabrain_tau_anneal_events_total`). Legacy simple decay retained only as fallback when schedule disabled.
 
 #### 3. **Calibration Pipeline** (Sprint 10) – Partial
 - Claims exist; end-to-end metric updates & schema emission not verified in this pass.
@@ -189,7 +190,7 @@ curl http://localhost:8086/metrics | grep somabrain_drift
 
 | Sprint | Prior Claim | Corrected Status | Notes |
 |--------|-------------|------------------|-------|
-| 7 | Complete | Partial | Flag-gated; needs tests & unconditional path |
+| 7 | Complete | Partial | Fusion flag-gated; tau annealing implemented & metered; fusion path still lacks unconditional enforcement/tests |
 | 8 | Complete | Partial | Duplication persists |
 | 9 | Complete | Unverified | Segmenter code not confirmed |
 | 10 | Complete | Partial | ECE/Brier path not validated |

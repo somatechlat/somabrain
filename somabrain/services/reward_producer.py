@@ -1,9 +1,8 @@
 """
-Reward Producer Service
+Reward Producer Service (strict Avro-only)
 
-FastAPI service that accepts reward signals and publishes RewardEvent records
-to Kafka topic "cog.reward.events" using Avro (fastavro schemaless) when
-available, falling back to JSON payloads otherwise.
+Publishes RewardEvent records to Kafka topic "cog.reward.events" using Avro.
+Strict mode: no JSON fallback, no legacy kafka-python client.
 
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
