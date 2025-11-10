@@ -12,7 +12,7 @@ def _entropy(weights):
 
 
 def test_entropy_cap_never_increases_entropy(monkeypatch):
-    monkeypatch.setenv("SOMABRAIN_FF_COG_INTEGRATOR", "1")
+    monkeypatch.setenv("SOMABRAIN_MODE", "full-local")
     # Force tenant cap small to trigger
     monkeypatch.setenv("SOMABRAIN_LEARNING_TENANTS_FILE", "config/learning.tenants.yaml")
     hub = IntegratorHub()
@@ -39,7 +39,7 @@ def test_entropy_cap_never_increases_entropy(monkeypatch):
 
 
 def test_entropy_cap_converges_within_events(monkeypatch):
-    monkeypatch.setenv("SOMABRAIN_FF_COG_INTEGRATOR", "1")
+    monkeypatch.setenv("SOMABRAIN_MODE", "full-local")
     hub = IntegratorHub()
     t = "public"
     hub._tenant_entropy_cap[t] = 0.25

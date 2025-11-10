@@ -91,22 +91,10 @@ def run_forever() -> None:  # pragma: no cover
     except Exception:
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
-    ff = os.getenv("SOMABRAIN_FF_PREDICTOR_STATE", "1").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    if not ff:
-        if not composite:
-            print("predictor-state: feature flag disabled; exiting.")
-            return
+    from somabrain.modes import mode_config
+    if not mode_config().enable_integrator:
+        print("predictor-state: disabled via mode; exiting.")
+        return
     prod = make_producer()
     if prod is None:
         print("predictor-state: Kafka not available; exiting.")

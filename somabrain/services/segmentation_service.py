@@ -18,7 +18,7 @@ Design choices:
 
 Environment variables:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
-- SOMABRAIN_FF_COG_SEGMENTATION: enable/disable service (default off)
+- SOMABRAIN_MODE: governs enablement via mode_config
 - SOMABRAIN_SEGMENT_MODE: 'leader' (default) or 'cpd'
 - SOMABRAIN_SEGMENT_MAX_DWELL_MS: optional max dwell; emits boundary even if
     leader hasn't changed (default 0 meaning disabled)

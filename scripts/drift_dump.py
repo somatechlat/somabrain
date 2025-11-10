@@ -4,7 +4,7 @@
 Prints current drift baselines and last_drift timestamps for each domain:tenant key.
 
 Usage:
-  SOMABRAIN_DRIFT_STORE=./data/drift/state.json ENABLE_DRIFT_DETECTION=1 python scripts/drift_dump.py
+    SOMABRAIN_MODE=full-local SOMABRAIN_DRIFT_STORE=./data/drift/state.json python scripts/drift_dump.py
 
 If the detector is not enabled, it will still attempt to read the persistence file.
 """
@@ -26,8 +26,12 @@ def _human(ts: float) -> str:
 
 
 def main() -> None:
-    # Prefer live in-memory state when ENABLE_DRIFT_DETECTION set; otherwise read persistence file directly
-    enabled = os.getenv("ENABLE_DRIFT_DETECTION", "0").lower() in {"1", "true", "yes", "on"}
+    # Prefer live in-memory state when drift is enabled by mode; otherwise read persistence file directly
+    try:
+        from somabrain.modes import mode_config
+        enabled = bool(mode_config().enable_drift)
+    except Exception:
+        enabled = False
     if enabled:
         state = drift_detector.export_state()
     else:

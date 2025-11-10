@@ -1,8 +1,8 @@
 """Unified runtime mode configuration for SomaBrain.
 
 This module produces a single source of truth mapping `SOMABRAIN_MODE` to a
-feature matrix consumed by services. It replaces scattered ENABLE_* and
-SOMABRAIN_FF_* environment flags.
+feature matrix consumed by services. All legacy ENABLE_* and feature flag envs
+have been removed; mode_config is authoritative.
 
 Modes:
   full-local : production parity on a single machine

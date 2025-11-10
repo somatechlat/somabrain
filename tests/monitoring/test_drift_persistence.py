@@ -8,9 +8,8 @@ from somabrain.monitoring.drift_detector import DriftDetector, DriftConfig
 
 
 def test_drift_state_persistence_round_trip(monkeypatch):
-    # Enable drift + rollback for detector
-    monkeypatch.setenv("ENABLE_DRIFT_DETECTION", "1")
-    monkeypatch.setenv("ENABLE_AUTO_ROLLBACK", "0")  # rollback not required for persistence
+    # Use CI mode semantics (drift enabled, auto_rollback disabled)
+    monkeypatch.setenv("SOMABRAIN_MODE", "ci")
     # Use small window/min_samples for quick drift trigger
     cfg = DriftConfig(entropy_threshold=0.2, regret_threshold=0.2, window_size=8, min_samples=3, cooldown_period=0, adaptive=False, ema_alpha=0.5)
     with tempfile.TemporaryDirectory() as tmp:

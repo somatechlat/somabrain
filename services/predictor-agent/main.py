@@ -110,20 +110,9 @@ def run_forever() -> None:  # pragma: no cover
     except Exception:
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
-    ff = os.getenv("SOMABRAIN_FF_PREDICTOR_AGENT", "1").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    if not ff and not composite:
-        print("predictor-agent: feature flag disabled; exiting.")
+    from somabrain.modes import mode_config
+    if not mode_config().enable_integrator:
+        print("predictor-agent: disabled via mode; exiting.")
         return
     prod = _make_producer()
     if prod is None:
