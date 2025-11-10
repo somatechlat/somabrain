@@ -40,7 +40,9 @@ from typing import Dict, Optional, Tuple
 try:
     from confluent_kafka import Consumer as CKConsumer, Producer as CKProducer  # type: ignore
 except Exception as e:  # pragma: no cover
-    raise RuntimeError(f"segmentation_service: confluent-kafka required in strict mode: {e}")
+    raise RuntimeError(
+        f"segmentation_service: confluent-kafka required in strict mode: {e}"
+    )
 
 
 try:
@@ -520,6 +522,7 @@ class HazardSegmenter:
         # Convert log-posteriors to normalized probabilities using log-sum-exp
         try:
             import math as _m
+
             m = max(log_post_S, log_post_V)
             zs = _m.exp(log_post_S - m) + _m.exp(log_post_V - m)
             pV = _m.exp(log_post_V - m) / max(1e-18, zs)
@@ -552,7 +555,7 @@ class SegmentationService:
         _init_metrics()
         init_tracing()
         self._tracer = get_tracer("somabrain.segmentation_service")
-        
+
         # Start health server for k8s probes
         try:
             if os.getenv("HEALTH_PORT"):
@@ -565,9 +568,9 @@ class SegmentationService:
         self._serde_in = AvroSerde(gf_schema)
         self._serde_out = AvroSerde(sb_schema)
         self._serde_update = AvroSerde(bu_schema)
-            
+
         max_dwell_ms = int(os.getenv("SOMABRAIN_SEGMENT_MAX_DWELL_MS", "0") or "0")
-        
+
         # HMM segmentation enabled; add acceptance metrics instrumentation
         # Mode can be extended later (leader/cpd/hazard) but we track quality KPIs now
         self._mode = "hmm"
@@ -576,9 +579,9 @@ class SegmentationService:
         self._last_boundary_ts: Dict[tuple, int] = {}
         self._volatile_count: Dict[tuple, int] = {}
         self._stable_count: Dict[tuple, int] = {}
-            
+
         self._segmenter = Segmenter(max_dwell_ms=max_dwell_ms)
-        
+
         # CPD mode parameters
         self._cpd = CPDSegmenter(
             max_dwell_ms=max_dwell_ms,
@@ -587,12 +590,14 @@ class SegmentationService:
             min_gap_ms=int(os.getenv("SOMABRAIN_CPD_MIN_GAP_MS", "1000") or "1000"),
             min_std=float(os.getenv("SOMABRAIN_CPD_MIN_STD", "0.02") or "0.02"),
         )
-        
+
         # HMM mode parameters with tenant-aware configuration
         self._hazard = HazardSegmenter(
             max_dwell_ms=max_dwell_ms,
             hazard_lambda=float(os.getenv("SOMABRAIN_HAZARD_LAMBDA", "0.02") or "0.02"),
-            vol_sigma_mult=float(os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0") or "3.0"),
+            vol_sigma_mult=float(
+                os.getenv("SOMABRAIN_HAZARD_VOL_MULT", "3.0") or "3.0"
+            ),
             min_samples=int(os.getenv("SOMABRAIN_HAZARD_MIN_SAMPLES", "20") or "20"),
             min_gap_ms=int(os.getenv("SOMABRAIN_HAZARD_MIN_GAP_MS", "1000") or "1000"),
             min_std=float(os.getenv("SOMABRAIN_HAZARD_MIN_STD", "0.02") or "0.02"),
@@ -647,7 +652,9 @@ class SegmentationService:
         }
         consumer = CKConsumer(conf)
         consumer.subscribe(topics)
-        producer = CKProducer({"bootstrap.servers": _bootstrap(), "compression.type": "none"})
+        producer = CKProducer(
+            {"bootstrap.servers": _bootstrap(), "compression.type": "none"}
+        )
         try:
             while True:
                 msg = consumer.poll(0.5)
@@ -735,7 +742,9 @@ class SegmentationService:
                         dup = float(self._duplicate_total.get(key, 0))
                         tot = float(self._boundary_total.get(key, 0))
                         if tot > 0:
-                            DUPLICATE_RATIO.labels(tenant=tenant, domain=domain).set(max(0.0, min(1.0, dup / tot)))
+                            DUPLICATE_RATIO.labels(tenant=tenant, domain=domain).set(
+                                max(0.0, min(1.0, dup / tot))
+                            )
                     except Exception:
                         pass
                 # Boundaries per hour (simple rate approximation)
@@ -746,7 +755,9 @@ class SegmentationService:
                     if last_ts is not None and BOUNDARIES_PER_HOUR is not None:
                         gap_h = max(1e-3, (now_ms - last_ts) / 3600000.0)
                         rate = 1.0 / gap_h
-                        BOUNDARIES_PER_HOUR.labels(tenant=tenant, domain=domain).set(rate)
+                        BOUNDARIES_PER_HOUR.labels(tenant=tenant, domain=domain).set(
+                            rate
+                        )
                 except Exception:
                     pass
                 # HMM volatility ratio (if hazard evidence)
@@ -766,7 +777,9 @@ class SegmentationService:
                         st = float(self._stable_count.get(key, 0))
                         total_states = vol + st
                         if total_states > 0:
-                            HMM_STATE_VOLATILE.labels(tenant=tenant, domain=domain).set(vol / total_states)
+                            HMM_STATE_VOLATILE.labels(tenant=tenant, domain=domain).set(
+                                vol / total_states
+                            )
                     except Exception:
                         pass
                 record = {
@@ -813,13 +826,12 @@ class SegmentationService:
 
 def main() -> None:  # pragma: no cover - service entrypoint
     from somabrain.modes import feature_enabled, mode_config
+
     if not feature_enabled("segmentation"):
         import logging
         from somabrain.metrics import get_counter
 
-        logging.info(
-            f"segmentation_service: disabled via mode={mode_config().name}"
-        )
+        logging.info(f"segmentation_service: disabled via mode={mode_config().name}")
         try:
             _MX_SEG_DISABLED = get_counter(
                 "somabrain_segmentation_disabled_total",
@@ -830,7 +842,12 @@ def main() -> None:  # pragma: no cover - service entrypoint
             pass
         return
     # Infra readiness required in strict mode
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=False,
+        require_opa=False,
+    )
     svc = SegmentationService()
     svc.run_forever()
 

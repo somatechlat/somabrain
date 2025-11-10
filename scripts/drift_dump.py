@@ -46,7 +46,9 @@ def main() -> None:
     # Render table
     print("domain:tenant, last_drift, entropy_baseline, regret_baseline, initialized")
     for key, entry in sorted(state.items()):
-        print(f"{key}, {_human(entry.get('last_drift_time', 0.0))}, {entry.get('entropy_baseline', 0.0):.4f}, {entry.get('regret_baseline', 0.0):.4f}, {bool(entry.get('baseline_initialized'))}")
+        print(
+            f"{key}, {_human(entry.get('last_drift_time', 0.0))}, {entry.get('entropy_baseline', 0.0):.4f}, {entry.get('regret_baseline', 0.0):.4f}, {bool(entry.get('baseline_initialized'))}"
+        )
 
 
 if __name__ == "__main__":

@@ -26,17 +26,20 @@ except Exception:  # pragma: no cover
 
 class CalibrationService:
     """Service for managing predictor calibration."""
-    
+
     def __init__(self):
         # Centralized feature gating
         from somabrain.modes import feature_enabled
+
         self.enabled = feature_enabled("calibration")
         # Producer for calibration snapshots (strict: fail-fast when enabled)
         if self.enabled:
             try:
                 self._producer = make_producer()
             except Exception as e:
-                raise RuntimeError(f"calibration_service: Kafka producer init failed (strict mode): {e}")
+                raise RuntimeError(
+                    f"calibration_service: Kafka producer init failed (strict mode): {e}"
+                )
         else:
             self._producer = None
         # Persistence path (configurable via SOMABRAIN_CALIBRATION_STORE)
@@ -45,68 +48,83 @@ class CalibrationService:
         )
         if self.enabled:
             calibration_tracker.load(self._store_path)
-        
+
         # Calibration metrics
         self.calibration_gauge = (
             metrics.get_gauge(
                 "somabrain_calibration_ece",
                 "Expected Calibration Error by domain",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
-        
+
         self.temperature_gauge = (
             metrics.get_gauge(
                 "somabrain_calibration_temperature",
                 "Temperature scaling parameter",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
-        
+
         self.brier_gauge = (
             metrics.get_gauge(
                 "somabrain_calibration_brier",
                 "Brier score for calibration",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
         # Acceptance enforcement metrics
         self.ece_pre = (
             metrics.get_gauge(
                 "somabrain_calibration_ece_pre",
                 "ECE prior to latest calibration fit",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
         self.ece_post = (
             metrics.get_gauge(
                 "somabrain_calibration_ece_post",
                 "ECE after calibration temperature applied",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
         self.downgrade_counter = (
             metrics.get_counter(
                 "somabrain_calibration_downgrade_total",
                 "Count of calibration downgrades (rollback temperature)",
-                labelnames=["domain", "tenant", "reason"]
-            ) if metrics else None
+                labelnames=["domain", "tenant", "reason"],
+            )
+            if metrics
+            else None
         )
         self.improvement_ratio_gauge = (
             metrics.get_gauge(
                 "somabrain_calibration_improvement_ratio",
                 "Post-vs-pre ECE improvement ratio (post_ece/pre_ece)",
-                labelnames=["domain", "tenant"]
-            ) if metrics else None
+                labelnames=["domain", "tenant"],
+            )
+            if metrics
+            else None
         )
         # Store last stable temperature to allow rollback
         self._last_good_temperature: Dict[str, float] = {}
-        
-    def record_prediction(self, domain: str, tenant: str, 
-                         confidence: float, accuracy: float) -> None:
+
+    def record_prediction(
+        self, domain: str, tenant: str, confidence: float, accuracy: float
+    ) -> None:
         """
         Record a prediction for calibration tracking.
-        
+
         Args:
             domain: Predictor domain
             tenant: Tenant identifier
@@ -115,36 +133,36 @@ class CalibrationService:
         """
         if not self.enabled:
             return
-            
+
         calibration_tracker.add_observation(domain, tenant, confidence, accuracy)
         # After adding an observation, enforce acceptance if enough samples
         self._maybe_enforce(domain, tenant)
-        
+
         # Update metrics
         metrics_data = calibration_tracker.get_calibration_metrics(domain, tenant)
-        
+
         if self.calibration_gauge:
             self.calibration_gauge.labels(domain=domain, tenant=tenant).set(
                 metrics_data["ece"]
             )
-        
+
         if self.temperature_gauge:
             self.temperature_gauge.labels(domain=domain, tenant=tenant).set(
                 metrics_data["temperature"]
             )
-        
+
         if self.brier_gauge:
             self.brier_gauge.labels(domain=domain, tenant=tenant).set(
                 metrics_data["brier"]
             )
-    
+
     def get_calibration_status(self, domain: str, tenant: str) -> Dict[str, Any]:
         """Get calibration status for domain/tenant."""
         if not self.enabled:
             return {"enabled": False}
-            
+
         metrics_data = calibration_tracker.get_calibration_metrics(domain, tenant)
-        
+
         return {
             "enabled": True,
             "domain": domain,
@@ -154,34 +172,36 @@ class CalibrationService:
             "temperature": metrics_data["temperature"],
             "samples": metrics_data["samples"],
             "needs_calibration": calibration_tracker.should_calibrate(domain, tenant),
-            "last_good_temperature": self._last_good_temperature.get(f"{domain}:{tenant}"),
+            "last_good_temperature": self._last_good_temperature.get(
+                f"{domain}:{tenant}"
+            ),
         }
-    
+
     def get_all_calibration_status(self) -> Dict[str, Dict[str, Any]]:
         """Get calibration status for all domains and tenants."""
         if not self.enabled:
             return {"enabled": False}
-            
+
         return {
             "enabled": True,
-            "calibration_data": calibration_tracker.get_all_metrics()
+            "calibration_data": calibration_tracker.get_all_metrics(),
         }
-    
+
     def export_reliability_data(self, domain: str, tenant: str) -> Dict[str, Any]:
         """Export reliability diagram data."""
         if not self.enabled:
             return {"enabled": False}
-            
+
         return calibration_tracker.export_reliability_data(domain, tenant)
-    
+
     def run_forever(self) -> None:  # pragma: no cover
         """Run calibration service."""
         if not self.enabled:
             print("Calibration service disabled")
             return
-        
+
         print("Starting calibration service...")
-        
+
         while True:
             time.sleep(30)  # Emit snapshot every 30 seconds
             try:
@@ -206,7 +226,9 @@ class CalibrationService:
                 "ece": float(metrics_data.get("ece", 0.0)),
                 "brier": float(metrics_data.get("brier", 0.0)),
                 "samples": int(metrics_data.get("samples", 0)),
-                "needs_calibration": bool(calibration_tracker.should_calibrate(domain, tenant)),
+                "needs_calibration": bool(
+                    calibration_tracker.should_calibrate(domain, tenant)
+                ),
                 "ts": datetime.now(timezone.utc).isoformat(),
             }
             try:
@@ -214,7 +236,9 @@ class CalibrationService:
                 payload = encode(record, "predictor_calibration")
                 self._producer.send(topic, value=payload)
             except Exception as e:  # pragma: no cover
-                print(f"WARN: failed to send predictor_calibration event for {domain}:{tenant}: {e}")
+                print(
+                    f"WARN: failed to send predictor_calibration event for {domain}:{tenant}: {e}"
+                )
         # Periodically enforce acceptance across all metrics
         try:
             for key in all_metrics.keys():
@@ -252,22 +276,34 @@ class CalibrationService:
             pass
         try:
             from ..calibration.calibration_metrics import calibration_tracker as _tracker  # type: ignore
+
             # Access raw confidences/accuracies window
-            raw_conf = list(_tracker.calibration_data[key]["confidences"]) if key in _tracker.calibration_data else []
-            raw_acc = list(_tracker.calibration_data[key]["accuracies"]) if key in _tracker.calibration_data else []
+            raw_conf = (
+                list(_tracker.calibration_data[key]["confidences"])
+                if key in _tracker.calibration_data
+                else []
+            )
+            raw_acc = (
+                list(_tracker.calibration_data[key]["accuracies"])
+                if key in _tracker.calibration_data
+                else []
+            )
         except Exception:
             raw_conf, raw_acc = [], []
         if len(raw_conf) < 50:
             return
         try:
             from ..calibration.temperature_scaling import compute_ece as _ece
+
             # Pre-ECE assumes identity temperature
             pre_ece = _ece(raw_conf, raw_acc)
             scaler = calibration_tracker.temperature_scalers[domain][tenant]
             # If not fitted, no acceptance yet
             if not getattr(scaler, "is_fitted", False):
                 # On first fit, store baseline temperature
-                self._last_good_temperature.setdefault(key, float(getattr(scaler, "temperature", 1.0)))
+                self._last_good_temperature.setdefault(
+                    key, float(getattr(scaler, "temperature", 1.0))
+                )
                 return
             # Compute post-scaled confidences
             post_scaled = [scaler.scale(c) for c in raw_conf]
@@ -285,14 +321,14 @@ class CalibrationService:
                     pass
             if self.improvement_ratio_gauge and pre_ece > 0.0:
                 try:
-                    self.improvement_ratio_gauge.labels(domain=domain, tenant=tenant).set(
-                        float(post_ece / pre_ece)
-                    )
+                    self.improvement_ratio_gauge.labels(
+                        domain=domain, tenant=tenant
+                    ).set(float(post_ece / pre_ece))
                 except Exception:
                     pass
             # Acceptance requirement: post_ece <= 0.7 * pre_ece (30% reduction) for large sample regime
             if samples >= 200 and pre_ece > 0.0:
-                improved = (post_ece <= 0.7 * pre_ece)
+                improved = post_ece <= 0.7 * pre_ece
                 if not improved:
                     # Rollback temperature to last good (or 1.0 fallback)
                     last_good = self._last_good_temperature.get(key, 1.0)
@@ -301,13 +337,19 @@ class CalibrationService:
                     setattr(scaler, "is_fitted", True)
                     if self.downgrade_counter:
                         try:
-                            self.downgrade_counter.labels(domain=domain, tenant=tenant, reason="ece_regression").inc()
+                            self.downgrade_counter.labels(
+                                domain=domain, tenant=tenant, reason="ece_regression"
+                            ).inc()
                         except Exception:
                             pass
-                    print(f"calibration_service: downgrade temperature domain={domain} tenant={tenant} from={old_temp:.3f} to={last_good:.3f} pre_ece={pre_ece:.4f} post_ece={post_ece:.4f}")
+                    print(
+                        f"calibration_service: downgrade temperature domain={domain} tenant={tenant} from={old_temp:.3f} to={last_good:.3f} pre_ece={pre_ece:.4f} post_ece={post_ece:.4f}"
+                    )
                 else:
                     # Update last good temperature on improvement
-                    self._last_good_temperature[key] = float(getattr(scaler, "temperature", 1.0))
+                    self._last_good_temperature[key] = float(
+                        getattr(scaler, "temperature", 1.0)
+                    )
         except Exception:
             pass
 
@@ -323,7 +365,12 @@ def main() -> None:  # pragma: no cover
         print("Calibration service disabled")
         return
     # Fail-fast infra readiness before starting loop (OPA optional here)
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=True, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=True,
+        require_opa=False,
+    )
     service.run_forever()
 
 

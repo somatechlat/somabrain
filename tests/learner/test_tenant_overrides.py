@@ -53,7 +53,7 @@ def test_emit_cfg_respects_tau_decay(monkeypatch: pytest.MonkeyPatch) -> None:
     svc._emit_cfg("public", 0.8, lr=0.05)
     # Use direct bytes decoding - test bypasses actual Avro serialization
     import json
-    
+
     # For testing purposes, use JSON since we're mocking the producer
     try:
         payload_dict = json.loads(captured["payload"].decode("utf-8"))

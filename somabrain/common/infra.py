@@ -17,12 +17,14 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
     try:
         from confluent_kafka import Consumer  # type: ignore
 
-        c = Consumer({
-            "bootstrap.servers": bs,
-            "group.id": "infra-check",
-            "enable.auto.commit": False,
-            "session.timeout.ms": int(max(1500, timeout_s * 1500)),
-        })
+        c = Consumer(
+            {
+                "bootstrap.servers": bs,
+                "group.id": "infra-check",
+                "enable.auto.commit": False,
+                "session.timeout.ms": int(max(1500, timeout_s * 1500)),
+            }
+        )
         try:
             md = c.list_topics(timeout=timeout_s)
             return bool(md and md.brokers)
@@ -104,7 +106,12 @@ def assert_ready(
     Requirements can be tuned via function args. Environment also supports
     global gate: set SOMABRAIN_REQUIRE_INFRA=0 to bypass (not recommended).
     """
-    if os.getenv("SOMABRAIN_REQUIRE_INFRA", "1").strip().lower() in {"0", "false", "no", "off"}:
+    if os.getenv("SOMABRAIN_REQUIRE_INFRA", "1").strip().lower() in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }:
         return
     errors = []
     if require_kafka:

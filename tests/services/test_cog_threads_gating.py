@@ -9,8 +9,11 @@ def test_integrator_main_gates_on_flags(monkeypatch, capsys):
 
     # Ensure per-service flag is off via centralized mode config
     import somabrain.modes as modes
+
     base = modes.get_mode_config()
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_integrator=False))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, enable_integrator=False)
+    )
 
     # Dummy run_forever that should NOT be called in this mode
     called = {"run": False}
@@ -26,7 +29,9 @@ def test_integrator_main_gates_on_flags(monkeypatch, capsys):
 
     # Enable integrator via centralized mode config and bypass infra readiness
     monkeypatch.setattr(ih, "assert_ready", lambda **kwargs: None)
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_integrator=True))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, enable_integrator=True)
+    )
 
     def _exit(self):  # noqa: ARG001
         raise SystemExit(0)
@@ -42,7 +47,9 @@ def test_segmentation_main_gates_on_flags(monkeypatch):
 
     # Ensure per-service flag is off via centralized config
     base = modes.get_mode_config()
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_segmentation=False))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, enable_segmentation=False)
+    )
 
     ran = {"run": False}
 
@@ -57,7 +64,9 @@ def test_segmentation_main_gates_on_flags(monkeypatch):
 
     # Enable via centralized config and bypass infra readiness
     monkeypatch.setattr(ss, "assert_ready", lambda **kwargs: None)
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, enable_segmentation=True))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, enable_segmentation=True)
+    )
 
     def _exit(self):  # noqa: ARG001
         raise SystemExit(0)

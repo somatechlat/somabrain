@@ -58,14 +58,18 @@ DOMAIN_CONFIG = {
         "period_key": "state_update_period",
         "default_period": 0.5,
         "posterior_fn": lambda _: {},
-        "next_state_fn": lambda delta_error: "stable" if delta_error < 0.3 else "shifting",
+        "next_state_fn": lambda delta_error: (
+            "stable" if delta_error < 0.3 else "shifting"
+        ),
     },
     "agent": {
         "topic": TOPICS["agent"],
         "model_ver_key": "agent_model_ver",
         "period_key": "agent_update_period",
         "default_period": 0.7,
-        "posterior_fn": lambda _: {"intent": random.choice(["browse", "purchase", "support"])},
+        "posterior_fn": lambda _: {
+            "intent": random.choice(["browse", "purchase", "support"])
+        },
         "next_state_fn": lambda posterior: f"intent:{posterior['intent']}",
     },
     "action": {
@@ -73,7 +77,9 @@ DOMAIN_CONFIG = {
         "model_ver_key": "action_model_ver",
         "period_key": "action_update_period",
         "default_period": 0.9,
-        "posterior_fn": lambda _: {"next_action": random.choice(["search", "quote", "checkout", "cancel"])},
+        "posterior_fn": lambda _: {
+            "next_action": random.choice(["search", "quote", "checkout", "cancel"])
+        },
         "next_state_fn": lambda posterior: f"action:{posterior['next_action']}",
     },
 }
@@ -109,11 +115,14 @@ def _maybe_health_server():  # pragma: no cover
                 @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
+
             except Exception:
                 pass
 
             port = int(os.getenv("HEALTH_PORT"))
-            server = uvicorn.Server(uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning"))
+            server = uvicorn.Server(
+                uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
+            )
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
         pass
@@ -122,15 +131,23 @@ def _maybe_health_server():  # pragma: no cover
 def _get_runtime():
     try:
         from somabrain import runtime_config as _rt  # type: ignore
+
         return _rt
     except Exception:  # pragma: no cover
+
         class _Stub:
             @staticmethod
-            def get_float(k: str, d: float) -> float: return d
+            def get_float(k: str, d: float) -> float:
+                return d
+
             @staticmethod
-            def get_bool(k: str, d: bool) -> bool: return d
+            def get_bool(k: str, d: bool) -> bool:
+                return d
+
             @staticmethod
-            def get_str(k: str, d: str) -> str: return d
+            def get_str(k: str, d: str) -> str:
+                return d
+
         return _Stub()
 
 
@@ -141,13 +158,16 @@ def _metrics_handles():  # pragma: no cover
         d: _metrics.get_counter(
             f"somabrain_predictor_{d}_emitted_total",
             f"BeliefUpdate records emitted ({d})",
-        ) for d in DOMAIN_CONFIG.keys()
+        )
+        for d in DOMAIN_CONFIG.keys()
     }
     next_counter = _metrics.get_counter(
         "somabrain_predictor_next_total", "NextEvent records emitted (unified)"
     )
     err_hist = _metrics.get_histogram(
-        "somabrain_predictor_error", "Per-update prediction error (MSE)", labelnames=["domain"]
+        "somabrain_predictor_error",
+        "Per-update prediction error (MSE)",
+        labelnames=["domain"],
     )
     return counters, next_counter, err_hist
 
@@ -158,6 +178,7 @@ def run_forever() -> None:  # pragma: no cover
     _maybe_health_server()
     rt = _get_runtime()
     from somabrain.modes import feature_enabled  # type: ignore
+
     try:
         composite = rt.get_bool("cog_composite", True)
     except Exception:
@@ -221,13 +242,19 @@ def run_forever() -> None:  # pragma: no cover
                         "model_ver": model_versions[domain],
                         "latency_ms": int(5 + 10 * random.random()),
                     }
-                    prod.send(DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema))
+                    prod.send(
+                        DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema)
+                    )
                     if counters.get(domain):
-                        try: counters[domain].inc()
-                        except Exception: pass
+                        try:
+                            counters[domain].inc()
+                        except Exception:
+                            pass
                     if err_hist is not None:
-                        try: err_hist.labels(domain=domain).observe(float(delta_error))
-                        except Exception: pass
+                        try:
+                            err_hist.labels(domain=domain).observe(float(delta_error))
+                        except Exception:
+                            pass
                     if soma_compat:
                         try:
                             soma_rec = {
@@ -237,14 +264,21 @@ def run_forever() -> None:  # pragma: no cover
                                 "info_gain": None,
                                 "metadata": {"tenant": tenant},
                             }
-                            prod.send(TOPICS[f"soma_{domain}"], value=encode(soma_rec, soma_schema))
+                            prod.send(
+                                TOPICS[f"soma_{domain}"],
+                                value=encode(soma_rec, soma_schema),
+                            )
                         except Exception:
                             pass
-                    next_ev = build_next_event(domain, tenant, float(confidence), next_state)
+                    next_ev = build_next_event(
+                        domain, tenant, float(confidence), next_state
+                    )
                     prod.send(TOPICS["next"], value=encode(next_ev, next_schema))
                     if next_counter is not None:
-                        try: next_counter.inc()
-                        except Exception: pass
+                        try:
+                            next_counter.inc()
+                        except Exception:
+                            pass
             time.sleep(0.05)
     finally:
         try:

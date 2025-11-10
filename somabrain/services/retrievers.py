@@ -4,6 +4,7 @@ from typing import Tuple
 
 from somabrain.schemas import RetrievalCandidate
 import logging
+
 # No retrieval cache fallbacks are used in strict mode.
 
 
@@ -171,7 +172,9 @@ def retrieve_graph(
                         tt = tuple(t_to)
                         doc_coords.append(tt)
                         boost_coords.add(tt)
-                        boost_map[tt] = boost_map.get(tt, 0.0) + typed_bonus["uses_tool"]
+                        boost_map[tt] = (
+                            boost_map.get(tt, 0.0) + typed_bonus["uses_tool"]
+                        )
             except Exception:
                 pass
     except Exception:

@@ -92,8 +92,10 @@ def run_forever() -> None:  # pragma: no cover
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
+
     try:
         from somabrain import runtime_config as _rt
+
         composite = _rt.get_bool("cog_composite", True)
     except Exception:
         composite = True
@@ -109,6 +111,7 @@ def run_forever() -> None:  # pragma: no cover
     next_schema = "next_event"
     soma_schema = "belief_update_soma"
     from somabrain import runtime_config as _rt
+
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")  # tenancy stays env-driven
     model_ver = _rt.get_str("state_model_ver", "v1")
     period = _rt.get_float("state_update_period", 0.5)
@@ -131,23 +134,24 @@ def run_forever() -> None:  # pragma: no cover
                     from somabrain.calibration.calibration_metrics import (
                         calibration_tracker as _calib,
                     )  # type: ignore
+
                     scaler = _calib.temperature_scalers["state"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
                 except Exception:
                     pass
-                
+
                 # Calibration tracking
                 if calibration_service.enabled:
                     # In production, this would use actual accuracy from feedback
                     # For now, use confidence as a proxy for demo purposes
                     calibration_service.record_prediction(
-                        domain="state", 
+                        domain="state",
                         tenant=tenant,
                         confidence=float(confidence),
-                        accuracy=float(1.0 - delta_error)  # Proxy for actual accuracy
+                        accuracy=float(1.0 - delta_error),  # Proxy for actual accuracy
                     )
-                
+
                 rec = {
                     "domain": "state",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -157,10 +161,16 @@ def run_forever() -> None:  # pragma: no cover
                     "posterior": {},
                     "model_ver": model_ver,
                     "latency_ms": int(5 + 5 * random.random()),
-                    "calibration": {
-                        "enabled": calibration_service.enabled,
-                        "temperature": calibration_service.get_calibration_status("state", tenant).get("temperature", 1.0)
-                    } if calibration_service.enabled else {}
+                    "calibration": (
+                        {
+                            "enabled": calibration_service.enabled,
+                            "temperature": calibration_service.get_calibration_status(
+                                "state", tenant
+                            ).get("temperature", 1.0),
+                        }
+                        if calibration_service.enabled
+                        else {}
+                    ),
                 }
                 prod.send(TOPIC, value=encode(rec, belief_schema))
                 if _EMITTED is not None:

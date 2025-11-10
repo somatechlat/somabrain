@@ -3,6 +3,7 @@
 Re-exports objects from top-level `libs.kafka_cog` to support
 `somabrain.libs.kafka_cog` import paths.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -15,9 +16,13 @@ try:
             globals()[attr] = getattr(_base, attr)
         except Exception:
             pass
-    _sys.modules[__name__ + ".avro_schemas"] = importlib.import_module("libs.kafka_cog.avro_schemas")
+    _sys.modules[__name__ + ".avro_schemas"] = importlib.import_module(
+        "libs.kafka_cog.avro_schemas"
+    )
     try:
-        _sys.modules[__name__ + ".serde"] = importlib.import_module("libs.kafka_cog.serde")
+        _sys.modules[__name__ + ".serde"] = importlib.import_module(
+            "libs.kafka_cog.serde"
+        )
     except Exception:
         pass
 except Exception:

@@ -19,6 +19,7 @@ class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in
     gamma: float = 0.1
     tau: float = 0.7
 
+
 try:
     from common.config.settings import settings as shared_settings
 except Exception:  # pragma: no cover - optional dependency
@@ -162,6 +163,7 @@ class AdaptationGains:
         """Construct gains from centralized mode config (no env fallbacks)."""
         try:
             from somabrain import modes as _m
+
             cfg = _m.get_learning_config().get("gains", {})
             base = cls()
             for k, v in cfg.items():
@@ -190,6 +192,7 @@ class AdaptationConstraints:
         """Construct constraints from centralized mode config (no env fallbacks)."""
         try:
             from somabrain import modes as _m
+
             cfg = _m.get_learning_config().get("constraints", {})
             base = cls()
             for k, v in cfg.items():
@@ -279,6 +282,7 @@ class AdaptationEngine:
         else:
             try:
                 from somabrain import runtime_config as _rt
+
                 dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
             except Exception:
                 pass
@@ -300,7 +304,10 @@ class AdaptationEngine:
         if (
             self._redis
             and self._tenant_id
-            and str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0")).strip().lower() in {"1", "true", "yes", "on"}
+            and str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0"))
+            .strip()
+            .lower()
+            in {"1", "true", "yes", "on"}
         ):
             self._load_state()
 
@@ -523,19 +530,25 @@ class AdaptationEngine:
         # Optional Phase‑1 adaptive knobs (tau decay + entropy cap), gated by env flags.
         try:
             from somabrain import runtime_config as _rt
+
             # Env fallback for legacy tests
             env_enable = os.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
             env_rate = os.getenv("SOMABRAIN_TAU_DECAY_RATE")
             enable_tau_decay = (
-                (str(env_enable).strip().lower() in {"1","true","yes","on"})
-                if env_enable is not None else _rt.get_bool("tau_decay_enabled", False)
+                (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
+                if env_enable is not None
+                else _rt.get_bool("tau_decay_enabled", False)
             )
             tau_decay_rate = (
-                float(env_rate) if env_rate is not None else _rt.get_float("tau_decay_rate", 0.0)
+                float(env_rate)
+                if env_rate is not None
+                else _rt.get_float("tau_decay_rate", 0.0)
             )
             # Per-tenant override
             # Cache per-tenant overrides to avoid repeated file reads
-            if not hasattr(self, "_tenant_override") or self._tenant_id != getattr(self, "_tenant_override_id", None):
+            if not hasattr(self, "_tenant_override") or self._tenant_id != getattr(
+                self, "_tenant_override_id", None
+            ):
                 self._tenant_override = _get_tenant_override(self._tenant_id)
                 self._tenant_override_id = self._tenant_id
             ov = getattr(self, "_tenant_override", {})
@@ -547,33 +560,46 @@ class AdaptationEngine:
         # Annealing schedule supersedes legacy decay if enabled
         try:
             from somabrain import runtime_config as _rt
+
             # Env fallbacks for tests
             env_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
             env_rate = os.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
             env_step = os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
             env_tau_min = os.getenv("SOMABRAIN_TAU_MIN")
             anneal_mode = (
-                str(env_mode).strip().lower() if env_mode is not None else _rt.get_str("tau_anneal_mode", "").strip().lower()
+                str(env_mode).strip().lower()
+                if env_mode is not None
+                else _rt.get_str("tau_anneal_mode", "").strip().lower()
             )
             anneal_rate = (
-                float(env_rate) if env_rate is not None else _rt.get_float("tau_anneal_rate", 0.0)
+                float(env_rate)
+                if env_rate is not None
+                else _rt.get_float("tau_anneal_rate", 0.0)
             )
             anneal_step_interval = (
-                int(env_step) if env_step is not None else int(_rt.get_float("tau_anneal_step_interval", 10))
+                int(env_step)
+                if env_step is not None
+                else int(_rt.get_float("tau_anneal_step_interval", 10))
             )
             tau_min = (
-                float(env_tau_min) if env_tau_min is not None else _rt.get_float("tau_min", 0.05)
+                float(env_tau_min)
+                if env_tau_min is not None
+                else _rt.get_float("tau_min", 0.05)
             )
             # Use cached overrides for annealing as well
             ov = getattr(self, "_tenant_override", {})
             if isinstance(ov.get("tau_anneal_mode"), str):
-                anneal_mode = str(ov.get("tau_anneal_mode", anneal_mode)).strip().lower()
+                anneal_mode = (
+                    str(ov.get("tau_anneal_mode", anneal_mode)).strip().lower()
+                )
             if isinstance(ov.get("tau_anneal_rate"), (int, float)):
                 anneal_rate = float(ov.get("tau_anneal_rate", anneal_rate))
             if isinstance(ov.get("tau_min"), (int, float)):
                 tau_min = float(ov.get("tau_min", tau_min))
             if isinstance(ov.get("tau_step_interval"), (int, float)):
-                anneal_step_interval = int(ov.get("tau_step_interval", anneal_step_interval))
+                anneal_step_interval = int(
+                    ov.get("tau_step_interval", anneal_step_interval)
+                )
         except Exception:
             anneal_mode = ""
             anneal_rate = 0.0
@@ -601,6 +627,7 @@ class AdaptationEngine:
                 self._retrieval.tau = max(tau_min, new_tau)
                 try:
                     from somabrain import metrics as _metrics
+
                     _metrics.tau_anneal_events.labels(tenant_id=self._tenant_id).inc()
                 except Exception:
                     pass
@@ -611,6 +638,7 @@ class AdaptationEngine:
             self._retrieval.tau = max(new_tau, 0.05)
             try:
                 from somabrain import metrics as _metrics
+
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
             except Exception:
                 pass
@@ -618,14 +646,18 @@ class AdaptationEngine:
         # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
             from somabrain import runtime_config as _rt
+
             env_enable = os.getenv("SOMABRAIN_ENTROPY_CAP_ENABLED")
             env_cap = os.getenv("SOMABRAIN_ENTROPY_CAP")
             enable_entropy_cap = (
-                (str(env_enable).strip().lower() in {"1","true","yes","on"})
-                if env_enable is not None else _rt.get_bool("entropy_cap_enabled", False)
+                (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
+                if env_enable is not None
+                else _rt.get_bool("entropy_cap_enabled", False)
             )
             entropy_cap = (
-                float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
+                float(env_cap)
+                if env_cap is not None
+                else _rt.get_float("entropy_cap", 0.0)
             )
             # Per-tenant override
             ov = _get_tenant_override(self._tenant_id)
@@ -662,7 +694,7 @@ class AdaptationEngine:
                     scale = min(0.99, max(0.2, overflow / (entropy_cap + 1e-9)))
                     for i in range(len(vec)):
                         if i != largest_idx:
-                            vec[i] *= (1.0 - scale)
+                            vec[i] *= 1.0 - scale
                     s2 = sum(vec)
                     if s2 > 0:
                         vec = [v / s2 for v in vec]
@@ -700,6 +732,7 @@ class AdaptationEngine:
         # Persist state only if enabled via env flag
         try:
             from somabrain import runtime_config as _rt
+
             _persist_enabled = _rt.get_bool("learning_state_persistence", False)
         except Exception:
             _persist_enabled = False

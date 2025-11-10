@@ -106,12 +106,18 @@ _REWARD_VALUE = (
 async def startup() -> None:  # pragma: no cover
     # Feature flag gating (default off unless explicitly enabled or composite threads flag)
     from somabrain.modes import feature_enabled
+
     if not feature_enabled("reward_ingest"):
         # Leave _ready False; health will show disabled
         return
     global _producer, _producer_kind, _serde_inst, _ready
     # Fail-fast: require Kafka before enabling
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=False,
+        require_opa=False,
+    )
     prod = _make_producer()
     if isinstance(prod, tuple):
         _producer_kind, _producer = prod
@@ -124,8 +130,13 @@ async def startup() -> None:  # pragma: no cover
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     from somabrain.modes import feature_enabled, mode_config
+
     cfg = mode_config()
-    return {"ok": bool(_ready), "enabled": str(int(feature_enabled("reward_ingest"))), "mode": cfg.name}
+    return {
+        "ok": bool(_ready),
+        "enabled": str(int(feature_enabled("reward_ingest"))),
+        "mode": cfg.name,
+    }
 
 
 @app.get("/metrics")

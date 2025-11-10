@@ -134,13 +134,14 @@ def integration_env_ready() -> None:
     ok, output = _READINESS_CACHE[key]
     if not ok:
         pytest.fail(
-            "Infrastructure readiness failed for integration tests.\n"
-            + output,
+            "Infrastructure readiness failed for integration tests.\n" + output,
             pytrace=False,
         )
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     """Inject readiness fixture into tests marked with @pytest.mark.integration."""
     for item in items:
         if item.get_closest_marker("integration") is not None:

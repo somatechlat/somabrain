@@ -6,7 +6,12 @@ from typing import Any, Dict, Optional
 
 
 _RUNTIME_OVERRIDES_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "data", "runtime_overrides.json")
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "..",
+        "data",
+        "runtime_overrides.json",
+    )
 )
 
 

@@ -8,7 +8,10 @@ from opentelemetry import trace  # type: ignore
 def span(name: str, **attrs):
     provider = trace.get_tracer_provider()
     # Detect default/uninitialized provider classes that result in no-op spans
-    if provider is None or provider.__class__.__name__ in {"ProxyTracerProvider", "DefaultTracerProvider"}:
+    if provider is None or provider.__class__.__name__ in {
+        "ProxyTracerProvider",
+        "DefaultTracerProvider",
+    }:
         raise RuntimeError(
             "OpenTelemetry tracer provider not initialized; call observability.provider.init_tracing()"
         )

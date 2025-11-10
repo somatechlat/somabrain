@@ -243,7 +243,9 @@ def get_learning_config() -> dict:
     # Apply developer overrides only in full-local mode
     if cfg.name == "full-local":
         try:
-            path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+            path = os.getenv(
+                "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
+            )
             p = Path(path)
             if p.exists():
                 data = json.loads(p.read_text(encoding="utf-8"))

@@ -216,12 +216,16 @@ class OrchestratorService:
             pass
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
-        consumer = CKConsumer({
-            "bootstrap.servers": _bootstrap(),
-            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"),
-            "enable.auto.commit": True,
-            "auto.offset.reset": "latest",
-        })
+        consumer = CKConsumer(
+            {
+                "bootstrap.servers": _bootstrap(),
+                "group.id": os.getenv(
+                    "SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"
+                ),
+                "enable.auto.commit": True,
+                "auto.offset.reset": "latest",
+            }
+        )
         consumer.subscribe(["cog.global.frame", "cog.segments"])  # Avro-only topics
         try:
             while True:
@@ -273,7 +277,12 @@ def main() -> None:  # pragma: no cover - entrypoint
             pass
         return
     # Ensure Kafka and Postgres (for outbox) are reachable before starting
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=True, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=True,
+        require_opa=False,
+    )
     OrchestratorService().run_forever()
 
 

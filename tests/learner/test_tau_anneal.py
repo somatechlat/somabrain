@@ -29,7 +29,7 @@ def test_exponential_anneal(monkeypatch: pytest.MonkeyPatch) -> None:
     for _ in range(3):
         eng.apply_feedback(utility=0.5)
     # 0.8 * 0.9^3
-    expected = 0.8 * (0.9 ** 3)
+    expected = 0.8 * (0.9**3)
     assert eng.retrieval_weights.tau == pytest.approx(expected, rel=1e-3)
 
 

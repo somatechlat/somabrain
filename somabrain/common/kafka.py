@@ -21,14 +21,15 @@ except Exception:  # pragma: no cover
 def _bootstrap_url() -> str:
     """Get bootstrap servers from environment."""
     return (
-        os.getenv("SOMA_KAFKA_BOOTSTRAP") 
-        or os.getenv("SOMABRAIN_KAFKA_URL") 
+        os.getenv("SOMA_KAFKA_BOOTSTRAP")
+        or os.getenv("SOMABRAIN_KAFKA_URL")
         or "localhost:30001"
     ).replace("kafka://", "")
 
 
 class _ProducerShim:
     """Shim to emulate kafka-python Producer.send API on top of confluent-kafka."""
+
     def __init__(self, ck: CKProducer) -> None:
         self._ck = ck
 
@@ -39,6 +40,7 @@ class _ProducerShim:
             # Allow dict payloads for non-Avro topics (temporary until schemas exist)
             payload = json.dumps(value).encode("utf-8")
         self._ck.produce(topic, value=payload)
+
         # return an object with get(timeout) to mimic Future
         class _Fut:
             def get(self, timeout: float | int = 5):
@@ -47,6 +49,7 @@ class _ProducerShim:
                 if remaining != 0:
                     raise TimeoutError("produce not fully flushed")
                 return None
+
         ck = self._ck
         return _Fut()
 
@@ -100,7 +103,7 @@ def decode(data: bytes, schema_name: Optional[str] = None) -> Dict[str, Any]:
 # Shared topic definitions - consolidated from ROADMAP
 TOPICS = {
     "state": "cog.state.updates",
-    "agent": "cog.agent.updates", 
+    "agent": "cog.agent.updates",
     "action": "cog.action.updates",
     "next": "cog.next.events",
     "soma_state": "soma.belief.state",

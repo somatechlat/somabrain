@@ -1308,6 +1308,7 @@ class MemoryClient:
         else:
             try:
                 from somabrain.config import runtime as _rt
+
                 weighting_enabled = _rt.get_bool("memory_enable_weighting", False)
                 priors_env = _rt.get_str("memory_phase_priors", "")
                 quality_exp = _rt.get_float("memory_quality_exp", 1.0)
@@ -1519,6 +1520,7 @@ class MemoryClient:
         else:
             try:
                 from somabrain.config import runtime as _rt
+
                 fast_ack = _rt.get_bool("memory_fast_ack", False)
             except Exception:
                 fast_ack = False

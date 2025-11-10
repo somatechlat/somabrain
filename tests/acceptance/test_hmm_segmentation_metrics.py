@@ -21,6 +21,7 @@ def test_hmm_segmentation_metrics_present():
         cfg = orig()
         if cfg.name == "ci":  # ci mode disables hmm by default
             from dataclasses import replace
+
             return replace(cfg, enable_hmm_segmentation=True)
         return cfg
 

@@ -92,6 +92,7 @@ def main() -> None:  # pragma: no cover
     # composite retained only as a convenience to force everything on; default ON
     composite = _flag_on("ENABLE_COG_THREADS", "1")
     from somabrain.modes import feature_enabled
+
     threads: list[threading.Thread] = []
 
     # Integrator Hub

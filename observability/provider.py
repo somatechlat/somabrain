@@ -40,9 +40,16 @@ def init_tracing(service_name: Optional[str] = None) -> None:
             "OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)"
         )
 
-    svc = (service_name or os.getenv("OTEL_SERVICE_NAME") or os.getenv("SERVICE_NAME") or "").strip()
+    svc = (
+        service_name
+        or os.getenv("OTEL_SERVICE_NAME")
+        or os.getenv("SERVICE_NAME")
+        or ""
+    ).strip()
     if not svc:
-        raise RuntimeError("OTEL_SERVICE_NAME (or service_name) is required for tracing")
+        raise RuntimeError(
+            "OTEL_SERVICE_NAME (or service_name) is required for tracing"
+        )
 
     provider = TracerProvider(resource=Resource.create({"service.name": svc}))
     exporter = OTLPSpanExporter(endpoint=endpoint)
@@ -57,7 +64,10 @@ def get_tracer(name: str):
 
     provider = trace.get_tracer_provider()
     # Detect uninitialized/default provider to avoid silent no-ops
-    if provider is None or provider.__class__.__name__ in {"ProxyTracerProvider", "DefaultTracerProvider"}:
+    if provider is None or provider.__class__.__name__ in {
+        "ProxyTracerProvider",
+        "DefaultTracerProvider",
+    }:
         raise RuntimeError(
             "TracerProvider not initialized. Call observability.provider.init_tracing() first."
         )

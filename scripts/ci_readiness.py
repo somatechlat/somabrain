@@ -41,6 +41,7 @@ REQUIRED_TOPIC_ENV_VARS = [
     "SOMABRAIN_TOPIC_NEXT_EVENTS",
 ]
 
+
 @dataclass
 class CheckResult:
     name: str
@@ -95,7 +96,13 @@ def check_kafka() -> List[CheckResult]:
     results: List[CheckResult] = []
     bootstrap = _env("SOMA_KAFKA_BOOTSTRAP") or _env("SOMABRAIN_KAFKA_URL")
     if not bootstrap:
-        return [CheckResult("kafka", False, "Bootstrap env SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL not set")]
+        return [
+            CheckResult(
+                "kafka",
+                False,
+                "Bootstrap env SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL not set",
+            )
+        ]
     host_port = bootstrap.split(",")[0].strip()
     host, _, port_str = host_port.partition(":")
     try:
@@ -108,15 +115,20 @@ def check_kafka() -> List[CheckResult]:
     # Try confluent_kafka for metadata if available; otherwise rely on socket connect + topic env presence.
     try:
         from confluent_kafka import AdminClient  # type: ignore
+
         admin = AdminClient({"bootstrap.servers": bootstrap})
         md = admin.list_topics(timeout=5)
         existing_topics = set(md.topics.keys())
         for env_var in REQUIRED_TOPIC_ENV_VARS:
             t = _env(env_var)
             if not t:
-                results.append(CheckResult(f"kafka_topic:{env_var}", False, "env not set"))
+                results.append(
+                    CheckResult(f"kafka_topic:{env_var}", False, "env not set")
+                )
             elif t not in existing_topics:
-                results.append(CheckResult(f"kafka_topic:{t}", False, "missing in cluster"))
+                results.append(
+                    CheckResult(f"kafka_topic:{t}", False, "missing in cluster")
+                )
             else:
                 results.append(CheckResult(f"kafka_topic:{t}", True, "OK"))
         if not results:
@@ -127,10 +139,20 @@ def check_kafka() -> List[CheckResult]:
         for env_var in REQUIRED_TOPIC_ENV_VARS:
             t = _env(env_var)
             if not t:
-                results.append(CheckResult(f"kafka_topic:{env_var}", False, "env not set"))
+                results.append(
+                    CheckResult(f"kafka_topic:{env_var}", False, "env not set")
+                )
             else:
-                results.append(CheckResult(f"kafka_topic:{t}", True, "env set (metadata unchecked)"))
-        results.append(CheckResult("kafka", True, f"Socket OK; metadata skipped: {type(e).__name__}"))
+                results.append(
+                    CheckResult(
+                        f"kafka_topic:{t}", True, "env set (metadata unchecked)"
+                    )
+                )
+        results.append(
+            CheckResult(
+                "kafka", True, f"Socket OK; metadata skipped: {type(e).__name__}"
+            )
+        )
         return results
 
 
@@ -161,7 +183,9 @@ def main() -> int:
         status = "READY" if c.ok else "FAIL"
         print(f"{status}: {c.name} - {c.detail}")
     if failed:
-        print(f"\nSummary: {len(failed)} component(s) failed readiness.", file=sys.stderr)
+        print(
+            f"\nSummary: {len(failed)} component(s) failed readiness.", file=sys.stderr
+        )
         return 1
     return 0
 

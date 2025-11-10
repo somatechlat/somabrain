@@ -22,10 +22,13 @@ def _entropy(alpha: float, beta: float, gamma: float, tau: float) -> float:
 def test_entropy_cap_sharpens(monkeypatch: pytest.MonkeyPatch) -> None:
     # Use centralized runtime overrides instead of env flags
     from somabrain import runtime_config as rt
-    rt.set_overrides({
-        "entropy_cap_enabled": True,
-        "entropy_cap": 1.0,
-    })
+
+    rt.set_overrides(
+        {
+            "entropy_cap_enabled": True,
+            "entropy_cap": 1.0,
+        }
+    )
     rw = RetrievalWeights()
     # Start with near-uniform weights for high entropy
     rw.alpha = 1.0

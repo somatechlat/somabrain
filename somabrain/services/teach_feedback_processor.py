@@ -60,13 +60,13 @@ def _serde(name: str):
 
 def _enc(rec: Dict[str, Any], serde) -> bytes:
     if serde is None:
-        raise RuntimeError("teach_feedback_processor: Avro serde required for strict mode")
+        raise RuntimeError(
+            "teach_feedback_processor: Avro serde required for strict mode"
+        )
     return serde.serialize(rec)
 
 
-def _dec(
-    payload: Optional[bytes], serde
-) -> Optional[Dict[str, Any]]:
+def _dec(payload: Optional[bytes], serde) -> Optional[Dict[str, Any]]:
     if payload is None:
         return None
     if serde is None:
@@ -356,9 +356,15 @@ async def startup() -> None:  # pragma: no cover
     global _thread
     global _svc
     from somabrain.modes import feature_enabled
+
     if feature_enabled("teach_feedback"):
         # Require Kafka readiness before starting worker thread
-        assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+        assert_ready(
+            require_kafka=True,
+            require_redis=False,
+            require_postgres=False,
+            require_opa=False,
+        )
         if _svc is None:
             _svc = TeachFeedbackService()
         _thread = threading.Thread(target=_svc.run, daemon=True)
@@ -368,7 +374,12 @@ async def startup() -> None:  # pragma: no cover
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     from somabrain.modes import mode_config, feature_enabled
-    return {"ok": True, "enabled": str(int(feature_enabled("teach_feedback"))), "mode": mode_config().name}
+
+    return {
+        "ok": True,
+        "enabled": str(int(feature_enabled("teach_feedback"))),
+        "mode": mode_config().name,
+    }
 
 
 @app.get("/metrics")

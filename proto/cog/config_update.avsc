@@ -3,6 +3,7 @@
   "name": "ConfigUpdate",
   "namespace": "soma.cognition",
   "fields": [
+    { "name": "tenant", "type": "string", "default": "public" },
     { "name": "learning_rate", "type": "float" },
     { "name": "exploration_temp", "type": "float" },
     { "name": "lambda_state", "type": ["null", "float"], "default": null },

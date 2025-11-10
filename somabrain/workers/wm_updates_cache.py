@@ -77,21 +77,30 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         print("wm_updates_cache: feature flag disabled; exiting.")
         return
     # Fail-fast infra readiness (Kafka + Redis required)
-    assert_ready(require_kafka=True, require_redis=True, require_postgres=False, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=True,
+        require_postgres=False,
+        require_opa=False,
+    )
     r = _redis_client()
     max_items = int(os.getenv("WM_UPDATES_MAX_ITEMS", "50") or 50)
     ttl_seconds = int(os.getenv("WM_UPDATES_TTL_SECONDS", "8") or 8)
-    consumer = CKConsumer({
-        "bootstrap.servers": _bootstrap(),
-        "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
-        "enable.auto.commit": True,
-        "auto.offset.reset": "latest",
-    })
-    consumer.subscribe([
-        "cog.state.updates",
-        "cog.agent.updates",
-        "cog.action.updates",
-    ])
+    consumer = CKConsumer(
+        {
+            "bootstrap.servers": _bootstrap(),
+            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
+            "enable.auto.commit": True,
+            "auto.offset.reset": "latest",
+        }
+    )
+    consumer.subscribe(
+        [
+            "cog.state.updates",
+            "cog.agent.updates",
+            "cog.action.updates",
+        ]
+    )
     serde = _serde()
     try:
         while True:

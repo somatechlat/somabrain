@@ -132,7 +132,11 @@ def evaluate_boundaries(
     fn = max(0, len(true) - tp)
     precision = tp / len(emitted) if emitted else 0.0
     recall = tp / len(true) if true else 0.0
-    f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+    f1 = (
+        (2 * precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
     false_rate = fp / len(emitted) if emitted else 0.0
     # Mean dwell latency across true boundaries (intervals between changes)
     if len(true) > 1:
@@ -143,7 +147,9 @@ def evaluate_boundaries(
     return f1, false_rate, mean_latency
 
 
-def update_metrics(tenant: str, f1: float, false_rate: float, mean_latency: float) -> None:
+def update_metrics(
+    tenant: str, f1: float, false_rate: float, mean_latency: float
+) -> None:
     _ensure_metrics()
     t = (tenant or "public").strip() or "public"
     try:
@@ -157,7 +163,9 @@ def update_metrics(tenant: str, f1: float, false_rate: float, mean_latency: floa
         pass
 
 
-def evaluate_sequence(sequence: List[str], emitted_boundaries: List[int], tenant: str = "public") -> Dict[str, float]:
+def evaluate_sequence(
+    sequence: List[str], emitted_boundaries: List[int], tenant: str = "public"
+) -> Dict[str, float]:
     """High-level convenience wrapper: derives true boundaries, evaluates, updates metrics.
 
     Returns dict of metrics for caller assertions/tests.
@@ -165,4 +173,10 @@ def evaluate_sequence(sequence: List[str], emitted_boundaries: List[int], tenant
     tb = true_boundaries(sequence)
     f1, false_rate, mean_latency = evaluate_boundaries(emitted_boundaries, tb)
     update_metrics(tenant, f1, false_rate, mean_latency)
-    return {"f1": f1, "false_rate": false_rate, "mean_latency": mean_latency, "true_count": len(tb), "emitted_count": len(emitted_boundaries)}
+    return {
+        "f1": f1,
+        "false_rate": false_rate,
+        "mean_latency": mean_latency,
+        "true_count": len(tb),
+        "emitted_count": len(emitted_boundaries),
+    }

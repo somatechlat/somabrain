@@ -249,11 +249,14 @@ class LearnerService:
                 "flags": {
                     "FF_LEARNER_ONLINE": "1",  # feature gating handled by somabrain.modes
                     "FF_NEXT_EVENT": str(int(rc.get_bool("feature_next_event", True))),
-                    "FF_CONFIG_UPDATES": str(int(rc.get_bool("feature_config_updates", True))),
+                    "FF_CONFIG_UPDATES": str(
+                        int(rc.get_bool("feature_config_updates", True))
+                    ),
                 },
             }
             try:
                 import yaml as _yaml  # type: ignore
+
                 rendered = _yaml.safe_dump(cfg, sort_keys=True).strip()
             except Exception:
                 rendered = str(cfg)
@@ -307,6 +310,7 @@ class LearnerService:
                 print(f"learner_online: topic {TOPIC_CFG} already exists")
             # Ensure next‑event topic exists (optional, only if flag enabled via modes)
             from somabrain.modes import feature_enabled
+
             if feature_enabled("next_event"):
                 if TOPIC_NEXT not in existing:
                     print(f"learner_online: creating missing topic {TOPIC_NEXT}")
@@ -362,12 +366,14 @@ class LearnerService:
         lam_state = lam_agent = lam_action = None
         try:
             rmap = self._regret_by_td.get(tenant) or {}
+
             def _lam_for(d: str) -> Optional[float]:
                 ema = rmap.get(d)
                 if ema is None or ema.get() is None:
                     return None
                 v = 1.0 - float(ema.get())
                 return max(0.1, min(1.0, v))
+
             lam_state = _lam_for("state")
             lam_agent = _lam_for("agent")
             lam_action = _lam_for("action")
@@ -377,6 +383,7 @@ class LearnerService:
         gamma_state = gamma_agent = gamma_action = None
         try:
             bmap = self._beta_by_tenant.get(tenant) or {}
+
             # Aggregate component betas by domain via simple mapping heuristics
             def _dom_of(comp: str) -> str:
                 c = comp.lower()
@@ -387,6 +394,7 @@ class LearnerService:
                 if "action" in c or "next" in c:
                     return "action"
                 return "other"
+
             agg = {"state": 0.0, "agent": 0.0, "action": 0.0}
             total = 0.0
             for k, v in bmap.items():
@@ -401,9 +409,15 @@ class LearnerService:
             # emit metrics
             if self._g_gamma is not None:
                 try:
-                    self._g_gamma.labels(tenant=tenant, domain="state").set(gamma_state or 0.0)
-                    self._g_gamma.labels(tenant=tenant, domain="agent").set(gamma_agent or 0.0)
-                    self._g_gamma.labels(tenant=tenant, domain="action").set(gamma_action or 0.0)
+                    self._g_gamma.labels(tenant=tenant, domain="state").set(
+                        gamma_state or 0.0
+                    )
+                    self._g_gamma.labels(tenant=tenant, domain="agent").set(
+                        gamma_agent or 0.0
+                    )
+                    self._g_gamma.labels(tenant=tenant, domain="action").set(
+                        gamma_action or 0.0
+                    )
                 except Exception:
                     pass
         except Exception:
@@ -475,7 +489,9 @@ class LearnerService:
             comps = ev.get("components") or {}
             if isinstance(comps, dict) and comps:
                 # numeric filter
-                vals = {k: float(v) for k, v in comps.items() if isinstance(v, (int, float))}
+                vals = {
+                    k: float(v) for k, v in comps.items() if isinstance(v, (int, float))
+                }
                 s = sum(vals.values())
                 if s > 0:
                     shares = {k: (v / s) for k, v in vals.items()}
@@ -487,7 +503,9 @@ class LearnerService:
                         bmap[k] = newv
                         if self._g_beta is not None:
                             try:
-                                self._g_beta.labels(tenant=tenant, component=k).set(newv)
+                                self._g_beta.labels(tenant=tenant, component=k).set(
+                                    newv
+                                )
                             except Exception:
                                 pass
         except Exception:
@@ -507,7 +525,13 @@ class LearnerService:
             ).strip()
             or "public"
         )
-        domain = str(ev.get("domain") or ev.get("frame_id", "state")).split(":")[0].strip().lower() or "state"
+        domain = (
+            str(ev.get("domain") or ev.get("frame_id", "state"))
+            .split(":")[0]
+            .strip()
+            .lower()
+            or "state"
+        )
         confidence = float(ev.get("confidence", 0.0))
         regret = max(0.0, min(1.0, 1.0 - confidence))
         print(
@@ -630,10 +654,16 @@ async def startup() -> None:  # pragma: no cover
     global _thread
     global _svc
     from somabrain.modes import feature_enabled
+
     if not feature_enabled("learner"):
         return
     # Require Kafka before starting learner thread
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=False,
+        require_opa=False,
+    )
     if _svc is None:
         _svc = LearnerService()
     _thread = threading.Thread(target=_svc.run, daemon=True)
@@ -643,8 +673,13 @@ async def startup() -> None:  # pragma: no cover
 @app.get("/health")
 async def health() -> Dict[str, Any]:
     from somabrain.modes import feature_enabled, mode_config
+
     cfg = mode_config()
-    return {"ok": True, "enabled": str(int(feature_enabled("learner"))), "mode": cfg.name}
+    return {
+        "ok": True,
+        "enabled": str(int(feature_enabled("learner"))),
+        "mode": cfg.name,
+    }
 
 
 @app.get("/metrics")

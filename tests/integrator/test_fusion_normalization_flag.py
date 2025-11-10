@@ -7,16 +7,37 @@ import importlib
 def test_rationale_includes_fusion_note(monkeypatch):
     # Enable normalization behavior via centralized mode config
     import somabrain.modes as modes
+
     base = modes.get_mode_config()
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, fusion_normalization=True))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, fusion_normalization=True)
+    )
     # Fresh import to pick up patched mode
     mod = importlib.import_module("somabrain.services.integrator_hub")
     ih = mod.IntegratorHub()
 
     # Craft two recent observations with different delta_error to bias fused weights
     now_ts = __import__("time").time()
-    ih._sm.update("public", "state", mod.DomainObs(ts=now_ts, confidence=0.2, delta_error=1.0, meta={"domain": "state", "evidence": {"tenant": "public"}}))
-    ih._sm.update("public", "agent", mod.DomainObs(ts=now_ts, confidence=0.8, delta_error=0.1, meta={"domain": "agent", "evidence": {"tenant": "public"}}))
+    ih._sm.update(
+        "public",
+        "state",
+        mod.DomainObs(
+            ts=now_ts,
+            confidence=0.2,
+            delta_error=1.0,
+            meta={"domain": "state", "evidence": {"tenant": "public"}},
+        ),
+    )
+    ih._sm.update(
+        "public",
+        "agent",
+        mod.DomainObs(
+            ts=now_ts,
+            confidence=0.8,
+            delta_error=0.1,
+            meta={"domain": "agent", "evidence": {"tenant": "public"}},
+        ),
+    )
     # Seed stats so normalization path computes non-zero std
     s_state = ih._stats["state"]
     s_agent = ih._stats["agent"]
@@ -33,7 +54,12 @@ def test_rationale_includes_fusion_note(monkeypatch):
         s_agent["m2"] += d * (derr - s_agent["mean"])
 
     # Process an update to trigger frame build
-    ev = {"domain": "state", "delta_error": 1.0, "confidence": 0.2, "evidence": {"tenant": "public"}}
+    ev = {
+        "domain": "state",
+        "delta_error": 1.0,
+        "confidence": 0.2,
+        "evidence": {"tenant": "public"},
+    }
     gf = ih._process_update(ev)
     assert gf is not None
     assert "rationale" in gf

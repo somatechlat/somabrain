@@ -37,12 +37,14 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
     try:
         from confluent_kafka import Consumer  # type: ignore
 
-        c = Consumer({
-            "bootstrap.servers": servers,
-            "group.id": "healthcheck-probe",
-            "session.timeout.ms": int(max(1500, timeout_s * 1500)),
-            "enable.auto.commit": False,
-        })
+        c = Consumer(
+            {
+                "bootstrap.servers": servers,
+                "group.id": "healthcheck-probe",
+                "session.timeout.ms": int(max(1500, timeout_s * 1500)),
+                "enable.auto.commit": False,
+            }
+        )
         try:
             # metadata() without args returns cluster metadata
             md = c.list_topics(timeout=timeout_s)

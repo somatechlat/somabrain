@@ -106,8 +106,10 @@ def run_forever() -> None:  # pragma: no cover
         pass
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
+
     try:
         from somabrain import runtime_config as _rt
+
         composite = _rt.get_bool("cog_composite", True)
     except Exception:
         composite = True
@@ -122,6 +124,7 @@ def run_forever() -> None:  # pragma: no cover
     next_serde = _next_serde()
     soma_serde = _soma_serde()
     from somabrain import runtime_config as _rt
+
     tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = _rt.get_str("agent_model_ver", "v1")
     period = _rt.get_float("agent_update_period", 0.7)
@@ -146,6 +149,7 @@ def run_forever() -> None:  # pragma: no cover
                     from somabrain.calibration.calibration_metrics import (
                         calibration_tracker as _calib,
                     )  # type: ignore
+
                     tenant_key = f"agent:{tenant}"
                     scaler = _calib.temperature_scalers["agent"][tenant]
                     if getattr(scaler, "is_fitted", False):

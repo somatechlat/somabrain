@@ -14,7 +14,9 @@ def _entropy(weights):
 def test_entropy_cap_never_increases_entropy(monkeypatch):
     monkeypatch.setenv("SOMABRAIN_FF_COG_INTEGRATOR", "1")
     # Force tenant cap small to trigger
-    monkeypatch.setenv("SOMABRAIN_LEARNING_TENANTS_FILE", "config/learning.tenants.yaml")
+    monkeypatch.setenv(
+        "SOMABRAIN_LEARNING_TENANTS_FILE", "config/learning.tenants.yaml"
+    )
     hub = IntegratorHub()
     t = "public"
     # Inject a cap for test tenant (if not loaded)
@@ -24,7 +26,12 @@ def test_entropy_cap_never_increases_entropy(monkeypatch):
     for d in ("state", "agent", "action"):
         hub._sm.update(t, d, DomainObs(ts=ts, confidence=1.0, delta_error=0.0))
     # Call snapshot path via _process_update by passing an event; entropy will be recomputed
-    ev = {"domain": "state", "delta_error": 0.0, "confidence": 1.0, "evidence": {"tenant": t}}
+    ev = {
+        "domain": "state",
+        "delta_error": 0.0,
+        "confidence": 1.0,
+        "evidence": {"tenant": t},
+    }
     gf = hub._process_update(ev)
     assert gf is not None
     w = gf["weights"]
@@ -35,7 +42,7 @@ def test_entropy_cap_never_increases_entropy(monkeypatch):
     leader = gf["leader"]
     others = [k for k in ("state", "agent", "action") if k != leader]
     for k in others:
-        assert w[k] <= 1.0/3 + 1e-6
+        assert w[k] <= 1.0 / 3 + 1e-6
 
 
 def test_entropy_cap_converges_within_events(monkeypatch):
@@ -46,8 +53,15 @@ def test_entropy_cap_converges_within_events(monkeypatch):
     # Start with roughly uniform by feeding equal confidences repeatedly
     for i in range(10):
         for d in ("state", "agent", "action"):
-            hub._sm.update(t, d, DomainObs(ts=float(i), confidence=1.0, delta_error=0.0))
-        ev = {"domain": "state", "delta_error": 0.0, "confidence": 1.0, "evidence": {"tenant": t}}
+            hub._sm.update(
+                t, d, DomainObs(ts=float(i), confidence=1.0, delta_error=0.0)
+            )
+        ev = {
+            "domain": "state",
+            "delta_error": 0.0,
+            "confidence": 1.0,
+            "evidence": {"tenant": t},
+        }
         gf = hub._process_update(ev)
         assert gf is not None
         H = _entropy(gf["weights"])

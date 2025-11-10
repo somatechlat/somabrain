@@ -5,8 +5,11 @@ from dataclasses import replace
 def test_calibration_acceptance_enforcement(monkeypatch):
     # Enable calibration path via centralized config
     import somabrain.modes as modes
+
     base = modes.get_mode_config()
-    monkeypatch.setattr(modes, "get_mode_config", lambda: replace(base, calibration_enabled=True))
+    monkeypatch.setattr(
+        modes, "get_mode_config", lambda: replace(base, calibration_enabled=True)
+    )
 
     from somabrain.services.calibration_service import calibration_service
     from somabrain.calibration.calibration_metrics import calibration_tracker

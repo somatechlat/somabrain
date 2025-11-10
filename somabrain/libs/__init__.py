@@ -3,6 +3,7 @@
 This allows imports like `from somabrain.libs.kafka_cog import ...` without
 requiring the repository root to be on `PYTHONPATH`.
 """
+
 from __future__ import annotations
 
 import importlib

@@ -52,6 +52,7 @@ def _make_producer():  # pragma: no cover - optional at runtime
         return None
     try:
         from confluent_kafka import Producer  # type: ignore
+
         conf = {
             "bootstrap.servers": bootstrap,
             "enable.idempotence": True,
@@ -109,7 +110,12 @@ def _process_batch(
 
 def run_forever() -> None:  # pragma: no cover - integration loop
     # Require DB and Kafka to be ready before starting
-    assert_ready(require_kafka=True, require_redis=False, require_postgres=True, require_opa=False)
+    assert_ready(
+        require_kafka=True,
+        require_redis=False,
+        require_postgres=True,
+        require_opa=False,
+    )
     batch_size = int(os.getenv("SOMABRAIN_OUTBOX_BATCH_SIZE", "100") or 100)
     max_retries = int(os.getenv("SOMABRAIN_OUTBOX_MAX_RETRIES", "5") or 5)
     poll_interval = float(os.getenv("SOMABRAIN_OUTBOX_POLL_INTERVAL", "1.0") or 1.0)

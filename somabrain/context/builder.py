@@ -337,7 +337,7 @@ class ContextBuilder:
                         scale = min(0.99, max(0.2, overflow / (float(cap) + 1e-9)))
                         for i in range(len(vec)):
                             if i != largest_idx:
-                                vec[i] *= (1.0 - scale)
+                                vec[i] *= 1.0 - scale
                         s2 = sum(vec)
                         if s2 > 0:
                             vec = [v / s2 for v in vec]
@@ -352,7 +352,12 @@ class ContextBuilder:
                         s2 = sum(vec)
                         if s2 > 0:
                             vec = [v / s2 for v in vec]
-                    self._weights.alpha, self._weights.beta, self._weights.gamma, self._weights.tau = (
+                    (
+                        self._weights.alpha,
+                        self._weights.beta,
+                        self._weights.gamma,
+                        self._weights.tau,
+                    ) = (
                         float(vec[0]),
                         float(vec[1]),
                         float(vec[2]),
@@ -399,7 +404,11 @@ class ContextBuilder:
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                    overrides = {
+                        str(k): (v or {})
+                        for k, v in data.items()
+                        if isinstance(v, dict)
+                    }
             except Exception:
                 try:
                     import json as _json
@@ -407,7 +416,11 @@ class ContextBuilder:
                     with open(path, "r", encoding="utf-8") as f:
                         data = _json.load(f)
                     if isinstance(data, dict):
-                        overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                        overrides = {
+                            str(k): (v or {})
+                            for k, v in data.items()
+                            if isinstance(v, dict)
+                        }
                 except Exception:
                     overrides = {}
         if not overrides:
@@ -418,7 +431,11 @@ class ContextBuilder:
 
                     data = _json.loads(raw)
                     if isinstance(data, dict):
-                        overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
+                        overrides = {
+                            str(k): (v or {})
+                            for k, v in data.items()
+                            if isinstance(v, dict)
+                        }
                 except Exception:
                     overrides = {}
         return overrides

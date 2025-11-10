@@ -51,6 +51,7 @@ class FeatureFlags:
     def get_status(cls) -> Dict[str, Any]:
         cfg = mode_config()
         disabled = cls._load_overrides() if cfg.name == "full-local" else []
+
         def resolved(k: str) -> bool:
             # map UI keys -> feature_enabled keys
             mapping = {
@@ -78,6 +79,8 @@ class FeatureFlags:
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8")
+            p.write_text(
+                json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
+            )
         except Exception:
             pass

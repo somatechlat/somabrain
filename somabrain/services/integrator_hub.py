@@ -31,7 +31,11 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from confluent_kafka import Consumer as CKConsumer, KafkaException  # type: ignore
-from somabrain.common.kafka import make_producer, encode, TOPICS  # Avro-only strict producer
+from somabrain.common.kafka import (
+    make_producer,
+    encode,
+    TOPICS,
+)  # Avro-only strict producer
 from somabrain.common.infra import assert_ready  # fail-fast infra gate
 import threading
 
@@ -50,6 +54,7 @@ except Exception:  # pragma: no cover - optional import in tests
 
     def consistency_score(agent_posterior, action_posterior):  # type: ignore
         return None
+
 
 # Optional drift detector integration
 try:
@@ -226,6 +231,22 @@ INTEGRATOR_CONSISTENCY = app_metrics.get_gauge(
     labelnames=["tenant"],
 )
 
+# Consistency enforcement metrics
+INTEGRATOR_KAPPA_THRESHOLD = app_metrics.get_gauge(
+    "somabrain_integrator_kappa_threshold",
+    "Configured minimum acceptable kappa before enforcement",
+)
+INTEGRATOR_CONSISTENCY_VIOLATIONS = app_metrics.get_counter(
+    "somabrain_integrator_consistency_violations_total",
+    "Count of frames where kappa fell below threshold",
+    labelnames=["tenant"],
+)
+INTEGRATOR_CONSISTENCY_ENFORCED = app_metrics.get_counter(
+    "somabrain_integrator_consistency_enforced_total",
+    "Count of frames where enforcement adjusted weights or dropped frame",
+    labelnames=["tenant"],
+)
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -324,6 +345,7 @@ class IntegratorHub:
         # Feature flags
         try:
             from somabrain import runtime_config as _rt
+
             self._soma_compat = bool(_rt.get_bool("soma_compat", False))
         except Exception:
             self._soma_compat = False
@@ -421,6 +443,7 @@ class IntegratorHub:
         # Confidence enforcement from delta_error
         try:
             from somabrain import runtime_config as _rt
+
             self._alpha = float(_rt.get_float("integrator_alpha", 2.0))
         except Exception:
             self._alpha = 2.0
@@ -431,26 +454,31 @@ class IntegratorHub:
         # Default ON: enforce confidence normalization from delta_error unless explicitly disabled
         try:
             from somabrain import runtime_config as _rt
+
             self._enforce_conf = bool(_rt.get_bool("integrator_enforce_conf", True))
         except Exception:
             self._enforce_conf = True
-        
+
         # Fusion normalization with adaptive alpha - unconditionally enabled
         self._norm_enabled = True
         # Drift detection flag
         try:
             from somabrain import runtime_config as _rt
+
             self._drift_enabled = bool(_rt.get_bool("drift_detection_enabled", False))
         except Exception:
             self._drift_enabled = False
-        
+
         # Adaptive alpha for fusion normalization
         try:
             from somabrain import runtime_config as _rt
+
             self._adaptive_alpha = float(_rt.get_float("integrator_alpha", 2.0))
             self._alpha_min = float(_rt.get_float("integrator_alpha_min", 0.1))
             self._alpha_max = float(_rt.get_float("integrator_alpha_max", 5.0))
-            self._alpha_target_regret = float(_rt.get_float("integrator_target_regret", 0.15))
+            self._alpha_target_regret = float(
+                _rt.get_float("integrator_target_regret", 0.15)
+            )
             self._alpha_eta = float(_rt.get_float("integrator_alpha_eta", 0.05))
         except Exception:
             self._adaptive_alpha = 2.0
@@ -487,7 +515,9 @@ class IntegratorHub:
             self._opa_policy = os.getenv("SOMABRAIN_OPA_POLICY", "").strip()
             # Derive posture from mode (always True under strict mode policies)
             try:
-                self._opa_fail_closed = bool(getattr(_settings, "mode_opa_fail_closed", True))
+                self._opa_fail_closed = bool(
+                    getattr(_settings, "mode_opa_fail_closed", True)
+                )
             except Exception:
                 self._opa_fail_closed = True
         except Exception:
@@ -504,6 +534,7 @@ class IntegratorHub:
                 or "config/learning.tenants.yaml"
             )
             import yaml  # type: ignore
+
             if os.path.exists(cfg_path):
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
@@ -517,6 +548,27 @@ class IntegratorHub:
             self._tenant_entropy_cap = {}
         # Per-tenant domain attribution weights (lambda) default to 1.0
         self._tenant_lambda: Dict[str, Dict[str, float]] = {}
+        # Consistency / kappa enforcement state
+        self._kappa_below_counts: Dict[str, int] = {}
+        self._consistency_degraded: Dict[str, bool] = {}
+        try:
+            from somabrain import runtime_config as _rt
+            self._kappa_min = float(_rt.get_float("consistency_kappa_min", 0.55))
+            self._kappa_fail_count = int(_rt.get_float("consistency_fail_count", 3))
+            self._kappa_hysteresis = float(_rt.get_float("consistency_kappa_hysteresis", 0.05))
+            self._kappa_drop_frame = bool(_rt.get_bool("consistency_drop_frame", True))
+            self._kappa_alert_enabled = bool(_rt.get_bool("consistency_alert_enabled", True))
+            if INTEGRATOR_KAPPA_THRESHOLD is not None:
+                try:
+                    INTEGRATOR_KAPPA_THRESHOLD.set(self._kappa_min)
+                except Exception:
+                    pass
+        except Exception:
+            self._kappa_min = 0.55
+            self._kappa_fail_count = 3
+            self._kappa_hysteresis = 0.05
+            self._kappa_drop_frame = True
+            self._kappa_alert_enabled = True
 
     def _start_health_server(self) -> None:
         try:
@@ -557,7 +609,9 @@ class IntegratorHub:
 
     def _ensure_clients(self) -> None:
         if not self._bootstrap:
-            raise RuntimeError("integrator_hub: Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)")
+            raise RuntimeError(
+                "integrator_hub: Kafka bootstrap not configured (SOMABRAIN_KAFKA_URL)"
+            )
         if self._consumer is None:
             topics = [
                 TOPICS["state"],
@@ -566,11 +620,13 @@ class IntegratorHub:
                 TOPICS["config"],
             ]
             if self._soma_compat:
-                topics.extend([
-                    TOPICS["soma_state"],
-                    TOPICS["soma_agent"],
-                    TOPICS["soma_action"],
-                ])
+                topics.extend(
+                    [
+                        TOPICS["soma_state"],
+                        TOPICS["soma_agent"],
+                        TOPICS["soma_action"],
+                    ]
+                )
             self._consumer = CKConsumer(
                 {
                     "bootstrap.servers": self._bootstrap,
@@ -586,7 +642,9 @@ class IntegratorHub:
     def _decode_update(self, payload: bytes) -> Optional[Dict[str, Any]]:
         # Strict: Avro-only belief_update
         if self._avro_bu is None:
-            raise RuntimeError("integrator_hub: Avro serde unavailable for belief_update")
+            raise RuntimeError(
+                "integrator_hub: Avro serde unavailable for belief_update"
+            )
         return self._avro_bu.deserialize(payload)
 
     def _decode_update_soma(self, payload: bytes) -> Optional[Dict[str, Any]]:
@@ -602,7 +660,9 @@ class IntegratorHub:
             except Exception:
                 rec = None
         if rec is None:
-            raise RuntimeError("integrator_hub: Avro soma belief_update strict requirement failed")
+            raise RuntimeError(
+                "integrator_hub: Avro soma belief_update strict requirement failed"
+            )
         try:
             # Map SOMA fields
             stream = str(rec.get("stream") or rec.get("Stream") or "state").lower()
@@ -636,12 +696,16 @@ class IntegratorHub:
 
     def _encode_frame(self, record: Dict[str, Any]) -> bytes:
         if self._avro_gf is None:
-            raise RuntimeError("integrator_hub: Avro serde unavailable for global_frame")
+            raise RuntimeError(
+                "integrator_hub: Avro serde unavailable for global_frame"
+            )
         return self._avro_gf.serialize(record)
 
     def _decode_config(self, payload: bytes) -> Optional[Dict[str, Any]]:
         if getattr(self, "_avro_cfg", None) is None:
-            raise RuntimeError("integrator_hub: Avro serde unavailable for config_update")
+            raise RuntimeError(
+                "integrator_hub: Avro serde unavailable for config_update"
+            )
         rec = self._avro_cfg.deserialize(payload)  # type: ignore[attr-defined]
         if not isinstance(rec, dict):
             raise RuntimeError("integrator_hub: config_update decoded non-dict")
@@ -705,7 +769,9 @@ class IntegratorHub:
         try:
             gf_bytes = self._encode_frame(gf_record)
         except Exception as e:
-            raise RuntimeError(f"integrator_hub: strict Avro encode failed for global_frame: {e}")
+            raise RuntimeError(
+                f"integrator_hub: strict Avro encode failed for global_frame: {e}"
+            )
         ic = {
             "leader_stream": str(leader),
             "leader_score": float(leader_score),
@@ -715,7 +781,9 @@ class IntegratorHub:
         }
         try:
             if self._avro_ic is None:
-                raise RuntimeError("integrator_hub: Avro serde unavailable for integrator_context")
+                raise RuntimeError(
+                    "integrator_hub: Avro serde unavailable for integrator_context"
+                )
             payload = self._avro_ic.serialize(ic)
             self._producer.send(TOPICS["integrator_context"], value=payload)
         except Exception:
@@ -731,6 +799,13 @@ class IntegratorHub:
 
     @staticmethod
     def _tenant_from(ev: Dict[str, Any]) -> str:
+        # Prefer explicit tenant field (config_update, global_frame) then evidence. Default public.
+        try:
+            t_raw = ev.get("tenant")
+            if isinstance(t_raw, str) and t_raw.strip():
+                return t_raw.strip()
+        except Exception:
+            pass
         try:
             evd = ev.get("evidence") or {}
             t = str(evd.get("tenant", "")).strip()
@@ -806,6 +881,27 @@ class IntegratorHub:
                             self._last_kappa[tenant] = float(kappa)
                         except Exception:
                             pass
+                        # Consistency threshold enforcement bookkeeping
+                        try:
+                            if kappa < self._kappa_min:
+                                self._kappa_below_counts[tenant] = self._kappa_below_counts.get(tenant, 0) + 1
+                                INTEGRATOR_CONSISTENCY_VIOLATIONS.labels(tenant=tenant).inc()
+                                if self._kappa_below_counts[tenant] >= self._kappa_fail_count:
+                                    if not self._consistency_degraded.get(tenant):
+                                        self._consistency_degraded[tenant] = True
+                                        if self._kappa_alert_enabled:
+                                            try:
+                                                print(f"integrator_hub: consistency degraded tenant={tenant} kappa={kappa:.3f}")
+                                            except Exception:
+                                                pass
+                            else:
+                                # Recovery path with hysteresis
+                                if kappa >= (self._kappa_min + self._kappa_hysteresis):
+                                    self._kappa_below_counts[tenant] = 0
+                                    if self._consistency_degraded.get(tenant):
+                                        self._consistency_degraded[tenant] = False
+                        except Exception:
+                            pass
                 except Exception:
                     pass
         except Exception:
@@ -826,7 +922,9 @@ class IntegratorHub:
                 INTEGRATOR_NORMALIZED_ERROR.labels(domain=domain).set(float(e_norm))
                 # Also emit for new fusion metrics
                 try:
-                    INTEGRATOR_FUSION_WEIGHT_NORM_ERROR.labels(tenant=tenant, domain=domain).set(float(e_norm))
+                    INTEGRATOR_FUSION_WEIGHT_NORM_ERROR.labels(
+                        tenant=tenant, domain=domain
+                    ).set(float(e_norm))
                 except Exception:
                     pass
             except Exception:
@@ -844,10 +942,20 @@ class IntegratorHub:
                         )
                     else:
                         e_nd = 0.0
+                    # Base candidate from normalized error via softmax temperature alpha
                     try:
-                        cand_exps[d] = math.exp(-float(self._alpha) * float(e_nd))
+                        base = math.exp(-float(self._alpha) * float(e_nd))
                     except Exception:
-                        cand_exps[d] = 1.0
+                        base = 1.0
+                    # Apply per-tenant domain attribution multiplier lambda_d if available
+                    try:
+                        lamap = self._tenant_lambda.get(tenant) or {}
+                        lam = float(lamap.get(d, 1.0))
+                        # Keep lambda within reasonable bounds
+                        lam = max(0.1, min(2.0, lam))
+                    except Exception:
+                        lam = 1.0
+                    cand_exps[d] = base * lam
                 Zc = sum(cand_exps.values()) or 1.0
                 fused_weights = {d: float(v / Zc) for d, v in cand_exps.items()}
                 for d, v in fused_weights.items():
@@ -869,7 +977,9 @@ class IntegratorHub:
             # Emit fusion weights
             for domain, weight in weights.items():
                 try:
-                    INTEGRATOR_FUSION_SOFTMAX_WEIGHT.labels(tenant=tenant, domain=domain).set(weight)
+                    INTEGRATOR_FUSION_SOFTMAX_WEIGHT.labels(
+                        tenant=tenant, domain=domain
+                    ).set(weight)
                 except Exception:
                     pass
         # Adaptive alpha update (after fused weights computed)
@@ -888,7 +998,9 @@ class IntegratorHub:
                 try:
                     INTEGRATOR_ALPHA_ERROR.set(float(diff))
                     # New fusion metrics
-                    INTEGRATOR_FUSION_ALPHA_ADAPTIVE.labels(tenant=tenant).set(float(self._alpha))
+                    INTEGRATOR_FUSION_ALPHA_ADAPTIVE.labels(tenant=tenant).set(
+                        float(self._alpha)
+                    )
                 except Exception:
                     pass
                 try:
@@ -896,7 +1008,9 @@ class IntegratorHub:
                 except Exception:
                     pass
                 try:
-                    INTEGRATOR_REGRET_OBS_HIST.observe(max(0.0, min(1.0, float(adaptive_regret_sample))))
+                    INTEGRATOR_REGRET_OBS_HIST.observe(
+                        max(0.0, min(1.0, float(adaptive_regret_sample)))
+                    )
                 except Exception:
                     pass
             except Exception:
@@ -957,7 +1071,9 @@ class IntegratorHub:
             rationale_note = ""
         # Update stability timer metrics (entropy within cap and regret within target)
         try:
-            reg_ok = (adaptive_regret_sample is not None) and (adaptive_regret_sample <= self._alpha_target_regret)
+            reg_ok = (adaptive_regret_sample is not None) and (
+                adaptive_regret_sample <= self._alpha_target_regret
+            )
             ent_ok = False
             if H_norm is not None:
                 cap_val = self._tenant_entropy_cap.get(tenant)
@@ -969,7 +1085,9 @@ class IntegratorHub:
                 if start is None:
                     self._stable_since[tenant] = now_t
                 else:
-                    INTEGRATOR_TIME_TO_STABILITY.labels(tenant=tenant).set(max(0.0, now_t - float(start)))
+                    INTEGRATOR_TIME_TO_STABILITY.labels(tenant=tenant).set(
+                        max(0.0, now_t - float(start))
+                    )
             else:
                 self._stable_since[tenant] = now_t
                 INTEGRATOR_TIME_TO_STABILITY.labels(tenant=tenant).set(0.0)
@@ -980,7 +1098,9 @@ class IntegratorHub:
             try:
                 # Use current leader's weight as confidence proxy
                 leader_conf = float(weights.get(leader, 0.0))
-                drifted = _DRIFT.add_observation(leader, tenant, leader_conf, float(H_norm))
+                drifted = _DRIFT.add_observation(
+                    leader, tenant, leader_conf, float(H_norm)
+                )
                 if drifted and self._norm_enabled:
                     self._norm_enabled = False
                     try:
@@ -1002,7 +1122,11 @@ class IntegratorHub:
                 frame_map["leader_delta_error"] = f"{lob.delta_error:.6f}"
         except Exception:
             pass
-        fusion_note = "fusion=normalized" if (self._norm_enabled and fused_weights) else "fusion=softmax"
+        fusion_note = (
+            "fusion=normalized"
+            if (self._norm_enabled and fused_weights)
+            else "fusion=softmax"
+        )
         rationale = f"{fusion_note} tau=1.0 domains={','.join(sorted(k for k in weights.keys() if weights[k]>0))}{rationale_note}"
         # Append recent kappa/entropy context if available
         try:
@@ -1062,6 +1186,24 @@ class IntegratorHub:
                 if new_leader and new_leader in ("state", "agent", "action"):
                     leader_adj = new_leader
                 rationale += f"; opa=allow{opa_note}"
+        # Consistency enforcement gating (after OPA, before frame build)
+        if self._consistency_degraded.get(tenant):
+            try:
+                if leader_adj == "action":
+                    if self._kappa_drop_frame:
+                        INTEGRATOR_CONSISTENCY_ENFORCED.labels(tenant=tenant).inc()
+                        return None
+                    # Adjust leader to most confident non-action domain
+                    fallback_domain = max(
+                        ((d, w) for d, w in weights.items() if d != "action"),
+                        key=lambda kv: kv[1],
+                        default=("state", 0.0),
+                    )[0]
+                    leader_adj = fallback_domain
+                    rationale += "; consistency_enforced"
+                    INTEGRATOR_CONSISTENCY_ENFORCED.labels(tenant=tenant).inc()
+            except Exception:
+                pass
         gf = {
             "ts": _now_iso(),
             "leader": leader_adj,
@@ -1090,23 +1232,34 @@ class IntegratorHub:
             if not isinstance(agent_post, dict) or not isinstance(action_post, dict):
                 return None
             # Extract probability maps
-            ap = agent_post.get("intent_probs") if "intent_probs" in agent_post else agent_post
-            xp = action_post.get("action_probs") if "action_probs" in action_post else action_post
+            ap = (
+                agent_post.get("intent_probs")
+                if "intent_probs" in agent_post
+                else agent_post
+            )
+            xp = (
+                action_post.get("action_probs")
+                if "action_probs" in action_post
+                else action_post
+            )
             if not isinstance(ap, dict) or not isinstance(xp, dict):
                 return None
             # Unified key set
             keys = set(ap.keys()) | set(xp.keys())
             if not keys:
                 return None
+
             # Normalize each distribution
             def _norm(m: Dict[str, Any]) -> Dict[str, float]:
                 vals = {k: float(m.get(k, 0.0)) for k in keys}
                 Z = sum(vals.values()) or 1.0
                 return {k: max(0.0, vals[k] / Z) for k in keys}
+
             pa = _norm(ap)
             px = _norm(xp)
             # Mixture
             pm = {k: 0.5 * (pa[k] + px[k]) for k in keys}
+
             def _kl(p: Dict[str, float], q: Dict[str, float]) -> float:
                 acc = 0.0
                 for k in keys:
@@ -1114,6 +1267,7 @@ class IntegratorHub:
                     qk = max(1e-12, q[k])
                     acc += pk * _math.log(pk / qk)
                 return acc
+
             jsd = 0.5 * _kl(pa, pm) + 0.5 * _kl(px, pm)
             # Normalize JSD by log(|keys|) to keep in [0,1]
             denom = _math.log(float(len(keys))) if len(keys) > 1 else 1.0
@@ -1225,11 +1379,32 @@ class IntegratorHub:
                                     ).set(float(val))
                             # Persist lambda settings per tenant for use in fusion weighting
                             tname = self._tenant_from(cfg)
-                            lmap = self._tenant_lambda.setdefault(tname, {"state": 1.0, "agent": 1.0, "action": 1.0})
-                            for d, key in (("state", "lambda_state"), ("agent", "lambda_agent"), ("action", "lambda_action")):
+                            lmap = self._tenant_lambda.setdefault(
+                                tname, {"state": 1.0, "agent": 1.0, "action": 1.0}
+                            )
+                            for d, key in (
+                                ("state", "lambda_state"),
+                                ("agent", "lambda_agent"),
+                                ("action", "lambda_action"),
+                            ):
                                 v = cfg.get(key)
                                 if isinstance(v, (int, float)):
                                     lmap[d] = max(0.1, min(2.0, float(v)))
+                            # Ingest gamma attribution if present
+                            for gkey, glabel in (
+                                ("gamma_state", "state"),
+                                ("gamma_agent", "agent"),
+                                ("gamma_action", "action"),
+                            ):
+                                gval = cfg.get(gkey)
+                                if isinstance(gval, (int, float)):
+                                    try:
+                                        INTEGRATOR_CAND_WEIGHT.labels(
+                                            tenant=self._tenant_from(cfg),
+                                            domain=f"gamma_{glabel}",
+                                        ).set(float(gval))
+                                    except Exception:
+                                        pass
                         except Exception:
                             pass
                     continue
@@ -1245,9 +1420,7 @@ class IntegratorHub:
                     continue
                 dom = str(ev.get("domain", "state"))
                 INTEGRATOR_CONSUMED.labels(domain=dom).inc()
-                with self._tracer.start_as_current_span(
-                    "integrator_process_update"
-                ):
+                with self._tracer.start_as_current_span("integrator_process_update"):
                     frame = self._process_update(ev)
                 if frame is None:
                     continue
@@ -1283,9 +1456,11 @@ class IntegratorHub:
 def main() -> None:  # pragma: no cover - manual run path
     """Entrypoint for the Integrator Hub service with centralized feature gating only."""
     from somabrain.modes import feature_enabled, mode_config
+
     if not feature_enabled("integrator"):
         import logging
         from somabrain.metrics import get_counter
+
         logging.info(f"integrator_hub: disabled via mode={mode_config().name}")
         try:
             _MX_INT_DISABLED = get_counter(
@@ -1296,21 +1471,25 @@ def main() -> None:  # pragma: no cover - manual run path
         except Exception:
             pass
         return
-    # Fail-fast infra readiness (OPA optional).
+    # Fail-fast infra readiness (OPA required if configured).
     try:
+        # Require OPA when SOMABRAIN_OPA_URL is set to a non-empty value
+        require_opa = bool((os.getenv("SOMABRAIN_OPA_URL") or "").strip())
         assert_ready(
             require_kafka=True,
             require_redis=True,
             require_postgres=True,
-            require_opa=False,
+            require_opa=require_opa,
         )
     except Exception as e:
         import logging
+
         logging.error(f"integrator_hub: infra readiness failure: {e}")
         raise
     hub = IntegratorHub()
     try:
         from somabrain.metrics import get_counter
+
         _MX_INT_INIT = get_counter(
             "somabrain_integrator_init_total",
             "Number of Integrator Hub initializations",
@@ -1319,6 +1498,7 @@ def main() -> None:  # pragma: no cover - manual run path
     except Exception:
         pass
     import logging
+
     logging.info("Starting Integrator Hub...")
     hub.run_forever()
 

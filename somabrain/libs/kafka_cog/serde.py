@@ -35,4 +35,5 @@ class AvroSerde:
         buf = io.BytesIO(payload)
         return schemaless_reader(buf, self._schema)
 
+
 __all__ = ["AvroSerde"]

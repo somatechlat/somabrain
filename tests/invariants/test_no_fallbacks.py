@@ -42,8 +42,10 @@ def test_no_banned_fallback_tokens():
         for raw, rx in patterns:
             for m in rx.finditer(text):
                 line_no = text.count("\n", 0, m.start()) + 1
-                snippet = text[m.start(): m.end()][:80]
+                snippet = text[m.start() : m.end()][:80]
                 banned_hits.append(f"{p}:{line_no}:{raw}:{snippet}")
-    assert not banned_hits, (
-        "Banned fallback-related tokens found (strict-mode violation):\n" + "\n".join(banned_hits)
+    assert (
+        not banned_hits
+    ), "Banned fallback-related tokens found (strict-mode violation):\n" + "\n".join(
+        banned_hits
     )

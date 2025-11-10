@@ -19,10 +19,10 @@ def test_predictor_calibration_event_emitted(monkeypatch):
         def __init__(self):
             self.closed = False
 
-        def produce(self, topic: str, value: bytes):
+        def send(self, topic: str, value: bytes):  # match calibration_service usage
             sent.append({"topic": topic, "value": value})
 
-        def flush(self, timeout: float | None = None):
+        def flush(self, timeout: float | None = None):  # pragma: no cover
             return 0
 
     # Fake encode returns bytes with schema marker for inspection
@@ -30,25 +30,30 @@ def test_predictor_calibration_event_emitted(monkeypatch):
         assert schema_name == "predictor_calibration"
         return f"{schema_name}:{record.get('domain','')}/{record.get('tenant','')}".encode()
 
-    # Patch calibration tracker data so service emits one record
+    # Patch calibration tracker data via public add_observation to ensure proper key format
     from somabrain.calibration.calibration_metrics import calibration_tracker
 
     calibration_tracker.calibration_data.clear()
-    key = ("search", "demo")
-    calibration_tracker.calibration_data[key] = {
-        "confidences": [0.6, 0.7, 0.8],
-        "accuracies": [1, 0, 1],
-        "samples": 3,
-    }
+    for c, a in [(0.6, 1), (0.7, 0), (0.8, 1)]:
+        calibration_tracker.add_observation("search", "demo", c, a)
+
+    # Ensure feature gate allows calibration during service init
+    import somabrain.modes as modes
+
+    orig_enabled = modes.feature_enabled
+    monkeypatch.setattr(
+        modes,
+        "feature_enabled",
+        lambda key: True if key == "calibration" else orig_enabled(key),
+        raising=True,
+    )
 
     import somabrain.services.calibration_service as svc
 
     monkeypatch.setattr(svc, "encode", fake_encode, raising=True)
-    monkeypatch.setattr(svc, "create_producer", lambda: DummyProducer(), raising=True)
+    monkeypatch.setattr(svc, "make_producer", lambda: DummyProducer(), raising=True)
 
     service = svc.CalibrationService()
-    # Force-enabled for test regardless of features
-    service.enabled = True
 
     # Act
     service._emit_calibration_snapshots()

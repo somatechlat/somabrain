@@ -2140,7 +2140,7 @@ async def health(request: Request) -> S.HealthResponse:
             except Exception:
                 opa_required = False
         else:
-                opa_required = True
+            opa_required = True
         opa_ok = True
         if opa_required:
             try:

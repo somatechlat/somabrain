@@ -23,15 +23,19 @@ CODE_ROOT = Path(__file__).resolve().parents[2] / "somabrain"
 SERVICES_ROOT = CODE_ROOT / "services"
 MONITORING_ROOT = CODE_ROOT / "monitoring"
 
+
 def scan_file(path: Path):
     text = path.read_text(errors="ignore")
     violations = []
     for pat in BANNED_PATTERNS:
-        if any(path.name == allow and re.search(pat, text) for allow in ALLOWED_EXCEPTIONS):
+        if any(
+            path.name == allow and re.search(pat, text) for allow in ALLOWED_EXCEPTIONS
+        ):
             continue
         if re.search(pat, text):
             violations.append(pat)
     return violations
+
 
 def test_no_strict_mode_fallbacks():
     violations_total = []
@@ -46,7 +50,9 @@ def test_no_strict_mode_fallbacks():
         if v:
             violations_total.append((p, v))
     if violations_total:
-        details = "\n".join(f"{path}: {', '.join(pats)}" for path, pats in violations_total)
+        details = "\n".join(
+            f"{path}: {', '.join(pats)}" for path, pats in violations_total
+        )
         raise AssertionError(f"Strict-mode invariant violations detected:\n{details}")
 
 
@@ -56,7 +62,9 @@ def _scan_for_json_serialization(root: Path):
     for p in root.rglob("*.py"):
         # Skip generated, tests, and obvious configuration or CLI helpers
         s = str(p)
-        if any(seg in s for seg in ["/__pycache__/", "/tests/", "/_pb2.py", "/_pb2.pyi"]):
+        if any(
+            seg in s for seg in ["/__pycache__/", "/tests/", "/_pb2.py", "/_pb2.pyi"]
+        ):
             continue
         try:
             text = p.read_text(errors="ignore")

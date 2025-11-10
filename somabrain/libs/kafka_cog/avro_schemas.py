@@ -3,6 +3,7 @@
 Resolves `proto/cog/<name>.avsc` relative to repository root irrespective of
 execution CWD. Raises on missing or invalid schemas.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,6 +20,7 @@ for _ in range(10):  # cap climb depth
 
 _BASE = _root / "proto" / "cog"
 
+
 def load_schema(name: str) -> Dict[str, Any]:
     stem = name.strip()
     if not stem:
@@ -34,5 +36,6 @@ def load_schema(name: str) -> Dict[str, Any]:
     if not isinstance(data, dict):
         raise RuntimeError(f"Invalid schema format for '{stem}' (expected object)")
     return data
+
 
 __all__ = ["load_schema"]

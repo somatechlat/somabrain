@@ -250,6 +250,7 @@ async def run_retrieval_pipeline(
             # Exact path is best-effort; continue with fused retrievals on failure
             pass
     import time as _time  # local timing for per-retriever latency
+
     for rname in retrievers:
         if rname == "wm":
             if rt_embedder is None:
@@ -280,7 +281,10 @@ async def run_retrieval_pipeline(
                 lists_by_retriever["wm"] = lst_all
                 try:
                     from somabrain import metrics as M
-                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="wm").observe(max(0.0, _time.perf_counter() - _r0))
+
+                    M.RETRIEVER_LATENCY.labels(
+                        namespace=ctx.namespace, retriever="wm"
+                    ).observe(max(0.0, _time.perf_counter() - _r0))
                 except Exception:
                     pass
                 cands += lst_all
@@ -311,7 +315,10 @@ async def run_retrieval_pipeline(
                 lists_by_retriever["vector"] = lst_all
                 try:
                     from somabrain import metrics as M
-                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="vector").observe(max(0.0, _time.perf_counter() - _r0))
+
+                    M.RETRIEVER_LATENCY.labels(
+                        namespace=ctx.namespace, retriever="vector"
+                    ).observe(max(0.0, _time.perf_counter() - _r0))
                 except Exception:
                     pass
                 cands += lst_all
@@ -342,7 +349,10 @@ async def run_retrieval_pipeline(
                 lists_by_retriever["graph"] = lst
                 try:
                     from somabrain import metrics as M
-                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="graph").observe(max(0.0, _time.perf_counter() - _r0))
+
+                    M.RETRIEVER_LATENCY.labels(
+                        namespace=ctx.namespace, retriever="graph"
+                    ).observe(max(0.0, _time.perf_counter() - _r0))
                 except Exception:
                     pass
                 cands += lst
@@ -365,7 +375,10 @@ async def run_retrieval_pipeline(
                 lists_by_retriever["lexical"] = lst_all
                 try:
                     from somabrain import metrics as M
-                    M.RETRIEVER_LATENCY.labels(namespace=ctx.namespace, retriever="lexical").observe(max(0.0, _time.perf_counter() - _r0))
+
+                    M.RETRIEVER_LATENCY.labels(
+                        namespace=ctx.namespace, retriever="lexical"
+                    ).observe(max(0.0, _time.perf_counter() - _r0))
                 except Exception:
                     pass
                 cands += lst_all
@@ -695,6 +708,7 @@ async def run_retrieval_pipeline(
         # Per-retriever hit metrics (non-empty lists)
         try:
             from somabrain import metrics as M2
+
             for rname, lst in lists_by_retriever.items():
                 if lst:
                     try:

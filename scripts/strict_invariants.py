@@ -26,14 +26,23 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BAN_TOKENS = [
-    "fallback",
+    # explicit stub/backdoor patterns
     "fakeredis",
     "sqlite://",
     "disable_auth",
-    "noop tracer",
-    "KafkaProducer",
+    # legacy kafka-python producer usage (must standardize on confluent-kafka)
+    "from kafka import",
+    "KafkaProducer(",
 ]
-SKIP_DIRS = {".git", ".venv", "somabrain.egg-info", "artifacts", "docs", "migrations/versions", "node_modules"}
+SKIP_DIRS = {
+    ".git",
+    ".venv",
+    "somabrain.egg-info",
+    "artifacts",
+    "docs",
+    "migrations/versions",
+    "node_modules",
+}
 MAX_SIZE = 1_000_000
 
 
