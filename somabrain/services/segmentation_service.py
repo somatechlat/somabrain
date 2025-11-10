@@ -29,7 +29,6 @@ Environment variables:
 
 from __future__ import annotations
 
-import json
 import os
 import time
 from dataclasses import dataclass
@@ -696,13 +695,10 @@ class SegmentationService:
                     "dwell_ms": int(dwell_ms),
                     "evidence": evidence,
                 }
-                payload: bytes
                 try:
-                    if self._serde_out is not None:
-                        payload = self._serde_out.serialize(record)
-                    else:
-                        payload = json.dumps(record).encode("utf-8")
+                    payload: bytes = self._serde_out.serialize(record)
                 except Exception:
+                    # In strict mode, drop if Avro serialization fails
                     continue
 
                 try:
@@ -735,19 +731,13 @@ class SegmentationService:
 
 
 def main() -> None:  # pragma: no cover - service entrypoint
-    ff = os.getenv("SOMABRAIN_FF_COG_SEGMENTATION", "0").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    if not (ff in ("1", "true", "yes", "on") or composite):
+    from somabrain.modes import mode_config
+    if not mode_config().enable_segmentation:
         import logging
         from somabrain.metrics import get_counter
 
         logging.info(
-            "segmentation_service: disabled; set SOMABRAIN_FF_COG_SEGMENTATION=1 or ENABLE_COG_THREADS=1 to enable"
+            f"segmentation_service: disabled via mode={mode_config().name}"
         )
         try:
             _MX_SEG_DISABLED = get_counter(

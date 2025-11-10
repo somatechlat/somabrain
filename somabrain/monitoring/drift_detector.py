@@ -12,9 +12,12 @@ import threading
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 from collections import deque
-import json
 import os
 from datetime import datetime, timezone
+try:
+    import yaml  # type: ignore
+except Exception:  # pragma: no cover
+    yaml = None  # type: ignore
 
 from somabrain.common.kafka import TOPICS, make_producer, encode  # type: ignore
 from somabrain.common.events import compute_regret_from_confidence  # type: ignore
@@ -69,12 +72,10 @@ class DriftDetector:
         self.states: Dict[str, DriftState] = {}
         # Persistence path (warm restart of baselines + last_drift)
         self._store_path = os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
-        self.enabled = os.getenv("ENABLE_DRIFT_DETECTION", "0").lower() in {
-            "1", "true", "yes", "on"
-        }
-        self.rollback_enabled = os.getenv("ENABLE_AUTO_ROLLBACK", "0").lower() in {
-            "1", "true", "yes", "on"
-        }
+        from somabrain.modes import mode_config
+        _mc = mode_config()
+        self.enabled = _mc.enable_drift
+        self.rollback_enabled = _mc.enable_auto_rollback
         # Producer for drift events (strict: fail-fast if enabled)
         if self.enabled:
             try:
@@ -176,7 +177,10 @@ class DriftDetector:
                 "entries": entries,
             }
             with p.open("w", encoding="utf-8") as f:
-                json.dump(blob, f, indent=2)
+                if yaml is not None:
+                    f.write(yaml.safe_dump(blob, sort_keys=True))
+                else:
+                    f.write(str(blob))
         except Exception:
             pass
 
@@ -186,7 +190,12 @@ class DriftDetector:
         p = pathlib.Path(self._store_path)
         if not p.exists():
             return
-        data = json.loads(p.read_text(encoding="utf-8"))
+        raw = p.read_text(encoding="utf-8")
+        if yaml is not None:
+            data = yaml.safe_load(raw)
+        else:
+            import ast
+            data = ast.literal_eval(raw)
         if not isinstance(data, dict):
             raise RuntimeError("drift_detector: persisted state root not dict")
         if int(data.get("version", 0)) != 1:
@@ -343,13 +352,22 @@ class DriftDetector:
             "action": "rollback_to_baseline"
         }
         
-        print(f"DRIFT_ROLLBACK: {json.dumps(rollback_event)}")
+        try:
+            if yaml is not None:
+                rendered = yaml.safe_dump(rollback_event).strip()
+            else:
+                rendered = str(rollback_event)
+            print(f"DRIFT_ROLLBACK: {rendered}")
+        except Exception:
+            pass
 
         # Best-effort: disable advanced features to stabilize system
         try:
-            os.environ["ENABLE_FUSION_NORMALIZATION"] = "0"
-            os.environ["ENABLE_CONSISTENCY_CHECKS"] = "0"
-            os.environ["ENABLE_CALIBRATION"] = "0"
+            # Disable features only if mode permits rollback
+            from somabrain.modes import mode_config
+            if mode_config().enable_auto_rollback:
+                # Record conceptual disabled features for operators (no env mutation)
+                disabled = ["fusion_normalization", "consistency_checks", "calibration"]
             # Persist overrides for operators/other services to detect
             overrides_path = os.getenv(
                 "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
@@ -360,21 +378,17 @@ class DriftDetector:
                 p = pathlib.Path(overrides_path)
                 p.parent.mkdir(parents=True, exist_ok=True)
                 with p.open("w", encoding="utf-8") as f:
-                    json.dump(
-                        {
-                            "ts": int(time.time()),
-                            "tenant": tenant,
-                            "domain": domain,
-                            "trigger": trigger,
-                            "disabled": [
-                                "ENABLE_FUSION_NORMALIZATION",
-                                "ENABLE_CONSISTENCY_CHECKS",
-                                "ENABLE_CALIBRATION",
-                            ],
-                        },
-                        f,
-                        indent=2,
-                    )
+                    blob = {
+                        "ts": int(time.time()),
+                        "tenant": tenant,
+                        "domain": domain,
+                        "trigger": trigger,
+                        "disabled": disabled if 'disabled' in locals() else [],
+                    }
+                    if yaml is not None:
+                        f.write(yaml.safe_dump(blob, sort_keys=True))
+                    else:
+                        f.write(str(blob))
             except Exception:
                 pass
         except Exception:

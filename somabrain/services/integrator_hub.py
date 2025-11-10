@@ -1249,20 +1249,12 @@ class IntegratorHub:
 
 
 def main() -> None:  # pragma: no cover - manual run path
-    ff = os.getenv("SOMABRAIN_FF_COG_INTEGRATOR", "").strip().lower()
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-    if not (ff in ("1", "true", "yes", "on") or composite):
+    from somabrain.modes import mode_config
+    _mc = mode_config()
+    if not _mc.enable_integrator:
         import logging
         from somabrain.metrics import get_counter
-
-        logging.info(
-            "integrator_hub: disabled; set SOMABRAIN_FF_COG_INTEGRATOR=1 or ENABLE_COG_THREADS=1 to enable"
-        )
+        logging.info(f"integrator_hub: disabled via mode={_mc.name}")
         try:
             _MX_INT_DISABLED = get_counter(
                 "somabrain_integrator_disabled_total",

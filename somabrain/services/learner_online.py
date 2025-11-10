@@ -27,7 +27,6 @@ Strict Avro-only for reward_event and config_update; next_event optional.
 
 from __future__ import annotations
 
-import json
 import os
 import threading
 import time
@@ -246,7 +245,12 @@ class LearnerService:
                     "FF_CONFIG_UPDATES": os.getenv("SOMABRAIN_FF_CONFIG_UPDATES", "0"),
                 },
             }
-            print("learner_online: effective_config " + json.dumps(cfg, sort_keys=True))
+            try:
+                import yaml as _yaml  # type: ignore
+                rendered = _yaml.safe_dump(cfg, sort_keys=True).strip()
+            except Exception:
+                rendered = str(cfg)
+            print("learner_online: effective_config " + rendered)
         except Exception:
             # Never fail the process due to config printing
             pass
@@ -631,19 +635,8 @@ _thread: Optional[threading.Thread] = None
 async def startup() -> None:  # pragma: no cover
     global _thread
     global _svc
-    ff = os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    composite = os.getenv("ENABLE_COG_THREADS", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
-    if not (ff or composite):
+    from somabrain.modes import mode_config
+    if not mode_config().enable_learner:
         return
     # Require Kafka before starting learner thread
     assert_ready(require_kafka=True, require_redis=False, require_postgres=False, require_opa=False)
@@ -655,7 +648,9 @@ async def startup() -> None:  # pragma: no cover
 
 @app.get("/health")
 async def health() -> Dict[str, Any]:
-    return {"ok": True, "enabled": os.getenv("SOMABRAIN_FF_LEARNER_ONLINE", "0")}
+    from somabrain.modes import mode_config
+    cfg = mode_config()
+    return {"ok": True, "enabled": str(int(cfg.enable_learner)), "mode": cfg.name}
 
 
 @app.get("/metrics")

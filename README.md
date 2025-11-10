@@ -249,6 +249,10 @@ For live and adaptation learning benches, see Technical Manual → Benchmarks Qu
 - **Cognitive-Thread Configuration** – Feature flags, environment variables, and Helm overrides for the predictor, segmentation, and integrator services (`docs/cog-threads/configuration.md`).
 - **Predictor Service API** – Health probe behaviour and Kafka emission contract for the predictor services (`docs/cog-threads/predictor-api.md`).
 
+### Drift & Learning Utilities
+- **Drift Dump** – Run `make drift-dump` (or `python somabrain/scripts/drift_dump.py`) to print current drift baselines & last drift timestamps. Requires `ENABLE_DRIFT_DETECTION=1` or a persisted file at `SOMABRAIN_DRIFT_STORE`.
+- **Tau & Entropy Alignment** – See `docs/technical-manual/tau-entropy-alignment.md` for how tau annealing, context diversity heuristic, and entropy caps co-exist.
+
 ---
 
 ## Contributing & Next Steps

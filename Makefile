@@ -1,3 +1,22 @@
+# Utility: dump drift state baselines and last_drift timestamps
+.PHONY: drift-dump
+drift-dump:
+	@echo "Dumping drift state (set SOMABRAIN_DRIFT_STORE or enable detector)..."
+	@ENABLE_DRIFT_DETECTION?=0 \
+	python somabrain/scripts/drift_dump.py
+
+# Focused test targets
+.PHONY: test-strict
+test-strict:
+	pytest -q tests/invariants/test_strict_mode.py
+
+.PHONY: test-drift
+test-drift:
+	pytest -q tests/monitoring/test_drift_persistence.py tests/monitoring/test_drift_integration.py
+
+.PHONY: test-context
+test-context:
+	pytest -q tests/context/test_context_builder_alignment.py
 # Variables
 PY?=python3
 VENV?=.venv
