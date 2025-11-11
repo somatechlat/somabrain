@@ -849,61 +849,59 @@ class IntegratorHub:
             tenant, domain, DomainObs(ts=ts, confidence=conf, delta_error=derr, meta=ev)
         )
         leader, weights, raw = self._sm.snapshot(tenant)
-        # Cross-thread consistency metric (set when both posteriors available)
+        # Cross-thread consistency + kappa enforcement (run even if consistency_score unavailable)
         try:
             a_ob = raw.get("agent")
             x_ob = raw.get("action")
-            a_post = (
-                a_ob.meta.get("posterior")
-                if a_ob and isinstance(a_ob.meta, dict)
-                else None
-            )
-            x_post = (
-                x_ob.meta.get("posterior")
-                if x_ob and isinstance(x_ob.meta, dict)
-                else None
-            )
-            score = consistency_score(a_post, x_post)
-            if score is not None:
-                INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
-                # Derive kappa (1 - JSD) if distributions present
+            a_post = a_ob.meta.get("posterior") if (a_ob and isinstance(a_ob.meta, dict)) else None
+            x_post = x_ob.meta.get("posterior") if (x_ob and isinstance(x_ob.meta, dict)) else None
+            if isinstance(a_post, dict) and isinstance(x_post, dict):
+                # Optional consistency score gauge
                 try:
-                    kappa = self._compute_kappa(a_post, x_post)
-                    if kappa is not None:
-                        INTEGRATOR_KAPPA.labels(tenant=tenant).set(float(kappa))
-                        try:
-                            INTEGRATOR_KAPPA_HIST.labels(tenant=tenant).observe(
-                                float(max(0.0, min(1.0, kappa)))
-                            )
-                        except Exception:
-                            pass
-                        try:
-                            self._last_kappa[tenant] = float(kappa)
-                        except Exception:
-                            pass
-                        # Consistency threshold enforcement bookkeeping
-                        try:
-                            if kappa < self._kappa_min:
-                                self._kappa_below_counts[tenant] = self._kappa_below_counts.get(tenant, 0) + 1
-                                INTEGRATOR_CONSISTENCY_VIOLATIONS.labels(tenant=tenant).inc()
-                                if self._kappa_below_counts[tenant] >= self._kappa_fail_count:
-                                    if not self._consistency_degraded.get(tenant):
-                                        self._consistency_degraded[tenant] = True
-                                        if self._kappa_alert_enabled:
-                                            try:
-                                                print(f"integrator_hub: consistency degraded tenant={tenant} kappa={kappa:.3f}")
-                                            except Exception:
-                                                pass
-                            else:
-                                # Recovery path with hysteresis
-                                if kappa >= (self._kappa_min + self._kappa_hysteresis):
-                                    self._kappa_below_counts[tenant] = 0
-                                    if self._consistency_degraded.get(tenant):
-                                        self._consistency_degraded[tenant] = False
-                        except Exception:
-                            pass
+                    score = consistency_score(a_post, x_post)
+                    if score is not None:
+                        INTEGRATOR_CONSISTENCY.labels(tenant=tenant).set(float(score))
                 except Exception:
                     pass
+                # Always attempt kappa computation for enforcement
+                try:
+                    kappa = self._compute_kappa(a_post, x_post)
+                except Exception:
+                    kappa = None
+                if kappa is not None:
+                    try:
+                        INTEGRATOR_KAPPA.labels(tenant=tenant).set(float(kappa))
+                    except Exception:
+                        pass
+                    try:
+                        INTEGRATOR_KAPPA_HIST.labels(tenant=tenant).observe(float(max(0.0, min(1.0, kappa))))
+                    except Exception:
+                        pass
+                    try:
+                        self._last_kappa[tenant] = float(kappa)
+                    except Exception:
+                        pass
+                    # Enforcement bookkeeping
+                    try:
+                        if kappa < self._kappa_min:
+                            self._kappa_below_counts[tenant] = self._kappa_below_counts.get(tenant, 0) + 1
+                            INTEGRATOR_CONSISTENCY_VIOLATIONS.labels(tenant=tenant).inc()
+                            if self._kappa_below_counts[tenant] >= self._kappa_fail_count:
+                                if not self._consistency_degraded.get(tenant):
+                                    self._consistency_degraded[tenant] = True
+                                    if self._kappa_alert_enabled:
+                                        try:
+                                            print(f"integrator_hub: consistency degraded tenant={tenant} kappa={kappa:.3f}")
+                                        except Exception:
+                                            pass
+                        else:
+                            # Recovery path with hysteresis
+                            if kappa >= (self._kappa_min + self._kappa_hysteresis):
+                                self._kappa_below_counts[tenant] = 0
+                                if self._consistency_degraded.get(tenant):
+                                    self._consistency_degraded[tenant] = False
+                    except Exception:
+                        pass
         except Exception:
             pass
         # Normalization pathway: compute normalized error and candidate weights; optionally use for selection
@@ -1189,11 +1187,14 @@ class IntegratorHub:
         # Consistency enforcement gating (after OPA, before frame build)
         if self._consistency_degraded.get(tenant):
             try:
+                # Force consideration of action for enforcement even if tie-break selected another leader
+                if leader_adj != "action" and weights.get("action", 0.0) > 0.0:
+                    leader_adj = "action"
                 if leader_adj == "action":
                     if self._kappa_drop_frame:
                         INTEGRATOR_CONSISTENCY_ENFORCED.labels(tenant=tenant).inc()
                         return None
-                    # Adjust leader to most confident non-action domain
+                    # Adjust leader to most confident non-action domain when not dropping
                     fallback_domain = max(
                         ((d, w) for d, w in weights.items() if d != "action"),
                         key=lambda kv: kv[1],

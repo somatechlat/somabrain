@@ -15,6 +15,7 @@
 - [Testing Guidelines](testing-guidelines.md) - Test strategy and framework usage
 - [API Reference](api-reference.md) - Complete endpoint documentation
 - [Contribution Process](contribution-process.md) - Pull request workflow and code review
+ - [Adaptation & Consistency](adaptation-config.md) - Centralized learning parameters, attribution, κ enforcement
 
 ---
 

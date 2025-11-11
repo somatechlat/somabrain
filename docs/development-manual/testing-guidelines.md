@@ -17,6 +17,7 @@
 **Fast Feedback**: Tests should run quickly to enable rapid development iteration
 **Deterministic**: Tests must produce consistent results across environments
 **Maintainable**: Test code should follow the same quality standards as production code
+**Strict Mode Fidelity**: Do not mock core cognition loops (fusion, learner, drift, consistency); acceptance tests may patch Kafka producer creation only, never bypass computational paths.
 
 ### Testing Pyramid
 
@@ -273,6 +274,31 @@ class TestMemoryManager:
         # This test would use real database in integration test suite
         pass
 ```
+
+### Cognition Acceptance Layer
+
+Focused acceptance tests validate cognition invariants without external Kafka dependencies while preserving strict-mode computation:
+
+- `tests/acceptance/test_calibration_emission.py`: Emits `predictor_calibration` Avro record when calibration flag enabled.
+- `tests/acceptance/test_hmm_segmentation_metrics.py`: Registers segmentation gauges under feature flag and asserts metric presence.
+- `tests/acceptance/test_consistency_enforcement.py`: Forces low κ (agent vs action posterior divergence) and asserts frame drop plus enforcement rationale.
+- `tests/acceptance/test_drift_rollback_pipeline.py`: Simulates drift to assert `fusion_rollback_event` and conservative `config_update` emission (tenant-aware).
+
+Guidelines:
+1. Patch only producer factory (`make_producer`) and low-level serdes if broker unavailable.
+2. Never short-circuit fusion, attribution (λ_d/γ_d), consistency (κ), or drift detector logic.
+3. Assert invariants: topic emissions, rationale annotations, counters/gauges; avoid deep private attribute inspection unless unavoidable.
+4. Keep each acceptance test scoped to one invariant; prefer separate files.
+
+Schema Change Process:
+1. Add new Avro fields with defaults (backward-compatible) in `proto/cog/*.avsc`.
+2. Extend or update round-trip tests in `tests/kafka/test_avro_contracts.py`.
+3. Update domain docs (e.g. `docs/technical-manual/fusion-consistency-and-drift.md`) when attribution, consistency, or drift schemas change.
+4. Introduce / adjust acceptance tests for any new enforcement or telemetry.
+5. Run `pytest -q tests/acceptance` locally; ensure CI passes (fast suite).
+
+Fast Suite Invocation:
+`pytest -q tests/unit tests/acceptance` before broader integration/e2e to catch cognition regressions early.
 
 ### JavaScript/TypeScript Unit Testing
 
@@ -1640,6 +1666,10 @@ jobs:
     - name: Run unit tests
       run: |
         pytest tests/unit/ -v --cov=somabrain --cov-report=xml
+
+        - name: Run acceptance tests
+            run: |
+                pytest tests/acceptance/ -v
 
     - name: Run integration tests
       run: |
