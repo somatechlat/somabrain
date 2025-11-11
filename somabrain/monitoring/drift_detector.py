@@ -14,7 +14,6 @@ from dataclasses import dataclass
 from collections import deque
 import os
 from datetime import datetime, timezone
-
 try:
     import yaml  # type: ignore
 except Exception:  # pragma: no cover
@@ -35,14 +34,13 @@ except Exception:  # pragma: no cover
 @dataclass
 class DriftConfig:
     """Configuration for drift detection."""
-
     entropy_threshold: float = 0.8  # Max entropy for stability
-    regret_threshold: float = 0.5  # Max regret for stability
-    window_size: int = 100  # Rolling window size
-    min_samples: int = 20  # Minimum samples before detection
-    cooldown_period: int = 60  # Seconds between rollbacks
-    adaptive: bool = True  # Enable adaptive baseline thresholds
-    ema_alpha: float = 0.05  # EMA smoothing factor for baselines
+    regret_threshold: float = 0.5   # Max regret for stability
+    window_size: int = 100         # Rolling window size
+    min_samples: int = 20          # Minimum samples before detection
+    cooldown_period: int = 60      # Seconds between rollbacks
+    adaptive: bool = True          # Enable adaptive baseline thresholds
+    ema_alpha: float = 0.05        # EMA smoothing factor for baselines
 
     def __post_init__(self):
         if not (0.0 < self.ema_alpha <= 1.0):
@@ -52,7 +50,6 @@ class DriftConfig:
 @dataclass
 class DriftState:
     """Current drift state for a domain/tenant."""
-
     entropy_history: deque[float]
     regret_history: deque[float]
     last_drift_time: float
@@ -65,18 +62,17 @@ class DriftState:
 class DriftDetector:
     """
     Detects drift in predictor performance and triggers rollback.
-
+    
     Monitors entropy and regret metrics to detect when the system
     is drifting from optimal performance.
     """
-
+    
     def __init__(self, config: DriftConfig = DriftConfig()):
         self.config = config
         self.states: Dict[str, DriftState] = {}
         # Persistence path (warm restart of baselines + last_drift)
         self._store_path = os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
         from somabrain.modes import feature_enabled
-
         self.enabled = feature_enabled("drift")
         self.rollback_enabled = feature_enabled("auto_rollback")
         # Producer for drift events (strict: fail-fast if enabled)
@@ -84,51 +80,41 @@ class DriftDetector:
             try:
                 self._producer = make_producer()
             except Exception as e:
-                raise RuntimeError(
-                    f"drift_detector: Kafka producer init failed (strict mode): {e}"
-                )
+                raise RuntimeError(f"drift_detector: Kafka producer init failed (strict mode): {e}")
         else:
             self._producer = None
-
+        
         # Metrics
         self.drift_events = (
             metrics.get_counter(
                 "somabrain_drift_events_total",
                 "Total drift detection events",
-                labelnames=["domain", "tenant", "type"],
-            )
-            if metrics
-            else None
+                labelnames=["domain", "tenant", "type"]
+            ) if metrics else None
         )
-
+        
         self.rollback_events = (
             metrics.get_counter(
                 "somabrain_rollback_events_total",
                 "Total rollback events",
-                labelnames=["domain", "tenant", "trigger"],
-            )
-            if metrics
-            else None
+                labelnames=["domain", "tenant", "trigger"]
+            ) if metrics else None
         )
-
+        
         self.entropy_gauge = (
             metrics.get_gauge(
                 "somabrain_drift_entropy",
                 "Current entropy value",
-                labelnames=["domain", "tenant"],
-            )
-            if metrics
-            else None
+                labelnames=["domain", "tenant"]
+            ) if metrics else None
         )
-
+        
         self.regret_gauge = (
             metrics.get_gauge(
                 "somabrain_drift_regret",
                 "Current regret value",
-                labelnames=["domain", "tenant"],
-            )
-            if metrics
-            else None
+                labelnames=["domain", "tenant"]
+            ) if metrics else None
         )
 
         # Load persisted state (best-effort, strict parse)
@@ -137,11 +123,11 @@ class DriftDetector:
         except Exception:
             # Corrupted or missing store; ignore (warm start semantics only)
             pass
-
+        
     def _get_state_key(self, domain: str, tenant: str) -> str:
         """Get state key for domain/tenant."""
         return f"{domain}:{tenant}"
-
+    
     def _get_or_create_state(self, domain: str, tenant: str) -> DriftState:
         """Get or create drift state for domain/tenant."""
         key = self._get_state_key(domain, tenant)
@@ -150,7 +136,7 @@ class DriftDetector:
                 entropy_history=deque(maxlen=self.config.window_size),
                 regret_history=deque(maxlen=self.config.window_size),
                 last_drift_time=0,
-                is_stable=True,
+                is_stable=True
             )
         return self.states[key]
 
@@ -174,7 +160,6 @@ class DriftDetector:
         """
         try:
             import pathlib
-
             p = pathlib.Path(self._store_path)
             p.parent.mkdir(parents=True, exist_ok=True)
             entries: Dict[str, Any] = {}
@@ -201,7 +186,6 @@ class DriftDetector:
     def _load_state(self) -> None:
         """Load previously persisted drift state."""
         import pathlib
-
         p = pathlib.Path(self._store_path)
         if not p.exists():
             return
@@ -210,7 +194,6 @@ class DriftDetector:
             data = yaml.safe_load(raw)
         else:
             import ast
-
             data = ast.literal_eval(raw)
         if not isinstance(data, dict):
             raise RuntimeError("drift_detector: persisted state root not dict")
@@ -235,47 +218,46 @@ class DriftDetector:
                 st.baseline_initialized = bool(v.get("baseline_initialized", False))
             except Exception:
                 continue
-
-    def add_observation(
-        self, domain: str, tenant: str, confidence: float, entropy: float
-    ) -> bool:
+    
+    def add_observation(self, domain: str, tenant: str, 
+                       confidence: float, entropy: float) -> bool:
         """
         Add observation and detect drift.
-
+        
         Args:
             domain: Predictor domain
             tenant: Tenant identifier
             confidence: Prediction confidence
             entropy: Current entropy value
-
+            
         Returns:
             True if drift detected
         """
         if not self.enabled:
             return False
-
+            
         state = self._get_or_create_state(domain, tenant)
         regret = compute_regret_from_confidence(confidence)
-
+        
         # Update metrics
         if self.entropy_gauge:
             self.entropy_gauge.labels(domain=domain, tenant=tenant).set(entropy)
         if self.regret_gauge:
             self.regret_gauge.labels(domain=domain, tenant=tenant).set(regret)
-
+        
         # Add to history
         with threading.Lock():
             state.entropy_history.append(entropy)
             state.regret_history.append(regret)
-
+            
             # Skip if not enough samples
             if len(state.entropy_history) < self.config.min_samples:
                 return False
-
+                
             # Check cooldown
             if time.time() - state.last_drift_time < self.config.cooldown_period:
                 return False
-
+            
             # Detect drift
             avg_entropy = sum(state.entropy_history) / len(state.entropy_history)
             avg_regret = sum(state.regret_history) / len(state.regret_history)
@@ -288,29 +270,23 @@ class DriftDetector:
                     state.baseline_initialized = True
                 else:
                     a = self.config.ema_alpha
-                    state.entropy_baseline = (
-                        1 - a
-                    ) * state.entropy_baseline + a * avg_entropy
-                    state.regret_baseline = (
-                        1 - a
-                    ) * state.regret_baseline + a * avg_regret
+                    state.entropy_baseline = (1 - a) * state.entropy_baseline + a * avg_entropy
+                    state.regret_baseline = (1 - a) * state.regret_baseline + a * avg_regret
                 # Dynamic thresholds: baseline + fixed margin (retain safety margin)
-                entropy_thresh = max(
-                    self.config.entropy_threshold, state.entropy_baseline + 0.10
-                )
-                regret_thresh = max(
-                    self.config.regret_threshold, state.regret_baseline + 0.10
-                )
+                entropy_thresh = max(self.config.entropy_threshold, state.entropy_baseline + 0.10)
+                regret_thresh = max(self.config.regret_threshold, state.regret_baseline + 0.10)
             else:
                 entropy_thresh = self.config.entropy_threshold
                 regret_thresh = self.config.regret_threshold
-
-            drift_detected = avg_entropy > entropy_thresh or avg_regret > regret_thresh
-
+            
+            drift_detected = (
+                avg_entropy > entropy_thresh or avg_regret > regret_thresh
+            )
+            
             if drift_detected:
                 state.last_drift_time = time.time()
                 state.is_stable = False
-
+                
                 # Record metrics
                 if self.drift_events:
                     if avg_entropy > self.config.entropy_threshold:
@@ -321,7 +297,7 @@ class DriftDetector:
                         self.drift_events.labels(
                             domain=domain, tenant=tenant, type="regret"
                         ).inc()
-
+                
                 # Trigger rollback if enabled
                 if self.rollback_enabled:
                     self._trigger_rollback(domain, tenant, "drift_detected")
@@ -349,32 +325,32 @@ class DriftDetector:
                     self._persist_state()
                 except Exception:
                     pass
-
+                
                 return True
-
+            
             # Mark as stable
             state.is_stable = True
             # Persist periodically (non-drift path) every ~window_size updates per key
             if len(state.entropy_history) == self.config.window_size:
                 self._persist_state()
             return False
-
+    
     def _trigger_rollback(self, domain: str, tenant: str, trigger: str) -> None:
         """Trigger automatic rollback."""
         if self.rollback_events:
             self.rollback_events.labels(
                 domain=domain, tenant=tenant, trigger=trigger
             ).inc()
-
+        
         # Log rollback event
         rollback_event = {
             "timestamp": int(time.time()),
             "domain": domain,
             "tenant": tenant,
             "trigger": trigger,
-            "action": "rollback_to_baseline",
+            "action": "rollback_to_baseline"
         }
-
+        
         try:
             if yaml is not None:
                 rendered = yaml.safe_dump(rollback_event).strip()
@@ -389,11 +365,8 @@ class DriftDetector:
             # Persist centralized overrides (local mode only)
             from config.feature_flags import FeatureFlags
             from somabrain.modes import feature_enabled
-
             if feature_enabled("auto_rollback"):
-                FeatureFlags.set_overrides(
-                    ["fusion_normalization", "consistency_checks", "calibration"]
-                )
+                FeatureFlags.set_overrides(["fusion_normalization", "consistency_checks", "calibration"])
         except Exception:
             pass
 
@@ -401,7 +374,6 @@ class DriftDetector:
         try:
             if self._producer:
                 cfg = {
-                    "tenant": tenant,
                     "learning_rate": 0.01,
                     "exploration_temp": 0.05,
                     "lambda_state": 0.0,
@@ -413,9 +385,7 @@ class DriftDetector:
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
                 payload_cfg = encode(cfg, "config_update")
-                self._producer.send(
-                    TOPICS.get("config", "cog.config.updates"), value=payload_cfg
-                )
+                self._producer.send(TOPICS.get("config", "cog.config.updates"), value=payload_cfg)
         except Exception:
             pass
 
@@ -430,10 +400,7 @@ class DriftDetector:
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
                 payload_rb = encode(rollback, "fusion_rollback_event")
-                self._producer.send(
-                    TOPICS.get("fusion_rollback", "cog.fusion.rollback.events"),
-                    value=payload_rb,
-                )
+                self._producer.send(TOPICS.get("fusion_rollback", "cog.fusion.rollback.events"), value=payload_rb)
         except Exception as e:
             print(f"WARN: failed to emit fusion_rollback_event: {e}")
         # Persist state after rollback (contains updated last_drift_time)
@@ -441,31 +408,31 @@ class DriftDetector:
             self._persist_state()
         except Exception:
             pass
-
+    
     def get_drift_status(self, domain: str, tenant: str) -> Dict[str, Any]:
         """Get current drift status for domain/tenant."""
         state = self._get_or_create_state(domain, tenant)
-
+        
         if len(state.entropy_history) == 0:
             return {
                 "stable": True,
                 "entropy": 0.0,
                 "regret": 0.0,
                 "samples": 0,
-                "last_drift": None,
+                "last_drift": None
             }
-
+        
         avg_entropy = sum(state.entropy_history) / len(state.entropy_history)
         avg_regret = sum(state.regret_history) / len(state.regret_history)
-
+        
         return {
             "stable": state.is_stable,
             "entropy": avg_entropy,
             "regret": avg_regret,
             "samples": len(state.entropy_history),
-            "last_drift": state.last_drift_time,
+            "last_drift": state.last_drift_time
         }
-
+    
     def reset_drift_state(self, domain: str, tenant: str) -> None:
         """Reset drift state for domain/tenant."""
         key = self._get_state_key(domain, tenant)
@@ -531,22 +498,22 @@ drift_detector = DriftDetector()
 
 class DriftMonitoringService:
     """Service that monitors for drift and manages rollbacks."""
-
+    
     def __init__(self):
         self.detector = drift_detector
         self.enabled = self.detector.enabled
-
+        
     def run_forever(self) -> None:  # pragma: no cover
         """Run drift monitoring service."""
         if not self.enabled:
             print("Drift monitoring disabled")
             return
-
+        
         print("Starting drift monitoring service...")
-
+        
         while True:
             time.sleep(10)  # Passive loop; integrator feeds observations directly.
-
+    
     def get_status(self) -> Dict[str, Any]:
         """Get overall drift monitoring status."""
         return {
@@ -556,8 +523,8 @@ class DriftMonitoringService:
                 "entropy_threshold": self.detector.config.entropy_threshold,
                 "regret_threshold": self.detector.config.regret_threshold,
                 "window_size": self.detector.config.window_size,
-                "min_samples": self.detector.config.min_samples,
-            },
+                "min_samples": self.detector.config.min_samples
+            }
         }
 
 

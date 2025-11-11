@@ -57,11 +57,6 @@ def _defaults_for_mode(mode: str) -> Dict[str, Any]:
         "integrator_target_regret": 0.15,
         "integrator_alpha_eta": 0.05,
         "shadow_ratio": 0.0,
-        # Consistency / kappa enforcement
-        "consistency_checks_enabled": False,
-        "consistency_kappa_min": 0.55,
-        "consistency_drop_frame": True,
-        "consistency_alert_enabled": True,
         "learning_state_persistence": False,
         "learning_rate_dynamic": False,
         # Learner online defaults

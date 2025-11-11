@@ -2,8 +2,6 @@
 
 This page lists the key environment variables that control SomaBrain in both local dev and production-like deployments. Defaults reflect the repository’s developer-prod posture (strict real backends, full stack).
 
-Important: Learning gains/bounds and adaptation parameters are now centralized in code. Legacy `SOMABRAIN_LEARNING_*` overrides were removed in favor of runtime configuration and Avro `config_update` messages from the learner. See Technical Manual → Fusion / Consistency / Drift.
-
 ### Core runtime
 - SOMABRAIN_MODE: execution mode. Typical values: enterprise (dev), production (prod).
 - SOMABRAIN_HOST: bind address inside the container (default 0.0.0.0).
@@ -32,16 +30,6 @@ Important: Learning gains/bounds and adaptation parameters are now centralized i
 - SOMABRAIN_JWT_SECRET: JWT signing secret (required when auth enabled).
 - SOMABRAIN_API_TOKEN: optional static token if you use simple header-based auth.
 - SOMA_OPA_FAIL_CLOSED: (removed) OPA runs fail-closed by default; posture derived from mode.
-
-### Consistency enforcement (runtime-config flags, not env)
-
-These are code-level runtime flags (see `somabrain/runtime_config.py`) surfaced for awareness. Tune via runtime override file in full-local mode or code defaults in other modes.
-
-- consistency_kappa_min: minimum acceptable κ before enforcement (default 0.55)
-- consistency_fail_count: consecutive violations before degraded (default 3)
-- consistency_kappa_hysteresis: recovery margin (default 0.05)
-- consistency_drop_frame: drop frames with leader=action under degraded κ (default true)
-- consistency_alert_enabled: log alert on transition to degraded (default true)
 
 ### Outbox/journaling (durability under outages)
  

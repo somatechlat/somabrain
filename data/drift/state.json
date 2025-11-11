@@ -22,17 +22,17 @@ entries:
   state:acpt:
     baseline_initialized: false
     entropy_baseline: 0.0
-    last_drift_time: 1762819087.067452
+    last_drift_time: 1762856291.590297
     regret_baseline: 0.0
   state:t1:
     baseline_initialized: true
-    entropy_baseline: 0.8185760337826006
-    last_drift_time: 1762819100.0950642
-    regret_baseline: 0.5569107335592038
+    entropy_baseline: 0.8187046346512584
+    last_drift_time: 1762856296.5971682
+    regret_baseline: 0.556989173616572
   state:t2:
     baseline_initialized: true
-    entropy_baseline: 0.8185760640763617
-    last_drift_time: 1762819100.147425
-    regret_baseline: 0.5569225902030578
-updated: '2025-11-10T23:58:20.153681+00:00'
+    entropy_baseline: 0.8187046648153136
+    last_drift_time: 1762856296.627341
+    regret_baseline: 0.5570009874423825
+updated: '2025-11-11T10:18:16.629777+00:00'
 version: 1

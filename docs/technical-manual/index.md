@@ -14,7 +14,6 @@
 - [Deployment](deployment.md) - Production deployment procedures
 - [Configuration](configuration.md) - Environment variables and runtime settings
 - [Monitoring](monitoring.md) - Dashboards, alerts, and observability
- - [Fusion / Consistency / Drift](fusion-consistency-and-drift.md) - Fusion pipeline, κ enforcement, rollback
 - Cognitive Threads
   - [Predictors](predictors.md) - Diffusion-backed predictors and configuration
   - [Diffusion Benchmarks](benchmarks_diffusion.md) - Accuracy & performance of Chebyshev/Lanczos
