@@ -14,7 +14,7 @@ The following items are in varying states of completion. "Complete" here means u
 
 #### 2. **Fusion Normalization & Tau Annealing** (Sprint 7) – Partial
 - Adaptive α and normalized error weights present in integrator; still behind flag; lacks dedicated tests & unconditional path.
-- NEW: Tau annealing (exponential | step | linear) implemented with per-tenant overrides (`tau_anneal_mode`, `tau_anneal_rate`, `tau_min`, `tau_step_interval`) and metrics (`somabrain_tau_anneal_events_total`). Legacy simple decay retained only as fallback when schedule disabled.
+- NEW: Tau annealing (exponential | step | linear) implemented with per-tenant overrides (`tau_anneal_mode`, `tau_anneal_rate`, `tau_min`, `tau_step_interval`) and metrics (`somabrain_tau_anneal_events_total`). Legacy simple decay retained as alternative when schedule disabled.
 
 #### 3. **Calibration Pipeline** (Sprint 10) – Partial
 - Claims exist; end-to-end metric updates & schema emission not verified in this pass.

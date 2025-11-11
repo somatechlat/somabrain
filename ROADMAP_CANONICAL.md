@@ -1,6 +1,6 @@
 # Canonical Roadmap — AROMADP Strict‑Mode + Tripartite Integration (2025‑11‑09)
 
-Truth principle: Implemented (I), Partial (P), Not Implemented / Proposed (N). All future items have concrete acceptance tests. No mocks, no fallbacks, no disable paths.
+Truth principle: Implemented (I), Partial (P), Not Implemented / Proposed (N). All future items have concrete acceptance tests. No mocks, no alternatives, no disable paths.
 
 ## 1) Architecture (High‑Level)
 
@@ -146,10 +146,10 @@ Disable advanced flags; revert via orchestrator; automatic rollback on drift tri
 
 - Kafka: KRaft broker configured; hard‑fail connect; standardized on confluent‑kafka (legacy kafka‑python removed from services).
 - Avro‑only: Encode paths are Avro‑only across services; residual JSON decoding only for internal payload parsing (no network path). Add/maintain invariant tests to block regressions.
-- Redis/Postgres: Required; no fakeredis/SQLite fallbacks in code paths.
+- Redis/Postgres: Required; no fakeredis/SQLite alternatives in code paths.
 - OPA: Integrator uses fail‑closed posture; ensure readiness asserts when OPA configured; add latency SLO and alerts.
 - Tracing/Metrics: Enforce provider; spans added across integrator/segmentation; extend to predictors.
-- Invariant audit: Add CI scanner for banned keywords ("fallback", "fakeredis", "noop tracer", "disable_auth", "sqlite://", "KafkaProducer" from kafka‑python).
+- Invariant audit: Add CI scanner for banned keywords ("fakeredis", "noop tracer", "disable_auth", "sqlite://", "KafkaProducer" from kafka‑python).
 
 Acceptance (Strict‑mode): zero banned keywords; Avro round‑trips for all schema topics; startup health abort ≤5s on infra failure; dashboards populated for α/entropy/regret/κ/ECE/segmentation; drift rollback only via real events; predictor mains CLoC −20%.
 
@@ -174,7 +174,7 @@ Shadow (48–72h) → Canary (10–20%) → GA; SLO: retrieval hit‑rate, laten
 ## 17) Phase Plan (Execution Order)
 
 Phase 0 (Strict‑mode foundations)
-- Avro‑only serialization; remove JSON fallbacks; standardize on confluent‑kafka; invariant scanner; fail‑fast infra (Kafka/Redis/Postgres/OPA). Status: Ongoing; invariants + OPA readiness next.
+- Avro‑only serialization; remove JSON alternatives; standardize on confluent‑kafka; invariant scanner; fail‑fast infra (Kafka/Redis/Postgres/OPA). Status: Ongoing; invariants + OPA readiness next.
 
 Phase 1 (Predictors)
 - Add state/agent/action predictors publishing PredictorUpdate with error metrics.

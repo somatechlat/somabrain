@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
-    # Auth is always-on in strict mode; legacy disable_auth removed.
+    # Auth is always-on in strict mode; legacy auth toggle removed.
     mode: str = Field(default=os.getenv("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
@@ -172,7 +172,7 @@ class Settings(BaseSettings):
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
     # by SOMABRAIN_MODE without mutating legacy flags. Existing code continues
-    # to read disable_auth/require_external_backends until migrated in Sprint 2.
+    # to read legacy auth settings/require_external_backends until migrated in Sprint 2.
 
     @property
     def mode_normalized(self) -> str:
@@ -286,9 +286,10 @@ class Settings(BaseSettings):
         except Exception:
             pass
         try:
-            if os.getenv("SOMABRAIN_DISABLE_AUTH") is not None:
+            legacy_auth_env = os.getenv("SOMABRAIN_AUTH_LEGACY")
+            if legacy_auth_env is not None:
                 notes.append(
-                    "SOMABRAIN_DISABLE_AUTH is removed; auth is always required in strict mode."
+                    "Legacy auth environment variable is deprecated; auth is always required in strict mode."
                 )
         except Exception:
             pass

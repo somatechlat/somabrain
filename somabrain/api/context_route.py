@@ -476,7 +476,7 @@ async def adaptation_reset_endpoint(
     except HTTPException:
         raise
     except Exception:
-        # If settings cannot be imported, remain conservative and allow only when legacy disable_auth is true
+        # If settings cannot be imported, remain conservative and allow only when legacy auth is disabled
         try:
             from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
 

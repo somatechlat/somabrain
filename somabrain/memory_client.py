@@ -64,20 +64,6 @@ if debug_memory_client:
 _TRUE_VALUES = ("1", "true", "yes", "on")
 
 
-def _require_memory_enabled() -> bool:
-    if shared_settings is not None:
-        try:
-            return bool(getattr(shared_settings, "require_memory", True))
-        except Exception:
-            return True
-    env_flag = os.getenv("SOMABRAIN_REQUIRE_MEMORY")
-    if env_flag is not None:
-        try:
-            return env_flag.strip().lower() in _TRUE_VALUES
-        except Exception:
-            return True
-    return True
-
 
 def _http_setting(attr: str, default_val: int) -> int:
     """Fetch HTTP client tuning knobs from shared settings with default."""
@@ -398,10 +384,11 @@ class MemoryClient:
         base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
         if not base_url and env_base:
             base_url = env_base
-        # Hard requirement: if memory is required ensure an endpoint exists.
-        require_memory_enabled = _require_memory_enabled()
-        if require_memory_enabled and not base_url:
+        # Strict mode: memory endpoint is always required
+        if not base_url:
             base_url = get_memory_http_endpoint() or ""
+        if not base_url:
+            raise RuntimeError("Memory HTTP endpoint required but not configured")
         # Final normalisation: ensure empty string remains empty
         base_url = base_url or ""
         if base_url:
@@ -926,7 +913,7 @@ class MemoryClient:
         request_id: str,
     ) -> List[RecallHit]:
         if self._http is None:
-            return []
+            raise RuntimeError("HTTP memory service required but not configured")
 
         _, compat_universe, compat_headers = self._compat_enrich_payload(
             {"query": query, "universe": universe or "real"}, query
@@ -988,7 +975,7 @@ class MemoryClient:
         request_id: str,
     ) -> List[RecallHit]:
         if self._http_async is None:
-            return []
+            raise RuntimeError("Async HTTP memory service required but not configured")
 
         _, compat_universe, compat_headers = self._compat_enrich_payload(
             {"query": query, "universe": universe or "real"}, query
@@ -1865,23 +1852,15 @@ class MemoryClient:
         request_id: str | None = None,
     ) -> List[RecallHit]:
         """Retrieve memories relevant to the query using the HTTP memory service."""
-        # Enforce memory requirement: do not allow alternative when required
-        memory_required = _require_memory_enabled()
-        if memory_required and self._http is None:
+        # Strict mode: memory service is ALWAYS required
+        if self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED: HTTP memory backend not available (set SOMABRAIN_MEMORY_HTTP_ENDPOINT)."
             )
-        # Prefer HTTP recall if available
-        if self._http is not None:
-            rid = request_id or str(uuid.uuid4())
-            return self._http_recall_aggregate_sync(
-                query, top_k, universe or "real", rid
-            )
-        if memory_required:
-            raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: No HTTP backend configured and stub alternative disabled."
-            )
-        return []
+        rid = request_id or str(uuid.uuid4())
+        return self._http_recall_aggregate_sync(
+            query, top_k, universe or "real", rid
+        )
 
     def recall_with_scores(
         self,
@@ -2016,11 +1995,9 @@ class MemoryClient:
         """List outgoing edges with metadata from the memory service."""
 
         if self._http is None:
-            if _require_memory_enabled():
-                raise RuntimeError(
-                    "MEMORY SERVICE UNAVAILABLE: links_from requires an HTTP memory backend."
-                )
-            return []
+            raise RuntimeError(
+                "MEMORY SERVICE UNAVAILABLE: links_from requires an HTTP memory backend."
+            )
 
         unlimited = int(limit) <= 0
         max_items = None if unlimited else int(limit)
@@ -2099,11 +2076,9 @@ class MemoryClient:
         """Remove a directed edge from the memory graph."""
 
         if self._http is None:
-            if _require_memory_enabled():
-                raise RuntimeError(
-                    "MEMORY SERVICE UNAVAILABLE: unlink requires an HTTP memory backend."
-                )
-            return False
+            raise RuntimeError(
+                "MEMORY SERVICE UNAVAILABLE: unlink requires an HTTP memory backend."
+            )
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
@@ -2193,11 +2168,9 @@ class MemoryClient:
         """Prune outgoing edges using the remote memory service."""
 
         if self._http is None:
-            if _require_memory_enabled():
-                raise RuntimeError(
-                    "MEMORY SERVICE UNAVAILABLE: prune_links requires an HTTP memory backend."
-                )
-            return 0
+            raise RuntimeError(
+                "MEMORY SERVICE UNAVAILABLE: prune_links requires an HTTP memory backend."
+            )
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
@@ -2505,18 +2478,7 @@ class MemoryClient:
         import uuid as _uuid
 
         if self._http is None:
-            try:
-                self._record_outbox(
-                    "remember",
-                    {
-                        "coord_key": coord_key,
-                        "payload": payload,
-                        "request_id": request_id,
-                    },
-                )
-            except Exception:
-                pass
-            return None
+            raise RuntimeError("HTTP memory service required for persistence")
 
         # Enrich payload and compute coord string once
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)

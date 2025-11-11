@@ -48,6 +48,16 @@ try:
     from somabrain.integrator.consistency import consistency_score  # type: ignore
 except Exception:  # pragma: no cover - optional import in tests
 
+try:
+    from somabrain.services.integrator_leader import IntegratorLeaderElection
+    from somabrain.integrator.leader_metrics import (
+        get_metrics_collector,
+        record_constraint_check,
+        calculate_health_score
+    )
+except Exception as e:  # pragma: no cover
+    raise RuntimeError(f"leader election system unavailable (strict): {e}")
+
     def consistency_score(agent_posterior, action_posterior):  # type: ignore
         return None
 
@@ -517,6 +527,18 @@ class IntegratorHub:
             self._tenant_entropy_cap = {}
         # Per-tenant domain attribution weights (lambda) default to 1.0
         self._tenant_lambda: Dict[str, Dict[str, float]] = {}
+        
+        # Leader election service
+        self._leader_election: Optional[IntegratorLeaderElection] = None
+        self._metrics_collector = get_metrics_collector()
+        
+        # Initialize leader election if Redis is configured
+        if self._redis_url:
+            try:
+                self._leader_election = IntegratorLeaderElection(self._redis_url)
+                self._leader_election.start_heartbeat()
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize leader election: {e}")
 
     def _start_health_server(self) -> None:
         try:
@@ -741,6 +763,21 @@ class IntegratorHub:
     def _process_update(self, ev: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         domain = str(ev.get("domain", "state")).strip().lower()
         tenant = self._tenant_from(ev)
+        
+        # Leader election check
+        if self._leader_election:
+            try:
+                # Check if we're the leader
+                if not self._leader_election.is_leader(tenant):
+                    return None
+                    
+                # Renew leadership
+                if not self._leader_election.renew_leadership(tenant):
+                    return None
+                    
+            except Exception:
+                return None
+        
         derr = float(ev.get("delta_error", 0.0))
         # Update rolling stats for normalization (metrics-only)
         try:
@@ -1062,12 +1099,60 @@ class IntegratorHub:
                 if new_leader and new_leader in ("state", "agent", "action"):
                     leader_adj = new_leader
                 rationale += f"; opa=allow{opa_note}"
+        # Calculate leader election metadata
+        leader_election = None
+        if self._leader_election and tenant:
+            try:
+                config = self._leader_election.get_config(tenant)
+                
+                # Calculate current dwell time
+                start_time = None
+                if tenant in self._leader_election._leader_states:
+                    start_time = self._leader_election._leader_states[tenant].start_time
+                
+                current_dwell = (time.time() - start_time) * 1000 if start_time else 0
+                dwell_satisfied = current_dwell >= config.min_dwell_ms
+                
+                # Check entropy constraints
+                cap = self._tenant_entropy_cap.get(tenant, config.entropy_cap)
+                transition_allowed = self._leader_election.can_transition_leader(tenant, H_norm or 0.0)
+                
+                leader_election = {
+                    "instance_id": self._leader_election._instance_id,
+                    "election_time": _now_iso(),
+                    "leader_tenure_seconds": current_dwell / 1000.0 if start_time else 0.0,
+                    "min_dwell_ms": config.min_dwell_ms,
+                    "entropy_cap": cap,
+                    "current_entropy": H_norm or 0.0,
+                    "dwell_satisfied": dwell_satisfied,
+                    "transition_allowed": transition_allowed,
+                }
+                
+                # Record metrics
+                try:
+                    from somabrain.integrator.leader_metrics import record_constraint_check
+                    record_constraint_check(
+                        tenant=tenant,
+                        instance_id=self._leader_election._instance_id,
+                        dwell_ms=current_dwell,
+                        min_dwell_ms=config.min_dwell_ms,
+                        entropy=H_norm or 0.0,
+                        threshold=cap,
+                        allowed=transition_allowed
+                    )
+                except Exception:
+                    pass
+                    
+            except Exception:
+                pass
+        
         gf = {
             "ts": _now_iso(),
             "leader": leader_adj,
             "weights": {k: float(v) for k, v in weights.items()},
             "frame": frame_map,
             "rationale": rationale,
+            "leader_election": leader_election,
         }
         # Attach policy flag so caller can publish SOMA context if enabled
         gf["_policy_allowed"] = policy_allowed  # type: ignore
@@ -1180,6 +1265,20 @@ class IntegratorHub:
         self._ensure_clients()
         if self._consumer is None:
             raise RuntimeError("integrator_hub: consumer not initialized")
+        
+        # Initialize leadership for all known tenants if leader election enabled
+        if self._leader_election:
+            tenants = list(self._tenant_entropy_cap.keys()) or ["public"]
+            for tenant in tenants:
+                try:
+                    if not self._leader_election.is_leader(tenant):
+                        self._leader_election.acquire_leadership(tenant)
+                except Exception:
+                    pass
+        
+        # Track tenant-based processing state for leader election
+        active_tenants: set[str] = set()
+        
         while True:
             try:
                 msg = self._consumer.poll(timeout=1.0)
@@ -1193,6 +1292,11 @@ class IntegratorHub:
                 continue
             try:
                 topic = msg.topic()
+                
+                # Skip processing if not leader (for leader election mode)
+                if topic != TOPICS["config"] and self._leader_election:
+                    continue
+                    
                 # Config updates: adjust tau (and optionally other params)
                 if topic == TOPICS["config"]:
                     cfg = self._decode_config(msg.value())
@@ -1243,8 +1347,19 @@ class IntegratorHub:
                 if not isinstance(ev, dict):
                     INTEGRATOR_ERRORS.labels(stage="decode").inc()
                     continue
+                
+                tenant = self._tenant_from(ev)
+                
+                # Skip processing if not leader for this tenant
+                if self._leader_election and not self._leader_election.is_leader(tenant):
+                    continue
+                    
                 dom = str(ev.get("domain", "state"))
                 INTEGRATOR_CONSUMED.labels(domain=dom).inc()
+                
+                # Track active tenant
+                active_tenants.add(tenant)
+                
                 with self._tracer.start_as_current_span(
                     "integrator_process_update"
                 ):

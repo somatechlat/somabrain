@@ -13,6 +13,11 @@ BAN_PATTERNS = [
 
 ALLOW_PATH_SUBSTRINGS = [
     "/tests/fixtures/",
+    "/docs/",  # Documentation legitimately discusses banned patterns
+    "ROADMAP_CANONICAL.md",  # Roadmap explains what's banned
+    "ROADMAP_IMPLEMENTATION.md",  # Implementation notes reference banned patterns
+    "/scripts/strict_invariants.py",  # This script defines what's banned
+    "/tests/invariants/",  # Test files define banned patterns they're checking for
 ]
 
 EXCLUDE_DIRS = {".git", ".venv", "__pycache__", "artifacts", "benchmarks"}

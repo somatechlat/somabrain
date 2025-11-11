@@ -79,27 +79,14 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return await call_next(request)
             except Exception as exc:
-                # Strict: default fail-closed if OPA evaluation fails
-                if shared_settings is not None:
-                    try:
-                        fail_closed = bool(
-                            getattr(shared_settings, "mode_opa_fail_closed", True)
-                        )
-                    except Exception:
-                        fail_closed = True
-                else:
-                    fail_closed = True
-                if fail_closed:
-                    LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
-                    app_metrics.OPA_DENY_TOTAL.inc()
-                    return Response(
-                        content=json.dumps({"detail": "OPA policy unavailable"}),
-                        status_code=403,
-                        media_type="application/json",
-                    )
-                LOGGER.debug("OPA evaluation error (alternative allow): %s", exc)
-                app_metrics.OPA_ALLOW_TOTAL.inc()
-                return await call_next(request)
+                # Strict mode: always fail-closed when OPA evaluation fails
+                LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
+                app_metrics.OPA_DENY_TOTAL.inc()
+                return Response(
+                    content=json.dumps({"detail": "OPA policy unavailable"}),
+                    status_code=403,
+                    media_type="application/json",
+                )
 
         # OPA is configured – call external OPA service
         policy_path = _policy_path_for_mode()
@@ -136,31 +123,23 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
             else:
-                LOGGER.debug("OPA returned unexpected status %s", resp.status_code)
-                # Treat unexpected status as a safe‑allow alternative
-                app_metrics.OPA_ALLOW_TOTAL.inc()
-        except Exception as exc:
-            # Failure to contact OPA – strict fail-closed by default
-            if shared_settings is not None:
-                try:
-                    fail_closed = bool(
-                        getattr(shared_settings, "mode_opa_fail_closed", True)
-                    )
-                except Exception:
-                    fail_closed = True
-            else:
-                fail_closed = True
-            if fail_closed:
-                LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
+                LOGGER.error("OPA returned unexpected status %s", resp.status_code)
+                # Strict mode: fail-closed on unexpected status
                 app_metrics.OPA_DENY_TOTAL.inc()
                 return Response(
-                    content=json.dumps({"detail": "OPA policy unavailable"}),
+                    content=json.dumps({"detail": "OPA policy service error"}),
                     status_code=403,
                     media_type="application/json",
                 )
-            LOGGER.debug("OPA request failed (alternative allow): %s", exc)
-            app_metrics.OPA_ALLOW_TOTAL.inc()
-            # Continue processing the request instead of denying
+        except Exception as exc:
+            # Strict mode: always fail-closed when OPA is unreachable
+            LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
+            app_metrics.OPA_DENY_TOTAL.inc()
+            return Response(
+                content=json.dumps({"detail": "OPA policy unavailable"}),
+                status_code=403,
+                media_type="application/json",
+            )
 
         # If we reach here OPA allowed the request (or alternative allowed)
         return await call_next(request)
@@ -212,7 +191,11 @@ async def opa_enforcement(
     except HTTPException:
         raise
     except Exception as e:
-        # Unexpected error – log and allow (defensive)
-        LOGGER.warning("OPA middleware error, allowing request: %s", e)
+        # Strict mode: fail-closed on unexpected middleware error
+        LOGGER.error("OPA middleware error, denying request: %s", e)
+        app_metrics.OPA_DENY_TOTAL.inc()
+        return JSONResponse(
+            status_code=403, content={"detail": "OPA middleware error"}
+        )
     response = await call_next(request)
     return response

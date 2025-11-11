@@ -6,4 +6,4 @@ and deployment manifests.  Each subpackage exposes a ``main`` accessor
 that aligns with the consolidated architecture document.
 """
 
-__all__ = ["sa01", "sb", "sah", "smf"]
+__all__ = ["sa01", "sb", "sah", "smf", "integrator_leader"]

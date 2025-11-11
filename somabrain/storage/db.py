@@ -48,7 +48,7 @@ def get_default_db_url() -> str:
         raise RuntimeError(
             "storage.db: SOMABRAIN_POSTGRES_DSN not set (Postgres required)"
         )
-    if url.startswith("sqlite://"):
+    if url.startswith("sqlite:"):
         raise RuntimeError("storage.db: SQLite DSN forbidden in strict mode")
     return url
 
