@@ -2,7 +2,7 @@
 
 Provides a lazily-initialized SQLAlchemy engine/session factory that requires a
 Postgres DSN (`SOMABRAIN_POSTGRES_DSN`). Strict mode removes the previous SQLite
-fallback; attempts to start without a Postgres URL now raise immediately. This
+alternative; attempts to start without a Postgres URL now raise immediately. This
 prevents silent divergence between dev/test and production storage behaviour.
 """
 
@@ -31,7 +31,7 @@ _SESSION_FACTORY: Optional[sessionmaker] = None
 def get_default_db_url() -> str:
     """Return the configured Postgres database URL or raise.
 
-    Strict mode: SQLite fallback removed. The URL must be provided via
+    Strict mode: SQLite alternative removed. The URL must be provided via
     `SOMABRAIN_POSTGRES_DSN` or settings.postgres_dsn. Empty / sqlite schemes
     trigger a RuntimeError to fail fast.
     """

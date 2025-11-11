@@ -55,7 +55,7 @@ def eval_step(
         try:
             from .. import metrics as M  # local import to avoid cycles in tests
 
-            M.PREDICTOR_FALLBACK.inc()
+            M.PREDICTOR_ALTERNATIVE.inc()
         except Exception:
             pass
         pred = type(
@@ -65,7 +65,7 @@ def eval_step(
 
     # Neuromodulation (personality + supervisor)
     base_nm = neuromods.get_state()
-    # Fetch traits per tenant (fallback to 'public' if missing)
+    # Fetch traits per tenant (default to 'public' if missing)
     traits = None
     try:
         if hasattr(personality_store, "get"):

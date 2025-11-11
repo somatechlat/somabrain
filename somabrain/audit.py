@@ -1,8 +1,8 @@
 """Audit helpers (Kafka via transactional outbox only).
 
 Fail-fast policy: audit events must be enqueued to the DB outbox for
-publication to Kafka by the outbox publisher. No local journal fallback,
-no direct-disk durability shims.
+publication to Kafka by the outbox publisher. No local journal alternative path,
+no direct‑disk durability shims.
 """
 
 from __future__ import annotations
@@ -52,7 +52,7 @@ def _schema_path() -> Optional[Path]:
 def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     """Enqueue an audit event to the DB outbox for Kafka publishing.
 
-    Returns True if enqueued; False on any error. No local fallback.
+    Returns True if enqueued; False on any error. No local alternative path.
     """
     topic_str: str = topic or os.getenv("SOMA_AUDIT_TOPIC") or "soma.audit"
     ev = dict(event)
@@ -65,7 +65,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
     ev.setdefault("event_id", str(uuid.uuid4()))
     ev.setdefault("schema_version", "audit_event_v1")
 
-    # Optional: schema validation with no fallback
+    # Optional: schema validation with no alternative path
     try:
         import jsonschema  # type: ignore
 
@@ -77,7 +77,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                 jsonschema.validate(instance=ev, schema=schema)
             except Exception:
                 LOGGER.debug(
-                    "Audit event schema validation failed; continuing (no fallback)"
+                    "Audit event schema validation failed; continuing (no alternative path)"
                 )
     except Exception:
         pass
@@ -86,7 +86,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
     except Exception:
-        LOGGER.exception("Failed to enqueue audit event to outbox (no fallback)")
+        LOGGER.exception("Failed to enqueue audit event to outbox (no alternative path)")
         return False
 
 

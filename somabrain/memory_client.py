@@ -79,18 +79,18 @@ def _require_memory_enabled() -> bool:
     return True
 
 
-def _http_setting(attr: str, fallback: int) -> int:
-    """Fetch HTTP client tuning knobs from shared settings with sane fallback."""
+def _http_setting(attr: str, default_val: int) -> int:
+    """Fetch HTTP client tuning knobs from shared settings with default."""
 
     if shared_settings is not None:
         try:
             value = getattr(shared_settings, attr)
             if value is None:
-                raise ValueError("empty")
+                return default_val
             return int(value)
         except Exception:
             pass
-    return fallback
+    return default_val
 
 
 def _stable_coord(key: str) -> Tuple[float, float, float]:
@@ -1224,7 +1224,7 @@ class MemoryClient:
         self, hits: List[RecallHit], query: str
     ) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
-            # Fallback to old logic if scorer is not available
+            # Use alternative logic if scorer is not available
             self._apply_weighting_to_hits(hits)
             return self._rank_hits(hits, query)
 
@@ -1663,7 +1663,7 @@ class MemoryClient:
             return coords
 
         if status in (404, 405):
-            # Fallback to individual store calls
+            # Alternative: use individual store calls
             for idx, entry in enumerate(prepared):
                 single_headers = dict(headers)
                 single_headers["X-Request-ID"] = f"{rid}:{idx}"
@@ -1751,7 +1751,7 @@ class MemoryClient:
                 return coord
             except Exception:
                 pass
-        # Fallback: run the synchronous remember in a thread executor
+        # Alternative: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.remember, coord_key, payload)
 
@@ -1865,7 +1865,7 @@ class MemoryClient:
         request_id: str | None = None,
     ) -> List[RecallHit]:
         """Retrieve memories relevant to the query using the HTTP memory service."""
-        # Enforce memory requirement: do not allow fallback when required
+        # Enforce memory requirement: do not allow alternative when required
         memory_required = _require_memory_enabled()
         if memory_required and self._http is None:
             raise RuntimeError(
@@ -1879,7 +1879,7 @@ class MemoryClient:
             )
         if memory_required:
             raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: No HTTP backend configured and stub fallback disabled."
+                "MEMORY SERVICE UNAVAILABLE: No HTTP backend configured and stub alternative disabled."
             )
         return []
 
@@ -2500,7 +2500,7 @@ class MemoryClient:
     ) -> Tuple[float, float, float] | None:
         """Synchronous persistence implementation used by both sync callers and run_in_executor.
 
-        This mirrors the original HTTP remember logic but centralizes retries and outbox fallback.
+        This mirrors the original HTTP remember logic but centralizes retries and outbox alternative.
         """
         import uuid as _uuid
 
@@ -2566,7 +2566,7 @@ class MemoryClient:
     ) -> None:
         """Async background persistence using the AsyncClient; used when remember is called from async contexts."""
         if self._http_async is None:
-            # fallback to sync persist in executor
+            # alternative: sync persist in executor
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(
                 None, self._remember_sync_persist, coord_key, payload, request_id

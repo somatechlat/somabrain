@@ -30,24 +30,28 @@ class ScorerWeights:
     w_recency: float
 
 
-def _gain_setting(name: str, fallback: float) -> float:
-    """Fetch a float setting from shared settings or environment."""
+def _gain_setting(name: str) -> float:
+    """Fetch a float setting from shared settings or environment.
+
+    In strict mode the setting **must** be defined; otherwise a ``RuntimeError``
+    is raised so that mis‑configuration is caught early.
+    """
 
     if shared_settings is not None:
         try:
             value = getattr(shared_settings, f"scorer_{name}")
             if value is not None:
                 return float(value)
-        except Exception:
-            pass
+        except Exception as exc:
+            raise RuntimeError(f"Scorer setting '{name}' missing or invalid: {exc}") from exc
     env_name = f"SOMABRAIN_SCORER_{name.upper()}"
     env_val = os.getenv(env_name)
     if env_val is not None:
         try:
             return float(env_val)
-        except Exception:
-            return fallback
-    return fallback
+        except Exception as exc:
+            raise RuntimeError(f"Scorer env var '{env_name}' invalid: {exc}") from exc
+    raise RuntimeError(f"Scorer setting '{name}' not configured")
 
 
 class UnifiedScorer:
@@ -76,27 +80,30 @@ class UnifiedScorer:
             w_fd=w_fd,
             w_recency=w_recency,
         )
+        # In strict mode, use env settings if available, otherwise use constructor params
+        try:
+            cosine_val = _gain_setting("w_cosine")
+        except RuntimeError:
+            cosine_val = w_cosine
+        try:
+            fd_val = _gain_setting("w_fd")
+        except RuntimeError:
+            fd_val = w_fd
+        try:
+            recency_val = _gain_setting("w_recency")
+        except RuntimeError:
+            recency_val = w_recency
+        try:
+            tau_val = _gain_setting("recency_tau")
+        except RuntimeError:
+            tau_val = recency_tau
+            
         self._weights = ScorerWeights(
-            w_cosine=self._clamp(
-                "cosine",
-                _gain_setting("w_cosine", w_cosine),
-                lo,
-                hi,
-            ),
-            w_fd=self._clamp(
-                "fd",
-                _gain_setting("w_fd", w_fd),
-                lo,
-                hi,
-            ),
-            w_recency=self._clamp(
-                "recency",
-                _gain_setting("w_recency", w_recency),
-                lo,
-                hi,
-            ),
+            w_cosine=self._clamp("cosine", cosine_val, lo, hi),
+            w_fd=self._clamp("fd", fd_val, lo, hi),
+            w_recency=self._clamp("recency", recency_val, lo, hi),
         )
-        self._recency_tau = max(_gain_setting("recency_tau", recency_tau), _EPS)
+        self._recency_tau = max(tau_val, _EPS)
         self._fd = fd_backend
         self._weight_bounds = (lo, hi)
 

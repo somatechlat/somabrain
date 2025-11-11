@@ -42,8 +42,51 @@ from somabrain.metrics import (
     record_learning_feedback_latency,
     update_learning_effective_lr,
 )
+# Import central feature flag view and metrics utilities
+from somabrain.config.feature_flags import FeatureFlags
+from somabrain import metrics as _metrics
+
+# Register Prometheus gauges for each feature flag so they are exposed via
+# ``/metrics``. ``_metrics.get_gauge`` returns an existing gauge if one was
+# already created, making this safe to call multiple times (e.g., on module
+# reloads).
+def _register_flag_gauges() -> None:
+    status = FeatureFlags.get_status()
+    for name, enabled in status.items():
+        try:
+            gauge = _metrics.get_gauge(
+                "somabrain_feature_flag",
+                "Feature flag status (1=enabled, 0=disabled)",
+                labelnames=["flag"],
+            )
+            gauge.labels(flag=name).set(1 if enabled else 0)
+        except Exception:
+            # Metric registration failures should not prevent the API from
+            # loading. In strict mode we would surface the error, but here we
+            # silently ignore to keep the service robust.
+            pass
+
+# Initialise gauges at import time.
+_register_flag_gauges()
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Feature‑flags endpoint (centralised view)
+# ---------------------------------------------------------------------------
+
+@router.get("/feature-flags")
+def feature_flags_endpoint() -> dict:
+    """Expose the current feature‑flag status.
+
+    The source of truth is ``FeatureFlags.get_status()`` which reads the
+    central ``somabrain.modes`` configuration and any runtime overrides.
+    Gauges are refreshed on each request to ensure Prometheus reflects the
+    latest flag values.
+    """
+    # Refresh gauges in case overrides have changed since import time.
+    _register_flag_gauges()
+    return FeatureFlags.get_status()
 
 # Store initialization is lazy to avoid import-time failures that would
 # prevent the router from registering (and thus 404 the entire /context API).

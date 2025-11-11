@@ -1,8 +1,8 @@
-"""Central stub/fallback audit utilities.
+"""Central stub/alternative audit utilities.
 
 This module enforces a strict backend policy when the environment variable
 ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`` (or a true-ish value) is set. In this
-mode any call to ``record_stub`` raises an error, preventing silent fallback to
+mode any call to ``record_stub`` raises an error, preventing silent alternative to
 stub or in-process simulated components.
 
 Outside enforcement mode, we count stub usages for observability so tests or
@@ -41,7 +41,7 @@ class StubUsageError(RuntimeError):
 
 
 def record_stub(path: str) -> None:
-    """Record that a stub/fallback path was invoked.
+    """Record that a stub/alternative path was invoked.
 
     If backend enforcement is enabled this raises immediately with an explanatory
     message instructing how to disable the stub path or configure the external
@@ -49,7 +49,7 @@ def record_stub(path: str) -> None:
     """
     if BACKEND_ENFORCED:
         raise StubUsageError(
-            f"Stub/fallback path '{path}' invoked while external backends are required. "
+            f"Stub/alternative path '{path}' invoked while external backends are required. "
             "Configure the external component or unset SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS to allow stubs."
         )
     with _LOCK:

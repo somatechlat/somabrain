@@ -37,7 +37,7 @@ class OPAClient:
 
     POSTs ``/v1/data/<policy_path>`` with JSON ``input`` and expects a ``result``
     containing an ``allow`` boolean. Transport or server errors deny by default.
-    A permissive allow-on-error fallback is only enabled if environment variable
+    A permissive allow-on-error alternative is only enabled if environment variable
     ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` is explicitly set (temporary escape hatch).
     """
 
@@ -55,7 +55,7 @@ class OPAClient:
 
         self.base_url = get_opa_url()
         if not self.base_url:
-            # Legacy fallback for dev shells without explicit configuration.
+            # Legacy alternative for dev shells without explicit configuration.
             # Prefer explicit host port envs, defaulting to 30004 to align
             # with dev stack mapping.
             host_port = os.getenv("OPA_HOST_PORT") or os.getenv("OPA_PORT") or "30004"

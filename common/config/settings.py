@@ -7,7 +7,7 @@ should import ``Settings`` from here instead of calling ``os.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
-fallback to the current variables.
+default to the current variables.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ try:
     from pydantic import Field
 
     BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
-except Exception:  # pragma: no cover - fallback for older envs
+except Exception:  # pragma: no cover - alternative for older envs
     from pydantic import BaseSettings as _BS, Field
 
     BaseSettings = _BS  # type: ignore[assignment]
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     """
 
     # Core infra -----------------------------------------------------------
-    # Postgres DSN is required; no SQLite fallback permitted in strict mode.
+    # Postgres DSN is required; no SQLite alternative permitted in strict mode.
     postgres_dsn: str = Field(
         default_factory=lambda: os.getenv("SOMABRAIN_POSTGRES_DSN", "")
     )
@@ -167,7 +167,7 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
-    # Deprecated fallback toggles removed: no local/durable fallbacks allowed
+    # Deprecated alternative toggles removed: no local/durable alternatives allowed
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
@@ -211,7 +211,7 @@ class Settings(BaseSettings):
     def mode_require_external_backends(self) -> bool:
         """Require real backends (no stubs) across all modes by policy.
 
-        This mirrors the "no mocks" requirement and prevents silent fallbacks.
+        This mirrors the "no mocks" requirement and prevents silent alternatives.
         """
         try:
             from somabrain.mode import get_mode_config

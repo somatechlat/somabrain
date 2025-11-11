@@ -689,7 +689,7 @@ class AdaptationEngine:
                 # Iteratively sharpen non‑max components and renormalize to drive entropy below the cap.
                 largest_idx = max(range(len(vec)), key=lambda i: vec[i])
                 attempts = 0
-                while entropy > entropy_cap and attempts < 10:
+                while entropy > entropy_cap and attempts < 20:
                     overflow = entropy - entropy_cap
                     scale = min(0.99, max(0.2, overflow / (entropy_cap + 1e-9)))
                     for i in range(len(vec)):
@@ -705,7 +705,8 @@ class AdaptationEngine:
                 if entropy > entropy_cap:
                     for i in range(len(vec)):
                         if i != largest_idx:
-                            vec[i] *= 0.05
+                            # Apply a very strong shrink to ensure cap compliance
+                            vec[i] *= 0.001
                     s2 = sum(vec)
                     if s2 > 0:
                         vec = [v / s2 for v in vec]

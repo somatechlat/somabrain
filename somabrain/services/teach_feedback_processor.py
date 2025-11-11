@@ -5,19 +5,19 @@ Consumes TeachFeedback events and converts them to RewardEvent records
 on cog.reward.events by mapping user ratings to r_user.
 
 Topics:
-- Consumes:  cog.teach.feedback (TeachFeedback)
-- Produces:  cog.reward.events (RewardEvent)
+-- Consumes:  cog.teach.feedback (TeachFeedback)
+-- Produces:  cog.reward.events (RewardEvent)
 
 Rating to r_user mapping:
-- 1 -> -1.0, 2 -> -0.5, 3 -> 0.0, 4 -> 0.5, 5 -> 1.0
+-- 1 -> -1.0, 2 -> -0.5, 3 -> 0.0, 4 -> 0.5, 5 -> 1.0
 
 Environment:
-- SOMABRAIN_KAFKA_URL (default localhost:30001)
-- TEACH_PROC_GROUP (default teach-feedback-proc)
+-- SOMABRAIN_KAFKA_URL (default localhost:30001)
+-- TEACH_PROC_GROUP (default teach-feedback-proc)
 
 Metrics:
-- somabrain_teach_feedback_total (counter)
-- somabrain_teach_r_user (histogram)
+-- somabrain_teach_feedback_total (counter)
+-- somabrain_teach_r_user (histogram)
 """
 
 from __future__ import annotations

@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import pathlib
 
-# Cryptography is an optional dependency; import lazily with fallback.
+# Cryptography is an optional dependency; import lazily with alternative.
 try:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.asymmetric import padding
@@ -32,7 +32,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     environments). If the required classes are unavailable, an informative
     ``ImportError`` is raised.
     """
-    # A valid private key path is required; no placeholders or fallbacks.
+    # A valid private key path is required; no placeholders or alternatives.
     if not private_key_path:
         raise ValueError("private_key_path is required for OPA policy signing")
     # Import lazily – raise if missing.
@@ -77,7 +77,7 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
     try:
         signature = bytes.fromhex(signature_hex)
     except Exception:
-        # try base64 fallback
+        # try base64 alternative
         try:
             signature = base64.b64decode(signature_hex)
         except Exception:

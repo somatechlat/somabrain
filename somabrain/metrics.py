@@ -19,7 +19,7 @@ Metrics Categories:
 - Working Memory: Hit/miss rates, latency
 - Salience: Score distributions, threshold tracking
 - HRR System: Cleanup usage, anchor saturation, reranking
-- Prediction: Latency by provider, fallback counts
+- Prediction: Latency by provider, alternative counts
 - Consolidation: Run counts, replay strength, REM synthesis
 - Supervisor: Free energy, neuromodulator modulation
 - Executive Controller: Conflict detection, bandit rewards
@@ -52,7 +52,7 @@ try:
         generate_latest,
     )
 except Exception:  # pragma: no cover
-    # Enforce "no fake fallbacks" by default. Allow a noop shim only in docs builds
+    # Enforce "no fake alternatives" by default. Allow a noop shim only in docs builds
     # or when explicitly permitted via SOMABRAIN_ALLOW_METRICS_NOOP=1.
     allow_noop = False
     try:
@@ -621,8 +621,8 @@ PREDICTOR_LATENCY_BY = Histogram(
     ["provider"],
     registry=registry,
 )
-PREDICTOR_FALLBACK = Counter(
-    "somabrain_predictor_fallback_total",
+PREDICTOR_ALTERNATIVE = Counter(
+    "somabrain_predictor_alternative_total",
     "Count of predictor timeouts/errors causing degrade",
     registry=registry,
 )
@@ -864,7 +864,7 @@ LINK_DECAY_PRUNED = Counter(
 )
 
 
-# Audit pipeline metrics: Kafka publish path only (no local fallbacks)
+# Audit pipeline metrics: Kafka publish path only (no local alternatives)
 AUDIT_KAFKA_PUBLISH = Counter(
     "somabrain_audit_kafka_publish_total",
     "Audit events successfully published to Kafka (best-effort)",

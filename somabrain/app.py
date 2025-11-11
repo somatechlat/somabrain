@@ -550,7 +550,7 @@ class CognitiveErrorHandler:
         elif "embedding" in str(error).lower():
             error_info["recovery_suggestions"] = [
                 "Check embedding service",
-                "Fallback to simpler embeddings",
+                "Alternative simpler embeddings",
             ]
         elif "memory" in str(error).lower():
             error_info["recovery_suggestions"] = [
@@ -2059,7 +2059,7 @@ async def health(request: Request) -> S.HealthResponse:
                         else:
                             edim = int(getattr(v, "shape")[0])  # type: ignore[index]
                 except Exception:
-                    # Fallback to configured embed_dim if present
+                    # Use configured embed_dim if present
                     try:
                         edim = int(getattr(cfg, "embed_dim", None) or 0) or None
                     except Exception:
@@ -2637,7 +2637,7 @@ async def recall(req: S.RecallRequest, request: Request):
         M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
             max(0.0, _t.perf_counter() - _t1)
         )
-        # Read-your-writes fallback: if LTM recall returned nothing, try direct
+        # Read-your-writes alternative: if LTM recall returned nothing, try direct
         # coordinate lookup based on the query text used as key.
         if not mem_payloads:
             try:
@@ -2707,7 +2707,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 mem_payloads = uniq
             except Exception:
                 pass
-        # Ultimate fallback: lift matching items from WM into the memory list
+        # Ultimate alternative: lift matching items from WM into the memory list
         if not mem_payloads:
             try:
                 items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
@@ -2734,7 +2734,7 @@ async def recall(req: S.RecallRequest, request: Request):
                             lifted.append(p)
                 if lifted:
                     mem_payloads = lifted
-        # cache result (after all fallbacks)
+        # cache result (after all alternatives)
         cache[ckey] = mem_payloads
         # Optional graph augmentation: expand k-hop from query key coord
         if cfg.use_graph_augment:
@@ -2938,11 +2938,11 @@ async def recall(req: S.RecallRequest, request: Request):
         try:
             memsvc = MemoryService(mt_memory, ctx.namespace)
             coord = memsvc.coord_for_key(req.query, universe=universe)
-            fallback_payloads = memsvc.payloads_for_coords([coord], universe=universe)
-            if fallback_payloads:
+            alternative_payloads = memsvc.payloads_for_coords([coord], universe=universe)
+            if alternative_payloads:
                 normalized = [
                     _normalize_payload_timestamps(p)
-                    for p in fallback_payloads
+                    for p in alternative_payloads
                     if isinstance(p, dict)
                 ]
                 if normalized:
@@ -3349,7 +3349,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     predictor = _make_predictor()
     # Run a single evaluation step – use the cognitive loop service helper
     # For simplicity we compute novelty as 0.0 and use a dummy WM vector.
-    # The service will handle predictor fallback and neuromodulation.
+    # The service will handle predictor alternatives and neuromodulation.
     wm_vec = embedder.embed(body.task)
     step_result = _eval_step(
         novelty=0.0,

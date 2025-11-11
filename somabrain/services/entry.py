@@ -15,20 +15,12 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import signal
 import threading
 import time
 from typing import Callable, Optional
 
 
-def _flag_on(name: str, default: str = "0") -> bool:
-    return (os.getenv(name, default) or default).strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
@@ -89,38 +81,38 @@ def _run_learner() -> None:
 
 
 def main() -> None:  # pragma: no cover
-    # composite retained only as a convenience to force everything on; default ON
-    composite = _flag_on("ENABLE_COG_THREADS", "1")
+    # Legacy composite flag ENABLE_COG_THREADS removed – rely on central feature flags.
+    # The orchestrator now starts services solely based on `feature_enabled`.
     from somabrain.modes import feature_enabled
 
     threads: list[threading.Thread] = []
 
     # Integrator Hub
-    if composite or feature_enabled("integrator"):
+    if feature_enabled("integrator"):
         threads.append(_start_thread(_run_integrator, "integrator_hub"))
     else:
         print("orchestrator: integrator disabled")
 
     # Segmentation Service
-    if composite or feature_enabled("segmentation"):
+    if feature_enabled("segmentation"):
         threads.append(_start_thread(_run_segmentation, "segmentation_service"))
     else:
         print("orchestrator: segmentation disabled")
 
     # Drift Monitoring
-    if composite or feature_enabled("drift"):
+    if feature_enabled("drift"):
         threads.append(_start_thread(_run_drift_monitor, "drift_monitor"))
     else:
         print("orchestrator: drift monitoring disabled")
 
     # Calibration Service
-    if composite or feature_enabled("calibration"):
+    if feature_enabled("calibration"):
         threads.append(_start_thread(_run_calibration, "calibration_service"))
     else:
         print("orchestrator: calibration disabled")
 
     # Learner Online
-    if composite or feature_enabled("learner"):
+    if feature_enabled("learner"):
         threads.append(_start_thread(_run_learner, "learner_online"))
     else:
         print("orchestrator: learner disabled")

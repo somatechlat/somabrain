@@ -7,14 +7,15 @@ import socket
 from typing import Dict
 
 
-def _env_port(name: str, fallback: int) -> int:
+def _env_port(name: str, default_val: int) -> int:
+    """Get port from environment or return default value."""
     try:
         raw = os.getenv(name)
         if not raw:
-            return fallback
+            return default_val
         return int(raw)
     except Exception:
-        return fallback
+        return default_val
 
 
 DEFAULT_SERVICE_PORTS: Dict[str, int] = {

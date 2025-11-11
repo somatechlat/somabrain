@@ -30,6 +30,9 @@ def test_no_banned_fallback_tokens():
     banned_hits = []
     patterns = [(pat, re.compile(pat, re.IGNORECASE)) for pat in BAN_PATTERNS]
     for p in root.rglob("*"):
+        # Skip this test file itself to avoid false positives on its own patterns
+        if p == Path(__file__):
+            continue
         if not p.is_file() or not _should_scan(p):
             continue
         try:
