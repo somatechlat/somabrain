@@ -436,6 +436,7 @@ class MemoryClient:
         except Exception:
             pass
         # If memory is required and client not initialized, raise immediately to fail fast.
+        require_memory_enabled = bool(os.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
         if require_memory_enabled and (self._http is None):
             raise RuntimeError(
                 "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
@@ -2362,7 +2363,8 @@ class MemoryClient:
             return []
 
         if self._http is None:
-            if _require_memory_enabled():
+            require_memory_enabled = bool(os.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
+            if require_memory_enabled:
                 raise RuntimeError(
                     "MEMORY SERVICE UNAVAILABLE: payloads_for_coords requires an HTTP memory backend."
                 )

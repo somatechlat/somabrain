@@ -462,10 +462,12 @@ def load_config() -> Config:
             pass
         try:
             endpoint = getattr(shared_settings, "memory_http_endpoint", None)
-            if endpoint:
+            # Respect environment/YAML overrides: only apply shared setting if missing.
+            if endpoint and not (cfg.http and cfg.http.endpoint):
                 cfg.http.endpoint = str(endpoint)
             token = getattr(shared_settings, "memory_http_token", None)
-            if token:
+            # Environment must win over shared settings for secure overrides.
+            if token and not (cfg.http and cfg.http.token):
                 cfg.http.token = str(token)
         except Exception:
             pass

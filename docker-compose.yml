@@ -333,7 +333,7 @@ services:
     environment:
       # Explicitly require a real external memory service; no dev fallback
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "devtoken"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-9696}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
@@ -348,8 +348,8 @@ services:
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       # Memory weighting is controlled by runtime config overrides (local only)
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
-      # Mode: default to full-local for local compose
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
+      # Mode: default to dev (full-local semantics) for local development parity
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
@@ -391,11 +391,11 @@ services:
     environment:
       # Explicitly require a real external memory service; no dev fallback
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
-      SOMABRAIN_MEMORY_HTTP_TOKEN: "devtoken"
+      SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
       SOMA_HEAT_METHOD: "lanczos"
       # Centralized feature gating; composite toggles are handled via runtime config
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"

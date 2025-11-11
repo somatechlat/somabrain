@@ -58,9 +58,9 @@ dev = [
   ,"PyYAML>=6.0"
   ,"fastavro>=1.9"
   ,"opentelemetry-semantic-conventions==0.58b0"
-  ,"opentelemetry-instrumentation-fastapi==0.50b0"
-  ,"opentelemetry-instrumentation-redis==0.50b0"
-  ,"opentelemetry-instrumentation-requests==0.50b0"
+  ,"opentelemetry-instrumentation-fastapi==0.58b0"
+  ,"opentelemetry-instrumentation-redis==0.58b0"
+  ,"opentelemetry-instrumentation-requests==0.58b0"
   ,"confluent-kafka>=2.4"
 ]
 

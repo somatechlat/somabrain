@@ -26,13 +26,13 @@ entries:
     regret_baseline: 0.0
   state:t1:
     baseline_initialized: true
-    entropy_baseline: 0.8188277343427656
-    last_drift_time: 1762861051.868165
-    regret_baseline: 0.5570642582327535
+    entropy_baseline: 0.8188817590398829
+    last_drift_time: 1762888593.996001
+    regret_baseline: 0.5570972105789188
   state:t2:
     baseline_initialized: true
-    entropy_baseline: 0.8188277643826631
-    last_drift_time: 1762861051.900769
-    regret_baseline: 0.5570760310721541
-updated: '2025-11-11T11:37:31.903410+00:00'
+    entropy_baseline: 0.8188817890252915
+    last_drift_time: 1762888594.047264
+    regret_baseline: 0.5571089654306352
+updated: '2025-11-11T19:16:34.051252+00:00'
 version: 1

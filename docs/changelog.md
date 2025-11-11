@@ -45,12 +45,51 @@ All notable changes to SomaBrain are documented in this file. This project adher
 
 ---
 
+## [v3.1.0] - 2025-11-11 - Phase 3: Live Deployment & HMM Segmentation
+
+### 🚀 Added
+- **Phase 3 HMM Segmentation**: Hazard-based change point detection with deduplication
+  - `HazardSegmenter` with exponential decay hazard function
+  - `CPDSegmenter` for CPD-based boundary detection
+  - Min-gap deduplication to prevent boundary spam
+  - Metrics: `segmentation_boundaries_per_hour`, `segmentation_duplicate_ratio`
+- **Live Docker Deployment**: Full-stack containerized deployment
+  - Multi-stage Dockerfile with production optimizations
+  - Complete Docker Compose stack with all dependencies
+  - Health checks and Prometheus metrics integration
+  - Memory service integration via `host.docker.internal:9595`
+- **Leader Election**: Redis-based leader election for integrator hub
+  - Redis locks for distributed coordination
+  - Metrics: `leader_tenure_seconds`, `leader_elections_total`
+- **Avro Schema Enforcement**: Strict no-JSON fallback policy
+  - CI checks for Avro schema compatibility
+  - Runtime validation ensuring Avro-only data flow
+- **Outbox Publisher**: Kafka-based event publishing for reliability
+  - At-least-once delivery guarantee
+  - Automatic retry and failure handling
+
+### 🔧 Changed
+- **Integrator Hub**: Enhanced with leader election and metrics
+- **Deployment Strategy**: Full Docker Compose with external memory service
+- **Memory Backend**: HTTP-first with Redis/Kafka backing stores
+- **Monitoring**: Comprehensive Prometheus metrics for all components
+
+### 📚 Documentation
+- Updated deployment guide for Docker Compose live deployment
+- Added Phase 3 completion checklist
+- Documented segmentation HMM algorithms and tuning parameters
+- Created production deployment runbook
+
+### 💥 Removed
+- Legacy JSON fallback modes - strict Avro enforcement
+- Local stub implementations - requires real external services
+
 ## [Unreleased]
 
 ### 🚀 Added
 - Complete documentation restructure following 4-manual standard
 - CI Avro schema compatibility checker for `proto/cog/avro` to prevent breaking changes
-- E2E smoke for teach→reward (`scripts/e2e_teach_feedback_smoke.py`)
+- E2E smoke for teach→reward (`scripts/e2e_teach_feedback_smoke.py")
 
 ### 🔧 Changed
 - Default best-mode settings enabled in Helm and Compose:

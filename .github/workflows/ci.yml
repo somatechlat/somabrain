@@ -50,6 +50,8 @@ jobs:
       - name: Check markdown links
         run: python3 scripts/ci/check_markdown_links.py
         continue-on-error: true
+      - name: Run roadmap invariant scanner
+        run: python3 scripts/roadmap_invariant_scanner.py
       - name: Run ruff lint
         run: uv run ruff check .
       - name: Run black formatting check

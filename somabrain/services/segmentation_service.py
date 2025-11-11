@@ -64,12 +64,14 @@ P_TRANSITION = None
 P_VOLATILE = None
 BOUNDARIES_PER_HOUR = None
 DUPLICATE_RATIO = None
+WRITE_GAP_MS = None
+WRITE_GAP_EXCEEDED = None
 HMM_STATE_VOLATILE = None
 MAX_DWELL_EXCEEDED = None
 
 
 def _init_metrics() -> None:
-    global BOUNDARY_EMITTED, BOUNDARY_LATENCY, P_TRANSITION, P_VOLATILE, BOUNDARIES_PER_HOUR, DUPLICATE_RATIO, HMM_STATE_VOLATILE, MAX_DWELL_EXCEEDED
+    global BOUNDARY_EMITTED, BOUNDARY_LATENCY, P_TRANSITION, P_VOLATILE, BOUNDARIES_PER_HOUR, DUPLICATE_RATIO, HMM_STATE_VOLATILE, MAX_DWELL_EXCEEDED, WRITE_GAP_MS, WRITE_GAP_EXCEEDED
     if BOUNDARY_EMITTED is None:
         try:
             BOUNDARY_EMITTED = metrics.get_counter(
@@ -141,6 +143,24 @@ def _init_metrics() -> None:
             )
         except Exception:
             MAX_DWELL_EXCEEDED = None
+    if WRITE_GAP_MS is None:
+        try:
+            WRITE_GAP_MS = metrics.get_gauge(
+                "somabrain_segmentation_write_gap_ms",
+                "Observed gap in ms between consecutive boundaries",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            WRITE_GAP_MS = None
+    if WRITE_GAP_EXCEEDED is None:
+        try:
+            WRITE_GAP_EXCEEDED = metrics.get_counter(
+                "somabrain_segmentation_write_gap_exceeded_total",
+                "Count of times the write gap exceeded configured threshold",
+                labelnames=["tenant", "domain"],
+            )
+        except Exception:
+            WRITE_GAP_EXCEEDED = None
 
 
 @dataclass
@@ -222,11 +242,13 @@ class Segmenter:
     - "max_dwell" when max dwell threshold is reached and leader hasn't changed
     """
 
-    def __init__(self, max_dwell_ms: int = 0):
+    def __init__(self, max_dwell_ms: int = 0, min_gap_ms: int = 0):
         self.max_dwell_ms = max(0, int(max_dwell_ms))
+        self.min_gap_ms = max(0, int(min_gap_ms))
         # Maintain independent state per tenant
         self._last_leader: Dict[str, Optional[str]] = {}
         self._last_change_ms: Dict[str, Optional[int]] = {}
+        self._last_emit_ms: Dict[str, Optional[int]] = {}
 
     @staticmethod
     def _parse_ts(ts: str) -> int:
@@ -292,10 +314,16 @@ class Segmenter:
             dwell = now_ms - (last_change or now_ms)
             boundary_ts = ts
             domain = last_leader
-            # Update state to new leader
+            # Dedupe/min-gap suppression: do NOT mutate state if suppressed
+            last_emit = self._last_emit_ms.get(t)
+            if self.min_gap_ms > 0 and last_emit is not None and (now_ms - last_emit) < self.min_gap_ms:
+                return None
+            # Update state to new leader only when emitting
             self._last_leader[t] = leader
             self._last_change_ms[t] = now_ms
+            self._last_emit_ms[t] = now_ms
             return (domain, boundary_ts, int(dwell), "leader_change")
+        # Emit boundary if dwell exceeded but leader unchanged handled above; otherwise none
 
         # No boundary
         return None
@@ -353,7 +381,10 @@ class CPDSegmenter:
         self.min_std = float(min_std)
         # State per tenant:domain
         self._stats: Dict[Tuple[str, str], _Welford] = {}
+        # Last boundary time (min-gap baseline)
         self._last_change_ms: Dict[Tuple[str, str], Optional[int]] = {}
+        # First seen time (dwell baseline before first boundary)
+        self._first_seen_ms: Dict[Tuple[str, str], Optional[int]] = {}
 
     @staticmethod
     def _parse_ts(ts: str) -> int:
@@ -370,16 +401,18 @@ class CPDSegmenter:
         if st is None:
             st = _Welford()
             self._stats[key] = st
-            self._last_change_ms[key] = now_ms
+            # Capture first seen for dwell baseline; do not set last_change yet
+            self._first_seen_ms[key] = now_ms
         # Dwell boundary first
         last_change = self._last_change_ms.get(key)
+        dwell_baseline = last_change if last_change is not None else self._first_seen_ms.get(key)
         if (
             self.max_dwell_ms > 0
-            and last_change is not None
-            and now_ms - last_change >= self.max_dwell_ms
+            and dwell_baseline is not None
+            and now_ms - dwell_baseline >= self.max_dwell_ms
         ):
             self._last_change_ms[key] = now_ms
-            dwell = now_ms - (last_change or now_ms)
+            dwell = now_ms - (dwell_baseline or now_ms)
             return (key[1], ts, int(dwell), "max_dwell")
 
         # Test threshold against PRE-update stats to avoid diluting spike
@@ -399,6 +432,7 @@ class CPDSegmenter:
                 # Reset stats to avoid repeated triggers on same regime
                 self._stats[key] = _Welford()
                 return (key[1], ts, int(dwell), "cpd")
+        # Update stats after threshold check (so spike not diluted pre-test)
         # No trigger; update stats and continue
         st.update(float(delta_error))
         return None
@@ -449,7 +483,10 @@ class HazardSegmenter:
         self.min_std = float(min_std)
         # Per key (tenant:domain) state
         self._stats: Dict[Tuple[str, str], _Welford] = {}
+        # Last boundary time (used for min-gap and dwell resets)
         self._last_change_ms: Dict[Tuple[str, str], Optional[int]] = {}
+        # First seen time (used to measure dwell before first boundary)
+        self._first_seen_ms: Dict[Tuple[str, str], Optional[int]] = {}
         self._map_state: Dict[Tuple[str, str], int] = {}
 
     @staticmethod
@@ -476,17 +513,19 @@ class HazardSegmenter:
         if st is None:
             st = _Welford()
             self._stats[key] = st
-            self._last_change_ms[key] = now_ms
+            # Do not set last_change here; use first_seen for initial dwell
+            self._first_seen_ms[key] = now_ms
             self._map_state[key] = 0  # assume STABLE at start
         # Dwell enforcement
         last_change = self._last_change_ms.get(key)
+        dwell_baseline = last_change if last_change is not None else self._first_seen_ms.get(key)
         if (
             self.max_dwell_ms > 0
-            and last_change is not None
-            and now_ms - last_change >= self.max_dwell_ms
+            and dwell_baseline is not None
+            and now_ms - dwell_baseline >= self.max_dwell_ms
         ):
             self._last_change_ms[key] = now_ms
-            dwell = now_ms - (last_change or now_ms)
+            dwell = now_ms - (dwell_baseline or now_ms)
             return (key[1], ts, int(dwell), "max_dwell")
 
         x = float(delta_error)
@@ -580,7 +619,13 @@ class SegmentationService:
         self._volatile_count: Dict[tuple, int] = {}
         self._stable_count: Dict[tuple, int] = {}
 
-        self._segmenter = Segmenter(max_dwell_ms=max_dwell_ms)
+        self._segmenter = Segmenter(
+            max_dwell_ms=max_dwell_ms,
+            min_gap_ms=int(os.getenv("SOMABRAIN_SEGMENT_MIN_GAP_MS", "250") or "250"),
+        )
+        self._write_gap_threshold_ms = int(
+            os.getenv("SOMABRAIN_SEGMENT_WRITE_GAP_THRESHOLD_MS", "30000") or "30000"
+        )
 
         # CPD mode parameters
         self._cpd = CPDSegmenter(
@@ -747,7 +792,7 @@ class SegmentationService:
                             )
                     except Exception:
                         pass
-                # Boundaries per hour (simple rate approximation)
+                # Boundaries per hour (simple rate approximation) and write-gap tracking
                 try:
                     now_ms = _now_ms()
                     last_ts = self._last_boundary_ts.get(key)
@@ -758,6 +803,16 @@ class SegmentationService:
                         BOUNDARIES_PER_HOUR.labels(tenant=tenant, domain=domain).set(
                             rate
                         )
+                        # Write-gap metrics
+                        gap_ms = now_ms - last_ts
+                        if WRITE_GAP_MS is not None:
+                            WRITE_GAP_MS.labels(tenant=tenant, domain=domain).set(gap_ms)
+                        if (
+                            self._write_gap_threshold_ms > 0
+                            and gap_ms > self._write_gap_threshold_ms
+                            and WRITE_GAP_EXCEEDED is not None
+                        ):
+                            WRITE_GAP_EXCEEDED.labels(tenant=tenant, domain=domain).inc()
                 except Exception:
                     pass
                 # HMM volatility ratio (if hazard evidence)

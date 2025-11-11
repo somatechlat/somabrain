@@ -1,7 +1,3 @@
 {
-  "disabled": [
-    "fusion_normalization",
-    "consistency_checks",
-    "calibration"
-  ]
+  "disabled": []
 }
