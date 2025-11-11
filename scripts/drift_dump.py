@@ -26,7 +26,7 @@ def _human(ts: float) -> str:
 
 
 def main() -> None:
-    # Prefer live in-memory state (centralized mode gating); fallback to persistence file if detector disabled
+    # Prefer live in-memory state (centralized mode gating); use persistence file alternative if detector disabled
     if drift_detector.enabled:
         state = drift_detector.export_state()
     else:

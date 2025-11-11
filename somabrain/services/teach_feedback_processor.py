@@ -160,7 +160,7 @@ class TeachFeedbackService:
                     "compression.type": "none",
                 }
             )
-        # No kafka-python fallback in strict mode
+        # No kafka-python alternative in strict mode
 
     def _emit_reward(self, frame_id: str, r_user: float) -> None:
         try:
@@ -169,7 +169,7 @@ class TeachFeedbackService:
             logging.debug("teach_feedback_processor: _emit_reward called")
         except Exception:
             pass
-        # Build reward record (legacy reward_event schema fields); compatible with Avro serde fallback
+        # Build reward record (legacy reward_event schema fields); compatible with Avro serde alternative
         rec = {
             "frame_id": frame_id,
             "r_task": 0.0,

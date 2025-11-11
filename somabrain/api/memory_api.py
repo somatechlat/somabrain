@@ -372,7 +372,7 @@ def _runtime_module():
     """Return the canonical runtime module carrying singletons.
 
     Prefer the initializer-loaded module name ("somabrain.runtime_module") when present
-    to ensure we reference the same object that `app.py` wires up. Fallback to the
+    to ensure we reference the same object that `app.py` wires up. Use the
     package module ("somabrain.runtime"). As a final guard, scan `sys.modules` for any
     module whose file path points to `somabrain/runtime.py` and return that instance.
     """
@@ -1285,7 +1285,7 @@ def _coerce_to_retrieval_request(
         if d.get("persist") is None:
             req.persist = eff_persist
         return req
-    # Fallback: stringify unknown payload
+    # Alternative: stringify unknown payload
     req = RetrievalRequest(query=str(obj), top_k=default_top_k)
     req.rerank = eff_rerank or req.rerank
     req.persist = (

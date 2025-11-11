@@ -79,7 +79,7 @@ def call_unbind(
 
     - If spec is ('method', name), call qinst.name(cvec, bvec) or qinst.name(cvec, role_token)
       if the method signature expects a role token.
-    - If spec is a callable, try calling spec(c,b) then spec(qinst,c,b) as fallback.
+    - If spec is a callable, try calling spec(c,b) then spec(qinst,c,b) as alternative.
     """
     if spec is None:
         raise RuntimeError("no unbind function supplied")

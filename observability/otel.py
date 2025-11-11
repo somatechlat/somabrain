@@ -1,4 +1,4 @@
-"""Strict OpenTelemetry span helper (no no-op fallback)."""
+"""Strict OpenTelemetry span helper (no no-op alternative)."""
 
 from contextlib import contextmanager
 from opentelemetry import trace  # type: ignore

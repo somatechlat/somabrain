@@ -92,7 +92,7 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
             },
         )
 
-    # fallback: treat current text as response and use previous text as prompt
+    # alternative: treat current text as response and use previous text as prompt
     response_text = _extract_text(payload)
     history = payload.get("history")
     if isinstance(history, list):

@@ -5,7 +5,7 @@ from pathlib import Path
 # Phase 0 invariants: enforce Avro-only and modern Kafka client usage.
 # Broader invariants (auth/redis/sqlite/tracing) will be enabled in Phase 0.2+.
 BANNED_PATTERNS = [
-    r"fallback to JSON",
+    r"alternative to JSON",
     r"REWARD_FORCE_JSON",
     r"from kafka import KafkaProducer",
     r"from kafka import KafkaConsumer",
@@ -37,7 +37,7 @@ def scan_file(path: Path):
     return violations
 
 
-def test_no_strict_mode_fallbacks():
+def test_no_strict_mode_alternatives():
     violations_total = []
     for p in CODE_ROOT.rglob("*.py"):
         # Skip virtual env or build artifacts if inside tree

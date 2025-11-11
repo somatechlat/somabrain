@@ -35,7 +35,7 @@ class CORSHandler(HANDLER_CLASS):
                 self.end_headers()
                 self.wfile.write(str(e).encode())
                 return
-        # Fallback to default handling for other paths
+        # Use default handling for other paths
         super().do_GET()
 
     def end_headers(self):

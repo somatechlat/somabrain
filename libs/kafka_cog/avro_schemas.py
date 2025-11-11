@@ -8,7 +8,7 @@ from typing import Any, Dict
 def _repo_root() -> Path:
     """Resolve repository root strictly.
 
-    Strict mode: no heuristic fallbacks; assumes canonical layout.
+    Strict mode: no heuristic alternatives; assumes canonical layout.
     """
     here = Path(__file__).resolve()
     return here.parent.parent.parent
@@ -18,7 +18,7 @@ def load_schema(name: str) -> Dict[str, Any]:
     """Strict Avro schema loader.
 
     Resolves `proto/cog/<name>.avsc` and returns JSON dict. Raises if the file
-    is missing, unreadable, or not a dict. No silent optional fallbacks.
+    is missing, unreadable, or not a dict. No silent optional alternatives.
     """
     root = _repo_root()
     stem = name.strip()

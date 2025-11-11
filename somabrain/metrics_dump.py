@@ -24,7 +24,7 @@ def snapshot() -> Dict[str, Any]:
             "value": int(_m.UNBIND_PATH._value.get()),
         }
     except Exception:
-        # Prometheus Counter internal structure may differ; fallback to 0
+        # Prometheus Counter internal structure may differ; default to 0
         try:
             out["unbind_path_total"] = {
                 "type": "counter",

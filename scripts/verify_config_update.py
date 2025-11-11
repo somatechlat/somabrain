@@ -94,7 +94,7 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
             payload = msg.value()
             if payload is None:
                 continue
-            # Assume JSON fallback – the service always produces JSON if Avro
+            # Assume JSON alternative – the service always produces JSON if Avro
             # is unavailable, which is the case in CI where the in‑repo libs are
             # installed.
             data = json.loads(payload.decode("utf-8"))

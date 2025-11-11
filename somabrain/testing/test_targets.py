@@ -114,7 +114,7 @@ class TargetConfig:
             if key in body and bool(body.get(key)):
                 return True, None
 
-        # Fallback: any non-empty JSON object with 200 is considered healthy
+        # Alternative: any non-empty JSON object with 200 is considered healthy
         if isinstance(body, dict) and body:
             return True, None
 

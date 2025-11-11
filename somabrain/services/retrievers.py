@@ -5,7 +5,7 @@ from typing import Tuple
 from somabrain.schemas import RetrievalCandidate
 import logging
 
-# No retrieval cache fallbacks are used in strict mode.
+# No retrieval cache alternatives are used in strict mode.
 
 
 # Real adapters (PR‑2)
@@ -65,7 +65,7 @@ def retrieve_vector(
     """Strict vector retriever.
 
     Performs direct recall via the memory client and computes cosine scores.
-    No cache, namespace, or error fallbacks are applied. Empty list returned
+    No cache, namespace, or error alternatives are applied. Empty list returned
     on any error or when backend yields no hits.
     """
     try:
@@ -237,7 +237,7 @@ def retrieve_lexical(
 
     Requires backend to enumerate memories via all_memories(). Uses BM25 if
     rank_bm25 is installed; returns [] otherwise. No cache or token-overlap
-    fallbacks.
+    alternatives.
     """
     try:
         corpus = getattr(mem_client, "all_memories")()

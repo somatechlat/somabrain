@@ -701,7 +701,7 @@ class IntegratorHub:
         except Exception:
             leader_score = 0.0
         # Encode embedded global_frame as bytes (prefer Avro if available)
-        # Strict mode: Avro encode must succeed; no JSON fallback
+        # Strict mode: Avro encode must succeed; no JSON alternative
         try:
             gf_bytes = self._encode_frame(gf_record)
         except Exception as e:
@@ -1083,7 +1083,7 @@ class IntegratorHub:
         """Compute kappa = 1 - JSD(P_agent || P_action) if both are dicts of probabilities.
 
         Expects each posterior to hold a probability mapping under keys 'intent_probs' and
-        'action_probs' respectively (fallback to direct mapping if already probability dict).
+        'action_probs' respectively (default to direct mapping if already probability dict).
         Returns None if cannot compute.
         """
         try:

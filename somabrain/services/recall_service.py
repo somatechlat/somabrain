@@ -10,7 +10,7 @@ Key Features:
 - Graph-augmented recall with link traversal
 - Universe filtering for context-specific retrieval
 - Performance metrics collection
-- Fallback mechanisms for robustness
+- Alternative mechanisms for robustness
 
 Recall Strategies:
 - SDR Prefilter: Uses Sparse Distributed Representations for fast candidate selection
@@ -174,7 +174,7 @@ def recall_ltm(
                 ]
     except Exception:
         pass
-    # Deterministic read-your-writes fallback:
+    # Deterministic read-your-writes alternative:
     # If no payloads were returned via SDR/recall, derive the coordinate
     # from the query text (used as key on store) and fetch directly.
     if not mem_payloads:

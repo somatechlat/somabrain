@@ -58,5 +58,5 @@ class MemoryRecallClient:
 
     def search(self, embedding: List[float], top_k: int = 10) -> List[Dict[str, Any]]:
         # Legacy vector-search path is not supported via MemoryClient.
-        # ContextBuilder will catch exceptions and gracefully fallback to [].
+        # ContextBuilder will catch exceptions and gracefully return [].
         raise NotImplementedError("Vector search not supported; use search_text")

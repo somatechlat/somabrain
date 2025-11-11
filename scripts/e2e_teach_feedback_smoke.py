@@ -8,7 +8,7 @@ Procedure:
 
 Notes:
 - The processor may emit Avro-schemaless or JSON; we try Avro first (if fastavro available)
-  using the legacy reward_event schema, then fallback to JSON.
+  using the legacy reward_event schema, then use JSON alternative.
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
                 return out
         except Exception:
             pass
-    # Fallback to JSON
+    # Use JSON alternative
     try:
         return json.loads(value.decode("utf-8"))
     except Exception:

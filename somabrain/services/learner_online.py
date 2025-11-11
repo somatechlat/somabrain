@@ -13,7 +13,7 @@ Environment:
 - SOMABRAIN_KAFKA_URL (bootstrap servers, may be kafka://host:port)
 - LEARNER_EMA_ALPHA (default 0.2)
 - LEARNER_EMIT_PERIOD (seconds, default 30)
-- SOMABRAIN_DEFAULT_TENANT (fallback tenant label)
+- SOMABRAIN_DEFAULT_TENANT (default tenant label)
 - SOMABRAIN_FF_LEARNER_ONLINE (enable flag) or ENABLE_COG_THREADS composite flag
 
 Topics:
@@ -134,7 +134,7 @@ class LearnerService:
     def __init__(self) -> None:
         self._bootstrap = _bootstrap()
         self._serde_reward = _serde("reward_event")
-        # Require Avro serde for config updates (no JSON fallback)
+        # Require Avro serde for config updates (no JSON alternative)
         self._serde_cfg = _serde("config_update")
         # Optional serde for next‑event (can be disabled via flag)
         try:

@@ -388,7 +388,7 @@ class LLMPredictor:
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
-        Make LLM-based prediction with fallback.
+        Make LLM-based prediction with alternative.
 
         Computes base cosine error, then attempts to get adjustment from LLM
         endpoint. Falls back to base error if endpoint unavailable.
@@ -398,7 +398,7 @@ class LLMPredictor:
             actual_vec (np.ndarray): Actual vector.
 
         Returns:
-            PredictionResult: Result with LLM-adjusted error or fallback.
+            PredictionResult: Result with LLM-adjusted error or alternative.
         """
         base_err = cosine_error(expected_vec, actual_vec)
         if not self.endpoint:

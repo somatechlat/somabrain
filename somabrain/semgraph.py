@@ -73,8 +73,8 @@ def normalize_relation(t: str | None) -> str:
     Example:
         >>> normalized = normalize_relation("causes")
         >>> print(normalized)  # "causes"
-        >>> fallback = normalize_relation("invalid_type")
-        >>> print(fallback)  # "related"
+        >>> alternative = normalize_relation("invalid_type")
+        >>> print(alternative)  # "related"
         >>> default = normalize_relation(None)
         >>> print(default)  # "related"
     """
@@ -83,5 +83,5 @@ def normalize_relation(t: str | None) -> str:
     try:
         return RelationType(t).value
     except Exception:
-        # fallback to generic
+        # alternative to generic
         return RelationType.related.value

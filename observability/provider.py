@@ -1,7 +1,7 @@
 """OpenTelemetry tracing provider for SomaBrain (strict mode).
 
 This module initializes a real OpenTelemetry TracerProvider and exposes
-``init_tracing`` and ``get_tracer``. No no-op fallbacks are provided.
+``init_tracing`` and ``get_tracer``. No no-op alternatives are provided.
 If OpenTelemetry is not installed or not configured, initialization fails
 fast to enforce mandatory observability.
 """

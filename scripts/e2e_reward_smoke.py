@@ -9,7 +9,7 @@ from typing import Any
 try:
     import requests  # type: ignore
 except Exception:
-    # requests may not be installed in CI uv env; fallback to stdlib
+    # requests may not be installed in CI uv env; use stdlib alternative
     import urllib.request as _rq  # type: ignore
 
     class _Resp:

@@ -5,12 +5,12 @@ import pytest
 import requests
 
 
-def _get_port_candidates(name: str, fallbacks: list[str]) -> list[str]:
+def _get_port_candidates(name: str, alternatives: list[str]) -> list[str]:
     val = os.getenv(name)
     ports: list[str] = []
     if val and val.strip():
         ports.append(val.strip())
-    for fb in fallbacks:
+    for fb in alternatives:
         if fb not in ports:
             ports.append(fb)
     return ports
@@ -65,7 +65,7 @@ def test_postgres_exporter_metrics_head() -> None:
 
 @pytest.mark.integration
 def test_opa_health() -> None:
-    # Prefer standardized 30004, but tolerate 8181 as a legacy fallback
+    # Prefer standardized 30004, but tolerate 8181 as a legacy alternative
     ports = _get_port_candidates(
         "OPA_HOST_PORT", ["30004", "8181"]
     )  # host mapping (container is 8181)

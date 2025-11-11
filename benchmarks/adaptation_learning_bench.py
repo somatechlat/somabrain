@@ -53,7 +53,7 @@ try:
     from somabrain.embeddings import TinyDeterministicEmbedder  # type: ignore
 except Exception:
     TinyDeterministicEmbedder = None  # type: ignore
-    # Local minimal fallback to ensure memory seeding works without imports
+    # Local minimal alternative to ensure memory seeding works without imports
     import hashlib  # type: ignore
     import numpy as _np  # type: ignore
 
@@ -201,7 +201,7 @@ def seed_target_memory(
 def _embed_texts(texts: Iterable[str]) -> List[List[float]]:
     """Embed a list of texts using the tiny deterministic embedder (dim=256)."""
     if TinyDeterministicEmbedder is None:
-        # Use local fallback if server embedder isn't importable in this process
+        # Use local alternative if server embedder isn't importable in this process
         emb = _LocalDeterministicEmbedder(dim=256)  # type: ignore[name-defined]
     else:
         emb = TinyDeterministicEmbedder(dim=256)

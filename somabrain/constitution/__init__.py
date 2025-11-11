@@ -99,7 +99,7 @@ class ConstitutionEngine:
                 LOGGER.info("Loaded public keys from Vault path %s", vault_path)
             except Exception as exc:
                 LOGGER.warning("Vault public key fetch failed: %s", exc)
-        # Fallback to env/PATH
+        # Use env/PATH
         if not mapping:
             env_value = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
             single = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
@@ -382,7 +382,7 @@ class ConstitutionEngine:
             except Exception as e:
                 LOGGER.debug("local opa eval failed: %s", e)
 
-        # Fallback local validation
+        # Alternative local validation
         if not self._constitution:
             result = {"allowed": False, "explain": "constitution not loaded"}
             try:

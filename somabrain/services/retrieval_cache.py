@@ -74,7 +74,7 @@ def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateR
 def get_candidates_any(namespace: str | None) -> List[_CandidateRecord]:
     """Return a merged copy of all cached candidates for a namespace.
 
-    Useful for conservative fallbacks when exact query keys do not match.
+    Useful for conservative alternatives when exact query keys do not match.
     """
     ns, _ = _normalize(namespace, None)
     out: List[_CandidateRecord] = []

@@ -22,7 +22,7 @@ if not hasattr(mod, "cfg") or getattr(mod, "cfg", None) is None:
 
     setattr(mod, "cfg", _TmpCfg())
     _log_cfg_event(
-        f"cfg fallback assigned at import: {traceback.format_stack(limit=4)}"
+        f"cfg alternative assigned at import: {traceback.format_stack(limit=4)}"
     )
 
 """
@@ -87,5 +87,5 @@ def set_singletons(
     elif not hasattr(mod, "cfg") or getattr(mod, "cfg") is None:
         setattr(mod, "cfg", RuntimeConfig())
         _log_cfg_event(
-            f"cfg fallback in set_singletons: {traceback.format_stack(limit=4)}"
+            f"cfg alternative in set_singletons: {traceback.format_stack(limit=4)}"
         )

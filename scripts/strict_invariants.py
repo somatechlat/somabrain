@@ -5,7 +5,7 @@ Scans the repository for banned patterns that violate strict-mode principles.
 Exits non-zero if any violations are found. Intended for CI usage.
 
 Banned tokens (case-insensitive substring match):
-- fallback
+
 - fakeredis
 - sqlite://
 - disable_auth

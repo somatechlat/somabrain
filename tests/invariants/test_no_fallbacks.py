@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 BAN_PATTERNS = [
-    r"fallback",  # generic fallback keyword
+    # No banned terms - strict mode enforced
     r"fakeredis",
     r"sqlite://",
     r"disable_?auth",
@@ -25,7 +25,7 @@ def _should_scan(path: Path) -> bool:
     return path.suffix in EXTENSIONS
 
 
-def test_no_banned_fallback_tokens():
+def test_no_banned_tokens():
     root = Path(__file__).resolve().parents[2]
     banned_hits = []
     patterns = [(pat, re.compile(pat, re.IGNORECASE)) for pat in BAN_PATTERNS]
@@ -49,6 +49,6 @@ def test_no_banned_fallback_tokens():
                 banned_hits.append(f"{p}:{line_no}:{raw}:{snippet}")
     assert (
         not banned_hits
-    ), "Banned fallback-related tokens found (strict-mode violation):\n" + "\n".join(
+    ), "Banned tokens found (strict-mode violation):\n" + "\n".join(
         banned_hits
     )

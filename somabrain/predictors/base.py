@@ -97,7 +97,7 @@ class HeatDiffusionPredictor(PredictorBase):
 
 
 def make_line_graph_laplacian(n: int) -> np.ndarray:
-    """Simple n-node path graph Laplacian for fallback/demo.
+    """Simple n-node path graph Laplacian for demo/testing.
 
     L = D - A where A has 1 on (i,i+1) and (i+1,i)
     """
@@ -191,7 +191,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
 
     Env vars consulted (domain-specific preferred):
     - SOMABRAIN_GRAPH_FILE_{DOMAIN}: path to JSON graph file
-    - SOMABRAIN_GRAPH_FILE: fallback path if domain-specific not provided
+    - SOMABRAIN_GRAPH_FILE: default path if domain-specific not provided
     - SOMABRAIN_PREDICTOR_DIM: used only when no graph file provided
     - SOMABRAIN_DIFFUSION_T, SOMABRAIN_CONF_ALPHA, SOMABRAIN_CHEB_K, SOMABRAIN_LANCZOS_M
     """
@@ -204,7 +204,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
         try:
             apply_A, dim = load_operator_from_file(graph_path)
         except Exception:
-            # Fallback to line graph if load fails
+            # Use line graph if load fails
             dim = int(os.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
             L = make_line_graph_laplacian(dim)
             apply_A = matvec_from_matrix(L)

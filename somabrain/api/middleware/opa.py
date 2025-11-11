@@ -97,7 +97,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
                         status_code=403,
                         media_type="application/json",
                     )
-                LOGGER.debug("OPA evaluation error (fallback allow): %s", exc)
+                LOGGER.debug("OPA evaluation error (alternative allow): %s", exc)
                 app_metrics.OPA_ALLOW_TOTAL.inc()
                 return await call_next(request)
 
@@ -137,7 +137,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     app_metrics.OPA_ALLOW_TOTAL.inc()
             else:
                 LOGGER.debug("OPA returned unexpected status %s", resp.status_code)
-                # Treat unexpected status as a safe‑allow fallback
+                # Treat unexpected status as a safe‑allow alternative
                 app_metrics.OPA_ALLOW_TOTAL.inc()
         except Exception as exc:
             # Failure to contact OPA – strict fail-closed by default
@@ -158,11 +158,11 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     status_code=403,
                     media_type="application/json",
                 )
-            LOGGER.debug("OPA request failed (fallback allow): %s", exc)
+            LOGGER.debug("OPA request failed (alternative allow): %s", exc)
             app_metrics.OPA_ALLOW_TOTAL.inc()
             # Continue processing the request instead of denying
 
-        # If we reach here OPA allowed the request (or fallback allowed)
+        # If we reach here OPA allowed the request (or alternative allowed)
         return await call_next(request)
 
 
@@ -179,7 +179,7 @@ async def opa_enforcement(
     - ``body``: JSON body if present, otherwise ``None``
 
     If OPA returns ``allow: false`` the request is aborted with ``403``.
-    Errors contacting OPA result in a safe *allow* fallback (consistent with the
+    Errors contacting OPA result in a safe *allow* alternative (consistent with the
     ``OPAClient.evaluate`` implementation).
     """
     try:

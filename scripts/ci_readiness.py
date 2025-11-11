@@ -19,7 +19,7 @@ Environment variables (taken from existing config):
   SOMABRAIN_OPA_URL             OPA base URL (e.g. http://127.0.0.1:8181)
   SOMABRAIN_TOPIC_*             Required Kafka topic names (reward/config/global_frame/next_events)
 
-Strict posture: no silent fallbacks; if any component is unavailable the script exits 1.
+Strict posture: no silent alternatives; if any component is unavailable the script exits 1.
 """
 from __future__ import annotations
 import os

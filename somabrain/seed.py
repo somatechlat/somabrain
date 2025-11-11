@@ -33,7 +33,7 @@ def seed_to_uint64(seed: Optional[Union[int, str, bytes]]) -> int:
         return _hash_to_uint64(seed.encode("utf-8"))
     if isinstance(seed, (bytes, bytearray)):
         return _hash_to_uint64(bytes(seed))
-    # Fallback: coerce to string
+    # Alternative: coerce to string
     return _hash_to_uint64(str(seed).encode("utf-8"))
 
 

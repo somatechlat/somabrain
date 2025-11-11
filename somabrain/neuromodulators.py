@@ -115,7 +115,7 @@ class Neuromodulators:
 class PerTenantNeuromodulators:
     """Simple container that keeps a NeuromodState per tenant.
 
-    If a tenant has no stored state, the global Neuromodulators instance is used as a fallback.
+    If a tenant has no stored state, the global Neuromodulators instance is used as a default.
     """
 
     def __init__(self):

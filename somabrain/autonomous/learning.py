@@ -413,7 +413,7 @@ class ExperimentManager:
 
             p_val = float(stats.t.sf(abs(t_stat), df) * 2)
         except Exception:
-            # Fallback: use normal approximation for large df
+            # Alternative: use normal approximation for large df
             p_val = float(
                 2.0 * (1.0 - 0.5 * (1.0 + math.erf(abs(t_stat) / math.sqrt(2.0))))
             )

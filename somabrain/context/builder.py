@@ -117,7 +117,7 @@ class ContextBuilder:
                     )
                 )
         except Exception:
-            # Fallback to defaults when configuration cannot be loaded
+            # Use defaults when configuration cannot be loaded
             pass
 
         def _env_float(name: str, current: float) -> float:
@@ -242,7 +242,7 @@ class ContextBuilder:
                 return results
         except Exception:
             pass
-        # Fallback to legacy vector search path
+        # Use legacy vector search path
         try:
             return self._memory.search(embedding, top_k=top_k)
         except Exception:

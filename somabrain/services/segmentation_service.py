@@ -36,7 +36,7 @@ import threading
 from typing import Dict, Optional, Tuple
 
 
-# Strict mode: require confluent-kafka only (no kafka-python fallback)
+# Strict mode: require confluent-kafka only (no kafka-python alternative)
 try:
     from confluent_kafka import Consumer as CKConsumer, Producer as CKProducer  # type: ignore
 except Exception as e:  # pragma: no cover

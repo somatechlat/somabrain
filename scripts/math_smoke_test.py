@@ -31,7 +31,7 @@ def run():
     H = rfft_norm(role, n=cfg.dim)
     mags = np.abs(H)
     print("role spectrum min/max:", float(mags.min()), float(mags.max()))
-    # check normalize fallback behavior on tiny vector
+    # check normalize alternative behavior on tiny vector
     tiny = np.zeros((cfg.dim,), dtype=cfg.dtype)
     tiny[0] = 1e-50
     try:

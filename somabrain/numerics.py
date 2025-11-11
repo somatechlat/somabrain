@@ -3,7 +3,7 @@ Canonical numeric primitives for SomaBrain.
 
 - compute_tiny_floor: eps * sqrt(D) default (strategy='sqrt')
 - rfft_norm / irfft_norm: unitary real-FFT wrappers (norm='ortho')
-- normalize_array: safe L2 normalization; deterministic fallback for subtiny slices
+- normalize_array: safe L2 normalization; deterministic alternative for subtiny slices
 """
 
 from __future__ import annotations

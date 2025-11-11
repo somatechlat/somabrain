@@ -1,6 +1,6 @@
 """Redis-backed working memory ring buffer.
 
-Strict mode: requires Redis. Local in-process buffer fallback is removed.
+Strict mode: requires Redis. Local in-process buffer alternative is removed.
 """
 
 from __future__ import annotations

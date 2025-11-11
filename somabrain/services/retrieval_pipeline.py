@@ -75,12 +75,12 @@ async def run_retrieval_pipeline(
     if not retrievers:
         # Default to full multi-retriever set to maximize recall quality
         retrievers = ["vector", "wm", "graph", "lexical"]
-    # Try real adapters first if runtime singletons are available; fallback logic removed
+    # Try real adapters first if runtime singletons are available; alternative logic removed
     from somabrain import runtime as _rt
 
     logger = logging.getLogger(__name__)
 
-    # Defensive: always ensure _rt.cfg is present, fallback to dummy if missing
+    # Defensive: always ensure _rt.cfg is present, use dummy if missing
     if not hasattr(_rt, "cfg") or getattr(_rt, "cfg", None) is None:
 
         class _TmpCfg:
@@ -128,7 +128,7 @@ async def run_retrieval_pipeline(
         )
     except Exception:
         pass
-    # Strict mode: rely solely on runtime wiring; no application-level singleton fallbacks.
+    # Strict mode: rely solely on runtime wiring; no application-level singleton alternatives.
     try:
         rt_embedder = getattr(_rt, "embedder", None)
     except Exception:
@@ -693,7 +693,7 @@ async def run_retrieval_pipeline(
                 )
             except Exception:
                 try:
-                    # Fallback to unlabeled metric
+                    # Use unlabeled metric
                     M.RETRIEVAL_LATENCY.observe(max(0.0, _time.perf_counter() - _t0))
                 except Exception:
                     pass

@@ -2,7 +2,7 @@
 Reward Producer Service (strict Avro-only)
 
 Publishes RewardEvent records to Kafka topic "cog.reward.events" using Avro.
-Strict mode: no JSON fallback, no legacy kafka-python client.
+Strict mode: no JSON alternative, no legacy kafka-python client.
 
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
@@ -142,7 +142,7 @@ async def health() -> Dict[str, Any]:
 @app.get("/metrics")
 async def metrics_ep():  # type: ignore
     if not metrics:
-        # minimal fallback
+        # minimal alternative
         return {"status": "metrics not available"}
     return await metrics.metrics_endpoint()
 
@@ -228,7 +228,7 @@ def main() -> None:  # pragma: no cover
 
         uvicorn.run(app, host="0.0.0.0", port=port)
     except Exception:
-        # Fallback to a simple loopless run if uvicorn not available
+        # Use a simple loopless run if uvicorn not available
         import time as _time
         import logging
 

@@ -3,7 +3,7 @@ Command Line Interface Module for SomaBrain.
 
 Provides the console entry point for running the SomaBrain API server.
 All former journal maintenance commands have been removed under the
-strict fail-fast architecture (no local persistence fallbacks).
+strict fail-fast architecture (no local persistence alternatives).
 
 Functions:
     run_api: Launch the FastAPI API server using uvicorn.

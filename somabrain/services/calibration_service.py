@@ -330,7 +330,7 @@ class CalibrationService:
             if samples >= 200 and pre_ece > 0.0:
                 improved = post_ece <= 0.7 * pre_ece
                 if not improved:
-                    # Rollback temperature to last good (or 1.0 fallback)
+                    # Rollback temperature to last good (or 1.0 default)
                     last_good = self._last_good_temperature.get(key, 1.0)
                     old_temp = float(getattr(scaler, "temperature", last_good))
                     setattr(scaler, "temperature", float(last_good))

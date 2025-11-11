@@ -87,7 +87,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
                         dtype = a1
             elif len(args) == 1:
                 dim = args[0]
-            # fallback to kwargs
+            # use kwargs alternative
             if dim is None:
                 dim = kwargs.get("dim", kwargs.get("D", 1))
             if dtype is None:

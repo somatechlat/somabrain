@@ -120,7 +120,7 @@ def _get_redis():
 
             if redis_url:
                 return redis.from_url(redis_url)
-            # Legacy fallback to host/port variables without hard-coded defaults
+            # Legacy alternative to host/port variables without hard-coded defaults
             redis_host = os.getenv("SOMABRAIN_REDIS_HOST") or os.getenv("REDIS_HOST")
             redis_port = os.getenv("SOMABRAIN_REDIS_PORT") or os.getenv("REDIS_PORT")
             redis_db = os.getenv("SOMABRAIN_REDIS_DB") or os.getenv("REDIS_DB", "0")
@@ -160,7 +160,7 @@ class AdaptationGains:
 
     @classmethod
     def from_settings(cls) -> "AdaptationGains":
-        """Construct gains from centralized mode config (no env fallbacks)."""
+        """Construct gains from centralized mode config (no env alternatives)."""
         try:
             from somabrain import modes as _m
 
@@ -189,7 +189,7 @@ class AdaptationConstraints:
 
     @classmethod
     def from_settings(cls) -> "AdaptationConstraints":
-        """Construct constraints from centralized mode config (no env fallbacks)."""
+        """Construct constraints from centralized mode config (no env alternatives)."""
         try:
             from somabrain import modes as _m
 
@@ -531,7 +531,7 @@ class AdaptationEngine:
         try:
             from somabrain import runtime_config as _rt
 
-            # Env fallback for legacy tests
+            # Env alternative for legacy tests
             env_enable = os.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
             env_rate = os.getenv("SOMABRAIN_TAU_DECAY_RATE")
             enable_tau_decay = (
@@ -561,7 +561,7 @@ class AdaptationEngine:
         try:
             from somabrain import runtime_config as _rt
 
-            # Env fallbacks for tests
+            # Env alternatives for tests
             env_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
             env_rate = os.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
             env_step = os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")

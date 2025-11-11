@@ -251,7 +251,7 @@ class MemoryService:
             cls._last_failure_time = time.monotonic()
         return False
 
-    # Journal/outbox fallback removed: no background replay
+    # Journal/outbox alternative removed: no background replay
 
     def coord_for_key(self, key: str, universe: str | None = None):
         return self.client().coord_for_key(key, universe)

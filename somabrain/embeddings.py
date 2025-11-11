@@ -10,7 +10,7 @@ Key Features:
 - Johnson-Lindenstrauss projection for dimensionality reduction
 - LRU caching for embedding reuse
 - Multiple embedding providers (tiny, transformer, HRR, FDE)
-- Automatic fallback to simple embedders when advanced providers unavailable
+- Automatic alternative to simple embedders when advanced providers unavailable
 
 Classes:
     TinyDeterministicEmbedder: Simple deterministic embedder using seeded random Gaussians.

@@ -16,7 +16,7 @@ except Exception:  # pragma: no cover - optional in some envs
 def compute_utility(
     p_confidence: float, cost: float, latency: float, const_params: dict
 ) -> float:
-    # default params fallback
+    # default params
     lam = const_params.get("lambda", const_params.get("lam", 1.0))
     mu = const_params.get("mu", 0.0)
     nu = const_params.get("nu", 0.0)
