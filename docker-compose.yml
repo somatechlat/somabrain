@@ -479,6 +479,49 @@ services:
       timeout: 5s
       retries: 1
 
+  # ---------------------------------------------------------------------
+  # Test runner service – executes the full test suite inside the same Docker
+  # network so that integration tests can resolve service hostnames (e.g.
+  # somabrain_postgres, somabrain_kafka, somabrain_opa, etc.).
+  # ---------------------------------------------------------------------
+  somabrain_test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    depends_on:
+      # Ensure the full stack is healthy before testing.
+      somabrain_app:
+        condition: service_healthy
+      somabrain_cog:
+        condition: service_healthy
+      somabrain_postgres:
+        condition: service_healthy
+      somabrain_redis:
+        condition: service_healthy
+      somabrain_kafka:
+        condition: service_healthy
+      somabrain_opa:
+        condition: service_healthy
+    environment:
+      # Propagate the same env vars used by the app so the test code sees the
+      # same configuration (memory endpoint, redis URL, etc.).
+      SOMABRAIN_MODE: dev
+      SOMABRAIN_REDIS_URL: ${SOMABRAIN_REDIS_URL}
+      SOMABRAIN_KAFKA_URL: ${SOMABRAIN_KAFKA_URL}
+      SOMABRAIN_OPA_URL: ${SOMABRAIN_OPA_URL}
+      SOMABRAIN_POSTGRES_DSN: ${SOMABRAIN_POSTGRES_DSN}
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: ${SOMABRAIN_MEMORY_HTTP_ENDPOINT}
+      SOMABRAIN_MEMORY_HTTP_TOKEN: ${SOMABRAIN_MEMORY_HTTP_TOKEN}
+      # Enable persistence for adaptation state during tests (optional).
+      SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE: "0"
+    # Install pytest (dev dependency) at container start, then execute the test suite.
+    # Install full development dependencies (including pytest plugins) then run the suite.
+    command: ["sh", "-c", "pip install --no-cache-dir -r /app/requirements-dev.txt && python -m pytest -q"]
+    networks:
+      - somabrain_net
+    # No ports exposed – this container is only for CI/testing.
+
   
 
 

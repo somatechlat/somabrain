@@ -46,7 +46,13 @@ RUN pip install --no-cache-dir "PyJWT[crypto]"
 # Ensure confluent-kafka (librdkafka) is available for stronger Kafka semantics in
 # integration and production images. Installing via pip will build against
 # librdkafka-dev installed above.
-RUN pip install --no-cache-dir confluent-kafka kafka-python python-snappy || echo "kafka client install failed; continuing without it"
+# First, remove any conflicting legacy ``kafka`` package that may shadow ``kafka-python``.
+RUN pip uninstall -y kafka || true && \
+    pip install --no-cache-dir confluent-kafka kafka-python python-snappy || echo "kafka client install failed; continuing without it"
+# Ensure only kafka-python is used (which provides its own vendored six). No additional
+# legacy kafka package is installed to avoid module name conflict.
+# Install six, which is a dependency required by kafka-python for compatibility utilities
+RUN pip install --no-cache-dir six
 # Install pydantic-settings package required by config shared package (pydantic v2 split)
 RUN pip install --no-cache-dir pydantic-settings
 # Install ASGI server used by service modules launched under supervisor
@@ -66,6 +72,11 @@ COPY alembic.ini /app/alembic.ini
 COPY migrations /app/migrations
 # Copy Avro/IDL schemas used at runtime by cognition services
 COPY proto /app/proto
+
+# Include development requirements for the test service (used when the same image
+# runs the ``somabrain_test`` container). The file is copied to the same location
+# as the source tree so ``pip install -r /app/requirements-dev.txt`` works.
+COPY requirements-dev.txt /app/requirements-dev.txt
 
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
 COPY somabrain /app/somabrain

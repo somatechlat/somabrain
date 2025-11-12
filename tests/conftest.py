@@ -92,7 +92,10 @@ def _bootstrap_env_from_dotenv() -> None:
 _bootstrap_env_from_dotenv()
 
 # Removed duplicate schema test ignore after renaming to unique filename.
-collect_ignore: list[str] = []
+# Ensure the Kafka smoke test script is ignored during pytest collection.
+collect_ignore: list[str] = [
+    "scripts/kafka_smoke_test.py",
+]
 
 
 # -------- Integration test gating (fail-fast on infra readiness) ---------
