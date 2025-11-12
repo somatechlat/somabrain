@@ -39,10 +39,11 @@ import asyncio
 import json
 import os
 import time
-from typing import Any
+from typing import Any, Dict
 from threading import RLock
 from collections.abc import Iterable
 
+from aiobreaker import AsyncCircuitBreaker
 from somabrain.interfaces.memory import MemoryBackend
 from somabrain.config import get_config
 import logging
@@ -58,123 +59,125 @@ except Exception:  # pragma: no cover - metrics not always available in tests
 class MemoryService:
     """Universe-aware façade around :class:`MultiTenantMemory`.
 
-    The service keeps lightweight circuit-breaker state and exposes helpers
+    The service keeps per-tenant circuit-breaker state and exposes helpers
     for replaying the client outbox so the FastAPI layer can remain thin.
     """
 
     def __init__(self, mt_memory: Any, namespace: str):
         self.mt_memory = mt_memory
         self.namespace = namespace
+        self.tenant_id = self._extract_tenant_from_namespace(namespace)
 
-    # Circuit breaker state shared across all service instances
+    # Per-tenant circuit breakers
+    _tenant_circuits: Dict[str, AsyncCircuitBreaker] = {}
     _circuit_lock: RLock = RLock()
-    _outbox_lock: RLock = RLock()
-    _circuit_open: bool = False
-    _failure_count: int = 0
-    _last_failure_time: float = 0.0
-    _last_reset_attempt: float = 0.0
-    _failure_threshold: int = 3
-    _reset_interval: float = 60.0
+    _failure_threshold: int = int(os.getenv("SOMABRAIN_MEMORY_FAILURE_THRESHOLD", "3"))
+    _reset_interval: float = float(os.getenv("SOMABRAIN_MEMORY_RESET_INTERVAL", "60.0"))
+
+    def _extract_tenant_from_namespace(self, namespace: str) -> str:
+        """Extract tenant identifier from namespace string."""
+        if ":" in namespace:
+            return namespace.split(":")[-1]
+        return namespace or "default"
 
     def client(self) -> MemoryBackend:
         """Return the underlying memory client for the current namespace."""
         return self.mt_memory.for_namespace(self.namespace)
 
-    @classmethod
-    def _set_circuit_metric_locked(cls) -> None:
+    def _get_circuit_breaker(self) -> AsyncCircuitBreaker:
+        """Get or create circuit breaker for the current tenant."""
+        with self._circuit_lock:
+            if self.tenant_id not in self._tenant_circuits:
+                self._tenant_circuits[self.tenant_id] = AsyncCircuitBreaker(
+                    failure_threshold=self._failure_threshold,
+                    timeout=self._reset_interval,
+                    name=f"memory_{self.tenant_id}"
+                )
+            return self._tenant_circuits[self.tenant_id]
+
+    def _update_circuit_metric(self, is_open: bool) -> None:
+        """Update per-tenant circuit breaker metrics."""
         if _metrics is None:
             return
-        gauge = getattr(_metrics, "CIRCUIT_BREAKER_STATE", None)
-        if gauge is None:
-            return
         try:
-            gauge.set(1 if cls._circuit_open else 0)
+            gauge = getattr(_metrics, "memory_circuit_open", None)
+            if gauge is not None:
+                gauge.labels(tenant=self.tenant_id).set(1 if is_open else 0)
         except Exception:
             pass
 
-    def _mark_success(self) -> None:
-        cls = self.__class__
-        with cls._circuit_lock:
-            cls._failure_count = 0
-            cls._circuit_open = False
-            cls._last_failure_time = 0.0
-            cls._set_circuit_metric_locked()
-
-    def _mark_failure(self) -> None:
-        cls = self.__class__
-        now = time.monotonic()
-        with cls._circuit_lock:
-            cls._failure_count += 1
-            cls._last_failure_time = now
-            if cls._failure_count >= max(1, int(cls._failure_threshold)):
-                cls._circuit_open = True
-            cls._set_circuit_metric_locked()
-        if _metrics is not None:
-            counter = getattr(_metrics, "HTTP_FAILURES", None)
-            if counter is not None:
-                try:
-                    counter.inc()
-                except Exception:
-                    pass
-
-    def _is_circuit_open(self) -> bool:
-        cls = self.__class__
-        with cls._circuit_lock:
-            return bool(cls._circuit_open)
+    def get_circuit_state(self) -> dict:
+        """Get current circuit breaker state for this tenant."""
+        circuit = self._get_circuit_breaker()
+        return {
+            "tenant": self.tenant_id,
+            "circuit_open": circuit.is_open(),
+            "failure_count": getattr(circuit, '_fail_counter', 0),
+            "failure_threshold": self._failure_threshold,
+            "reset_interval": self._reset_interval
+        }
 
     @classmethod
-    def _should_attempt_reset(cls) -> bool:
-        if not cls._circuit_open:
-            return False
-        now = time.monotonic()
-        if now - cls._last_failure_time < max(1.0, float(cls._reset_interval)):
-            return False
-        if now - cls._last_reset_attempt < 5.0:
-            return False
-        cls._last_reset_attempt = now
-        return True
+    def reset_circuit_for_tenant(cls, tenant_id: str) -> bool:
+        """Manually reset the circuit breaker for a specific tenant."""
+        with cls._circuit_lock:
+            if tenant_id in cls._tenant_circuits:
+                circuit = cls._tenant_circuits[tenant_id]
+                if hasattr(circuit, '_state'):
+                    circuit._state = circuit._state.CLOSED
+                return True
+        return False
 
     def _update_outbox_metric(self) -> None:
         return
 
     def remember(self, key: str, payload: dict, universe: str | None = None):
-        """Stores a memory payload. In V3, this fails fast if the remote is down."""
+        """Stores a memory payload with per-tenant circuit breaker."""
         if universe and "universe" not in payload:
             payload["universe"] = universe
 
-        if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+        circuit = self._get_circuit_breaker()
+        
+        async def _remember_operation():
+            return self.client().remember(key, payload)
 
         try:
-            result = self.client().remember(key, payload)
-            self._mark_success()
+            if asyncio.iscoroutinefunction(self.client().remember):
+                result = asyncio.run(_remember_operation())
+            else:
+                result = self.client().remember(key, payload)
+            self._update_circuit_metric(False)
             return result
         except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            circuit.record_failure()
+            self._update_circuit_metric(circuit.is_open())
+            raise RuntimeError(f"Memory service unavailable for tenant {self.tenant_id}") from e
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
-        """Async version of remember."""
+        """Async version of remember with per-tenant circuit breaker."""
         if universe and "universe" not in payload:
             payload["universe"] = universe
 
-        if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+        circuit = self._get_circuit_breaker()
+        
+        @circuit  # This will handle circuit breaker logic
+        async def _remember_operation():
+            return await self.client().aremember(key, payload)
 
         try:
-            result = await self.client().aremember(key, payload)
-            self._mark_success()
+            result = await _remember_operation()
+            self._update_circuit_metric(False)
             return result
         except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            self._update_circuit_metric(circuit.is_open())
+            raise RuntimeError(f"Memory service unavailable for tenant {self.tenant_id}") from e
 
     async def aremember_bulk(
         self,
         items: Iterable[tuple[str, dict]],
         universe: str | None = None,
     ) -> list[tuple[float, float, float]]:
-        """Store multiple memory payloads in a single operation."""
+        """Store multiple memory payloads in a single operation with per-tenant circuit breaker."""
 
         prepared: list[tuple[str, dict]] = []
         for key, payload in items:
@@ -186,40 +189,54 @@ class MemoryService:
         if not prepared:
             return []
 
-        if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+        circuit = self._get_circuit_breaker()
+        
+        @circuit
+        async def _remember_bulk_operation():
+            return await self.client().aremember_bulk(prepared)
 
         try:
-            coords = await self.client().aremember_bulk(prepared)
-            self._mark_success()
+            coords = await _remember_bulk_operation()
+            self._update_circuit_metric(False)
             return list(coords)
         except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            self._update_circuit_metric(circuit.is_open())
+            raise RuntimeError(f"Memory service unavailable for tenant {self.tenant_id}") from e
 
     def link(self, from_coord, to_coord, link_type="related", weight=1.0):
-        """Create a link between memories (fail-fast)."""
-        if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+        """Create a link between memories with per-tenant circuit breaker."""
+        circuit = self._get_circuit_breaker()
+        
+        def _link_operation():
+            return self.client().link(from_coord, to_coord, link_type, weight)
+
         try:
-            result = self.client().link(from_coord, to_coord, link_type, weight)
-            self._mark_success()
+            if asyncio.iscoroutinefunction(self.client().link):
+                result = asyncio.run(_link_operation())
+            else:
+                result = self.client().link(from_coord, to_coord, link_type, weight)
+            self._update_circuit_metric(False)
             return result
         except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            circuit.record_failure()
+            self._update_circuit_metric(circuit.is_open())
+            raise RuntimeError(f"Memory service unavailable for tenant {self.tenant_id}") from e
 
     async def alink(self, from_coord, to_coord, link_type="related", weight=1.0):
-        """Async version of link."""
-        if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+        """Async version of link with per-tenant circuit breaker."""
+        circuit = self._get_circuit_breaker()
+        
+        @circuit
+        async def _link_operation():
+            return await self.client().alink(from_coord, to_coord, link_type, weight)
+
         try:
-            result = await self.client().alink(from_coord, to_coord, link_type, weight)
-            self._mark_success()
+            result = await _link_operation()
+            self._update_circuit_metric(False)
             return result
         except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
+            self._update_circuit_metric(circuit.is_open())
+            raise RuntimeError(f"Memory service unavailable for tenant {self.tenant_id}") from e
 
     def _health_check(self) -> bool:
         try:

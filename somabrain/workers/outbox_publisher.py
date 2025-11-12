@@ -88,7 +88,13 @@ def _process_batch(
     sent = 0
     for ev in events:
         try:
-            _publish_record(producer, ev.topic, ev.payload)
+            # Add tenant and idempotency key to payload
+            enriched_payload = dict(ev.payload)
+            enriched_payload["tenant_id"] = ev.tenant_id
+            enriched_payload["dedupe_key"] = ev.dedupe_key
+            enriched_payload["replay_attempt"] = ev.retries + 1
+            
+            _publish_record(producer, ev.topic, enriched_payload)
             ev.status = "sent"
             sent += 1
         except Exception as e:
@@ -101,7 +107,6 @@ def _process_batch(
     # Best-effort flush to push deliveries
     try:
         if producer is not None:
-            # confluent-kafka and kafka-python both expose flush(timeout)
             producer.flush(5)
     except Exception:
         pass

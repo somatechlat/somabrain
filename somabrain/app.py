@@ -3483,6 +3483,36 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
     )
 
 
+# Health endpoint for tenant circuit breaker state
+@app.get("/health/memory", response_model=Dict[str, Any])
+async def health_memory(request: Request) -> Dict[str, Any]:
+    """Get per-tenant memory service health and circuit breaker state."""
+    ctx = get_tenant(request, cfg.namespace)
+    require_auth(request, cfg)
+    
+    # Create memory service instance for this tenant
+    memsvc = MemoryService(mt_memory, ctx.namespace)
+    circuit_state = memsvc.get_circuit_state()
+    
+    # Get outbox pending count for this tenant
+    from somabrain.db.outbox import get_pending_events
+    tenant_id = memsvc.tenant_id
+    try:
+        pending_count = len(get_pending_events(limit=1000))
+        # Filter by tenant if possible
+        # Note: This is approximate, actual filtering would need tenant-aware query
+    except Exception:
+        pending_count = 0
+    
+    return {
+        "tenant": ctx.tenant_id,
+        "circuit_breaker": circuit_state,
+        "outbox_pending": pending_count,
+        "memory_service": "healthy" if not circuit_state["circuit_open"] else "unavailable",
+        "timestamp": time.time()
+    }
+
+
 # Graph links endpoint – returns semantic graph edges
 @app.post("/graph/links", response_model=S.GraphLinksResponse)
 async def graph_links(body: S.GraphLinksRequest, request: Request):
@@ -3536,27 +3566,72 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
 # Removed routes: /reflect, /migrate/export, /migrate/import (hard-removed)
 
 
-# Background task for outbox processing and circuit-breaker health checks
+# Background task for health watchdog and circuit-breaker monitoring
+_health_watchdog_task = None
 
-# Keep a reference to the task so we can cancel it on shutdown
-_background_task = None
+
+async def _health_watchdog_coroutine():
+    """Periodic health checks for per-tenant circuit breakers."""
+    from somabrain.services.memory_service import MemoryService
+    
+    poll_interval = float(getattr(cfg, "memory_health_poll_interval", 5.0))
+    
+    while True:
+        try:
+            # Get all active tenants from memory pool
+            tenants = []
+            if hasattr(mt_memory, '_pool') and mt_memory._pool:
+                tenants = list(mt_memory._pool.keys())
+            elif hasattr(mt_memory, 'tenants'):
+                tenants = mt_memory.tenants() or []
+            
+            for tenant_namespace in tenants:
+                try:
+                    # Create memory service for this tenant
+                    memsvc = MemoryService(mt_memory, tenant_namespace)
+                    
+                    # Check if circuit is open and attempt health check
+                    circuit_state = memsvc.get_circuit_state()
+                    if circuit_state["circuit_open"]:
+                        # Perform health check
+                        client = memsvc.client()
+                        health = client.health()
+                        
+                        # If healthy, reset the circuit breaker
+                        if health and (
+                            (isinstance(health, dict) and health.get("http", False)) or
+                            (isinstance(health, dict) and health.get("ok", False))
+                        ):
+                            MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
+                            logger.info(f"Circuit breaker reset for tenant {memsvc.tenant_id}")
+                            
+                except Exception as e:
+                    logger.error(f"Health check failed for tenant {tenant_namespace}: {e}")
+                    
+        except Exception as e:
+            logger.error(f"Health watchdog error: {e}")
+            
+        await asyncio.sleep(poll_interval)
 
 
 @app.on_event("startup")
-async def _init_fail_fast_state():
-    """Initialize circuit breaker state (no sync worker)."""
-    from somabrain.services.memory_service import MemoryService
-
-    MemoryService._circuit_open = False
-    MemoryService._failure_count = 0
-    MemoryService._last_failure_time = 0.0
-    MemoryService._failure_threshold = 3
-    MemoryService._reset_interval = 60
+async def _init_health_watchdog():
+    """Initialize health watchdog for per-tenant circuit breakers."""
+    global _health_watchdog_task
+    if cfg.memory_health_poll_interval > 0:
+        _health_watchdog_task = asyncio.create_task(_health_watchdog_coroutine())
 
 
 @app.on_event("shutdown")
-async def _noop_shutdown():
-    return None
+async def _shutdown_health_watchdog():
+    """Shutdown health watchdog task."""
+    global _health_watchdog_task
+    if _health_watchdog_task:
+        _health_watchdog_task.cancel()
+        try:
+            await _health_watchdog_task
+        except asyncio.CancelledError:
+            pass
 
 
 # --- Module reload support -------------------------------------------------

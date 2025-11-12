@@ -839,6 +839,7 @@ else:
     OUTBOX_PENDING = Gauge(
         "memory_outbox_pending",
         "Number of pending messages in the out‑box queue",
+        labelnames=["tenant"],
         registry=REGISTRY,
     )
 
@@ -849,6 +850,49 @@ else:
     CIRCUIT_STATE = Gauge(
         "memory_circuit_state",
         "Circuit breaker state for external memory service: 0=closed, 1=open",
+        labelnames=["tenant"],
+        registry=REGISTRY,
+    )
+
+# New per-tenant circuit breaker metrics
+if "memory_circuit_open" in REGISTRY._names_to_collectors:
+    MEMORY_CIRCUIT_OPEN = REGISTRY._names_to_collectors["memory_circuit_open"]
+else:
+    MEMORY_CIRCUIT_OPEN = Gauge(
+        "memory_circuit_open",
+        "Circuit breaker state per tenant (1=open, 0=closed)",
+        labelnames=["tenant"],
+        registry=REGISTRY,
+    )
+
+if "memory_write_latency_seconds" in REGISTRY._names_to_collectors:
+    MEMORY_WRITE_LATENCY = REGISTRY._names_to_collectors["memory_write_latency_seconds"]
+else:
+    MEMORY_WRITE_LATENCY = Histogram(
+        "memory_write_latency_seconds",
+        "Memory write operation latency per tenant",
+        labelnames=["tenant", "op"],
+        buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+        registry=REGISTRY,
+    )
+
+if "memory_replay_success_total" in REGISTRY._names_to_collectors:
+    MEMORY_REPLAY_SUCCESS = REGISTRY._names_to_collectors["memory_replay_success_total"]
+else:
+    MEMORY_REPLAY_SUCCESS = Counter(
+        "memory_replay_success_total",
+        "Total successful memory replay operations per tenant",
+        labelnames=["tenant", "op"],
+        registry=REGISTRY,
+    )
+
+if "memory_replay_failure_total" in REGISTRY._names_to_collectors:
+    MEMORY_REPLAY_FAILURE = REGISTRY._names_to_collectors["memory_replay_failure_total"]
+else:
+    MEMORY_REPLAY_FAILURE = Counter(
+        "memory_replay_failure_total",
+        "Total failed memory replay operations per tenant",
+        labelnames=["tenant", "op"],
         registry=REGISTRY,
     )
 # Ensure HTTP_FAILURES counter is only created once per process.

@@ -42,16 +42,20 @@ def enqueue_event(
         session.add(event)
 
 
-def get_pending_events(limit: int = 100) -> List[OutboxEvent]:
+def get_pending_events(limit: int = 100, tenant_id: Optional[str] = None) -> List[OutboxEvent]:
     """
     Fetch a batch of pending events from the outbox.
+    If tenant_id is provided, filter events for that tenant.
     """
     session_factory = get_session_factory()
     with session_factory() as session:
+        query = session.query(OutboxEvent).filter(OutboxEvent.status == "pending")
+        
+        if tenant_id:
+            query = query.filter(OutboxEvent.tenant_id == tenant_id)
+            
         events = (
-            session.query(OutboxEvent)
-            .filter(OutboxEvent.status == "pending")
-            .order_by(OutboxEvent.created_at)
+            query.order_by(OutboxEvent.created_at)
             .limit(limit)
             .all()
         )

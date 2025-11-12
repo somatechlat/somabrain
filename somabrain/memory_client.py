@@ -25,34 +25,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .config import Config
-
-try:  # optional dependency, older deployments may not ship shared settings yet
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - legacy layout
-    shared_settings = None  # type: ignore
-
-try:  # Import the settings object under a distinct name for strict-mode checks.
-    from common.config.settings import settings as _shared_settings
-except Exception:  # pragma: no cover - not always available in local runs
-    _shared_settings = None  # type: ignore
-
 from somabrain.infrastructure import get_memory_http_endpoint
 from somabrain.interfaces.memory import MemoryBackend
+from somabrain.db.outbox import enqueue_event
 
-# logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
-debug_memory_client = False
-if shared_settings is not None:
-    try:
-        debug_memory_client = bool(
-            getattr(shared_settings, "debug_memory_client", False)
-        )
-    except Exception:
-        debug_memory_client = False
-else:
-    debug_memory_client = os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1"
+debug_memory_client = os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1"
 if debug_memory_client:
-    # ensure a stderr handler exists for quick interactive debugging
     if not logger.handlers:
         h = logging.StreamHandler()
         h.setFormatter(
@@ -258,24 +237,19 @@ class MemoryClient:
         self.cfg = cfg
         self._scorer = scorer
         self._embedder = embedder
-        # Always operate as an HTTP-first Memory client. Local/redis modes
-        # and in-process memory service imports are disabled by default to
-        # avoid heavy top-level imports and environment coupling.
-        # Keep a _mode attribute for compatibility but it is informational only.
+        
+        # ROAMDP: HTTP-first with DB outbox, no legacy modes
         self._mode = "http"
-        self._local = None
-        # Annotate http clients to help static checkers; actual httpx types
-        # are imported locally inside _init_http to avoid heavy top-level
-        # imports in some runtime contexts.
         self._http: Optional[Any] = None
         self._http_async: Optional[Any] = None
-        # New: path for outbox persistence (default within data dir)
-        self._outbox_path = getattr(cfg, "outbox_path", "./data/somabrain/outbox.jsonl")
-        # Ensure outbox file exists
-        try:
-            open(self._outbox_path, "a").close()
-        except Exception:
-            pass
+        # Extract tenant from namespace for outbox and headers
+        self._tenant_id = self._extract_tenant_from_namespace(getattr(cfg, "namespace", "default"))
+        
+    def _extract_tenant_from_namespace(self, namespace: str) -> str:
+        """Extract tenant identifier from namespace string."""
+        if ":" in namespace:
+            return namespace.split(":")[-1]
+        return namespace or "default"
         # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if shared_settings is not None:
@@ -296,161 +270,32 @@ class MemoryClient:
         # Initialize HTTP client (primary runtime path). Local/redis
         # initialization is intentionally not attempted here.
         self._init_http()
-        # Ensure outbox file exists (redundant safety)
-        try:
-            open(self._outbox_path, "a").close()
-        except Exception:
-            pass
-
-    def _init_local(self) -> None:
-        # Local in-process backend initialization has been removed. Running a
-        # memory service must be done as a separate HTTP process.
-        # If a developer needs an opt-in local backend, use an explicit
-        # environment flag (e.g., `SOMABRAIN_ALLOW_LOCAL_MEMORY=1`) and implement that
-        # code separately in a developer-only helper.
-        return
+        # ROAMDP Phase 3: Remove file-based outbox - using DB-backed outbox instead
 
     def _init_http(self) -> None:
+        """Initialize HTTP client for external memory service."""
         import httpx  # type: ignore
 
-        # Default headers applied to all requests; per-request we add X-Request-ID
-        headers = {}
+        headers = {"X-Soma-Tenant": self._tenant_id}
         token_value = None
         if self.cfg.http and getattr(self.cfg.http, "token", None):
             token_value = self.cfg.http.token
-            # Prefer standard Bearer auth, but include common alternatives for dev services
             headers["Authorization"] = f"Bearer {token_value}"
-            headers.setdefault("X-API-Key", token_value)
-            headers.setdefault("X-Auth-Token", token_value)
 
-        # Propagate tenancy via standardized headers (best-effort)
-        ns = str(getattr(self.cfg, "namespace", ""))
-        if ns:
-            headers["X-Soma-Namespace"] = ns
-            try:
-                tenant_guess = ns.split(":")[-1] if ":" in ns else ns
-                headers["X-Soma-Tenant"] = tenant_guess
-            except Exception:
-                pass
+        base_url = str(getattr(self.cfg.http, "endpoint", "") or get_memory_http_endpoint())
+        if not base_url:
+            raise RuntimeError("Memory HTTP endpoint required")
 
-        # Allow tuning via environment variables for production/dev use
-        default_max = _http_setting("http_max_connections", 64)
-        try:
-            max_conns = int(os.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max)))
-        except Exception:
-            max_conns = default_max
-        default_keepalive = _http_setting("http_keepalive_connections", 32)
-        try:
-            keepalive = int(
-                os.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive))
-            )
-        except Exception:
-            keepalive = default_keepalive
-        default_retries = _http_setting("http_retries", 1)
-        try:
-            retries = int(os.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries)))
-        except Exception:
-            retries = default_retries
-
-        limits = None
-        try:
-            limits = httpx.Limits(
-                max_connections=max_conns, max_keepalive_connections=keepalive
-            )
-        except Exception:
-            limits = None
-
-        # Allow overriding the HTTP memory endpoint via environment variable
-        # Useful for tests or local development where a memory service runs on
-        # a non-default port. Accept either a base URL or a full openapi.json
-        # URL and normalise to the service base URL.
-        candidate_base = get_memory_http_endpoint()
-        env_base = os.getenv("SOMABRAIN_HTTP_ENDPOINT") or os.getenv(
-            "MEMORY_SERVICE_URL"
+        self._http = httpx.Client(
+            base_url=base_url,
+            headers=headers,
+            timeout=httpx.Timeout(5.0),
         )
-        if not env_base:
-            env_base = candidate_base
-        if env_base:
-            try:
-                env_base = str(env_base).strip()
-                if "://" not in env_base and env_base.startswith("/"):
-                    pass
-                elif "://" not in env_base:
-                    env_base = f"http://{env_base}"
-                if env_base.endswith("/openapi.json"):
-                    env_base = env_base[: -len("/openapi.json")]
-            except Exception:
-                env_base = None
-        base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
-        if not base_url and env_base:
-            base_url = env_base
-        # Strict mode: memory endpoint is always required
-        if not base_url:
-            base_url = get_memory_http_endpoint() or ""
-        if not base_url:
-            raise RuntimeError("Memory HTTP endpoint required but not configured")
-        # Final normalisation: ensure empty string remains empty
-        base_url = base_url or ""
-        if base_url:
-            try:
-                os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = base_url
-            except Exception:
-                pass
-        # Fail-fast: do not auto-default inside Docker; require explicit endpoint
-        client_kwargs: dict[str, Any] = {
-            "base_url": base_url,
-            "headers": headers,
-            "timeout": 10.0,
-        }
-        # Diagnostic: record chosen endpoint for debugging in tests
-        try:
-            logger.debug("MemoryClient HTTP base_url=%r", base_url)
-        except Exception:
-            pass
-        if limits is not None:
-            client_kwargs["limits"] = limits
-
-        # Create sync client
-        try:
-            self._http = httpx.Client(**client_kwargs)
-        except Exception:
-            self._http = None
-
-        # Create async client with configurable transport retries
-        try:
-            transport = httpx.AsyncHTTPTransport(retries=retries)
-            async_kwargs = dict(client_kwargs)
-            async_kwargs["transport"] = transport
-            self._http_async = httpx.AsyncClient(**async_kwargs)
-        except Exception:
-            try:
-                self._http_async = httpx.AsyncClient(**client_kwargs)
-            except Exception:
-                self._http_async = None
-
-        # If endpoint is empty, treat HTTP client as unavailable
-        try:
-            if not base_url:
-                self._http = None
-                self._http_async = None
-        except Exception:
-            pass
-        # Strict mode: memory is always required
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE REQUIRED but not reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
-            )
-        # Enforce token presence by mode policy
-        # Strict mode: authentication token is mandatory for HTTP memory backend
-        if self._http is not None and not token_value:
-            raise RuntimeError(
-                "MEMORY AUTH REQUIRED: missing SOMABRAIN_MEMORY_HTTP_TOKEN for HTTP memory backend."
-            )
-
-    def _init_redis(self) -> None:
-        # Redis mode removed. Redis-backed behavior should be exposed via the
-        # HTTP memory service if required.
-        return
+        self._http_async = httpx.AsyncClient(
+            base_url=base_url,
+            headers=headers,
+            timeout=httpx.Timeout(5.0),
+        )
 
     def health(self) -> dict:
         """Best-effort backend health signal for local or http mode."""
@@ -471,16 +316,25 @@ class MemoryClient:
         return {"ok": True}
 
     def _record_outbox(self, op: str, payload: dict):
-        """Append a failed HTTP operation to the outbox for later retry.
-        The JSON line includes the operation name (remember, recall, link, alink) and the
-        original payload needed to replay the request.
-        """
-        try:
-            with open(self._outbox_path, "a") as f:
-                json.dump({"op": op, "payload": payload}, f)
-                f.write("\n")
-        except Exception:
-            pass
+        """Record failed HTTP operation to DB outbox for tenant isolation."""
+        from somabrain.db.outbox import enqueue_event
+        
+        # Generate unique dedupe key with tenant isolation
+        import uuid
+        dedupe_key = f"{self._tenant_id}:{uuid.uuid4()}"
+        
+        # Add tenant context and operation metadata
+        enriched_payload = dict(payload)
+        enriched_payload["op"] = op
+        enriched_payload["tenant_id"] = self._tenant_id
+        enriched_payload["timestamp"] = time.time()
+        
+        enqueue_event(
+            topic=f"memory.{op}",
+            payload=enriched_payload,
+            dedupe_key=dedupe_key,
+            tenant_id=self._tenant_id
+        )
 
     # --- HTTP helpers ---------------------------------------------------------
     @staticmethod
@@ -502,11 +356,18 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         if self._http is None:
             return False, 0, None
+        
+        # Ensure tenant context and idempotency headers
+        enhanced_headers = dict(headers)
+        enhanced_headers.setdefault("X-Soma-Tenant", self._tenant_id)
+        if "X-Idempotency-Key" not in enhanced_headers and "X-Request-ID" in enhanced_headers:
+            enhanced_headers["X-Idempotency-Key"] = enhanced_headers["X-Request-ID"]
+        
         status = 0
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                resp = self._http.post(endpoint, json=body, headers=headers)
+                resp = self._http.post(endpoint, json=body, headers=enhanced_headers)
             except Exception:
                 if attempt < max_retries:
                     time.sleep(0.01 + random.random() * 0.02)
@@ -532,11 +393,18 @@ class MemoryClient:
     ) -> tuple[bool, int, Any]:
         if self._http_async is None:
             return False, 0, None
+        
+        # Ensure tenant context and idempotency headers
+        enhanced_headers = dict(headers)
+        enhanced_headers.setdefault("X-Soma-Tenant", self._tenant_id)
+        if "X-Idempotency-Key" not in enhanced_headers and "X-Request-ID" in enhanced_headers:
+            enhanced_headers["X-Idempotency-Key"] = enhanced_headers["X-Request-ID"]
+        
         status = 0
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                resp = await self._http_async.post(endpoint, json=body, headers=headers)
+                resp = await self._http_async.post(endpoint, json=body, headers=enhanced_headers)
             except Exception:
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)
@@ -1480,57 +1348,19 @@ class MemoryClient:
                     pass
             return coord
 
-        # Synchronous callers: default is blocking persist, but allow an opt-in
-        # fast-ack mode which writes to the local outbox and schedules background
-        # persistence to improve client latency under load.
-        if shared_settings is not None:
-            try:
-                fast_ack = bool(getattr(shared_settings, "memory_fast_ack", False))
-            except Exception:
-                fast_ack = False
-        else:
-            try:
-                from somabrain.config import runtime as _rt
-
-                fast_ack = _rt.get_bool("memory_fast_ack", False)
-            except Exception:
-                fast_ack = False
-        if fast_ack:
-            # record to outbox immediately and schedule a background persist
-            try:
-                self._record_outbox(
-                    "remember",
-                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
-                )
-            except Exception:
-                pass
-            try:
-                loop = asyncio.get_event_loop()
-                # schedule background sync persist in the executor so we don't block
-                loop.run_in_executor(
-                    None, self._remember_sync_persist, coord_key, payload, rid
-                )
-            except Exception:
-                # last resort: run sync persist (best-effort)
-                try:
-                    self._remember_sync_persist(coord_key, payload, rid)
-                except Exception:
-                    pass
-            return coord
-
-        # Default (no fast-ack): perform the persist synchronously (blocking)
+        # ROAMDP: HTTP-first persistence with DB outbox fallback
         server_coord: Tuple[float, float, float] | None = None
         try:
             server_coord = self._remember_sync_persist(coord_key, payload, rid)
         except Exception:
+            # Record to DB outbox for retry
+            self._record_outbox(
+                "remember",
+                {"coord_key": coord_key, "payload": payload, "request_id": rid},
+            )
             server_coord = None
-        if server_coord:
-            coord = server_coord
-            try:
-                payload["coordinate"] = server_coord
-            except Exception:
-                pass
-        return coord
+        
+        return server_coord or coord
 
     def remember_bulk(
         self,
@@ -1583,27 +1413,29 @@ class MemoryClient:
 
         if self._http is None:
             rid = request_id or str(uuid.uuid4())
-            try:
-                self._record_outbox(
-                    "remember_bulk",
-                    {
-                        "request_id": rid,
-                        "items": [
-                            {
-                                "coord_key": entry["coord_key"],
-                                "payload": entry["body"]["payload"],
-                                "coord": entry["body"]["coord"],
-                            }
-                            for entry in prepared
-                        ],
-                    },
-                )
-            except Exception:
-                pass
+            # ROAMDP: DB outbox for HTTP failures
+            self._record_outbox(
+                "remember_bulk",
+                {
+                    "request_id": rid,
+                    "items": [
+                        {
+                            "coord_key": entry["coord_key"],
+                            "payload": entry["body"]["payload"],
+                            "coord": entry["body"]["coord"],
+                        }
+                        for entry in prepared
+                    ],
+                },
+            )
             return coords
 
         rid = request_id or str(uuid.uuid4())
-        headers = {"X-Request-ID": rid}
+        headers = {
+            "X-Request-ID": rid,
+            "X-Soma-Tenant": self._tenant_id,
+            "Idempotency-Key": rid,
+        }
         unique_universes = {u for u in universes if u}
         if len(unique_universes) == 1:
             headers["X-Universe"] = unique_universes.pop()
@@ -1766,7 +1598,11 @@ class MemoryClient:
             return self.remember_bulk(records, request_id=request_id)
 
         rid = request_id or str(uuid.uuid4())
-        headers = {"X-Request-ID": rid}
+        headers = {
+            "X-Request-ID": rid,
+            "X-Soma-Tenant": self._tenant_id,
+            "Idempotency-Key": rid,
+        }
         unique_universes = {u for u in universes if u}
         if len(unique_universes) == 1:
             headers["X-Universe"] = unique_universes.pop()
@@ -1917,7 +1753,11 @@ class MemoryClient:
             import uuid
 
             rid = request_id or str(uuid.uuid4())
-            rid_hdr = {"X-Request-ID": rid}
+            rid_hdr = {
+                "X-Request-ID": rid,
+                "X-Soma-Tenant": self._tenant_id,
+                "Idempotency-Key": rid,
+            }
             self._http.post(
                 "/link",
                 json={
