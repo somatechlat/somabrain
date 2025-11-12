@@ -1217,6 +1217,17 @@ if _EXPOSE_DEMOS:
     except Exception:
         pass
 
+# Sleep system routers
+try:
+    from somabrain.sleep import util_sleep_router, brain_sleep_router
+
+    app.include_router(util_sleep_router)
+    app.include_router(brain_sleep_router)
+    logger.info("Sleep system routers registered")
+except Exception as e:
+    logger.warning(f"Failed to register sleep system: {e}")
+    pass
+
 
 @app.exception_handler(RequestValidationError)
 async def _handle_validation_error(request: Request, exc: RequestValidationError):  # type: ignore[override]
