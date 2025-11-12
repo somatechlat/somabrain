@@ -69,8 +69,20 @@ class TestE2EMemoryHTTP:
         rj = _post_json(remember_url, payload)
         assert rj.get("ok") and rj.get("success"), rj
 
-        # Small backoff to allow WM admission on dev stacks
-        time.sleep(0.4)
+        # Poll recall until memory admission instead of fixed sleep
+        from tests.utils.polling import wait_for
+
+        wait_for(
+            lambda: _post_json(recall_url, {"query": key_text, "top_k": 1}).get(
+                "memory"
+            )
+            is not None,
+            timeout=3.0,
+            interval=0.1,
+            desc="memory admission",
+        )
+
+        # Now fetch broader results
 
         body: Dict[str, Any] = {"query": key_text, "top_k": 5}
         r2 = _post_json(recall_url, body)
@@ -120,8 +132,19 @@ class TestE2EMemoryHTTP:
             assert rj.get("ok") and rj.get("success"), rj
             keys.append(key_text)
 
-        # Small backoff for WM admission across the batch
-        time.sleep(0.6)
+        from tests.utils.polling import wait_for
+
+        # Wait until at least one of the keys appears to confirm pipeline flow
+        wait_for(
+            lambda: any(
+                _post_json(recall_url, {"query": k, "top_k": 1}).get("memory")
+                is not None
+                for k in keys
+            ),
+            timeout=4.0,
+            interval=0.2,
+            desc="batch memory admission",
+        )
 
         # Verify each key is recallable individually
         for key_text in keys:

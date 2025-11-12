@@ -83,6 +83,7 @@ from somabrain.thalamus import ThalamusRouter
 from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.services.memory_service import MemoryService as _MemSvc
 
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
@@ -943,21 +944,19 @@ except Exception:
 
 try:
     from somabrain.api.middleware.opa import OpaMiddleware
-
-    app.add_middleware(OpaMiddleware)
-except Exception:
-    log = globals().get("logger")
-    if log:
-        log.debug("OPA middleware not registered", exc_info=True)
+except Exception as e:
+    # Strict mode: OPA middleware is required for fail-closed posture
+    raise RuntimeError(f"OPA middleware import failed: {e}")
+app.add_middleware(OpaMiddleware)
 
 try:
     from somabrain.api.middleware.reward_gate import RewardGateMiddleware
-
     app.add_middleware(RewardGateMiddleware)
-except Exception:
+except Exception as e:
+    # Reward gate can remain optional; log at debug and continue
     log = globals().get("logger")
     if log:
-        log.debug("Reward Gate middleware not registered", exc_info=True)
+        log.debug("Reward Gate middleware not registered: %s", e, exc_info=True)
 
 # Supervisor (cog) control client
 _SUPERVISOR_URL = os.getenv("SUPERVISOR_URL") or None
@@ -1543,13 +1542,8 @@ fractal_memory: Any = None  # type: ignore[assignment]
 # is active, raise an explicit error instead of silently patching in dummies.
 __ENFORCEMENT = BACKEND_ENFORCEMENT
 
-# During test collection pytest sets the ``PYTEST_CURRENT_TEST`` environment
-# variable. Importing ``somabrain.app`` happens before fixtures (which create
-# the required runtime singletons) run, so in strict mode the original code
-# raised an exception and prevented test discovery. To allow the test suite to
-# import the module while still enforcing strict mode in production, we skip
-# the raise when the pytest env var is present.
-_is_test = bool(os.getenv("PYTEST_CURRENT_TEST"))
+# Strict mode: no test-mode bypass. All required singletons must be present,
+# even during test collection/imports.
 
 missing = []
 if not hasattr(_rt, "embedder") or _rt.embedder is None:
@@ -1558,9 +1552,7 @@ if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
     missing.append("mt_wm")
 if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
     missing.append("mc_wm")
-# Allow bypass only for pytest collection/execution
-_bypass = bool(os.getenv("PYTEST_CURRENT_TEST"))
-if __ENFORCEMENT and missing and not _is_test and not _bypass:
+if __ENFORCEMENT and missing:
     raise RuntimeError(
         f"BACKEND ENFORCEMENT: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
     )
@@ -1705,6 +1697,36 @@ unified_brain = None  # default when demos disabled
 if fnom_memory is not None and fractal_memory is not None:
     # Use the neuromodulators singleton alias defined earlier (neuromods)
     unified_brain = UnifiedBrainCore(fractal_memory, fnom_memory, neuromods)
+
+# Memory service facade and watchdog
+memory_service = _MemSvc(mt_memory, cfg.namespace)
+
+@app.on_event("startup")
+async def _start_memory_watchdog() -> None:
+    async def _watchdog_loop():
+        while True:
+            try:
+                # Attempt circuit reset periodically; updates circuit breaker metric internally
+                memory_service._reset_circuit_if_needed()
+            except Exception:
+                pass
+            await asyncio.sleep(5.0)
+
+    try:
+        task = asyncio.create_task(_watchdog_loop())
+        app.state._memory_watchdog = task  # type: ignore[attr-defined]
+    except Exception:
+        # best-effort; don't fail startup on watchdog init
+        pass
+
+@app.on_event("shutdown")
+async def _stop_memory_watchdog() -> None:
+    try:
+        task = getattr(app.state, "_memory_watchdog", None)
+        if task is not None:
+            task.cancel()
+    except Exception:
+        pass
 
 
 # PHASE 3: REVOLUTIONARY FEATURES - AUTO-SCALING FRACTAL INTELLIGENCE
@@ -1981,6 +2003,7 @@ async def health(request: Request) -> S.HealthResponse:
     ctx = get_tenant(request, cfg.namespace)
     comps = {
         "memory": mt_memory.for_namespace(ctx.namespace).health(),
+        "memory_circuit_open": memory_service._is_circuit_open(),
         "wm_items": "tenant-scoped",
         "api_version": API_VERSION,
     }

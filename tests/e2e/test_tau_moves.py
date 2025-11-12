@@ -16,7 +16,10 @@ def test_tau_endpoint_reachable_and_changes_if_config_updates_present():
     except Exception:
         # In CI without the stack running, just ensure endpoint is reachable when service is up
         return
-    time.sleep(2)
+    # Poll for potential change instead of fixed 2s sleep
+    from tests.utils.polling import wait_for
+
+    wait_for(lambda: _get(url) != before, timeout=2.0, interval=0.2, desc="tau change")
     after = _get(url)
     # Non-strict: verify it returns a numeric-looking payload
     assert before.strip(), "empty /tau response"

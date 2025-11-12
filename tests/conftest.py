@@ -1,20 +1,22 @@
-"""Pytest configuration for environment bootstrapping.
-
-This file loads environment variables from `.env` (if present) so tests
-automatically discover the correct host port mappings for services brought up by
-scripts/dev_up.sh. We avoid relying on long shell commands or passing params via
-the console; tests derive their runtime config from the repo's env files.
-"""
-
 from __future__ import annotations
 
+"""Unified pytest configuration for centralized test suite.
+
+Responsibilities:
+ - Load environment variables from `.env` for host-run tests.
+ - Auto-mark integration/benchmark tests heuristically by path.
+ - Skip performance/benchmark tests unless explicitly requested.
+ - Inject infra readiness fixture for integration tests.
+ - Normalize service hostnames for local execution.
+"""
+
 import os
-from pathlib import Path
 import subprocess
 import sys
-import pytest
-from typing import Dict
 import json
+from pathlib import Path
+from typing import Dict, List
+import pytest
 
 
 def _parse_env_file(path: Path) -> Dict[str, str]:
@@ -87,7 +89,6 @@ def _bootstrap_env_from_dotenv() -> None:
         os.environ["SOMABRAIN_REDIS_URL"] = f"redis://127.0.0.1:{host_port}/0"
 
 
-# Eagerly load on import so all tests see a consistent environment
 _bootstrap_env_from_dotenv()
 
 # Removed duplicate schema test ignore after renaming to unique filename.
@@ -139,11 +140,32 @@ def integration_env_ready() -> None:
         )
 
 
-def pytest_collection_modifyitems(
-    config: pytest.Config, items: list[pytest.Item]
-) -> None:
-    """Inject readiness fixture into tests marked with @pytest.mark.integration."""
+def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item]) -> None:
+    # Auto-skip performance / benchmark unless explicitly selected
+    marker_expr = config.getoption("-m") or ""
+    perf_selected = "performance" in marker_expr or "benchmark" in marker_expr
     for item in items:
+        # Path-based heuristic marking
+        p = Path(str(item.fspath))
+        parts = [s.lower() for s in p.parts]
+        if any(s in parts for s in ["integration", "kafka", "monitoring", "e2e", "services"]):
+            item.add_marker(pytest.mark.integration)
+        if "benchmarks" in parts or "stress" in parts or "benchmark" in parts:
+            item.add_marker(pytest.mark.benchmark)
+        if "performance" in parts:
+            item.add_marker(pytest.mark.performance)
+
+        if "performance" in item.keywords and not perf_selected:
+            item.add_marker(
+                pytest.mark.skip(reason="performance test skipped; use -m performance")
+            )
+        if "benchmark" in item.keywords and not perf_selected:
+            item.add_marker(
+                pytest.mark.skip(reason="benchmark test skipped; use -m benchmark")
+            )
+        # Inject infra readiness fixture for integration tests
         if item.get_closest_marker("integration") is not None:
-            # Ensure the readiness fixture runs before any integration test
             item.fixturenames.append("integration_env_ready")
+
+
+# Rely on default pytest file collection. Benchmarks are path-marked and skipped by default.

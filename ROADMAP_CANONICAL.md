@@ -195,3 +195,142 @@ Phase 6 (Observability)
 - Tracing enforcement; coverage across diffusion/predictor/integrator/segmentation; finalize dashboards.
 
 All phases conform to AROMADP: no mocks, no disable paths, real infra only.
+
+## 18) Centralized Test Suite (Sprint T0) — Added 2025-11-11
+
+Goals
+- Eliminate scattered smoke/benchmark scripts outside `tests/`.
+- Classify tests: unit, integration, contract, performance, benchmark.
+- Enforce strict-mode invariants (no fakeredis/sqlite/kafka-python usage) via contract tests.
+
+Actions (Completed)
+- Moved `scripts/math_smoke_test.py` → `tests/smoke/math_smoke_test.py`.
+- Moved `scripts/kafka_smoke_test.py` → `tests/kafka/kafka_smoke_test.py`.
+- Moved `benchmarks/nulling_test.py` → `tests/benchmarks/nulling_test.py`.
+- Added markers (`unit`, `contract`, `performance`, `benchmark`).
+- Added `tests/conftest.py` to skip performance/benchmark by default.
+
+Planned (Next)
+- Re-tag existing files under `tests/` with appropriate markers.
+- Introduce polling helper to remove fixed `sleep()` calls.
+- Create contract tests for Avro schema invariants & banned keyword scan.
+- Add performance smoke harness measuring p95 latency for predictor bind/unbind.
+
+Acceptance
+- `pytest -m unit` runs < 2s locally.
+- No test files remain outside `tests/` besides intentional non-test runtime scripts.
+- Benchmark/performance tests excluded from CI by default.
+- Contract suite fails if banned libraries or non-Avro serialization reintroduced.
+
+## Appendix — Memory Subsystem Roadmap (Strict Mode)
+
+Date: 2025-11-11
+
+### Goals
+- No mocks, no fallbacks, no silent bypasses. External memory is required.
+- Canonical env precedence and strict health/readiness semantics.
+- Low-cardinality metrics and complete E2E traceability for one-message lifecycle.
+
+### Phase 1 — Fail-Fast + Health Alignment + Metrics (Started)
+- Config centralization: single source of truth for `SOMABRAIN_MEMORY_HTTP_ENDPOINT/TOKEN` via `somabrain/config.py` and `somabrain/infrastructure.py`.
+- Fail-fast startup: API refuses to start without memory endpoint/token; memory client refuses calls without token.
+- Watchdog: lightweight periodic check that attempts to reset the circuit breaker after backoff.
+- Health alignment: `/health` exposes memory health and circuit state consistently.
+- Metrics base: HTTP and memory-related counters/gauges/histograms exposed on `/metrics` via Prometheus client.
+
+Implementation references
+- `somabrain/memory_client.py`: HTTP-only client, strict token requirement, no dev fallbacks.
+- `somabrain/services/memory_service.py`: circuit breaker, `_reset_circuit_if_needed()` and `_health_check()`.
+- `somabrain/app.py`: startup diagnostics, watchdog task, `/health` includes `memory_circuit_open`.
+- `somabrain/metrics.py`: strict dependency on `prometheus_client` (noop shim removed).
+- `scripts/ci_readiness.py`: strict posture (no localhost remap fallbacks).
+
+Acceptance criteria
+- Process fails to boot if memory endpoint or token is missing.
+- `/health` returns `ok=true` only when memory service is reachable; includes `memory_circuit_open=false` under steady state.
+- Metrics scrape returns without exceptions; circuit breaker metric is stable at 0 during normal operation.
+- Readiness script exits non-zero when Kafka/Postgres/OPA/Redis are not reachable per configured endpoints (no host remaps).
+
+Status
+- Enforced: metrics strict dependency, no pytest bypass for backend enforcement, memory token required, readiness script strict.
+- Added: watchdog loop and `memory_circuit_open` in `/health`.
+
+### Phase 2 — Service Breaker, Dual-Write (Optional), Secondary Failover (Planned)
+- Service breaker reason propagation: last error type/ts surfaced in diagnostics and health response.
+- Optional dual-write to Kafka audit for write intents (idempotent), disabled by default.
+- Optional secondary memory endpoint (hot-warm) with controlled failover policy; off by default, requires explicit config.
+
+Acceptance criteria
+- Health includes `memory_last_failure` structure (type, ts, attempts).
+- Feature flags gated; when disabled, no side-effects or extra latency.
+
+### Phase 3 — Outbox Replayer (Planned)
+- Dedicated replayer process for previously recorded outbox events (best-effort), idempotent semantics only.
+- Bounded retry with jitter and batch sizing; metrics for replay outcome.
+
+Acceptance criteria
+- Replayer metrics: processed_total, success_total, retry_total, dropped_total.
+- E2E replay scenario documented and test-covered.
+
+### Phase 4 — Chaos/SLO Gates (Planned)
+- Inject controlled memory outages to validate circuit transitions and health propagation.
+- Define SLOs: recall p95 latency, store error budget, circuit open rate.
+
+Acceptance criteria
+- Automated chaos job produces expected circuit flip/flop traces without flapping.
+- Alerting thresholds documented (Prometheus rules kept out-of-scope for now).
+
+### Metrics Specification (Low-Cardinality)
+- HTTP:
+    - `somabrain_http_requests_total{method,path,status}`
+    - `somabrain_http_latency_seconds{method,path}`
+- Memory breaker/outbox:
+    - `somabrain_memory_circuit_breaker_state` gauge (0|1)
+    - `memory_http_failures_total` counter (sync with service breaker)
+    - `somabrain_memory_outbox_sync_total{status}` counter
+- Retrieval/store KPIs:
+    - `somabrain_recall_latency_seconds{namespace}`
+    - `somabrain_ann_latency_seconds{namespace}`
+    - Governance gauges per tenant/namespace (items, eta, sparsity, margin)
+
+Notes
+- `somabrain/metrics.py` is the single registry; avoid duplicate registration.
+- No noop metrics path allowed; prometheus_client must be present.
+
+### Health and Readiness
+- `/health` includes:
+    - `components.memory` (http=true/false)
+    - `memory_circuit_open` (bool)
+    - `api_version`, `namespace`, plus optional constitution info
+- Readiness script (`scripts/ci_readiness.py`):
+    - Strict checks for Postgres/Redis/Kafka/OPA; no host-port remaps.
+    - Exits 1 on any failure; prints concise reasons.
+
+### E2E Full Trace Test
+- Test path: `tests/e2e/test_full_trace_message.py`.
+- Flow:
+    1) POST remember
+    2) Poll recall until hit
+    3) Snapshot `/health`, `/diagnostics`, `/metrics`
+    4) Fetch memory service `/health` and `/memories/search` responses
+    5) Save all artifacts under `artifacts/`
+
+Acceptance criteria
+- Artifacts include write/read ids and timestamps; metrics scrape is present and parseable.
+- Test fails when memory or infra is not ready (no silent bypass).
+
+### Environment Policy (Canonical)
+- Memory: `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, `SOMABRAIN_MEMORY_HTTP_TOKEN` (required)
+- Infra: `SOMABRAIN_POSTGRES_DSN`, `SOMA_KAFKA_BOOTSTRAP` (or `SOMABRAIN_KAFKA_URL`), `SOMABRAIN_OPA_URL`, `SOMABRAIN_REDIS_URL`
+- Mode flags that imply bypass are disallowed; enforcement is unconditional for memory.
+
+### Non-Goals
+- No embedded in-process memory backend.
+- No metrics noop or fake exporters.
+- No readiness host remapping for developer convenience.
+
+### Changelog (Phase 1 Edits)
+- `somabrain/metrics.py`: removed noop shim; strict prometheus_client requirement.
+- `somabrain/app.py`: removed pytest bypass; added watchdog; OPA middleware mandatory; `/health` includes `memory_circuit_open`.
+- `somabrain/memory_client.py`: memory endpoint and token strictly required.
+- `scripts/ci_readiness.py`: removed localhost remap fallbacks; strict checks only.

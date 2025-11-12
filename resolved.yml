@@ -1,0 +1,592 @@
+name: somabrain
+services:
+  somabrain_app:
+    build:
+      context: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+      somabrain_opa:
+        condition: service_healthy
+        required: true
+      somabrain_postgres:
+        condition: service_healthy
+        required: true
+      somabrain_redis:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "134217728"
+        reservations:
+          memory: "100663296"
+    environment:
+      SOMA_KAFKA_BOOTSTRAP: somabrain_kafka:9092
+      SOMABRAIN_DEFAULT_TENANT: sandbox
+      SOMABRAIN_FORCE_FULL_STACK: "1"
+      SOMABRAIN_HOST: 0.0.0.0
+      SOMABRAIN_KAFKA_URL: 127.0.0.1:30102
+      SOMABRAIN_LEARNING_TENANTS_FILE: /app/config/learning.tenants.yaml
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: http://host.docker.internal:9595
+      SOMABRAIN_MEMORY_HTTP_TOKEN: devtoken
+      SOMABRAIN_MODE: dev
+      SOMABRAIN_OPA_URL: http://127.0.0.1:8181
+      SOMABRAIN_PORT: "9696"
+      SOMABRAIN_POSTGRES_DSN: postgresql://somabrain:somabrain@127.0.0.1:5432/somabrain
+      SOMABRAIN_PREDICTOR_PROVIDER: mahal
+      SOMABRAIN_REDIS_URL: redis://127.0.0.1:6379/0
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
+      SOMABRAIN_REQUIRE_MEMORY: "1"
+      SOMABRAIN_WORKERS: "1"
+      SUPERVISOR_HTTP_PASS: soma
+      SUPERVISOR_HTTP_USER: admin
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl -f http://localhost:9696/health || exit 1
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: somabrain:latest
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 9696
+        published: "9696"
+        protocol: tcp
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
+  somabrain_cog:
+    build:
+      context: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    command:
+      - /usr/bin/supervisord
+      - -c
+      - /app/ops/supervisor/supervisord.conf
+      - -l
+      - /dev/stdout
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+      somabrain_opa:
+        condition: service_healthy
+        required: true
+      somabrain_postgres:
+        condition: service_healthy
+        required: true
+      somabrain_redis:
+        condition: service_healthy
+        required: true
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://somabrain_jaeger:4318
+      OTEL_SERVICE_NAME: somabrain-cog
+      REWARD_PRODUCER_PORT: "8083"
+      SOMA_HEAT_METHOD: lanczos
+      SOMA_KAFKA_BOOTSTRAP: somabrain_kafka:9092
+      SOMABRAIN_DEFAULT_TENANT: sandbox
+      SOMABRAIN_KAFKA_URL: 127.0.0.1:30102
+      SOMABRAIN_LEARNING_TENANTS_FILE: /app/config/learning.tenants.yaml
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: http://host.docker.internal:9595
+      SOMABRAIN_MEMORY_HTTP_TOKEN: devtoken
+      SOMABRAIN_MODE: dev
+      SOMABRAIN_OPA_URL: http://127.0.0.1:8181
+      SOMABRAIN_POSTGRES_DSN: postgresql://somabrain:somabrain@127.0.0.1:5432/somabrain
+      SOMABRAIN_REDIS_URL: redis://127.0.0.1:6379/0
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
+      SOMABRAIN_REQUIRE_MEMORY: "1"
+      SOMABRAIN_STRICT_REAL: "1"
+      SUPERVISOR_HTTP_PASS: soma
+      SUPERVISOR_HTTP_USER: admin
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://admin:soma@localhost:9001
+      timeout: 5s
+      interval: 30s
+      retries: 5
+    image: somabrain:latest
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 8083
+        published: "30183"
+        protocol: tcp
+      - mode: ingress
+        target: 9010
+        published: "30110"
+        protocol: tcp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - type: tmpfs
+        target: /app/logs
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 1777
+  somabrain_jaeger:
+    deploy:
+      resources:
+        limits:
+          memory: "268435456"
+        reservations:
+          memory: "134217728"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO
+        - /dev/null
+        - http://localhost:16686/
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: jaegertracing/all-in-one:1.53
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 16686
+        published: "30109"
+        protocol: tcp
+      - mode: ingress
+        target: 14250
+        published: "14250"
+        protocol: tcp
+      - mode: ingress
+        target: 14268
+        published: "14268"
+        protocol: tcp
+      - mode: ingress
+        target: 4317
+        published: "4317"
+        protocol: tcp
+      - mode: ingress
+        target: 4318
+        published: "4318"
+        protocol: tcp
+    restart: unless-stopped
+  somabrain_kafka:
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        mkdir -p /var/lib/kafka/data
+        CONFIG_PATH=/tmp/kafka-server.properties
+        cp /opt/kafka/config/kraft/server.properties "$${CONFIG_PATH}"
+        {
+          echo "process.roles=$${KAFKA_CFG_PROCESS_ROLES}"
+          echo "node.id=$${KAFKA_CFG_NODE_ID}"
+          # Some base configs may still read broker.id; set it explicitly for safety
+          echo "broker.id=$${KAFKA_CFG_NODE_ID}"
+          echo "controller.listener.names=$${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}"
+          echo "controller.quorum.voters=$${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}"
+          echo "listeners=$${KAFKA_CFG_LISTENERS}"
+          echo "advertised.listeners=$${KAFKA_CFG_ADVERTISED_LISTENERS}"
+          echo "listener.security.protocol.map=$${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}"
+          echo "inter.broker.listener.name=$${KAFKA_CFG_INTER_BROKER_LISTENER_NAME}"
+          echo "log.dirs=$${KAFKA_CFG_LOG_DIRS}"
+          echo "auto.create.topics.enable=$${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE}"
+          echo "num.partitions=$${KAFKA_CFG_NUM_PARTITIONS}"
+          echo "default.replication.factor=$${KAFKA_CFG_DEFAULT_REPLICATION_FACTOR}"
+          echo "offsets.topic.replication.factor=$${KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR}"
+          echo "transaction.state.log.replication.factor=$${KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}"
+          echo "transaction.state.log.min.isr=$${KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR}"
+          echo "compression.type=$${KAFKA_CFG_COMPRESSION_TYPE}"
+          echo "log.retention.ms=$${KAFKA_CFG_LOG_RETENTION_MS}"
+          echo "log.segment.bytes=$${KAFKA_CFG_LOG_SEGMENT_BYTES}"
+          echo "log.retention.bytes=$${KAFKA_CFG_LOG_RETENTION_BYTES}"
+        } >> "$${CONFIG_PATH}"
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id 79LccNO-Qe6G6YgqP1Zrew --config "$${CONFIG_PATH}"
+        fi
+        exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
+    deploy:
+      resources:
+        limits:
+          memory: "536870912"
+        reservations:
+          memory: "268435456"
+    environment:
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:30102
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_COMPRESSION_TYPE: snappy
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@somabrain_kafka:9093
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CFG_LISTENERS: INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093
+      KAFKA_CFG_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_CFG_LOG_RETENTION_BYTES: "536870912"
+      KAFKA_CFG_LOG_RETENTION_MS: "604800000"
+      KAFKA_CFG_LOG_SEGMENT_BYTES: "52428800"
+      KAFKA_CFG_NODE_ID: "1"
+      KAFKA_CFG_NUM_PARTITIONS: "2"
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_CFG_PROCESS_ROLES: broker,controller
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_CLUSTER_ID: 79LccNO-Qe6G6YgqP1Zrew
+      KAFKA_HEAP_OPTS: -Xmx384m -Xms256m
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1
+      timeout: 20s
+      interval: 20s
+      retries: 6
+      start_period: 1m0s
+    image: apache/kafka:3.7.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 9094
+        published: "30102"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: kafka_data
+        target: /var/lib/kafka/data
+        volume: {}
+  somabrain_kafka_exporter:
+    command:
+      - --kafka.server=somabrain_kafka:9092
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "67108864"
+        reservations:
+          memory: "33554432"
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO
+        - /dev/null
+        - http://localhost:9308/
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: danielqsj/kafka-exporter:v1.7.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 9308
+        published: "30103"
+        protocol: tcp
+    restart: unless-stopped
+  somabrain_kafka_init:
+    command:
+      - --create
+      - --if-not-exists
+      - --topic
+      - soma.audit
+      - --bootstrap-server
+      - somabrain_kafka:9092
+      - --partitions
+      - "2"
+      - --replication-factor
+      - "1"
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+    entrypoint:
+      - /opt/kafka/bin/kafka-topics.sh
+    image: apache/kafka:3.7.0
+    networks:
+      somabrain_net: null
+    restart: "no"
+  somabrain_opa:
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --diagnostic-addr=0.0.0.0:8282
+      - /policies
+    deploy:
+      resources:
+        limits:
+          memory: "67108864"
+        reservations:
+          memory: "33554432"
+    healthcheck:
+      test:
+        - CMD
+        - opa
+        - eval
+        - --format=raw
+        - 'http.send({"method": "GET", "url": "http://127.0.0.1:8181/health?plugins"}).status == "200 OK"'
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: openpolicyagent/opa:0.54.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 8181
+        published: "30104"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/ops/opa/policies
+        target: /policies
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: opa_data
+        target: /var/lib/opa
+        volume: {}
+  somabrain_outbox_publisher:
+    build:
+      context: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain
+      dockerfile: Dockerfile
+    cap_drop:
+      - ALL
+    command:
+      - python
+      - -m
+      - somabrain.workers.outbox_publisher
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+      somabrain_postgres:
+        condition: service_healthy
+        required: true
+    environment:
+      SOMA_KAFKA_BOOTSTRAP: somabrain_kafka:9092
+      SOMABRAIN_FORCE_FULL_STACK: "1"
+      SOMABRAIN_KAFKA_URL: 127.0.0.1:30102
+      SOMABRAIN_OPA_URL: http://127.0.0.1:8181
+      SOMABRAIN_OUTBOX_BATCH_SIZE: "100"
+      SOMABRAIN_OUTBOX_MAX_DELAY: "5.0"
+      SOMABRAIN_POSTGRES_DSN: postgresql://somabrain:somabrain@127.0.0.1:5432/somabrain
+      SOMABRAIN_PREDICTOR_PROVIDER: mahal
+      SOMABRAIN_REDIS_URL: redis://127.0.0.1:6379/0
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
+    healthcheck:
+      test:
+        - CMD
+        - "true"
+      timeout: 5s
+      interval: 30s
+      retries: 1
+    image: somabrain:latest
+    networks:
+      somabrain_net: null
+    read_only: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /app/logs
+      - /tmp
+  somabrain_postgres:
+    deploy:
+      resources:
+        limits:
+          memory: "134217728"
+        reservations:
+          memory: "67108864"
+    environment:
+      POSTGRES_DB: somabrain
+      POSTGRES_PASSWORD: soma_pass
+      POSTGRES_USER: soma
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U soma -d somabrain
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: postgres:15-alpine
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 5432
+        published: "30106"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: postgres_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  somabrain_postgres_exporter:
+    depends_on:
+      somabrain_postgres:
+        condition: service_healthy
+        required: true
+    deploy:
+      resources:
+        limits:
+          memory: "67108864"
+        reservations:
+          memory: "33554432"
+    environment:
+      DATA_SOURCE_NAME: postgresql://somabrain:somabrain@127.0.0.1:5432/somabrain?sslmode=disable
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO
+        - /dev/null
+        - http://localhost:9187/
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 9187
+        published: "30107"
+        protocol: tcp
+    restart: unless-stopped
+  somabrain_prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: "134217728"
+        reservations:
+          memory: "67108864"
+    image: prom/prometheus:v2.49.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 9090
+        published: "30105"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/ops/prometheus/etc/prometheus.yml
+        target: /etc/prometheus/prometheus.yml
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: prometheus_data
+        target: /prometheus
+        volume: {}
+  somabrain_redis:
+    command:
+      - sh
+      - -c
+      - rm -f /data/dump.rdb && redis-server
+    deploy:
+      resources:
+        limits:
+          memory: "33554432"
+        reservations:
+          memory: "16777216"
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: redis:7.2-alpine
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 6379
+        published: "30100"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis_data
+        target: /data
+        volume: {}
+  somabrain_schema_registry:
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+        required: true
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://somabrain_kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO
+        - /dev/null
+        - http://localhost:8081/subjects
+      timeout: 5s
+      interval: 30s
+      retries: 3
+    image: confluentinc/cp-schema-registry:7.6.0
+    networks:
+      somabrain_net: null
+    ports:
+      - mode: ingress
+        target: 8081
+        published: "30108"
+        protocol: tcp
+    restart: unless-stopped
+networks:
+  somabrain_net:
+    name: somabrain_somabrain_net
+    driver: bridge
+volumes:
+  kafka_data:
+    name: somabrain_kafka_data
+    driver: local
+  opa_data:
+    name: somabrain_opa_data
+    driver: local
+  postgres_data:
+    name: somabrain_postgres_data
+    driver: local
+  prometheus_data:
+    name: somabrain_prometheus_data
+    driver: local
+  redis_data:
+    name: somabrain_redis_data
+    driver: local

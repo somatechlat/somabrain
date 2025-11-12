@@ -56,6 +56,9 @@ def _env(name: str, default: str | None = None) -> str | None:
     return val.strip()
 
 
+# Strict mode utilities removed: no host-port fallback mappings
+
+
 def check_postgres() -> CheckResult:
     dsn = _env("SOMABRAIN_POSTGRES_DSN")
     if not dsn:

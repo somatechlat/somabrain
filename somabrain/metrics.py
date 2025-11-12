@@ -51,52 +51,11 @@ try:
         Summary as _PromSummary,
         generate_latest,
     )
-except Exception:  # pragma: no cover
-    # Enforce "no fake alternatives" by default. Allow a noop shim only in docs builds
-    # or when explicitly permitted via SOMABRAIN_ALLOW_METRICS_NOOP=1.
-    allow_noop = False
-    try:
-        allow_noop = bool(os.getenv("SPHINX_BUILD")) or (
-            (os.getenv("SOMABRAIN_ALLOW_METRICS_NOOP", "").strip().lower())
-            in ("1", "true", "yes", "on")
-        )
-    except Exception:
-        allow_noop = False
-
-    if not allow_noop:
-        raise ImportError(
-            "prometheus_client is required for somabrain.metrics; set SOMABRAIN_ALLOW_METRICS_NOOP=1 only for docs/tests if you must bypass"
-        )
-
-    CONTENT_TYPE_LATEST = "text/plain; version=0.0.4; charset=utf-8"
-
-    class CollectorRegistry:  # minimal shim for docs/tests only
-        def __init__(self):
-            self._names_to_collectors = {}
-
-    class _NoopMetric:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def inc(self, *a, **k):
-            pass
-
-        def set(self, *a, **k):
-            pass
-
-        def labels(self, *a, **k):
-            return self
-
-        def observe(self, *a, **k):
-            pass
-
-    REGISTRY = CollectorRegistry()
-    _PromCounter = _NoopMetric
-    _PromGauge = _NoopMetric
-    _PromHistogram = _NoopMetric
-
-    def generate_latest(reg):
-        return b""
+except Exception as e:  # pragma: no cover
+    # Strict mode: metrics are mandatory. No noop shims permitted.
+    raise ImportError(
+        f"prometheus_client is required for somabrain.metrics (strict mode). Missing dependency: {e}"
+    )
 
 
 # Aliases used later (avoid interleaved imports)

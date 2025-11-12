@@ -1,3 +1,53 @@
+Test Suite Overview
+===================
+
+Structure
+---------
+tests/
+  e2e/                End-to-end flows (full system traces)
+  integration/        Cross-service HTTP + infra readiness
+  services/           Service-level logic (integrator, segmentation, predictor)
+  core/               Core data structures / algorithms (WM, registry, quantum)
+  invariants/         Strict-mode + policy/code hygiene checks
+  learner/            Adaptive learning loop and parameter schedules
+  predictor/          Next-event schema + predictor behaviors
+  segmentation/       HMM + segmentation evaluators
+  acceptance/         Higher-level behavioral acceptance criteria
+  monitoring/         Drift + observability integration
+  kafka/              Kafka topic/schema contract tests
+  metrics/            Latency / regret metric computations
+  stress/ / benchmarks Performance / soak / stress harnesses (skipped unless -m benchmark)
+  utils/              Shared helpers (polling, fixtures)
+
+Markers
+-------
+integration: Automatically applied to paths containing integration/e2e/services/kafka/monitoring.
+benchmark / performance: Applied to stress/benchmarks; skipped unless explicitly selected.
+learning: Applied to tests exercising learning loop dynamics.
+
+Running Focused Sets
+--------------------
+All integration (requires full stack):
+  pytest -m integration
+
+Full-trace single message (artifact bundle under artifacts/benchmarks/full_trace/<UUID>):
+  pytest tests/e2e/test_full_trace_message.py -s
+
+Selective module area examples:
+  pytest tests/core -k registry
+  pytest -m learning
+
+Environment Expectations
+------------------------
+Infra services (Kafka, Postgres, OPA, Memory HTTP) must be reachable for integration/e2e tests. `conftest.py` loads `.env` and normalizes host mappings.
+
+Artifacts
+---------
+The full-trace E2E test writes JSON/text snapshots for post-run forensic analysis of a single request lifecycle: health, diagnostics, remember, recall, memory service search, metrics, final health.
+
+Adding New Tests
+----------------
+Place new true end-to-end flows under e2e/. Keep integration tests lightweight and skip gracefully when infra is absent. Use polling utilities (`tests/utils/polling.py`) instead of fixed sleeps.
 # SomaBrain Test Running Cheatsheet
 
 A concise, canonical reference for running tests locally and in CI-like dev environments.

@@ -435,34 +435,17 @@ class MemoryClient:
                 self._http_async = None
         except Exception:
             pass
-        # If memory is required and client not initialized, raise immediately to fail fast.
-        require_memory_enabled = bool(os.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
-        if require_memory_enabled and (self._http is None):
+        # Strict mode: memory is always required
+        if self._http is None:
             raise RuntimeError(
-                "SOMABRAIN_REQUIRE_MEMORY enforced but no memory service reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
+                "MEMORY SERVICE REQUIRED but not reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
             )
         # Enforce token presence by mode policy
-        mem_auth_required = True
-        if shared_settings is not None:
-            try:
-                mem_auth_required = bool(
-                    getattr(shared_settings, "mode_memory_auth_required", True)
-                )
-            except Exception:
-                mem_auth_required = True
-        if self._http is not None and mem_auth_required and not token_value:
-            # If memory is required, treat missing token as fatal; otherwise warn.
-            message = (
-                "MEMORY AUTH REQUIRED: missing SOMABRAIN_MEMORY_HTTP_TOKEN for HTTP memory backend. "
-                "Set a valid dev/staging/prod token to enable /memories and /memories/search."
+        # Strict mode: authentication token is mandatory for HTTP memory backend
+        if self._http is not None and not token_value:
+            raise RuntimeError(
+                "MEMORY AUTH REQUIRED: missing SOMABRAIN_MEMORY_HTTP_TOKEN for HTTP memory backend."
             )
-            if require_memory_enabled:
-                raise RuntimeError(message)
-            else:
-                try:
-                    logger.warning(message)
-                except Exception:
-                    pass
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the

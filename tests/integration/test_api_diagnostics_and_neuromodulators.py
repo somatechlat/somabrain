@@ -135,8 +135,14 @@ def test_neuromodulators_roundtrip_and_learning_rate_effect():
     if fb is None:
         pytest.skip("/context/feedback not reachable; cannot validate LR effect")
 
-    # Small settling time if persistence hooks are present
-    time.sleep(0.1)
+    # Wait until learning state becomes available instead of fixed sleep
+    from tests.utils.polling import wait_for
+    wait_for(
+        lambda: _safe_get(f"{base}/context/adaptation/state") is not None,
+        timeout=2.0,
+        interval=0.1,
+        desc="adaptation state visibility",
+    )
 
     rstate2 = _safe_get(f"{base}/context/adaptation/state")
     if rstate2 is None:
