@@ -66,49 +66,74 @@ class MemoryService:
         self.mt_memory = mt_memory
         self.namespace = namespace
 
-    # Circuit breaker state shared across all service instances
+    # Circuit breaker state shared across all service instances. Refactor to
+    # keep per-tenant state dictionaries so one tenant failure doesn't affect others.
     _circuit_lock: RLock = RLock()
     _outbox_lock: RLock = RLock()
-    _circuit_open: bool = False
-    _failure_count: int = 0
-    _last_failure_time: float = 0.0
-    _last_reset_attempt: float = 0.0
+    _circuit_open: dict[str, bool] = {}
+    _failure_count: dict[str, int] = {}
+    _last_failure_time: dict[str, float] = {}
+    _last_reset_attempt: dict[str, float] = {}
+    # Tunable defaults (global defaults, can be overridden per-tenant in future)
     _failure_threshold: int = 3
     _reset_interval: float = 60.0
+
+    @classmethod
+    def _ensure_tenant_state_locked(cls, tenant: str) -> None:
+        # Assumes caller holds cls._circuit_lock
+        if tenant not in cls._circuit_open:
+            cls._circuit_open[tenant] = False
+            cls._failure_count[tenant] = 0
+            cls._last_failure_time[tenant] = 0.0
+            cls._last_reset_attempt[tenant] = 0.0
 
     def client(self) -> MemoryBackend:
         """Return the underlying memory client for the current namespace."""
         return self.mt_memory.for_namespace(self.namespace)
 
     @classmethod
-    def _set_circuit_metric_locked(cls) -> None:
+    def _set_circuit_metric_locked(cls, tenant: str) -> None:
         if _metrics is None:
             return
-        gauge = getattr(_metrics, "CIRCUIT_BREAKER_STATE", None)
+        # Prefer a per-tenant labeled metric if available, otherwise fall back
+        # to the legacy global circuit breaker gauge.
+        gauge = getattr(_metrics, "CIRCUIT_STATE", None) or getattr(_metrics, "CIRCUIT_BREAKER_STATE", None)
         if gauge is None:
             return
         try:
-            gauge.set(1 if cls._circuit_open else 0)
+            # If the gauge supports labels use tenant label, otherwise set scalar
+            if hasattr(gauge, "labels"):
+                try:
+                    gauge.labels(tenant_id=str(tenant or "unknown")).set(1 if cls._circuit_open.get(tenant, False) else 0)
+                except Exception:
+                    # Some registry wrappers might raise on label creation - ignore
+                    pass
+            else:
+                gauge.set(1 if cls._circuit_open.get(tenant, False) else 0)
         except Exception:
             pass
 
     def _mark_success(self) -> None:
         cls = self.__class__
+        tenant = getattr(self, "namespace", "default")
         with cls._circuit_lock:
-            cls._failure_count = 0
-            cls._circuit_open = False
-            cls._last_failure_time = 0.0
-            cls._set_circuit_metric_locked()
+            cls._ensure_tenant_state_locked(tenant)
+            cls._failure_count[tenant] = 0
+            cls._circuit_open[tenant] = False
+            cls._last_failure_time[tenant] = 0.0
+            cls._set_circuit_metric_locked(tenant)
 
     def _mark_failure(self) -> None:
         cls = self.__class__
+        tenant = getattr(self, "namespace", "default")
         now = time.monotonic()
         with cls._circuit_lock:
-            cls._failure_count += 1
-            cls._last_failure_time = now
-            if cls._failure_count >= max(1, int(cls._failure_threshold)):
-                cls._circuit_open = True
-            cls._set_circuit_metric_locked()
+            cls._ensure_tenant_state_locked(tenant)
+            cls._failure_count[tenant] += 1
+            cls._last_failure_time[tenant] = now
+            if cls._failure_count[tenant] >= max(1, int(cls._failure_threshold)):
+                cls._circuit_open[tenant] = True
+            cls._set_circuit_metric_locked(tenant)
         if _metrics is not None:
             counter = getattr(_metrics, "HTTP_FAILURES", None)
             if counter is not None:
@@ -119,19 +144,22 @@ class MemoryService:
 
     def _is_circuit_open(self) -> bool:
         cls = self.__class__
+        tenant = getattr(self, "namespace", "default")
         with cls._circuit_lock:
-            return bool(cls._circuit_open)
+            cls._ensure_tenant_state_locked(tenant)
+            return bool(cls._circuit_open.get(tenant, False))
 
     @classmethod
-    def _should_attempt_reset(cls) -> bool:
-        if not cls._circuit_open:
+    def _should_attempt_reset(cls, tenant: str) -> bool:
+        cls._ensure_tenant_state_locked(tenant)
+        if not cls._circuit_open.get(tenant, False):
             return False
         now = time.monotonic()
-        if now - cls._last_failure_time < max(1.0, float(cls._reset_interval)):
+        if now - cls._last_failure_time.get(tenant, 0.0) < max(1.0, float(cls._reset_interval)):
             return False
-        if now - cls._last_reset_attempt < 5.0:
+        if now - cls._last_reset_attempt.get(tenant, 0.0) < 5.0:
             return False
-        cls._last_reset_attempt = now
+        cls._last_reset_attempt[tenant] = now
         return True
 
     def _update_outbox_metric(self) -> None:
@@ -258,18 +286,20 @@ class MemoryService:
         if not self._is_circuit_open():
             return False
         cls = self.__class__
-        if not cls._should_attempt_reset():
+        tenant = getattr(self, "namespace", "default")
+        if not cls._should_attempt_reset(tenant):
             return False
         healthy = self._health_check()
         if healthy:
             with cls._circuit_lock:
-                cls._circuit_open = False
-                cls._failure_count = 0
-                cls._last_failure_time = 0.0
-                cls._set_circuit_metric_locked()
+                cls._ensure_tenant_state_locked(tenant)
+                cls._circuit_open[tenant] = False
+                cls._failure_count[tenant] = 0
+                cls._last_failure_time[tenant] = 0.0
+                cls._set_circuit_metric_locked(tenant)
             return True
         with cls._circuit_lock:
-            cls._last_failure_time = time.monotonic()
+            cls._last_failure_time[tenant] = time.monotonic()
         return False
 
     # Journal/outbox alternative removed: no background replay
