@@ -135,7 +135,28 @@ class MemoryService:
         return True
 
     def _update_outbox_metric(self) -> None:
-        return
+        if _metrics is None:
+            return
+        try:
+            # Import locally to avoid circular imports at module import time
+            from somabrain.db.outbox import get_pending_count  # type: ignore
+
+            tenant = getattr(self, "namespace", None)
+            count = 0
+            try:
+                count = int(get_pending_count(tenant_id=tenant))
+            except Exception:
+                count = 0
+
+            gauge = getattr(_metrics, "OUTBOX_PENDING", None)
+            if gauge is not None:
+                try:
+                    gauge.set(count)
+                except Exception:
+                    pass
+        except Exception:
+            # Never raise from a metrics update path; metrics are best-effort
+            return
 
     def remember(self, key: str, payload: dict, universe: str | None = None):
         """Stores a memory payload. In V3, this fails fast if the remote is down."""
