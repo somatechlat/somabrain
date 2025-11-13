@@ -24,7 +24,13 @@ SOMA_TOPIC = TOPICS["soma_agent"]
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    if not url:
+        # Require explicit Kafka URL in environment to avoid accidental
+        # use of localhost/dev brokers in production.
+        raise RuntimeError(
+            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
+        )
     return url.replace("kafka://", "")
 
 

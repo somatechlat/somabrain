@@ -129,26 +129,24 @@ def _maybe_health_server():  # pragma: no cover
 
 
 def _get_runtime():
+    """Load the runtime configuration.
+
+    In production environments the ``somabrain.runtime_config`` module must be
+    importable. Previously a ``_Stub`` fallback was provided to allow the
+    predictor to run without the config, but the project now enforces strict
+    external‑backend usage (see ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS``). The
+    stub is therefore removed and a clear ``RuntimeError`` is raised if the
+    import fails, preventing silent fallback to default values.
+    """
     try:
         from somabrain import runtime_config as _rt  # type: ignore
-
         return _rt
-    except Exception:  # pragma: no cover
-
-        class _Stub:
-            @staticmethod
-            def get_float(k: str, d: float) -> float:
-                return d
-
-            @staticmethod
-            def get_bool(k: str, d: bool) -> bool:
-                return d
-
-            @staticmethod
-            def get_str(k: str, d: str) -> str:
-                return d
-
-        return _Stub()
+    except Exception as exc:  # pragma: no cover
+        # Propagate a meaningful error – the caller (run_forever) will abort.
+        raise RuntimeError(
+            "Failed to import somabrain.runtime_config – required for the "
+            "predictor when external backends are enforced."
+        ) from exc
 
 
 def _metrics_handles():  # pragma: no cover
