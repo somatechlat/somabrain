@@ -1209,13 +1209,8 @@ try:
 except Exception:
     pass
 
-if _EXPOSE_DEMOS:
-    try:
-        from somabrain.api.routers import demo as _demo_router
-
-        app.include_router(_demo_router.router)
-    except Exception:
-        pass
+# Demo router support removed: demo endpoints are intentionally deleted
+_EXPOSE_DEMOS = False
 
 
 @app.exception_handler(RequestValidationError)

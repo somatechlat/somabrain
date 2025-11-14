@@ -1,60 +1,53 @@
-"""Minimal observability provider used for testing.
+"""Observability provider.
 
-The real project may configure OpenTelemetry tracing, but the unit‑test suite
-only requires the symbols ``init_tracing`` and ``get_tracer`` to exist.  They
-are implemented as no‑ops that return a dummy tracer object with the usual
-``start_as_current_span`` context manager.
-
-This implementation deliberately avoids external dependencies so that the
-package can be imported in the isolated test environment.
+This module provides a thin wrapper around OpenTelemetry tracing for production
+use. Under strict, production-focused policy we do not expose no-op stubs.
+If OpenTelemetry is not available or tracing cannot be initialized, initialization
+raises an explicit error so missing instrumentation is addressed during deploy.
 """
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any
+
+try:
+    from opentelemetry import trace
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+except Exception as exc:  # pragma: no cover - intentionally strict
+    raise RuntimeError(
+        "OpenTelemetry packages are required for observability. Install 'opentelemetry-sdk' and related packages."
+    ) from exc
 
 
-class _DummySpan:
-    """A dummy span that does nothing but can be used as a context manager."""
+def init_tracing(service_name: str, *, console_export: bool = False) -> None:
+    """Initialize OpenTelemetry tracer provider.
 
-    def __enter__(self) -> "_DummySpan":  # pragma: no cover
-        return self
+    Args:
+        service_name: logical service name to expose in traces.
+        console_export: if True, attach a console span exporter for local debugging.
 
-    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:  # pragma: no cover
-        # No cleanup required.
-        return None
-
-
-class _DummyTracer:
-    """A minimal tracer exposing ``start_as_current_span``.
-
-    The returned object implements the context‑manager protocol but otherwise
-    discards all tracing information.
+    Raises:
+        RuntimeError: if tracer cannot be initialized.
     """
+    try:
+        resource = Resource.create({"service.name": service_name})
+        provider = TracerProvider(resource=resource)
+        if console_export:
+            provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+        trace.set_tracer_provider(provider)
+    except Exception as e:  # pragma: no cover - surface initialization failures
+        raise RuntimeError("Failed to initialize OpenTelemetry tracer") from e
 
-    @contextmanager
-    def start_as_current_span(self, name: str) -> Generator[_DummySpan, None, None]:
-        # Yield a dummy span; the ``with`` block does nothing.
-        yield _DummySpan()
 
+def get_tracer(name: str | None = None):
+    """Return an OpenTelemetry tracer instance.
 
-def init_tracing(*_, **__) -> None:
-    """Initialize tracing – a no‑op for the test environment.
-
-    The signature accepts arbitrary positional and keyword arguments to match
-    the production function.  It simply returns ``None``.
+    This will raise if tracing is not initialized to ensure production code does
+    not silently run without instrumentation.
     """
-
-    return None
-
-
-def get_tracer(*_, **__) -> _DummyTracer:
-    """Return a dummy tracer instance.
-
-    The real implementation would return an ``opentelemetry.trace.Tracer``.
-    Here we return a lightweight stub that satisfies the methods used in the
-    code base (currently only ``start_as_current_span``).
-    """
-
-    return _DummyTracer()
+    try:
+        return trace.get_tracer(name or __name__)
+    except Exception as e:
+        raise RuntimeError("Tracer not available; call init_tracing first") from e
