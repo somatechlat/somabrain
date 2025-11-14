@@ -10,11 +10,12 @@ import math
 import os
 import time
 from dataclasses import dataclass
-from typing import Callable, Dict, Iterable, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import numpy as np
 
-from somabrain.context.memory_shim import MemoryRecallClient
+from somabrain.config import get_config
+from somabrain.memory_client import MemoryClient, RecallHit
 
 try:  # optional import; falls back to defaults during lightweight tests
     from somabrain.config import get_config as _get_config
@@ -61,7 +62,7 @@ class ContextBuilder:
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memory = memory or MemoryRecallClient()
+        self._memory = memory or MemoryClient(cfg=get_config())
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default placeholder)
@@ -229,24 +230,31 @@ class ContextBuilder:
 
     def _search(
         self, query_text: str, embedding: List[float], top_k: int
-    ) -> List[Dict]:
-        # Prefer text search on the live memory service when possible, with tenant scoping
+    ) -> List[Dict[str, Any]]:
         try:
-            filters = (
-                {"tenant": self._tenant_id}
-                if getattr(self, "_tenant_id", None)
-                else None
-            )
-            results = self._memory.search_text(query_text, top_k=top_k, filters=filters)
-            if results:
-                return results
-        except Exception:
-            pass
-        # Use legacy vector search path
-        try:
-            return self._memory.search(embedding, top_k=top_k)
+            hits = self._memory.recall_with_scores(query_text, top_k=top_k)
+            return self._hits_to_results(hits)
         except Exception:
             return []
+
+    def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
+        tenant = getattr(self, "_tenant_id", None) or None
+        results: List[Dict[str, Any]] = []
+        for idx, hit in enumerate(hits):
+            payload = hit.payload if isinstance(hit.payload, dict) else {}
+            if tenant and payload.get("tenant") not in (tenant, None):
+                continue
+            score = hit.score if isinstance(hit.score, (int, float)) else 0.0
+            coord = payload.get("coordinate") or payload.get("coord") or None
+            results.append(
+                {
+                    "id": coord or f"mem-{idx}",
+                    "score": float(score),
+                    "metadata": payload,
+                    "embedding": None,
+                }
+            )
+        return results
 
     def _compute_weights(
         self,

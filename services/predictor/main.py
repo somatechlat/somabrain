@@ -30,7 +30,7 @@ from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 
-from observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event

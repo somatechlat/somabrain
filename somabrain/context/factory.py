@@ -5,13 +5,13 @@ from __future__ import annotations
 from functools import lru_cache
 import os
 
-from somabrain.context.memory_shim import MemoryRecallClient
 from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.learning import UtilityWeights
 from somabrain.runtime.working_memory import WorkingMemoryBuffer
 from somabrain.config import get_config
 from somabrain.embeddings import make_embedder
+from somabrain.memory_client import MemoryClient
 
 
 _embedder = None
@@ -39,7 +39,7 @@ _utility_weights = UtilityWeights()
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
-    memory = MemoryRecallClient()
+    memory = MemoryClient(cfg=get_config())
     return ContextBuilder(
         embed_fn=_embedder.embed,
         memory=memory,

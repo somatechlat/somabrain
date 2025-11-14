@@ -896,7 +896,7 @@ except Exception:
 
 # Initialize observability/tracing when available. Fail-open so the API still starts.
 try:
-    from observability.provider import init_tracing
+    from somabrain.observability.provider import init_tracing
 
     @app.on_event("startup")
     async def _init_observability() -> None:

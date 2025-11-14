@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 
 from somabrain.services.integrator_hub import IntegratorHub, SoftmaxIntegrator
 from somabrain.services.calibration_service import CalibrationService
-from somabrain.services.drift_monitoring import DriftMonitoringService
+from somabrain.monitoring.drift_detector import DriftMonitoringService
 
 
 class TestRoadmapCompliance:

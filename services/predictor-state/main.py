@@ -7,7 +7,7 @@ from typing import Any
 import threading
 import numpy as np
 
-from observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
