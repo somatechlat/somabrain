@@ -111,27 +111,36 @@ graph TD
 ## Data Flow Patterns
 
 ### Memory Storage Flow
-1. Client sends `/remember` request with content and metadata
-2. OPA middleware validates tenant permissions and rate limits
-3. Content processed through QuantumLayer for hypervector encoding
-4. MemoryClient writes to both working memory (Redis) and long-term storage
-5. DensityMatrix updated with new memory relationships
-6. Audit event published to Kafka
-7. Metrics emitted to Prometheus
-8. Success response returned to client
+1. Client sends `/memory/remember` request with content, signals, attachments, and links
+2. OPA middleware validates tenant permissions (fail-closed)
+3. MemoryService circuit breaker checked and reset if needed
+4. Payload composed with signals (importance, novelty, ttl), tags, and metadata
+5. Content embedded via embedder for working memory admission
+6. MemoryClient writes to external HTTP memory service (fail-fast on 503)
+7. Outbox event created in Postgres transaction before Kafka publish
+8. Working memory (MultiTenantWM) admits vector with payload
+9. TieredMemoryRegistry records memory in governed superposition
+10. Metrics emitted to Prometheus (memory_snapshot, circuit_breaker_state)
+11. Success response returned with coordinate, WM promotion status, and signal feedback
 
 ### Memory Recall Flow
-1. Client sends `/recall` request with query and context
-2. OPA middleware validates access permissions
-3. MultiTenantWM checked for cached results (cosine similarity in base space)
-4. If miss, MemoryClient queries long-term storage via HTTP
-5. UnifiedScorer ranks results:
+1. Client sends `/memory/recall` request (string or object body)
+2. OPA middleware validates access permissions (fail-closed)
+3. Request coerced to RetrievalRequest with environment-backed defaults
+4. Retrieval pipeline orchestrates multiple retrievers:
+   - Working memory (MultiTenantWM) via cosine similarity
+   - Vector retrieval via MemoryClient HTTP (circuit breaker protected)
+   - Graph traversal (k-hop expansion from query key)
+   - Lexical matching (optional)
+5. UnifiedScorer ranks candidates:
    - w_cosine * cosine_similarity(query, candidate)
    - w_fd * fd_projection_similarity(query, candidate)
    - w_recency * exp(-recency_steps / recency_tau)
-6. Results filtered and formatted for response
-7. Working memory updated with recalled items
-8. Metrics emitted: SCORER_COMPONENT, SCORER_FINAL, memory_snapshot
+6. Reranking applied (auto/mmr/hrr/cosine)
+7. TieredMemoryRegistry provides governed recall with cleanup indexes
+8. Session pinning (optional) stores results for follow-up queries
+9. Cutover controller records shadow metrics for namespace migration
+10. Metrics emitted: RECALL_REQUESTS, RECALL_WM_LAT, RECALL_LTM_LAT, memory_snapshot
 
 ### Health Check Flow
 1. `/health` endpoint receives request
@@ -203,18 +212,28 @@ graph TD
 
 ## Recall Lifecycle (Production Mode)
 
-1. Request enters FastAPI handlers (`somabrain/api/memory_api.py`).
-2. Backend-enforcement middleware verifies `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS` if enabled.
-3. Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`) checks cache.
-4. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines:
+1. Request enters FastAPI handlers (`somabrain/api/memory_api.py::recall_memory`).
+2. OPA middleware enforces authorization (fail-closed).
+3. Request coerced to `RetrievalRequest` with environment-backed defaults (full-power mode).
+4. Retrieval pipeline (`somabrain/services/retrieval_pipeline.py::run_retrieval_pipeline`) orchestrates:
+   - Working-memory probe (`somabrain/mt_wm.py::MultiTenantWM.recall`)
+   - Vector retrieval via MemoryClient HTTP
+   - Graph traversal (k-hop expansion)
+   - Lexical matching (optional)
+5. Unified scoring (`somabrain/scoring.py::UnifiedScorer`) combines:
    - Cosine similarity in base space
    - FD subspace projection (via FDSalienceSketch.project)
    - Exponential recency: exp(-age/τ)
-5. Memory client (`somabrain/memory_client.py::MemoryClient.recall`) queries HTTP memory service.
-6. Circuit breaker (`somabrain/services/memory_service.py::MemoryService`) tracks failures and journals operations when backend is down (if `allow_journal_fallback=true`).
-7. Response returns scored items; metrics emitted via `somabrain/metrics.py`.
+6. Reranking (auto/mmr/hrr/cosine) applied to candidates.
+7. Circuit breaker (`somabrain/services/memory_service.py::MemoryService`) tracks failures:
+   - Opens after `failure_threshold` consecutive errors (default 3)
+   - Resets after `reset_interval` seconds (default 60s)
+   - Fails fast with 503 when open (no journal fallback)
+8. Tiered memory (`TieredMemoryRegistry`) provides governed recall with cleanup indexes.
+9. Outbox pattern (`somabrain/db/outbox.py`) ensures transactional Kafka event publishing.
+10. Response returns scored items; metrics emitted via `somabrain/metrics.py`.
 
-Strict-mode deployments (backend enforcement enabled, journal disabled) fail fast when dependencies are unavailable.
+Strict-mode deployments (backend enforcement enabled) fail fast when dependencies are unavailable.
 
 ## Core Invariants
 
@@ -225,9 +244,11 @@ Strict-mode deployments (backend enforcement enabled, journal disabled) fail fas
 | Binding correctness | `MathematicalMetrics.verify_operation_correctness` | Validates cosine(a, bind(a,b)) is low |
 | Weight bounds | `UnifiedScorer._clamp` | Keeps scorer weights within [weight_min, weight_max] |
 | Trace normalization | `SuperposedTrace._decayed_update` | Renormalizes after every exponential decay step: (1-η)M_t + η·bind(k,v) |
-| Circuit breaker | `MemoryService._mark_failure` | Opens after failure_threshold consecutive errors |
+| Circuit breaker | `MemoryService._mark_failure` | Opens after failure_threshold consecutive errors (default 3) |
+| Outbox transactionality | `outbox_db.create_event` | Atomic write to Postgres outbox table before Kafka publish |
+| Fail-closed authorization | `OpaMiddleware` | All requests blocked when OPA unavailable (strict mode) |
 
-Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SCORER_COMPONENT`, `CIRCUIT_BREAKER_STATE`, `HTTP_FAILURES`).
+Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SCORER_COMPONENT`, `CIRCUIT_BREAKER_STATE`, `HTTP_FAILURES`, `OUTBOX_EVENTS_CREATED`, `OUTBOX_FAILED_TOTAL`).
 
 ## Configuration Touchpoints
 
@@ -236,8 +257,11 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 - Recency decay: `recency_tau` controls exponential decay rate (exp(-age/τ))
 - Adaptation: `learning_rate_dynamic=true` enables dopamine-modulated learning rates
 - Circuit breaker: `failure_threshold` (default 3), `reset_interval` (default 60s)
-- Journal fallback: `allow_journal_fallback` (default false in strict mode)
 - Backend enforcement: `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` disables all fallbacks
+- Recall defaults: `SOMABRAIN_RECALL_FULL_POWER=1` (default), `SOMABRAIN_RECALL_DEFAULT_RERANK=auto`, `SOMABRAIN_RECALL_DEFAULT_PERSIST=1`
+- Tiered memory: `SOMABRAIN_TIERED_MEMORY_ENABLED=1` enables governed superposition
+- Outbox: `SOMABRAIN_OUTBOX_BATCH_SIZE=100`, `SOMABRAIN_OUTBOX_MAX_DELAY=5.0`
+- Admin features: `SOMABRAIN_MODE=dev` enables feature flag overrides
 - Optional components (Kafka, Postgres) are auto-detected; backend enforcement keeps readiness false when dependencies are offline
 
 ## Extending the System

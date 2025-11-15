@@ -102,36 +102,103 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 
 ## API Overview
 
+### Core Memory Endpoints
+
 | Endpoint | Description |
 |----------|-------------|
-| `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, and embedder.
-| `POST /remember` | Store a memory (accepts legacy inline fields or `{"payload": {...}}`). Fails fast with 503 if the backend is unavailable.
-| `POST /remember/batch` | Bulk ingestion with per-item success/failure counts.
-| `POST /recall` | Retrieves working-memory and long-term matches with scores from `UnifiedScorer`.
+| `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, embedder, and circuit breaker state.
+| `POST /memory/remember` | Store a memory with signals (importance, novelty, ttl), attachments, links, and policy tags. Returns coordinate, WM promotion status, and signal feedback.
+| `POST /memory/remember/batch` | Bulk memory ingestion with per-item success/failure tracking and signal feedback.
+| `POST /memory/recall` | Unified retrieval backed by the full retrieval pipeline (vector, wm, graph, lexical retrievers). Supports streaming, session pinning, and tiered memory.
+| `POST /memory/recall/stream` | Chunked recall for streaming large result sets.
+| `GET /memory/context/{session_id}` | Retrieve pinned recall session results.
+| `GET /memory/metrics` | Per-tenant memory metrics (WM items, circuit breaker state).
+
+### Context & Adaptation
+
+| Endpoint | Description |
+|----------|-------------|
 | `POST /context/evaluate` | Builds a prompt, returns weighted memories, residual vector, and working-memory snapshot.
 | `POST /context/feedback` | Updates tenant-specific retrieval/utility weights; emits gain/bound metrics.
 | `GET /context/adaptation/state` | Inspect current weights, effective learning rate, configured gains, and bounds.
-| `POST /plan/suggest`, `POST /act` | Planner/agent assist (enabled when full stack is running).
+
+### Planning & Actions
+
+| Endpoint | Description |
+|----------|-------------|
+| `POST /plan/suggest` | Suggest a plan derived from the semantic graph around a task key.
+| `POST /act` | Execute an action/task and return step results with salience scoring.
+| `POST /graph/links` | Returns semantic graph edges from a starting key.
+| `POST /delete` | Delete a memory at the given coordinate.
+| `POST /recall/delete` | Delete a memory by coordinate via the recall API.
+
+### Neuromodulation & Sleep
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET/POST /neuromodulators` | Read or set neuromodulator levels (dopamine, serotonin, noradrenaline, acetylcholine).
 | `POST /sleep/run` | Trigger NREM/REM consolidation cycles.
-| `GET/POST /neuromodulators` | Read or set neuromodulator levels (dopamine, serotonin, etc.).
+| `GET /sleep/status` | Check sleep/consolidation status for current tenant.
+| `GET /sleep/status/all` | Admin view: list sleep status for all known tenants.
+
+### Admin & Operations
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /admin/services` | List all cognitive services managed by Supervisor.
+| `GET /admin/services/{name}` | Get status of a specific service.
+| `POST /admin/services/{name}/start` | Start a cognitive service.
+| `POST /admin/services/{name}/stop` | Stop a cognitive service.
+| `POST /admin/services/{name}/restart` | Restart a cognitive service.
+| `GET /admin/outbox` | List transactional outbox events (pending/failed/sent) with tenant filtering.
+| `POST /admin/outbox/replay` | Mark failed outbox events for replay.
+| `GET /admin/features` | Get current feature flag status and overrides.
+| `POST /admin/features` | Update feature flag overrides (full-local mode only).
+| `POST /memory/admin/rebuild-ann` | Rebuild ANN indexes for tiered memory.
+| `POST /memory/cutover/open` | Open a cutover plan for namespace migration.
+| `POST /memory/cutover/approve` | Approve an open cutover plan.
+| `POST /memory/cutover/execute` | Execute an approved cutover plan.
+| `POST /memory/cutover/cancel` | Cancel an active cutover plan.
+| `GET /memory/cutover/status/{tenant}` | Get cutover plan status for a tenant.
 
 All endpoints require a Bearer token (auth may be disabled automatically in dev mode). Every call can be scoped with `X-Tenant-ID`.
 
-### Full-Power Recall Defaults (2025-11)
+### Unified Memory API & Retrieval Pipeline
+
+The `/memory/recall` endpoint is backed by a full retrieval pipeline (`somabrain/services/retrieval_pipeline.py`) that orchestrates:
+
+- **Multiple retrievers**: vector, wm (working memory), graph, lexical
+- **Reranking strategies**: auto (HRR → MMR → cosine), mmr, hrr, cosine
+- **Session learning**: recall sessions and `retrieved_with` links recorded when `persist=true`
+- **Tiered memory**: governed superposition with cleanup indexes (cosine or HNSW)
 
 By default, the recall API runs in full-capacity mode:
 
 - Retrievers: `vector, wm, graph, lexical`
 - Rerank: `auto` (prefers HRR → MMR → cosine depending on availability)
-- Session learning: enabled (`persist=true`) — recall sessions and `retrieved_with` links are recorded to improve future retrievals
+- Session learning: enabled (`persist=true`)
 
-Override or rollback via environment variables (no code changes required):
+Override via environment variables (no code changes required):
 
 - `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
 - `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
 - `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
 - `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
 - `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+
+### Tiered Memory & Cutover
+
+SomaBrain supports governed tiered memory with namespace-level cutover:
+
+- **TieredMemoryRegistry** (`somabrain/services/tiered_memory_registry.py`) maintains per-tenant/namespace superposed traces
+- **Cutover Controller** (`somabrain/services/cutover_controller.py`) orchestrates safe namespace migrations with shadow metrics
+- **Outbox Pattern** (`somabrain/db/outbox.py`) ensures transactional event publishing to Kafka
+
+Cutover workflow:
+1. `POST /memory/cutover/open` — create migration plan
+2. System collects shadow metrics (top1_accuracy, margin, latency_p95_ms)
+3. `POST /memory/cutover/approve` — approve when metrics meet thresholds
+4. `POST /memory/cutover/execute` — atomically switch namespace routing
 
 Tip: set `use_hrr=true` in config to enable HRR reranking when `rerank=auto`.
 
