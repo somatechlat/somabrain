@@ -18,6 +18,7 @@ This documentation follows the ISO-aligned four-manual structure:
 | **Technical Manual** | SREs, operators, platform teams | How to deploy and operate | [technical-manual/](technical-manual/index.md) |
 | **Development Manual** | Engineers, contributors | How to build and extend | [development-manual/](development-manual/index.md) |
 | **Onboarding Manual** | New team members, contractors | How to get productive quickly | [onboarding-manual/](onboarding-manual/index.md) |
+| **Mathematical Manual** | Researchers, mathematicians, ML engineers | Rigorous mathematical foundations | [math-manual/](math-manual/index.md) |
 
 ---
 
@@ -49,6 +50,12 @@ This documentation follows the ISO-aligned four-manual structure:
 - [Codebase Walkthrough](onboarding-manual/codebase-walkthrough.md) - Architecture tour
 - [First Contribution](onboarding-manual/first-contribution.md) - Your first PR
 - [Domain Knowledge](onboarding-manual/domain-knowledge.md) - Technical deep-dive
+
+### For Researchers & Mathematicians
+- [Mathematical Foundations](math-manual/index.md) - Complete mathematical blueprint
+- [BHDC Foundations](math-manual/01-bhdc-foundations.md) - Binary hyperdimensional computing
+- [Superposition Traces](math-manual/02-superposition-traces.md) - Exponential decay dynamics
+- [Visual Guide](math-manual/visual-guide.md) - Diagrams and intuitive explanations
 
 ---
 
