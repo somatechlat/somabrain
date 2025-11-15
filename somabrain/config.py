@@ -129,6 +129,13 @@ class Config:
     # Redis backend configuration (optional)
     # Redis connection string is now dynamically constructed from SOMABRAIN_REDIS_HOST and SOMABRAIN_REDIS_PORT
     redis_url: str = field(default_factory=lambda: get_redis_url() or "")
+    
+    # Memory service configuration for circuit breaker and write modes
+    memory_failure_threshold: int = 3
+    memory_reset_interval: float = 60.0
+    memory_write_mode: str = "sync"  # sync|fast_ack|background
+    memory_health_poll_interval: float = 5.0
+    memory_outbox_max_retries: int = 5
 
     # Security and Limits
     api_token: Optional[str] = None

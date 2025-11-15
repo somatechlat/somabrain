@@ -1,0 +1,84 @@
+# SomaBrain Production Makefile
+# Complete production deployment with dev mode fixes
+
+.PHONY: production-deploy production-validate production-rollback production-fix-dev
+
+# Production deployment variables
+PROD_ENV := .env.production
+K8S_NAMESPACE := somabrain-prod
+HELM_RELEASE := somabrain-prod
+
+# Production deployment with dev mode fixes
+production-deploy: production-fix-dev production-infrastructure production-services production-validate
+	@echo "🚀 SomaBrain PRODUCTION deployment complete!"
+	@echo "📊 Monitor at: https://monitoring.somabrain.com"
+	@echo "🩺 Health check: kubectl get pods -n $(K8S_NAMESPACE)"
+
+# Fix all dev mode violations
+production-fix-dev:
+	@echo "🔧 Fixing dev mode violations..."
+	@chmod +x scripts/fix-all-dev-mode.sh
+	@./scripts/fix-all-dev-mode.sh
+	@echo "✅ Dev mode violations fixed"
+
+# Production infrastructure setup
+production-infrastructure:
+	@echo "🏗️ Setting up production infrastructure..."
+	@kubectl create namespace $(K8S_NAMESPACE) 2>/dev/null || true
+	@kubectl apply -f infra/k8s/production/
+	@echo "✅ Infrastructure deployed"
+
+# Production services deployment
+production-services:
+	@echo "📦 Deploying production services..."
+	@helm upgrade --install $(HELM_RELEASE) ./infra/helm \
+		--values infra/helm/values-production.yaml \
+		--namespace $(K8S_NAMESPACE) \
+		--set global.namespace=$(K8S_NAMESPACE) \
+		--wait --timeout=10m
+	@echo "✅ Services deployed"
+
+# Production validation
+production-validate:
+	@echo "✅ Validating production deployment..."
+	@kubectl wait --for=condition=ready pod -l app=somabrain-api -n $(K8S_NAMESPACE) --timeout=300s
+	@kubectl wait --for=condition=ready pod -l app=somabrain-cog -n $(K8S_NAMESPACE) --timeout=300s
+	@kubectl get pods -n $(K8S_NAMESPACE)
+	@echo "✅ All services healthy"
+
+# Production rollback
+production-rollback:
+	@echo "🔄 Rolling back production deployment..."
+	@helm rollback $(HELM_RELEASE) || echo "No rollback needed"
+	@kubectl get pods -n $(K8S_NAMESPACE)
+
+# Production health check
+production-health:
+	@echo "🩺 Production health check..."
+	@kubectl get pods -n $(K8S_NAMESPACE)
+	@kubectl get services -n $(K8S_NAMESPACE)
+	@kubectl top pods -n $(K8S_NAMESPACE) || echo "Metrics not available"
+
+# Production scaling
+production-scale-up:
+	@echo "📈 Scaling up production..."
+	@kubectl scale deployment somabrain-api --replicas=5 -n $(K8S_NAMESPACE)
+	@kubectl scale deployment somabrain-cog --replicas=3 -n $(K8S_NAMESPACE)
+
+production-scale-down:
+	@echo "📉 Scaling down production..."
+	@kubectl scale deployment somabrain-api --replicas=1 -n $(K8S_NAMESPACE)
+	@kubectl scale deployment somabrain-cog --replicas=1 -n $(K8S_NAMESPACE)
+
+# Production monitoring
+production-monitor:
+	@echo "📊 Production monitoring..."
+	@echo "Prometheus: https://prometheus.somabrain.com"
+	@echo "Grafana: https://grafana.somabrain.com"
+	@echo "Jaeger: https://jaeger.somabrain.com"
+
+# Production backup
+production-backup:
+	@echo "💾 Creating production backup..."
+	@kubectl exec -it deployment/somabrain-postgres -n $(K8S_NAMESPACE) -- pg_dump -U prod somabrain > "backup-`date +%Y%m%d-%H%M%S`.sql"
+	@echo "✅ Backup created"

@@ -7,9 +7,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 32M
+          memory: 512M
         reservations:
-          memory: 16M
+          memory: 256M
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300 --tcp-backlog 511
     networks:
       - somabrain_net
     ports:
@@ -29,9 +30,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 2G
         reservations:
-          memory: 256M
+          memory: 1.5G
     environment:
       KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID}
       KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES}
@@ -43,17 +44,18 @@ services:
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE}
       KAFKA_CFG_NUM_PARTITIONS: ${KAFKA_CFG_NUM_PARTITIONS}
-      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: ${KAFKA_CFG_DEFAULT_REPLICATION_FACTOR}
-      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR}
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR}
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_CFG_LOG_DIRS: ${KAFKA_CFG_LOG_DIRS}
-      KAFKA_CFG_LOG_RETENTION_MS: ${KAFKA_CFG_LOG_RETENTION_MS}
-      KAFKA_CFG_LOG_SEGMENT_BYTES: ${KAFKA_CFG_LOG_SEGMENT_BYTES}
-      KAFKA_CFG_LOG_RETENTION_BYTES: ${KAFKA_CFG_LOG_RETENTION_BYTES}
+      KAFKA_CFG_LOG_RETENTION_MS: 604800000
+      KAFKA_CFG_LOG_SEGMENT_BYTES: 67108864
+      KAFKA_CFG_LOG_RETENTION_BYTES: 1073741824
       KAFKA_CFG_COMPRESSION_TYPE: ${KAFKA_CFG_COMPRESSION_TYPE}
-      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
+      KAFKA_HEAP_OPTS: "-Xmx1.5g -Xms1.5g -XX:+UseG1GC -XX:MaxGCPauseMillis=20"
       KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20"
     volumes:
       # Persist Kafka broker data in the correct data directory.
       # The apache/kafka image uses /var/lib/kafka/data for logs; mounting at that
@@ -378,14 +380,20 @@ services:
     image: somabrain:latest
     restart: unless-stopped
     depends_on:
-      somabrain_kafka:
-        condition: service_healthy
       somabrain_postgres:
         condition: service_healthy
       somabrain_redis:
         condition: service_healthy
+      somabrain_kafka:
+        condition: service_healthy
       somabrain_opa:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 3.5G
+        reservations:
+          memory: 3G
     networks:
       - somabrain_net
     environment:
@@ -503,6 +511,12 @@ services:
         condition: service_healthy
       somabrain_opa:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
     environment:
       # Propagate the same env vars used by the app so the test code sees the
       # same configuration (memory endpoint, redis URL, etc.).

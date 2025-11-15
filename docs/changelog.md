@@ -45,6 +45,40 @@ All notable changes to SomaBrain are documented in this file. This project adher
 
 ---
 
+## [v3.2.0] - 2025-11-12 - ROAMDP Phase 3: Complete Implementation
+
+### 🚀 Added
+- **ROAMDP Phase 3: Memory Client Architecture Overhaul**
+  - **Database-backed Outbox**: Complete replacement of file-based outbox with SQLAlchemy `enqueue_event()`
+  - **Per-tenant Circuit Breakers**: AsyncCircuitBreaker implementation using aiobreaker 1.2.0
+  - **HTTP-first Architecture**: Complete removal of local/redis modes - HTTP only
+  - **Tenant Isolation**: All operations include `X-Soma-Tenant` headers
+  - **Idempotency Keys**: `X-Idempotency-Key` headers for reliable retries
+  - **Health Watchdog**: `_health_watchdog_coroutine()` with tenant-aware monitoring
+  - **Prometheus Metrics**: Per-tenant gauges for circuit breakers and outbox status
+
+### 🔧 Changed
+- **MemoryClient Refactored**: Complete overhaul from legacy to ROAMDP-compliant
+  - **HTTP Initialization**: Simplified to single `_init_http()` method
+  - **Outbox Integration**: Direct `enqueue_event()` calls replacing file-based `_record_outbox()`
+  - **Circuit Breaker Pattern**: Per-tenant `AsyncCircuitBreaker` instances
+  - **Configuration**: Direct environment variables with zero fallbacks
+  - **Authentication**: Mandatory HTTP token via `SOMABRAIN_MEMORY_HTTP_TOKEN`
+
+### 💥 Removed
+- **Legacy File-based Outbox**: Complete removal of `_record_outbox()` and file operations
+- **Local Mode**: `_init_local()` method and local memory backend
+- **Redis Mode**: `_init_redis()` method and Redis configuration
+- **Shared Settings**: All `shared_settings` fallbacks and complex configuration
+- **Backward Compatibility**: Clean slate - no legacy support
+
+### 📚 Documentation
+- **Migration Guide**: Comprehensive `docs/technical-manual/roamdp-upgrade-guide.md`
+- **Architecture Docs**: Updated to reflect HTTP-first design
+- **Environment Variables**: Complete documentation of new required variables
+
+---
+
 ## [v3.1.0] - 2025-11-11 - Phase 3: Live Deployment & HMM Segmentation
 
 ### 🚀 Added

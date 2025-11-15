@@ -181,3 +181,22 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 
 
 # Rely on default pytest file collection. Benchmarks are path-marked and skipped by default.
+
+# New ROAMDP test helpers
+@pytest.fixture
+def test_tenant_id() -> str:
+    """Standard test tenant ID for all tests."""
+    return "test-tenant-001"
+
+@pytest.fixture
+def default_sleep_state(test_tenant_id):
+    """Default sleep state for testing."""
+    from somabrain.sleep.models import TenantSleepState, SleepState
+    return TenantSleepState(
+        tenant_id=test_tenant_id,
+        current_state=SleepState.ACTIVE,
+        target_state=SleepState.ACTIVE
+    )
+
+# Performance test markers - use the existing configuration
+# pytest_configure is already defined above
