@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException
 
-from somabrain.config.feature_flags import FeatureFlags
+from config.feature_flags import FeatureFlags
 
 
 router = APIRouter(prefix="/features", tags=["features"])

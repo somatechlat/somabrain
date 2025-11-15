@@ -28,6 +28,8 @@ import socket
 import time
 from dataclasses import dataclass
 from typing import List
+from pathlib import Path
+import subprocess
 
 # External deps (all required in project dependencies)
 import requests  # type: ignore
@@ -174,12 +176,58 @@ def check_opa() -> CheckResult:
         return CheckResult("opa", False, f"{type(e).__name__}: {e}")
 
 
+def check_outbox_pending() -> CheckResult:
+    base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or "http://127.0.0.1:9696"
+    token = _env("SOMABRAIN_API_TOKEN") or _env("SOMA_API_TOKEN")
+    if not token:
+        return CheckResult("outbox", False, "SOMABRAIN_API_TOKEN not set")
+    try:
+        max_pending = int(_env("SOMABRAIN_OUTBOX_MAX_PENDING", "100") or 100)
+    except Exception:
+        max_pending = 100
+    status = _env("SOMABRAIN_OUTBOX_CHECK_STATUS", "pending") or "pending"
+    try:
+        page_size = int(_env("SOMABRAIN_OUTBOX_CHECK_PAGE", "500") or 500)
+    except Exception:
+        page_size = 500
+
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "outbox_admin.py"
+    cmd = [
+        sys.executable,
+        str(script_path),
+        "--url",
+        base.rstrip("/"),
+        "--token",
+        token,
+        "check",
+        "--status",
+        status,
+        "--max-pending",
+        str(max_pending),
+        "--page-size",
+        str(page_size),
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return CheckResult("outbox", False, f"check failed: {type(exc).__name__}: {exc}")
+    ok = proc.returncode == 0
+    detail = (proc.stdout or proc.stderr).strip() or f"exit {proc.returncode}"
+    return CheckResult("outbox", ok, detail)
+
+
 def main() -> int:
     checks: List[CheckResult] = []
     checks.append(check_postgres())
     checks.append(check_redis())
     checks.extend(check_kafka())
     checks.append(check_opa())
+    checks.append(check_outbox_pending())
 
     failed = [c for c in checks if not c.ok]
     for c in checks:

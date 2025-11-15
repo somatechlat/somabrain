@@ -25,14 +25,31 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections import defaultdict
 from typing import Any, Dict, Optional
 import logging
 
 from sqlalchemy.orm import Session
 
 from somabrain.db.models.outbox import OutboxEvent
+from somabrain.db.outbox import get_pending_counts_by_tenant
+try:  # metrics are optional in some contexts
+    from somabrain.metrics import (
+        DEFAULT_TENANT_LABEL,
+        report_outbox_pending,
+        report_outbox_processed,
+    )
+except Exception:  # pragma: no cover
+    DEFAULT_TENANT_LABEL = "default"
+    report_outbox_pending = None
+    report_outbox_processed = None
 from somabrain.storage.db import get_session_factory
 from somabrain.common.infra import assert_ready
+
+_PER_TENANT_BATCH_LIMIT = max(
+    1,
+    int(os.getenv("SOMABRAIN_OUTBOX_TENANT_BATCH_LIMIT", "50") or 50),
+)
 
 
 def _bootstrap() -> Optional[str]:
@@ -64,13 +81,59 @@ def _make_producer():  # pragma: no cover - optional at runtime
         return None
 
 
-def _publish_record(producer, topic: str, payload: Dict[str, Any]) -> None:
+def _publish_record(
+    producer,
+    topic: str,
+    payload: Dict[str, Any],
+    *,
+    key: str | None = None,
+    headers: Dict[str, Any] | None = None,
+) -> None:
     if producer is None:
         raise RuntimeError("Kafka producer not available")
     try:
-        producer.produce(topic, value=json.dumps(payload).encode("utf-8"))
+        payload_bytes = json.dumps(payload).encode("utf-8")
+        key_bytes = None
+        if key is not None:
+            key_bytes = key.encode("utf-8") if isinstance(key, str) else key
+        header_items: list[tuple[str, str]] = []
+        if headers:
+            for header_key, header_value in headers.items():
+                if header_value is None:
+                    continue
+                header_items.append((header_key, str(header_value)))
+        producer.produce(
+            topic,
+            value=payload_bytes,
+            key=key_bytes,
+            headers=header_items or None,
+        )
     except Exception as e:
         raise e
+
+
+_known_pending_tenants: set[str] = set()
+
+
+def _update_outbox_pending_metrics() -> None:
+    if report_outbox_pending is None:
+        return
+    counts: dict[str, int] = {}
+    try:
+        counts = get_pending_counts_by_tenant()
+    except Exception:
+        pass
+    current_tenants = set(counts.keys())
+    if not current_tenants:
+        counts = {DEFAULT_TENANT_LABEL: 0}
+        current_tenants = {DEFAULT_TENANT_LABEL}
+    for tenant, cnt in counts.items():
+        report_outbox_pending(tenant, cnt)
+    stale_tenants = _known_pending_tenants - current_tenants
+    for tenant in stale_tenants:
+        report_outbox_pending(tenant, 0)
+    _known_pending_tenants.clear()
+    _known_pending_tenants.update(current_tenants)
 
 
 def _process_batch(
@@ -84,19 +147,41 @@ def _process_batch(
         .all()
     )
     if not events:
+        _update_outbox_pending_metrics()
         return 0
     sent = 0
+    batches: dict[str, list[OutboxEvent]] = defaultdict(list)
     for ev in events:
-        try:
-            _publish_record(producer, ev.topic, ev.payload)
-            ev.status = "sent"
-            sent += 1
-        except Exception as e:
-            ev.retries = int(ev.retries or 0) + 1
-            ev.last_error = str(e)
-            if ev.retries >= max_retries:
-                ev.status = "failed"
-        session.add(ev)
+        tenant_label = ev.tenant_id or DEFAULT_TENANT_LABEL
+        batches[tenant_label].append(ev)
+    processed_counts: dict[tuple[str, str], int] = {}
+    for tenant_label, tenant_events in batches.items():
+        slice_events = tenant_events[:_PER_TENANT_BATCH_LIMIT]
+        for ev in slice_events:
+            topic = ev.topic
+            try:
+                key = f"{tenant_label}:{ev.dedupe_key}"
+                headers = {
+                    "tenant-id": tenant_label,
+                    "dedupe-key": ev.dedupe_key,
+                }
+                _publish_record(
+                    producer,
+                    topic,
+                    ev.payload,
+                    key=key,
+                    headers=headers,
+                )
+                ev.status = "sent"
+                sent += 1
+                k = (tenant_label, topic)
+                processed_counts[k] = processed_counts.get(k, 0) + 1
+            except Exception as e:
+                ev.retries = int(ev.retries or 0) + 1
+                ev.last_error = str(e)
+                if ev.retries >= max_retries:
+                    ev.status = "failed"
+            session.add(ev)
     session.commit()
     # Best-effort flush to push deliveries
     try:
@@ -105,6 +190,13 @@ def _process_batch(
             producer.flush(5)
     except Exception:
         pass
+    if report_outbox_processed is not None:
+        for (tenant_label, topic), count in processed_counts.items():
+            try:
+                report_outbox_processed(tenant_label, topic, count)
+            except Exception:
+                continue
+    _update_outbox_pending_metrics()
     return sent
 
 

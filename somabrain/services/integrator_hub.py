@@ -320,7 +320,7 @@ class SoftmaxIntegrator:
 class IntegratorHub:
     def __init__(self, group_id: str = "integrator-hub-v1") -> None:
         # Initialize tracing (required)
-        init_tracing()
+        init_tracing(service_name="somabrain-integrator-hub")
         self._tracer = get_tracer("somabrain.integrator_hub")
         # Start lightweight health server on a side port for K8s probes
         try:

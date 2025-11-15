@@ -43,7 +43,7 @@ from somabrain.metrics import (
     update_learning_effective_lr,
 )
 # Import central feature flag view and metrics utilities
-from somabrain.config.feature_flags import FeatureFlags
+from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
 
 # Register Prometheus gauges for each feature flag so they are exposed via

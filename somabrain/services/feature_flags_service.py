@@ -19,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 # Import the central feature‑flag helper.
-from somabrain.config.feature_flags import FeatureFlags
+from config.feature_flags import FeatureFlags
 
 # Re‑use the existing metrics module for gauge registration.
 from somabrain import metrics as _metrics

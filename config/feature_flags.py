@@ -69,12 +69,19 @@ class FeatureFlags:
         return {k: resolved(k) for k in cls.KEYS}
 
     @classmethod
-    def set_overrides(cls, disabled: List[str]) -> None:
-        """Persist disabled keys to overrides file (full-local only)."""
+    def get_overrides(cls) -> List[str]:
+        return cls._load_overrides()
+
+    @classmethod
+    def set_overrides(cls, disabled: List[str]) -> bool:
+        """Persist disabled keys to overrides file (full-local only).
+
+        Returns True when overrides were written, False when ignored.
+        """
         cfg = mode_config()
         if cfg.name != "full-local":
             # ignore in prod
-            return
+            return False
         path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
         try:
             p = Path(path)
@@ -82,5 +89,6 @@ class FeatureFlags:
             p.write_text(
                 json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
             )
+            return True
         except Exception:
-            pass
+            return False

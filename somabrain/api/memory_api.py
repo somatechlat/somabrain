@@ -35,8 +35,9 @@ from somabrain.runtime.config_runtime import (
 )
 from somabrain.config import get_config
 from somabrain.tenant import get_tenant
-from somabrain.auth import require_auth
+from somabrain.auth import require_auth, require_admin_auth
 from somabrain.schemas import RetrievalRequest
+from somabrain.db import outbox as outbox_db
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -366,6 +367,22 @@ class MemoryRecallSessionResponse(BaseModel):
     conversation_id: Optional[str]
     created_at: float
     results: List[MemoryRecallItem]
+
+
+class OutboxEventSummary(BaseModel):
+    id: int
+    tenant_id: Optional[str]
+    topic: str
+    status: str
+    retries: int
+    created_at: float
+    dedupe_key: str
+    last_error: Optional[str] = None
+    payload: Dict[str, Any]
+
+
+class OutboxReplayRequest(BaseModel):
+    ids: List[int] = Field(..., min_items=1, description="Outbox event IDs to mark for replay")
 
 
 def _runtime_module():
@@ -1441,6 +1458,80 @@ async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
     await _ensure_config_runtime_started()
     results = _TIERED_REGISTRY.rebuild(payload.tenant, namespace=payload.namespace)
     return {"ok": True, "results": results}
+
+
+@router.get("/admin/outbox", response_model=List[OutboxEventSummary])
+async def list_outbox_events(
+    request: Request,
+    status: str = Query(
+        "failed",
+        description="Outbox status filter (pending|failed|sent); defaults to 'failed'.",
+    ),
+    tenant: Optional[str] = Query(
+        None, description="Optional tenant filter for outbox events."
+    ),
+    limit: int = Query(
+        100, ge=1, le=500, description="Maximum number of events to return."
+    ),
+    offset: int = Query(
+        0, ge=0, description="Offset into the result set for pagination."
+    ),
+) -> List[OutboxEventSummary]:
+    """Admin-only listing of transactional outbox events.
+
+    Uses the real DB outbox; there is no fake journal. This is intended for
+    operational inspection of pending/failed events per tenant.
+    """
+    cfg = getattr(request.app.state, "cfg", None)
+    require_admin_auth(request, cfg)
+    try:
+        events = outbox_db.list_events_by_status(
+            status=status, tenant_id=tenant, limit=limit, offset=offset
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    summaries: List[OutboxEventSummary] = []
+    for ev in events:
+        created_ts = None
+        try:
+            if ev.created_at is not None:
+                created_ts = ev.created_at.timestamp()
+        except Exception:
+            created_ts = 0.0
+        summaries.append(
+            OutboxEventSummary(
+                id=int(ev.id),
+                tenant_id=ev.tenant_id,
+                topic=ev.topic,
+                status=ev.status,
+                retries=int(ev.retries or 0),
+                created_at=float(created_ts or 0.0),
+                dedupe_key=str(ev.dedupe_key),
+                last_error=ev.last_error,
+                payload=ev.payload if isinstance(ev.payload, dict) else {},
+            )
+        )
+    return summaries
+
+
+@router.post("/admin/outbox/replay")
+async def replay_outbox_events(
+    request: Request, payload: OutboxReplayRequest
+) -> Dict[str, Any]:
+    """Admin-only API to mark failed/pending events for replay.
+
+    This does not bypass the transactional outbox: it simply resets status
+    to 'pending' so the outbox worker will reprocess them using the real
+    Kafka pipeline.
+    """
+    cfg = getattr(request.app.state, "cfg", None)
+    require_admin_auth(request, cfg)
+    try:
+        updated = outbox_db.mark_events_for_replay(payload.ids)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Replay failed: {exc}") from exc
+    return {"ok": True, "updated": int(updated)}
 
 
 class AnnRebuildRequest(BaseModel):

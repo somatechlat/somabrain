@@ -162,29 +162,35 @@ class MemoryService:
         cls._last_reset_attempt[tenant] = now
         return True
 
-    def _update_outbox_metric(self) -> None:
+    @classmethod
+    def _update_outbox_metric(cls, tenant: str | None = None, count: int | None = None) -> None:
         if _metrics is None:
             return
-        try:
-            # Import locally to avoid circular imports at module import time
-            from somabrain.db.outbox import get_pending_count  # type: ignore
-
-            tenant = getattr(self, "namespace", None)
-            count = 0
+        tenant_label = tenant or "default"
+        if count is None:
             try:
-                count = int(get_pending_count(tenant_id=tenant))
+                from somabrain.db.outbox import get_pending_count  # type: ignore
+
+                count = int(get_pending_count(tenant_id=tenant_label))
             except Exception:
                 count = 0
-
-            gauge = getattr(_metrics, "OUTBOX_PENDING", None)
-            if gauge is not None:
-                try:
-                    gauge.set(count)
-                except Exception:
-                    pass
-        except Exception:
-            # Never raise from a metrics update path; metrics are best-effort
+        reporter = getattr(_metrics, "report_outbox_pending", None)
+        if callable(reporter):
+            try:
+                reporter(tenant_label, count)
+                return
+            except Exception:
+                pass
+        gauge = getattr(_metrics, "OUTBOX_PENDING", None)
+        if gauge is None:
             return
+        try:
+            if hasattr(gauge, "labels"):
+                gauge.labels(tenant_id=str(tenant_label)).set(count)
+            else:
+                gauge.set(count)
+        except Exception:
+            pass
 
     def remember(self, key: str, payload: dict, universe: str | None = None):
         """Stores a memory payload. In V3, this fails fast if the remote is down."""

@@ -23,9 +23,9 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 - 2.1 Admin replay endpoints: add admin API to inspect and replay pending/failed events per tenant.
 - 2.2 Optional local journaling: if required, add opt-in local journal and migration script to DB-outbox.
 
-### Phase 3 — Monitoring, Dashboards & Canary Rollout (1 sprint)
-- 3.1 Grafana dashboards & alerts for per-tenant outbox/circuit metrics.
-- 3.2 Feature flags & canary rollout for enabling tenant-aware behavior.
+### Phase 3 — Monitoring & Canary Rollout (1 sprint)
+- 3.1 Automated alerts for per-tenant outbox/circuit metrics (Prometheus / alertmanager).
+- 3.2 Feature flags & canary rollout for enabling tenant-aware behavior (admin endpoints, CLI tooling).
 
 ### Phase 4 — Tests, Docs & CI (ongoing)
 - 4.1 Unit/integration tests covering tenant isolation and idempotency.

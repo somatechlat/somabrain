@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
 from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 from somabrain.datetime_utils import coerce_to_epoch_seconds
@@ -767,3 +767,41 @@ class DeleteResponse(BaseModel):
     """
 
     ok: bool = True
+
+
+class OutboxEventModel(BaseModel):
+    """Admin-facing view of an outbox event."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    topic: str
+    status: str
+    tenant_id: Optional[str] = None
+    dedupe_key: str
+    retries: Optional[int] = None
+    created_at: Optional[datetime] = None
+    last_error: Optional[str] = None
+    payload: Dict[str, Any]
+
+
+class OutboxListResponse(BaseModel):
+    events: List[OutboxEventModel]
+    count: int
+
+
+class OutboxReplayRequest(BaseModel):
+    event_ids: List[int] = Field(..., min_length=1, max_length=1000)
+
+
+class OutboxReplayResponse(BaseModel):
+    replayed: int
+
+
+class FeatureFlagsResponse(BaseModel):
+    status: Dict[str, Any]
+    overrides: List[str]
+
+
+class FeatureFlagsUpdateRequest(BaseModel):
+    disabled: List[str]

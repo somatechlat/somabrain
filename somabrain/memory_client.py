@@ -269,13 +269,6 @@ class MemoryClient:
         # imports in some runtime contexts.
         self._http: Optional[Any] = None
         self._http_async: Optional[Any] = None
-        # New: path for outbox persistence (default within data dir)
-        self._outbox_path = getattr(cfg, "outbox_path", "./data/somabrain/outbox.jsonl")
-        # Ensure outbox file exists
-        try:
-            open(self._outbox_path, "a").close()
-        except Exception:
-            pass
         # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if shared_settings is not None:
@@ -296,11 +289,6 @@ class MemoryClient:
         # Initialize HTTP client (primary runtime path). Local/redis
         # initialization is intentionally not attempted here.
         self._init_http()
-        # Ensure outbox file exists (redundant safety)
-        try:
-            open(self._outbox_path, "a").close()
-        except Exception:
-            pass
 
     def _init_local(self) -> None:
         # Local in-process backend initialization has been removed. Running a
@@ -469,18 +457,6 @@ class MemoryClient:
         except Exception:
             return {"ok": False}
         return {"ok": True}
-
-    def _record_outbox(self, op: str, payload: dict):
-        """Append a failed HTTP operation to the outbox for later retry.
-        The JSON line includes the operation name (remember, recall, link, alink) and the
-        original payload needed to replay the request.
-        """
-        try:
-            with open(self._outbox_path, "a") as f:
-                json.dump({"op": op, "payload": payload}, f)
-                f.write("\n")
-        except Exception:
-            pass
 
     # --- HTTP helpers ---------------------------------------------------------
     @staticmethod
@@ -1481,8 +1457,7 @@ class MemoryClient:
             return coord
 
         # Synchronous callers: default is blocking persist, but allow an opt-in
-        # fast-ack mode which writes to the local outbox and schedules background
-        # persistence to improve client latency under load.
+        # fast-ack mode schedules persistence on a background executor so we don't block.
         if shared_settings is not None:
             try:
                 fast_ack = bool(getattr(shared_settings, "memory_fast_ack", False))
@@ -1496,14 +1471,6 @@ class MemoryClient:
             except Exception:
                 fast_ack = False
         if fast_ack:
-            # record to outbox immediately and schedule a background persist
-            try:
-                self._record_outbox(
-                    "remember",
-                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
-                )
-            except Exception:
-                pass
             try:
                 loop = asyncio.get_event_loop()
                 # schedule background sync persist in the executor so we don't block
@@ -1519,11 +1486,9 @@ class MemoryClient:
             return coord
 
         # Default (no fast-ack): perform the persist synchronously (blocking)
-        server_coord: Tuple[float, float, float] | None = None
-        try:
-            server_coord = self._remember_sync_persist(coord_key, payload, rid)
-        except Exception:
-            server_coord = None
+        server_coord: Tuple[float, float, float] | None = self._remember_sync_persist(
+            coord_key, payload, rid
+        )
         if server_coord:
             coord = server_coord
             try:
@@ -1582,25 +1547,9 @@ class MemoryClient:
             )
 
         if self._http is None:
-            rid = request_id or str(uuid.uuid4())
-            try:
-                self._record_outbox(
-                    "remember_bulk",
-                    {
-                        "request_id": rid,
-                        "items": [
-                            {
-                                "coord_key": entry["coord_key"],
-                                "payload": entry["body"]["payload"],
-                                "coord": entry["body"]["coord"],
-                            }
-                            for entry in prepared
-                        ],
-                    },
-                )
-            except Exception:
-                pass
-            return coords
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember)."
+            )
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
@@ -1647,25 +1596,7 @@ class MemoryClient:
                         coords[idx] = server_coord
             return coords
 
-        # HTTP request failed – record outbox for replay
-        try:
-            self._record_outbox(
-                "remember_bulk",
-                {
-                    "request_id": rid,
-                    "items": [
-                        {
-                            "coord_key": entry["coord_key"],
-                            "payload": entry["body"]["payload"],
-                            "coord": entry["body"]["coord"],
-                        }
-                        for entry in prepared
-                    ],
-                },
-            )
-        except Exception:
-            pass
-        return coords
+        raise RuntimeError("Memory service unavailable (bulk remember failed)")
 
     async def aremember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -1809,24 +1740,7 @@ class MemoryClient:
                         coords[idx] = server_coord
             return coords
 
-        try:
-            self._record_outbox(
-                "remember_bulk",
-                {
-                    "request_id": rid,
-                    "items": [
-                        {
-                            "coord_key": entry["coord_key"],
-                            "payload": entry["body"]["payload"],
-                            "coord": entry["body"]["coord"],
-                        }
-                        for entry in prepared
-                    ],
-                },
-            )
-        except Exception:
-            pass
-        return coords
+        raise RuntimeError("Memory service unavailable (async bulk remember failed)")
 
     def recall(
         self,
@@ -2081,22 +1995,9 @@ class MemoryClient:
         }
 
         success, _, _ = self._http_post_with_retries_sync("/unlink", body, headers)
-        if success:
-            return True
-
-        try:
-            self._record_outbox(
-                "unlink",
-                {
-                    "from_coord": body["from_coord"],
-                    "to_coord": body["to_coord"],
-                    "type": link_type,
-                    "request_id": rid,
-                },
-            )
-        except Exception:
-            pass
-        return False
+        if not success:
+            raise RuntimeError("Memory service unavailable (unlink failed)")
+        return True
 
     async def aunlink(
         self,
@@ -2172,20 +2073,7 @@ class MemoryClient:
                 removed = 0
             return removed
 
-        try:
-            self._record_outbox(
-                "prune_links",
-                {
-                    "from_coord": body["from_coord"],
-                    "weight_below": weight_below,
-                    "max_degree": max_degree,
-                    "type": type_filter,
-                    "request_id": rid,
-                },
-            )
-        except Exception:
-            pass
-        return 0
+        raise RuntimeError("Memory service unavailable (prune_links failed)")
 
     async def aprune_links(
         self,
@@ -2429,17 +2317,6 @@ class MemoryClient:
                 success, _ = self._store_http_sync(body, headers)
                 if success:
                     return True
-                try:
-                    self._record_outbox(
-                        "store_from_payload",
-                        {
-                            "coord": body["coord"],
-                            "payload": payload,
-                            "request_id": rid,
-                        },
-                    )
-                except Exception:
-                    pass
                 return False
 
             key = (
@@ -2499,13 +2376,7 @@ class MemoryClient:
                 server_coord = None
 
         if not stored:
-            try:
-                self._record_outbox(
-                    "remember",
-                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
-                )
-            except Exception:
-                pass
+            raise RuntimeError("Memory service unavailable (remember persist failed)")
         return server_coord
 
     async def _aremember_background(
@@ -2545,14 +2416,7 @@ class MemoryClient:
                     except Exception:
                         pass
         except Exception:
-            # record for later retry
-            try:
-                self._record_outbox(
-                    "remember",
-                    {"coord_key": coord_key, "payload": payload, "request_id": rid},
-                )
-            except Exception:
-                pass
+            logger.exception("Background memory persist failed")
 
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.

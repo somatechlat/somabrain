@@ -59,6 +59,51 @@ groups:
           summary: "Working memory utilization high"
           description: "WM utilization exceeds 85% for 5 minutes"
 
+      - alert: OutboxPendingHigh
+        expr: max_over_time(memory_outbox_pending[10m]) > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog high"
+          description: "memory_outbox_pending exceeds 50 messages for tenant {{ $labels.tenant_id }} over 10m (value: {{ $value }}). Investigate tenant pipelines or replay stuck events."
+
+      - alert: OutboxPendingCritical
+        expr: max_over_time(memory_outbox_pending[5m]) > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Outbox backlog critical"
+          description: "memory_outbox_pending exceeds 100 messages for tenant {{ $labels.tenant_id }} over 5m (value: {{ $value }}). Immediate intervention required (admin replay / CLI tail)."
+
+      - alert: MemoryCircuitStuckOpen
+        expr: avg_over_time(memory_circuit_state[5m]) >= 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory circuit breaker open"
+          description: "Circuit breaker open >=90% of the last 5m for tenant {{ $labels.tenant_id }}. Investigate memory service availability and infra readiness."
+
+      - alert: MemoryCircuitCritical
+        expr: avg_over_time(memory_circuit_state[2m]) >= 0.99
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Memory circuit breaker locked open"
+          description: "Circuit breaker open >=99% for 2m for tenant {{ $labels.tenant_id }}. Requests will fail fast until memory service recovers."
+
+      - alert: FeatureToggleSpike
+        expr: increase(somabrain_feature_flag_toggle_total{action="applied"}[15m]) > 3
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Multiple feature toggles applied"
+          description: "More than 3 feature flags toggled in 15m (value: {{ $value }}). Verify canary rollout plan."
+
       # Journal fallback removed: drop journal vs admits alert
 
       - alert: QuotaDenies

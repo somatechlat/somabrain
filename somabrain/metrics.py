@@ -830,27 +830,94 @@ AUDIT_KAFKA_PUBLISH = Counter(
     registry=registry,
 )
 
-# New metrics for outbox and circuit breaker
-# Ensure OUTBOX_PENDING gauge is only created once per process to avoid duplicate registration errors.
-# The Prometheus client stores collectors in REGISTRY._names_to_collectors; we check for existing gauge.
-if "memory_outbox_pending" in REGISTRY._names_to_collectors:
-    OUTBOX_PENDING = REGISTRY._names_to_collectors["memory_outbox_pending"]
-else:
-    OUTBOX_PENDING = Gauge(
-        "memory_outbox_pending",
-        "Number of pending messages in the out‑box queue",
-        registry=REGISTRY,
-    )
+# New metrics for outbox and circuit breaker (per-tenant labeled gauges)
+DEFAULT_TENANT_LABEL = "default"
 
-# Ensure CIRCUIT_STATE gauge is only created once per process.
-if "memory_circuit_state" in REGISTRY._names_to_collectors:
-    CIRCUIT_STATE = REGISTRY._names_to_collectors["memory_circuit_state"]
-else:
-    CIRCUIT_STATE = Gauge(
-        "memory_circuit_state",
-        "Circuit breaker state for external memory service: 0=closed, 1=open",
-        registry=REGISTRY,
-    )
+
+def _normalize_tenant_label(tenant_id: str | None) -> str:
+    if not tenant_id:
+        return DEFAULT_TENANT_LABEL
+    return str(tenant_id)
+
+
+OUTBOX_PENDING = _gauge(
+    "memory_outbox_pending",
+    "Number of pending messages in the out-box queue",
+    ["tenant_id"],
+)
+
+CIRCUIT_STATE = _gauge(
+    "memory_circuit_state",
+    "Circuit breaker state for external memory service: 0=closed, 1=open",
+    ["tenant_id"],
+)
+
+OUTBOX_REPLAY_TRIGGERED = _counter(
+    "memory_outbox_replay_total",
+    "Admin-triggered outbox replays partitioned by outcome.",
+    ["result"],
+)
+
+OUTBOX_FAILED_TOTAL = _counter(
+    "memory_outbox_failed_seen_total",
+    "Count of failed outbox events observed via admin API endpoints.",
+    ["tenant_id"],
+)
+
+FEATURE_FLAG_TOGGLE_TOTAL = _counter(
+    "somabrain_feature_flag_toggle_total",
+    "Number of feature flag toggles grouped by action.",
+    ["action"],
+)
+
+OUTBOX_PROCESSED_TOTAL = _counter(
+    "somabrain_outbox_processed_total",
+    "Total number of outbox events successfully published to Kafka",
+    ["tenant_id", "topic"],
+)
+
+OUTBOX_REPLAYED_TOTAL = _counter(
+    "somabrain_outbox_replayed_total",
+    "Total number of outbox events marked for replay",
+    ["tenant_id"],
+)
+
+
+def report_outbox_pending(tenant_id: str | None, count: int) -> None:
+    try:
+        OUTBOX_PENDING.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(count)
+    except Exception:
+        pass
+
+
+def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
+    try:
+        CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(
+            1 if is_open else 0
+        )
+    except Exception:
+        pass
+
+
+def report_outbox_processed(
+    tenant_id: str | None, topic: str, count: int = 1
+) -> None:
+    try:
+        OUTBOX_PROCESSED_TOTAL.labels(
+            tenant_id=_normalize_tenant_label(tenant_id),
+            topic=str(topic),
+        ).inc(max(0, int(count)))
+    except Exception:
+        pass
+
+
+def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
+    try:
+        OUTBOX_REPLAYED_TOTAL.labels(
+            tenant_id=_normalize_tenant_label(tenant_id)
+        ).inc(max(0, int(count)))
+    except Exception:
+        pass
 # Ensure HTTP_FAILURES counter is only created once per process.
 if "memory_http_failures_total" in REGISTRY._names_to_collectors:
     HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]

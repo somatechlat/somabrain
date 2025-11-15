@@ -34,7 +34,7 @@ import traceback
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from cachetools import TTLCache
@@ -58,6 +58,7 @@ from somabrain.memory_pool import MultiTenantMemory
 from somabrain.microcircuits import MCConfig, MultiColumnWM
 from somabrain.mt_context import MultiTenantHRRContext
 from somabrain.mt_wm import MTWMConfig, MultiTenantWM
+from somabrain.db import outbox as outbox_db
 from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
 from somabrain.personality import PersonalityStore
 from somabrain.planner import plan_from_graph
@@ -84,6 +85,7 @@ from somabrain.tenant import get_tenant
 from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
+from config.feature_flags import FeatureFlags
 
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
@@ -1043,6 +1045,90 @@ async def service_restart(name: str):
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+
+
+@app.get("/admin/outbox", dependencies=[Depends(_admin_guard_dep)])
+async def admin_list_outbox(
+    status: str = Query("pending", description="pending|failed|sent"),
+    tenant: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    try:
+        events = outbox_db.list_events_by_status(
+            status=status.lower().strip(),
+            tenant_id=tenant,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    if status.lower().strip() == "failed":
+        for ev in events:
+            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            try:
+                M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
+            except Exception:
+                pass
+    return S.OutboxListResponse(
+        events=[S.OutboxEventModel.model_validate(ev) for ev in events],
+        count=len(events),
+    )
+
+
+@app.post("/admin/outbox/replay", dependencies=[Depends(_admin_guard_dep)])
+async def admin_replay_outbox(body: S.OutboxReplayRequest):
+    try:
+        count = outbox_db.mark_events_for_replay(body.event_ids)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        try:
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="error").inc(len(body.event_ids))
+        except Exception:
+            pass
+        raise exc
+    if count == 0:
+        try:
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
+        except Exception:
+            pass
+        raise HTTPException(status_code=404, detail="No matching events to replay")
+    try:
+        M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
+    except Exception:
+        pass
+    return S.OutboxReplayResponse(replayed=count)
+
+
+@app.get("/admin/features", dependencies=[Depends(_admin_guard_dep)])
+async def admin_features_state() -> S.FeatureFlagsResponse:
+    return S.FeatureFlagsResponse(
+        status=FeatureFlags.get_status(),
+        overrides=FeatureFlags.get_overrides(),
+    )
+
+
+@app.post("/admin/features", dependencies=[Depends(_admin_guard_dep)])
+async def admin_features_update(body: S.FeatureFlagsUpdateRequest) -> S.FeatureFlagsResponse:
+    invalid = [k for k in body.disabled if k not in FeatureFlags.KEYS]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"Unknown feature keys: {', '.join(invalid)}")
+    applied = FeatureFlags.set_overrides(body.disabled)
+    if not applied:
+        try:
+            M.FEATURE_FLAG_TOGGLE_TOTAL.labels(action="ignored").inc()
+        except Exception:
+            pass
+        raise HTTPException(status_code=403, detail="Overrides only allowed in full-local mode")
+    try:
+        M.FEATURE_FLAG_TOGGLE_TOTAL.labels(action="applied").inc()
+    except Exception:
+        pass
+    return S.FeatureFlagsResponse(
+        status=FeatureFlags.get_status(),
+        overrides=FeatureFlags.get_overrides(),
+    )
 
 
 """

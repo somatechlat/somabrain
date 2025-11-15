@@ -126,7 +126,6 @@ class Config:
             endpoint=get_memory_http_endpoint() or ""
         )
     )
-    outbox_path: str = "./data/somabrain/outbox.jsonl"
     # Redis backend configuration (optional)
     # Redis connection string is now dynamically constructed from SOMABRAIN_REDIS_HOST and SOMABRAIN_REDIS_PORT
     redis_url: str = field(default_factory=lambda: get_redis_url() or "")
