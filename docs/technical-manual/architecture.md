@@ -264,6 +264,49 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 - Admin features: `SOMABRAIN_MODE=dev` enables feature flag overrides
 - Optional components (Kafka, Postgres) are auto-detected; backend enforcement keeps readiness false when dependencies are offline
 
+## Fail-Safe Design (Agent Integration)
+
+**Purpose**: Enable SomaAgent01 to operate independently when SomaBrain is unavailable.
+
+### Detection & Signaling
+
+**Health Classification**:
+- Poll `GET /health` every 3-5 seconds
+- States: `up` (ok=true, ready=true, memory_ok=true), `degraded` (partial readiness), `down` (unreachable)
+- Agent `/status` exposes `soma_brain.status` for UI consumption
+
+### Behavioral Gating
+
+**Structured Errors**:
+- Return `{"kind": "soma_brain_unavailable"}` on failures
+- Never convert failures to empty results or fake "no memory"
+- Agent continues on local infrastructure (LLM, Redis, Postgres, Kafka, OPA)
+
+### Durable Outbox
+
+**Agent-Side Persistence**:
+- DB table with `(tenant_id, dedupe_key)` unique constraint
+- Schema: `id, tenant_id, dedupe_key, payload, status, retries, last_error, created_at`
+- Replay worker syncs to SomaBrain when `status="up"`
+
+**Metrics**:
+- `somaagent_outbox_pending_total{tenant_id}`
+- `somaagent_outbox_sent_total{tenant_id}`
+- `somaagent_outbox_failed_total{tenant_id}`
+
+### UI Indicator
+
+**Frontend Contract**:
+- Poll agent `/status` for `soma_brain.status`
+- Display near bell icon: green (up), amber (degraded), red (down)
+- Tooltip: "SomaBrain cognitive memory: available/partially available/unavailable"
+
+**No Mocks Policy**:
+- All behavior based on real SomaBrain responses or real agent infrastructure
+- No fake memories or offline brain substitutes
+
+---
+
 ## Extending the System
 
 1. Implement new math in a dedicated module (for example `somabrain/math/new_component.py`).
