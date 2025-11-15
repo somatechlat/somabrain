@@ -29,7 +29,7 @@ Classes:
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Union
 
 from datetime import datetime
 
@@ -798,10 +798,98 @@ class OutboxReplayResponse(BaseModel):
     replayed: int
 
 
-class FeatureFlagsResponse(BaseModel):
-    status: Dict[str, Any]
-    overrides: List[str]
+class OutboxTenantReplayRequest(BaseModel):
+    """Request to replay outbox events for a specific tenant with filtering."""
+    
+    tenant_id: str = Field(..., description="Tenant ID to replay events for")
+    status: str = Field("failed", description="Status to filter: pending|failed|sent")
+    topic_filter: Optional[str] = Field(None, description="Optional topic pattern filter")
+    before_timestamp: Optional[datetime] = Field(None, description="Only replay events before this time")
+    limit: int = Field(100, ge=1, le=1000, description="Maximum number of events to replay")
 
 
-class FeatureFlagsUpdateRequest(BaseModel):
-    disabled: List[str]
+class OutboxTenantReplayResponse(BaseModel):
+    """Response from tenant-specific outbox replay operation."""
+    
+    tenant_id: str
+    replayed: int
+    status: str
+
+
+class OutboxTenantListResponse(BaseModel):
+    """Response for tenant-specific outbox event listing."""
+    
+    tenant_id: str
+    events: List[OutboxEventModel]
+    count: int
+    status: str
+
+
+class OutboxTenantSummary(BaseModel):
+    """Summary statistics for a single tenant's outbox events."""
+    
+    tenant_id: str
+    pending_count: int
+    failed_count: int
+    sent_count: int
+    total_count: int
+
+
+class OutboxSummaryResponse(BaseModel):
+    """Summary statistics for outbox events across all tenants."""
+    
+    tenants: List[OutboxTenantSummary]
+    total_tenants: int
+    total_pending: int
+    total_failed: int
+    total_sent: int
+
+
+class QuotaStatus(BaseModel):
+    """Per-tenant quota status for admin monitoring."""
+    
+    tenant_id: str
+    daily_limit: int
+    remaining: Union[int, float]  # Allow float('inf') for exempt tenants
+    used_today: int
+    reset_at: Optional[datetime] = None
+    is_exempt: bool = False
+
+
+class QuotaListResponse(BaseModel):
+    """Response for listing all tenant quotas."""
+    
+    quotas: List[QuotaStatus]
+    total_tenants: int
+
+
+class QuotaResetRequest(BaseModel):
+    """Request to reset a tenant's quota."""
+    
+    reason: Optional[str] = Field(None, description="Reason for quota reset")
+
+
+class QuotaResetResponse(BaseModel):
+    """Response after quota reset."""
+    
+    tenant_id: str
+    reset: bool
+    new_remaining: int
+    message: str
+
+
+class QuotaAdjustRequest(BaseModel):
+    """Request to adjust a tenant's quota limit."""
+    
+    new_limit: int = Field(..., gt=0, description="New daily quota limit")
+    reason: Optional[str] = Field(None, description="Reason for quota adjustment")
+
+
+class QuotaAdjustResponse(BaseModel):
+    """Response after quota adjustment."""
+    
+    tenant_id: str
+    old_limit: int
+    new_limit: int
+    adjusted: bool
+    message: str

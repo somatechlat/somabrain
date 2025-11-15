@@ -73,9 +73,8 @@ COPY migrations /app/migrations
 # Copy Avro/IDL schemas used at runtime by cognition services
 COPY proto /app/proto
 
-# Include development requirements for the test service (used when the same image
-# runs the ``somabrain_test`` container). The file is copied to the same location
-# as the source tree so ``pip install -r /app/requirements-dev.txt`` works.
+# Include development requirements so this image can install pytest/dev extras
+# when needed (e.g., ``pip install -r /app/requirements-dev.txt`` inside a container).
 COPY requirements-dev.txt /app/requirements-dev.txt
 
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)

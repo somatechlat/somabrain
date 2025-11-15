@@ -23,7 +23,7 @@ def _bootstrap_url() -> str:
     return (
         os.getenv("SOMA_KAFKA_BOOTSTRAP")
         or os.getenv("SOMABRAIN_KAFKA_URL")
-        or "localhost:30001"
+        or None
     ).replace("kafka://", "")
 
 

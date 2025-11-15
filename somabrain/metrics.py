@@ -675,6 +675,18 @@ QUOTA_DENIED_TOTAL = Counter(
     ["reason"],
     registry=registry,
 )
+QUOTA_RESETS = Counter(
+    "somabrain_quota_resets_total",
+    "Admin quota reset operations",
+    ["tenant_id"],
+    registry=registry,
+)
+QUOTA_ADJUSTMENTS = Counter(
+    "somabrain_quota_adjustments_total",
+    "Admin quota adjustment operations",
+    ["tenant_id"],
+    registry=registry,
+)
 LTM_STORE_LAT = Histogram(
     "somabrain_ltm_store_latency_seconds",
     "Latency of LTM store operations",

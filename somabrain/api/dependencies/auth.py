@@ -1,4 +1,8 @@
-"""Auth dependency wiring for FastAPI routes."""
+"""Auth dependency wiring for FastAPI routes.
+
+This module now integrates with the centralized tenant management system
+to provide dynamic tenant resolution and validation.
+"""
 
 from __future__ import annotations
 
@@ -13,11 +17,15 @@ from somabrain.config import Config
 
 _current_config: Optional[Config] = None
 _allowed_tenants: List[str] = []
-_default_tenant: str = "sandbox"
+_default_tenant: str = "sandbox"  # DEPRECATED: Use tenant_registry instead
 
 
 def set_auth_config(cfg: Config) -> None:
-    """Register configuration for downstream auth + tenant helpers."""
+    """Register configuration for downstream auth + tenant helpers.
+    
+    Note: This method is deprecated. Use the centralized tenant management system
+    through TenantManager instead.
+    """
     global _current_config, _allowed_tenants, _default_tenant
     _current_config = cfg
     _default_tenant = cfg.default_tenant or os.getenv(
@@ -57,10 +65,18 @@ def _resolve_tenants(cfg: Config) -> List[str]:
 
 
 def get_allowed_tenants() -> List[str]:
+    """Get list of allowed tenants (DEPRECATED).
+    
+    This method is deprecated. Use TenantManager.list_tenants() instead.
+    """
     return list(_allowed_tenants)
 
 
 def get_default_tenant() -> str:
+    """Get default tenant ID (DEPRECATED).
+    
+    This method is deprecated. Use TenantManager.resolve_tenant_from_request() instead.
+    """
     return _default_tenant
 
 
@@ -71,6 +87,39 @@ def auth_override_disabled() -> None:
 
 
 async def auth_guard(request: Request) -> None:
+    """Auth guard with tenant validation (DEPRECATED).
+    
+    This method is deprecated. Use centralized tenant management through TenantManager.
+    """
     if _current_config is None:
         return
     require_auth(request, _current_config)
+
+
+async def get_allowed_tenants_async() -> List[str]:
+    """Get list of allowed tenants using centralized tenant management."""
+    try:
+        from somabrain.tenant_manager import get_tenant_manager
+        tenant_manager = await get_tenant_manager()
+        tenants = await tenant_manager.list_tenants()
+        return [t.tenant_id for t in tenants if t.status.value == "active"]
+    except Exception:
+        # Fallback to legacy method
+        return get_allowed_tenants()
+
+
+async def get_default_tenant_async() -> str:
+    """Get default tenant ID using centralized tenant management."""
+    try:
+        from somabrain.tenant_manager import get_tenant_manager
+        tenant_manager = await get_tenant_manager()
+        
+        # Try to get public tenant
+        public_tenant_id = await tenant_manager.get_system_tenant_id("public")
+        if public_tenant_id:
+            return public_tenant_id
+        
+        # Fallback to legacy method
+        return get_default_tenant()
+    except Exception:
+        return get_default_tenant()

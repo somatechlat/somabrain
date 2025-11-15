@@ -34,7 +34,7 @@ from somabrain.runtime.config_runtime import (
     get_cutover_controller,
 )
 from somabrain.config import get_config
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.auth import require_auth, require_admin_auth
 from somabrain.schemas import RetrievalRequest
 from somabrain.db import outbox as outbox_db
@@ -1326,7 +1326,7 @@ async def recall_memory(
     """
     await _ensure_config_runtime_started()
     cfg = get_config()
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
 
     # Coerce incoming payload to a RetrievalRequest

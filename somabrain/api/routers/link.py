@@ -17,7 +17,7 @@ from fastapi import APIRouter, Request
 from somabrain.auth import require_auth
 from somabrain.schemas import LinkRequest, LinkResponse
 from somabrain.semgraph import normalize_relation
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant as get_tenant_async
 
 if TYPE_CHECKING:
     # Import heavy/runtime-only types only for type checking and docs
@@ -52,7 +52,7 @@ async def link(body: LinkRequest, request: Request) -> LinkResponse:
     from somabrain.app import cfg, mt_memory
     from somabrain.services.memory_service import MemoryService
 
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     memsvc = MemoryService(mt_memory, ctx.namespace)
 

@@ -65,7 +65,7 @@ class ActionPredictorService:
         """Create Kafka consumer with strict configuration."""
         bootstrap_servers = (
             os.getenv("SOMA_KAFKA_BOOTSTRAP")
-            or os.getenv("SOMABRAIN_KAFKA_URL", "localhost:30001")
+            or os.getenv("SOMABRAIN_KAFKA_URL")
         ).replace("kafka://", "")
         
         if not bootstrap_servers:

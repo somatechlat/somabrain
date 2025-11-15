@@ -10,7 +10,6 @@ services:
           memory: 512M
         reservations:
           memory: 256M
-    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --tcp-keepalive 60 --timeout 300 --tcp-backlog 511
     networks:
       - somabrain_net
     ports:
@@ -53,7 +52,7 @@ services:
       KAFKA_CFG_LOG_SEGMENT_BYTES: 67108864
       KAFKA_CFG_LOG_RETENTION_BYTES: 1073741824
       KAFKA_CFG_COMPRESSION_TYPE: ${KAFKA_CFG_COMPRESSION_TYPE}
-      KAFKA_HEAP_OPTS: "-Xmx1.5g -Xms1.5g -XX:+UseG1GC -XX:MaxGCPauseMillis=20"
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS}
       KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID}
       KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20"
     volumes:
@@ -486,58 +485,6 @@ services:
       interval: 30s
       timeout: 5s
       retries: 1
-
-  # ---------------------------------------------------------------------
-  # Test runner service – executes the full test suite inside the same Docker
-  # network so that integration tests can resolve service hostnames (e.g.
-  # somabrain_postgres, somabrain_kafka, somabrain_opa, etc.).
-  # ---------------------------------------------------------------------
-  somabrain_test:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: somabrain:latest
-    depends_on:
-      # Ensure the full stack is healthy before testing.
-      somabrain_app:
-        condition: service_healthy
-      somabrain_cog:
-        condition: service_healthy
-      somabrain_postgres:
-        condition: service_healthy
-      somabrain_redis:
-        condition: service_healthy
-      somabrain_kafka:
-        condition: service_healthy
-      somabrain_opa:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 512M
-    environment:
-      # Propagate the same env vars used by the app so the test code sees the
-      # same configuration (memory endpoint, redis URL, etc.).
-      SOMABRAIN_MODE: dev
-      SOMABRAIN_REDIS_URL: ${SOMABRAIN_REDIS_URL}
-      SOMABRAIN_KAFKA_URL: ${SOMABRAIN_KAFKA_URL}
-      SOMABRAIN_OPA_URL: ${SOMABRAIN_OPA_URL}
-      SOMABRAIN_POSTGRES_DSN: ${SOMABRAIN_POSTGRES_DSN}
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: ${SOMABRAIN_MEMORY_HTTP_ENDPOINT}
-      SOMABRAIN_MEMORY_HTTP_TOKEN: ${SOMABRAIN_MEMORY_HTTP_TOKEN}
-      # Enable persistence for adaptation state during tests (optional).
-      SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE: "0"
-    # Install pytest (dev dependency) at container start, then execute the test suite.
-    # Install full development dependencies (including pytest plugins) then run the suite.
-    command: ["sh", "-c", "pip install --no-cache-dir -r /app/requirements-dev.txt && python -m pytest -q"]
-    networks:
-      - somabrain_net
-    # No ports exposed – this container is only for CI/testing.
-
-  
-
 
   # --- Cognitive Thread: Predictors ----------------------------------------
 

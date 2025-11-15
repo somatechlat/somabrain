@@ -18,6 +18,7 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import datetime
 import importlib.util
 import logging
 import math
@@ -60,6 +61,8 @@ from somabrain.mt_context import MultiTenantHRRContext
 from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 from somabrain.db import outbox as outbox_db
 from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+from somabrain.journal import get_journal, init_journal, JournalConfig
+from somabrain.db.outbox import get_journal_events, replay_journal_events, get_journal_stats, cleanup_journal
 from somabrain.personality import PersonalityStore
 from somabrain.planner import plan_from_graph
 from somabrain.prediction import (
@@ -81,7 +84,7 @@ from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
-from somabrain.tenant import get_tenant
+from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
@@ -446,38 +449,37 @@ def setup_logging():
 
     Log output is sent to both console and 'somabrain.log'.
     """
-    # If logging is already configured (e.g., via YAML in start_server.py), don't reconfigure
     root = logging.getLogger()
-    if getattr(root, "handlers", None):
-        return
+    already_configured = bool(getattr(root, "handlers", None))
 
-    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    if not already_configured:
+        handlers: list[logging.Handler] = [logging.StreamHandler()]
 
-    # Resolve a writable file path for logs under hardened containers
-    # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
-    log_path = os.getenv("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
-    candidate = log_path
-    try:
-        if not os.path.isabs(candidate):
-            if os.path.isdir("/app/logs"):
-                candidate = os.path.join("/app/logs", candidate)
-            else:
-                candidate = os.path.join(os.getcwd(), candidate)
-        parent = os.path.dirname(candidate) or "."
-        if parent and not os.path.exists(parent):
-            # Best-effort; on read-only rootfs this may fail, which is fine
-            os.makedirs(parent, exist_ok=True)
-        # Try to attach a file handler; fall back to stdout-only if not writable
-        handlers.append(logging.FileHandler(candidate, mode="a"))
-    except Exception:
-        # File logging not available (likely read-only FS). Continue with stream only.
-        pass
+        # Resolve a writable file path for logs under hardened containers
+        # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
+        log_path = os.getenv("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
+        candidate = log_path
+        try:
+            if not os.path.isabs(candidate):
+                if os.path.isdir("/app/logs"):
+                    candidate = os.path.join("/app/logs", candidate)
+                else:
+                    candidate = os.path.join(os.getcwd(), candidate)
+            parent = os.path.dirname(candidate) or "."
+            if parent and not os.path.exists(parent):
+                # Best-effort; on read-only rootfs this may fail, which is fine
+                os.makedirs(parent, exist_ok=True)
+            # Try to attach a file handler; fall back to stdout-only if not writable
+            handlers.append(logging.FileHandler(candidate, mode="a"))
+        except Exception:
+            # File logging not available (likely read-only FS). Continue with stream only.
+            pass
 
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=handlers,
-    )
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            handlers=handlers,
+        )
 
     # Create specialized loggers for different brain regions
     global logger, cognitive_logger, error_logger
@@ -489,12 +491,17 @@ def setup_logging():
     cognitive_logger.setLevel(logging.DEBUG)
     error_logger.setLevel(logging.ERROR)
 
-    # Add cognitive-specific formatting
-    cognitive_handler = logging.StreamHandler()
-    cognitive_handler.setFormatter(
-        logging.Formatter("%(asctime)s - COGNITIVE - %(levelname)s - %(message)s")
-    )
-    cognitive_logger.addHandler(cognitive_handler)
+    # Add cognitive-specific formatting when we own the handler stack
+    if not any(
+        isinstance(h, logging.StreamHandler) and getattr(h, "_somabrain_marker", False)
+        for h in cognitive_logger.handlers
+    ):
+        cognitive_handler = logging.StreamHandler()
+        cognitive_handler.setFormatter(
+            logging.Formatter("%(asctime)s - COGNITIVE - %(levelname)s - %(message)s")
+        )
+        setattr(cognitive_handler, "_somabrain_marker", True)
+        cognitive_logger.addHandler(cognitive_handler)
 
     logger.info("🧠 SomaBrain cognitive logging initialized")
 
@@ -1051,18 +1058,23 @@ async def service_restart(name: str):
 async def admin_list_outbox(
     status: str = Query("pending", description="pending|failed|sent"),
     tenant: Optional[str] = Query(None),
+    topic_filter: Optional[str] = Query(None, description="Filter by topic pattern"),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
+    """List outbox events with enhanced filtering options."""
     try:
         events = outbox_db.list_events_by_status(
             status=status.lower().strip(),
             tenant_id=tenant,
+            topic_filter=topic_filter,
             limit=limit,
             offset=offset,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    
+    # Record metrics for failed events inspection
     if status.lower().strip() == "failed":
         for ev in events:
             tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
@@ -1070,6 +1082,7 @@ async def admin_list_outbox(
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception:
                 pass
+    
     return S.OutboxListResponse(
         events=[S.OutboxEventModel.model_validate(ev) for ev in events],
         count=len(events),
@@ -1078,6 +1091,7 @@ async def admin_list_outbox(
 
 @app.post("/admin/outbox/replay", dependencies=[Depends(_admin_guard_dep)])
 async def admin_replay_outbox(body: S.OutboxReplayRequest):
+    """Replay specific outbox events by ID."""
     try:
         count = outbox_db.mark_events_for_replay(body.event_ids)
     except HTTPException:
@@ -1101,34 +1115,280 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
     return S.OutboxReplayResponse(replayed=count)
 
 
-@app.get("/admin/features", dependencies=[Depends(_admin_guard_dep)])
-async def admin_features_state() -> S.FeatureFlagsResponse:
-    return S.FeatureFlagsResponse(
-        status=FeatureFlags.get_status(),
-        overrides=FeatureFlags.get_overrides(),
-    )
-
-
-@app.post("/admin/features", dependencies=[Depends(_admin_guard_dep)])
-async def admin_features_update(body: S.FeatureFlagsUpdateRequest) -> S.FeatureFlagsResponse:
-    invalid = [k for k in body.disabled if k not in FeatureFlags.KEYS]
-    if invalid:
-        raise HTTPException(status_code=400, detail=f"Unknown feature keys: {', '.join(invalid)}")
-    applied = FeatureFlags.set_overrides(body.disabled)
-    if not applied:
+@app.post("/admin/outbox/replay/tenant", dependencies=[Depends(_admin_guard_dep)])
+async def admin_replay_tenant_outbox(body: S.OutboxTenantReplayRequest):
+    """Replay outbox events for a specific tenant with filtering options."""
+    try:
+        count = outbox_db.mark_tenant_events_for_replay(
+            tenant_id=body.tenant_id,
+            status=body.status,
+            topic_filter=body.topic_filter,
+            before_timestamp=body.before_timestamp,
+            limit=body.limit
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
         try:
-            M.FEATURE_FLAG_TOGGLE_TOTAL.labels(action="ignored").inc()
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_error").inc()
         except Exception:
             pass
-        raise HTTPException(status_code=403, detail="Overrides only allowed in full-local mode")
+        raise exc
+    if count == 0:
+        try:
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_not_found").inc()
+        except Exception:
+            pass
+        raise HTTPException(
+            status_code=404, 
+            detail=f"No matching events to replay for tenant '{body.tenant_id}'"
+        )
     try:
-        M.FEATURE_FLAG_TOGGLE_TOTAL.labels(action="applied").inc()
+        M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_success").inc(count)
+        # Record per-tenant replay metrics
+        tenant_label = body.tenant_id or "default"
+        try:
+            M.report_outbox_replayed(tenant_label, count)
+        except Exception:
+            pass
     except Exception:
         pass
-    return S.FeatureFlagsResponse(
-        status=FeatureFlags.get_status(),
-        overrides=FeatureFlags.get_overrides(),
+    return S.OutboxTenantReplayResponse(
+        tenant_id=body.tenant_id,
+        replayed=count,
+        status=body.status
     )
+
+
+@app.get("/admin/outbox/tenant/{tenant_id}", dependencies=[Depends(_admin_guard_dep)])
+async def admin_get_tenant_outbox(
+    tenant_id: str,
+    status: str = Query("pending", description="pending|failed|sent"),
+    topic_filter: Optional[str] = Query(None, description="Filter by topic pattern"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Get outbox events for a specific tenant with filtering options."""
+    try:
+        events = outbox_db.list_tenant_events(
+            tenant_id=tenant_id,
+            status=status.lower().strip(),
+            topic_filter=topic_filter,
+            limit=limit,
+            offset=offset,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    
+    # Record metrics for failed events inspection
+    if status.lower().strip() == "failed":
+        tenant_label = tenant_id or "default"
+        try:
+            M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc(len(events))
+        except Exception:
+            pass
+    
+    return S.OutboxTenantListResponse(
+        tenant_id=tenant_id,
+        events=[S.OutboxEventModel.model_validate(ev) for ev in events],
+        count=len(events),
+        status=status
+    )
+
+
+@app.get("/admin/outbox/summary", dependencies=[Depends(_admin_guard_dep)])
+async def admin_get_outbox_summary():
+    """Get summary statistics for outbox events across all tenants."""
+    try:
+        from somabrain.db.outbox import get_pending_counts_by_tenant
+        
+        # Get pending counts by tenant
+        pending_counts = get_pending_counts_by_tenant()
+        
+        # Get failed events count by tenant
+        failed_counts = outbox_db.get_failed_counts_by_tenant()
+        
+        # Get total sent events count by tenant
+        sent_counts = outbox_db.get_sent_counts_by_tenant()
+        
+        # Build summary for each tenant
+        tenant_summaries = []
+        all_tenants = set(pending_counts.keys()) | set(failed_counts.keys()) | set(sent_counts.keys())
+        
+        for tenant in sorted(all_tenants):
+            tenant_label = tenant or "default"
+            summary = S.OutboxTenantSummary(
+                tenant_id=tenant_label,
+                pending_count=pending_counts.get(tenant, 0),
+                failed_count=failed_counts.get(tenant, 0),
+                sent_count=sent_counts.get(tenant, 0),
+                total_count=(
+                    pending_counts.get(tenant, 0) + 
+                    failed_counts.get(tenant, 0) + 
+                    sent_counts.get(tenant, 0)
+                )
+            )
+            tenant_summaries.append(summary)
+        
+        return S.OutboxSummaryResponse(
+            tenants=tenant_summaries,
+            total_tenants=len(tenant_summaries),
+            total_pending=sum(pending_counts.values()),
+            total_failed=sum(failed_counts.values()),
+            total_sent=sum(sent_counts.values())
+        )
+        
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to get outbox summary: {exc}")
+
+
+@app.get("/admin/quotas", dependencies=[Depends(_admin_guard_dep)])
+async def admin_list_quotas(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    tenant_filter: Optional[str] = Query(None, description="Filter by tenant ID prefix"),
+):
+    """List quota status for all tenants.
+    
+    Returns per-tenant quota information including remaining capacity,
+    daily limits, and reset times. Supports pagination and filtering.
+    """
+    from somabrain.quotas import QuotaManager, QuotaConfig
+    
+    try:
+        quota_manager = QuotaManager(QuotaConfig())
+        
+        # Get all tenant quota statuses
+        all_quotas = quota_manager.get_all_quotas()
+        
+        # Apply tenant filter if provided
+        if tenant_filter:
+            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
+        
+        # Apply pagination
+        total_count = len(all_quotas)
+        paginated_quotas = all_quotas[offset:offset + limit]
+        
+        # Convert to schema format
+        quota_statuses = []
+        for quota_info in paginated_quotas:
+            quota_statuses.append(S.QuotaStatus(
+                tenant_id=quota_info.tenant_id,
+                daily_limit=quota_info.daily_limit,
+                remaining=quota_info.remaining,
+                used_today=quota_info.used_today,
+                reset_at=quota_info.reset_at,
+                is_exempt=quota_info.is_exempt
+            ))
+        
+        return S.QuotaListResponse(
+            quotas=quota_statuses,
+            total_tenants=total_count
+        )
+        
+    except Exception as exc:
+        logger.error(f"Failed to list quotas: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to list quotas: {exc}")
+
+
+@app.post("/admin/quotas/{tenant_id}/reset", dependencies=[Depends(_admin_guard_dep)])
+async def admin_reset_quota(
+    tenant_id: str,
+    body: S.QuotaResetRequest
+):
+    """Reset quota for a specific tenant.
+    
+    Resets the daily quota counter for the specified tenant, allowing
+    them to continue making requests. Requires admin authentication.
+    """
+    from somabrain.quotas import QuotaManager, QuotaConfig
+    
+    try:
+        quota_manager = QuotaManager(QuotaConfig())
+        
+        # Check if tenant exists
+        if not quota_manager.tenant_exists(tenant_id):
+            raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+        
+        # Reset the quota
+        old_remaining = quota_manager.remaining(tenant_id)
+        quota_manager.reset_quota(tenant_id)
+        new_remaining = quota_manager.remaining(tenant_id)
+        
+        # Log the reset action
+        logger.info(f"Admin reset quota for tenant {tenant_id}. Reason: {body.reason or 'Not specified'}")
+        
+        # Emit metric for quota reset
+        try:
+            M.QUOTA_RESETS.labels(tenant_id=tenant_id).inc()
+        except Exception:
+            pass
+        
+        return S.QuotaResetResponse(
+            tenant_id=tenant_id,
+            reset=True,
+            new_remaining=new_remaining,
+            message=f"Quota reset for tenant {tenant_id}. Remaining: {new_remaining}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Failed to reset quota for tenant {tenant_id}: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to reset quota: {exc}")
+
+
+@app.post("/admin/quotas/{tenant_id}/adjust", dependencies=[Depends(_admin_guard_dep)])
+async def admin_adjust_quota(
+    tenant_id: str,
+    body: S.QuotaAdjustRequest
+):
+    """Adjust quota limit for a specific tenant.
+    
+    Updates the daily quota limit for the specified tenant. This affects
+    the maximum number of requests they can make per day.
+    """
+    from somabrain.quotas import QuotaManager, QuotaConfig
+    
+    try:
+        quota_manager = QuotaManager(QuotaConfig())
+        
+        # Check if tenant exists
+        if not quota_manager.tenant_exists(tenant_id):
+            raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
+        
+        # Get current limit
+        current_info = quota_manager.get_quota_info(tenant_id)
+        old_limit = current_info.daily_limit
+        
+        # Adjust the quota limit
+        quota_manager.adjust_quota_limit(tenant_id, body.new_limit)
+        
+        # Verify the adjustment
+        new_info = quota_manager.get_quota_info(tenant_id)
+        
+        # Log the adjustment
+        logger.info(f"Admin adjusted quota for tenant {tenant_id}: {old_limit} -> {body.new_limit}. Reason: {body.reason or 'Not specified'}")
+        
+        # Emit metric for quota adjustment
+        try:
+            M.QUOTA_ADJUSTMENTS.labels(tenant_id=tenant_id).inc()
+        except Exception:
+            pass
+        
+        return S.QuotaAdjustResponse(
+            tenant_id=tenant_id,
+            old_limit=old_limit,
+            new_limit=body.new_limit,
+            adjusted=True,
+            message=f"Quota limit adjusted for tenant {tenant_id}: {old_limit} -> {body.new_limit}"
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Failed to adjust quota for tenant {tenant_id}: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to adjust quota: {exc}")
 
 
 """
@@ -1947,7 +2207,7 @@ class AutoScalingFractalIntelligence:
             "standard": 0.05,
             "advanced": 0.085,
             "genius": 0.15,
-        }
+               }
 
         base_time = base_times.get(level, 0.05)
         # Complexity multiplier (higher complexity = longer processing)
@@ -2092,7 +2352,7 @@ def _sleep_loop():
 @app.get("/health", response_model=S.HealthResponse)
 async def health(request: Request) -> S.HealthResponse:
     # Public health endpoint – no authentication required
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     comps = {
         "memory": mt_memory.for_namespace(ctx.namespace).health(),
         "memory_circuit_open": memory_service._is_circuit_open(),
@@ -2475,7 +2735,7 @@ if not _MINIMAL_API:
     async def micro_diag(request: Request):
         require_auth(request, cfg)
         # Retrieve tenant context
-        ctx = get_tenant(request, cfg.namespace)
+        ctx = await get_tenant_async(request, cfg.namespace)
         trace_id = request.headers.get("X-Request-ID") or str(id(request))
         deadline_ms = request.headers.get("X-Deadline-MS")
         idempotency_key = request.headers.get("X-Idempotency-Key")
@@ -2586,7 +2846,7 @@ if not _MINIMAL_API:
 async def recall(req: S.RecallRequest, request: Request):
     require_auth(request, cfg)
     # Retrieve tenant context
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     # Input validation for brain safety
     try:
         if hasattr(req, "query") and req.query:
@@ -3092,7 +3352,7 @@ async def remember(body: dict, request: Request):
     * Otherwise the entire body is interpreted as the payload.
     """
     require_auth(request, cfg)
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
 
     # Determine coordinate and payload data supporting both request shapes.
     coord = body.get("coord")
@@ -3265,7 +3525,7 @@ if not _MINIMAL_API:
     ) -> S.SleepRunResponse:
         require_auth(request, cfg)
         # Retrieve tenant context
-        ctx = get_tenant(request, cfg.namespace)
+        ctx = await get_tenant_async(request, cfg.namespace)
         # Body is a Pydantic model; use attributes with defaults
         do_nrem = getattr(body, "nrem", True) if hasattr(body, "nrem") else True
         do_rem = getattr(body, "rem", True) if hasattr(body, "rem") else True
@@ -3310,7 +3570,7 @@ if not _MINIMAL_API:
     async def sleep_status(request: Request) -> S.SleepStatusResponse:
         require_auth(request, cfg)
         # Retrieve tenant context
-        ctx = get_tenant(request, cfg.namespace)
+        ctx = await get_tenant_async(request, cfg.namespace)
         ten = ctx.tenant_id
         last = _sleep_last.get(ten, {})
         return {
@@ -3328,7 +3588,7 @@ if not _MINIMAL_API:
 
         Returns { enabled, interval_seconds, tenants: { <tid>: {nrem, rem} } }
         """
-        ctx = get_tenant(request, cfg.namespace)
+        ctx = await get_tenant_async(request, cfg.namespace)
         require_admin_auth(request, cfg)
         try:
             tenants = mt_wm.tenants() or [ctx.tenant_id or "public"]
@@ -3352,7 +3612,7 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     Body: { task_key: str, max_steps?: int, rel_types?: [str], universe?: str }
     Returns: { plan: [str] }
     """
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     task_key = str(getattr(body, "task_key", None) or "").strip()
     if not task_key:
@@ -3389,7 +3649,7 @@ async def delete_memory(req: S.DeleteRequest, request: Request):
 
     Returns a simple success response. Raises 404 if coordinate not found
     (handled by underlying memory client)."""
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     # Ensure coordinate is a list of three floats
     coord = tuple(req.coordinate)
@@ -3407,7 +3667,7 @@ async def recall_delete(req: S.DeleteRequest, request: Request):
     """Delete a memory by coordinate via the recall API.
     Mirrors the generic /delete endpoint but scoped under /recall for consistency.
     """
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     ms = MemoryService(mt_memory, ctx.namespace)
     try:
@@ -3433,7 +3693,7 @@ async def set_personality(
 
     behaviour expected by the test suite.
     """
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     # Extract traits dict, defaulting to empty
     traits = dict(state.traits or {})
@@ -3457,7 +3717,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     compatible with the test suite (including ``task`` and a ``results`` list
     containing at least one ``ActStepResult`` with a ``salience`` field).
     """
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     # Retrieve the predictor, neuromodulators and personality store for the tenant
     # Use the configured predictor factory instead of instantiating a stub.
@@ -3515,14 +3775,14 @@ async def act_endpoint(body: S.ActRequest, request: Request):
 # Neuromodulators endpoint – get and set global neuromodulator state
 @app.get("/neuromodulators", response_model=S.NeuromodStateModel)
 async def get_neuromodulators(request: Request):
-    _ = get_tenant(request, cfg.namespace)
+    _ = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     try:
         audit.log_admin_action(request, "neuromodulators_read")
     except Exception:
         pass
     # Return current state; the Neuromodulators singleton holds a NeuromodState
-    tenant_ctx = get_tenant(request, cfg.namespace)
+    tenant_ctx = await get_tenant_async(request, cfg.namespace)
     state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
     return S.NeuromodStateModel(
         dopamine=state.dopamine,
@@ -3534,7 +3794,7 @@ async def get_neuromodulators(request: Request):
 
 @app.post("/neuromodulators", response_model=S.NeuromodStateModel)
 async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
-    _ = get_tenant(request, cfg.namespace)
+    _ = await get_tenant_async(request, cfg.namespace)
     # Setting neuromodulators is an admin-level action.
     require_admin_auth(request, cfg)
 
@@ -3549,7 +3809,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
         acetylcholine=clamp(body.acetylcholine, 0.0, 0.5),
         timestamp=time.time(),
     )
-    tenant_ctx = get_tenant(request, cfg.namespace)
+    tenant_ctx = await get_tenant_async(request, cfg.namespace)
     per_tenant_neuromods.set_state(tenant_ctx.tenant_id, new_state)
     try:
         audit.log_admin_action(
@@ -3579,7 +3839,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
 @app.get("/health/memory", response_model=Dict[str, Any])
 async def health_memory(request: Request) -> Dict[str, Any]:
     """Get per-tenant memory service health and circuit breaker state."""
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     
     # Create memory service instance for this tenant
@@ -3608,7 +3868,7 @@ async def health_memory(request: Request) -> Dict[str, Any]:
 # Graph links endpoint – returns semantic graph edges
 @app.post("/graph/links", response_model=S.GraphLinksResponse)
 async def graph_links(body: S.GraphLinksRequest, request: Request):
-    ctx = get_tenant(request, cfg.namespace)
+    ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     # Determine universe (body overrides header)
     header_u = request.headers.get("X-Universe", "").strip() or None
@@ -3706,6 +3966,140 @@ async def _health_watchdog_coroutine():
         await asyncio.sleep(poll_interval)
 
 
+# Journal Admin Endpoints
+# =======================
+    
+    @app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
+    async def admin_get_journal_stats():
+        """Get statistics about the local journal."""
+        try:
+            stats = get_journal_stats()
+            return {"success": True, "data": stats}
+        except Exception as e:
+            logger.error(f"Failed to get journal stats: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
+    async def admin_list_journal_events(
+        tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
+        status: Optional[str] = Query(None, description="Filter by status (pending|sent|failed)"),
+        topic: Optional[str] = Query(None, description="Filter by topic"),
+        limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return"),
+        since: Optional[str] = Query(None, description="Only events after this ISO datetime"),
+    ):
+        """List journal events with filtering options."""
+        try:
+            since_dt = None
+            if since:
+                since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+            
+            events = get_journal_events(
+                tenant_id=tenant_id,
+                status=status,
+                topic=topic,
+                limit=limit,
+                since=since_dt
+            )
+            
+            return {
+                "success": True,
+                "data": {
+                    "events": [
+                        {
+                            "id": ev.id,
+                            "topic": ev.topic,
+                            "tenant_id": ev.tenant_id,
+                            "status": ev.status,
+                            "retries": ev.retries,
+                            "last_error": ev.last_error,
+                            "timestamp": ev.timestamp.isoformat(),
+                        }
+                        for ev in events
+                    ],
+                    "count": len(events),
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to list journal events: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
+    async def admin_replay_journal_events(
+        tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
+        limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to replay"),
+        mark_processed: bool = Query(True, description="Mark replayed events as processed"),
+    ):
+        """Replay journal events to the database outbox."""
+        try:
+            replayed = replay_journal_events(
+                tenant_id=tenant_id,
+                limit=limit,
+                mark_processed=mark_processed
+            )
+            
+            return {
+                "success": True,
+                "data": {
+                    "replayed_count": replayed,
+                    "message": f"Successfully replayed {replayed} events from journal to database"
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to replay journal events: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
+    async def admin_cleanup_journal():
+        """Clean up old journal files based on retention policy."""
+        try:
+            result = cleanup_journal()
+            return {"success": True, "data": result}
+        except Exception as e:
+            logger.error(f"Failed to cleanup journal: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    
+    @app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
+    async def admin_init_journal(
+        journal_dir: Optional[str] = Query(None, description="Journal directory path"),
+        max_file_size: Optional[int] = Query(None, description="Max file size in bytes"),
+        max_files: Optional[int] = Query(None, description="Max number of files"),
+        retention_days: Optional[int] = Query(None, description="Retention period in days"),
+    ):
+        """Initialize or reconfigure the journal."""
+        try:
+            # Get current config or create new one
+            config = JournalConfig.from_env()
+            
+            # Update with provided parameters
+            if journal_dir is not None:
+                config.journal_dir = journal_dir
+            if max_file_size is not None:
+                config.max_file_size = max_file_size
+            if max_files is not None:
+                config.max_files = max_files
+            if retention_days is not None:
+                config.retention_days = retention_days
+            
+            # Initialize journal with new config
+            journal = init_journal(config)
+            
+            return {
+                "success": True,
+                "data": {
+                    "config": {
+                        "journal_dir": config.journal_dir,
+                        "max_file_size": config.max_file_size,
+                        "max_files": config.max_files,
+                        "retention_days": config.retention_days,
+                    },
+                    "stats": journal.get_stats(),
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to initialize journal: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.on_event("startup")
 async def _init_health_watchdog():
     """Initialize health watchdog for per-tenant circuit breakers."""
@@ -3714,37 +4108,24 @@ async def _init_health_watchdog():
         _health_watchdog_task = asyncio.create_task(_health_watchdog_coroutine())
 
 
+@app.on_event("startup")
+async def _init_tenant_manager():
+    """Initialize centralized tenant management system."""
+    try:
+        from somabrain.tenant_manager import get_tenant_manager
+        tenant_manager = await get_tenant_manager()
+        logger.info("Tenant manager initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize tenant manager: {e}")
+        # Don't fail startup - tenant management can be initialized lazily
+
+
 @app.on_event("shutdown")
-async def _shutdown_health_watchdog():
-    """Shutdown health watchdog task."""
-    global _health_watchdog_task
-    if _health_watchdog_task:
-        _health_watchdog_task.cancel()
-        try:
-            await _health_watchdog_task
-        except asyncio.CancelledError:
-            pass
-
-
-# --- Module reload support -------------------------------------------------
-_current_module = sys.modules[__name__]
-
-# Ensure the canonical module name `somabrain.app` always resolves to this module
-if sys.modules.get("somabrain.app") is not _current_module:
-    sys.modules["somabrain.app"] = _current_module
-
-# Provide a ModuleSpec so importlib.reload works in test fixtures
-spec = getattr(_current_module, "__spec__", None)
-if spec is None:
-    _current_module.__spec__ = importlib.util.spec_from_loader(
-        "somabrain.app", loader=None
-    )
-else:
-    spec_name = getattr(spec, "name", None)
-    if spec_name != "somabrain.app":
-        try:
-            spec.name = "somabrain.app"  # type: ignore[attr-defined]
-        except Exception:
-            _current_module.__spec__ = importlib.util.spec_from_loader(
-                "somabrain.app", loader=getattr(spec, "loader", None)
-            )
+async def _shutdown_tenant_manager():
+    """Shutdown tenant manager."""
+    try:
+        from somabrain.tenant_manager import close_tenant_manager
+        await close_tenant_manager()
+        logger.info("Tenant manager shutdown completed")
+    except Exception as e:
+        logger.error(f"Error shutting down tenant manager: {e}")

@@ -12,7 +12,7 @@ import requests
 
 def check_health():
     try:
-        r = requests.get("http://localhost:8000/health")
+        r = requests.get(f"http://localhost:{os.getenv('SOMABRAIN_HOST_PORT', '9696')}/health")
         if r.status_code == 200 and r.json().get("ok"):
             print("System healthy.")
             return True

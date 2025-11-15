@@ -24,7 +24,9 @@ SOMA_TOPIC = TOPICS["soma_action"]
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    if not url:
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 

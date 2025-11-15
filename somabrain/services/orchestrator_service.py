@@ -15,7 +15,7 @@ Design:
   falls back to JSON parse.
 
 Environment:
-- SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
+- SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
 - SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
 Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy env flags removed.
 
@@ -58,7 +58,9 @@ class GlobalFrameCtx:
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    if not url:
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 

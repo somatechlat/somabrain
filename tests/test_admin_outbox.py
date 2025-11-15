@@ -25,8 +25,8 @@ from somabrain.db import outbox as outbox_db
 async def test_admin_outbox_list_filters(monkeypatch):
     captured: dict[str, object] = {}
 
-    def fake_list(status: str, tenant_id=None, limit: int = 50, offset: int = 0):
-        captured["args"] = (status, tenant_id, limit, offset)
+    def fake_list(status: str, tenant_id=None, topic_filter=None, limit: int = 50, offset: int = 0):
+        captured["args"] = (status, tenant_id, topic_filter, limit, offset)
         return [
             SimpleNamespace(
                 id=1,
@@ -45,7 +45,7 @@ async def test_admin_outbox_list_filters(monkeypatch):
     resp = await admin_list_outbox(status="pending", tenant="tenantA", limit=10, offset=5)
     assert resp.count == 1
     assert resp.events[0].topic == "cog.some.topic"
-    assert captured["args"] == ("pending", "tenantA", 10, 5)
+    assert captured["args"] == ("pending", "tenantA", None, 10, 5)
 
 
 @pytest.mark.asyncio

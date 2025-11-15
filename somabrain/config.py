@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field  # add field import
 from functools import lru_cache
-from typing import List, Optional, Any, cast
+from typing import List, Optional, Any, Dict, cast
 
 from somabrain.infrastructure import get_memory_http_endpoint, get_redis_url
 
@@ -59,6 +59,40 @@ class MemoryHTTPConfig:
 
     endpoint: Optional[str] = None
     token: Optional[str] = None
+
+
+@dataclass
+class TenantConfig:
+    """
+    Tenant-specific configuration for SomaBrain.
+
+    Defines per-tenant settings for quotas, limits, and feature flags.
+    Each tenant can have its own configuration that overrides global defaults.
+
+    Attributes:
+        daily_quota (int): Maximum daily operations for the tenant.
+        rate_limit_rps (float): Requests per second rate limit.
+        rate_limit_burst (int): Burst capacity for rate limiting.
+        max_connections (int): Maximum concurrent connections.
+        memory_limit_mb (int): Memory limit in megabytes.
+        feature_flags (Dict[str, bool]): Tenant-specific feature flags.
+        custom_settings (Dict[str, Any]): Custom tenant settings.
+
+    Example:
+        >>> tenant_config = TenantConfig(
+        ...     daily_quota=50000,
+        ...     rate_limit_rps=100.0,
+        ...     feature_flags={"advanced_analytics": True}
+        ... )
+    """
+
+    daily_quota: int = 10000
+    rate_limit_rps: float = 50.0
+    rate_limit_burst: int = 100
+    max_connections: int = 100
+    memory_limit_mb: int = 1024
+    feature_flags: Dict[str, bool] = field(default_factory=dict)
+    custom_settings: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -137,6 +171,17 @@ class Config:
     memory_health_poll_interval: float = 5.0
     memory_outbox_max_retries: int = 5
 
+    # Tenant Management Configuration
+    tenant_registry_enabled: bool = True
+    tenant_registry_backend: str = "redis"  # redis, postgres, memory
+    tenant_default_tier: str = "enterprise"
+    tenant_auto_create: bool = True
+    tenant_temporary_expiry: str = "24h"
+    tenant_configs: Dict[str, TenantConfig] = field(default_factory=dict)
+    tenant_cache_ttl: int = 300  # 5 minutes
+    tenant_audit_enabled: bool = True
+    tenant_cleanup_interval: int = 3600  # 1 hour
+
     # Security and Limits
     api_token: Optional[str] = None
     rate_rps: float = 50.0
@@ -144,9 +189,9 @@ class Config:
     jwt_public_key_path: Optional[str] = None
     jwt_issuer: Optional[str] = None
     jwt_audience: Optional[str] = None
-    default_tenant: str = "sandbox"
-    sandbox_tenants: List[str] = field(default_factory=list)
-    sandbox_tenants_file: Optional[str] = None
+    default_tenant: str = "sandbox"  # DEPRECATED: Use tenant_registry instead
+    sandbox_tenants: List[str] = field(default_factory=list)  # DEPRECATED: Use tenant_registry instead
+    sandbox_tenants_file: Optional[str] = None  # DEPRECATED: Use tenant_registry instead
     rate_burst: int = 100
     write_daily_limit: int = 10000
     # Predictor configuration (added)
@@ -310,6 +355,17 @@ class Config:
     truth_chebyshev_K: Optional[int] = None
     truth_kernel_relerr: Optional[float] = None
     truth_sinkhorn_tol: Optional[float] = None
+
+    # Tenant management configuration
+    tenant_enabled: bool = False
+    tenant_default: str = "public"
+    tenant_allow_creation: bool = True
+    tenant_max_count: int = 100
+    tenant_admin_api_key: Optional[str] = None
+    tenant_user_api_key: Optional[str] = None
+    tenant_metadata: Dict[str, Any] = field(default_factory=dict)
+
+    # End of Config fields
 
 
 # Typed truth-budget schema (module-level so tests can import)

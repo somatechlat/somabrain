@@ -83,52 +83,6 @@ def get_pending_events(limit: int = 100, tenant_id: Optional[str] = None) -> Lis
         return events
 
 
-def list_events_by_status(
-    status: str = "pending",
-    tenant_id: Optional[str] = None,
-    topic_filter: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0,
-) -> List[OutboxEvent]:
-    """
-    List outbox events by status with filtering options.
-    
-    This function provides comprehensive filtering for admin endpoints,
-    supporting status-based queries with optional tenant and topic filtering.
-    
-    Args:
-        status: Event status to filter by (pending, failed, sent)
-        tenant_id: Optional tenant ID to filter events
-        topic_filter: Optional topic pattern to filter events
-        limit: Maximum number of events to return
-        offset: Offset for pagination
-        
-    Returns:
-        List of OutboxEvent objects matching the criteria
-        
-    Raises:
-        ValueError: If status is not valid
-    """
-    if status not in VALID_OUTBOX_STATUSES:
-        raise ValueError(f"Invalid outbox status: {status}")
-    
-    limit = max(1, min(int(limit), 500))
-    offset = max(0, int(offset))
-    
-    session_factory = get_session_factory()
-    with session_factory() as session:
-        q = session.query(OutboxEvent).filter(OutboxEvent.status == status)
-        
-        if tenant_id:
-            q = q.filter(OutboxEvent.tenant_id == tenant_id)
-        
-        if topic_filter:
-            q = q.filter(OutboxEvent.topic.like(f"%{topic_filter}%"))
-        
-        events = q.order_by(OutboxEvent.created_at.desc()).offset(offset).limit(limit).all()
-        return events
-
-
 def get_pending_events_by_tenant_batch(
     limit_per_tenant: int = 50, 
     max_tenants: Optional[int] = None

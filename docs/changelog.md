@@ -253,9 +253,9 @@ docker run --rm \
   ghcr.io/somatechlat/somabrain:latest
 ```
 
-- Health: `curl -s http://localhost:8000/health`
-- OpenAPI: `http://localhost:8000/docs`
-- Metrics: `http://localhost:8000/metrics`
+- Health: `curl -s http://localhost:9696/health`
+- OpenAPI: `http://localhost:9696/docs`
+- Metrics: `http://localhost:9696/metrics`
 
 **Endpoints**: `/remember`, `/recall`, `/link`, `/docs`, `/metrics`
 

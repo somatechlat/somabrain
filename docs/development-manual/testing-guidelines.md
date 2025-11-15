@@ -73,7 +73,7 @@ def test_config() -> TestConfig:
     """Provide test configuration."""
     return TestConfig(
         # Strict mode: require Postgres for tests; set SOMABRAIN_POSTGRES_DSN.
-        database_url=os.getenv("SOMABRAIN_POSTGRES_DSN", "postgresql://soma:soma_pass@127.0.0.1:5432/somabrain_test"),
+        database_url=os.getenv("SOMABRAIN_POSTGRES_DSN", "postgresql://soma:soma_pass@127.0.0.1:5432/somabrain_dev"),
         redis_url="redis://localhost:6379/1",
         vector_dimensions=384,  # Smaller for faster tests
         similarity_threshold=0.3
@@ -1022,7 +1022,7 @@ async def somabrain_deployment():
 
         yield {
             "api_url": "http://localhost:9696",
-            "web_url": "http://localhost:3000"  # If you have a web UI
+            "web_url": "http://localhost:${WEB_UI_HOST_PORT:-3000}"  # If you have a web UI
         }
 
     finally:
@@ -1601,7 +1601,7 @@ jobs:
         image: postgres:15
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: somabrain_test
+          POSTGRES_DB: somabrain_ci
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -1645,7 +1645,7 @@ jobs:
       run: |
         pytest tests/integration/ -v
       env:
-        DATABASE_URL: postgresql://postgres:postgres@localhost/somabrain_test
+        DATABASE_URL: postgresql://postgres:postgres@localhost/somabrain_ci
         REDIS_URL: redis://localhost:6379
 
     - name: Upload coverage reports

@@ -17,7 +17,7 @@ Design choices:
 - Metrics are exported via somabrain.metrics (counters + histogram).
 
 Environment variables:
-- SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
+- SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
 - SOMABRAIN_FF_COG_SEGMENTATION: enable/disable service (default off)
 - SOMABRAIN_SEGMENT_MODE: 'leader' (default) or 'cpd'
 - SOMABRAIN_SEGMENT_MAX_DWELL_MS: optional max dwell; emits boundary even if
@@ -221,7 +221,9 @@ def _parse_update(value: bytes, serde: AvroSerde) -> Optional[Update]:
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    if not url:
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 

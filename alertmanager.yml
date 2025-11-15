@@ -11,4 +11,4 @@ route:
 receivers:
   - name: "default"
     webhook_configs:
-      - url: "http://localhost:5000/alert"
+      - url: "http://localhost:${ALERTMANAGER_HOST_PORT:-9093}/alert"

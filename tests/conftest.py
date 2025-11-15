@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import json
+import runpy
 from pathlib import Path
 from typing import Dict, List
 import pytest
@@ -53,6 +54,10 @@ def _bootstrap_env_from_dotenv() -> None:
         for k, v in loaded.items():
             os.environ.setdefault(k, v)
 
+    os.environ.setdefault("SOMABRAIN_MODE", "full-local")
+    os.environ.setdefault("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "1")
+    os.environ.setdefault("SOMABRAIN_API_TOKEN", "test-admin-token")
+
     # Ensure API base URL is available for tests when only a host port is defined
     api_url = os.getenv("SOMABRAIN_API_URL") or os.getenv("SOMA_API_URL")
     host = os.getenv("SOMABRAIN_PUBLIC_HOST") or os.getenv("SOMABRAIN_HOST")
@@ -87,6 +92,20 @@ def _bootstrap_env_from_dotenv() -> None:
             except Exception:
                 host_port = "30000"
         os.environ["SOMABRAIN_REDIS_URL"] = f"redis://127.0.0.1:{host_port}/0"
+
+    dsn = os.getenv("SOMABRAIN_POSTGRES_DSN")
+    if dsn and "somabrain_postgres" in dsn:
+        host_port = os.getenv("POSTGRES_HOST_PORT")
+        if not host_port:
+            ports_path = root / "ports.json"
+            try:
+                data = json.loads(ports_path.read_text()) if ports_path.exists() else {}
+                host_port = str(data.get("POSTGRES_HOST_PORT") or "30106")
+            except Exception:
+                host_port = "30106"
+        os.environ["SOMABRAIN_POSTGRES_DSN"] = dsn.replace(
+            "somabrain_postgres:5432", f"127.0.0.1:{host_port}"
+        )
 
 
 _bootstrap_env_from_dotenv()

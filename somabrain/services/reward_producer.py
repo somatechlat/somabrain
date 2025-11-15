@@ -5,7 +5,7 @@ Publishes RewardEvent records to Kafka topic "cog.reward.events" using Avro.
 Strict mode: no JSON alternative, no legacy kafka-python client.
 
 Environment:
-- SOMABRAIN_KAFKA_URL: bootstrap servers (default localhost:30001)
+- SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
 - REWARD_PRODUCER_PORT: HTTP port (default 8083)
 - SOMABRAIN_DEFAULT_TENANT: optional tenant label
 

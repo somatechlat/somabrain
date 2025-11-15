@@ -12,7 +12,7 @@ Rating to r_user mapping:
 -- 1 -> -1.0, 2 -> -0.5, 3 -> 0.0, 4 -> 0.5, 5 -> 1.0
 
 Environment:
--- SOMABRAIN_KAFKA_URL (default localhost:30001)
+-- SOMABRAIN_KAFKA_URL (default from centralized infrastructure)
 -- TEACH_PROC_GROUP (default teach-feedback-proc)
 
 Metrics:
@@ -43,7 +43,9 @@ TOPIC_REWARD = "cog.reward.events"
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    if not url:
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 
