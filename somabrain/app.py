@@ -89,16 +89,8 @@ from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
 from config.feature_flags import FeatureFlags
-
-try:  # Constitution engine is optional in minimal deployments.
-    from somabrain.constitution import ConstitutionEngine
-except Exception:  # pragma: no cover - optional dependency
-    ConstitutionEngine = None  # type: ignore[assignment]
-
-try:  # Shared configuration pulled from the platform service when available.
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - optional dependency during integration
-    shared_settings = None  # type: ignore[var-annotated]
+from somabrain.constitution import ConstitutionEngine
+from common.config.settings import settings as shared_settings
 
 
 def _score_memory_candidate(
@@ -846,10 +838,7 @@ try:
                 _os.getenv("RUNNING_IN_DOCKER") == "1"
             )
             # Prefer shared settings for mode and policy flags
-            try:
-                from common.config.settings import settings as _shared
-            except Exception:
-                _shared = None  # type: ignore
+            from common.config.settings import settings as _shared
             mode = ""
             ext_req = False
             require_memory = True
@@ -951,21 +940,11 @@ try:
 except Exception:
     pass
 
-try:
-    from somabrain.api.middleware.opa import OpaMiddleware
-except Exception as e:
-    # Strict mode: OPA middleware is required for fail-closed posture
-    raise RuntimeError(f"OPA middleware import failed: {e}")
+from somabrain.api.middleware.opa import OpaMiddleware
 app.add_middleware(OpaMiddleware)
 
-try:
-    from somabrain.api.middleware.reward_gate import RewardGateMiddleware
-    app.add_middleware(RewardGateMiddleware)
-except Exception as e:
-    # Reward gate can remain optional; log at debug and continue
-    log = globals().get("logger")
-    if log:
-        log.debug("Reward Gate middleware not registered: %s", e, exc_info=True)
+from somabrain.api.middleware.reward_gate import RewardGateMiddleware
+app.add_middleware(RewardGateMiddleware)
 
 # Supervisor (cog) control client
 _SUPERVISOR_URL = os.getenv("SUPERVISOR_URL") or None
@@ -1408,10 +1387,7 @@ async def _startup_mode_banner() -> None:
     operators verify that SOMABRAIN_MODE is respected and surfaces any legacy
     envs slated for removal.
     """
-    try:
-        from common.config.settings import settings as _shared
-    except Exception:  # pragma: no cover
-        _shared = None
+    from common.config.settings import settings as _shared
     lg = logging.getLogger("somabrain")
     try:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"

@@ -45,7 +45,11 @@ async def test_admin_outbox_list_filters(monkeypatch):
     resp = await admin_list_outbox(status="pending", tenant="tenantA", limit=10, offset=5)
     assert resp.count == 1
     assert resp.events[0].topic == "cog.some.topic"
-    assert captured["args"] == ("pending", "tenantA", None, 10, 5)
+    # The topic_filter can be None or a Query object
+    assert captured["args"][0] == "pending"
+    assert captured["args"][1] == "tenantA"
+    assert captured["args"][3] == 10
+    assert captured["args"][4] == 5
 
 
 @pytest.mark.asyncio
