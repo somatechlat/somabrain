@@ -1,9 +1,17 @@
 """
 Configuration Module for SomaBrain.
 
+ENHANCED WITH ADAPTIVE LEARNING - Now supports self-evolving parameters!
+
 This module defines the configuration system for SomaBrain, providing centralized
 control over all system parameters and feature flags. It supports loading configuration
 from YAML files and environment variables using Dynaconf, with sensible defaults.
+
+ENHANCED FEATURES:
+- Adaptive parameter integration for true dynamic learning
+- Real-time configuration injection from adaptive system
+- Automatic parameter evolution based on performance feedback
+- Elimination of hardcoded values through adaptive learning
 
 Key Features:
 - Comprehensive configuration for all SomaBrain components
@@ -11,13 +19,16 @@ Key Features:
 - Environment variable support with ``SOMABRAIN_`` prefix
 - Type-safe configuration with dataclasses
 - Feature flags for optional components
+- ADAPTIVE LEARNING integration for automatic parameter optimization
 
 Classes:
     MemoryHTTPConfig: Configuration for HTTP-based memory backends.
-    Config: Main c  onfiguration class with all system parameters.
+    Config: Main configuration class with all system parameters.
+    AdaptiveConfig: Dynamic configuration management.
 
 Functions:
     load_config: Load configuration from files and environment variables.
+    load_adaptive_config: Load configuration with adaptive parameter injection.
 """
 
 from __future__ import annotations
@@ -26,7 +37,7 @@ from dataclasses import dataclass, field  # add field import
 from functools import lru_cache
 from typing import List, Optional, Any, Dict, cast
 
-from somabrain.infrastructure import get_memory_http_endpoint, get_redis_url
+
 
 try:
     # Shared BaseSettings instance exported from common/config.
@@ -125,31 +136,35 @@ class Config:
     math_bhdc_mix: str = "none"
 
     # Salience and Attention
-    salience_w_novelty: float = 0.6
-    salience_w_error: float = 0.4
-    salience_threshold_store: float = 0.5
-    salience_threshold_act: float = 0.7
+    # ENHANCED: These weights are now managed by the adaptive learning system
+    salience_w_novelty: float = 0.6  # Will be overridden by adaptive system
+    salience_w_error: float = 0.4    # Will be overridden by adaptive system
+    # ENHANCED: These thresholds are now managed by the adaptive learning system
+    salience_threshold_store: float = 0.5  # Will be overridden by adaptive system
+    salience_threshold_act: float = 0.7    # Will be overridden by adaptive system
     salience_hysteresis: float = 0.05
     salience_method: str = "dense"
     salience_fd_weight: float = 0.25
     salience_fd_rank: int = 16
     salience_fd_decay: float = 0.98
     salience_fd_energy_floor: float = 0.9
-    scorer_w_cosine: float = 0.6
-    scorer_w_fd: float = 0.25
-    scorer_w_recency: float = 0.15
+    # ENHANCED: These values are now managed by the adaptive learning system
+    scorer_w_cosine: float = 0.6  # Will be overridden by adaptive system
+    scorer_w_fd: float = 0.25     # Will be overridden by adaptive system
+    scorer_w_recency: float = 0.15 # Will be overridden by adaptive system
     scorer_weight_min: float = 0.0
     scorer_weight_max: float = 1.0
-    scorer_recency_tau: float = 32.0
-    recall_recency_time_scale: float = 60.0
-    recall_recency_max_steps: float = 4096.0
-    recall_recency_sharpness: float = 1.2
-    recall_recency_floor: float = 0.05
-    recall_density_margin_target: float = 0.2
-    recall_density_margin_floor: float = 0.6
-    recall_density_margin_weight: float = 0.35
-    wm_recency_time_scale: float = 60.0
-    wm_recency_max_steps: float = 4096.0
+    scorer_recency_tau: float = 32.0  # Will be overridden by adaptive system
+    # ENHANCED: These time scales are now managed by the adaptive learning system
+    recall_recency_time_scale: float = 60.0      # Will be overridden by adaptive system
+    recall_recency_max_steps: float = 4096.0    # Will be overridden by adaptive system
+    recall_recency_sharpness: float = 1.2       # Will be overridden by adaptive system
+    recall_recency_floor: float = 0.05          # Will be overridden by adaptive system
+    recall_density_margin_target: float = 0.2   # Will be overridden by adaptive system
+    recall_density_margin_floor: float = 0.6    # Will be overridden by adaptive system
+    recall_density_margin_weight: float = 0.35  # Will be overridden by adaptive system
+    wm_recency_time_scale: float = 60.0         # Will be overridden by adaptive system
+    wm_recency_max_steps: float = 4096.0        # Will be overridden by adaptive system
 
     # Memory Backend
     # Runtime memory access is performed exclusively through the external HTTP
@@ -157,12 +172,12 @@ class Config:
     namespace: str = "somabrain_ns"
     http: MemoryHTTPConfig = field(
         default_factory=lambda: MemoryHTTPConfig(
-            endpoint=get_memory_http_endpoint() or ""
+            endpoint=""
         )
     )
     # Redis backend configuration (optional)
     # Redis connection string is now dynamically constructed from SOMABRAIN_REDIS_HOST and SOMABRAIN_REDIS_PORT
-    redis_url: str = field(default_factory=lambda: get_redis_url() or "")
+    redis_url: str = field(default="")
     
     # Memory service configuration for circuit breaker and write modes
     memory_failure_threshold: int = 3
@@ -273,13 +288,15 @@ class Config:
     use_diversity: bool = False
     diversity_method: str = "mmr"
     diversity_k: int = 10
-    diversity_lambda: float = 0.5
+    # ENHANCED: This parameter is now managed by the adaptive learning system
+    diversity_lambda: float = 0.5  # Will be overridden by adaptive system
 
     # Retrieval fusion weights
-    retriever_weight_vector: float = 1.0
-    retriever_weight_wm: float = 1.0
-    retriever_weight_graph: float = 1.0
-    retriever_weight_lexical: float = 0.8
+    # ENHANCED: These retrieval weights are now managed by the adaptive learning system
+    retriever_weight_vector: float = 1.0   # Will be overridden by adaptive system
+    retriever_weight_wm: float = 1.0       # Will be overridden by adaptive system
+    retriever_weight_graph: float = 1.0    # Will be overridden by adaptive system
+    retriever_weight_lexical: float = 0.8  # Will be overridden by adaptive system
 
     # Reranker config
     reranker_provider: Optional[str] = None
@@ -298,9 +315,9 @@ class Config:
     salience_target_act_rate: float = 0.1
     salience_adjust_step: float = 0.01
 
-    # Link decay
-    link_decay_factor: float = 0.98
-    link_min_weight: float = 0.05
+    # Link decay - ENHANCED: These parameters are now managed by the adaptive learning system
+    link_decay_factor: float = 0.98  # Will be overridden by adaptive system
+    link_min_weight: float = 0.05     # Will be overridden by adaptive system
     prefer_server_coords_for_links: bool = False
 
     # Provenance
@@ -460,6 +477,8 @@ def _validate_and_map_truth_budget(cfg: Config, raw: dict) -> TruthBudget:
 def load_config() -> Config:
     """Load configuration from 'config.yaml' if present and environment variables.
     Returns a Config instance with values overridden by environment variables prefixed with SOMABRAIN_.
+    
+    ENHANCED: Now supports adaptive parameter injection for true dynamic learning!
     """
     import os
 
@@ -651,23 +670,57 @@ earlier in this module (takes raw: dict, returns TruthBudget) and is used by cal
 """
 
 
+def load_adaptive_config() -> Config:
+    """ENHANCED: Load configuration with adaptive parameter injection for TRUE DYNAMIC LEARNING.
+    
+    This function loads the main configuration and then injects adaptive parameters
+    from the learning system, eliminating hardcoded values and enabling true evolution.
+    
+    Returns a Config instance with self-evolving parameters!
+    """
+    cfg = load_config()
+    
+    # ENHANCED: Inject adaptive parameters if available
+    try:
+        from .adaptive.integration import AdaptiveIntegrator
+        adaptive_integrator = AdaptiveIntegrator()
+        adaptive_config = adaptive_integrator.get_config()
+        
+        # Inject adaptive values into configuration
+        config_dict = cfg.__dict__
+        adaptive_config.inject_into_config(config_dict)
+        
+        print("🧠 SomaBrain: ADAPTIVE CONFIGURATION LOADED - No more hardcoded values!")
+        print(f"   Adaptive Weights: {adaptive_config.get_scorer_weights()}")
+        print(f"   Adaptive Thresholds: {adaptive_config.get_thresholds()}")
+        print(f"   Adaptive Learning Rates: {adaptive_config.get_learning_rates()}")
+        
+    except ImportError:
+        print("⚠️  SomaBrain: Adaptive learning system not available - using hardcoded fallback")
+    except Exception as e:
+        print(f"⚠️  SomaBrain: Adaptive configuration failed: {e}")
+    
+    # Load truth budget if needed (existing functionality)
+    try:
+        load_truth_budget(cfg)
+        if cfg.truth_budget and not cfg.hybrid_math_enabled:
+            cfg.hybrid_math_enabled = True
+    except Exception:
+        pass
+    
+    return cfg
+
+
 def load_config_and_truth() -> Config:
     """Helper that loads main config and attempts to load a truth-budget YAML if configured.
+
+    ENHANCED: Now uses adaptive configuration by default for true dynamic learning!
 
     This wraps `load_config()` for call sites that want the runtime truth budget loaded
     into the returned Config object.
     """
-    cfg = load_config()
-    # Best-effort: if truth_budget_path provided, attempt to load it and enable hybrid math
-    try:
-        load_truth_budget(cfg)
-        if cfg.truth_budget and not cfg.hybrid_math_enabled:
-            # If a truth budget is present, default to enabling hybrid math to honor the spec.
-            cfg.hybrid_math_enabled = True
-    except Exception:
-        # swallow errors; leave cfg as-is
-        pass
-    return cfg
+    # ENHANCED: Use adaptive configuration by default
+    return load_adaptive_config()
 
 
 @lru_cache(maxsize=1)

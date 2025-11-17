@@ -45,6 +45,9 @@ from collections.abc import Iterable
 
 from somabrain.interfaces.memory import MemoryBackend
 from somabrain.config import get_config
+# Centralised tenant helper and circuit breaker
+from somabrain.infrastructure.tenant import tenant_label as _tenant_label, resolve_namespace as _resolve_namespace
+from somabrain.infrastructure.circuit_breaker import CircuitBreaker as _CircuitBreaker
 import logging
 
 logger = logging.getLogger(__name__)
@@ -56,225 +59,94 @@ except Exception:  # pragma: no cover - metrics not always available in tests
 
 
 class MemoryService:
-    """Universe-aware façade around :class:`MultiTenantMemory`.
+    class MemoryService:
+        """Universe‑aware façade around :class:`MultiTenantMemory`.
 
-    The service keeps lightweight circuit-breaker state and exposes helpers
-    for replaying the client outbox so the FastAPI layer can remain thin.
-    """
-
-    def __init__(self, mt_memory: Any, namespace: str):
-        self.mt_memory = mt_memory
-        self.namespace = namespace
-
-    # Per-tenant circuit breaker state - complete isolation between tenants
-    _circuit_lock: RLock = RLock()
-    _outbox_lock: RLock = RLock()
-    _circuit_open: dict[str, bool] = {}
-    _failure_count: dict[str, int] = {}
-    _last_failure_time: dict[str, float] = {}
-    _last_reset_attempt: dict[str, float] = {}
-    _tenant_namespace: dict[str, str] = {}
-    # Per-tenant configurable thresholds (defaults can be overridden)
-    _failure_threshold: dict[str, int] = {}
-    _reset_interval: dict[str, float] = {}
-    # Global defaults for new tenants
-    _global_failure_threshold: int = 3
-    _global_reset_interval: float = 60.0
-
-    @classmethod
-    def _ensure_tenant_state_locked(cls, tenant: str) -> None:
-        # Assumes caller holds cls._circuit_lock
-        if tenant not in cls._circuit_open:
-            cls._circuit_open[tenant] = False
-            cls._failure_count[tenant] = 0
-            cls._last_failure_time[tenant] = 0.0
-            cls._last_reset_attempt[tenant] = 0.0
-            # Initialize per-tenant thresholds with global defaults
-            cls._failure_threshold[tenant] = cls._global_failure_threshold
-            cls._reset_interval[tenant] = cls._global_reset_interval
-        label = cls._tenant_label(tenant)
-        cls._tenant_namespace[label] = tenant
-
-    @staticmethod
-    def _tenant_label(namespace: str) -> str:
-        if not namespace:
-            return "default"
-        if ":" in namespace:
-            suffix = namespace.rsplit(":", 1)[-1]
-            return suffix or namespace
-        return namespace
-
-    @classmethod
-    def _resolve_namespace_for_label(cls, tenant_label: str) -> str:
-        if not tenant_label:
-            return "default"
-        if tenant_label in cls._circuit_open:
-            return tenant_label
-        return cls._tenant_namespace.get(tenant_label, tenant_label)
-
-    @property
-    def tenant_id(self) -> str:
-        return self._tenant_label(getattr(self, "namespace", "") or "")
-
-    def client(self) -> MemoryBackend:
-        """Return the underlying memory client for the current namespace."""
-        return self.mt_memory.for_namespace(self.namespace)
-
-    @classmethod
-    def _set_circuit_metric_locked(cls, tenant: str) -> None:
-        if _metrics is None:
-            return
-        # Try per-tenant labeled metrics first (CIRCUIT_STATE), then fallback
-        gauge = getattr(_metrics, "CIRCUIT_STATE", None)
-        if gauge is not None and hasattr(gauge, "labels"):
-            try:
-                tenant_label = cls._tenant_label(tenant)
-                gauge.labels(tenant_id=str(tenant_label)).set(1 if cls._circuit_open.get(tenant, False) else 0)
-                return
-            except Exception:
-                # Fall through to legacy gauge if labeled metric fails
-                pass
-        
-        # Fallback to legacy circuit breaker gauge
-        legacy_gauge = getattr(_metrics, "CIRCUIT_BREAKER_STATE", None)
-        if legacy_gauge is not None:
-            try:
-                if hasattr(legacy_gauge, "labels"):
-                    tenant_label = cls._tenant_label(tenant)
-                    legacy_gauge.labels(tenant_id=str(tenant_label)).set(1 if cls._circuit_open.get(tenant, False) else 0)
-                else:
-                    legacy_gauge.set(1 if cls._circuit_open.get(tenant, False) else 0)
-            except Exception:
-                pass
-
-    def _mark_success(self) -> None:
-        cls = self.__class__
-        tenant = getattr(self, "namespace", "default")
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            cls._failure_count[tenant] = 0
-            cls._circuit_open[tenant] = False
-            cls._last_failure_time[tenant] = 0.0
-            cls._set_circuit_metric_locked(tenant)
-
-    def _mark_failure(self) -> None:
-        cls = self.__class__
-        tenant = getattr(self, "namespace", "default")
-        now = time.monotonic()
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            cls._failure_count[tenant] += 1
-            cls._last_failure_time[tenant] = now
-            # Use per-tenant threshold if available, otherwise global default
-            threshold = cls._failure_threshold.get(tenant, cls._global_failure_threshold)
-            if cls._failure_count[tenant] >= max(1, int(threshold)):
-                cls._circuit_open[tenant] = True
-            cls._set_circuit_metric_locked(tenant)
-        if _metrics is not None:
-            counter = getattr(_metrics, "HTTP_FAILURES", None)
-            if counter is not None:
-                try:
-                    counter.inc()
-                except Exception:
-                    pass
-
-    def _is_circuit_open(self) -> bool:
-        cls = self.__class__
-        tenant = getattr(self, "namespace", "default")
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            return bool(cls._circuit_open.get(tenant, False))
-
-    def get_circuit_state(self) -> dict[str, Any]:
-        cls = self.__class__
-        tenant = getattr(self, "namespace", "default")
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            label = self.tenant_id
-            # Use per-tenant thresholds if available, otherwise global defaults
-            threshold = cls._failure_threshold.get(tenant, cls._global_failure_threshold)
-            reset_interval = cls._reset_interval.get(tenant, cls._global_reset_interval)
-            return {
-                "tenant": label,
-                "namespace": tenant,
-                "circuit_open": bool(cls._circuit_open.get(tenant, False)),
-                "failure_count": int(cls._failure_count.get(tenant, 0)),
-                "last_failure_time": float(cls._last_failure_time.get(tenant, 0.0)),
-                "last_reset_attempt": float(cls._last_reset_attempt.get(tenant, 0.0)),
-                "failure_threshold": int(max(1, int(threshold))),
-                "reset_interval": float(max(1.0, float(reset_interval))),
-            }
-
-    @classmethod
-    def reset_circuit_for_tenant(cls, tenant_label: str) -> None:
-        tenant = cls._resolve_namespace_for_label(tenant_label)
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            cls._failure_count[tenant] = 0
-            cls._circuit_open[tenant] = False
-            cls._last_failure_time[tenant] = time.monotonic()
-            cls._last_reset_attempt[tenant] = cls._last_failure_time[tenant]
-            cls._set_circuit_metric_locked(tenant)
-
-    @classmethod
-    def configure_tenant_thresholds(cls, tenant_label: str, failure_threshold: int | None = None, reset_interval: float | None = None) -> None:
-        """Configure per-tenant circuit breaker thresholds.
-        
-        Args:
-            tenant_label: The tenant label/identifier
-            failure_threshold: Number of failures before opening circuit (default: 3)
-            reset_interval: Seconds to wait before attempting reset (default: 60.0)
+        All circuit‑breaker state is delegated to the central ``CircuitBreaker``
+        implementation.  This class focuses on request handling and outbox metric
+        updates.
         """
-        tenant = cls._resolve_namespace_for_label(tenant_label)
-        with cls._circuit_lock:
-            cls._ensure_tenant_state_locked(tenant)
-            if failure_threshold is not None:
-                cls._failure_threshold[tenant] = max(1, int(failure_threshold))
-            if reset_interval is not None:
-                cls._reset_interval[tenant] = max(1.0, float(reset_interval))
-            # Update metric after configuration change
-            cls._set_circuit_metric_locked(tenant)
 
-    @classmethod
-    def get_all_tenant_circuit_states(cls) -> dict[str, dict[str, Any]]:
-        """Get circuit breaker states for all tenants.
-        
-        Returns:
-            Dict mapping tenant labels to their circuit state information
-        """
-        with cls._circuit_lock:
-            states = {}
-            for tenant in cls._circuit_open.keys():
-                cls._ensure_tenant_state_locked(tenant)
-                label = cls._tenant_label(tenant)
-                threshold = cls._failure_threshold.get(tenant, cls._global_failure_threshold)
-                reset_interval = cls._reset_interval.get(tenant, cls._global_reset_interval)
-                states[label] = {
-                    "tenant": label,
-                    "namespace": tenant,
-                    "circuit_open": bool(cls._circuit_open.get(tenant, False)),
-                    "failure_count": int(cls._failure_count.get(tenant, 0)),
-                    "last_failure_time": float(cls._last_failure_time.get(tenant, 0.0)),
-                    "last_reset_attempt": float(cls._last_reset_attempt.get(tenant, 0.0)),
-                    "failure_threshold": int(max(1, int(threshold))),
-                    "reset_interval": float(max(1.0, float(reset_interval))),
-                }
+        def __init__(self, mt_memory: Any, namespace: str):
+            self.mt_memory = mt_memory
+            self.namespace = namespace
+
+        # Shared circuit‑breaker instance for all ``MemoryService`` objects
+        _circuit_breaker: _CircuitBreaker = _CircuitBreaker()
+        _outbox_lock: RLock = RLock()
+
+        # ---------------------------------------------------------------------
+        # Tenant helpers – delegated to the central module
+        # ---------------------------------------------------------------------
+        @staticmethod
+        def _tenant_label(namespace: str) -> str:
+            return _tenant_label(namespace)
+
+        @classmethod
+        def _resolve_namespace_for_label(cls, tenant_label: str) -> str:
+            return _resolve_namespace(tenant_label)
+
+        @property
+        def tenant_id(self) -> str:
+            return self._tenant_label(getattr(self, "namespace", "") or "")
+
+        def client(self) -> MemoryBackend:
+            """Return the underlying memory client for the current namespace."""
+            return self.mt_memory.for_namespace(self.namespace)
+
+        # ---------------------------------------------------------------------
+        # Circuit‑breaker delegation helpers
+        # ---------------------------------------------------------------------
+        def _mark_success(self) -> None:
+            tenant = getattr(self, "namespace", "default")
+            self.__class__._circuit_breaker.record_success(tenant)
+
+        def _mark_failure(self) -> None:
+            tenant = getattr(self, "namespace", "default")
+            self.__class__._circuit_breaker.record_failure(tenant)
+
+        def _is_circuit_open(self) -> bool:
+            tenant = getattr(self, "namespace", "default")
+            return self.__class__._circuit_breaker.is_open(tenant)
+
+        def get_circuit_state(self) -> dict[str, Any]:
+            tenant = getattr(self, "namespace", "default")
+            state = self.__class__._circuit_breaker.get_state(tenant)
+            # Preserve historic keys for compatibility
+            state.update({"tenant": self._tenant_label(tenant), "namespace": tenant})
+            return state
+
+        @classmethod
+        def reset_circuit_for_tenant(cls, tenant_label: str) -> None:
+            tenant = cls._resolve_namespace_for_label(tenant_label)
+            cls._circuit_breaker.record_success(tenant)
+
+        @classmethod
+        def configure_tenant_thresholds(
+            cls, tenant_label: str, failure_threshold: int | None = None, reset_interval: float | None = None
+        ) -> None:
+            tenant = cls._resolve_namespace_for_label(tenant_label)
+            cls._circuit_breaker.configure_tenant(
+                tenant, failure_threshold=failure_threshold, reset_interval=reset_interval
+            )
+
+        @classmethod
+        def get_all_tenant_circuit_states(cls) -> dict[str, dict[str, Any]]:
+            breaker = cls._circuit_breaker
+            with breaker._lock:  # type: ignore[attr-defined]
+                tenants = list(breaker._circuit_open.keys())  # type: ignore[attr-defined]
+            states: dict[str, dict[str, Any]] = {}
+            for tenant in tenants:
+                label = _tenant_label(tenant)
+                state = breaker.get_state(tenant)
+                state.update({"tenant": label, "namespace": tenant})
+                states[label] = state
             return states
 
-    @classmethod
-    def _should_attempt_reset(cls, tenant: str) -> bool:
-        cls._ensure_tenant_state_locked(tenant)
-        if not cls._circuit_open.get(tenant, False):
-            return False
-        now = time.monotonic()
-        # Use per-tenant reset interval if available, otherwise global default
-        reset_interval = cls._reset_interval.get(tenant, cls._global_reset_interval)
-        if now - cls._last_failure_time.get(tenant, 0.0) < max(1.0, float(reset_interval)):
-            return False
-        if now - cls._last_reset_attempt.get(tenant, 0.0) < 5.0:
-            return False
-        cls._last_reset_attempt[tenant] = now
-        return True
+        @classmethod
+        def _should_attempt_reset(cls, tenant: str) -> bool:
+            """Delegate reset‑attempt logic to the shared ``CircuitBreaker``."""
+            return cls._circuit_breaker.should_attempt_reset(tenant)
 
     @classmethod
     def _update_outbox_metric(cls, tenant: str | None = None, count: int | None = None) -> None:
@@ -445,24 +317,23 @@ class MemoryService:
         return False
 
     def _reset_circuit_if_needed(self) -> bool:
-        """Attempt to close the circuit breaker if enough time has elapsed."""
+        """Attempt to close the circuit breaker if enough time has elapsed.
+
+        The logic is now delegated to the shared :class:`CircuitBreaker`
+        instance.  If the breaker signals that a reset attempt is allowed and the
+        health check passes, we record a successful request which clears the
+        circuit state.
+        """
         if not self._is_circuit_open():
             return False
-        cls = self.__class__
         tenant = getattr(self, "namespace", "default")
-        if not cls._should_attempt_reset(tenant):
+        breaker = self.__class__._circuit_breaker
+        if not breaker.should_attempt_reset(tenant):
             return False
-        healthy = self._health_check()
-        if healthy:
-            with cls._circuit_lock:
-                cls._ensure_tenant_state_locked(tenant)
-                cls._circuit_open[tenant] = False
-                cls._failure_count[tenant] = 0
-                cls._last_failure_time[tenant] = 0.0
-                cls._set_circuit_metric_locked(tenant)
+        if self._health_check():
+            breaker.record_success(tenant)
             return True
-        with cls._circuit_lock:
-            cls._last_failure_time[tenant] = time.monotonic()
+        # No state change – the circuit remains open.
         return False
 
     # Journal/outbox alternative removed: no background replay

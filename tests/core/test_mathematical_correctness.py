@@ -9,7 +9,7 @@ from typing import Tuple
 
 from somabrain.runtime.consistency import ConsistencyChecker
 from somabrain.runtime.fusion import BHDCFusionLayer
-from somabrain.sleep.models import SleepStateManager, SleepParameters
+from somabrain.sleep import SleepStateManager, SleepParameters, SleepState
 
 
 class TestMathematicalCorrectness:
@@ -27,7 +27,7 @@ class TestMathematicalCorrectness:
         
         # Expected normalized values
         expected = (errors - mu) / (sigma + epsilon)
-        actual = fusion._normalize_errors(errors, mu, sigma)
+        actual = fusion.normalized_error(errors, mu, sigma)
         
         np.testing.assert_allclose(actual, expected, rtol=1e-6)
     

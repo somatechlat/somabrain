@@ -37,31 +37,74 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .neuromodulators import NeuromodState
+from .adaptive.core import AdaptiveParameter
+from dataclasses import field
 
 
 @dataclass
 class PrefrontalConfig:
-    """
-    Configuration for prefrontal cortex executive functions.
+    """Adaptive configuration for executive functions.
 
-    Defines parameters that control the behavior of executive functions
-    including working memory capacity, decision thresholds, and planning depth.
-
-    Attributes:
-        working_memory_capacity (int): Maximum items maintained in working memory.
-            Based on psychological research suggesting 7±2 items capacity. Default: 7
-        decision_threshold (float): Minimum confidence required to make a decision.
-            Decisions below this threshold are rejected. Default: 0.6
-        inhibition_strength (float): Strength of decision inhibition from history.
-            Higher values increase resistance to repeating similar decisions. Default: 0.8
-        planning_depth (int): Maximum depth for goal planning sequences.
-            Limits computational complexity of planning. Default: 3
+    Each parameter is represented by an :class:`AdaptiveParameter` that learns
+    from performance feedback, removing hard‑coded constants.
     """
 
-    working_memory_capacity: int = 7
-    decision_threshold: float = 0.6
-    inhibition_strength: float = 0.8
-    planning_depth: int = 3
+    # Adaptive parameters – initialized in __post_init__
+    working_memory_capacity: AdaptiveParameter = field(init=False)
+    decision_threshold: AdaptiveParameter = field(init=False)
+    inhibition_strength: AdaptiveParameter = field(init=False)
+    planning_depth: AdaptiveParameter = field(init=False)
+
+    def __post_init__(self) -> None:
+        # Working memory capacity: typical human range 3‑15 items
+        self.working_memory_capacity = AdaptiveParameter(
+            name="wm_capacity",
+            initial_value=7,
+            min_value=3,
+            max_value=15,
+            learning_rate=0.02,
+        )
+        # Decision threshold: confidence 0.2‑0.9
+        self.decision_threshold = AdaptiveParameter(
+            name="decision_threshold",
+            initial_value=0.6,
+            min_value=0.2,
+            max_value=0.9,
+            learning_rate=0.015,
+        )
+        # Inhibition strength: 0.3‑1.0
+        self.inhibition_strength = AdaptiveParameter(
+            name="inhibition_strength",
+            initial_value=0.8,
+            min_value=0.3,
+            max_value=1.0,
+            learning_rate=0.015,
+        )
+        # Planning depth: 1‑8 steps
+        self.planning_depth = AdaptiveParameter(
+            name="planning_depth",
+            initial_value=3,
+            min_value=1,
+            max_value=8,
+            learning_rate=0.01,
+        )
+
+    # Helper properties to expose plain scalar values for legacy code paths
+    @property
+    def wm_capacity(self) -> int:
+        return int(self.working_memory_capacity.current_value)
+
+    @property
+    def decision_thresh(self) -> float:
+        return float(self.decision_threshold.current_value)
+
+    @property
+    def inhibition(self) -> float:
+        return float(self.inhibition_strength.current_value)
+
+    @property
+    def plan_depth(self) -> int:
+        return int(self.planning_depth.current_value)
 
 
 class PrefrontalCortex:

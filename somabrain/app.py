@@ -2489,11 +2489,19 @@ async def health(request: Request) -> S.HealthResponse:
             memory_ok = False
 
         # Add circuit breaker state to health response
+        # The legacy implementation inspected a class‑level ``_circuit_open`` dict.
+        # After centralising circuit‑breaker state in ``MemoryService._circuit_breaker``
+        # we derive a boolean indicating whether *any* tenant currently has an
+        # open circuit.  This preserves the original health‑check semantics.
         try:
             from somabrain.services.memory_service import MemoryService
 
-            circuit_open = getattr(MemoryService, "_circuit_open", False)
-            resp["memory_circuit_open"] = bool(circuit_open)
+            breaker = MemoryService._circuit_breaker
+            # ``breaker._circuit_open`` is an internal dict mapping tenant → bool.
+            # If it exists, aggregate the values; otherwise assume closed.
+            circuit_dict = getattr(breaker, "_circuit_open", {})  # type: ignore[attr-defined]
+            circuit_open = any(bool(v) for v in circuit_dict.values())
+            resp["memory_circuit_open"] = circuit_open
         except Exception:
             resp["memory_circuit_open"] = None
         embedder_ok = embedder is not None

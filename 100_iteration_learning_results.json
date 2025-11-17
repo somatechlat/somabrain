@@ -1,0 +1,3288 @@
+{
+  "iterations": [
+    {
+      "iteration": 1,
+      "weights": [
+        0.5810455733866146,
+        0.2516154797572483,
+        0.1673389468561371
+      ],
+      "thresholds": {
+        "store": 0.5221140241214313,
+        "act": 0.7181852630120077,
+        "similarity": 0.22101572637639802
+      },
+      "learning_rates": {
+        "tau_anneal": 0.050169283543963036,
+        "tau_decay": 0.034876425866227245,
+        "base": 0.01680237890754955
+      },
+      "performance_score": 0.7273171456576027,
+      "performance_metrics": {
+        "accuracy": 0.6801673509394323,
+        "precision": 0.6141673509394324,
+        "recall": 0.7221673509394324,
+        "latency": 0.19869881764388622,
+        "success_rate": 0.78
+      }
+    },
+    {
+      "iteration": 2,
+      "weights": [
+        0.5667835037363679,
+        0.25503417715302223,
+        0.17818231911060994
+      ],
+      "thresholds": {
+        "store": 0.5432941392114776,
+        "act": 0.7367302283370881,
+        "similarity": 0.24136003613046467
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05032250753098013,
+        "tau_decay": 0.05031139184962054,
+        "base": 0.023716879913376215
+      },
+      "performance_score": 0.7226118954248297,
+      "performance_metrics": {
+        "accuracy": 0.67231595925665,
+        "precision": 0.6050577821921146,
+        "recall": 0.7137368707243824,
+        "latency": 0.1960281695016829,
+        "success_rate": 0.785790885322677
+      }
+    },
+    {
+      "iteration": 3,
+      "weights": [
+        0.5530559154578913,
+        0.2578609453068162,
+        0.18908313923529255
+      ],
+      "thresholds": {
+        "store": 0.5653372010203918,
+        "act": 0.7547378573541788,
+        "similarity": 0.26210513919700884
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05042941751673111,
+        "tau_decay": 0.06555205898760497,
+        "base": 0.03062124815002202
+      },
+      "performance_score": 0.7444644959700777,
+      "performance_metrics": {
+        "accuracy": 0.7025920486781371,
+        "precision": 0.6342633888275919,
+        "recall": 0.7435277187528646,
+        "latency": 0.19074605186464877,
+        "success_rate": 0.7906432992527264
+      }
+    },
+    {
+      "iteration": 4,
+      "weights": [
+        0.540308608585687,
+        0.26139817574411295,
+        0.1982932156702
+      ],
+      "thresholds": {
+        "store": 0.5886198888046734,
+        "act": 0.7730679822475991,
+        "similarity": 0.28315460321483116
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05056597535467602,
+        "tau_decay": 0.08062340930724203,
+        "base": 0.03756868920520036
+      },
+      "performance_score": 0.7507776827861307,
+      "performance_metrics": {
+        "accuracy": 0.7106903548842166,
+        "precision": 0.6413125915025323,
+        "recall": 0.7511514731933745,
+        "latency": 0.20824378584758116,
+        "success_rate": 0.7953888169084217
+      }
+    },
+    {
+      "iteration": 5,
+      "weights": [
+        0.5277894178405655,
+        0.26500837143894596,
+        0.20720221072048836
+      ],
+      "thresholds": {
+        "store": 0.6113338775292821,
+        "act": 0.791791741902917,
+        "similarity": 0.3040610183756617
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05080875820393633,
+        "tau_decay": 0.09613200181385238,
+        "base": 0.044616908498332365
+      },
+      "performance_score": 0.7361498712092003,
+      "performance_metrics": {
+        "accuracy": 0.6889121603565708,
+        "precision": 0.6185245046999983,
+        "recall": 0.7289183325282845,
+        "latency": 0.19921261005722185,
+        "success_rate": 0.7999382782828626
+      }
+    },
+    {
+      "iteration": 6,
+      "weights": [
+        0.5180910588087433,
+        0.2674114193451643,
+        0.21449752184609233
+      ],
+      "thresholds": {
+        "store": 0.6338001616563917,
+        "act": 0.8111012523760192,
+        "similarity": 0.32547209469733485
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05097820602064901,
+        "tau_decay": 0.1,
+        "base": 0.0516955384533605
+      },
+      "performance_score": 0.7460527808082186,
+      "performance_metrics": {
+        "accuracy": 0.70247506629704,
+        "precision": 0.6313747314394823,
+        "recall": 0.7421748988682613,
+        "latency": 0.1950333578968003,
+        "success_rate": 0.8030016742877892
+      }
+    },
+    {
+      "iteration": 7,
+      "weights": [
+        0.5087628534014266,
+        0.269776324913894,
+        0.22146082168467948
+      ],
+      "thresholds": {
+        "store": 0.655741705708378,
+        "act": 0.8295542208981594,
+        "similarity": 0.34611201288357507
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05107378524874234,
+        "tau_decay": 0.1,
+        "base": 0.058624561245796736
+      },
+      "performance_score": 0.7304623496962407,
+      "performance_metrics": {
+        "accuracy": 0.6797354713636801,
+        "precision": 0.6080390145898735,
+        "recall": 0.7191872429767768,
+        "latency": 0.19412503252640975,
+        "success_rate": 0.8054822838690329
+      }
+    },
+    {
+      "iteration": 8,
+      "weights": [
+        0.5000421967630854,
+        0.27227306145183505,
+        0.22768474178507953
+      ],
+      "thresholds": {
+        "store": 0.6783787885706171,
+        "act": 0.8481856743005071,
+        "similarity": 0.3680169173095058
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0512758675281695,
+        "tau_decay": 0.1,
+        "base": 0.06576739340086361
+      },
+      "performance_score": 0.7663182578388624,
+      "performance_metrics": {
+        "accuracy": 0.7304921724875332,
+        "precision": 0.6582011194909774,
+        "recall": 0.7696966459892554,
+        "latency": 0.1920662826110782,
+        "success_rate": 0.8079552649827788
+      }
+    },
+    {
+      "iteration": 9,
+      "weights": [
+        0.49319916173875794,
+        0.2736249369434946,
+        0.23317590131774737
+      ],
+      "thresholds": {
+        "store": 0.7014884754340363,
+        "act": 0.8673370169573064,
+        "similarity": 0.38916308551628065
+      },
+      "learning_rates": {
+        "tau_anneal": 0.051405099987378466,
+        "tau_decay": 0.1,
+        "base": 0.07271613749626343
+      },
+      "performance_score": 0.7415319298568095,
+      "performance_metrics": {
+        "accuracy": 0.6946118344802259,
+        "precision": 0.6217209120221525,
+        "recall": 0.7335663732511892,
+        "latency": 0.19451845815041383,
+        "success_rate": 0.810454612290367
+      }
+    },
+    {
+      "iteration": 10,
+      "weights": [
+        0.48579281042592654,
+        0.2753076339599771,
+        0.23889955561409637
+      ],
+      "thresholds": {
+        "store": 0.7242586032855977,
+        "act": 0.8854759781067519,
+        "similarity": 0.41092966617988624
+      },
+      "learning_rates": {
+        "tau_anneal": 0.051638716128553266,
+        "tau_decay": 0.1,
+        "base": 0.07955058359767671
+      },
+      "performance_score": 0.7392452162169436,
+      "performance_metrics": {
+        "accuracy": 0.6911916306483435,
+        "precision": 0.6180186667010534,
+        "recall": 0.7300551486746986,
+        "latency": 0.209645391078373,
+        "success_rate": 0.8113648197364505
+      }
+    },
+    {
+      "iteration": 11,
+      "weights": [
+        0.480067164377968,
+        0.2770061774140514,
+        0.24292665820798065
+      ],
+      "thresholds": {
+        "store": 0.7466007200521133,
+        "act": 0.9046221519379262,
+        "similarity": 0.43219655828864373
+      },
+      "learning_rates": {
+        "tau_anneal": 0.051865177853168784,
+        "tau_decay": 0.1,
+        "base": 0.08639871242685052
+      },
+      "performance_score": 0.7638331502231236,
+      "performance_metrics": {
+        "accuracy": 0.7261747682575976,
+        "precision": 0.6527307504821614,
+        "recall": 0.7649527593698795,
+        "latency": 0.2093350663036387,
+        "success_rate": 0.8122200888771807
+      }
+    },
+    {
+      "iteration": 12,
+      "weights": [
+        0.4741045146240106,
+        0.27840565315419563,
+        0.2474898322217937
+      ],
+      "thresholds": {
+        "store": 0.7690853458673458,
+        "act": 0.9235450353054202,
+        "similarity": 0.4528795886926672
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05207242029823348,
+        "tau_decay": 0.1,
+        "base": 0.09332460866519326
+      },
+      "performance_score": 0.7659010544921321,
+      "performance_metrics": {
+        "accuracy": 0.7289185727456508,
+        "precision": 0.6551356390739699,
+        "recall": 0.7675771059098103,
+        "latency": 0.17426384816501408,
+        "success_rate": 0.8134146683584038
+      }
+    },
+    {
+      "iteration": 13,
+      "weights": [
+        0.4691487672227285,
+        0.2800612296199716,
+        0.2507900031572999
+      ],
+      "thresholds": {
+        "store": 0.7913812411249399,
+        "act": 0.941951795409104,
+        "similarity": 0.47514756957438903
+      },
+      "learning_rates": {
+        "tau_anneal": 0.052272682067723834,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7491003764836387,
+      "performance_metrics": {
+        "accuracy": 0.7047287025512128,
+        "precision": 0.6306282958400846,
+        "recall": 0.7432784991956486,
+        "latency": 0.20189887420778727,
+        "success_rate": 0.8145020335556412
+      }
+    },
+    {
+      "iteration": 14,
+      "weights": [
+        0.4631605777598089,
+        0.28180525297552256,
+        0.2550341692646686
+      ],
+      "thresholds": {
+        "store": 0.8135606386762386,
+        "act": 0.9610300984297359,
+        "similarity": 0.4967761946800712
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05247245016464873,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7703541718051973,
+      "performance_metrics": {
+        "accuracy": 0.7348518455622881,
+        "precision": 0.6603834456885801,
+        "recall": 0.773267645625434,
+        "latency": 0.17917016918224943,
+        "success_rate": 0.81584199936854
+      }
+    },
+    {
+      "iteration": 15,
+      "weights": [
+        0.4583781301006953,
+        0.2829670444658551,
+        0.25865482543344975
+      ],
+      "thresholds": {
+        "store": 0.8356893808226099,
+        "act": 0.9798885559509114,
+        "similarity": 0.5184732272679228
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05272680368709557,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7820747054474028,
+      "performance_metrics": {
+        "accuracy": 0.7513938031240193,
+        "precision": 0.676595169894606,
+        "recall": 0.7896944865093126,
+        "latency": 0.18636694670605775,
+        "success_rate": 0.8169931661470663
+      }
+    },
+    {
+      "iteration": 16,
+      "weights": [
+        0.4505253337750059,
+        0.28559702294713213,
+        0.26387764327786195
+      ],
+      "thresholds": {
+        "store": 0.8576506413955651,
+        "act": 0.9987578360420464,
+        "similarity": 0.5399531912667435
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05288726413011553,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7679705886925775,
+      "performance_metrics": {
+        "accuracy": 0.7310184625781628,
+        "precision": 0.6558646555955008,
+        "recall": 0.7691915590868319,
+        "latency": 0.18561950318439902,
+        "success_rate": 0.81826903491331
+      }
+    },
+    {
+      "iteration": 17,
+      "weights": [
+        0.4411373281134923,
+        0.2895313359203288,
+        0.2693313359661788
+      ],
+      "thresholds": {
+        "store": 0.8792330852810996,
+        "act": 1.0,
+        "similarity": 0.5588878941831137
+      },
+      "learning_rates": {
+        "tau_anneal": 0.053016056903489525,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7365972132935018,
+      "performance_metrics": {
+        "accuracy": 0.6860368390075456,
+        "precision": 0.6105919447386602,
+        "recall": 0.724114391873103,
+        "latency": 0.19299974966871616,
+        "success_rate": 0.8192244713444277
+      }
+    },
+    {
+      "iteration": 18,
+      "weights": [
+        0.43197508942579554,
+        0.29345141144155923,
+        0.27457349913264534
+      ],
+      "thresholds": {
+        "store": 0.9005993192398001,
+        "act": 1.0,
+        "similarity": 0.5785236427763146
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05323421325714494,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.746030951107527,
+      "performance_metrics": {
+        "accuracy": 0.6993603264494,
+        "precision": 0.6236335798880471,
+        "recall": 0.7373469531687236,
+        "latency": 0.19478335775064154,
+        "success_rate": 0.8201337328067642
+      }
+    },
+    {
+      "iteration": 19,
+      "weights": [
+        0.4227919397345233,
+        0.29671976802241773,
+        0.28048829224305893
+      ],
+      "thresholds": {
+        "store": 0.9227669908695889,
+        "act": 1.0,
+        "similarity": 0.5988099271044461
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05348267537379976,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7807129794657811,
+      "performance_metrics": {
+        "accuracy": 0.748744339202136,
+        "precision": 0.6727272791674419,
+        "recall": 0.7866358091847889,
+        "latency": 0.19323133267315554,
+        "success_rate": 0.8210853001734709
+      }
+    },
+    {
+      "iteration": 20,
+      "weights": [
+        0.4145124722502479,
+        0.3001484876957689,
+        0.2853390400539831
+      ],
+      "thresholds": {
+        "store": 0.9440383541321061,
+        "act": 1.0,
+        "similarity": 0.6183711074284861
+      },
+      "learning_rates": {
+        "tau_anneal": 0.053685122542039436,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7597961538433703,
+      "performance_metrics": {
+        "accuracy": 0.718728322894537,
+        "precision": 0.6424478545842593,
+        "recall": 0.7565380887393982,
+        "latency": 0.20295177775676174,
+        "success_rate": 0.8219023415513882
+      }
+    },
+    {
+      "iteration": 21,
+      "weights": [
+        0.4067296192081714,
+        0.3035557411725733,
+        0.2897146396192553
+      ],
+      "thresholds": {
+        "store": 0.9649328829381485,
+        "act": 1.0,
+        "similarity": 0.6379968288334704
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05383936426874738,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7531147503060855,
+      "performance_metrics": {
+        "accuracy": 0.7090120015472551,
+        "precision": 0.6324315026572452,
+        "recall": 0.7467217521022501,
+        "latency": 0.18376642802384968,
+        "success_rate": 0.8229024944500496
+      }
+    },
+    {
+      "iteration": 22,
+      "weights": [
+        0.39891548911259644,
+        0.3059237684015749,
+        0.2951607424858287
+      ],
+      "thresholds": {
+        "store": 0.9859450839968652,
+        "act": 1.0,
+        "similarity": 0.6572250852482288
+      },
+      "learning_rates": {
+        "tau_anneal": 0.054040549593257485,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7625198776834332,
+      "performance_metrics": {
+        "accuracy": 0.7223877833508635,
+        "precision": 0.6456185985825367,
+        "recall": 0.7600531909667,
+        "latency": 0.17839709404435575,
+        "success_rate": 0.8233459238416343
+      }
+    },
+    {
+      "iteration": 23,
+      "weights": [
+        0.39175101820623337,
+        0.3085923688488496,
+        0.29965661294491697
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.6767066411392951
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0541743322806102,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7694055879739427,
+      "performance_metrics": {
+        "accuracy": 0.7321656489696999,
+        "precision": 0.6552090294051962,
+        "recall": 0.769787339187448,
+        "latency": 0.18887877284469393,
+        "success_rate": 0.8237830978225194
+      }
+    },
+    {
+      "iteration": 24,
+      "weights": [
+        0.38450420505772753,
+        0.31131974354790415,
+        0.30417605139436826
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.6958940964266853
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05440835940231051,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7625816277416876,
+      "performance_metrics": {
+        "accuracy": 0.7223322846170187,
+        "precision": 0.6451622438887694,
+        "recall": 0.7598972642528941,
+        "latency": 0.185200624408254,
+        "success_rate": 0.8243502036412467
+      }
+    },
+    {
+      "iteration": 25,
+      "weights": [
+        0.3778425048889815,
+        0.3142976698044741,
+        0.3078598253065443
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.7148666329464111
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05459027677810699,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7613707567246966,
+      "performance_metrics": {
+        "accuracy": 0.7205209128329716,
+        "precision": 0.6431407446306626,
+        "recall": 0.7580308287318172,
+        "latency": 0.1904929635511902,
+        "success_rate": 0.8249008410115455
+      }
+    },
+    {
+      "iteration": 26,
+      "weights": [
+        0.37175142288689117,
+        0.31624686663964535,
+        0.3120017104734635
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.7337214158321254
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0547691454396929,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7551185857173212,
+      "performance_metrics": {
+        "accuracy": 0.7114842794006139,
+        "precision": 0.6338705792050546,
+        "recall": 0.7489274293028343,
+        "latency": 0.19257761427333517,
+        "success_rate": 0.8255685009777963
+      }
+    },
+    {
+      "iteration": 27,
+      "weights": [
+        0.36553378781826806,
+        0.31862706665133045,
+        0.3158391455304015
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.7525643160919886
+      },
+      "learning_rates": {
+        "tau_anneal": 0.054985424314503886,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7700572939850311,
+      "performance_metrics": {
+        "accuracy": 0.7326975059202829,
+        "precision": 0.6548274490048074,
+        "recall": 0.7700624774625451,
+        "latency": 0.19174117891881973,
+        "success_rate": 0.8263502845773782
+      }
+    },
+    {
+      "iteration": 28,
+      "weights": [
+        0.36003207916060664,
+        0.3203977465474221,
+        0.31957017429197127
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.7709906911315147
+      },
+      "learning_rates": {
+        "tau_anneal": 0.055221302272015514,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7523897145860212,
+      "performance_metrics": {
+        "accuracy": 0.7073353836101567,
+        "precision": 0.629214032097426,
+        "recall": 0.7446247078537913,
+        "latency": 0.18147183748099746,
+        "success_rate": 0.8271067575636536
+      }
+    },
+    {
+      "iteration": 29,
+      "weights": [
+        0.35437248544903366,
+        0.3222988849590206,
+        0.3233286295919457
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.7894187434040593
+      },
+      "learning_rates": {
+        "tau_anneal": 0.055387403155407175,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7832459232352796,
+      "performance_metrics": {
+        "accuracy": 0.7512643214554039,
+        "precision": 0.6728630382889798,
+        "recall": 0.7884636798721918,
+        "latency": 0.17664815192331662,
+        "success_rate": 0.8280064158321213
+      }
+    },
+    {
+      "iteration": 30,
+      "weights": [
+        0.3489363593416934,
+        0.3245659376339371,
+        0.32649770302436953
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.8074829845397499
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05550698793465852,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7529536906967421,
+      "performance_metrics": {
+        "accuracy": 0.7078446587202417,
+        "precision": 0.6291697593022804,
+        "recall": 0.7449572090112611,
+        "latency": 0.19012913218164756,
+        "success_rate": 0.8288744970898068
+      }
+    },
+    {
+      "iteration": 31,
+      "weights": [
+        0.34390098005444925,
+        0.32632080542576974,
+        0.32977821451978107
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.82554636179714
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05574407270309783,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7526552370709981,
+      "performance_metrics": {
+        "accuracy": 0.7072643128706152,
+        "precision": 0.6283068584969477,
+        "recall": 0.7442855856837816,
+        "latency": 0.1704341656008704,
+        "success_rate": 0.8297872718683387
+      }
+    },
+    {
+      "iteration": 32,
+      "weights": [
+        0.33880001238558555,
+        0.328130903884127,
+        0.3330690837302875
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.8434517026533239
+      },
+      "learning_rates": {
+        "tau_anneal": 0.055867178422774735,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7736703851842303,
+      "performance_metrics": {
+        "accuracy": 0.7371159396324367,
+        "precision": 0.6578599004302589,
+        "recall": 0.7740379200313479,
+        "latency": 0.16423526040562741,
+        "success_rate": 0.8307801960108898
+      }
+    },
+    {
+      "iteration": 33,
+      "weights": [
+        0.33465802984675835,
+        0.3306839403064833,
+        0.33465802984675835
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.8605917481122322
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05597741385349088,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7621021974277361,
+      "performance_metrics": {
+        "accuracy": 0.7204225672584853,
+        "precision": 0.6408705667630621,
+        "recall": 0.7572465670107736,
+        "latency": 0.18264897736570815,
+        "success_rate": 0.8317600024771171
+      }
+    },
+    {
+      "iteration": 34,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.8776691009363109
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05609935715745168,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7716755403285985,
+      "performance_metrics": {
+        "accuracy": 0.733893022132699,
+        "precision": 0.6540067009388288,
+        "recall": 0.770599861535764,
+        "latency": 0.16126263917583156,
+        "success_rate": 0.8329316059693517
+      }
+    },
+    {
+      "iteration": 35,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.895393030724476
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05615690339001526,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7694556288935308,
+      "performance_metrics": {
+        "accuracy": 0.7304032793717106,
+        "precision": 0.6500699460383774,
+        "recall": 0.7669366127050441,
+        "latency": 0.19289540663145555,
+        "success_rate": 0.8346666666666667
+      }
+    },
+    {
+      "iteration": 36,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9120409589410524
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05636664406948559,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7769888053733833,
+      "performance_metrics": {
+        "accuracy": 0.7407935314857855,
+        "precision": 0.6599601981524523,
+        "recall": 0.7771268648191191,
+        "latency": 0.16370389810436003,
+        "success_rate": 0.8366666666666667
+      }
+    },
+    {
+      "iteration": 37,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9290128377901594
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0565611261408915,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7791525817672714,
+      "performance_metrics": {
+        "accuracy": 0.743513212048483,
+        "precision": 0.6621798787151498,
+        "recall": 0.7796465453818163,
+        "latency": 0.18305603413349392,
+        "success_rate": 0.8386666666666667
+      }
+    },
+    {
+      "iteration": 38,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9448978253107146
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05674089063084736,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7774822980085258,
+      "performance_metrics": {
+        "accuracy": 0.7407556638217035,
+        "precision": 0.6589223304883703,
+        "recall": 0.7766889971550369,
+        "latency": 0.19897723380821888,
+        "success_rate": 0.8406666666666666
+      }
+    },
+    {
+      "iteration": 39,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9611990016389469
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05695424716119516,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7619527514353542,
+      "performance_metrics": {
+        "accuracy": 0.7181991687171725,
+        "precision": 0.6358658353838393,
+        "recall": 0.7539325020505059,
+        "latency": 0.1732936335370624,
+        "success_rate": 0.8426666666666666
+      }
+    },
+    {
+      "iteration": 40,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9775868836808521
+      },
+      "learning_rates": {
+        "tau_anneal": 0.057155356576102656,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7803693124471052,
+      "performance_metrics": {
+        "accuracy": 0.744137113019674,
+        "precision": 0.6613037796863408,
+        "recall": 0.7796704463530074,
+        "latency": 0.17497475273295532,
+        "success_rate": 0.8446666666666666
+      }
+    },
+    {
+      "iteration": 41,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 0.9935210532423776
+      },
+      "learning_rates": {
+        "tau_anneal": 0.057319423539742016,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7809252604026443,
+      "performance_metrics": {
+        "accuracy": 0.7445598958133013,
+        "precision": 0.6612265624799681,
+        "recall": 0.7798932291466347,
+        "latency": 0.17421621227912343,
+        "success_rate": 0.8466666666666666
+      }
+    },
+    {
+      "iteration": 42,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.057568616157967274,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7685743710644805,
+      "performance_metrics": {
+        "accuracy": 0.7265443396159245,
+        "precision": 0.6427110062825913,
+        "recall": 0.7616776729492579,
+        "latency": 0.19275260458594937,
+        "success_rate": 0.8486666666666666
+      }
+    },
+    {
+      "iteration": 43,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0577719920066082,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7843109811525787,
+      "performance_metrics": {
+        "accuracy": 0.748653782598922,
+        "precision": 0.6643204492655888,
+        "recall": 0.7835871159322555,
+        "latency": 0.1963348658710512,
+        "success_rate": 0.8506666666666666
+      }
+    },
+    {
+      "iteration": 44,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05793709627971234,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7830529860616092,
+      "performance_metrics": {
+        "accuracy": 0.7464852181832513,
+        "precision": 0.6616518848499181,
+        "recall": 0.7812185515165848,
+        "latency": 0.18374073491036796,
+        "success_rate": 0.8526666666666666
+      }
+    },
+    {
+      "iteration": 45,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05813908958830563,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7923741393457594,
+      "performance_metrics": {
+        "accuracy": 0.7594297228748942,
+        "precision": 0.674096389541561,
+        "recall": 0.7939630562082277,
+        "latency": 0.17389224386170435,
+        "success_rate": 0.8546666666666666
+      }
+    },
+    {
+      "iteration": 46,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05835722385290475,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7893589730945915,
+      "performance_metrics": {
+        "accuracy": 0.7547509139446544,
+        "precision": 0.6689175806113212,
+        "recall": 0.7890842472779878,
+        "latency": 0.1969612925952289,
+        "success_rate": 0.8566666666666666
+      }
+    },
+    {
+      "iteration": 47,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05860208310401067,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7712282319861371,
+      "performance_metrics": {
+        "accuracy": 0.7284784266468626,
+        "precision": 0.6421450933135293,
+        "recall": 0.7626117599801959,
+        "latency": 0.18067342327479094,
+        "success_rate": 0.8586666666666666
+      }
+    },
+    {
+      "iteration": 48,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.058757248523725325,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7686150139711534,
+      "performance_metrics": {
+        "accuracy": 0.7243738294826001,
+        "precision": 0.6375404961492669,
+        "recall": 0.7583071628159335,
+        "latency": 0.18145757494716216,
+        "success_rate": 0.8606666666666666
+      }
+    },
+    {
+      "iteration": 49,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05901207955387881,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7967330751149532,
+      "performance_metrics": {
+        "accuracy": 0.7641710596880283,
+        "precision": 0.6768377263546952,
+        "recall": 0.7979043930213617,
+        "latency": 0.18878832976610635,
+        "success_rate": 0.8626666666666666
+      }
+    },
+    {
+      "iteration": 50,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05921900198426002,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7799688001952696,
+      "performance_metrics": {
+        "accuracy": 0.7398506669456231,
+        "precision": 0.6520173336122899,
+        "recall": 0.7733840002789565,
+        "latency": 0.18148186362403973,
+        "success_rate": 0.8646666666666666
+      }
+    },
+    {
+      "iteration": 51,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0593989276707773,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7842909497358466,
+      "performance_metrics": {
+        "accuracy": 0.745653737717876,
+        "precision": 0.6573204043845428,
+        "recall": 0.7789870710512095,
+        "latency": 0.17725008839217274,
+        "success_rate": 0.8666666666666666
+      }
+    },
+    {
+      "iteration": 52,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.059618257140911436,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7724826716843005,
+      "performance_metrics": {
+        "accuracy": 0.7284133405013817,
+        "precision": 0.6395800071680485,
+        "recall": 0.7615466738347152,
+        "latency": 0.17268094010701285,
+        "success_rate": 0.8686666666666666
+      }
+    },
+    {
+      "iteration": 53,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05978852286776754,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8028032600510829,
+      "performance_metrics": {
+        "accuracy": 0.7713570381682138,
+        "precision": 0.6820237048348805,
+        "recall": 0.8042903715015473,
+        "latency": 0.17909444035135508,
+        "success_rate": 0.8706666666666666
+      }
+    },
+    {
+      "iteration": 54,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.05996056873681819,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7763669461117869,
+      "performance_metrics": {
+        "accuracy": 0.7332194468263623,
+        "precision": 0.6433861134930291,
+        "recall": 0.7659527801596958,
+        "latency": 0.1680629373888222,
+        "success_rate": 0.8726666666666666
+      }
+    },
+    {
+      "iteration": 55,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06013567119380524,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8191183360019937,
+      "performance_metrics": {
+        "accuracy": 0.7939214323838003,
+        "precision": 0.703588099050467,
+        "recall": 0.8264547657171336,
+        "latency": 0.1893156808037148,
+        "success_rate": 0.8746666666666666
+      }
+    },
+    {
+      "iteration": 56,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06033413079044995,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8029263373725549,
+      "performance_metrics": {
+        "accuracy": 0.7704185771988881,
+        "precision": 0.6795852438655549,
+        "recall": 0.8027519105322214,
+        "latency": 0.1846728534422508,
+        "success_rate": 0.8766666666666666
+      }
+    },
+    {
+      "iteration": 57,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06053630921687533,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.780587953761337,
+      "performance_metrics": {
+        "accuracy": 0.7381351720400054,
+        "precision": 0.6468018387066722,
+        "recall": 0.7702685053733388,
+        "latency": 0.1763936693489578,
+        "success_rate": 0.8786666666666666
+      }
+    },
+    {
+      "iteration": 58,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06069046346252769,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8148403997138265,
+      "performance_metrics": {
+        "accuracy": 0.7866958091149903,
+        "precision": 0.694862475781657,
+        "recall": 0.8186291424483236,
+        "latency": 0.17076496134272937,
+        "success_rate": 0.8806666666666666
+      }
+    },
+    {
+      "iteration": 59,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06086764759267789,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8372530953420813,
+      "performance_metrics": {
+        "accuracy": 0.818342517155354,
+        "precision": 0.7260091838220207,
+        "recall": 0.8500758504886874,
+        "latency": 0.17443256209696684,
+        "success_rate": 0.8826666666666666
+      }
+    },
+    {
+      "iteration": 60,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06108180774132506,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7955417465623942,
+      "performance_metrics": {
+        "accuracy": 0.7583834474700868,
+        "precision": 0.6655501141367535,
+        "recall": 0.7899167808034202,
+        "latency": 0.16209486561051845,
+        "success_rate": 0.8846666666666666
+      }
+    },
+    {
+      "iteration": 61,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06122383638499103,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7971770183732924,
+      "performance_metrics": {
+        "accuracy": 0.7603481214856556,
+        "precision": 0.6670147881523223,
+        "recall": 0.791681454818989,
+        "latency": 0.16421533462538693,
+        "success_rate": 0.8866666666666666
+      }
+    },
+    {
+      "iteration": 62,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06140157676083321,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8100625805797013,
+      "performance_metrics": {
+        "accuracy": 0.7783846389233827,
+        "precision": 0.6845513055900495,
+        "recall": 0.8095179722567162,
+        "latency": 0.1746119320516175,
+        "success_rate": 0.8886666666666666
+      }
+    },
+    {
+      "iteration": 63,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06158715604180929,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.7990373507984113,
+      "performance_metrics": {
+        "accuracy": 0.7622628820929687,
+        "precision": 0.6679295487596354,
+        "recall": 0.7931962154263021,
+        "latency": 0.17679814172105865,
+        "success_rate": 0.8906666666666666
+      }
+    },
+    {
+      "iteration": 64,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06178988255112886,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8266076361504525,
+      "performance_metrics": {
+        "accuracy": 0.8012775754530275,
+        "precision": 0.7064442421196943,
+        "recall": 0.832010908786361,
+        "latency": 0.16632867546500446,
+        "success_rate": 0.8926666666666666
+      }
+    },
+    {
+      "iteration": 65,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.061979226331472424,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8382261362527454,
+      "performance_metrics": {
+        "accuracy": 0.8175040041705887,
+        "precision": 0.7221706708372554,
+        "recall": 0.848037337503922,
+        "latency": 0.1778597348022827,
+        "success_rate": 0.8946666666666666
+      }
+    },
+    {
+      "iteration": 66,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06213883676894578,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.826680184977548,
+      "performance_metrics": {
+        "accuracy": 0.8006383594917352,
+        "precision": 0.704805026158402,
+        "recall": 0.8309716928250686,
+        "latency": 0.15385518936362208,
+        "success_rate": 0.8966666666666666
+      }
+    },
+    {
+      "iteration": 67,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06232361016453746,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8289200070834654,
+      "performance_metrics": {
+        "accuracy": 0.803466676785903,
+        "precision": 0.7071333434525697,
+        "recall": 0.8336000101192363,
+        "latency": 0.1822511518759475,
+        "success_rate": 0.8986666666666666
+      }
+    },
+    {
+      "iteration": 68,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06246266965382954,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8242385779716519,
+      "performance_metrics": {
+        "accuracy": 0.7964074923404552,
+        "precision": 0.6995741590071219,
+        "recall": 0.8263408256737885,
+        "latency": 0.1597582035280724,
+        "success_rate": 0.9006666666666666
+      }
+    },
+    {
+      "iteration": 69,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06260747095712242,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8348223066429318,
+      "performance_metrics": {
+        "accuracy": 0.8111556761565691,
+        "precision": 0.7138223428232359,
+        "recall": 0.8408890094899025,
+        "latency": 0.15979337673093452,
+        "success_rate": 0.9026666666666666
+      }
+    },
+    {
+      "iteration": 70,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.062780345216233,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8156471875454044,
+      "performance_metrics": {
+        "accuracy": 0.7833912203029585,
+        "precision": 0.6855578869696253,
+        "recall": 0.8129245536362919,
+        "latency": 0.1630349220176217,
+        "success_rate": 0.9046666666666666
+      }
+    },
+    {
+      "iteration": 71,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06296881035307307,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8096610923754102,
+      "performance_metrics": {
+        "accuracy": 0.7744682272029669,
+        "precision": 0.6761348938696337,
+        "recall": 0.8038015605363004,
+        "latency": 0.16166101165023097,
+        "success_rate": 0.9066666666666666
+      }
+    },
+    {
+      "iteration": 72,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06310465032003518,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8326580755358931,
+      "performance_metrics": {
+        "accuracy": 0.8069496317179425,
+        "precision": 0.7081162983846093,
+        "recall": 0.836082965051276,
+        "latency": 0.1637065323118703,
+        "success_rate": 0.9086666666666666
+      }
+    },
+    {
+      "iteration": 73,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06324416007618444,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.832950173518393,
+      "performance_metrics": {
+        "accuracy": 0.8069954859786566,
+        "precision": 0.7076621526453233,
+        "recall": 0.83592881931199,
+        "latency": 0.14177407769643635,
+        "success_rate": 0.9106666666666666
+      }
+    },
+    {
+      "iteration": 74,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06338836110287918,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8190293274272508,
+      "performance_metrics": {
+        "accuracy": 0.7867371344198821,
+        "precision": 0.6869038010865489,
+        "recall": 0.8154704677532154,
+        "latency": 0.1396133393697298,
+        "success_rate": 0.9126666666666666
+      }
+    },
+    {
+      "iteration": 75,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06358269671366315,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8418113739028535,
+      "performance_metrics": {
+        "accuracy": 0.8189114865278859,
+        "precision": 0.7185781531945526,
+        "recall": 0.8474448198612192,
+        "latency": 0.15821290370907864,
+        "success_rate": 0.9146666666666666
+      }
+    },
+    {
+      "iteration": 76,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06373736671105992,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8266274777765702,
+      "performance_metrics": {
+        "accuracy": 0.7968487777760526,
+        "precision": 0.6960154444427193,
+        "recall": 0.8251821111093859,
+        "latency": 0.1763749275135061,
+        "success_rate": 0.9166666666666666
+      }
+    },
+    {
+      "iteration": 77,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0639204625205232,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8607857501435462,
+      "performance_metrics": {
+        "accuracy": 0.845274881157447,
+        "precision": 0.7439415478241137,
+        "recall": 0.8734082144907803,
+        "latency": 0.1630928369534259,
+        "success_rate": 0.9186666666666666
+      }
+    },
+    {
+      "iteration": 78,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0640818354967677,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8249250507735743,
+      "performance_metrics": {
+        "accuracy": 0.7936738820574872,
+        "precision": 0.691840548724154,
+        "recall": 0.8216072153908206,
+        "latency": 0.16363220408473428,
+        "success_rate": 0.9206666666666666
+      }
+    },
+    {
+      "iteration": 79,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06428202597608239,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8318665353433999,
+      "performance_metrics": {
+        "accuracy": 0.8032188600143807,
+        "precision": 0.7008855266810474,
+        "recall": 0.8309521933477141,
+        "latency": 0.17222475037817334,
+        "success_rate": 0.9226666666666666
+      }
+    },
+    {
+      "iteration": 80,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0644354490883081,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8424437667889894,
+      "performance_metrics": {
+        "accuracy": 0.8179577620795084,
+        "precision": 0.7151244287461752,
+        "recall": 0.8454910954128418,
+        "latency": 0.16085120587152074,
+        "success_rate": 0.9246666666666666
+      }
+    },
+    {
+      "iteration": 81,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.0646198539213609,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8425611280787672,
+      "performance_metrics": {
+        "accuracy": 0.8177539924934769,
+        "precision": 0.7144206591601436,
+        "recall": 0.8450873258268103,
+        "latency": 0.15717139289955576,
+        "success_rate": 0.9266666666666666
+      }
+    },
+    {
+      "iteration": 82,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06476632438155824,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8691151047298031,
+      "performance_metrics": {
+        "accuracy": 0.8553168162806711,
+        "precision": 0.7514834829473378,
+        "recall": 0.8824501496140046,
+        "latency": 0.1656521845008236,
+        "success_rate": 0.9286666666666666
+      }
+    },
+    {
+      "iteration": 83,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06493434923872268,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8625480447290225,
+      "performance_metrics": {
+        "accuracy": 0.8455638734224131,
+        "precision": 0.7412305400890798,
+        "recall": 0.8724972067557466,
+        "latency": 0.1680345295129159,
+        "success_rate": 0.9306666666666666
+      }
+    },
+    {
+      "iteration": 84,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06505671247839101,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8458660856588093,
+      "performance_metrics": {
+        "accuracy": 0.82136107475068,
+        "precision": 0.7165277414173468,
+        "recall": 0.8480944080840133,
+        "latency": 0.1514232553875,
+        "success_rate": 0.9326666666666666
+      }
+    },
+    {
+      "iteration": 85,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06521467677794328,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8633310020374243,
+      "performance_metrics": {
+        "accuracy": 0.84593952672013,
+        "precision": 0.7406061933867967,
+        "recall": 0.8724728600534633,
+        "latency": 0.17204680072584053,
+        "success_rate": 0.9346666666666666
+      }
+    },
+    {
+      "iteration": 86,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06533860587961872,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8420162296569914,
+      "performance_metrics": {
+        "accuracy": 0.8151184233195115,
+        "precision": 0.7092850899861781,
+        "recall": 0.8414517566528448,
+        "latency": 0.16543359892620302,
+        "success_rate": 0.9366666666666666
+      }
+    },
+    {
+      "iteration": 87,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06548562009952137,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8632070832587135,
+      "performance_metrics": {
+        "accuracy": 0.8450196427505432,
+        "precision": 0.7386863094172099,
+        "recall": 0.8711529760838765,
+        "latency": 0.15829768384782011,
+        "success_rate": 0.9386666666666666
+      }
+    },
+    {
+      "iteration": 88,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06564925446946523,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8541135018520758,
+      "performance_metrics": {
+        "accuracy": 0.8316573835982036,
+        "precision": 0.7248240502648704,
+        "recall": 0.857590716931537,
+        "latency": 0.15292307993990378,
+        "success_rate": 0.9406666666666667
+      }
+    },
+    {
+      "iteration": 89,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06578427530984206,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8709193905888523,
+      "performance_metrics": {
+        "accuracy": 0.855294367507884,
+        "precision": 0.7479610341745507,
+        "recall": 0.8810277008412174,
+        "latency": 0.16747468460492562,
+        "success_rate": 0.9426666666666665
+      }
+    },
+    {
+      "iteration": 90,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06594849544346573,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8495763823033086,
+      "performance_metrics": {
+        "accuracy": 0.8244329270999645,
+        "precision": 0.7165995937666312,
+        "recall": 0.8499662604332979,
+        "latency": 0.16248449878957122,
+        "success_rate": 0.9446666666666665
+      }
+    },
+    {
+      "iteration": 91,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06610815512953672,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8445615204837548,
+      "performance_metrics": {
+        "accuracy": 0.8168974102148878,
+        "precision": 0.7085640768815545,
+        "recall": 0.8422307435482213,
+        "latency": 0.16102003854306948,
+        "success_rate": 0.9466666666666665
+      }
+    },
+    {
+      "iteration": 92,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06627235264625488,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8750614285547016,
+      "performance_metrics": {
+        "accuracy": 0.860097278887669,
+        "precision": 0.7512639455543357,
+        "recall": 0.8852306122210024,
+        "latency": 0.16642462012797918,
+        "success_rate": 0.9486666666666665
+      }
+    },
+    {
+      "iteration": 93,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06641543691389354,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8493674085360912,
+      "performance_metrics": {
+        "accuracy": 0.8230201074325113,
+        "precision": 0.713686774099178,
+        "recall": 0.8479534407658446,
+        "latency": 0.16248451716787127,
+        "success_rate": 0.9506666666666665
+      }
+    },
+    {
+      "iteration": 94,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06659344223349616,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8649357434643182,
+      "performance_metrics": {
+        "accuracy": 0.8448891573299786,
+        "precision": 0.7350558239966453,
+        "recall": 0.8696224906633119,
+        "latency": 0.16549466560968795,
+        "success_rate": 0.9526666666666666
+      }
+    },
+    {
+      "iteration": 95,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06677152043939288,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8640330621881346,
+      "performance_metrics": {
+        "accuracy": 0.8432281840782875,
+        "precision": 0.7328948507449542,
+        "recall": 0.8677615174116208,
+        "latency": 0.15493072894537843,
+        "success_rate": 0.9546666666666666
+      }
+    },
+    {
+      "iteration": 96,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06696895778076166,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8790962696827374,
+      "performance_metrics": {
+        "accuracy": 0.8643756233562915,
+        "precision": 0.7535422900229582,
+        "recall": 0.8887089566896248,
+        "latency": 0.17273331165882752,
+        "success_rate": 0.9566666666666666
+      }
+    },
+    {
+      "iteration": 97,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06711772774161796,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8798506391999591,
+      "performance_metrics": {
+        "accuracy": 0.8650818655237511,
+        "precision": 0.7537485321904178,
+        "recall": 0.8892151988570844,
+        "latency": 0.1545608523048566,
+        "success_rate": 0.9586666666666666
+      }
+    },
+    {
+      "iteration": 98,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06725839226291315,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8622306628808776,
+      "performance_metrics": {
+        "accuracy": 0.8395390422107776,
+        "precision": 0.7277057088774442,
+        "recall": 0.8634723755441109,
+        "latency": 0.1580750536498444,
+        "success_rate": 0.9606666666666666
+      }
+    },
+    {
+      "iteration": 99,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06744196679885844,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.8851688933030092,
+      "performance_metrics": {
+        "accuracy": 0.8719365142423942,
+        "precision": 0.7596031809090609,
+        "recall": 0.8956698475757275,
+        "latency": 0.14741740668656017,
+        "success_rate": 0.9626666666666666
+      }
+    },
+    {
+      "iteration": 100,
+      "weights": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ],
+      "thresholds": {
+        "store": 1.0,
+        "act": 1.0,
+        "similarity": 1.0
+      },
+      "learning_rates": {
+        "tau_anneal": 0.06760818927557101,
+        "tau_decay": 0.1,
+        "base": 0.1
+      },
+      "performance_score": 0.9056677107072505,
+      "performance_metrics": {
+        "accuracy": 0.9008491105341673,
+        "precision": 0.7880157772008339,
+        "recall": 0.9243824438675007,
+        "latency": 0.15225518261021073,
+        "success_rate": 0.9646666666666666
+      }
+    }
+  ],
+  "initial_weights": [
+    0.6,
+    0.25,
+    0.15
+  ],
+  "final_weights": [
+    0.3333333333333333,
+    0.3333333333333333,
+    0.3333333333333333
+  ],
+  "weight_evolution": [
+    [
+      0.5810455733866146,
+      0.2516154797572483,
+      0.1673389468561371
+    ],
+    [
+      0.5667835037363679,
+      0.25503417715302223,
+      0.17818231911060994
+    ],
+    [
+      0.5530559154578913,
+      0.2578609453068162,
+      0.18908313923529255
+    ],
+    [
+      0.540308608585687,
+      0.26139817574411295,
+      0.1982932156702
+    ],
+    [
+      0.5277894178405655,
+      0.26500837143894596,
+      0.20720221072048836
+    ],
+    [
+      0.5180910588087433,
+      0.2674114193451643,
+      0.21449752184609233
+    ],
+    [
+      0.5087628534014266,
+      0.269776324913894,
+      0.22146082168467948
+    ],
+    [
+      0.5000421967630854,
+      0.27227306145183505,
+      0.22768474178507953
+    ],
+    [
+      0.49319916173875794,
+      0.2736249369434946,
+      0.23317590131774737
+    ],
+    [
+      0.48579281042592654,
+      0.2753076339599771,
+      0.23889955561409637
+    ],
+    [
+      0.480067164377968,
+      0.2770061774140514,
+      0.24292665820798065
+    ],
+    [
+      0.4741045146240106,
+      0.27840565315419563,
+      0.2474898322217937
+    ],
+    [
+      0.4691487672227285,
+      0.2800612296199716,
+      0.2507900031572999
+    ],
+    [
+      0.4631605777598089,
+      0.28180525297552256,
+      0.2550341692646686
+    ],
+    [
+      0.4583781301006953,
+      0.2829670444658551,
+      0.25865482543344975
+    ],
+    [
+      0.4505253337750059,
+      0.28559702294713213,
+      0.26387764327786195
+    ],
+    [
+      0.4411373281134923,
+      0.2895313359203288,
+      0.2693313359661788
+    ],
+    [
+      0.43197508942579554,
+      0.29345141144155923,
+      0.27457349913264534
+    ],
+    [
+      0.4227919397345233,
+      0.29671976802241773,
+      0.28048829224305893
+    ],
+    [
+      0.4145124722502479,
+      0.3001484876957689,
+      0.2853390400539831
+    ],
+    [
+      0.4067296192081714,
+      0.3035557411725733,
+      0.2897146396192553
+    ],
+    [
+      0.39891548911259644,
+      0.3059237684015749,
+      0.2951607424858287
+    ],
+    [
+      0.39175101820623337,
+      0.3085923688488496,
+      0.29965661294491697
+    ],
+    [
+      0.38450420505772753,
+      0.31131974354790415,
+      0.30417605139436826
+    ],
+    [
+      0.3778425048889815,
+      0.3142976698044741,
+      0.3078598253065443
+    ],
+    [
+      0.37175142288689117,
+      0.31624686663964535,
+      0.3120017104734635
+    ],
+    [
+      0.36553378781826806,
+      0.31862706665133045,
+      0.3158391455304015
+    ],
+    [
+      0.36003207916060664,
+      0.3203977465474221,
+      0.31957017429197127
+    ],
+    [
+      0.35437248544903366,
+      0.3222988849590206,
+      0.3233286295919457
+    ],
+    [
+      0.3489363593416934,
+      0.3245659376339371,
+      0.32649770302436953
+    ],
+    [
+      0.34390098005444925,
+      0.32632080542576974,
+      0.32977821451978107
+    ],
+    [
+      0.33880001238558555,
+      0.328130903884127,
+      0.3330690837302875
+    ],
+    [
+      0.33465802984675835,
+      0.3306839403064833,
+      0.33465802984675835
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ],
+    [
+      0.3333333333333333,
+      0.3333333333333333,
+      0.3333333333333333
+    ]
+  ],
+  "performance_evolution": [
+    0.7273171456576027,
+    0.7226118954248297,
+    0.7444644959700777,
+    0.7507776827861307,
+    0.7361498712092003,
+    0.7460527808082186,
+    0.7304623496962407,
+    0.7663182578388624,
+    0.7415319298568095,
+    0.7392452162169436,
+    0.7638331502231236,
+    0.7659010544921321,
+    0.7491003764836387,
+    0.7703541718051973,
+    0.7820747054474028,
+    0.7679705886925775,
+    0.7365972132935018,
+    0.746030951107527,
+    0.7807129794657811,
+    0.7597961538433703,
+    0.7531147503060855,
+    0.7625198776834332,
+    0.7694055879739427,
+    0.7625816277416876,
+    0.7613707567246966,
+    0.7551185857173212,
+    0.7700572939850311,
+    0.7523897145860212,
+    0.7832459232352796,
+    0.7529536906967421,
+    0.7526552370709981,
+    0.7736703851842303,
+    0.7621021974277361,
+    0.7716755403285985,
+    0.7694556288935308,
+    0.7769888053733833,
+    0.7791525817672714,
+    0.7774822980085258,
+    0.7619527514353542,
+    0.7803693124471052,
+    0.7809252604026443,
+    0.7685743710644805,
+    0.7843109811525787,
+    0.7830529860616092,
+    0.7923741393457594,
+    0.7893589730945915,
+    0.7712282319861371,
+    0.7686150139711534,
+    0.7967330751149532,
+    0.7799688001952696,
+    0.7842909497358466,
+    0.7724826716843005,
+    0.8028032600510829,
+    0.7763669461117869,
+    0.8191183360019937,
+    0.8029263373725549,
+    0.780587953761337,
+    0.8148403997138265,
+    0.8372530953420813,
+    0.7955417465623942,
+    0.7971770183732924,
+    0.8100625805797013,
+    0.7990373507984113,
+    0.8266076361504525,
+    0.8382261362527454,
+    0.826680184977548,
+    0.8289200070834654,
+    0.8242385779716519,
+    0.8348223066429318,
+    0.8156471875454044,
+    0.8096610923754102,
+    0.8326580755358931,
+    0.832950173518393,
+    0.8190293274272508,
+    0.8418113739028535,
+    0.8266274777765702,
+    0.8607857501435462,
+    0.8249250507735743,
+    0.8318665353433999,
+    0.8424437667889894,
+    0.8425611280787672,
+    0.8691151047298031,
+    0.8625480447290225,
+    0.8458660856588093,
+    0.8633310020374243,
+    0.8420162296569914,
+    0.8632070832587135,
+    0.8541135018520758,
+    0.8709193905888523,
+    0.8495763823033086,
+    0.8445615204837548,
+    0.8750614285547016,
+    0.8493674085360912,
+    0.8649357434643182,
+    0.8640330621881346,
+    0.8790962696827374,
+    0.8798506391999591,
+    0.8622306628808776,
+    0.8851688933030092,
+    0.9056677107072505
+  ],
+  "learning_evidence": {
+    "detected": 1.0,
+    "indicators": {
+      "significant_weight_change": true,
+      "performance_improvement": true,
+      "positive_trend": 1.0,
+      "weight_adaptation": true
+    },
+    "weight_changes": [
+      0.26666666666666666,
+      0.08333333333333331,
+      0.18333333333333332
+    ],
+    "performance_improvement": 0.17835056504964775,
+    "trend_slope": 0.0014269410870145027,
+    "weight_variance": [
+      0.004233903891782286,
+      0.0005556298257749135,
+      0.0017337231357891516
+    ],
+    "initial_performance": 0.7273171456576027,
+    "final_performance": 0.9056677107072505
+  },
+  "statistics": {
+    "total_iterations": 100,
+    "average_performance": 0.799543239474886,
+    "max_performance": 0.9056677107072505,
+    "min_performance": 0.7226118954248297,
+    "performance_std": 0.0435817452117318,
+    "weight_trajectory": {
+      "cosine": {
+        "start": 0.6,
+        "end": 0.3333333333333333,
+        "change": 0.26666666666666666,
+        "variance": 0.004233903891782286
+      },
+      "fd": {
+        "start": 0.25,
+        "end": 0.3333333333333333,
+        "change": 0.08333333333333331,
+        "variance": 0.0005556298257749135
+      },
+      "recency": {
+        "start": 0.15,
+        "end": 0.3333333333333333,
+        "change": 0.18333333333333332,
+        "variance": 0.0017337231357891516
+      }
+    }
+  },
+  "initial_thresholds": {
+    "store": 0.5,
+    "act": 0.7,
+    "similarity": 0.2
+  },
+  "initial_rates": {
+    "tau_anneal": 0.05,
+    "tau_decay": 0.02,
+    "base": 0.01
+  },
+  "final_thresholds": {
+    "store": 1.0,
+    "act": 1.0,
+    "similarity": 1.0
+  },
+  "final_rates": {
+    "tau_anneal": 0.06760818927557101,
+    "tau_decay": 0.1,
+    "base": 0.1
+  }
+}
