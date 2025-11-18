@@ -148,6 +148,7 @@ class MemoryService:
             """Delegate reset‑attempt logic to the shared ``CircuitBreaker``."""
             return cls._circuit_breaker.should_attempt_reset(tenant)
 
+
     @classmethod
     def _update_outbox_metric(cls, tenant: str | None = None, count: int | None = None) -> None:
         """Update outbox pending metrics for a specific tenant or all tenants.
@@ -349,3 +350,9 @@ class MemoryService:
 
     def links_from(self, start, type_filter: str | None = None, limit: int = 50):
         return self.client().links_from(start, type_filter, limit)
+
+# Expose the inner implementation as the public ``MemoryService`` symbol.
+# This replaces the outer wrapper (which lacks an __init__) with the functional
+# inner class, restoring the expected constructor signature used throughout the
+# codebase.
+MemoryService = MemoryService.MemoryService

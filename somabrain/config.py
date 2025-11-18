@@ -383,6 +383,14 @@ class Config:
     tenant_metadata: Dict[str, Any] = field(default_factory=dict)
 
     # End of Config fields
+    # ---------------------------------------------------------------------
+    # Adaptive learning defaults – a dictionary that can be populated from
+    # configuration files or environment variables to override the historic
+    # hard‑coded numbers used throughout the codebase. The AdaptiveCore reads
+    # values from this mapping when it is present, enabling true dynamic
+    # parameter injection without code changes.
+    # ---------------------------------------------------------------------
+    adaptive_defaults: Dict[str, Any] = field(default_factory=dict)
 
 
 # Typed truth-budget schema (module-level so tests can import)
@@ -671,35 +679,18 @@ earlier in this module (takes raw: dict, returns TruthBudget) and is used by cal
 
 
 def load_adaptive_config() -> Config:
-    """ENHANCED: Load configuration with adaptive parameter injection for TRUE DYNAMIC LEARNING.
-    
-    This function loads the main configuration and then injects adaptive parameters
-    from the learning system, eliminating hardcoded values and enabling true evolution.
-    
-    Returns a Config instance with self-evolving parameters!
+    """Load configuration and expose ``adaptive_defaults``.
+
+    The original implementation attempted to import ``AdaptiveIntegrator`` and
+    inject adaptive values into the configuration. That created a circular import
+    because ``AdaptiveIntegrator`` imports :pymod:`somabrain.adaptive.core`, which
+    itself calls ``load_adaptive_config``. To break the cycle we now simply load
+    the base configuration (including any ``adaptive_defaults`` section from the
+    YAML file) and return it. Adaptive components will read the defaults via
+    :func:`load_adaptive_config` without causing recursion.
     """
     cfg = load_config()
-    
-    # ENHANCED: Inject adaptive parameters if available
-    try:
-        from .adaptive.integration import AdaptiveIntegrator
-        adaptive_integrator = AdaptiveIntegrator()
-        adaptive_config = adaptive_integrator.get_config()
-        
-        # Inject adaptive values into configuration
-        config_dict = cfg.__dict__
-        adaptive_config.inject_into_config(config_dict)
-        
-        print("🧠 SomaBrain: ADAPTIVE CONFIGURATION LOADED - No more hardcoded values!")
-        print(f"   Adaptive Weights: {adaptive_config.get_scorer_weights()}")
-        print(f"   Adaptive Thresholds: {adaptive_config.get_thresholds()}")
-        print(f"   Adaptive Learning Rates: {adaptive_config.get_learning_rates()}")
-        
-    except ImportError:
-        print("⚠️  SomaBrain: Adaptive learning system not available - using hardcoded fallback")
-    except Exception as e:
-        print(f"⚠️  SomaBrain: Adaptive configuration failed: {e}")
-    
+
     # Load truth budget if needed (existing functionality)
     try:
         load_truth_budget(cfg)
@@ -707,7 +698,7 @@ def load_adaptive_config() -> Config:
             cfg.hybrid_math_enabled = True
     except Exception:
         pass
-    
+
     return cfg
 
 

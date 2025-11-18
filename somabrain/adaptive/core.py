@@ -28,6 +28,13 @@ from typing import Dict, List, Optional, Tuple, Any
 import numpy as np
 from collections import deque
 
+# Load configuration to obtain adaptive defaults. The load_adaptive_config
+# function injects any runtime‑learned parameters, falling back to the static
+# defaults defined in the YAML file. This import is lightweight and safe for
+# test environments because the function returns a Config instance even when
+# external services are unavailable.
+from somabrain.config import load_adaptive_config
+
 
 @dataclass
 class PerformanceMetrics:
@@ -180,29 +187,40 @@ class AdaptiveWeights:
     recency: AdaptiveParameter = field(init=False)
     
     def __post_init__(self):
-        # Initialize adaptive parameters for weights
+        """Initialize weight parameters, preferring values from the adaptive
+        defaults configuration if present.
+
+        The ``load_adaptive_config`` call returns a ``Config`` instance whose
+        ``adaptive_defaults`` dictionary may contain keys:
+
+        * ``cosine_weight``
+        * ``fd_weight``
+        * ``recency_weight``
+
+        If a key is missing the historic hard‑coded fallback is used.
+        """
+        cfg = load_adaptive_config()
+        defaults = getattr(cfg, "adaptive_defaults", {})
         self.cosine = AdaptiveParameter(
             name="cosine_weight",
-            initial_value=0.6,
+            initial_value=float(defaults.get("cosine_weight", 0.6)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.02
+            learning_rate=0.02,
         )
-        
         self.fd = AdaptiveParameter(
             name="fd_weight",
-            initial_value=0.25,
+            initial_value=float(defaults.get("fd_weight", 0.25)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.02
+            learning_rate=0.02,
         )
-        
         self.recency = AdaptiveParameter(
             name="recency_weight",
-            initial_value=0.15,
+            initial_value=float(defaults.get("recency_weight", 0.15)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.02
+            learning_rate=0.02,
         )
     
     def get_normalized_weights(self) -> Tuple[float, float, float]:
@@ -265,28 +283,40 @@ class AdaptiveThresholds:
     similarity_threshold: AdaptiveParameter = field(init=False)
     
     def __post_init__(self):
+        """Initialize thresholds, preferring values from ``adaptive_defaults``.
+
+        The ``adaptive_defaults`` mapping may contain:
+
+        * ``store_threshold``
+        * ``act_threshold``
+        * ``similarity_threshold``
+
+        If a key is missing, the historic hard‑coded fallback is used.
+        """
+        cfg = load_adaptive_config()
+        defaults = getattr(cfg, "adaptive_defaults", {})
         self.store_threshold = AdaptiveParameter(
             name="store_threshold",
-            initial_value=0.5,
+            initial_value=float(defaults.get("store_threshold", 0.5)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.015
+            learning_rate=0.015,
         )
-        
+
         self.act_threshold = AdaptiveParameter(
             name="act_threshold",
-            initial_value=0.7,
+            initial_value=float(defaults.get("act_threshold", 0.7)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.015
+            learning_rate=0.015,
         )
-        
+
         self.similarity_threshold = AdaptiveParameter(
             name="similarity_threshold",
-            initial_value=0.2,
+            initial_value=float(defaults.get("similarity_threshold", 0.2)),
             min_value=0.0,
             max_value=1.0,
-            learning_rate=0.015
+            learning_rate=0.015,
         )
     
     def update(self, performance: PerformanceMetrics, 
@@ -337,28 +367,38 @@ class AdaptiveLearningRates:
     base_learning_rate: AdaptiveParameter = field(init=False)
     
     def __post_init__(self):
+        """Initialize learning rates, preferring ``adaptive_defaults`` values.
+
+        The configuration may provide the following keys:
+
+        * ``tau_anneal_rate``
+        * ``tau_decay_rate``
+        * ``base_learning_rate``
+        """
+        cfg = load_adaptive_config()
+        defaults = getattr(cfg, "adaptive_defaults", {})
         self.tau_anneal = AdaptiveParameter(
             name="tau_anneal_rate",
-            initial_value=0.05,
+            initial_value=float(defaults.get("tau_anneal_rate", 0.05)),
             min_value=0.001,
             max_value=0.2,
-            learning_rate=0.01
+            learning_rate=0.01,
         )
-        
+
         self.tau_decay = AdaptiveParameter(
             name="tau_decay_rate",
-            initial_value=0.02,
+            initial_value=float(defaults.get("tau_decay_rate", 0.02)),
             min_value=0.001,
             max_value=0.1,
-            learning_rate=0.01
+            learning_rate=0.01,
         )
-        
+
         self.base_learning_rate = AdaptiveParameter(
             name="base_learning_rate",
-            initial_value=0.01,
+            initial_value=float(defaults.get("base_learning_rate", 0.01)),
             min_value=0.001,
             max_value=0.1,
-            learning_rate=0.005
+            learning_rate=0.005,
         )
     
     def update(self, performance: PerformanceMetrics,
