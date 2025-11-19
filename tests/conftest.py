@@ -201,7 +201,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
 
 # Rely on default pytest file collection. Benchmarks are path-marked and skipped by default.
 
-# New ROAMDP test helpers
+# Test helpers
 @pytest.fixture
 def test_tenant_id() -> str:
     """Standard test tenant ID for all tests."""

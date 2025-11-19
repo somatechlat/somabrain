@@ -61,15 +61,24 @@ class CircuitBreaker:
             self._reset_interval[tenant] = self._global_reset_interval
 
     def _set_metrics(self, tenant: str) -> None:
-        """Emit the current circuit state to Prometheus (if available)."""
-        try:
-            from . import metrics  # Local import to avoid circular dependency
+        """Emit the current circuit state to Prometheus (if available).
 
-            gauge = getattr(metrics, "CIRCUIT_STATE", None)
+        The original implementation referenced a non‑existent ``CIRCUIT_STATE``
+        gauge, which meant the metric was never updated. The correct gauge is
+        ``CIRCUIT_BREAKER_STATE`` defined in ``somabrain.metrics``. This method
+        now imports the ``metrics`` module lazily (to avoid circular imports) and
+        updates the proper gauge when it exists.
+        """
+        try:
+            # Local import avoids circular dependencies with ``metrics`` which
+            # itself imports many parts of the application.
+            from . import metrics  # type: ignore
+
+            gauge = getattr(metrics, "CIRCUIT_BREAKER_STATE", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(1 if self._circuit_open.get(tenant, False) else 0)
         except Exception:
-            # In environments without Prometheus the import fails – ignore.
+            # In environments without Prometheus the import may fail – silently ignore.
             pass
 
     # ---------------------------------------------------------------------

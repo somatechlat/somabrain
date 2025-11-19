@@ -92,26 +92,38 @@ class TenantRegistry:
         self._cache_ttl = 300  # 5 minutes
         
     async def initialize(self) -> None:
-        """Initialize tenant registry with system tenants."""
+        """Initialize tenant registry with system tenants.
+
+        The original implementation set ``self._initialized`` *after* creating
+        system tenants.  ``_create_system_tenants`` invokes ``register_tenant``
+        which itself called ``initialize`` when ``self._initialized`` was
+        ``False``.  This resulted in infinite recursion and the observed
+        ``maximum recursion depth exceeded`` errors.
+
+        The fix marks the registry as initialized **before** creating system
+        tenants.  Subsequent calls to ``register_tenant`` will see the flag set
+        and will not re‑enter ``initialize``.  All other logic remains
+        unchanged.
+        """
         if self._initialized:
             return
-            
+
         try:
-            # Initialize Redis connection
+            # Initialise Redis connection first.
             self._redis = redis.from_url(self.redis_url, decode_responses=True)
-            
-            # Test connection
             await self._redis.ping()
-            
-            # Create system tenants with proper UUIDs
-            await self._create_system_tenants()
-            
-            # Load existing tenants
-            await self._load_all_tenants()
-            
+
+            # Mark as initialised early to avoid recursive calls from
+            # ``register_tenant`` during system‑tenant creation.
             self._initialized = True
+
+            # Create system tenants with proper UUIDs.
+            await self._create_system_tenants()
+
+            # Load any existing tenants from storage.
+            await self._load_all_tenants()
+
             logger.info("Tenant registry initialized successfully")
-            
         except RedisError as e:
             logger.error("Failed to initialize tenant registry: %s", e)
             raise

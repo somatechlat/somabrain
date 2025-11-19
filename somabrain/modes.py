@@ -86,24 +86,30 @@ def _load_overrides() -> List[str]:
 def get_mode_config() -> ModeConfig:
     name = _resolve_mode()
     if name == "ci":
-        # Deterministic minimal surface for CI tests
+        # CI mode should provide a full feature set to allow the test suite to run
+        # without disabling optional components. Previously this configuration
+        # disabled many features (e.g., ``hmm_segmentation``) which caused a
+        # cascade of failures across the test suite. We now enable all features
+        # that are required for the core functionality while keeping the
+        # deterministic behaviour (e.g., ``avro_required`` and ``fail_fast_kafka``)
+        # that CI expects.
         return ModeConfig(
             name=name,
             enable_integrator=True,
-            enable_orchestrator=False,
-            enable_reward_ingest=False,
-            enable_learner=False,
-            enable_next_event=False,
-            enable_wm_updates_cache=False,
-            enable_tiered_memory=False,
-            memory_weighting=False,
+            enable_orchestrator=True,
+            enable_reward_ingest=True,
+            enable_learner=True,
+            enable_next_event=True,
+            enable_wm_updates_cache=True,
+            enable_tiered_memory=True,
+            memory_weighting=True,
             enable_drift=True,
-            enable_auto_rollback=False,
-            enable_segmentation=False,
-            enable_hmm_segmentation=False,
-            enable_teach_feedback=False,
-            enable_metrics=False,
-            enable_health_http=False,
+            enable_auto_rollback=True,
+            enable_segmentation=True,
+            enable_hmm_segmentation=True,
+            enable_teach_feedback=True,
+            enable_metrics=True,
+            enable_health_http=True,
             avro_required=True,
             fail_fast_kafka=True,
             fusion_normalization=True,

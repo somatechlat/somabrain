@@ -36,6 +36,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request, Depends, Query
+import inspect
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from cachetools import TTLCache
@@ -989,6 +990,42 @@ def _admin_guard_dep(request: Request):
     # FastAPI dependency wrapper for admin auth
     return require_admin_auth(request, cfg)
 
+# ---------------------------------------------------------------------------
+# Admin feature‑flag helper functions (used by the test suite)
+# ---------------------------------------------------------------------------
+
+async def admin_features_state() -> S.FeatureFlagsResponse:
+    """Return the current feature‑flag status and any persisted overrides.
+
+    The function mirrors the legacy admin endpoint but is exposed as a plain
+    callable so tests can import it directly from ``somabrain.app``.
+    """
+    return S.FeatureFlagsResponse(
+        status=FeatureFlags.get_status(), overrides=FeatureFlags.get_overrides()
+    )
+
+
+async def admin_features_update(body: S.FeatureFlagsUpdateRequest) -> S.FeatureFlagsUpdateResponse:
+    """Validate and apply an admin feature‑flag update.
+
+    * Raises ``HTTPException`` with status 400 if any flag in ``body.disabled``
+      is not a known key (i.e., not present in ``FeatureFlags.KEYS``).
+    * Calls ``FeatureFlags.set_overrides``; if it returns ``False`` the update is
+      forbidden (e.g., not in ``full‑local`` mode) and a 403 is raised.
+    * On success, returns the current list of disabled overrides.
+    """
+    # Ensure only known flags are referenced
+    unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"unknown flags: {', '.join(unknown)}")
+
+    # Attempt to persist the overrides; ``False`` indicates the operation is not
+    # permitted in the current mode.
+    if not FeatureFlags.set_overrides(body.disabled):
+        raise HTTPException(status_code=403, detail="update forbidden")
+
+    return S.FeatureFlagsUpdateResponse(overrides=FeatureFlags.get_overrides())
+
 
 @app.get("/admin/services", dependencies=[Depends(_admin_guard_dep)])
 async def list_services():
@@ -1244,6 +1281,7 @@ async def admin_get_outbox_summary():
 
 @app.get("/admin/quotas", dependencies=[Depends(_admin_guard_dep)])
 async def admin_list_quotas(
+    request: Request,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     tenant_filter: Optional[str] = Query(None, description="Filter by tenant ID prefix"),
@@ -1259,10 +1297,15 @@ async def admin_list_quotas(
         quota_manager = QuotaManager(QuotaConfig())
         
         # Get all tenant quota statuses
+        # Support both async and sync implementations (tests use a sync mock)
         all_quotas = quota_manager.get_all_quotas()
+        if inspect.isawaitable(all_quotas):
+            all_quotas = await all_quotas
         
-        # Apply tenant filter if provided
-        if tenant_filter:
+        # Apply tenant filter if provided. When called directly in tests the
+        # default ``Query`` object is passed, so guard against non‑string
+        # values.
+        if tenant_filter and isinstance(tenant_filter, str):
             all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
         
         # Apply pagination
@@ -1294,7 +1337,8 @@ async def admin_list_quotas(
 @app.post("/admin/quotas/{tenant_id}/reset", dependencies=[Depends(_admin_guard_dep)])
 async def admin_reset_quota(
     tenant_id: str,
-    body: S.QuotaResetRequest
+    body: S.QuotaResetRequest,
+    request: Request = None,
 ):
     """Reset quota for a specific tenant.
     
@@ -1307,13 +1351,23 @@ async def admin_reset_quota(
         quota_manager = QuotaManager(QuotaConfig())
         
         # Check if tenant exists
-        if not quota_manager.tenant_exists(tenant_id):
+        tenant_exists = quota_manager.tenant_exists(tenant_id)
+        if inspect.isawaitable(tenant_exists):
+            tenant_exists = await tenant_exists
+        if not tenant_exists:
             raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
         
         # Reset the quota
-        old_remaining = quota_manager.remaining(tenant_id)
-        quota_manager.reset_quota(tenant_id)
-        new_remaining = quota_manager.remaining(tenant_id)
+        old_rem = quota_manager.remaining(tenant_id)
+        if inspect.isawaitable(old_rem):
+            old_remaining = await old_rem
+        else:
+            old_remaining = old_rem
+        reset_res = quota_manager.reset_quota(tenant_id)
+        if inspect.isawaitable(reset_res):
+            await reset_res
+        new_rem = quota_manager.remaining(tenant_id)
+        new_remaining = await new_rem if inspect.isawaitable(new_rem) else new_rem
         
         # Log the reset action
         logger.info(f"Admin reset quota for tenant {tenant_id}. Reason: {body.reason or 'Not specified'}")
@@ -1341,7 +1395,8 @@ async def admin_reset_quota(
 @app.post("/admin/quotas/{tenant_id}/adjust", dependencies=[Depends(_admin_guard_dep)])
 async def admin_adjust_quota(
     tenant_id: str,
-    body: S.QuotaAdjustRequest
+    body: S.QuotaAdjustRequest,
+    request: Request = None,
 ):
     """Adjust quota limit for a specific tenant.
     
@@ -1354,18 +1409,27 @@ async def admin_adjust_quota(
         quota_manager = QuotaManager(QuotaConfig())
         
         # Check if tenant exists
-        if not quota_manager.tenant_exists(tenant_id):
+        tenant_exists = quota_manager.tenant_exists(tenant_id)
+        if inspect.isawaitable(tenant_exists):
+            tenant_exists = await tenant_exists
+        if not tenant_exists:
             raise HTTPException(status_code=404, detail=f"Tenant {tenant_id} not found")
         
         # Get current limit
         current_info = quota_manager.get_quota_info(tenant_id)
+        if inspect.isawaitable(current_info):
+            current_info = await current_info
         old_limit = current_info.daily_limit
         
         # Adjust the quota limit
-        quota_manager.adjust_quota_limit(tenant_id, body.new_limit)
+        adj = quota_manager.adjust_quota_limit(tenant_id, body.new_limit)
+        if inspect.isawaitable(adj):
+            await adj
         
         # Verify the adjustment
         new_info = quota_manager.get_quota_info(tenant_id)
+        if inspect.isawaitable(new_info):
+            new_info = await new_info
         
         # Log the adjustment
         logger.info(f"Admin adjusted quota for tenant {tenant_id}: {old_limit} -> {body.new_limit}. Reason: {body.reason or 'Not specified'}")

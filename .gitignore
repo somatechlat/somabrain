@@ -78,6 +78,9 @@ data/somabrain.db
 # VS Code settings
 .vscode/
 
+# Hypothesis generated files (should not be version‑controlled)
+.hypothesis/
+
 # Coverage reports
 htmlcov/
 .coverage

@@ -436,6 +436,44 @@ class SleepRunResponse(BaseModel):
     run_id: Optional[str] = Field(
         None, description="Identifier for the initiated sleep run"
     )
+
+# ---------------------------------------------------------------------------
+# Feature flag admin schemas
+# ---------------------------------------------------------------------------
+
+class FeatureFlagsResponse(BaseModel):
+    """Response model for the admin feature‑flags status endpoint.
+
+    Attributes
+    ----------
+    status: Dict[str, Any]
+        Mapping of each feature flag key to its boolean enabled state.
+    overrides: List[str]
+        List of flag keys that are currently disabled via local overrides.
+    """
+
+    status: Dict[str, Any]
+    overrides: List[str]
+
+
+class FeatureFlagsUpdateRequest(BaseModel):
+    """Request model for updating feature‑flag overrides.
+
+    The ``disabled`` list contains the flag keys that the caller wishes to
+    disable for the current tenant/environment. Validation of unknown keys is
+    performed in the endpoint implementation.
+    """
+
+    disabled: List[str]
+
+
+class FeatureFlagsUpdateResponse(BaseModel):
+    """Response model after attempting to update feature‑flag overrides.
+
+    Returns the current list of disabled overrides after the operation.
+    """
+
+    overrides: List[str]
     started_at_ms: Optional[int] = Field(
         None, description="Epoch ms when the run started"
     )
