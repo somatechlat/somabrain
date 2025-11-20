@@ -324,22 +324,16 @@ class IntegratorHub:
         self._tracer = get_tracer("somabrain.integrator_hub")
         # Start lightweight health server on a side port for K8s probes
         try:
-            if os.getenv("HEALTH_PORT"):
+            from common.config.settings import settings as _settings  # type: ignore
+            if _settings.health_port:
                 self._start_health_server()
         except Exception:
             pass
         # Bootstrap (prefer shared settings when available)
-        bs = None
-        redis_url = None
-        try:
-            from common.config.settings import settings as _settings  # type: ignore
-
-            bs = _settings.kafka_bootstrap_servers
-            redis_url = _settings.redis_url
-        except Exception:
-            pass
-        bs = bs or os.getenv("SOMABRAIN_KAFKA_URL") or ""
-        redis_url = redis_url or os.getenv("SOMABRAIN_REDIS_URL") or ""
+        # Use centralized Settings for Kafka and Redis configuration.
+        from common.config.settings import settings as _settings  # type: ignore
+        bs = _settings.kafka_bootstrap_servers or ""
+        redis_url = _settings.redis_url or ""
         self._bootstrap = _strip_scheme(bs)
         self._redis_url = redis_url
         # Feature flags
@@ -582,7 +576,8 @@ class IntegratorHub:
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            from common.config.settings import settings as _settings  # type: ignore
+            port = int(_settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             th = threading.Thread(target=server.run, daemon=True)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+from common.config.settings import settings as shared_settings
 from typing import List
 
 from kafka import KafkaAdminClient
@@ -8,11 +8,11 @@ from kafka.admin import NewTopic
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    url = shared_settings.kafka_bootstrap_servers
     if not url:
         raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
-    # strip optional scheme
-    return url.replace("kafka://", "")
+    # strip optional scheme if present (Settings may already contain scheme‑less value)
+    return str(url).replace("kafka://", "")
 
 
 def _topics() -> List[NewTopic]:

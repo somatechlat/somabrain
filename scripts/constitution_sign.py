@@ -8,6 +8,9 @@ import json
 import os
 from pathlib import Path
 
+# Use the centralized Settings singleton for defaults
+from common.config.settings import settings as shared_settings
+
 from somabrain.constitution import ConstitutionEngine
 from somabrain.storage import db
 
@@ -20,25 +23,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--private-key",
         dest="private_key",
-        default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"),
+        default=shared_settings.constitution_privkey_path,
         help="PEM private key used for signing (defaults to SOMABRAIN_CONSTITUTION_PRIVKEY_PATH)",
     )
     parser.add_argument(
         "--signer-id",
         dest="signer_id",
-        default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default"),
+        default=shared_settings.constitution_signer_id,
         help="Signer identifier recorded alongside the signature",
     )
     parser.add_argument(
         "--db-url",
         dest="db_url",
-        default=os.getenv("SOMABRAIN_POSTGRES_DSN"),
+        default=shared_settings.postgres_dsn,
         help="Override database URL (defaults to SOMABRAIN_POSTGRES_DSN)",
     )
     parser.add_argument(
         "--redis-url",
         dest="redis_url",
-        default=os.getenv("SOMA_REDIS_URL"),
+        default=shared_settings.redis_url,
         help="Override Redis URL (defaults to SOMA_REDIS_URL)",
     )
     return parser.parse_args()

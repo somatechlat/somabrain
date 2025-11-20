@@ -4,7 +4,7 @@
 This ensures that the same Python process that runs Uvicorn has the runtime
 singletons initialized, avoiding import-time backend-enforcement failures.
 """
-import os
+from common.config.settings import settings as shared_settings
 import sys
 import uvicorn
 import yaml
@@ -13,7 +13,7 @@ import logging.config
 # Ensure /app is on sys.path for imports
 sys.path.insert(0, "/app")
 
-HOST = os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+HOST = shared_settings.host
 
 
 # Be resilient to empty or invalid env values
@@ -52,7 +52,7 @@ if WORKERS != 1:
     )
 
 # Apply optional logging config if provided
-LOG_CONFIG = os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
+LOG_CONFIG = shared_settings.log_config
 if os.path.exists(LOG_CONFIG):
     try:
         with open(LOG_CONFIG, "r", encoding="utf-8") as f:

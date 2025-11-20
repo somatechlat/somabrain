@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from common.config.settings import settings
 import random
 import time
 from typing import Any
@@ -63,7 +64,7 @@ def run_forever() -> None:  # pragma: no cover
     )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        if os.getenv("HEALTH_PORT"):
+        if settings.health_port:
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -84,7 +85,7 @@ def run_forever() -> None:  # pragma: no cover
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
@@ -112,7 +113,7 @@ def run_forever() -> None:  # pragma: no cover
     soma_schema = "belief_update_soma"
     from somabrain import runtime_config as _rt
 
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")  # tenancy stays env-driven
+    tenant = settings.default_tenant  # tenancy from centralized Settings
     model_ver = _rt.get_str("state_model_ver", "v1")
     period = _rt.get_float("state_update_period", 0.5)
     soma_compat = _rt.get_bool("soma_compat", False)

@@ -167,6 +167,72 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
+    # Additional environment variables used throughout the codebase
+    health_port: Optional[int] = Field(
+        default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
+    )
+    default_tenant: str = Field(
+        default=os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    )
+    host: str = Field(
+        default=os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+    )
+    log_config: str = Field(
+        default=os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
+    )
+    constitution_privkey_path: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
+    )
+    constitution_signer_id: str = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
+    )
+    # Additional optional configuration values used by scripts and CI utilities
+    reward_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_REWARD_PORT", 8083)
+    )
+    reward_producer_port: int = Field(
+        default_factory=lambda: _int_env("REWARD_PRODUCER_PORT", 30183)
+    )
+    drift_store_path: str = Field(
+        default=os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
+    )
+    universe: Optional[str] = Field(
+        default=os.getenv("SOMA_UNIVERSE")
+    )
+    # Teach feedback processor configuration
+    teach_feedback_proc_port: int = Field(
+        default_factory=lambda: _int_env("TEACH_FEEDBACK_PROC_PORT", 8086)
+    )
+    teach_feedback_proc_group: str = Field(
+        default=os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
+    )
+    teach_dedup_cache_size: int = Field(
+        default_factory=lambda: int(os.getenv("TEACH_DEDUP_CACHE_SIZE", "512"))
+    )
+    # Feature flags service configuration
+    feature_flags_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_FEATURE_FLAGS_PORT", 9697)
+    )
+    # Tiered memory cleanup configuration
+    tiered_memory_cleanup_backend: str = Field(
+        default=os.getenv("SOMABRAIN_CLEANUP_BACKEND", "simple")
+    )
+    tiered_memory_cleanup_topk: int = Field(
+        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_TOPK", "64"))
+    )
+    tiered_memory_cleanup_hnsw_m: int = Field(
+        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_M", "32"))
+    )
+    tiered_memory_cleanup_hnsw_ef_construction: int = Field(
+        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200"))
+    )
+    tiered_memory_cleanup_hnsw_ef_search: int = Field(
+        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_SEARCH", "128"))
+    )
+    # Topic names used by scripts/CI utilities
+    topic_config_updates: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
+    )
     # Deprecated alternative toggles removed: no local/durable alternatives allowed
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------

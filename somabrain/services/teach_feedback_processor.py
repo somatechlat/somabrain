@@ -23,7 +23,6 @@ Metrics:
 from __future__ import annotations
 
 import json
-import os
 import threading
 import time
 from typing import Any, Dict, Optional
@@ -43,10 +42,14 @@ TOPIC_REWARD = "cog.reward.events"
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
-    if not url:
-        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
-    return url.replace("kafka://", "")
+    # Use the centralized Kafka bootstrap configuration.
+    from common.config.settings import settings as shared_settings
+
+    if not shared_settings.kafka_bootstrap_servers:
+        raise ValueError(
+            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
+        )
+    return shared_settings.kafka_bootstrap_servers.replace("kafka://", "")
 
 
 def _serde(name: str):
@@ -100,7 +103,9 @@ class TeachFeedbackService:
         self._ck_producer = None
         self._stop = threading.Event()
         # Basic dedup cache for recent frame_ids
-        size = max(32, int(os.getenv("TEACH_DEDUP_CACHE_SIZE", "512")))
+        from common.config.settings import settings as shared_settings
+
+        size = max(32, int(shared_settings.teach_dedup_cache_size))
         self._seen_frames = deque(maxlen=size)
         self._seen_set = set()
         # Metrics
@@ -395,7 +400,10 @@ async def metrics_ep():  # type: ignore
 
 
 def main() -> None:  # pragma: no cover
-    port = int(os.getenv("TEACH_FEEDBACK_PROC_PORT", "8086"))
+    # Use the centralized Settings value for the port.
+    from common.config.settings import settings as shared_settings
+
+    port = int(shared_settings.teach_feedback_proc_port)
     try:
         import uvicorn  # type: ignore
 

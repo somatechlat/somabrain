@@ -47,15 +47,14 @@ except Exception:  # pragma: no cover
     metrics = None  # type: ignore
 
 
+# Reward events Kafka topic – can be overridden via env, default is static.
 TOPIC = os.getenv("SOMABRAIN_TOPIC_REWARD_EVENTS", "cog.reward.events")
 
 
 def _bootstrap() -> str:
-    url = (
-        os.getenv("SOMA_KAFKA_BOOTSTRAP")
-        or os.getenv("SOMABRAIN_KAFKA_URL")
-        or "somabrain_kafka:9092"
-    )
+    # Use the centralized Settings singleton for the Kafka bootstrap URL.
+    from common.config.settings import settings as _settings  # type: ignore
+    url = _settings.kafka_bootstrap_servers or "somabrain_kafka:9092"
     return url.replace("kafka://", "")
 
 
@@ -86,7 +85,7 @@ _producer: Any = None  # KafkaProducer | CProducer | None
 _producer_kind: Optional[str] = None  # "ck" for confluent, "kp" for kafka-python
 _serde_inst: Optional[AvroSerde] = None
 _ready: bool = False
-_tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+_tenant = settings.default_tenant
 _REWARD_COUNT = (
     metrics.get_counter("soma_reward_total", "Reward events posted")
     if metrics

@@ -131,7 +131,8 @@ class OrchestratorService:
         self._ctx: Dict[str, GlobalFrameCtx] = {}
         # Optional health / metrics server
         try:
-            if os.getenv("HEALTH_PORT"):
+            from common.config.settings import settings as _settings  # type: ignore
+            if _settings.health_port:
                 self._start_health_server()
         except Exception:
             pass
@@ -158,7 +159,8 @@ class OrchestratorService:
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            from common.config.settings import settings as _settings  # type: ignore
+            port = int(_settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             import threading as _th

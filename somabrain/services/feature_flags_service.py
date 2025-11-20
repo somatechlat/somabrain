@@ -11,7 +11,6 @@ The service is intended to run as a separate process (similar to the other
 
 from __future__ import annotations
 
-import os
 import threading
 from typing import Any
 
@@ -81,8 +80,10 @@ def main() -> None:  # pragma: no cover – exercised via integration tests
     async def metrics() -> Any:
         return await metrics_endpoint()
 
-    # Use the port defined by ``SOMABRAIN_FEATURE_FLAGS_PORT`` or default 9697.
-    port = int(os.getenv("SOMABRAIN_FEATURE_FLAGS_PORT", "9697"))
+    # Use the centralized Settings value for the feature‑flags service port.
+    from common.config.settings import settings as shared_settings
+
+    port = int(shared_settings.feature_flags_port)
     import uvicorn  # type: ignore
 
     uvicorn.run(app, host="0.0.0.0", port=port)

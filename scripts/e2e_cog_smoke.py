@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import os
+from common.config.settings import settings as shared_settings
 import sys
 import time
 from typing import Optional
@@ -14,8 +14,8 @@ except Exception:
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "kafka://127.0.0.1:30001"
-    return url.replace("kafka://", "").replace("PLAINTEXT://", "")
+    url = shared_settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
+    return str(url).replace("kafka://", "").replace("PLAINTEXT://", "")
 
 
 def _consume_one(topic: str, timeout_s: float = 30.0) -> Optional[bytes]:

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+from common.config.settings import settings as shared_settings
 import sys
 import time
 from typing import Any, Dict
@@ -44,10 +45,12 @@ def post_reward() -> None:
     runs on ``localhost`` inside the Docker compose network; the host port is
     taken from ``SOMABRAIN_REWARD_PORT`` (default 8083).
     """
-    port = int(os.getenv("SOMABRAIN_REWARD_PORT", "8083"))
+    # Use centralized Settings for reward port
+    from common.config.settings import settings as shared_settings
+    port = int(shared_settings.reward_port)
     url = f"http://localhost:{port}/reward"
     payload: Dict[str, Any] = {
-        "tenant": os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"),
+        "tenant": shared_settings.default_tenant,
         "r_task": 0.5,
         "r_user": 0.5,
         "r_latency": 0.1,
@@ -69,11 +72,10 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
     Returns the decoded JSON dict or ``None`` if the timeout expires.
     """
     kafka_bootstrap = (
-        os.getenv("SOMABRAIN_KAFKA_URL")
-        or os.getenv("SOMA_KAFKA_BOOTSTRAP")
+        shared_settings.kafka_bootstrap_servers
         or "localhost:9092"
     )
-    topic = os.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
+    topic = shared_settings.topic_config_updates
     consumer_conf = {
         "bootstrap.servers": kafka_bootstrap,
         "group.id": "ci-config-verify",

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import os
+from common.config.settings import settings as shared_settings
 import sys
 import time
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "kafka://127.0.0.1:30001"
-    return url.replace("kafka://", "")
+    url = shared_settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
+    return str(url).replace("kafka://", "")
 
 
 def main() -> int:

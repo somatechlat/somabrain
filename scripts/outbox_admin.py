@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+from somabrain.infrastructure import get_api_base_url
 import sys
 from typing import Any, Dict, Iterable
 
@@ -27,7 +27,9 @@ from collections import defaultdict
 
 
 def _default_base_url() -> str:
-    return os.getenv("SOMA_API_URL", "http://127.0.0.1:9696").rstrip("/")
+    # Use the centralized helper to obtain the API base URL, falling back to the
+    # historic default only if the helper returns ``None``.
+    return (get_api_base_url() or "http://127.0.0.1:9696").rstrip("/")
 
 
 def _default_token() -> str | None:

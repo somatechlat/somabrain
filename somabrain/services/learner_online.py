@@ -68,12 +68,9 @@ TOPIC_NEXT = os.getenv("SOMABRAIN_TOPIC_NEXT_EVENTS", "cog.next.events")
 
 
 def _bootstrap() -> str:
-    # Prefer in-network bootstrap set by compose/k8s, then fall back to SOMABRAIN_KAFKA_URL
-    url = (
-        os.getenv("SOMA_KAFKA_BOOTSTRAP")
-        or os.getenv("SOMABRAIN_KAFKA_URL")
-        or "somabrain_kafka:9092"
-    )
+    # Use the centralized Settings for Kafka bootstrap servers.
+    from common.config.settings import settings as _settings  # type: ignore
+    url = _settings.kafka_bootstrap_servers or "somabrain_kafka:9092"
     return url.replace("kafka://", "")
 
 
@@ -465,7 +462,7 @@ class LearnerService:
     def _observe_reward(self, ev: Dict[str, Any]) -> None:
         tenant = (
             str(
-                ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+                ev.get("tenant") or settings.default_tenant
             ).strip()
             or "public"
         )
@@ -521,7 +518,7 @@ class LearnerService:
         """
         tenant = (
             str(
-                ev.get("tenant") or os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+                ev.get("tenant") or settings.default_tenant
             ).strip()
             or "public"
         )
@@ -606,7 +603,7 @@ class LearnerService:
                         except Exception:
                             ktau = 0.7
                         self._emit_cfg(
-                            os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"), ktau
+                            settings.default_tenant, ktau
                         )
                     continue
                 if msg.error():

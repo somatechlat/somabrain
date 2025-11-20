@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from somabrain.infrastructure import get_api_base_url
 import pathlib
 import time
 import uuid
@@ -11,7 +11,7 @@ from typing import Dict, List
 import matplotlib.pyplot as plt
 import requests
 
-BASE_URL = os.getenv("SOMA_API_URL", "http://127.0.0.1:9696").rstrip("/")
+BASE_URL = get_api_base_url().rstrip("/")
 OUTPUT_PATH = pathlib.Path("artifacts/plots/learning_curve.png")
 OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 

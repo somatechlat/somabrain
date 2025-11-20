@@ -30,7 +30,9 @@ def main() -> None:
     if drift_detector.enabled:
         state = drift_detector.export_state()
     else:
-        store_path = os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
+        # Use centralized Settings for drift store path
+        from common.config.settings import settings as shared_settings
+        store_path = shared_settings.drift_store_path
         p = Path(store_path)
         if p.exists():
             try:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from common.config.settings import settings
 import random
 import time
 from typing import Any, Dict, Optional
@@ -24,10 +25,10 @@ SOMA_TOPIC = TOPICS["soma_agent"]
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    # Use the centralized Settings singleton for the Kafka bootstrap URL.
+    from common.config.settings import settings as _settings  # type: ignore
+    url = _settings.kafka_bootstrap_servers
     if not url:
-        # Require explicit Kafka URL in environment to avoid accidental
-        # use of localhost/dev brokers in production.
         raise RuntimeError(
             "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
         )
@@ -83,7 +84,7 @@ def run_forever() -> None:  # pragma: no cover
     )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        if os.getenv("HEALTH_PORT"):
+        if settings.health_port:
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -104,7 +105,7 @@ def run_forever() -> None:  # pragma: no cover
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
@@ -131,7 +132,7 @@ def run_forever() -> None:  # pragma: no cover
     soma_serde = _soma_serde()
     from somabrain import runtime_config as _rt
 
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    tenant = settings.default_tenant
     model_ver = _rt.get_str("agent_model_ver", "v1")
     period = _rt.get_float("agent_update_period", 0.7)
     soma_compat = _rt.get_bool("soma_compat", False)

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from somabrain.infrastructure import get_api_base_url
 import sys
 import time
 from typing import Any, Dict
@@ -86,8 +87,9 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default=os.getenv("SOMA_API_URL", "http://127.0.0.1:9696"))
-    ap.add_argument("--universe", default=os.getenv("SOMA_UNIVERSE"))
+    ap.add_argument("--url", default=get_api_base_url())
+    from common.config.settings import settings as shared_settings
+    ap.add_argument("--universe", default=shared_settings.universe)
     args = ap.parse_args()
     try:
         run_smoke(args.url.rstrip("/"), args.universe)

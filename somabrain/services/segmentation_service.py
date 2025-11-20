@@ -29,7 +29,7 @@ Environment variables:
 
 from __future__ import annotations
 
-import os
+from somabrain.infrastructure import get_kafka_bootstrap
 import time
 from dataclasses import dataclass
 import threading
@@ -165,26 +165,31 @@ def _init_metrics() -> None:
 
 @dataclass
 class Frame:
+    """Simple container for a segmentation frame.
+
+    Attributes:
+        ts: Timestamp string (ISO8601 or epoch ms).
+        leader: The current leader domain (e.g., "state", "agent", "action").
+        tenant: Tenant identifier – defaults to "public".
+    """
+
     ts: str
     leader: str
-    tenant: str
+    tenant: str = "public"
 
 
 def _parse_frame(value: bytes, serde: AvroSerde) -> Optional[Frame]:
-    if value is None:
-        return None
+    """Deserialize a raw Kafka value into a :class:`Frame`.
+
+    The function safely extracts ``ts``, ``leader`` and optional ``tenant``
+    fields. If required fields are missing or deserialization fails, ``None``
+    is returned.
+    """
     try:
         data = serde.deserialize(value)  # type: ignore[arg-type]
         ts = str(data.get("ts") or "")
         leader = str(data.get("leader") or "")
-        # tenant is nested in frame map from IntegratorHub
-        tenant = "public"
-        try:
-            frame_map = data.get("frame") or {}
-            tv = frame_map.get("tenant") if isinstance(frame_map, dict) else None
-            tenant = str(tv or "public").strip() or "public"
-        except Exception:
-            tenant = "public"
+        tenant = str((data.get("tenant") or "public").strip() or "public")
         if not ts or not leader:
             return None
         return Frame(ts=ts, leader=leader, tenant=tenant)
@@ -221,10 +226,11 @@ def _parse_update(value: bytes, serde: AvroSerde) -> Optional[Update]:
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    # Use the centralized helper to obtain the Kafka bootstrap URL.
+    url = get_kafka_bootstrap()
     if not url:
         raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
-    return url.replace("kafka://", "")
+    return str(url).replace("kafka://", "")
 
 
 def _now_ms() -> int:
@@ -599,7 +605,8 @@ class SegmentationService:
 
         # Start health server for k8s probes
         try:
-            if os.getenv("HEALTH_PORT"):
+            from common.config.settings import settings as _settings  # type: ignore
+            if _settings.health_port:
                 self._start_health_server()
         except Exception:
             pass
@@ -672,7 +679,8 @@ class SegmentationService:
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            from common.config.settings import settings as _settings  # type: ignore
+            port = int(_settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             th = threading.Thread(target=server.run, daemon=True)

@@ -13,7 +13,7 @@ Notes:
 from __future__ import annotations
 
 import json
-import os
+from common.config.settings import settings as shared_settings
 import sys
 import time
 from dataclasses import dataclass
@@ -38,8 +38,8 @@ REWARD_TOPIC = "cog.reward.events"
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL") or "kafka://127.0.0.1:30102"
-    return url.replace("kafka://", "")
+    url = shared_settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30102"
+    return str(url).replace("kafka://", "")
 
 
 def _avro_reward_serde() -> Optional[AvroSerde]:
