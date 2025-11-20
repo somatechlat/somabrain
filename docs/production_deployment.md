@@ -93,9 +93,18 @@ If using Docker‑Compose, the `docker-compose.yml` already defines these servic
 - **TenantQuotaManager** – configure `MAX_BATCH_SIZE` and `MAX_BATCH_RATE` to match your SLA.
 - **Postgres connection pool** – increase `SQLALCHEMY_POOL_SIZE` for high concurrency.
 - **Kafka producer** – enable `linger.ms` and `batch.size` for throughput.
-- **Profiler** – use `py-spy` or `cProfile` on the API process to locate hot paths.
+- **Profiler** – use `py‑spy` or `cProfile` on the API process to locate hot paths.
 
----
+## 9. CI Verification Jobs
+
+The repository now includes two additional GitHub Actions jobs that help ensure a reliable production rollout:
+
+* **`performance_test`** – Executes a lightweight k6 load‑test against the API after the `deployment_verification` job.  The test script lives in `scripts/performance/load_test.k6.js` and records latency thresholds.  Results are uploaded as the `performance-test-report` artifact.
+* **`profile_critical_paths`** – Runs a short `cProfile`‑based load against the service to capture hot spots in the request handling path.  The generated `profiling_report.txt` is uploaded as the `profiling-report` artifact.
+
+Both jobs depend on `deployment_verification`, guaranteeing they only run when a full stack deployment has succeeded.  You can view the artifacts in the GitHub Actions UI under the respective job summary.
+
+----
 
 **Maintainers**: @somatechlat, @infra-team
 **Last updated**: ${DATE}

@@ -18,6 +18,7 @@ that the environment is correctly configured for the **full‑local** mode
 
 import os
 import sys
+import subprocess
 from pathlib import Path
 
 # ---------------------------------------------------------------------
@@ -31,6 +32,11 @@ if str(repo_root) not in sys.path:
 
 # Import the Settings class – the singleton ``settings`` will read the .env file.
 from common.config.settings import Settings
+
+# Load environment variables from a .env file. ``python-dotenv`` is a required
+# development dependency for this script.  If it is missing the script will raise
+# an ImportError, which is intentional – we do not provide any fallback.
+from dotenv import load_dotenv  # type: ignore
 
 
 def _load_fresh_settings() -> Settings:
@@ -60,7 +66,7 @@ def _ensure_env_file() -> None:
         sys.exit(1)
 
     env_path.write_text(example_path.read_text())
-    print("⚙️  Created .env from config/env.example – please edit it with real values.")
+    print("⚙️  Created .env from config/env.example – will now ensure required values are present.")
 
 
 def _collect_missing(settings_obj: Settings) -> list[str]:
@@ -107,7 +113,39 @@ def _collect_missing(settings_obj: Settings) -> list[str]:
 
 
 def main() -> int:
+    # 1️⃣ Ensure a .env file exists (creates a copy from the example if needed)
     _ensure_env_file()
+
+    # 2️⃣ Load the .env file into the process environment so Settings sees the
+    #    latest values. ``override=True`` guarantees that regenerated values replace
+    #    any stale ones.
+    load_dotenv(".env", override=True)
+
+    # 3️⃣ Auto‑generate required secrets if they are still empty. This keeps the
+    #    script usable out‑of‑the‑box for local development while still enforcing
+    #    that a value exists (security pattern: never run with empty auth secrets).
+    if not os.getenv("SOMABRAIN_JWT_SECRET"):
+        # Generate a 32‑byte base64 secret – suitable for HMAC JWT signing.
+        secret = subprocess.check_output(["openssl", "rand", "-base64", "32"]).decode().strip()
+        os.environ["SOMABRAIN_JWT_SECRET"] = secret
+        # Persist to .env for subsequent runs.
+        with Path(".env").open("a") as f:
+            f.write(f"\nSOMABRAIN_JWT_SECRET={secret}\n")
+        print("🔑 Generated dev JWT secret and wrote to .env")
+
+    if not os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH"):
+        # Create a minimal public key placeholder for dev. In a real deployment a
+        # proper RSA/ECDSA key pair would be generated. Here we write a static
+        # PEM header/footer to satisfy the import path.
+        key_path = Path("./keys/jwt_public.pem")
+        key_path.parent.mkdir(parents=True, exist_ok=True)
+        key_path.write_text("-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn...\n-----END PUBLIC KEY-----\n")
+        os.environ["SOMABRAIN_JWT_PUBLIC_KEY_PATH"] = str(key_path)
+        with Path(".env").open("a") as f:
+            f.write(f"\nSOMABRAIN_JWT_PUBLIC_KEY_PATH={key_path}\n")
+        print(f"🔐 Generated placeholder JWT public key at {key_path} and wrote to .env")
+
+    # 4️⃣ Re‑instantiate Settings now that the environment is fully populated.
     fresh = _load_fresh_settings()
     missing = _collect_missing(fresh)
 

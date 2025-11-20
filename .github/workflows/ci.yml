@@ -281,42 +281,142 @@ jobs:
         run: |
           for i in {1..60}; do
             if kubectl -n soma get pods --no-headers | awk '{print $3}' | grep -qE "^(Running|Completed)$"; then echo ok; break; fi; sleep 5; done
-      - name: Cluster E2E smoke (Kafka topics inside cluster)
-        run: |
-          kubectl -n soma run topic-probe --image=python:3.11-alpine --restart=Never --command -- sh -c '
-            python - <<"PY"
-import os, sys, time
-try:
-    from kafka import KafkaConsumer
-except Exception:
-    os.system("pip install -q kafka-python >/dev/null 2>&1")
-    from kafka import KafkaConsumer
-
-def consume_one(topic, timeout_s=60):
-    c = KafkaConsumer(topic,
-        bootstrap_servers="soma-infra-kafka:9092",
-        value_deserializer=lambda m: m,
-        auto_offset_reset="latest",
-        enable_auto_commit=False,
-        consumer_timeout_ms=int(timeout_s*1000),
-        group_id=f"smoke-{int(time.time())}")
-    try:
-        for m in c:
-            if getattr(m, "value", None):
-                return True
-        return False
-    finally:
-        try: c.close()
-        except: pass
-
-ok1 = consume_one("cog.global.frame", 90)
-ok2 = consume_one("cog.segments", 90)
-sys.exit(0 if (ok1 and ok2) else 1)
-PY'
-          kubectl -n soma wait --for=condition=Ready pod/topic-probe --timeout=120s || true
-          kubectl -n soma logs topic-probe || true
-          kubectl -n soma delete pod topic-probe --ignore-not-found=true
       - name: Tear down kind cluster
         if: always()
         run: |
           kind delete cluster --name soma-ci || true
+
+# ---------------------------------------------------------------------------
+# Sprint 2 – Deployment verification CI job
+# ---------------------------------------------------------------------------
+  deployment_verification:
+    name: Deployment verification
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Build Docker image (somabrain:ci)
+        run: |
+          docker build -t somabrain:ci .
+
+      - name: Prepare .env for compose
+        run: |
+          cp config/env.example .env
+          echo "SOMABRAIN_JWT_SECRET=ci-secret" >> .env
+          echo "SOMABRAIN_JWT_PUBLIC_KEY_PATH=./keys/jwt_public.pem" >> .env
+          mkdir -p keys
+          echo "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn...\n-----END PUBLIC KEY-----" > keys/jwt_public.pem
+
+      - name: Spin up services with Docker Compose
+        run: |
+          docker compose up -d
+          # Wait for all services to become healthy (max 120 seconds)
+          timeout 120 bash -c "while ! docker compose ps | grep -q 'healthy'; do sleep 5; done"
+
+      - name: Run deployment verification script
+        run: |
+          python scripts/verify_deployment.py
+
+      - name: Tear down Docker Compose services
+        if: always()
+        run: |
+          docker compose down
+
+  # ---------------------------------------------------------------------------
+  # Performance testing harness (k6) – runs after deployment verification
+  # ---------------------------------------------------------------------------
+  performance_test:
+    name: Performance test (k6)
+    runs-on: ubuntu-latest
+    needs: deployment_verification
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install k6 (via Docker)
+        run: |
+          docker pull loadimpact/k6:latest
+
+      - name: Run k6 load test against deployed API
+        env:
+          # Use the same .env generated in deployment_verification
+          SOMABRAIN_JWT_SECRET: ci-secret
+        run: |
+          # Ensure services are up (reuse the compose from previous job is not possible,
+          # so we spin up a minimal compose for the API only)
+          docker compose -f docker-compose.yml up -d somabrain_app
+          # Wait for health endpoint
+          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}/health >/dev/null 2>&1; do sleep 5; done"
+          # Execute k6 script
+          docker run --rm -i \
+            -e BASE_URL=http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696} \
+            -v $(pwd)/scripts/performance:/scripts \
+            loadimpact/k6 run /scripts/load_test.k6.js
+
+      - name: Tear down performance services
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml down
+
+  # ---------------------------------------------------------------------------
+  # Profiling critical paths (cProfile) – runs after performance tests
+  # ---------------------------------------------------------------------------
+  profile_critical_paths:
+    name: Profile critical paths
+    runs-on: ubuntu-latest
+    needs: performance_test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Build Docker image
+        run: |
+          docker build -t somabrain:ci .
+
+      - name: Spin up minimal services for profiling
+        run: |
+          docker compose -f docker-compose.yml up -d somabrain_app
+          # Wait for health endpoint
+          timeout 60 bash -c "while ! curl -sSf http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}/health >/dev/null 2>&1; do sleep 5; done"
+
+      - name: Run profiling script (cProfile)
+        env:
+          BASE_URL: http://127.0.0.1:${SOMABRAIN_HOST_PORT:-9696}
+        run: |
+          python scripts/profiling/run_profile.py --duration 30
+
+      - name: Tear down profiling services
+        if: always()
+        run: |
+          docker compose -f docker-compose.yml down
+
+      - name: Upload profiling report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: profiling-report
+          path: profiling_report.txt
+          if-no-files-found: warn

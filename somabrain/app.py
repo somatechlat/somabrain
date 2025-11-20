@@ -3836,9 +3836,10 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     # Retrieve the predictor, neuromodulators and personality store for the tenant
     # Use the configured predictor factory instead of instantiating a stub.
     predictor = _make_predictor()
-    # Run a single evaluation step – use the cognitive loop service helper
-    # For simplicity we compute novelty as 0.0 and use a dummy WM vector.
-    # The service will handle predictor alternatives and neuromodulation.
+    # Run a single evaluation step – use the cognitive loop service helper.
+    # For this simplified endpoint, novelty is computed as 0.0, but the real
+    # embedder is used to generate the working memory vector. The service
+    # will handle predictor alternatives and neuromodulation.
     wm_vec = embedder.embed(body.task)
     step_result = _eval_step(
         novelty=0.0,

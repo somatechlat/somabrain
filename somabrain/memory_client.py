@@ -240,9 +240,9 @@ class MemoryClient:
     ----------
     - Tenancy scoping via namespace (separate local mirrors per namespace)
     - Legacy vendor-specific memory client imports stay isolated to this module (ADR‑0002)
-    - Backend enforcement: If SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS is enabled and neither HTTP nor
-        deterministic local recall returns hits, recall() raises instead of silently
-        falling back to a blind recent‑payload stub.
+    - Backend enforcement: If SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS is enabled,
+        recall() raises a RuntimeError if the HTTP backend is unavailable. It does
+        not silently fall back to a stub.
 
     Implementation Notes
     --------------------
