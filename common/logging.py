@@ -11,7 +11,8 @@ from __future__ import annotations
 import logging
 from logging import Logger
 
-from .config import settings
+# Import the shared settings object directly from the modern configuration package.
+from common.config.settings import settings
 
 # Map the textual log level from Settings to the corresponding ``logging`` constant.
 _LEVEL = getattr(logging, settings.log_level.upper(), logging.INFO)

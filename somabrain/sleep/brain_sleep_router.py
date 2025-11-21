@@ -27,7 +27,7 @@ from somabrain.sleep.models import TenantSleepState
 from somabrain.storage.db import get_session_factory
 from somabrain.metrics import get_gauge
 from somabrain.api.schemas.sleep import SleepRequest
-from somabrain.infrastructure.circuit_breaker import CircuitBreaker
+from somabrain.infrastructure.cb_registry import get_cb
 from somabrain.sleep.cb_adapter import map_cb_to_sleep
 
 router = APIRouter()
@@ -71,7 +71,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=403, detail="OPA policy denied cognitive sleep request")
 
     manager = SleepStateManager()
-    cb = CircuitBreaker()
+    cb = get_cb()
     target_state = SleepState[body.target_state.name]
     Session = get_session_factory()
     with Session() as session:

@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-from .config import Config
+# Updated import to use shared settings
+from common.config.settings import settings as shared_settings
+# Provide Config alias for backward compatibility
+Config = shared_settings
 from .memory_client import MemoryClient
 
 

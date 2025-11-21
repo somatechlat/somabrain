@@ -6,6 +6,7 @@ singletons initialized, avoiding import-time backend-enforcement failures.
 """
 from common.config.settings import settings as shared_settings
 import sys
+import os
 import uvicorn
 import yaml
 import logging.config

@@ -2451,33 +2451,96 @@ def _sleep_loop():
 
 @app.get("/health", response_model=S.HealthResponse)
 async def health(request: Request) -> S.HealthResponse:
-    # Public health endpoint – no authentication required
+    """Public health endpoint with shared CB + sleep degradation semantics."""
+
+    from somabrain.infrastructure.cb_registry import get_cb
+    from somabrain.sleep import SleepState
+    from somabrain.sleep.cb_adapter import map_cb_to_sleep
+    from somabrain.services.memory_service import MemoryService
+
     ctx = await get_tenant_async(request, cfg.namespace)
-    comps = {
-        "memory": mt_memory.for_namespace(ctx.namespace).health(),
-        "memory_circuit_open": memory_service._is_circuit_open(),
-        "wm_items": "tenant-scoped",
-        "api_version": API_VERSION,
-    }
+    tenant_id = ctx.tenant_id
+    cb = get_cb()
+
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
-    resp = S.HealthResponse(ok=True, components=comps).model_dump()
+
+    resp = S.HealthResponse(
+        ok=True,
+        components={
+            "memory": {},
+            "memory_circuit_open": False,
+            "wm_items": "tenant-scoped",
+            "api_version": API_VERSION,
+        },
+    ).model_dump()
     resp["namespace"] = ctx.namespace
     resp["trace_id"] = trace_id
     resp["deadline_ms"] = deadline_ms
     resp["idempotency_key"] = idempotency_key
-    # Expose key learning/config diagnostics
-    try:
-        from somabrain import runtime_config as _rt
 
-        resp["entropy_cap"] = _rt.get_float("entropy_cap", None)
-        resp["entropy_cap_enabled"] = _rt.get_bool("entropy_cap_enabled", False)
-        resp["tau_decay_rate"] = _rt.get_float("tau_decay_rate", None)
+    # Stub audit
+    try:
+        from somabrain.stub_audit import (
+            BACKEND_ENFORCED as __BACKEND_ENFORCED,
+            stub_stats as __stub_stats,
+        )
+
+        resp["stub_counts"] = __stub_stats()
+        if any(resp["stub_counts"].values()):
+            resp["ok"] = False
+        resp["external_backends_required"] = bool(__BACKEND_ENFORCED)
     except Exception:
-        resp["entropy_cap"] = None
-        resp["entropy_cap_enabled"] = None
-        resp["tau_decay_rate"] = None
+        resp["stub_counts"] = {}
+        resp["external_backends_required"] = BACKEND_ENFORCEMENT
+
+    # Predictor / embedder diagnostics
+    resp["predictor_provider"] = _PREDICTOR_PROVIDER
+    try:
+        edim = None
+        if embedder is not None:
+            vec = embedder.embed("health_probe")  # type: ignore[attr-defined]
+            if hasattr(vec, "shape"):
+                shape = getattr(vec, "shape")
+                edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
+        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
+    except Exception:
+        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
+
+    # Memory health + CB mapping
+    ns_mem = mt_memory.for_namespace(ctx.namespace)
+    memory_ok = False
+    try:
+        mhealth = ns_mem.health()
+        resp["components"]["memory"] = mhealth
+        if isinstance(mhealth, dict):
+            memory_ok = bool(mhealth.get("http")) or bool(mhealth.get("ok"))
+    except Exception:
+        memory_ok = False
+
+    if memory_ok:
+        cb.record_success(tenant_id)
+    else:
+        cb.record_failure(tenant_id)
+
+    circuit_open = cb.is_open(tenant_id)
+    should_reset = cb.should_attempt_reset(tenant_id)
+    resp["memory_circuit_open"] = circuit_open
+    resp["components"]["memory_circuit_open"] = circuit_open
+    resp["memory_should_reset"] = should_reset
+    resp["memory_ok"] = memory_ok
+    resp["memory_degraded"] = circuit_open or should_reset
+
+    # Sleep state derived from CB status
+    resp["sleep_state"] = map_cb_to_sleep(cb, tenant_id, SleepState.ACTIVE).value
+
+    # WM items
+    try:
+        resp["components"]["wm_items"] = int(getattr(ns_mem, "count", lambda: 0)())
+    except Exception:
+        resp["components"]["wm_items"] = 0
+
     # Downstream health (integrator + segmentation)
     import urllib.request
 
@@ -2489,314 +2552,45 @@ async def health(request: Request) -> S.HealthResponse:
             return False
 
     integrator_url = os.getenv(
-        "SOMABRAIN_INTEGRATOR_HEALTH_URL", "http://somabrain_integrator_triplet:9015/health"
+        "SOMABRAIN_INTEGRATOR_HEALTH_URL",
+        "http://somabrain_integrator_triplet:9015/health",
     )
     segmentation_url = os.getenv(
         "SOMABRAIN_SEGMENTATION_HEALTH_URL", "http://somabrain_cog:9016/health"
     )
     resp["integrator_health"] = _ping(integrator_url)
     resp["segmentation_health"] = _ping(segmentation_url)
-    # Constitution info (optional)
-    cengine = getattr(request.app.state, "constitution_engine", None)
-    if cengine:
-        checksum = getattr(cengine, "get_checksum", lambda: None)()
-        resp["constitution_version"] = checksum
-        resp["constitution_status"] = "loaded" if checksum else "not-loaded"
-    else:
-        resp["constitution_version"] = None
-        resp["constitution_status"] = "disabled"
-    # Expose minimal API flag for diagnostics so tests / ops can verify mode.
-    try:
-        resp["minimal_public_api"] = bool(_MINIMAL_API)
-    except Exception:
-        resp["minimal_public_api"] = None
-    # Backend enforcement & predictor/embedder diagnostics
-    fd_violation = False
-    scorer_stats: Optional[Dict[str, Any]] = None
-    backend_enforced_flag = BACKEND_ENFORCEMENT
-    try:
-        from somabrain.stub_audit import (
-            BACKEND_ENFORCED as __BACKEND_ENFORCED,
-            stub_stats as __stub_stats,
-        )
-        from somabrain.opa.client import opa_client as __opa
 
-        backend_enforced_flag = bool(__BACKEND_ENFORCED)
-        if not backend_enforced_flag and shared_settings is not None:
-            try:
-                backend_enforced_flag = bool(
-                    getattr(shared_settings, "require_external_backends", False)
-                )
-            except Exception:
-                backend_enforced_flag = bool(__BACKEND_ENFORCED)
-        resp["external_backends_required"] = backend_enforced_flag
-        resp["predictor_provider"] = _PREDICTOR_PROVIDER
-        # Full-stack mode flag (forces external memory presence & embedder)
-        if shared_settings is not None:
-            try:
-                full_stack = bool(getattr(shared_settings, "force_full_stack", False))
-            except Exception:
-                full_stack = False
-        else:
-            full_stack_env = os.getenv("SOMABRAIN_FORCE_FULL_STACK")
-            if full_stack_env is not None:
-                full_stack = full_stack_env.strip().lower() in (
-                    "1",
-                    "true",
-                    "yes",
-                    "on",
-                )
-            else:
-                full_stack = False
-        resp["full_stack"] = bool(full_stack)
-        try:
-            edim = None
-            if embedder is not None:
-                probe_text = "health_probe"
-                try:
-                    v = embedder.embed(probe_text)  # type: ignore[attr-defined]
-                    if hasattr(v, "shape"):
-                        shp = getattr(v, "shape")
-                        # accept 1-D vectors or (dim,) style tuples
-                        if isinstance(shp, (list, tuple)) and len(shp) > 0:
-                            edim = int(shp[0])
-                        else:
-                            edim = int(getattr(v, "shape")[0])  # type: ignore[index]
-                except Exception:
-                    # Use configured embed_dim if present
-                    try:
-                        edim = int(getattr(cfg, "embed_dim", None) or 0) or None
-                    except Exception:
-                        edim = None
-            resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
-        except Exception:
-            resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
-    try:
-        resp["stub_counts"] = __stub_stats()
-    except Exception:
-        resp["stub_counts"] = {}
-    # Fail-fast if any stub usage is detected
-    try:
-        if any(v for v in resp.get("stub_counts", {}).values()):
-            resp["ok"] = False
-    except Exception:
-        pass
-        # Readiness heuristic
-        mem_items = 0
-        try:
-            ns_mem = mt_memory.for_namespace(ctx.namespace)
-            mem_items = int(getattr(ns_mem, "count", lambda: 0)() or 0)
-        except Exception:
-            pass
-        predictor_ok = (
-            _PREDICTOR_PROVIDER not in ("stub", "baseline")
-        ) or not backend_enforced_flag
-        # Allow ops override to relax predictor requirement for readiness while keeping strict memory/embedder
-        relax_overrides = False
-        if shared_settings is not None:
-            try:
-                relax_overrides = bool(
-                    getattr(shared_settings, "relax_predictor_ready", False)
-                )
-            except Exception:
-                relax_overrides = False
-        elif os.getenv("SOMABRAIN_RELAX_PREDICTOR_READY") is not None:
-            relax_env = os.getenv("SOMABRAIN_RELAX_PREDICTOR_READY")
-            relax_overrides = bool(
-                relax_env and relax_env.strip().lower() in ("1", "true", "yes", "on")
-            )
-        if relax_overrides:
-            predictor_ok = True
-        # Backend enforcement requires the memory service to be reachable for readiness
-        memory_ok = False
-        try:
-            mhealth = ns_mem.health()  # type: ignore[name-defined]
-            if isinstance(mhealth, dict):
-                # When enforcement is active, require HTTP endpoint to be healthy
-                memory_ok = bool(mhealth.get("http", False))
-            else:
-                memory_ok = (
-                    bool(mhealth.get("ok", False))
-                    if isinstance(mhealth, dict)
-                    else False
-                )
-        except Exception:
-            memory_ok = False
+    # Backend readiness checks
+    predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or (
+        not resp.get("external_backends_required", False)
+    )
+    embedder_ok = resp["embedder"]["dim"] is not None or embedder is not None
 
-        # Add circuit breaker state to health response
-        # The legacy implementation inspected a class‑level ``_circuit_open`` dict.
-        # After centralising circuit‑breaker state in ``MemoryService._circuit_breaker``
-        # we derive a boolean indicating whether *any* tenant currently has an
-        # open circuit.  This preserves the original health‑check semantics.
-        try:
-            from somabrain.services.memory_service import MemoryService
+    kafka_ok = check_kafka(os.getenv("SOMABRAIN_KAFKA_URL"))
+    postgres_ok = check_postgres(os.getenv("SOMABRAIN_POSTGRES_DSN"))
 
-            breaker = MemoryService._circuit_breaker
-            # ``breaker._circuit_open`` is an internal dict mapping tenant → bool.
-            # If it exists, aggregate the values; otherwise assume closed.
-            circuit_dict = getattr(breaker, "_circuit_open", {})  # type: ignore[attr-defined]
-            circuit_open = any(bool(v) for v in circuit_dict.values())
-            resp["memory_circuit_open"] = circuit_open
-        except Exception:
-            resp["memory_circuit_open"] = None
-        embedder_ok = embedder is not None
-        # Retrieval readiness probe: ensure embedder + vector recall path responds
-        retrieval_ready = False
-        try:
-            ns_mem = mt_memory.for_namespace(ctx.namespace)
-            # Minimal probe: attempt a tiny recall and an embed; success does not require hits
-            _ = ns_mem.recall("health_probe", top_k=1)
-            if embedder is not None:
-                _ = embedder.embed("health_probe")
-            retrieval_ready = True
-        except Exception:
-            retrieval_ready = False
-        # OPA readiness (only required if fail-closed posture is enabled)
-        if shared_settings is not None:
-            try:
-                opa_required = bool(getattr(shared_settings, "opa_fail_closed", False))
-            except Exception:
-                opa_required = False
-        else:
-            opa_required = True
-        opa_ok = True
-        if opa_required:
-            try:
-                opa_ok = bool(__opa.is_ready())
-            except Exception:
-                opa_ok = False
-        resp["opa_ok"] = bool(opa_ok)
-        # Core backend connectivity (Kafka, Postgres) – real checks, not exporters
-        kafka_url = os.getenv("SOMABRAIN_KAFKA_URL")
-        try:
-            # Allow config override if available
-            if not kafka_url and hasattr(cfg, "kafka_bootstrap"):
-                kafka_url = str(getattr(cfg, "kafka_bootstrap"))
-        except Exception:
-            pass
-        pg_dsn = os.getenv("SOMABRAIN_POSTGRES_DSN")
-        try:
-            if not pg_dsn and hasattr(cfg, "postgres_dsn"):
-                pg_dsn = str(getattr(cfg, "postgres_dsn"))
-        except Exception:
-            pass
-        kafka_ok = check_kafka(kafka_url)
-        postgres_ok = check_postgres(pg_dsn)
-        resp["kafka_ok"] = bool(kafka_ok)
-        resp["postgres_ok"] = bool(postgres_ok)
-        # Enforce full-stack readiness if requested (and include OPA if required)
-        if full_stack:
-            enforced_ready = (
-                predictor_ok
-                and memory_ok
-                and embedder_ok
-                and kafka_ok
-                and postgres_ok
-                and (opa_ok if opa_required else True)
-            )
-        else:
-            base_ok = (
-                predictor_ok and memory_ok and embedder_ok and kafka_ok and postgres_ok
-            )
-            enforced_ready = (not backend_enforced_flag) or (
-                base_ok and (opa_ok if opa_required else True)
-            )
-        # If predictor still blocking readiness and override present, degrade message
-        if not enforced_ready and predictor_ok and memory_ok and embedder_ok:
-            # Should not happen, but safeguard: mark ready
-            enforced_ready = True
-        resp["ready"] = bool(enforced_ready)
-        resp["memory_items"] = mem_items
-        # Add factor visibility for debugging & ops
-        resp["predictor_ok"] = bool(predictor_ok)
-        resp["memory_ok"] = bool(memory_ok)
-        resp["embedder_ok"] = bool(embedder_ok)
-        resp["opa_required"] = bool(opa_required)
-        resp["retrieval_ready"] = bool(retrieval_ready)
-        # Unified scorer & FD health invariants
-        try:
-            scorer_stats = unified_scorer.stats()
-        except Exception:
-            scorer_stats = None
-        resp["scorer"] = scorer_stats
-        if isinstance(scorer_stats, dict):
-            fd_stats = scorer_stats.get("fd") if "fd" in scorer_stats else None
-            if isinstance(fd_stats, dict):
-                trace_err = float(fd_stats.get("trace_norm_error", 0.0) or 0.0)
-                psd_ok = bool(fd_stats.get("psd_ok", False))
-                capture_ratio = fd_stats.get("capture_ratio")
-                resp["fd_trace_norm_error"] = trace_err
-                resp["fd_psd_ok"] = psd_ok
-                if capture_ratio is not None:
-                    resp["fd_capture_ratio"] = float(capture_ratio)
-                if not psd_ok or trace_err > 1e-4:
-                    fd_violation = True
-                    resp.setdefault("alerts", []).append("fd_scorer_invariant")
-    except Exception:
-        resp["external_backends_required"] = False
-        resp["ready"] = True
-        scorer_stats = None
+    resp["kafka_ok"] = bool(kafka_ok)
+    resp["postgres_ok"] = bool(postgres_ok)
+    resp["predictor_ok"] = bool(predictor_ok)
+    resp["embedder_ok"] = bool(embedder_ok)
 
-    if "scorer" not in resp:
-        resp["scorer"] = scorer_stats
+    resp["ready"] = bool(
+        memory_ok
+        and not circuit_open
+        and predictor_ok
+        and embedder_ok
+        and kafka_ok
+        and postgres_ok
+    )
 
-    # Only enforce FD scorer invariants on health if explicitly enabled.
-    enforce_fd = False
-    try:
-        if shared_settings is not None:
-            try:
-                enforce_fd = bool(
-                    getattr(shared_settings, "enforce_fd_invariants", False)
-                )
-            except Exception:
-                enforce_fd = False
-        if not enforce_fd:
-            env_flag = os.getenv("SOMABRAIN_ENFORCE_FD_INVARIANTS", "").strip().lower()
-            enforce_fd = env_flag in ("1", "true", "yes", "on")
-    except Exception:
-        enforce_fd = False
-    if enforce_fd and fd_violation and resp.get("ok", True) and resp.get("ready", True):
-        resp["ok"] = False
-        resp["ready"] = False
-
-    # Best-effort: observe exporter availability and mark metrics scraped when reachable
-    try:
-        if opa_ok:
-            M.mark_external_metric_scraped("opa")
-        # Only attempt exporter probes if running in Docker network (common in dev/compose)
-        try:
-            import httpx  # type: ignore
-
-            with httpx.Client(timeout=1.0) as _hc:
-                try:
-                    kr = _hc.get("http://somabrain_kafka_exporter:9308/")
-                    if int(getattr(kr, "status_code", 0) or 0) == 200:
-                        M.mark_external_metric_scraped("kafka")
-                except Exception:
-                    pass
-                try:
-                    pr = _hc.get("http://somabrain_postgres_exporter:9187/")
-                    if int(getattr(pr, "status_code", 0) or 0) == 200:
-                        M.mark_external_metric_scraped("postgres")
-                except Exception:
-                    pass
-        except Exception:
-            pass
-    except Exception:
-        pass
+    # Minimal API flag for diagnostics
+    resp["minimal_public_api"] = bool(_MINIMAL_API)
 
     # Observability readiness derived from real backend connectivity
-    metrics_required = ["kafka", "postgres"] + (
-        ["opa"] if resp.get("opa_required") else []
-    )
-    metrics_ready = (
-        bool(resp.get("kafka_ok"))
-        and bool(resp.get("postgres_ok"))
-        and (bool(resp.get("opa_ok")) if resp.get("opa_required") else True)
-    )
-    resp["metrics_ready"] = bool(metrics_ready)
-    resp["metrics_required"] = metrics_required
-    # Do not force-fail health solely due to exporter scrape state; we base it on connectivity above.
+    resp["metrics_required"] = ["kafka", "postgres"]
+    resp["metrics_ready"] = bool(kafka_ok and postgres_ok)
+
     return resp
 
 

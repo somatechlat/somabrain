@@ -7,14 +7,15 @@ delegates circuit‑breaker logic to the shared :class:`~somabrain.infrastructur
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Iterable
 
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
-from ..infrastructure.circuit_breaker import CircuitBreaker
+from somabrain.infrastructure.cb_registry import get_cb
 from ..infrastructure.tenant import tenant_label, resolve_namespace
-# Import centralised settings for circuit‑breaker defaults
 from common.config.settings import settings as shared_settings
+from somabrain.journal import get_journal, JournalEvent
 
 
 class MemoryService:
@@ -29,16 +30,17 @@ class MemoryService:
         The tenant/namespace string for which this instance operates.
     """
 
-    # A single shared circuit‑breaker for all service instances.
-    # Initialise the shared circuit‑breaker using defaults from the central config.
-    _circuit_breaker: CircuitBreaker = CircuitBreaker(
-        global_failure_threshold=shared_settings.circuit_failure_threshold,
-        global_reset_interval=shared_settings.circuit_reset_interval,
-    )
+    _circuit_breaker = get_cb()
 
     def __init__(self, backend: Any, namespace: str | None = None) -> None:
         self._backend = backend
         self.namespace = namespace or ""
+        self._cb = get_cb()
+        self._degrade_queue = bool(getattr(shared_settings, "memory_degrade_queue", True))
+        self._degrade_readonly = bool(
+            getattr(shared_settings, "memory_degrade_readonly", False)
+        )
+        self._degrade_topic = getattr(shared_settings, "memory_degrade_topic", "memory.degraded")
 
     # ---------------------------------------------------------------------
     # Backend accessor helpers
@@ -56,13 +58,34 @@ class MemoryService:
     # Circuit‑breaker delegation helpers
     # ---------------------------------------------------------------------
     def _is_circuit_open(self) -> bool:
-        return self.__class__._circuit_breaker.is_open(self.tenant_id)
+        return self._cb.is_open(self.tenant_id)
 
     def _mark_success(self) -> None:
-        self.__class__._circuit_breaker.record_success(self.tenant_id)
+        self._cb.record_success(self.tenant_id)
 
     def _mark_failure(self) -> None:
-        self.__class__._circuit_breaker.record_failure(self.tenant_id)
+        self._cb.record_failure(self.tenant_id)
+
+    # ---------------------------------------------------------------------
+    # Degradation helpers
+    # ---------------------------------------------------------------------
+    def _queue_degraded(self, action: str, payload: dict) -> None:
+        """Persist a degraded write to the local journal."""
+        if not self._degrade_queue:
+            return
+        try:
+            journal = get_journal()
+            ev = JournalEvent(
+                id=str(uuid.uuid4()),
+                topic=self._degrade_topic,
+                payload={"action": action, "payload": payload},
+                tenant_id=self.tenant_id,
+                timestamp=None,
+            )
+            journal.append_event(ev)
+        except Exception:
+            # Journal is best-effort; do not raise.
+            return
 
     # ---------------------------------------------------------------------
     # Public API used by the application and tests
@@ -71,7 +94,11 @@ class MemoryService:
         if universe and "universe" not in payload:
             payload["universe"] = universe
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            self._queue_degraded("remember", {"key": key, "payload": payload})
+            message = "Memory service unavailable (circuit open)"
+            if self._degrade_readonly:
+                raise RuntimeError(message)
+            raise RuntimeError(f"{message}; queued locally for replay")
         try:
             result = self.client().remember(key, payload)
             self._mark_success()
@@ -84,7 +111,11 @@ class MemoryService:
         if universe and "universe" not in payload:
             payload["universe"] = universe
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            self._queue_degraded("remember", {"key": key, "payload": payload})
+            message = "Memory service unavailable (circuit open)"
+            if self._degrade_readonly:
+                raise RuntimeError(message)
+            raise RuntimeError(f"{message}; queued locally for replay")
         try:
             result = await self.client().aremember(key, payload)
             self._mark_success()
@@ -107,7 +138,12 @@ class MemoryService:
         if not prepared:
             return []
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            for key, body in prepared:
+                self._queue_degraded("remember", {"key": key, "payload": body})
+            message = "Memory service unavailable (circuit open)"
+            if self._degrade_readonly:
+                raise RuntimeError(message)
+            raise RuntimeError(f"{message}; queued locally for replay")
         try:
             coords = await self.client().aremember_bulk(prepared)
             self._mark_success()
@@ -118,7 +154,19 @@ class MemoryService:
 
     def link(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            self._queue_degraded(
+                "link",
+                {
+                    "from": from_coord,
+                    "to": to_coord,
+                    "type": link_type,
+                    "weight": weight,
+                },
+            )
+            message = "Memory service unavailable (circuit open)"
+            if self._degrade_readonly:
+                raise RuntimeError(message)
+            raise RuntimeError(f"{message}; queued locally for replay")
         try:
             result = self.client().link(from_coord, to_coord, link_type, weight)
             self._mark_success()
@@ -129,7 +177,19 @@ class MemoryService:
 
     async def alink(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
         if self._is_circuit_open():
-            raise RuntimeError("Memory service unavailable (circuit open)")
+            self._queue_degraded(
+                "link",
+                {
+                    "from": from_coord,
+                    "to": to_coord,
+                    "type": link_type,
+                    "weight": weight,
+                },
+            )
+            message = "Memory service unavailable (circuit open)"
+            if self._degrade_readonly:
+                raise RuntimeError(message)
+            raise RuntimeError(f"{message}; queued locally for replay")
         try:
             result = await self.client().alink(from_coord, to_coord, link_type, weight)
             self._mark_success()

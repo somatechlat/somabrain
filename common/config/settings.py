@@ -177,6 +177,16 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_FAST_ACK", False)
     )
     memory_db_path: str = Field(default=os.getenv("MEMORY_DB_PATH", "./data/memory.db"))
+    # Degradation behaviour when external memory backend is unavailable
+    memory_degrade_queue: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_DEGRADE_QUEUE", True)
+    )
+    memory_degrade_readonly: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_DEGRADE_READONLY", False)
+    )
+    memory_degrade_topic: str = Field(
+        default=os.getenv("SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded")
+    )
 
     # Circuit‑breaker defaults ------------------------------------------------
     circuit_failure_threshold: int = Field(
@@ -196,6 +206,7 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
+    log_level: str = Field(default=os.getenv("SOMABRAIN_LOG_LEVEL", "INFO"))
     # Additional environment variables used throughout the codebase
     health_port: Optional[int] = Field(
         default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None

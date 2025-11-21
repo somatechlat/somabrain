@@ -268,6 +268,7 @@ class MemoryRecallResponse(BaseModel):
     total_results: int
     chunk_size: Optional[int] = None
     conversation_id: Optional[str] = None
+    degraded: bool = False
 
 
 class CutoverOpenRequest(BaseModel):
@@ -1329,9 +1330,25 @@ async def recall_memory(
     cfg = settings
     ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
+    from somabrain.infrastructure.cb_registry import get_cb
+
+    cb = get_cb()
+    degrade_readonly = bool(getattr(cfg, "memory_degrade_readonly", False))
 
     # Coerce incoming payload to a RetrievalRequest
     ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
+
+    # If memory circuit is open, force WM-only retrieval and mark degraded
+    circuit_open = cb.is_open(ctx.tenant_id) or cb.should_attempt_reset(ctx.tenant_id)
+    degraded = False
+    if circuit_open:
+        degraded = True
+        ret_req.retrievers = ["wm"]
+        ret_req.persist = False
+        # Avoid triggering external memory access in downstream pipeline
+        ret_req.layer = "wm"
+        if degrade_readonly:
+            ret_req.retrievers = ["wm"]
 
     # Run pipeline
     import time as _time
@@ -1381,6 +1398,7 @@ async def recall_memory(
         total_results=len(items),
         chunk_size=None,
         conversation_id=None,
+        degraded=degraded,
     )
 
 

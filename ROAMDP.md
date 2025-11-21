@@ -94,11 +94,14 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 
 ### ✅ Phase 4 — Tests, Docs & CI: COMPLETE
 
-### 🚧 Phase 5 — Cognitive Threads v2: NOT STARTED
-- Unified predictor schema, integrator softmax/OPA/Redis, segmentation config+metrics, flag & CI smoke remain to be implemented.
+### 🚧 Phase 5 — Cognitive Threads v2: PARTIAL
+- Unified predictor and global_frame schemas landed; state/agent/action predictors emit them.
+- Integrator hub upgraded (softmax + OPA optional + Redis cache) with metrics; segmentation runtime thresholds + HMM toggle wired via ConfigService.
+- Feature flag present; CI Kafka/Redis smoke still pending and flag currently default OFF on paper (enable in env when ready).
 
-### 🚧 Phase 6 — Sleep System: NOT STARTED
-- Utility/cognitive sleep endpoints, schedules, metrics, and tests pending.
+### 🚧 Phase 6 — Sleep System & Degradation: PARTIAL
+- Sleep APIs, schedules, and CB-driven mapping implemented; sleep params centralized in settings; η=0 in deep/freeze.
+- Shared circuit breaker registry; memory degradation mode added: health reports `memory_degraded`, CB drives sleep FREEZE/LIGHT, writes queue to journal when circuit open (configurable), recalls auto-switch to WM-only when degraded. Needs full Docker verification and backlog flush wiring.
 
 ### 🚧 Phase 7 — Hardcoded-Value Purge & Settings Unification: IN PROGRESS
 - Settings added for predictor alpha, segment thresholds, integrator/segment ports; predictors/integrator/segmentation now consume settings. Remaining modules (adaptive/learning/neuromodulators) still contain hardcoded defaults and need migration plus invariant tests.

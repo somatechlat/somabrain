@@ -1259,7 +1259,7 @@ class MemoryClient:
 
                 weighting_enabled = bool(getattr(_settings, "memory_enable_weighting", False))
                 priors_env = getattr(_settings, "memory_phase_priors", "") or ""
-                quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0
+                quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0)
             except Exception:
                 weighting_enabled = False
         if not weighting_enabled:
