@@ -31,9 +31,22 @@ class CircuitBreaker:
         Minimum time to wait after the circuit opens before attempting a reset.
     """
 
-    def __init__(self, *, global_failure_threshold: int = 3, global_reset_interval: float = 60.0) -> None:
+    def __init__(
+        self,
+        *,
+        global_failure_threshold: int = 3,
+        global_reset_interval: float = 60.0,
+        global_cooldown_interval: float = 0.0,
+    ) -> None:
+        """Create a circuit‑breaker with optional cooldown interval.
+
+        ``global_cooldown_interval`` (seconds) adds an extra wait time after a
+        reset attempt before another attempt may be made. ``0`` disables the
+        extra cooldown, preserving historic behaviour.
+        """
         self._global_failure_threshold = max(1, int(global_failure_threshold))
         self._global_reset_interval = max(1.0, float(global_reset_interval))
+        self._global_cooldown_interval = max(0.0, float(global_cooldown_interval))
 
         # Per‑tenant state – all guarded by the same re‑entrant lock.
         self._lock: RLock = RLock()
@@ -43,6 +56,7 @@ class CircuitBreaker:
         self._last_reset_attempt: Dict[str, float] = {}
         self._failure_threshold: Dict[str, int] = {}
         self._reset_interval: Dict[str, float] = {}
+        self._cooldown_interval: Dict[str, float] = {}
 
     # ---------------------------------------------------------------------
     # Internal helpers
@@ -59,6 +73,7 @@ class CircuitBreaker:
             self._last_reset_attempt[tenant] = 0.0
             self._failure_threshold[tenant] = self._global_failure_threshold
             self._reset_interval[tenant] = self._global_reset_interval
+            self._cooldown_interval[tenant] = self._global_cooldown_interval
 
     def _set_metrics(self, tenant: str) -> None:
         """Emit the current circuit state to Prometheus (if available).
@@ -142,6 +157,7 @@ class CircuitBreaker:
         *,
         failure_threshold: int | None = None,
         reset_interval: float | None = None,
+        cooldown_interval: float | None = None,
     ) -> None:
         """Adjust per‑tenant thresholds.
 
@@ -153,6 +169,8 @@ class CircuitBreaker:
                 self._failure_threshold[tenant] = max(1, int(failure_threshold))
             if reset_interval is not None:
                 self._reset_interval[tenant] = max(1.0, float(reset_interval))
+            if cooldown_interval is not None:
+                self._cooldown_interval[tenant] = max(0.0, float(cooldown_interval))
             self._set_metrics(tenant)
 
     def get_state(self, tenant: str) -> dict:

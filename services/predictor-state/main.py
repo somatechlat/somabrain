@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from common.config.settings import settings
+from common.logging import logger
 import random
 import time
 from typing import Any
@@ -82,15 +83,15 @@ def run_forever() -> None:  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.exception("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.exception("Health server startup failed")
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
 
@@ -177,13 +178,13 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.exception("Failed to increment emitted metric")
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="state").observe(float(delta_error))
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.exception("Failed to record error histogram")
                 if soma_compat:
                     # Map to soma-compatible BeliefUpdate
                     try:
@@ -200,8 +201,8 @@ def run_forever() -> None:  # pragma: no cover
                         }
                         payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.exception("Failed to emit soma-compatible belief update")
                 # NextEvent emission (derived): predicted_state based on stability
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
                 next_ev = build_next_event(
@@ -219,8 +220,8 @@ def run_forever() -> None:  # pragma: no cover
         try:
             prod.flush(2)
             prod.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.exception("Failed during producer cleanup")
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -34,25 +34,42 @@ _TRUE_VALUES = {"1", "true", "yes", "on"}
 
 
 def _int_env(name: str, default: int) -> int:
+    """Parse an integer environment variable safely.
+
+    The function strips any trailing ``#`` comment (e.g. ``"100 # comment"``)
+    before attempting conversion. If conversion fails, the provided ``default``
+    is returned.
+    """
+    raw = os.getenv(name, str(default))
+    # Remove anything after a comment marker
+    raw = raw.split("#", 1)[0].strip()
     try:
-        return int(os.getenv(name, str(default)))
+        return int(raw)
     except Exception:
         return default
 
 
 def _bool_env(name: str, default: bool) -> bool:
+    """Parse a boolean environment variable safely.
+
+    Supports typical truthy strings and strips comments.
+    """
     raw = os.getenv(name)
     if raw is None:
         return default
+    raw = raw.split("#", 1)[0].strip()
     try:
-        return raw.strip().lower() in _TRUE_VALUES
+        return raw.lower() in _TRUE_VALUES
     except Exception:
         return default
 
 
 def _float_env(name: str, default: float) -> float:
+    """Parse a float environment variable safely, stripping comments."""
+    raw = os.getenv(name, str(default))
+    raw = raw.split("#", 1)[0].strip()
     try:
-        return float(os.getenv(name, str(default)))
+        return float(raw)
     except Exception:
         return default
 
@@ -161,6 +178,18 @@ class Settings(BaseSettings):
     )
     memory_db_path: str = Field(default=os.getenv("MEMORY_DB_PATH", "./data/memory.db"))
 
+    # Circuit‑breaker defaults ------------------------------------------------
+    circuit_failure_threshold: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_CIRCUIT_FAILURE_THRESHOLD", 3)
+    )
+    circuit_reset_interval: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_CIRCUIT_RESET_INTERVAL", 60.0)
+    )
+    # Optional cooldown between successive reset attempts (seconds). Zero disables extra cooldown.
+    circuit_cooldown_interval: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_CIRCUIT_COOLDOWN_INTERVAL", 0.0)
+    )
+
     learning_rate_dynamic: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_LEARNING_RATE_DYNAMIC", False)
     )
@@ -171,11 +200,63 @@ class Settings(BaseSettings):
     health_port: Optional[int] = Field(
         default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
     )
+
+    # Segmentation configuration -------------------------------------------------
+    segment_max_dwell_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_MAX_DWELL_MS", 0)
+    )
+    segment_min_gap_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_MIN_GAP_MS", 250)
+    )
+    segment_write_gap_threshold_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_WRITE_GAP_THRESHOLD_MS", 30000)
+    )
+
+    # CPD segmentation parameters -----------------------------------------------
+    cpd_min_samples: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_CPD_MIN_SAMPLES", 20)
+    )
+    cpd_z: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_CPD_Z", 4.0)
+    )
+    cpd_min_gap_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_CPD_MIN_GAP_MS", 1000)
+    )
+    cpd_min_std: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_CPD_MIN_STD", 0.02)
+    )
+
+    # Hazard segmentation parameters --------------------------------------------
+    hazard_lambda: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_HAZARD_LAMBDA", 0.02)
+    )
+    hazard_vol_mult: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_HAZARD_VOL_MULT", 3.0)
+    )
+    hazard_min_samples: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_HAZARD_MIN_SAMPLES", 20)
+    )
+    hazard_min_gap_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_HAZARD_MIN_GAP_MS", 1000)
+    )
+    hazard_min_std: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_HAZARD_MIN_STD", 0.02)
+    )
+
+    # Consumer group for segmentation service -----------------------------------
+    segmentation_consumer_group: str = Field(
+        default=os.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service")
+    )
     default_tenant: str = Field(
         default=os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     )
     host: str = Field(
         default=os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+    )
+    # Service name for observability – used as a default when tracing is
+    # initialised without an explicit name.
+    service_name: str = Field(
+        default=os.getenv("SOMABRAIN_SERVICE_NAME", "somabrain")
     )
     log_config: str = Field(
         default=os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")

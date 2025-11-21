@@ -21,18 +21,34 @@ except Exception as exc:  # pragma: no cover - intentionally strict
     ) from exc
 
 
-def init_tracing(service_name: str, *, console_export: bool = False) -> None:
+from typing import Optional
+from common.config.settings import settings as shared_settings
+
+
+def init_tracing(
+    service_name: Optional[str] = None, *, console_export: bool = False
+) -> None:
     """Initialize OpenTelemetry tracer provider.
 
+    The original implementation required a mandatory ``service_name`` argument,
+    causing runtime errors in places where the call was ``init_tracing()``.
+    According to the roadmap we must make tracing robust for all services.
+
     Args:
-        service_name: logical service name to expose in traces.
-        console_export: if True, attach a console span exporter for local debugging.
+        service_name: logical service name to expose in traces. If ``None`` the
+            default ``"somabrain"`` is used – a sensible fallback that matches
+            the project name and satisfies the OpenTelemetry ``service.name``
+            attribute.
+        console_export: if ``True``, attach a console span exporter for local
+            debugging.
 
     Raises:
         RuntimeError: if tracer cannot be initialized.
     """
     try:
-        resource = Resource.create({"service.name": service_name})
+        # Resolve a sane default when the caller does not provide a name.
+        effective_name = service_name or getattr(shared_settings, "service_name", "somabrain")
+        resource = Resource.create({"service.name": effective_name})
         provider = TracerProvider(resource=resource)
         if console_export:
             provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))

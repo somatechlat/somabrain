@@ -53,18 +53,12 @@ from somabrain import metrics as _metrics
 def _register_flag_gauges() -> None:
     status = FeatureFlags.get_status()
     for name, enabled in status.items():
-        try:
-            gauge = _metrics.get_gauge(
-                "somabrain_feature_flag",
-                "Feature flag status (1=enabled, 0=disabled)",
-                labelnames=["flag"],
-            )
-            gauge.labels(flag=name).set(1 if enabled else 0)
-        except Exception:
-            # Metric registration failures should not prevent the API from
-            # loading. In strict mode we would surface the error, but here we
-            # silently ignore to keep the service robust.
-            pass
+        gauge = _metrics.get_gauge(
+            "somabrain_feature_flag",
+            "Feature flag status (1=enabled, 0=disabled)",
+            labelnames=["flag"],
+        )
+        gauge.labels(flag=name).set(1 if enabled else 0)
 
 # Initialise gauges at import time.
 _register_flag_gauges()
@@ -333,17 +327,10 @@ async def feedback_endpoint(
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
     if applied:
-        try:
-            store_total = 0
-            try:
-                store = _get_feedback_store()
-                store_total = store.total_count()
-            except Exception:
-                store_total = 0
-            adapter_total = getattr(adapter, "_feedback_count", 0)
-            _feedback_counter = max(_feedback_counter, adapter_total, store_total)
-        except Exception:
-            pass
+        store = _get_feedback_store()
+        store_total = store.total_count()
+        adapter_total = getattr(adapter, "_feedback_count", 0)
+        _feedback_counter = max(_feedback_counter, adapter_total, store_total)
 
     # Record feedback latency
     elapsed = time.perf_counter() - start_time
@@ -353,14 +340,10 @@ async def feedback_endpoint(
 
 
 def _constitution_checksum() -> Optional[str]:
-    try:
-        from somabrain.constitution import ConstitutionEngine
-
-        engine = ConstitutionEngine()
-        engine.load()
-        return engine.get_checksum()
-    except Exception:
-        return None
+    from somabrain.constitution import ConstitutionEngine
+    engine = ConstitutionEngine()
+    engine.load()
+    return engine.get_checksum()
 
 
 _adaptation_engines: dict[str, AdaptationEngine] = {}
@@ -426,12 +409,8 @@ async def adaptation_state_endpoint(
     # Use the module‑level feedback counter for a clean monotonic metric.
     # The counter is incremented on each successful feedback application.
     adapter_count = getattr(adapter, "_feedback_count", 0)
-    store_total = 0
-    try:
-        store = _get_feedback_store()
-        store_total = int(store.total_count())
-    except Exception:
-        store_total = 0
+    store = _get_feedback_store()
+    store_total = int(store.total_count())
     history_len = max(int(_feedback_counter), int(adapter_count), int(store_total))
     learning_rate = float(getattr(adapter, "_lr", 0.0))
     return AdaptationStateResponse(

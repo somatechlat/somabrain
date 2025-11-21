@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import os
 from common.config.settings import settings
+from common.logging import logger
 import random
 import threading
 import time
@@ -117,16 +118,16 @@ def _maybe_health_server():  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.exception("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.exception("Health server startup failed")
 
 
 def _get_runtime():
@@ -247,13 +248,13 @@ def run_forever() -> None:  # pragma: no cover
                     if counters.get(domain):
                         try:
                             counters[domain].inc()
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.exception("Failed to increment emitted metric for %s", domain)
                     if err_hist is not None:
                         try:
                             err_hist.labels(domain=domain).observe(float(delta_error))
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.exception("Failed to record error histogram for %s", domain)
                     if soma_compat:
                         try:
                             soma_rec = {
@@ -267,8 +268,8 @@ def run_forever() -> None:  # pragma: no cover
                                 TOPICS[f"soma_{domain}"],
                                 value=encode(soma_rec, soma_schema),
                             )
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.exception("Failed to emit soma-compatible belief update for %s", domain)
                     next_ev = build_next_event(
                         domain, tenant, float(confidence), next_state
                     )
@@ -276,15 +277,15 @@ def run_forever() -> None:  # pragma: no cover
                     if next_counter is not None:
                         try:
                             next_counter.inc()
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.exception("Failed to increment next event metric")
             time.sleep(0.05)
     finally:
         try:
             prod.flush(2)
             prod.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.exception("Failed during producer cleanup in unified predictor")
 
 
 if __name__ == "__main__":  # pragma: no cover

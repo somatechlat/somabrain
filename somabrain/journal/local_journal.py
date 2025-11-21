@@ -50,15 +50,35 @@ class JournalConfig:
     
     @classmethod
     def from_env(cls) -> JournalConfig:
-        """Create configuration from environment variables."""
+        """Create configuration from environment variables safely.
+
+        Mirrors the robust helpers used in ``common.config.settings`` –
+        stripping comments and handling conversion errors gracefully.
+        """
+        # Helper to parse int env vars with comment stripping
+        def _int(name: str, default: int) -> int:
+            raw = os.getenv(name, str(default))
+            raw = raw.split("#", 1)[0].strip()
+            try:
+                return int(raw)
+            except Exception:
+                return default
+
+        def _bool(name: str, default: bool) -> bool:
+            raw = os.getenv(name)
+            if raw is None:
+                return default
+            raw = raw.split("#", 1)[0].strip()
+            return raw.lower() in {"1", "true", "yes", "on"}
+
         return cls(
             journal_dir=os.getenv("SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal"),
-            max_file_size=int(os.getenv("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", "104857600")),  # 100MB
-            max_files=int(os.getenv("SOMABRAIN_JOURNAL_MAX_FILES", "10")),
-            rotation_interval=int(os.getenv("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", "86400")),
-            retention_days=int(os.getenv("SOMABRAIN_JOURNAL_RETENTION_DAYS", "7")),
-            compression=os.getenv("SOMABRAIN_JOURNAL_COMPRESSION", "true").lower() == "true",
-            sync_writes=os.getenv("SOMABRAIN_JOURNAL_SYNC_WRITES", "true").lower() == "true",
+            max_file_size=_int("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104_857_600),
+            max_files=_int("SOMABRAIN_JOURNAL_MAX_FILES", 10),
+            rotation_interval=_int("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", 86_400),
+            retention_days=_int("SOMABRAIN_JOURNAL_RETENTION_DAYS", 7),
+            compression=_bool("SOMABRAIN_JOURNAL_COMPRESSION", True),
+            sync_writes=_bool("SOMABRAIN_JOURNAL_SYNC_WRITES", True),
         )
 
 

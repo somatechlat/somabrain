@@ -38,7 +38,16 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
 
 
 def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
-    url = (redis_url or os.getenv("SOMABRAIN_REDIS_URL") or "").strip()
+    """Check Redis connectivity using the centralized ``Settings``.
+
+    Preference is given to the explicit ``redis_url`` argument; if omitted we
+    fall back to ``settings.redis_url`` which is the single source of truth for
+    the Redis endpoint across the codebase.
+    """
+    # Import lazily to avoid circular imports at module load time.
+    from common.config.settings import settings as _shared_settings
+
+    url = (redis_url or getattr(_shared_settings, "redis_url", None) or "").strip()
     if not url:
         return False
     try:
@@ -51,7 +60,15 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
 
 
 def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
-    dsn = (dsn or os.getenv("SOMABRAIN_POSTGRES_DSN") or "").strip()
+    """Validate Postgres connectivity using the centralized ``Settings``.
+
+    The function prefers an explicit ``dsn`` argument; if ``None`` it reads the
+    value from ``settings.postgres_dsn`` which is the authoritative source for the
+    database connection string.
+    """
+    from common.config.settings import settings as _shared_settings
+
+    dsn = (dsn or getattr(_shared_settings, "postgres_dsn", None) or "").strip()
     if not dsn:
         return False
     try:
@@ -73,7 +90,14 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
 
 
 def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
-    url = (opa_url or os.getenv("SOMABRAIN_OPA_URL") or "").strip().rstrip("/")
+    """Check OPA health using the centralized configuration.
+
+    If no URL is configured we treat OPA as optional (return ``True``) to keep
+    the original semantics.
+    """
+    from common.config.settings import settings as _shared_settings
+
+    url = (opa_url or getattr(_shared_settings, "opa_url", None) or "").strip().rstrip("/")
     if not url:
         # Treat missing OPA as not configured rather than down
         return True
@@ -114,17 +138,32 @@ def assert_ready(
     }:
         return
     errors = []
+    # Use centralized settings where possible for consistency.
+    from common.config.settings import settings as _shared_settings
+
     if require_kafka:
-        if not check_kafka(os.getenv("SOMABRAIN_KAFKA_URL"), timeout_s=timeout_s):
+        if not check_kafka(
+            getattr(_shared_settings, "kafka_bootstrap_servers", None),
+            timeout_s=timeout_s,
+        ):
             errors.append("Kafka")
     if require_redis:
-        if not check_redis(os.getenv("SOMABRAIN_REDIS_URL"), timeout_s=timeout_s):
+        if not check_redis(
+            getattr(_shared_settings, "redis_url", None),
+            timeout_s=timeout_s,
+        ):
             errors.append("Redis")
     if require_postgres:
-        if not check_postgres(os.getenv("SOMABRAIN_POSTGRES_DSN"), timeout_s=timeout_s):
+        if not check_postgres(
+            getattr(_shared_settings, "postgres_dsn", None),
+            timeout_s=timeout_s,
+        ):
             errors.append("Postgres")
     if require_opa:
-        if not check_opa(os.getenv("SOMABRAIN_OPA_URL"), timeout_s=timeout_s):
+        if not check_opa(
+            getattr(_shared_settings, "opa_url", None),
+            timeout_s=timeout_s,
+        ):
             errors.append("OPA")
     if errors:
         raise RuntimeError(f"Infra not ready: {', '.join(errors)}")

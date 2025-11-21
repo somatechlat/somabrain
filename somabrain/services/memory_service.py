@@ -13,6 +13,8 @@ from typing import Any, Iterable
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
 from ..infrastructure.circuit_breaker import CircuitBreaker
 from ..infrastructure.tenant import tenant_label, resolve_namespace
+# Import centralised settings for circuit‑breaker defaults
+from common.config.settings import settings as shared_settings
 
 
 class MemoryService:
@@ -28,7 +30,11 @@ class MemoryService:
     """
 
     # A single shared circuit‑breaker for all service instances.
-    _circuit_breaker: CircuitBreaker = CircuitBreaker()
+    # Initialise the shared circuit‑breaker using defaults from the central config.
+    _circuit_breaker: CircuitBreaker = CircuitBreaker(
+        global_failure_threshold=shared_settings.circuit_failure_threshold,
+        global_reset_interval=shared_settings.circuit_reset_interval,
+    )
 
     def __init__(self, backend: Any, namespace: str | None = None) -> None:
         self._backend = backend
