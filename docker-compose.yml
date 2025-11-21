@@ -131,28 +131,6 @@ services:
       timeout: 5s
       retries: 3
 
-  somabrain_kafka_init:
-    image: apache/kafka:3.7.0
-    restart: "no"
-    depends_on:
-      somabrain_kafka:
-        condition: service_healthy
-    networks:
-      - somabrain_net
-    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
-    command:
-      [
-        "--create",
-        "--if-not-exists",
-        "--topic",
-        "soma.audit",
-        "--bootstrap-server",
-        "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}",
-        "--partitions",
-        "2",
-        "--replication-factor",
-        "1",
-      ]
 
   somabrain_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
@@ -350,7 +328,7 @@ services:
       # Memory weighting is controlled by runtime config overrides (local only)
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
       # Mode: default to dev (full-local semantics) for local development parity
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
@@ -402,7 +380,7 @@ services:
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
       SOMA_HEAT_METHOD: "lanczos"
       # Centralized feature gating; composite toggles are handled via runtime config
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
@@ -422,11 +400,19 @@ services:
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
       # Program-specific ports (supervisor will pass to processes)
       REWARD_PRODUCER_PORT: "${REWARD_PRODUCER_PORT:-8083}"
+      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
+      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
+      SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:-cog.action.updates}"
+      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:-cog.global.frame}"
+      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
+      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
     ports:
       # Reward producer HTTP (host default 30083)
       - "${COG_REWARD_PRODUCER_HOST_PORT:-30083}:8083"
       # Integrator health/metrics (program-level env set below via supervisor env)
       - "${COG_INTEGRATOR_HEALTH_HOST_PORT:-30010}:9010"
+      # Segmentation health
+      - "${SEGMENTATION_HEALTH_HOST_PORT:-30116}:9016"
     command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf", "-l", "/dev/stdout"]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://admin:soma@localhost:9001"]
@@ -489,6 +475,44 @@ services:
   # --- Cognitive Thread: Predictors ----------------------------------------
 
   # --- Cognitive Thread: Integrator + Segmentation + Orchestrator ----------
+
+  somabrain_integrator_triplet:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: somabrain:latest
+    restart: unless-stopped
+    depends_on:
+      somabrain_kafka:
+        condition: service_healthy
+    networks:
+      - somabrain_net
+    environment:
+      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
+      SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
+      SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"
+      SOMABRAIN_TOPIC_ACTION_UPDATES: "${SOMABRAIN_TOPIC_ACTION_UPDATES:-cog.action.updates}"
+      SOMABRAIN_TOPIC_GLOBAL_FRAME: "${SOMABRAIN_TOPIC_GLOBAL_FRAME:-cog.global.frame}"
+      SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
+      SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
+      SOMABRAIN_STRICT_REAL: "1"
+      SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
+      SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
+    command: ["python", "-m", "somabrain.services.integrator_hub_triplet"]
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 192M
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9015/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 1
+    ports:
+      - "${INTEGRATOR_HEALTH_HOST_PORT:-30115}:9015"
 
 volumes:
   kafka_data:

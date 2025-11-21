@@ -96,21 +96,68 @@ class Planner:
     # Extension points – override in a subclass for richer behaviour
     # ---------------------------------------------------------------------
     def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
-        """Return a list of candidate steps that *might* move the system towards *goal*.
+        """Return candidate steps that advance *goal* using actual context signals.
 
-        The base implementation provides a very small generic catalogue:
-        1. ``"retrieve_memory"`` – fetch something from working memory.
-        2. ``"update_state"`` – modify an internal variable.
-        3. ``"communicate"`` – send a message to another agent.
-        Concrete deployments should subclass :class:`Planner` and replace this
-        method with domain‑specific actions.
+        The catalogue is derived from available resources in ``context``:
+        - Memory operations if a memory client/service is supplied.
+        - Planner-provided action hints (``context.get("planner_actions")``).
+        - Communication steps when a downstream channel is present.
         """
-        # Very generic placeholder actions – real systems will replace these.
-        return [
-            Step(name="retrieve_memory", params={"key": goal}),
-            Step(name="update_state", params={"key": "last_goal", "value": goal}),
-            Step(name="communicate", params={"message": f"Goal {goal} achieved?"}),
-        ]
+        steps: List[Step] = []
+
+        mem_client = context.get("memory_client") or context.get("memory_service")
+        if mem_client is not None:
+            steps.append(
+                Step(
+                    name="retrieve_memory",
+                    params={"key": goal, "universe": context.get("universe")},
+                    precondition=lambda ctx: bool(ctx.get("query_text") or goal),
+                )
+            )
+            steps.append(
+                Step(
+                    name="store_memory",
+                    params={
+                        "key": f"plan:{goal}",
+                        "payload": {"goal": goal, "context": context.get("snapshot")},
+                        "universe": context.get("universe"),
+                    },
+                    precondition=lambda ctx: "snapshot" in ctx,
+                )
+            )
+
+        action_hints = context.get("planner_actions")
+        if isinstance(action_hints, list):
+            for hint in action_hints:
+                if isinstance(hint, dict) and "name" in hint:
+                    steps.append(
+                        Step(
+                            name=str(hint["name"]),
+                            params=hint.get("params", {}),
+                            precondition=hint.get("precondition"),
+                        )
+                    )
+
+        if context.get("communicator") is not None:
+            steps.append(
+                Step(
+                    name="communicate",
+                    params={
+                        "channel": "default",
+                        "message": f"Working on goal: {goal}",
+                        "audience": context.get("audience", "ops"),
+                    },
+                )
+            )
+
+        # Always include a deterministic analysis step as a final option.
+        steps.append(
+            Step(
+                name="analyze_goal",
+                params={"goal": goal, "signals": list(context.keys())},
+            )
+        )
+        return steps
 
     # ---------------------------------------------------------------------
     # Internal search algorithm (depth‑first with back‑tracking)
@@ -145,10 +192,7 @@ class Planner:
             logger.info("Applying step %s (depth %s)", step.name, depth)
             plan.append(step)
 
-            # Simple termination condition: if the step name matches the goal
-            # string we consider the plan complete.  This is a placeholder for
-            # a more sophisticated evaluation function.
-            if isinstance(goal, str) and step.name == goal:
+            if self._goal_satisfied(goal, context, step):
                 logger.info("Goal satisfied by step %s", step.name)
                 return True
 
@@ -160,6 +204,29 @@ class Planner:
             logger.debug("Backtracking from step %s", step.name)
             plan.pop()
 
+        return False
+
+    def _goal_satisfied(self, goal: Any, context: Dict[str, Any], last_step: Step) -> bool:
+        """Determine whether the goal is satisfied given current context and last step."""
+        # Explicit callable goal
+        if callable(goal):
+            try:
+                return bool(goal(context, last_step))
+            except Exception as exc:  # pragma: no cover – defensive
+                logger.error("Goal callable raised: %s", exc)
+                return False
+        # String goal matches step name or declared action name in context
+        if isinstance(goal, str):
+            if last_step.name == goal:
+                return True
+            target_action = context.get("target_action")
+            if target_action and str(target_action) == last_step.name:
+                return True
+        # Structured goal with expected outcome
+        if isinstance(goal, dict):
+            expected = goal.get("expected")
+            if expected is not None and isinstance(last_step.params, dict):
+                return all(last_step.params.get(k) == v for k, v in expected.items())
         return False
 
     # ---------------------------------------------------------------------

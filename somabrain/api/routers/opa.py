@@ -47,19 +47,15 @@ async def update_policy(request: Request):
     require_admin_auth(request, getattr(request.app.state, "cfg", None))
     # Retrieve constitution engine from app state
     engine = getattr(request.app.state, "constitution_engine", None)
-    # If no ConstitutionEngine is available or it has no loaded constitution,
-    # fall back to an empty constitution. This allows the OPA policy update
-    # endpoint to succeed in minimal test environments where the full engine
-    # cannot be started (e.g., missing Redis). The generated policy will be a
-    # minimal placeholder that can still be signed and stored.
-    if (
-        engine is None
-        or not getattr(engine, "get_constitution", None)
-        or not engine.get_constitution()
-    ):
-        constitution = {}
-    else:
-        constitution = engine.get_constitution()
+    if engine is None or not getattr(engine, "get_constitution", None):
+        raise HTTPException(
+            status_code=500, detail="Constitution engine unavailable; cannot build policy"
+        )
+    constitution = engine.get_constitution()
+    if not constitution:
+        raise HTTPException(
+            status_code=500, detail="Constitution not loaded; cannot build policy"
+        )
     # Build policy from constitution
     policy_str = build_policy(constitution)
     # Sign policy – private key path from env (optional for testing)

@@ -1,5 +1,12 @@
-"""Minimal placeholder memory package for image build.
-
-The real memory client/provider can be mounted or installed separately.
-This stub ensures Docker image COPY and imports don’t fail.
 """
+Memory package import gate.
+
+This repository MUST use a real memory backend. Importing ``memory`` without
+installing/providing the real client raises immediately to prevent silent
+fallbacks or placeholder behavior.
+"""
+
+raise ImportError(
+    "The real memory backend is required. Install/provide the memory client package "
+    "or mount it into the image; placeholder memory stubs are disallowed."
+)

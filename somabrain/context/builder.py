@@ -65,7 +65,7 @@ class ContextBuilder:
         self._memory = memory or MemoryClient(cfg=get_config())
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
-        # Tenant identifier for per‑tenant metrics (default placeholder)
+        # Tenant identifier for per‑tenant metrics (default value)
         self._tenant_id: str = "default"
         # Align temporal decay and density penalties with runtime configuration when available
         self._recency_half_life = 60.0

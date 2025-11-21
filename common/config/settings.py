@@ -133,10 +133,10 @@ class Settings(BaseSettings):
 
     # Feature flags --------------------------------------------------------
     force_full_stack: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_FORCE_FULL_STACK", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_FORCE_FULL_STACK", True)
     )
     require_external_backends: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", False)
+        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
@@ -313,6 +313,21 @@ class Settings(BaseSettings):
     # Topic names used by scripts/CI utilities
     topic_config_updates: str = Field(
         default=os.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
+    )
+    topic_next_event: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_NEXT_EVENT", "cog.next_event")
+    )
+    topic_state_updates: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates")
+    )
+    topic_agent_updates: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_AGENT_UPDATES", "cog.agent.updates")
+    )
+    topic_action_updates: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates")
+    )
+    topic_global_frame: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame")
     )
     # Deprecated alternative toggles removed: no local/durable alternatives allowed
 

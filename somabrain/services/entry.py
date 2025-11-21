@@ -45,7 +45,7 @@ def _run_segmentation() -> None:
         from .segmentation_service import SegmentationService
 
         svc = SegmentationService()
-        svc.run_forever()
+        svc.run()
     except Exception as e:  # pragma: no cover
         print(f"orchestrator: segmentation exited with error: {e}")
 

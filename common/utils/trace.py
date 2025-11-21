@@ -12,7 +12,9 @@ try:  # pragma: no cover - optional dependency guard
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor
     from opentelemetry.trace import Tracer
-except Exception:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    # Log the import failure for debugging purposes while keeping the optional nature.
+    _LOG.exception("Failed to import OpenTelemetry modules: %s", exc)
     trace = None  # type: ignore
     Tracer = None  # type: ignore
 

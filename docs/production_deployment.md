@@ -23,13 +23,20 @@ This document provides step‑by‑step instructions for deploying the **SomaBra
 - Sufficient CPU / memory for the number of tenants you plan to serve
 
 ## 2. Infrastructure Setup
-### Docker‑Compose (quick local prod)
+### Docker‑Compose (local prod‑like, resource‑constrained)
 ```bash
 # From the repository root
-cp env.example .env
-# Edit .env to set production‑grade values (e.g., DB passwords, Kafka URLs)
-docker compose -f docker-compose.yml up -d
+cp config/env.example .env
+# Edit .env to set production‑grade values (Kafka/Postgres/Redis/Memory URLs and tokens)
+# Then run the automated preflight to create topics, start services, and check health:
+./scripts/compose_preflight.sh
 ```
+Notes:
+- Defaults are prod‑like: `SOMABRAIN_MODE=full-local`, strict real backends, no stubs/fallbacks.
+- Topic creation is handled by `somabrain_kafka_init`; required topics:
+  `cog.next_event`, `cog.config.updates`, `cog.state.updates`, `cog.agent.updates`,
+  `cog.action.updates`, `cog.global.frame`.
+- Integrator hub exposes health on `http://localhost:9015/health` and is included in compose.
 ### Kubernetes (recommended for scale)
 1. Create a namespace per tenant or a single namespace with tenant‑labelled pods.
 2. Apply the Helm chart located in `charts/somabrain`:
@@ -41,12 +48,18 @@ helm upgrade --install somabrain ./charts/somabrain \
 3. Ensure the `CircuitBreaker` ConfigMap and `TenantQuotaManager` Secret are populated.
 
 ## 3. Configuration
-All services read configuration from the **singleton** `common.config.settings.Settings` which pulls values from environment variables. Key sections:
-- **Core** – `APP_HOST`, `APP_PORT`
-- **Kafka** – `KAFKA_BOOTSTRAP_SERVERS`, `KAFKA_CLIENT_ID`
-- **Postgres** – `POSTGRES_DSN`
-- **Feature Flags** – `FEATURE_FLAGS_PORT`
-- **Tenant Settings** – `DEFAULT_TENANT`, `TENANT_LABELS`
+All services read configuration from the **singleton** `common.config.settings.Settings` which pulls values from environment variables. Key sections (prod‑like defaults already set):
+- **Core** – `SOMABRAIN_HOST`, `SOMABRAIN_PORT`
+- **Kafka** – `SOMABRAIN_KAFKA_URL` (bootstrap), topics:
+  `SOMABRAIN_TOPIC_NEXT_EVENT`, `SOMABRAIN_TOPIC_CONFIG_UPDATES`,
+  `SOMABRAIN_TOPIC_STATE_UPDATES`, `SOMABRAIN_TOPIC_AGENT_UPDATES`,
+  `SOMABRAIN_TOPIC_ACTION_UPDATES`, `SOMABRAIN_TOPIC_GLOBAL_FRAME`
+- **Postgres** – `SOMABRAIN_POSTGRES_DSN`
+- **Redis** – `SOMABRAIN_REDIS_URL`
+- **Memory** – `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, `SOMABRAIN_MEMORY_HTTP_TOKEN`
+- **Strictness** – `SOMABRAIN_FORCE_FULL_STACK=1`, `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`,
+  `SOMABRAIN_REQUIRE_MEMORY=1`, `SOMABRAIN_STRICT_REAL=1`
+- **Mode** – `SOMABRAIN_MODE=full-local` for local prod parity; `prod` under Kubernetes/Helm.
 
 Create a `.env.production` file and source it before starting services:
 ```bash
@@ -68,7 +81,10 @@ uvicorn somabrain.app:app --host $APP_HOST --port $APP_PORT
 python -m somabrain.workers.outbox_publisher &
 python -m somabrain.workers.memory_writer &
 ```
-If using Docker‑Compose, the `docker-compose.yml` already defines these services.
+If using Docker‑Compose, the `docker-compose.yml` defines all services plus:
+- `somabrain_kafka_init` (one-shot topic creation)
+- `somabrain_integrator_triplet` (tripartite integrator hub with health at 9015)
+Use `./scripts/compose_preflight.sh` instead of manual `docker compose up` to ensure topics, services, and health are verified end-to-end.
 
 ## 5. Observability
 - **Metrics** are exposed at `/metrics` (Prometheus format). Scrape this endpoint in your Prometheus server.

@@ -1,174 +1,91 @@
-# SomaBrain ROAMDP (Canonical)
+# SomaBrain Canonical Roadmap (VIBE‑compliant)
 
-This file is the canonical Somabrain ROAMDP (Roadmap & Action Plan).
-It summarizes gaps discovered in the codebase and a prioritized, phased implementation plan for development sprints.
+This is the single source of truth for the current Somabrain implementation plan. It removes all stubs/fallbacks/shims, completes the Sutton + Karpathy learning loop, and introduces the tripartite predictor architecture with an integrator hub. All items below are grounded in files that already exist in the repo; no speculative features.
 
-## Summary
-- Many roadmap building blocks already exist: DB-backed outbox, outbox publisher worker, metrics, and a memory service facade.
-- Key gaps: per-tenant circuit-breaker isolation, tenant-aware outbox processing and metrics wiring, idempotency guarantees (DB constraints + Kafka keying), and some doc/code divergence around journaling.
+## Goals
+- Zero stubs, mocks, placeholders, or silent fallbacks in runtime code.
+- Real learner, planner, embedder, and tenant handling.
+- Unified configuration (Settings/Config/Runtime) with hot‑swap safety.
+- Tripartite predictors (state/agent/action) + integrator hub built on existing diffusion code.
+- Segmentation upgraded with a formal HMM wrapper.
+- Observable, test‑backed learning loop: entropy caps, τ annealing, metrics.
 
-## Prioritized Implementation Plan (Phases)
+## Phased Implementation (sprint‑sized)
 
-### Phase 0 — Safety & Observability (1–2 sprints)
-- 0.1 Per-tenant circuit-breaker: convert class-level circuit state to per-tenant state in `somabrain/services/memory_service.py`. Ensure `CIRCUIT_STATE` metric is labeled by tenant.
-- 0.2 Outbox pending metric wiring: implement `_update_outbox_metric()` and ensure `OUTBOX_PENDING` is updated per tenant by worker/service.
-- 0.3 Tenant-aware pending queries: extend `somabrain/db/outbox.py:get_pending_events(limit, tenant_id=None)` and add appropriate DB indices.
+### Phase 0 — Stub/Fallback Purge & Safety (1 sprint)
+- Remove placeholder `memory/__init__.py`; fail fast when backend missing.
+- Replace `somabrain/services/learner_online.py` stub with real loop (Kafka consumer/producer required; no dummy gauge).
+- Replace placeholder expansion/termination in `somabrain/cognitive/planning.py` with real actions/evaluation.
+- Block or implement real FDE provider in `somabrain/embeddings.py`; no tiny fallback when `provider="fde"`.
+- Fix `somabrain/schemas.py:PersonalityState` (typed traits) or disable persona endpoint in `somabrain/app.py`.
+- Drop sync tenant `"public"` fallback in `somabrain/tenant.py` (or gate behind an explicit dev flag).
+- CI guardrails: extend `scripts/ci/forbid_stubs.sh` to catch `placeholder|Dummy|no-op` in runtime code.
 
-### Phase 1 — Idempotency, DB Constraints & Worker Hardening (1–3 sprints)
-- 1.1 DB constraints & indices: add migration for unique index on `(tenant_id, dedupe_key)` and index on `(status, tenant_id, created_at)`.
-- 1.2 Producer keying & headers: publish Kafka messages with stable key (dedupe_key/tenant) and relevant headers.
-- 1.3 Per-tenant batch quotas & backpressure: allow worker to process per-tenant batches and enforce quotas.
+### Phase 1 — Learning Loop Hardening (Sutton/Karpathy) (1–2 sprints)
+- Enforce `entropy_cap` and τ annealing schedule in `somabrain/autonomous/learning.py` and `somabrain/context/builder.py`; expose config keys in `somabrain/runtime/config.py` + `config.yaml`.
+- Metrics: add τ/entropy/entropy_cap_hits to `somabrain/metrics/__init__.py`; surface via `/health`.
+- Input safety: validate and rate-limit `/context/feedback` payloads (`somabrain/app.py`, `somabrain/services/reward.py`).
+- Tests: TD weight bounds, softmax correctness, entropy-cap behavior (new `tests/learning/...`).
 
-### Phase 2 — Replay/Recovery & Operational Tooling (1–2 sprints)
-- 2.1 Admin replay endpoints: add admin API to inspect and replay pending/failed events per tenant.
-- 2.2 Optional local journaling: if required, add opt-in local journal and migration script to DB-outbox.
+### Phase 2 — Tripartite Predictors + Integrator Hub (2 sprints, parallelizable)
+- Implement `state_predictor`, `agent_predictor`, `action_predictor` services using `somabrain/math/graph_heat.py` & `somabrain/math/lanczos_chebyshev.py` via `somabrain/controls/feature_flags.py` heat factory.
+- Emit `PredictorUpdate` (salience, observed vector, error) to Kafka with Avro schema.
+- Implement `integrator_hub` service: consume updates, weight = exp(-α·error), pick leader, emit `GlobalFrame` Avro.
+- Metrics: `somabrain_predictor_error{domain}`, `somabrain_integrator_leader_total{leader}`; tests on toy graphs (compare to `scipy.linalg.expm`).
 
-### Phase 3 — Monitoring & Canary Rollout (1 sprint)
-- 3.1 Automated alerts for per-tenant outbox/circuit metrics (Prometheus / alertmanager).
-- 3.2 Feature flags & canary rollout for enabling tenant-aware behavior (admin endpoints, CLI tooling).
+### Phase 3 — Segmentation HMM Wrapper (1 sprint)
+- Wrap existing gradient-threshold output in a 2‑state HMM (or CPD) inside `somabrain/controls/segmenter.py`; feature flag to select `hmm` vs `threshold`.
+- Metrics: `somabrain_segment_hmm_boundary_total`; tests on synthetic series.
 
-### Phase 4 — Tests, Docs & CI (ongoing)
-- 4.1 Unit/integration tests covering tenant isolation and idempotency.
-- 4.2 Update `scripts/roadmap_invariant_scanner.py` and CI invariants to assert the new behaviors.
+### Phase 4 — Config Unification & Hot‑Swap (1–2 sprints)
+- Make `common/config/settings.py` the only env reader; strip stray `os.getenv` from runtime code.
+- Cache `get_config()`; keep cognitive defaults solely in `somabrain/config.py`.
+- Turn `somabrain/runtime_config.py` into a shim over `somabrain/runtime/config_runtime.py`; add `live_config` facade + safety validator for runtime changes.
+- Centralize feature flags into `somabrain/feature_flags.py`; refactor gates.
+- `/health` must assert `stub_counts == 0`, expose diffusion method, τ, entropy_cap status.
 
-## Concrete files to change (examples)
-- `somabrain/services/memory_service.py` — per-tenant circuit state and metric wiring.
-- `somabrain/db/outbox.py` & `somabrain/db/models/outbox.py` — tenant-aware queries and DB indices.
-- `somabrain/workers/outbox_publisher.py` — message keying, tenant batching, and headers.
-- `somabrain/metrics.py` — ensure per-tenant metrics are registered once and used consistently.
-- `migrations/` — add Alembic migration to create unique index on `(tenant_id, dedupe_key)` and pending-event index.
+### Phase 5 — Observability, Benchmarks, Docs (1 sprint)
+- Benchmark `feedback → leader selection` latency (`benchmarks/learning_latency.py`).
+- Update docs: concise Sutton ↔ Karpathy ↔ diffusion map and new predictor/integrator flows (`docs/developer-manual/learning.md`).
+- Dashboards/alerts for τ, entropy, predictor errors, segment HMM boundaries, config change metrics.
 
-## Acceptance Criteria (high level)
-- Circuit breaker isolation per tenant; metrics labeled accordingly.
-- Outbox idempotency via DB constraint + Kafka keying; no duplicate downstream events under retries.
-- Per-tenant visibility and admin replay tooling.
-- Dashboards & alerts reflect tenant-level health and outbox backlog.
+## File/Module Touch List (scope control)
+- `somabrain/services/learner_online.py`
+- `somabrain/cognitive/planning.py`
+- `somabrain/embeddings.py`, `somabrain/config.py`, `config.yaml`
+- `somabrain/schemas.py`, `somabrain/app.py` (persona, feedback)
+- `somabrain/tenant.py`
+- `somabrain/autonomous/learning.py`, `somabrain/context/builder.py`, `somabrain/services/reward.py`
+- `somabrain/metrics/__init__.py`
+- `somabrain/runtime/config.py`, `somabrain/runtime/config_runtime.py`, `somabrain/feature_flags.py`
+- `somabrain/math/graph_heat.py`, `somabrain/math/lanczos_chebyshev.py`, `somabrain/controls/feature_flags.py`, `somabrain/controls/segmenter.py`
+- New schemas (Avro) for PredictorUpdate/GlobalFrame; predictor/integrator services
+- Tests under `tests/learning/`, `tests/predictors/`, `tests/segmenter/`
 
-## Implementation Status
+## Acceptance Criteria
+- No runtime stubs/placeholders/fallbacks; CI blocks new ones.
+- Learner, planner, embedder, tenant resolution all real and fail-fast on missing deps.
+- τ annealing and entropy caps enforced; metrics and tests cover edge cases.
+- Tripartite predictors + integrator hub emit GlobalFrame with metrics and schema coverage.
+- Segmentation offers HMM mode with metrics; default remains deterministic if flag off.
+- Config is single-sourced (Settings/Config/Runtime) with hot-swap safety and health reporting.
 
-### ✅ Phase 0 — Safety & Observability: COMPLETE
-- 0.1 ✅ Per-tenant circuit-breaker: Centralized `CircuitBreaker` class in `somabrain/infrastructure/circuit_breaker.py` with complete tenant isolation
-- 0.2 ✅ Outbox pending metric wiring: Implemented `_update_outbox_metric()` and `OUTBOX_PENDING` per-tenant metrics
-- 0.3 ✅ Tenant-aware pending queries: Enhanced `get_pending_events()` with tenant support and proper DB indices
+## Status Tracking
+- Phase 0: NOT STARTED (in progress after this consolidation)
+- Phase 1: NOT STARTED
+- Phase 2: NOT STARTED
+- Phase 3: NOT STARTED
+- Phase 4: NOT STARTED
+- Phase 5: NOT STARTED
 
-### ✅ Phase 1 — Idempotency, DB Constraints & Worker Hardening: COMPLETE
-- 1.1 ✅ DB constraints & indices: Migration `b5c9f9a3d1ab_outbox_tenant_indices.py` with unique constraint on `(tenant_id, dedupe_key)`
-- 1.2 ✅ Producer keying & headers: Enhanced outbox publisher with stable keys and comprehensive headers
-- 1.3 ✅ Per-tenant batch quotas & backpressure: `TenantQuotaManager` class with rate limiting and fair processing
+## Sprint Parallelization Notes
+- Phase 0 can run in parallel with Phase 1 (entropy/τ) but must finish before prod cut.
+- Phase 2 predictor/integrator work can start once Phase 0 removes stubs and Phase 1 exposes τ/entropy metrics.
+- Phase 3 segmentation can run alongside Phase 2 (shared metrics only).
+- Phase 4 config unification should start after Phase 0 (to avoid chasing moving env reads).
+- Phase 5 depends on metrics being in place (Phase 1/2/3).
 
-### ✅ Phase 3 — Memory Outbox & Write Modes: COMPLETE
-- DB-backed outbox migration completed
-- Enhanced HTTP headers with tenant context
-- Memory write mode configuration implemented
-- Tenant isolation fully operational
-
-### ✅ Phase 2 — Replay/Recovery & Operational Tooling: COMPLETE
-- 2.1 ✅ Admin replay endpoints: Implemented in `somabrain/app.py` and `somabrain/api/memory_api.py`
-  - `POST /admin/outbox/replay` - Replay specific events by ID
-  - `POST /admin/outbox/replay/tenant` - Replay events for specific tenant with filtering
-  - Full tenant-aware replay with metrics and error handling
-- 2.2 ✅ Optional local journaling: Implemented in `somabrain/journal/local_journal.py`
-  - Complete LocalJournal class with file-based storage
-  - Configurable rotation, retention, and compression
-  - Integration with outbox system for redundant persistence
-  - Thread-safe operations with JSON serialization
-
-### ✅ Phase 4 — Tests, Docs & CI: COMPLETE
-- 4.1 ✅ Unit tests: CircuitBreaker and MemoryService delegation tests completed
-  - `tests/infrastructure/test_circuit_breaker.py` - Comprehensive CircuitBreaker test suite
-  - `tests/services/test_memory_service_circuit.py` - MemoryService delegation tests
-  - All tests use real implementations (no mocks) following VIBE rules
-- 4.2 ✅ Documentation updates: Complete
-  - Updated ROAMDP.md with implementation status and examples
-  - Added infrastructure module usage examples
-  - Documented new CircuitBreaker and tenant utilities
-
-## New Infrastructure Components
-
-### Central Circuit Breaker (`somabrain/infrastructure/circuit_breaker.py`)
-```python
-from somabrain.infrastructure.circuit_breaker import CircuitBreaker
-
-# Create shared instance
-breaker = CircuitBreaker(global_failure_threshold=3, global_reset_interval=60.0)
-
-# Configure per-tenant thresholds
-breaker.configure_tenant('tenant1', failure_threshold=5, reset_interval=120.0)
-
-# Record operations
-breaker.record_success('tenant1')
-breaker.record_failure('tenant1')
-is_open = breaker.is_open('tenant1')
-state = breaker.get_state('tenant1')
-```
-
-### Tenant Utilities (`somabrain.infrastructure.tenant.py`)
-```python
-from somabrain.infrastructure.tenant import tenant_label, resolve_namespace
-
-# Extract tenant label from namespace
-label = tenant_label('org:tenant1')  # Returns 'tenant1'
-label = tenant_label('simple_tenant')  # Returns 'simple_tenant'
-label = tenant_label('')  # Returns 'default'
-
-# Resolve namespace from label
-namespace = resolve_namespace('tenant1')  # Returns 'tenant1'
-```
-
-## 🎯 ROAMDP IMPLEMENTATION STATUS: 100% COMPLETE
-
-### ✅ ALL PHASES COMPLETED
-
-**Phase 0 — Safety & Observability:** ✅ COMPLETE
-- Per-tenant circuit-breaker with full isolation
-- Outbox pending metric wiring with tenant labels
-- Tenant-aware pending queries with optimized indices
-
-**Phase 1 — Idempotency, DB Constraints & Worker Hardening:** ✅ COMPLETE
-- DB constraints & indices for unique events
-- Producer keying & headers for exactly-once semantics
-- Per-tenant batch quotas & backpressure
-
-**Phase 2 — Replay/Recovery & Operational Tooling:** ✅ COMPLETE
-- Admin replay endpoints for specific events and tenant-wide replay
-- Local journaling system with configurable policies
-
-**Phase 3 — Memory Outbox & Write Modes:** ✅ COMPLETE
-- DB-backed outbox migration
-- Enhanced HTTP headers with tenant context
-- Memory write mode configuration
-
-**Phase 4 — Tests, Docs & CI:** ✅ COMPLETE
-- Comprehensive unit tests with real implementations
-- Updated documentation with usage examples
-- VIBE-compliant codebase
-
-### 🚀 PRODUCTION READY
-
-The SomaBrain ROAMDP implementation is **100% complete** and production-ready with:
-
-- **Enterprise-grade tenant isolation** across all components
-- **Comprehensive monitoring** with per-tenant metrics
-- **Robust error handling** and graceful degradation
-- **Full test coverage** with real implementations (no mocks)
-- **Complete documentation** with usage examples
-
-### 📋 ACCEPTANCE CRITERIA MET
-
-✅ Circuit breaker isolation per tenant; metrics labeled accordingly  
-✅ Outbox idempotency via DB constraint + Kafka keying; no duplicate downstream events  
-✅ Per-tenant visibility and admin replay tooling  
-✅ Dashboards & alerts reflect tenant-level health and outbox backlog
-
-### 🎉 NEXT STEPS
-
-The ROAMDP implementation is **complete**. Next steps include:
-
-1. **Production deployment** with proper monitoring
-2. **Performance tuning** based on production metrics
-3. **Operational runbooks** for maintenance procedures
-4. **Feature enhancements** based on user feedback
-
-**Last Updated:** November 16, 2025  
-**Status:** ✅ 100% COMPLETE  
-**VIBE Compliance:** ✅ 100% (Real implementations, no mocks, no shims, no fallbacks)
+## VIBE Compliance
+- Real implementations only; fail fast on missing deps.
+- No shims, no silent fallbacks, no hardcoded magic numbers in hot path.
+- Tests required for every new behavior; metrics for every new critical variable.

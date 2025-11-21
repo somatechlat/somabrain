@@ -2374,14 +2374,6 @@ class ComplexityDetector:
         return min(1.0, complexity_score)
 
 
-# PHASE 2 INITIALIZATIONS - WORLD-CHANGING AI (placeholders for future components)
-# The following advanced components are not yet implemented. They are kept as
-# comments to avoid NameError during import while preserving the intended
-# architecture for future development.
-# quantum_cognition = QuantumCognitionEngine(unified_brain)
-# fractal_consciousness = FractalConsciousness(unified_brain, quantum_cognition)
-# mathematical_transcendence = MathematicalTranscendence(fractal_consciousness)
-
 personality_store = PersonalityStore()
 supervisor = (
     Supervisor(SupervisorConfig(gain=cfg.meta_gain, limit=cfg.meta_limit))
@@ -2473,6 +2465,35 @@ async def health(request: Request) -> S.HealthResponse:
     resp["trace_id"] = trace_id
     resp["deadline_ms"] = deadline_ms
     resp["idempotency_key"] = idempotency_key
+    # Expose key learning/config diagnostics
+    try:
+        from somabrain import runtime_config as _rt
+
+        resp["entropy_cap"] = _rt.get_float("entropy_cap", None)
+        resp["entropy_cap_enabled"] = _rt.get_bool("entropy_cap_enabled", False)
+        resp["tau_decay_rate"] = _rt.get_float("tau_decay_rate", None)
+    except Exception:
+        resp["entropy_cap"] = None
+        resp["entropy_cap_enabled"] = None
+        resp["tau_decay_rate"] = None
+    # Downstream health (integrator + segmentation)
+    import urllib.request
+
+    def _ping(url: str) -> bool:
+        try:
+            with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
+                return 200 <= getattr(r, "status", 500) < 300
+        except Exception:
+            return False
+
+    integrator_url = os.getenv(
+        "SOMABRAIN_INTEGRATOR_HEALTH_URL", "http://somabrain_integrator_triplet:9015/health"
+    )
+    segmentation_url = os.getenv(
+        "SOMABRAIN_SEGMENTATION_HEALTH_URL", "http://somabrain_cog:9016/health"
+    )
+    resp["integrator_health"] = _ping(integrator_url)
+    resp["segmentation_health"] = _ping(segmentation_url)
     # Constitution info (optional)
     cengine = getattr(request.app.state, "constitution_engine", None)
     if cengine:
@@ -2548,10 +2569,16 @@ async def health(request: Request) -> S.HealthResponse:
             resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
         except Exception:
             resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
-        try:
-            resp["stub_counts"] = __stub_stats()
-        except Exception:
-            resp["stub_counts"] = {}
+    try:
+        resp["stub_counts"] = __stub_stats()
+    except Exception:
+        resp["stub_counts"] = {}
+    # Fail-fast if any stub usage is detected
+    try:
+        if any(v for v in resp.get("stub_counts", {}).values()):
+            resp["ok"] = False
+    except Exception:
+        pass
         # Readiness heuristic
         mem_items = 0
         try:
@@ -3797,28 +3824,7 @@ async def recall_delete(req: S.DeleteRequest, request: Request):
 async def set_personality(
     state: S.PersonalityState, request: Request
 ) -> S.PersonalityState:
-    """Set personality traits for the current tenant.
-
-    This endpoint accepts a JSON body with a `traits` dictionary, stores it via the
-    in‑process `personality_store`, and also persists a semantic memory record so
-    that the traits survive restarts. It mirrors the legacy `/personality` POST
-
-
-
-    behaviour expected by the test suite.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Extract traits dict, defaulting to empty
-    traits = dict(state.traits or {})
-    # Store in the in‑memory store
-    personality_store.set(ctx.tenant_id, traits)
-    # Persist as a semantic memory record for durability
-    payload = {"fact": "personality", "traits": traits, "memory_type": "semantic"}
-    mt_memory.for_namespace(ctx.namespace).remember(
-        f"personality:{ctx.tenant_id}", payload
-    )
-    return S.PersonalityState(traits=traits)
+    raise HTTPException(status_code=404, detail="Not Found")
 
 
 # Act endpoint – performs a single cognitive step and returns result data

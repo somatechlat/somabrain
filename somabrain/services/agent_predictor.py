@@ -26,24 +26,30 @@ import numpy as np
 
 from somabrain.prediction import BudgetedPredictor, MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
+try:
+    from common.config.settings import settings as shared_settings
+except ImportError:
+    shared_settings = None
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
 except ImportError as e:
     raise RuntimeError(f"Agent predictor requires confluent-kafka: {e}")
 
-try:
-    from common.config.settings import settings as shared_settings
-except ImportError:
-    shared_settings = None
-
 # Logging setup
 logger = logging.getLogger("somabrain.services.agent_predictor")
 
-# Kafka configuration
-CONSUME_TOPIC = "cog.integrator.context"  # Input: agent context from integrator
-PUBLISH_TOPIC = "cog.agent.updates"  # Output: predictor updates
+# Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
+CONSUME_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
+)
+PUBLISH_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_AGENT_UPDATES",
+    getattr(shared_settings, "topic_agent_updates", "cog.agent.updates"),
+)
+PREDICTOR_ALPHA = float(os.getenv("SOMABRAIN_PREDICTOR_ALPHA", "2.0") or 2.0)
 
 
 class AgentPredictorService:
@@ -60,13 +66,10 @@ class AgentPredictorService:
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        bootstrap_servers = (
-            os.getenv("SOMA_KAFKA_BOOTSTRAP")
-            or os.getenv("SOMABRAIN_KAFKA_URL")
-        ).replace("kafka://", "")
-        
-        if not bootstrap_servers:
+        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
+        bootstrap_servers = bs.replace("kafka://", "")
 
         config = {
             "bootstrap.servers": bootstrap_servers,
@@ -115,15 +118,17 @@ class AgentPredictorService:
         domain: str = "agent"
     ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
+        err = float(prediction_result.error)
+        conf = float(np.exp(-PREDICTOR_ALPHA * max(0.0, err)))
         return {
             "tenant": self.tenant_id,
             "domain": domain,
             "predictor_type": "budgeted_mahalanobis",
-            "error_metric": float(prediction_result.error),
+            "error_metric": err,
             "prediction_latency_ms": float(latency_ms),
             "model_version": "1.0",
             "vector_dim": int(len(prediction_result.predicted_vec)),
-            "confidence": float(max(0.0, 1.0 - prediction_result.error)),
+            "confidence": conf,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
 

@@ -139,34 +139,29 @@ class OrchestratorService:
 
     def _start_health_server(self) -> None:
         try:
-            from fastapi import FastAPI
-            import uvicorn  # type: ignore
+            from http.server import BaseHTTPRequestHandler, HTTPServer
+            import threading
 
-            app = FastAPI(title="Orchestrator Health")
+            class _Handler(BaseHTTPRequestHandler):
+                def do_GET(self):  # type: ignore[override]
+                    if self.path not in ("/health", "/healthz", "/ready"):
+                        self.send_response(404)
+                        self.end_headers()
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    payload = {"ok": True, "service": "orchestrator"}
+                    self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-            @app.get("/healthz")
-            async def _hz():  # type: ignore
-                return {"ok": True, "service": "orchestrator"}
-
-            # Prometheus metrics endpoint (optional)
-            try:
-                from somabrain import metrics as _M  # type: ignore
-
-                @app.get("/metrics")
-                async def _metrics_ep():  # type: ignore
-                    return await _M.metrics_endpoint()
-
-            except Exception:
-                pass
+                def log_message(self, format, *args):  # noqa: N802
+                    return
 
             from common.config.settings import settings as _settings  # type: ignore
-            port = int(_settings.health_port)
-            config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
-            server = uvicorn.Server(config)
-            import threading as _th
 
-            th = _th.Thread(target=server.run, daemon=True)
-            th.start()
+            port = int(_settings.health_port)
+            srv = HTTPServer(("", port), _Handler)
+            threading.Thread(target=srv.serve_forever, daemon=True).start()
         except Exception:
             pass
 

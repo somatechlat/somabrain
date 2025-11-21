@@ -263,7 +263,7 @@ class Config:
     hrr_rerank_only_low_margin: bool = False
     rerank_margin_threshold: float = 0.05
 
-    # FDE placeholder
+    # FDE disabled until implemented
     fde_enabled: bool = False
     fde_pooling: str = "gated_max"
     fde_margin_threshold: float = 0.1

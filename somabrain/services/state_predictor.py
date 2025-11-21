@@ -26,6 +26,7 @@ import numpy as np
 
 from somabrain.prediction import MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
+from common.config.settings import settings as shared_settings
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
@@ -40,10 +41,17 @@ except ImportError:
 # Logging setup
 logger = logging.getLogger("somabrain.services.state_predictor")
 
-# Kafka configuration
-CONSUME_TOPIC = "cog.global.frame"  # Input: state vectors from integrator
-PUBLISH_TOPIC = "cog.state.updates"  # Output: predictor updates
+# Kafka configuration (prod-like defaults, override via env/settings)
 SCHEMA_NAME = "predictor_update"
+CONSUME_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
+)
+PUBLISH_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_STATE_UPDATES",
+    getattr(shared_settings, "topic_state_updates", "cog.state.updates"),
+)
+PREDICTOR_ALPHA = float(os.getenv("SOMABRAIN_PREDICTOR_ALPHA", "2.0") or 2.0)
 
 
 class StatePredictorService:
@@ -58,13 +66,10 @@ class StatePredictorService:
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        bootstrap_servers = (
-            os.getenv("SOMA_KAFKA_BOOTSTRAP")
-            or os.getenv("SOMABRAIN_KAFKA_URL")
-        ).replace("kafka://", "")
-        
-        if not bootstrap_servers:
+        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
+        bootstrap_servers = bs.replace("kafka://", "")
 
         config = {
             "bootstrap.servers": bootstrap_servers,
@@ -107,15 +112,17 @@ class StatePredictorService:
         domain: str = "state"
     ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
+        err = float(prediction_result.error)
+        conf = float(np.exp(-PREDICTOR_ALPHA * max(0.0, err)))
         return {
             "tenant": self.tenant_id,
             "domain": domain,
             "predictor_type": "mahalanobis",
-            "error_metric": float(prediction_result.error),
+            "error_metric": err,
             "prediction_latency_ms": float(latency_ms),
             "model_version": "1.0",
             "vector_dim": int(len(prediction_result.predicted_vec)),
-            "confidence": float(1.0 - prediction_result.error),  # Inverse of error
+            "confidence": conf,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
 

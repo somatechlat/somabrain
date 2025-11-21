@@ -30,7 +30,7 @@ MYPY:=$(VENV)/bin/mypy
 .PHONY: help venv install dev run test test-live lint typecheck fmt clean docker-build docker-run docker-build-prod docker-run-prod docker-push compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean up-dev up-prod-like down-prod-like ps-prod-like logs-prod-like
 
 help:
-	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean"
+	@echo "Targets: venv | install | dev | run | test | lint | typecheck | fmt | docker-build | docker-run | clean | compose-preflight"
 
 venv:
 	$(PY) -m venv $(VENV)
@@ -148,6 +148,7 @@ PROJECT?=somabrain
 COMPOSE?=docker compose -p $(PROJECT)
 
 .PHONY: compose-build compose-up compose-down compose-restart compose-logs compose-ps compose-health compose-clean
+.PHONY: compose-preflight
 
 compose-build:
 	$(COMPOSE) build somabrain
@@ -183,6 +184,9 @@ compose-clean:
 	$(COMPOSE) down --remove-orphans
 	- docker network rm $(PROJECT)_default 2>/dev/null || true
 	@echo "Compose project cleaned."
+
+compose-preflight:
+	@./scripts/compose_preflight.sh
 
 # Run an end-to-end smoke test: POST reward and verify it's in the Kafka topic.
 .PHONY: smoke-e2e
@@ -230,6 +234,7 @@ up-prod-like:
 	@echo "- SchemaRegistry: http://127.0.0.1:30108"
 	@echo "- Reward Prod:    http://127.0.0.1:30183/health"
 	@echo "- Learner Online: http://127.0.0.1:30184/health"
+	@echo "- Integrator Hub: http://127.0.0.1:9015/health"
 
 down-prod-like:
 	@$(COMPOSE_CMD) down --remove-orphans

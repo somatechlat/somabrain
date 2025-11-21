@@ -42,6 +42,7 @@ from somabrain.metrics import (
     record_learning_feedback_latency,
     update_learning_effective_lr,
 )
+import math
 # Import central feature flag view and metrics utilities
 from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
@@ -197,10 +198,27 @@ async def feedback_endpoint(
 
     if payload.metadata is not None:
         try:
-            if len(json.dumps(payload.metadata)) > 8 * 1024:
-                raise HTTPException(status_code=400, detail="metadata exceeds 8 KB")
+            encoded_metadata = json.dumps(payload.metadata)
         except Exception:
             raise HTTPException(status_code=400, detail="invalid metadata encoding")
+        if len(encoded_metadata) > 8 * 1024:
+            raise HTTPException(status_code=400, detail="metadata exceeds 8 KB")
+
+    # Validate reward and utility
+    if payload.reward is None or payload.utility is None:
+        raise HTTPException(status_code=400, detail="reward and utility are required")
+    try:
+        reward_val = float(payload.reward)
+    except Exception:
+        raise HTTPException(status_code=400, detail="reward must be numeric")
+    if not math.isfinite(reward_val) or reward_val < -10_000 or reward_val > 10_000:
+        raise HTTPException(status_code=400, detail="reward out of bounds")
+    try:
+        util_val = float(payload.utility)
+    except Exception:
+        raise HTTPException(status_code=400, detail="utility must be numeric")
+    if not math.isfinite(util_val) or util_val < -10_000 or util_val > 10_000:
+        raise HTTPException(status_code=400, detail="utility out of bounds")
 
     adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
     # Capture weights before adaptation

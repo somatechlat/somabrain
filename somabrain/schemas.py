@@ -656,8 +656,9 @@ class PersonalityState(BaseModel):
     """
     Schema for personality trait states.
 
-    Represents the current state of personality traits in the cognitive system.
-    This is a placeholder structure that can be extended with specific trait models.
+    Represents normalized personality traits in the cognitive system. Trait values
+    should be floats in ``[0.0, 1.0]``. Additional traits are allowed but must also
+    be numeric.
 
     Attributes:
         traits (dict[str, Any]): Dictionary of personality trait names to their values.
@@ -667,8 +668,21 @@ class PersonalityState(BaseModel):
         >>> state = PersonalityState(traits={"openness": 0.8, "conscientiousness": 0.6})
     """
 
-    # MVP placeholder
-    traits: dict[str, Any] = {}
+    traits: Dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_traits(self):
+        validated: Dict[str, float] = {}
+        for k, v in (self.traits or {}).items():
+            try:
+                fv = float(v)
+            except Exception as exc:
+                raise ValueError(f"Trait '{k}' must be numeric") from exc
+            if not 0.0 <= fv <= 1.0:
+                raise ValueError(f"Trait '{k}' must be in [0,1]")
+            validated[k] = fv
+        object.__setattr__(self, "traits", validated)
+        return self
 
 
 class Persona(BaseModel):

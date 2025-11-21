@@ -86,28 +86,17 @@ async def get_tenant(request: Request, base_namespace: str) -> TenantContext:
 
 
 def get_tenant_sync(request: Request, base_namespace: str) -> TenantContext:
-    """Synchronous fallback for tenant resolution (legacy compatibility).
+    """Strict synchronous tenant resolution.
     
-    This function is provided for backward compatibility in contexts where
-    async/await is not available. It uses simplified tenant resolution logic.
-    
-    Args:
-        request: FastAPI request object
-        base_namespace: Base namespace for tenant isolation
-        
-    Returns:
-        TenantContext: Immutable tenant context (without metadata)
+    Requires an explicit tenant identifier; no implicit "public" fallback is allowed.
     """
-    # Priority: explicit header → alternative token hash → default
     tid = request.headers.get(TENANT_HEADER)
     if not tid:
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Bearer "):
-            tid = auth.split(" ", 1)[1][:16] or "public"
-        else:
-            tid = "public"
+            tid = auth.split(" ", 1)[1][:16]
+    if not tid:
+        raise RuntimeError("Tenant ID is required (no public fallback enabled).")
     
-    # Namespace isolation per tenant
     namespace = f"{base_namespace}:{tid}"
-    
     return TenantContext(tenant_id=tid, namespace=namespace)

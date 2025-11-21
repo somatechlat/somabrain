@@ -52,7 +52,7 @@ class CalibrationPipeline:
             )
         confs, accs, counts = zip(*data)
         return (
-            np.arange(n_bins, dtype=float),  # bin indices as placeholders
+            np.arange(n_bins, dtype=float),  # bin indices
             np.asarray(accs, dtype=float),
             np.asarray(confs, dtype=float),
         )

@@ -247,10 +247,11 @@ def make_embedder(cfg, quantum=None):
         base_dim = int(getattr(cfg, "hrr_dim", 8192) or 8192)
         base_fn = _hrr_embed
     elif provider == "fde":
-        # Placeholder: treat FDE as tiny provider for now but label via plabel below
-        base = TinyDeterministicEmbedder(dim=int(getattr(cfg, "embed_dim", 256) or 256))
-        base_dim = base.dim
-        base_fn = base.embed
+        # FDE must be a real provider; fail fast until implemented.
+        raise RuntimeError(
+            "Embed provider 'fde' is not implemented. "
+            "Set embed_provider to a supported provider or add the real FDE implementation."
+        )
     elif provider == "transformer":
         try:
             from .providers.transformer_embed import TransformerEmbedder  # type: ignore

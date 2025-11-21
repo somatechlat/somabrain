@@ -206,15 +206,17 @@ def diversify_payloads(
     k: Optional[int] = None,
     lam: float = 0.5,
 ) -> List[dict]:
-    """Apply a lightweight diversity pass (MMR-style) over payloads.
+    """Apply diversity over payloads (MMR only).
 
     - embed: function mapping text -> vector (unit norm preferred)
     - query: query text used for relevance
     - payloads: list of payload dicts containing 'task' or 'fact'
-    - method: currently 'mmr' only; facility location placeholder
+    - method: must be 'mmr'
     - k: number of items to select (defaults to len(payloads))
     - lam: tradeoff [0,1] between relevance and diversity
     """
+    if method != "mmr":
+        raise NotImplementedError("diversify_payloads supports only method='mmr'")
     try:
         import numpy as np  # local import to avoid hard dep here
 

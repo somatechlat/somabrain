@@ -1190,6 +1190,13 @@ LEARNING_REGRET_EWMA = get_gauge(
     labelnames=["tenant_id"],
 )
 
+# Next-event regret gauge (legacy single-value view)
+soma_next_event_regret = get_gauge(
+    "soma_next_event_regret",
+    "Instantaneous next-event regret (0-1)",
+    labelnames=["tenant_id"],
+)
+
 _regret_ema: dict[str, float] = {}
 _REGRET_ALPHA = 0.15
 

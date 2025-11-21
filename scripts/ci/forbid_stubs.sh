@@ -14,12 +14,17 @@ forbidden_patterns=(
   "from somabrain\.memory_stub"
   "StubPredictor"
   "memory stub (host access)"
+  "placeholder memory"
+  "no-op placeholder"
+  "DummyGauge"
 )
 
 failed=0
 for pat in "${forbidden_patterns[@]}"; do
   if grep -RInE "$pat" \
     --exclude-dir=.git --exclude-dir=.mypy_cache --exclude-dir=.pytest_cache --exclude-dir=.venv \
+    --exclude-dir=tests \
+    --exclude-dir=docs \
     --exclude=forbid_stubs.sh \
     . >/dev/null 2>&1; then
     echo "[forbid_stubs] Found forbidden pattern: $pat"

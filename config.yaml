@@ -21,6 +21,12 @@ wm_recency_max_steps: 4096.0        # Will be overridden by adaptive system
 # Predictor
 predictor_provider: mahal      # stub|mahal|slow
 predictor_timeout_ms: 250
+topic_next_event: cog.next_event
+topic_config_updates: cog.config.updates
+topic_state_updates: cog.state.updates
+topic_agent_updates: cog.agent.updates
+topic_action_updates: cog.action.updates
+topic_global_frame: cog.global.frame
 
 # HRR-first rerank (WM + LTM)
 use_hrr_first: true
