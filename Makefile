@@ -58,9 +58,6 @@ bench-diffusion:
 bench-recall:
 	PYTHONPATH=. $(PYBIN) benchmarks/recall_latency_bench.py
 
-test:
-	PYTHONPATH=. $(PYTEST) -q
-
 # Strict invariant scan (fails on banned patterns). Use in CI before tests.
 .PHONY: invariants
 invariants:
@@ -96,9 +93,6 @@ docker-run-prod:
 
 docker-push:
 	@echo "Use: make docker-build-prod IMAGE=your/repo && docker push your/repo:prod"
-
-clean:
-	rm -rf $(VENV) .pytest_cache .mypy_cache **/__pycache__
 
 # ---------------------------------------------------------------------------
 # Documentation

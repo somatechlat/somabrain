@@ -20,11 +20,10 @@ except Exception:  # pragma: no cover
 
 def _bootstrap_url() -> str:
     """Get bootstrap servers from environment."""
-    return (
-        os.getenv("SOMA_KAFKA_BOOTSTRAP")
-        or os.getenv("SOMABRAIN_KAFKA_URL")
-        or None
-    ).replace("kafka://", "")
+    bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+    if not bs:
+        raise RuntimeError("Kafka bootstrap servers are required (SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL)")
+    return bs.replace("kafka://", "")
 
 
 class _ProducerShim:

@@ -33,6 +33,11 @@ from typing import Any, Dict, Optional
 from confluent_kafka import Consumer as CKConsumer  # type: ignore
 from somabrain.modes import feature_enabled
 
+try:  # Optional shared config service
+    from common.config.settings import settings as shared_settings  # type: ignore
+except Exception:  # pragma: no cover
+    shared_settings = None  # type: ignore
+
 # Optional Avro serde
 try:  # pragma: no cover
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
@@ -44,6 +49,16 @@ except Exception:  # pragma: no cover
 # Outbox API (DB-backed) required
 from somabrain.db.outbox import enqueue_event  # type: ignore
 from somabrain.common.infra import assert_ready
+
+
+GLOBAL_FRAME_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
+)
+SEGMENTS_TOPIC = os.getenv(
+    "SOMABRAIN_TOPIC_SEGMENTS",
+    getattr(shared_settings, "topic_segments", "cog.segments"),
+)
 
 
 @dataclass
@@ -225,7 +240,7 @@ class OrchestratorService:
                 "auto.offset.reset": "latest",
             }
         )
-        consumer.subscribe(["cog.global.frame", "cog.segments"])  # Avro-only topics
+        consumer.subscribe([GLOBAL_FRAME_TOPIC, SEGMENTS_TOPIC])  # Avro-only topics
         try:
             while True:
                 msg = consumer.poll(timeout=1.0)
@@ -233,7 +248,7 @@ class OrchestratorService:
                     continue
                 topic = msg.topic()
                 payload = msg.value()
-                if topic == "cog.global.frame":
+                if topic == GLOBAL_FRAME_TOPIC:
                     gf = _parse_global_frame(payload, self._serde_gf)
                     if gf is None:
                         continue
@@ -247,7 +262,7 @@ class OrchestratorService:
                         ctx.frame = gf.frame
                         ctx.rationale = gf.rationale
                         ctx.count += 1
-                else:  # cog.segments
+                else:  # segmentation boundaries
                     sb = _parse_segment_boundary(payload, self._serde_sb)
                     if not isinstance(sb, dict):
                         continue

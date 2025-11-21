@@ -33,10 +33,14 @@ cp config/env.example .env
 ```
 Notes:
 - Defaults are prod‑like: `SOMABRAIN_MODE=full-local`, strict real backends, no stubs/fallbacks.
-- Topic creation is handled by `somabrain_kafka_init`; required topics:
+- Topic creation is handled by the preflight script; required topics:
   `cog.next_event`, `cog.config.updates`, `cog.state.updates`, `cog.agent.updates`,
-  `cog.action.updates`, `cog.global.frame`.
-- Integrator hub exposes health on `http://localhost:9015/health` and is included in compose.
+  `cog.action.updates`, `cog.global.frame`, `cog.segments`, `soma.audit`.
+- Preflight now verifies API, integrator, and segmentation health endpoints end‑to‑end.
+- Health ports (host→container):
+  - Integrator hub: `${INTEGRATOR_HEALTH_HOST_PORT:-30115} → 9015`
+  - Segmentation: `${SEGMENTATION_HEALTH_HOST_PORT:-30116} → 9016`
+  - Cog supervisor health/metrics: `${COG_INTEGRATOR_HEALTH_HOST_PORT:-30010} → 9010`
 ### Kubernetes (recommended for scale)
 1. Create a namespace per tenant or a single namespace with tenant‑labelled pods.
 2. Apply the Helm chart located in `charts/somabrain`:
