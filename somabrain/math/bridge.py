@@ -6,7 +6,8 @@ vectors (or pairwise distances) and compute an OT plan using sinkhorn.
 
 import numpy as np
 from somabrain.math.sinkhorn import sinkhorn_log_stabilized
-from somabrain.config import get_config
+# Use unified settings for configuration defaults
+from common.config.settings import settings
 
 
 def sinkhorn_bridge_from_embeddings(
@@ -27,7 +28,7 @@ def sinkhorn_bridge_from_embeddings(
     b = np.ones(m) / m
     # resolve defaults from truth-budget if not provided
     if eps is None or tol is None:
-        cfg = get_config()
+        cfg = settings
         if eps is None:
             eps = getattr(cfg, "truth_sinkhorn_eps", 1e-2)
         if tol is None:

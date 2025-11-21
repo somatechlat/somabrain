@@ -6,10 +6,11 @@ Usage:
 """
 import json
 
-from somabrain.config import get_config
+# Unified configuration – use the central Settings instance
+from common.config.settings import settings
 from somabrain.quantum import HRRConfig
 
-cfg = get_config()
+cfg = settings
 if not getattr(cfg, "use_hrr", False):
     print(json.dumps({"hrr_enabled": False}, indent=2))
 else:

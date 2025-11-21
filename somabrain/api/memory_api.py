@@ -33,8 +33,10 @@ from somabrain.runtime.config_runtime import (
     submit_metrics_snapshot,
     get_cutover_controller,
 )
-from somabrain.config import get_config
-from somabrain.tenant import get_tenant as get_tenant_async
+# Unified configuration: use the central Settings instance from common.config.settings.
+from common.config.settings import settings
+# Use the new TenantManager for tenant resolution.
+from somabrain.tenant_manager import get_tenant_manager
 from somabrain.auth import require_auth, require_admin_auth
 from somabrain.schemas import RetrievalRequest
 from somabrain.db import outbox as outbox_db
@@ -423,9 +425,8 @@ def _app_config():
     rt = _runtime_module()
     cfg = getattr(rt, "cfg", None)
     if cfg is None:
-        from somabrain.config import get_config
-
-        cfg = get_config()
+        # Legacy get_config import removed; use unified settings
+        cfg = settings
         setattr(rt, "cfg", cfg)
     return cfg
 
@@ -1325,7 +1326,7 @@ async def recall_memory(
     accepts the legacy MemoryRecallRequest fields as well as RetrievalRequest fields.
     """
     await _ensure_config_runtime_started()
-    cfg = get_config()
+    cfg = settings
     ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
 

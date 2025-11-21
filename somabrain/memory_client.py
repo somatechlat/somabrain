@@ -1253,12 +1253,13 @@ class MemoryClient:
             except Exception:
                 weighting_enabled = False
         else:
+            # Fallback to unified settings when legacy runtime is unavailable
             try:
-                from somabrain.config import runtime as _rt
+                from common.config.settings import settings as _settings
 
-                weighting_enabled = _rt.get_bool("memory_enable_weighting", False)
-                priors_env = _rt.get_str("memory_phase_priors", "")
-                quality_exp = _rt.get_float("memory_quality_exp", 1.0)
+                weighting_enabled = bool(getattr(_settings, "memory_enable_weighting", False))
+                priors_env = getattr(_settings, "memory_phase_priors", "") or ""
+                quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0
             except Exception:
                 weighting_enabled = False
         if not weighting_enabled:

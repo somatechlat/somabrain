@@ -9,7 +9,8 @@ from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.learning import UtilityWeights
 from somabrain.runtime.working_memory import WorkingMemoryBuffer
-from somabrain.config import get_config
+# Unified configuration – use the central Settings instance
+from common.config.settings import settings
 from somabrain.embeddings import make_embedder
 from somabrain.memory_client import MemoryClient
 
@@ -27,7 +28,7 @@ try:
 
         _embedder = TinyDeterministicEmbedder(dim=256)
     else:
-        _embedder = make_embedder(get_config(), quantum=None)
+        _embedder = make_embedder(settings, quantum=None)
 except Exception:
     from somabrain.embeddings import TinyDeterministicEmbedder
 
@@ -39,7 +40,7 @@ _utility_weights = UtilityWeights()
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
-    memory = MemoryClient(cfg=get_config())
+    memory = MemoryClient(cfg=settings)
     return ContextBuilder(
         embed_fn=_embedder.embed,
         memory=memory,

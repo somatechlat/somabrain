@@ -16,7 +16,8 @@ import random
 import time
 from typing import List, Tuple
 
-from somabrain.config import get_config
+# Unified configuration – use the central Settings instance
+from common.config.settings import settings
 from somabrain.memory_pool import MultiTenantMemory
 
 
@@ -30,9 +31,9 @@ def _random_coord() -> Tuple[float, float, float]:
 
 
 def run_benchmark(num_links: int = 10_000) -> None:
-    cfg = copy.deepcopy(get_config())
-    # Memory modes removed. Ensure HTTP endpoint configured for the memory service
-    cfg.http.endpoint = cfg.http.endpoint or "http://localhost:9595"
+    cfg = copy.deepcopy(settings)
+    # Ensure HTTP endpoint configured for the memory service (fallback if missing)
+    cfg.memory_http_endpoint = getattr(cfg, "memory_http_endpoint", None) or "http://localhost:9595"
     pool = MultiTenantMemory(cfg)
     namespace = "benchmark:link_latency"
     client = pool.for_namespace(namespace)

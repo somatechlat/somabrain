@@ -46,7 +46,8 @@ from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 from somabrain.auth import require_admin_auth, require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
-from somabrain.config import get_config
+# Use the unified Settings instance for configuration.
+from common.config.settings import settings
 from somabrain.context_hrr import HRRContextConfig
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
@@ -85,7 +86,8 @@ from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
-from somabrain.tenant import get_tenant as get_tenant_async
+# Use the new TenantManager for tenant resolution.
+from somabrain.tenant_manager import get_tenant_manager
 from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
@@ -796,7 +798,7 @@ class SecurityMiddleware:
 #
 # Application bootstrap
 #
-cfg = get_config()
+cfg = settings
 
 _MINIMAL_API = False
 try:

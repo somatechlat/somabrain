@@ -9,7 +9,8 @@ import numpy as np
 from typing import Callable, Tuple, Optional
 
 # lazy config import to read truth-budget defaults when needed
-from somabrain.config import get_config
+# Unified configuration – use central Settings instance
+from common.config.settings import settings
 
 
 def estimate_spectral_interval(
@@ -69,8 +70,7 @@ def chebyshev_heat_apply(
     """
     n = x.shape[0]
     if K is None:
-        cfg = get_config()
-        K = int(getattr(cfg, "truth_chebyshev_K", 32))
+        K = int(getattr(settings, "truth_chebyshev_K", 32))
     # map operator to [-1,1]: A' = (2A - (b+a)I)/(b-a)
     if b <= a:
         raise ValueError("Invalid spectral interval")

@@ -8,9 +8,11 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from somabrain.auth import require_auth
-from somabrain.config import get_config
+# Unified configuration and tenant management
+from common.config.settings import settings
 from somabrain.schemas import Persona
-from somabrain.tenant import get_tenant as get_tenant_async
+from somabrain.tenant_manager import get_tenant_manager
+from types import SimpleNamespace
 
 if TYPE_CHECKING:
     # runtime-only imports omitted for doc builds and static analysis
@@ -37,8 +39,10 @@ async def put_persona(
     Uses optimistic CAS if the client supplies an If-Match header containing the
     current ETag. Returns an ETag header for the newly stored representation.
     """
-    cfg = get_config()
-    ctx = await get_tenant_async(request, cfg.namespace)
+    cfg = settings
+    tenant_manager = await get_tenant_manager()
+    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
+    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
     require_auth(request, cfg)
 
     # import runtime lazily to avoid circular imports at module load
@@ -122,8 +126,10 @@ async def put_persona(
 @router.get("/{pid}")
 async def get_persona(pid: str, request: Request, response: Response):
     """Retrieve the latest Persona record for pid. Returns 404 if not found."""
-    cfg = get_config()
-    ctx = await get_tenant_async(request, cfg.namespace)
+    cfg = settings
+    tenant_manager = await get_tenant_manager()
+    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
+    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
     require_auth(request, cfg)
 
     from somabrain import runtime as _rt
@@ -158,8 +164,10 @@ async def get_persona(pid: str, request: Request, response: Response):
 @router.delete("/{pid}")
 async def delete_persona(pid: str, request: Request):
     """Append a persona tombstone for pid. Best-effort delete for Phase 1."""
-    cfg = get_config()
-    ctx = await get_tenant_async(request, cfg.namespace)
+    cfg = settings
+    tenant_manager = await get_tenant_manager()
+    tenant_id = await tenant_manager.resolve_tenant_from_request(request)
+    ctx = SimpleNamespace(namespace=tenant_id, tenant_id=tenant_id)
     require_auth(request, cfg)
 
     from somabrain import runtime as _rt

@@ -16,9 +16,10 @@ import traceback
 try:
     # Ensure the package path includes /app where the copied code lives
     sys.path.insert(0, "/app")
-    from somabrain.config import get_config
+    # Use unified Settings instance for configuration
+    from common.config.settings import settings
 
-    cfg = get_config()
+    cfg = settings
     # Build optional quantum layer if requested
     quantum = None
     if getattr(cfg, "use_hrr", False):

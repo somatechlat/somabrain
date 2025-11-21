@@ -6,7 +6,8 @@ import asyncio
 import logging
 from typing import Awaitable, Callable, List, Optional
 
-from somabrain.config import Config
+# Legacy Config replaced by unified Settings
+from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
 from somabrain.services.cutover_controller import CutoverController
 from somabrain.services.parameter_supervisor import (

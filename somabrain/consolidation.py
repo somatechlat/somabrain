@@ -167,7 +167,7 @@ def main():
     args = parser.parse_args()
 
     tenant = args.tenant
-    cfg = copy.deepcopy(get_config())
+    cfg = copy.deepcopy(settings)
     mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)  # type: ignore
     mtmem = MultiTenantMemory(cfg)
     if args.nrem:

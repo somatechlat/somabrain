@@ -13,7 +13,8 @@ from typing import List, Optional
 from fastapi import Request
 
 from somabrain.auth import require_auth
-from somabrain.config import Config
+# Legacy Config model replaced by unified Settings
+from common.config.settings import Settings as Config
 
 _current_config: Optional[Config] = None
 _allowed_tenants: List[str] = []

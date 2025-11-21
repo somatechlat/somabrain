@@ -14,15 +14,12 @@ from typing import Any, Callable, Dict, Iterable, List, Optional
 
 import numpy as np
 
-from somabrain.config import get_config
+# Unified configuration – use the central Settings instance
+from common.config.settings import settings
 from somabrain.memory_client import MemoryClient, RecallHit
 
-try:  # optional import; falls back to defaults during lightweight tests
-    from somabrain.config import get_config as _get_config
-except (
-    Exception
-):  # pragma: no cover - config module may not be loaded in some unit tests
-    _get_config = None
+# Legacy fallback removed – directly use `settings` where needed.
+_get_config = None
 
 
 @dataclass
@@ -62,7 +59,7 @@ class ContextBuilder:
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memory = memory or MemoryClient(cfg=get_config())
+        self._memory = memory or MemoryClient(cfg=settings)
         self._weights = weights or RetrievalWeights()
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default value)

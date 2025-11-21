@@ -11,7 +11,8 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
 from dataclasses import asdict
-from somabrain.config import get_config
+# Unified configuration – use the central Settings instance
+from common.config.settings import settings
 from somabrain.learning.dataset import build_examples, iter_jsonl, export_examples
 
 
@@ -47,7 +48,7 @@ def _git_metadata() -> Dict[str, Any]:
 
 
 def _config_snapshot() -> Dict[str, Any]:
-    cfg = get_config()
+    cfg = settings
     snapshot: Dict[str, Any] = {}
     try:
         cfg_dict = asdict(cfg)
@@ -100,7 +101,7 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     if not input_path.exists():
         parser.error(f"input file not found: {input_path}")
 
-    cfg = get_config()
+    cfg = settings
     if not getattr(cfg, "learning_loop_enabled", False) and not args.force:
         parser.error(
             "learning_loop_enabled flag is false. Enable it in config or rerun with --force."

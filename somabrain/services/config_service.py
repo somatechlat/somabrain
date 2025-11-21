@@ -17,7 +17,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from dataclasses import asdict
 
-from somabrain.config import Config
+# The original Config model was removed; use the unified Settings for type hints.
+from common.config.settings import Settings as Config
 
 
 @dataclass(frozen=True)

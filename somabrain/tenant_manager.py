@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 from fastapi import Request, HTTPException
 
 from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
-from .config import get_config
+# Legacy config import replaced by unified Settings
+from common.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ class TenantManager:
     
     async def create_temporary_tenant(self) -> str:
         """Create temporary tenant for anonymous access."""
-        config = get_config()
+        config = settings
         
         # Parse expiry time from config
         expiry_hours = 24  # Default
