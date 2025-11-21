@@ -18,16 +18,13 @@ import numpy as np
 from common.config.settings import settings
 from somabrain.memory_client import MemoryClient, RecallHit
 
-# Legacy fallback removed – directly use `settings` where needed.
-_get_config = None
-
 
 @dataclass
 class RetrievalWeights:
-    alpha: float = 1.0
-    beta: float = 0.2
-    gamma: float = 0.1
-    tau: float = 0.7
+    alpha: float
+    beta: float
+    gamma: float
+    tau: float
 
 
 @dataclass
@@ -60,63 +57,29 @@ class ContextBuilder:
     ) -> None:
         self._embed_fn = embed_fn
         self._memory = memory or MemoryClient(cfg=settings)
-        self._weights = weights or RetrievalWeights()
+        self._weights = weights or RetrievalWeights(
+            settings.retrieval_alpha,
+            settings.retrieval_beta,
+            settings.retrieval_gamma,
+            settings.retrieval_tau,
+        )
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default value)
         self._tenant_id: str = "default"
         # Align temporal decay and density penalties with runtime configuration when available
-        self._recency_half_life = 60.0
-        self._recency_sharpness = 1.2
-        self._recency_floor = 0.05
-        self._density_target = 0.2
-        self._density_floor = 0.6
-        self._density_weight = 0.35
-        self._tau_min = 0.4
-        self._tau_max = 1.2
-        self._tau_increment_up = 0.1
-        self._tau_increment_down = 0.05
-        self._dup_ratio_threshold = 0.5
+        self._recency_half_life = settings.retrieval_recency_half_life
+        self._recency_sharpness = settings.retrieval_recency_sharpness
+        self._recency_floor = settings.retrieval_recency_floor
+        self._density_target = settings.retrieval_density_target
+        self._density_floor = settings.retrieval_density_floor
+        self._density_weight = settings.retrieval_density_weight
+        self._tau_min = settings.retrieval_tau_min
+        self._tau_max = settings.retrieval_tau_max
+        self._tau_increment_up = settings.retrieval_tau_increment_up
+        self._tau_increment_down = settings.retrieval_tau_increment_down
+        self._dup_ratio_threshold = settings.retrieval_dup_ratio_threshold
         # Per-tenant overrides cache (learning.tenants.yaml)
         self._tenant_overrides_cache: Dict[str, Dict] = {}
-        try:
-            cfg = _get_config() if _get_config else None
-            if cfg is not None:
-                self._recency_half_life = float(
-                    getattr(cfg, "recall_recency_time_scale", self._recency_half_life)
-                )
-                self._recency_sharpness = float(
-                    getattr(cfg, "recall_recency_sharpness", self._recency_sharpness)
-                )
-                self._recency_floor = float(
-                    getattr(cfg, "recall_recency_floor", self._recency_floor)
-                )
-                self._density_target = float(
-                    getattr(cfg, "recall_density_margin_target", self._density_target)
-                )
-                self._density_floor = float(
-                    getattr(cfg, "recall_density_margin_floor", self._density_floor)
-                )
-                self._density_weight = float(
-                    getattr(cfg, "recall_density_margin_weight", self._density_weight)
-                )
-                self._tau_min = float(getattr(cfg, "recall_tau_min", self._tau_min))
-                self._tau_max = float(getattr(cfg, "recall_tau_max", self._tau_max))
-                self._tau_increment_up = float(
-                    getattr(cfg, "recall_tau_increment_up", self._tau_increment_up)
-                )
-                self._tau_increment_down = float(
-                    getattr(cfg, "recall_tau_increment_down", self._tau_increment_down)
-                )
-                self._dup_ratio_threshold = float(
-                    getattr(
-                        cfg,
-                        "recall_tau_dup_ratio_threshold",
-                        self._dup_ratio_threshold,
-                    )
-                )
-        except Exception:
-            # Use defaults when configuration cannot be loaded
-            pass
 
         def _env_float(name: str, current: float) -> float:
             value = os.getenv(name)

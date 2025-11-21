@@ -24,40 +24,43 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 from .adaptive.core import AdaptiveParameter, PerformanceMetrics
 from .neuromodulators import NeuromodState
+from common.config.settings import settings
 
 
 class AdaptiveNeuromodulators:
     """True learning neuromodulator system with adaptive parameters."""
-    
+
     def __init__(self):
+        if not settings.enable_advanced_learning:
+            raise RuntimeError("Advanced learning is disabled; enable SOMABRAIN_ENABLE_ADVANCED_LEARNING to init adaptive neuromodulators.")
         # Initialize adaptive parameters with learning bounds
         self.dopamine_param = AdaptiveParameter(
             name="dopamine", 
-            initial_value=0.4, 
-            min_value=0.1, 
-            max_value=1.0, 
-            learning_rate=0.02
+            initial_value=settings.neuromod_dopamine_base, 
+            min_value=settings.neuromod_dopamine_min, 
+            max_value=settings.neuromod_dopamine_max, 
+            learning_rate=settings.neuromod_dopamine_lr
         )
         self.serotonin_param = AdaptiveParameter(
             name="serotonin", 
-            initial_value=0.5, 
-            min_value=0.0, 
-            max_value=1.0, 
-            learning_rate=0.015
+            initial_value=settings.neuromod_serotonin_base, 
+            min_value=settings.neuromod_serotonin_min, 
+            max_value=settings.neuromod_serotonin_max, 
+            learning_rate=settings.neuromod_serotonin_lr
         )
         self.noradrenaline_param = AdaptiveParameter(
             name="noradrenaline", 
-            initial_value=0.0, 
-            min_value=0.0, 
-            max_value=0.5, 
-            learning_rate=0.01
+            initial_value=settings.neuromod_noradrenaline_base, 
+            min_value=settings.neuromod_noradrenaline_min, 
+            max_value=settings.neuromod_noradrenaline_max, 
+            learning_rate=settings.neuromod_noradrenaline_lr
         )
         self.acetylcholine_param = AdaptiveParameter(
             name="acetylcholine", 
-            initial_value=0.0, 
-            min_value=0.0, 
-            max_value=0.5, 
-            learning_rate=0.01
+            initial_value=settings.neuromod_acetylcholine_base, 
+            min_value=settings.neuromod_acetylcholine_min, 
+            max_value=settings.neuromod_acetylcholine_max, 
+            learning_rate=settings.neuromod_acetylcholine_lr
         )
     
     def get_current_state(self) -> NeuromodState:
@@ -147,14 +150,14 @@ def _calculate_serotonin_feedback(performance: PerformanceMetrics, task_type: st
 def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
-    urgency_factor = 0.3 if task_type == "urgent" else 0.0
-    return min(0.1, (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor)
+    urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
+    return min(settings.neuromod_noradrenaline_max, (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor)
 
 
 def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
-    memory_factor = 0.2 if task_type == "memory" else 0.0
+    memory_factor = settings.neuromod_memory_factor if task_type == "memory" else 0.0
     return performance.accuracy * 0.1 + memory_factor
 
 

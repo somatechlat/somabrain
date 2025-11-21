@@ -83,7 +83,9 @@ curl -sS 'http://localhost:9696/context/adaptation/state?tenant_id=sandbox' | jq
 - Set `entropy_cap` slightly above observed steady-state entropy to allow exploration without runaway diffusion.
 - Use dashboards to track: `tau`, retrieval entropy, effective learning rate, feedback count.
 
-## Roadmap Hooks
+## Roadmap (Reference)
+Refer to the **canonical roadmap** for detailed implementation plans:
+[canonical_roadmap.md](../../canonical_roadmap.md)
 This foundation allows adding upcoming controls:
 - Entropy floor (avoid over-collapse)
 - Annealed learning gains schedule

@@ -306,7 +306,7 @@ For live and adaptation learning benches, see Technical Manual → Benchmarks Qu
 
 - docs/technical-manual/benchmarks-quickstart.md
 
-## Documentation & Roadmap
+## Documentation
 
 - **User Manual** – Installation, quick start, feature guides, FAQ (`docs/user-manual/`).
 - **Technical Manual** – Architecture, deployment, monitoring, runbooks, security (`docs/technical-manual/`).

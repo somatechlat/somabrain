@@ -9,7 +9,10 @@ from typing import Awaitable, Callable, List, Optional
 # Legacy Config replaced by unified Settings
 from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
-from somabrain.services.cutover_controller import CutoverController
+try:
+    from somabrain.services.cutover_controller import CutoverController
+except Exception:  # pragma: no cover - optional
+    CutoverController = None  # type: ignore
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
     ParameterSupervisor,
@@ -18,7 +21,7 @@ from somabrain.services.parameter_supervisor import (
 _logger = logging.getLogger(__name__)
 
 _config_service = ConfigService(lambda: Config())
-_cutover_controller = CutoverController(_config_service)
+_cutover_controller = CutoverController(_config_service) if CutoverController else None
 _event_queue = _config_service.subscribe()
 _listeners: List[Callable[[ConfigEvent], Optional[Awaitable[None]]]] = []
 _dispatcher_task: Optional[asyncio.Task[None]] = None
@@ -34,6 +37,8 @@ def get_config_service() -> ConfigService:
 
 
 def get_cutover_controller() -> CutoverController:
+    if _cutover_controller is None:
+        raise RuntimeError("CutoverController unavailable")
     return _cutover_controller
 
 

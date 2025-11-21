@@ -39,9 +39,10 @@ Biological Inspiration:
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Dict, List, Optional
 from .adaptive.core import AdaptiveParameter, PerformanceMetrics
+from common.config.settings import settings
 
 
 @dataclass
@@ -63,11 +64,19 @@ class NeuromodState:
         Time of last update.
     """
 
-    dopamine: float = 0.4
-    serotonin: float = 0.5
-    noradrenaline: float = 0.0
-    acetylcholine: float = 0.0
-    timestamp: float = 0.0
+    dopamine: float = field(
+        default_factory=lambda: float(getattr(settings, "neuromod_dopamine_base", 0.4))
+    )
+    serotonin: float = field(
+        default_factory=lambda: float(getattr(settings, "neuromod_serotonin_base", 0.5))
+    )
+    noradrenaline: float = field(
+        default_factory=lambda: float(getattr(settings, "neuromod_noradrenaline_base", 0.0))
+    )
+    acetylcholine: float = field(
+        default_factory=lambda: float(getattr(settings, "neuromod_acetylcholine_base", 0.0))
+    )
+    timestamp: float = field(default_factory=lambda: time.time())
 
 
 class Neuromodulators:
@@ -78,7 +87,13 @@ class Neuromodulators:
     """
 
     def __init__(self):
-        self._state = NeuromodState(timestamp=time.time())
+        self._state = NeuromodState(
+            dopamine=settings.neuromod_dopamine_base,
+            serotonin=settings.neuromod_serotonin_base,
+            noradrenaline=settings.neuromod_noradrenaline_base,
+            acetylcholine=settings.neuromod_acetylcholine_base,
+            timestamp=time.time(),
+        )
         self._subs: List[Callable[[NeuromodState], None]] = []
 
     def get_state(self) -> NeuromodState:

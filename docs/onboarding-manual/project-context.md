@@ -112,7 +112,7 @@ SomaBrain provides a **memory-as-a-service** platform that:
 - **Responsibilities**: Core platform development, algorithms, infrastructure
 
 #### Product Team
-- **Product Manager**: Strategic roadmap and market requirements
+-- **Product Manager**: Market requirements
 - **UX/Developer Experience**: API design, documentation, developer tools
 - **Technical Writers**: Documentation, tutorials, developer education
 

@@ -74,7 +74,7 @@
 **Senior Contributors**:
 - **Responsibilities**: Code review, mentoring, feature development
 - **Recognition**: Consistent high-quality contributions over 6+ months
-- **Benefits**: Write access to repository, influence on roadmap
+# (Removed roadmap reference)
 - **Contact**: Via GitHub or community channels
 
 **Contributors**:
@@ -350,7 +350,7 @@ Other approaches considered.
 ### GitHub Projects
 
 **Project Boards**:
-- **SomaBrain Roadmap**: High-level features and milestones
+# (Removed roadmap reference)
 - **Current Sprint**: Active work items and progress tracking
 - **Backlog Grooming**: Issue prioritization and refinement
 

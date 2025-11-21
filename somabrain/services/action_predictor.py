@@ -41,14 +41,9 @@ logger = logging.getLogger("somabrain.services.action_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_NEXT_EVENT", getattr(shared_settings, "topic_next_event", "cog.next_event")
-)
-PUBLISH_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_ACTION_UPDATES",
-    getattr(shared_settings, "topic_action_updates", "cog.action.updates"),
-)
-PREDICTOR_ALPHA = float(os.getenv("SOMABRAIN_PREDICTOR_ALPHA", "2.0") or 2.0)
+CONSUME_TOPIC = getattr(shared_settings, "topic_next_event", "cog.next_event")
+PUBLISH_TOPIC = getattr(shared_settings, "topic_action_updates", "cog.action.updates")
+PREDICTOR_ALPHA = float(getattr(shared_settings, "predictor_alpha", 2.0))
 
 
 class ActionPredictorService:

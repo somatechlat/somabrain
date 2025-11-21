@@ -4,30 +4,49 @@ This file is the canonical Somabrain ROAMDP (Roadmap & Action Plan).
 It summarizes gaps discovered in the codebase and a prioritized, phased implementation plan for development sprints.
 
 ## Summary
-- Many roadmap building blocks already exist: DB-backed outbox, outbox publisher worker, metrics, and a memory service facade.
-- Key gaps: per-tenant circuit-breaker isolation, tenant-aware outbox processing and metrics wiring, idempotency guarantees (DB constraints + Kafka keying), and some doc/code divergence around journaling.
+- Core platform pieces (DB-backed outbox, publisher worker, metrics, memory facade) are in place.
+- Newly identified gaps: cognitive threads v2 (unified predictor schema, integrator softmax/OPA/Redis, segmentation config + metrics), sleep system (utility + cognitive sleep APIs, schedules), and hardcoded-value purge/settings unification.
 
 ## Prioritized Implementation Plan (Phases)
 
-### Phase 0 — Safety & Observability (1–2 sprints)
+### Phase 0 — Safety & Observability (DONE)
 - 0.1 Per-tenant circuit-breaker: convert class-level circuit state to per-tenant state in `somabrain/services/memory_service.py`. Ensure `CIRCUIT_STATE` metric is labeled by tenant.
 - 0.2 Outbox pending metric wiring: implement `_update_outbox_metric()` and ensure `OUTBOX_PENDING` is updated per tenant by worker/service.
 - 0.3 Tenant-aware pending queries: extend `somabrain/db/outbox.py:get_pending_events(limit, tenant_id=None)` and add appropriate DB indices.
 
-### Phase 1 — Idempotency, DB Constraints & Worker Hardening (1–3 sprints)
+### Phase 1 — Idempotency, DB Constraints & Worker Hardening (DONE)
 - 1.1 DB constraints & indices: add migration for unique index on `(tenant_id, dedupe_key)` and index on `(status, tenant_id, created_at)`.
 - 1.2 Producer keying & headers: publish Kafka messages with stable key (dedupe_key/tenant) and relevant headers.
 - 1.3 Per-tenant batch quotas & backpressure: allow worker to process per-tenant batches and enforce quotas.
 
-### Phase 2 — Replay/Recovery & Operational Tooling (1–2 sprints)
+### Phase 2 — Replay/Recovery & Operational Tooling (DONE)
 - 2.1 Admin replay endpoints: add admin API to inspect and replay pending/failed events per tenant.
 - 2.2 Optional local journaling: if required, add opt-in local journal and migration script to DB-outbox.
 
-### Phase 3 — Monitoring & Canary Rollout (1 sprint)
+### Phase 3 — Monitoring & Canary Rollout (DONE)
 - 3.1 Automated alerts for per-tenant outbox/circuit metrics (Prometheus / alertmanager).
 - 3.2 Feature flags & canary rollout for enabling tenant-aware behavior (admin endpoints, CLI tooling).
 
-### Phase 4 — Tests, Docs & CI (ongoing)
+### Phase 4 — Tests, Docs & CI (DONE)
+
+### Phase 5 — Cognitive Threads v2 (NEW)
+- 5.1 Unified predictor_update Avro schema; existing state/agent/action predictors emit it (no new services).
+- 5.2 Integrator hub upgrade: softmax leader selection with configurable alpha/temperature; optional OPA veto; Redis cache; Prom metrics.
+- 5.3 Segmentation hardening: thresholds/HMM toggle from ConfigService; metrics; topic `cog.segments` ensured in preflight.
+- 5.4 Feature flag `ENABLE_COG_THREADS` default off; end-to-end smoke (predictor → Kafka → integrator → Redis/global_frame).
+- 5.5 CI: schema compatibility + Kafka/Redis smoke tests; observability checks.
+    - Current status: 5.2 implemented (softmax, OPA optional, Redis cache, metrics); 5.1 schema exists; 5.5 CI smoke pending; flag remains OFF by default.
+
+### Phase 6 — Sleep System (Utility + Cognitive) (NEW)
+- 6.1 Implement `/api/util/sleep` (sync/async, OPA/JWT, rate/limits via ConfigService) with metrics/logging.
+- 6.2 Implement `/api/brain/sleep_mode` and `/api/brain/sleep_policy` (per-tenant state, TTL auto-wake, wake-on-traffic, CB-driven gating, schedules for K,t,τ,η,B,λ with η=0 in deep/freeze).
+- 6.3 Metrics: sleep state labels on latency/adaptation; counters for calls/toggles; tests for monotonic schedules and safety.
+- 6.4 Feature flag default off; docs/runbooks and CI coverage.
+
+### Phase 7 — Hardcoded-Value Purge & Settings Unification (NEW)
+- 7.1 Ensure all thresholds/ports/weights live in `common.config.settings` + ConfigService; remove inline literals in predictors, integrator, segmentation, adaptive modules.
+- 7.2 Add invariants/tests to forbid new magic numbers in these modules; fail fast on missing required config.
+- 7.3 Deduplicate topic names and ports to a single source; update env templates accordingly.
 - 4.1 Unit/integration tests covering tenant isolation and idempotency.
 - 4.2 Update `scripts/roadmap_invariant_scanner.py` and CI invariants to assert the new behaviors.
 
@@ -39,10 +58,10 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 - `migrations/` — add Alembic migration to create unique index on `(tenant_id, dedupe_key)` and pending-event index.
 
 ## Acceptance Criteria (high level)
-- Circuit breaker isolation per tenant; metrics labeled accordingly.
-- Outbox idempotency via DB constraint + Kafka keying; no duplicate downstream events under retries.
-- Per-tenant visibility and admin replay tooling.
-- Dashboards & alerts reflect tenant-level health and outbox backlog.
+- Existing: circuit breaker isolation per tenant; idempotent outbox; replay tooling; per-tenant dashboards.
+- New Phase 5: unified predictor schema emitted; integrator softmax+OPA+Redis; segmentation metrics/config; flag off by default; E2E smoke passes.
+- New Phase 6: sleep APIs active behind flag; schedules enforced (η=0 in deep/freeze); metrics & tests.
+- New Phase 7: no hardcoded literals in predictors/integrator/segmentation/adaptive modules; settings-driven single source of truth; invariant tests pass.
 
 ## Implementation Status
 
@@ -74,6 +93,15 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
   - Thread-safe operations with JSON serialization
 
 ### ✅ Phase 4 — Tests, Docs & CI: COMPLETE
+
+### 🚧 Phase 5 — Cognitive Threads v2: NOT STARTED
+- Unified predictor schema, integrator softmax/OPA/Redis, segmentation config+metrics, flag & CI smoke remain to be implemented.
+
+### 🚧 Phase 6 — Sleep System: NOT STARTED
+- Utility/cognitive sleep endpoints, schedules, metrics, and tests pending.
+
+### 🚧 Phase 7 — Hardcoded-Value Purge & Settings Unification: IN PROGRESS
+- Settings added for predictor alpha, segment thresholds, integrator/segment ports; predictors/integrator/segmentation now consume settings. Remaining modules (adaptive/learning/neuromodulators) still contain hardcoded defaults and need migration plus invariant tests.
 - 4.1 ✅ Unit tests: CircuitBreaker and MemoryService delegation tests completed
   - `tests/infrastructure/test_circuit_breaker.py` - Comprehensive CircuitBreaker test suite
   - `tests/services/test_memory_service_circuit.py` - MemoryService delegation tests
@@ -115,60 +143,12 @@ label = tenant_label('')  # Returns 'default'
 namespace = resolve_namespace('tenant1')  # Returns 'tenant1'
 ```
 
-## 🎯 ROAMDP IMPLEMENTATION STATUS: 100% COMPLETE
+## 🎯 ROAMDP IMPLEMENTATION STATUS
 
-### ✅ ALL PHASES COMPLETED
+- Phases 0–4: COMPLETE (as previously documented).
+- Phase 5: NOT STARTED.
+- Phase 6: NOT STARTED.
+- Phase 7: IN PROGRESS (settings consolidated; more modules to migrate and tests to add).
 
-**Phase 0 — Safety & Observability:** ✅ COMPLETE
-- Per-tenant circuit-breaker with full isolation
-- Outbox pending metric wiring with tenant labels
-- Tenant-aware pending queries with optimized indices
-
-**Phase 1 — Idempotency, DB Constraints & Worker Hardening:** ✅ COMPLETE
-- DB constraints & indices for unique events
-- Producer keying & headers for exactly-once semantics
-- Per-tenant batch quotas & backpressure
-
-**Phase 2 — Replay/Recovery & Operational Tooling:** ✅ COMPLETE
-- Admin replay endpoints for specific events and tenant-wide replay
-- Local journaling system with configurable policies
-
-**Phase 3 — Memory Outbox & Write Modes:** ✅ COMPLETE
-- DB-backed outbox migration
-- Enhanced HTTP headers with tenant context
-- Memory write mode configuration
-
-**Phase 4 — Tests, Docs & CI:** ✅ COMPLETE
-- Comprehensive unit tests with real implementations
-- Updated documentation with usage examples
-- VIBE-compliant codebase
-
-### 🚀 PRODUCTION READY
-
-The SomaBrain ROAMDP implementation is **100% complete** and production-ready with:
-
-- **Enterprise-grade tenant isolation** across all components
-- **Comprehensive monitoring** with per-tenant metrics
-- **Robust error handling** and graceful degradation
-- **Full test coverage** with real implementations (no mocks)
-- **Complete documentation** with usage examples
-
-### 📋 ACCEPTANCE CRITERIA MET
-
-✅ Circuit breaker isolation per tenant; metrics labeled accordingly  
-✅ Outbox idempotency via DB constraint + Kafka keying; no duplicate downstream events  
-✅ Per-tenant visibility and admin replay tooling  
-✅ Dashboards & alerts reflect tenant-level health and outbox backlog  
-
-### 🎉 NEXT STEPS
-
-The ROAMDP implementation is **complete**. Next steps include:
-
-1. **Production deployment** with proper monitoring
-2. **Performance tuning** based on production metrics
-3. **Operational runbooks** for maintenance procedures
-4. **Feature enhancements** based on user feedback
-
-**Last Updated:** November 16, 2025  
-**Status:** ✅ 100% COMPLETE  
-**VIBE Compliance:** ✅ 100% (Real implementations, no mocks, no shims, no fallbacks)
+**Last Updated:** November 21, 2025  
+**Status:** In progress (Phases 5–7 outstanding)

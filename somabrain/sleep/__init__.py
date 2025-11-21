@@ -6,6 +6,7 @@ This module provides sleep state management and consolidation cycles.
 from enum import Enum
 from typing import Dict, Any
 import dataclasses
+from common.config.settings import settings as shared_settings
 
 
 class SleepState(Enum):
@@ -19,16 +20,20 @@ class SleepState(Enum):
 @dataclasses.dataclass
 class SleepParameters:
     """Sleep parameters configuration."""
-    K: int = 100
-    t: float = 10.0
-    tau: float = 1.0
-    eta: float = 0.1
-    lambda_: float = 0.01
-    B: float = 0.5
-    
+    K: int = shared_settings.sleep_k0
+    t: float = shared_settings.sleep_t0
+    tau: float = shared_settings.sleep_tau0
+    eta: float = shared_settings.sleep_eta0
+    lambda_: float = shared_settings.sleep_lambda0
+    B: float = shared_settings.sleep_B0
     # Bounds for validation
-    K_min: int = 1
-    t_min: float = 0.1
+    K_min: int = shared_settings.sleep_K_min
+    t_min: float = shared_settings.sleep_t_min
+    alpha_K: float = shared_settings.sleep_alpha_K
+    alpha_t: float = shared_settings.sleep_alpha_t
+    alpha_tau: float = shared_settings.sleep_alpha_tau
+    alpha_eta: float = shared_settings.sleep_alpha_eta
+    beta_B: float = shared_settings.sleep_beta_B
 
 
 class SleepStateManager:
@@ -38,45 +43,41 @@ class SleepStateManager:
         self.parameters = SleepParameters()
     
     def compute_parameters(self, state: SleepState) -> Dict[str, float]:
-        """Compute parameters for a given sleep state."""
-        # Base parameters are taken from the configured ``SleepParameters``.
-        # The specification expects the parameters to be adjusted per
-        # state, not merely the ``eta`` value. We implement a simple, deterministic
-        # scaling that respects the documented bounds (``K_min`` and ``t_min``).
-        base_params = {
-            'K': self.parameters.K,
-            't': self.parameters.t,
-            'tau': self.parameters.tau,
-            'eta': self.parameters.eta,
-            'lambda': self.parameters.lambda_,
-            'B': self.parameters.B,
-        }
+        """Compute parameters for a given sleep state (hot-configurable)."""
+        p = self.parameters  # already sourced from settings
+        state_scalar = {
+            SleepState.ACTIVE: 0.0,
+            SleepState.LIGHT: 0.5,
+            SleepState.DEEP: 1.0,
+            SleepState.FREEZE: 10.0,  # treat freeze as effectively infinite
+        }[state]
 
-        # Apply state‑specific scaling. The numbers are chosen to be monotonic
-        # and bounded; they can be tuned later without breaking the API.
-        if state == SleepState.ACTIVE:
-            # No scaling – stay at baseline values.
-            base_params['eta'] = 0.1
-        elif state == SleepState.LIGHT:
-            base_params['K'] = max(self.parameters.K_min, int(base_params['K'] * 0.8))
-            base_params['t'] = max(self.parameters.t_min, base_params['t'] * 1.2)
-            base_params['eta'] = 0.05
+        s = state_scalar
+        K = max(p.K_min, int((1 - p.alpha_K * s) * p.K))
+        t = max(p.t_min, (1 - p.alpha_t * s) * p.t)
+        tau = max(1e-6, (1 - p.alpha_tau * s) * p.tau)
+        if s >= 1:
+            eta = 0.0
+        else:
+            eta = max(0.0, (1 - p.alpha_eta * s) * p.eta)
+        B = p.B + p.beta_B * s
+        if state == SleepState.FREEZE:
+            lambda_ = 0.0
         elif state == SleepState.DEEP:
-            base_params['K'] = max(self.parameters.K_min, int(base_params['K'] * 0.5))
-            base_params['t'] = max(self.parameters.t_min, base_params['t'] * 2.0)
-            base_params['eta'] = 0.0
-        elif state == SleepState.FREEZE:
-            base_params['K'] = max(self.parameters.K_min, int(base_params['K'] * 0.1))
-            base_params['t'] = max(self.parameters.t_min, base_params['t'] * 5.0)
-            base_params['eta'] = 0.0
+            lambda_ = max(0.0, p.lambda_ * 0.5)
+        elif state == SleepState.LIGHT:
+            lambda_ = max(0.0, p.lambda_ * 0.8)
+        else:
+            lambda_ = p.lambda_
 
-        # Ensure the parameters respect the minimum constraints.
-        if base_params['K'] < self.parameters.K_min:
-            base_params['K'] = self.parameters.K_min
-        if base_params['t'] < self.parameters.t_min:
-            base_params['t'] = self.parameters.t_min
-
-        return base_params
+        return {
+            'K': K,
+            't': t,
+            'tau': tau,
+            'eta': eta,
+            'lambda': lambda_,
+            'B': B,
+        }
     
     def can_transition(self, from_state: SleepState, to_state: SleepState) -> bool:
         """Check if state transition is valid."""

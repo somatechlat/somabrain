@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 @dataclass
 class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in tests.
-    alpha: float = 1.0
-    beta: float = 0.2
-    gamma: float = 0.1
-    tau: float = 0.7
+    alpha: float
+    beta: float
+    gamma: float
+    tau: float
 
 
 try:
@@ -133,15 +133,24 @@ def _get_redis():
 
 @dataclass
 class UtilityWeights:
-    lambda_: float = 1.0
-    mu: float = 0.1
-    nu: float = 0.05
+    lambda_: float = float(getattr(shared_settings, "utility_lambda", 1.0))
+    mu: float = float(getattr(shared_settings, "utility_mu", 0.1))
+    nu: float = float(getattr(shared_settings, "utility_nu", 0.05))
 
     def clamp(
         self,
-        lambda_bounds: tuple[float, float] = (0.0, 5.0),
-        mu_bounds: tuple[float, float] = (0.0, 5.0),
-        nu_bounds: tuple[float, float] = (0.0, 5.0),
+        lambda_bounds: tuple[float, float] = (
+            float(getattr(shared_settings, "utility_lambda_min", 0.0)),
+            float(getattr(shared_settings, "utility_lambda_max", 5.0)),
+        ),
+        mu_bounds: tuple[float, float] = (
+            float(getattr(shared_settings, "utility_mu_min", 0.0)),
+            float(getattr(shared_settings, "utility_mu_max", 5.0)),
+        ),
+        nu_bounds: tuple[float, float] = (
+            float(getattr(shared_settings, "utility_nu_min", 0.0)),
+            float(getattr(shared_settings, "utility_nu_max", 5.0)),
+        ),
     ) -> None:
         self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
         self.mu = min(max(self.mu, mu_bounds[0]), mu_bounds[1])
@@ -150,57 +159,56 @@ class UtilityWeights:
 
 @dataclass(frozen=True)
 class AdaptationGains:
-    """Per-parameter gains applied to the learning signal."""
+    """Per-parameter gains applied to the learning signal (settings-driven)."""
 
-    alpha: float = 1.0
-    gamma: float = -0.5
-    lambda_: float = 1.0
-    mu: float = -0.25
-    nu: float = -0.25
+    alpha: float = float(getattr(shared_settings, "adaptation_gain_alpha", 1.0))
+    gamma: float = float(getattr(shared_settings, "adaptation_gain_gamma", -0.5))
+    lambda_: float = float(getattr(shared_settings, "adaptation_gain_lambda", 1.0))
+    mu: float = float(getattr(shared_settings, "adaptation_gain_mu", -0.25))
+    nu: float = float(getattr(shared_settings, "adaptation_gain_nu", -0.25))
 
     @classmethod
     def from_settings(cls) -> "AdaptationGains":
-        """Construct gains from centralized mode config (no env alternatives)."""
-        try:
-            from somabrain import modes as _m
-
-            cfg = _m.get_learning_config().get("gains", {})
-            base = cls()
-            for k, v in cfg.items():
-                if hasattr(base, k) and isinstance(v, (int, float)):
-                    base = replace(base, **{k: float(v)})
-            return base
-        except Exception:
-            return cls()
+        """Construct gains from centralized settings only."""
+        base = cls(
+            alpha=float(getattr(shared_settings, "adaptation_gain_alpha", 1.0)),
+            gamma=float(getattr(shared_settings, "adaptation_gain_gamma", -0.5)),
+            lambda_=float(getattr(shared_settings, "adaptation_gain_lambda", 1.0)),
+            mu=float(getattr(shared_settings, "adaptation_gain_mu", -0.25)),
+            nu=float(getattr(shared_settings, "adaptation_gain_nu", -0.25)),
+        )
+        return base
 
 
 @dataclass(frozen=True)
 class AdaptationConstraints:
-    alpha_min: float = 0.1
-    alpha_max: float = 5.0
-    gamma_min: float = 0.0
-    gamma_max: float = 1.0
-    lambda_min: float = 0.1
-    lambda_max: float = 5.0
-    mu_min: float = 0.01
-    mu_max: float = 5.0
-    nu_min: float = 0.01
-    nu_max: float = 5.0
+    alpha_min: float = float(getattr(shared_settings, "adaptation_alpha_min", 0.1))
+    alpha_max: float = float(getattr(shared_settings, "adaptation_alpha_max", 5.0))
+    gamma_min: float = float(getattr(shared_settings, "adaptation_gamma_min", 0.0))
+    gamma_max: float = float(getattr(shared_settings, "adaptation_gamma_max", 1.0))
+    lambda_min: float = float(getattr(shared_settings, "adaptation_lambda_min", 0.1))
+    lambda_max: float = float(getattr(shared_settings, "adaptation_lambda_max", 5.0))
+    mu_min: float = float(getattr(shared_settings, "adaptation_mu_min", 0.01))
+    mu_max: float = float(getattr(shared_settings, "adaptation_mu_max", 5.0))
+    nu_min: float = float(getattr(shared_settings, "adaptation_nu_min", 0.01))
+    nu_max: float = float(getattr(shared_settings, "adaptation_nu_max", 5.0))
 
     @classmethod
     def from_settings(cls) -> "AdaptationConstraints":
-        """Construct constraints from centralized mode config (no env alternatives)."""
-        try:
-            from somabrain import modes as _m
-
-            cfg = _m.get_learning_config().get("constraints", {})
-            base = cls()
-            for k, v in cfg.items():
-                if hasattr(base, k) and isinstance(v, (int, float)):
-                    base = replace(base, **{k: float(v)})
-            return base
-        except Exception:
-            return cls()
+        """Construct constraints from centralized settings only."""
+        base = cls(
+            alpha_min=float(getattr(shared_settings, "adaptation_alpha_min", 0.1)),
+            alpha_max=float(getattr(shared_settings, "adaptation_alpha_max", 5.0)),
+            gamma_min=float(getattr(shared_settings, "adaptation_gamma_min", 0.0)),
+            gamma_max=float(getattr(shared_settings, "adaptation_gamma_max", 1.0)),
+            lambda_min=float(getattr(shared_settings, "adaptation_lambda_min", 0.1)),
+            lambda_max=float(getattr(shared_settings, "adaptation_lambda_max", 5.0)),
+            mu_min=float(getattr(shared_settings, "adaptation_mu_min", 0.01)),
+            mu_max=float(getattr(shared_settings, "adaptation_mu_max", 5.0)),
+            nu_min=float(getattr(shared_settings, "adaptation_nu_min", 0.01)),
+            nu_max=float(getattr(shared_settings, "adaptation_nu_max", 5.0)),
+        )
+        return base
 
 
 class AdaptationEngine:
@@ -216,24 +224,34 @@ class AdaptationEngine:
         self,
         retrieval: "RetrievalWeights" | None = None,
         utility: Optional[UtilityWeights] = None,
-        learning_rate: float = 0.05,
-        max_history: int = 1000,
+        learning_rate: Optional[float] = None,
+        max_history: Optional[int] = None,
         constraints: AdaptationConstraints | dict | None = None,
         tenant_id: Optional[str] = None,
         enable_dynamic_lr: bool = False,
         gains: Optional[AdaptationGains] = None,
     ) -> None:
+        if shared_settings and not getattr(shared_settings, "enable_advanced_learning", True):
+            raise RuntimeError(
+                "Advanced learning is disabled; set SOMABRAIN_ENABLE_ADVANCED_LEARNING=1 to enable adaptation."
+            )
         # Lazy import to avoid circular dependency at module load time
         if retrieval is None:
             from somabrain.context.builder import RetrievalWeights as RetrievalWeights
 
-            retrieval = RetrievalWeights()
+            retrieval = RetrievalWeights(
+                getattr(shared_settings, "retrieval_alpha", 1.0),
+                getattr(shared_settings, "retrieval_beta", 0.2),
+                getattr(shared_settings, "retrieval_gamma", 0.1),
+                getattr(shared_settings, "retrieval_tau", 0.7),
+            )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
-        self._lr = learning_rate
-        self._base_lr = learning_rate  # Store base LR for dynamic scaling
+        lr = learning_rate if learning_rate is not None else getattr(shared_settings, "adaptation_learning_rate", 0.05)
+        self._lr = lr
+        self._base_lr = lr  # Store base LR for dynamic scaling
         self._history = []  # Track (retrieval, utility) tuples for rollback
-        self._max_history = max_history
+        self._max_history = int(max_history if max_history is not None else getattr(shared_settings, "adaptation_max_history", 1000))
         if isinstance(constraints, AdaptationConstraints):
             constraint_bounds = constraints
         elif isinstance(constraints, dict) and constraints:

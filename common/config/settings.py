@@ -201,6 +201,136 @@ class Settings(BaseSettings):
         default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
     )
 
+    # Global learning/feature toggles ------------------------------------------------
+    enable_advanced_learning: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_ADVANCED_LEARNING", True)
+    )
+
+    # Predictor / integrator configuration -----------------------------------
+    predictor_alpha: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PREDICTOR_ALPHA", 2.0)
+    )
+    integrator_health_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_INTEGRATOR_HEALTH_PORT", 9015)
+    )
+    integrator_softmax_temperature: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
+    )
+    enable_cog_threads: bool = Field(
+        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", True)
+    )
+
+    # Segmentation thresholds and health port --------------------------------
+    segment_grad_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SEGMENT_GRAD_THRESH", 0.2)
+    )
+    segment_hmm_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SEGMENT_HMM_THRESH", 0.6)
+    )
+    segment_health_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
+    )
+
+    # Retrieval/adaptive weights (dynamic defaults) --------------------------
+    retrieval_alpha: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_ALPHA", 1.0))
+    retrieval_beta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_BETA", 0.2))
+    retrieval_gamma: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_GAMMA", 0.1))
+    retrieval_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_TAU", 0.7))
+    retrieval_recency_half_life: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_HALF_LIFE", 60.0))
+    retrieval_recency_sharpness: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_SHARPNESS", 1.2))
+    retrieval_recency_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_FLOOR", 0.05))
+    retrieval_density_target: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_TARGET", 0.2))
+    retrieval_density_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_FLOOR", 0.6))
+    retrieval_density_weight: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_WEIGHT", 0.35))
+    retrieval_tau_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_MIN", 0.4))
+    retrieval_tau_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_MAX", 1.2))
+    retrieval_tau_increment_up: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_UP", 0.1))
+    retrieval_tau_increment_down: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_DOWN", 0.05))
+    retrieval_dup_ratio_threshold: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DUP_RATIO_THRESHOLD", 0.5))
+
+    # Neuromodulator defaults (centralized, overridable) ---------------------
+    neuromod_dopamine_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4))
+    neuromod_serotonin_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5))
+    neuromod_noradrenaline_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_BASE", 0.0))
+    neuromod_acetylcholine_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_BASE", 0.0))
+    neuromod_dopamine_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MIN", 0.1))
+    neuromod_dopamine_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MAX", 1.0))
+    neuromod_serotonin_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MIN", 0.0))
+    neuromod_serotonin_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MAX", 1.0))
+    neuromod_noradrenaline_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MIN", 0.0))
+    neuromod_noradrenaline_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MAX", 0.5))
+    neuromod_acetylcholine_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MIN", 0.0))
+    neuromod_acetylcholine_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MAX", 0.5))
+    neuromod_dopamine_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_LR", 0.02))
+    neuromod_serotonin_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_LR", 0.015))
+    neuromod_noradrenaline_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_LR", 0.01))
+    neuromod_acetylcholine_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_LR", 0.01))
+    neuromod_urgency_factor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_URGENCY_FACTOR", 0.3))
+    neuromod_memory_factor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_MEMORY_FACTOR", 0.2))
+
+    # Utility/adaptation defaults ---------------------------------------------
+    utility_lambda: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA", 1.0))
+    utility_mu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU", 0.1))
+    utility_nu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU", 0.05))
+    utility_lambda_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MIN", 0.0))
+    utility_lambda_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MAX", 5.0))
+    utility_mu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MIN", 0.0))
+    utility_mu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MAX", 5.0))
+    utility_nu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MIN", 0.0))
+    utility_nu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MAX", 5.0))
+    adaptation_learning_rate: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LR", 0.05))
+    adaptation_max_history: int = Field(default_factory=lambda: _int_env("SOMABRAIN_ADAPT_MAX_HISTORY", 1000))
+    adaptation_alpha_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MIN", 0.1))
+    adaptation_alpha_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MAX", 5.0))
+    adaptation_gamma_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MIN", 0.0))
+    adaptation_gamma_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MAX", 1.0))
+    adaptation_lambda_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MIN", 0.1))
+    adaptation_lambda_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MAX", 5.0))
+    adaptation_mu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MIN", 0.01))
+    adaptation_mu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MAX", 5.0))
+    adaptation_nu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MIN", 0.01))
+    adaptation_nu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MAX", 5.0))
+    adaptation_gain_alpha: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_ALPHA", 1.0))
+    adaptation_gain_gamma: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_GAMMA", -0.5))
+    adaptation_gain_lambda: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_LAMBDA", 1.0))
+    adaptation_gain_mu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_MU", -0.25))
+    adaptation_gain_nu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_NU", -0.25))
+
+    # Sleep system (hot-configurable) ----------------------------------------
+    enable_sleep_system: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_SLEEP", True))
+    sleep_k0: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K0", 100))
+    sleep_t0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T0", 10.0))
+    sleep_tau0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_TAU0", 1.0))
+    sleep_eta0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ETA0", 0.1))
+    sleep_lambda0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_LAMBDA0", 0.01))
+    sleep_B0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_B0", 0.5))
+    sleep_K_min: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K_MIN", 1))
+    sleep_t_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T_MIN", 0.1))
+    sleep_alpha_K: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_K", 0.8))
+    sleep_alpha_t: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_T", 0.5))
+    sleep_alpha_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_TAU", 0.5))
+    sleep_alpha_eta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_ETA", 1.0))
+    sleep_beta_B: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_BETA_B", 0.5))
+
+    # Predictor / integrator configuration -----------------------------------
+    predictor_alpha: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PREDICTOR_ALPHA", 2.0)
+    )
+    integrator_health_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_INTEGRATOR_HEALTH_PORT", 9015)
+    )
+
+    # Segmentation thresholds and health port --------------------------------
+    segment_grad_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SEGMENT_GRAD_THRESH", 0.2)
+    )
+    segment_hmm_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SEGMENT_HMM_THRESH", 0.6)
+    )
+    segment_health_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
+    )
+
     # Segmentation configuration -------------------------------------------------
     segment_max_dwell_ms: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_MAX_DWELL_MS", 0)
@@ -328,6 +458,9 @@ class Settings(BaseSettings):
     )
     topic_global_frame: str = Field(
         default=os.getenv("SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame")
+    )
+    topic_segments: str = Field(
+        default=os.getenv("SOMABRAIN_TOPIC_SEGMENTS", "cog.segments")
     )
     # Deprecated alternative toggles removed: no local/durable alternatives allowed
 

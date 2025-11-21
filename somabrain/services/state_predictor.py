@@ -43,15 +43,9 @@ logger = logging.getLogger("somabrain.services.state_predictor")
 
 # Kafka configuration (prod-like defaults, override via env/settings)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
-)
-PUBLISH_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_STATE_UPDATES",
-    getattr(shared_settings, "topic_state_updates", "cog.state.updates"),
-)
-PREDICTOR_ALPHA = float(os.getenv("SOMABRAIN_PREDICTOR_ALPHA", "2.0") or 2.0)
+CONSUME_TOPIC = getattr(shared_settings, "topic_global_frame", "cog.global.frame")
+PUBLISH_TOPIC = getattr(shared_settings, "topic_state_updates", "cog.state.updates")
+PREDICTOR_ALPHA = float(getattr(shared_settings, "predictor_alpha", 2.0))
 
 
 class StatePredictorService:

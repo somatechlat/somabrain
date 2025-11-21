@@ -32,20 +32,14 @@ import threading
 
 logger = logging.getLogger("somabrain.services.segmentation")
 
-CONSUME_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
-)
-PUBLISH_TOPIC = os.getenv(
-    "SOMABRAIN_TOPIC_SEGMENTS",
-    getattr(getattr(shared_settings, "topics") if shared_settings else {}, "segments", None)
-    or os.getenv("SOMABRAIN_TOPIC_SEGMENTS_FALLBACK", "cog.segments"),
-)
-GRAD_THRESH = float(os.getenv("SOMABRAIN_SEGMENT_GRAD_THRESH", "0.2") or 0.2)
+CONSUME_TOPIC = getattr(shared_settings, "topic_global_frame", "cog.global.frame")
+PUBLISH_TOPIC = getattr(shared_settings, "topic_segments", "cog.segments")
+
+GRAD_THRESH = float(getattr(shared_settings, "segment_grad_threshold", 0.2))
 _env_hmm = os.getenv("SOMABRAIN_SEGMENT_HMM", "1").strip().lower() in {"1", "true", "yes", "on"}
 # Also respect mode flag hmm_segmentation
 HMM_ENABLED = _env_hmm and feature_enabled("hmm_segmentation")
-HMM_THRESHOLD = float(os.getenv("SOMABRAIN_SEGMENT_HMM_THRESH", "0.6") or 0.6)
+HMM_THRESHOLD = float(getattr(shared_settings, "segment_hmm_threshold", 0.6))
 
 
 class SegmentationService:
@@ -59,11 +53,21 @@ class SegmentationService:
         self.consumer = self._create_consumer()
         self.tenant = os.getenv("SOMABRAIN_TENANT_ID", "default")
         self.producer = make_producer()
-        self._health_port = int(os.getenv("SOMABRAIN_SEGMENTATION_HEALTH_PORT", "9016"))
-        self._health_thread = threading.Thread(
-            target=self._serve_health, name="segmentation_health", daemon=True
-        )
-        self._health_thread.start()
+        try:
+            self._health_port = int(getattr(shared_settings, "segment_health_port", 9016))
+        except Exception:
+            self._health_port = 9016
+        start_health = os.getenv("SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1").strip().lower() in {"1", "true", "yes", "on"}
+        if start_health:
+            self._health_thread = threading.Thread(
+                target=self._serve_health, name="segmentation_health", daemon=True
+            )
+            self._health_thread.start()
+        else:
+            self._health_thread = None
+        # Runtime refresh of thresholds from settings/runtime_config
+        self._grad_thresh = float(getattr(shared_settings, "segment_grad_threshold", GRAD_THRESH))
+        self._hmm_thresh = float(getattr(shared_settings, "segment_hmm_threshold", HMM_THRESHOLD))
 
     def _create_consumer(self) -> CKConsumer:
         cfg = {
@@ -81,7 +85,8 @@ class SegmentationService:
             return []
         v = np.array(values, dtype=float)
         grad = np.abs(np.diff(v))
-        return [i + 1 for i, g in enumerate(grad) if g >= GRAD_THRESH]
+        thresh = float(getattr(shared_settings, "segment_grad_threshold", self._grad_thresh))
+        return [i + 1 for i, g in enumerate(grad) if g >= thresh]
 
     def _run_hmm(self, values: List[float]) -> List[int]:
         if not values:
@@ -94,7 +99,8 @@ class SegmentationService:
             sigma=sigma,
         )
         probs = online_viterbi_probs(values, params, prior=(0.9, 0.1))
-        return detect_boundaries(probs, threshold=HMM_THRESHOLD)
+        thresh = float(getattr(shared_settings, "segment_hmm_threshold", self._hmm_thresh))
+        return detect_boundaries(probs, threshold=thresh)
 
     def _serve_health(self) -> None:
         svc = self
