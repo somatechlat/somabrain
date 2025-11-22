@@ -131,7 +131,8 @@ def main() -> int:
             "REWARD_PRODUCER_PORT", os.getenv("REWARD_PRODUCER_HOST_PORT", "30183")
         )
     )
-    url = f"http://127.0.0.1:{port}/reward/test-frame"
+    from common.config.settings import settings as _settings
+    url = f"{_settings.api_url}/reward/test-frame"
     payload = {
         "r_task": 0.9,
         "r_user": 0.8,

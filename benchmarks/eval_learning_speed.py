@@ -132,8 +132,9 @@ def main():
     ap = argparse.ArgumentParser(
         description="Evaluate learning speed (precision@1 vs N)"
     )
+    from common.config.settings import settings
     ap.add_argument(
-        "--base", default=os.environ.get("SOMABRAIN_BASE", "http://localhost:9696")
+        "--base", default=os.environ.get("SOMABRAIN_BASE", settings.api_url)
     )
     ap.add_argument(
         "--tenant", default=os.environ.get("SOMABRAIN_TENANT", "learnbench")

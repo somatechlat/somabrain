@@ -36,8 +36,9 @@ def read_env_port() -> int:
     return port or DEFAULT_PORT
 
 
+from common.config.settings import settings
 API_PORT = read_env_port()
-BASE = f"http://127.0.0.1:{API_PORT}"
+BASE = settings.api_url
 
 HEADERS = {"Content-Type": "application/json"}
 

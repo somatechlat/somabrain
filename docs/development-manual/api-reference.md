@@ -48,6 +48,56 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 - Authentication is enabled except in dev mode per centralized settings.
 - Regenerate OpenAPI artifacts with `./scripts/export_openapi.py`.
 
+---
+
+## Admin & Diagnostic Endpoints *(Not listed in the original table)*
+
+The following admin‑level routes are implemented in `somabrain/app.py` but were omitted from the public API reference. They are intended for operators, debugging, and system maintenance. Access to these endpoints is typically restricted to privileged users or internal services.
+
+| Method | Path | Purpose | Request Model | Response Model |
+|--------|------|---------|---------------|----------------|
+| GET | `/admin/services` | List all background services (e.g., integrator, planner) | – | `schemas.AdminServiceListResponse` |
+| GET | `/admin/services/{name}` | Retrieve status of a specific service | – | `schemas.AdminServiceStatusResponse` |
+| POST | `/admin/services/{name}/start` | Start a stopped service | – | `schemas.AdminServiceActionResponse` |
+| POST | `/admin/services/{name}/stop` | Stop a running service | – | `schemas.AdminServiceActionResponse` |
+| POST | `/admin/services/{name}/restart` | Restart a service | – | `schemas.AdminServiceActionResponse` |
+| GET | `/admin/outbox` | List all outbox queues (per service) | – | `schemas.OutboxListResponse` |
+| GET | `/admin/outbox/{name}` | Inspect a specific outbox queue | – | `schemas.OutboxStatusResponse` |
+| POST | `/admin/outbox/replay` | Replay all pending outbox events globally | – | `schemas.OutboxReplayResponse` |
+| POST | `/admin/outbox/replay/tenant` | Replay outbox events for a single tenant | – | `schemas.OutboxReplayResponse` |
+| GET | `/admin/outbox/tenant/{tenant_id}` | View outbox queue for a tenant | – | `schemas.OutboxTenantStatusResponse` |
+| GET | `/admin/outbox/summary` | Summarize outbox queue sizes and health | – | `schemas.OutboxSummaryResponse` |
+| GET | `/admin/journal/stats` | Retrieve journal statistics (event count, size) | – | `schemas.JournalStatsResponse` |
+| GET | `/admin/journal/events` | List recent journal events | – | `schemas.JournalEventsResponse` |
+| POST | `/admin/journal/replay` | Replay all journal events | – | `schemas.JournalReplayResponse` |
+| POST | `/admin/journal/cleanup` | Cleanup processed journal entries | – | `schemas.JournalCleanupResponse` |
+| POST | `/admin/journal/init` | Initialise a fresh journal directory | – | `schemas.JournalInitResponse` |
+| GET | `/admin/quotas` | List per‑tenant quota usage | – | `schemas.QuotasListResponse` |
+| POST | `/admin/quotas/{tenant_id}/reset` | Reset a tenant’s daily write quota | – | `schemas.QuotaResetResponse` |
+| POST | `/admin/quotas/{tenant_id}/adjust` | Adjust quota limits for a tenant | `schemas.QuotaAdjustRequest` | `schemas.QuotaAdjustResponse` |
+| GET | `/health/memory` | Health check for the external memory HTTP service | – | `schemas.MemoryHealthResponse` |
+| GET | `/diagnostics` | Detailed diagnostics for all components (including Redis, Postgres, Kafka) | – | `schemas.DiagnosticsResponse` |
+| GET | `/reward/health` | Health of the reward subsystem | – | `schemas.RewardHealthResponse` |
+| GET | `/learner/health` | Health of the learning/adaptation subsystem | – | `schemas.LearnerHealthResponse` |
+
+**Note**: These admin routes are not part of the public SDKs and should be used with caution. They are protected by the same authentication mechanism as the public API, but additional role‑based checks (OPA policies) apply.
+
+---
+
+## Conditional Context Router
+
+The `/context/*` endpoints are provided by the optional `context_route` module. In `somabrain/app.py` the router is imported inside a `try/except` block; if the import fails the endpoints are not registered. This behavior is intentional to allow lightweight deployments without the full context stack.
+
+When deploying a full‑stack instance, ensure the `somabrain/api/context_route.py` module is present and importable so that the following routes become available:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/context/evaluate` | Build a contextual prompt and retrieve weighted memories |
+| POST | `/context/feedback` | Submit utility/feedback scores that drive the adaptation engine |
+
+If you rely on these endpoints, verify the service logs for the message `"Context router not registered"` which indicates a missing module.
+
+
 ### Base Information
 
 **Base URL**: `https://api.somabrain.com` (Production) / `http://localhost:9696` (Development)

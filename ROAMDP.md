@@ -42,6 +42,7 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 - 6.2 Implement `/api/brain/sleep_mode` and `/api/brain/sleep_policy` (per-tenant state, TTL auto-wake, wake-on-traffic, CB-driven gating, schedules for K,t,τ,η,B,λ with η=0 in deep/freeze).
 - 6.3 Metrics: sleep state labels on latency/adaptation; counters for calls/toggles; tests for monotonic schedules and safety.
 - 6.4 Feature flag default off; docs/runbooks and CI coverage.
+- 6.5 **Gap:** only `/api/util/sleep` and `/api/brain/sleep_mode` currently exist; `/api/brain/sleep_policy` has not been implemented and still needs to be added to satisfy the Phase 6 acceptance criteria.
 
 ### Phase 7 — Hardcoded-Value Purge & Settings Unification (NEW)
 - 7.1 Ensure all thresholds/ports/weights live in `common.config.settings` + ConfigService; remove inline literals in predictors, integrator, segmentation, adaptive modules.
@@ -101,6 +102,7 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 
 ### 🚧 Phase 6 — Sleep System & Degradation: PARTIAL
 - Sleep APIs, schedules, and CB-driven mapping implemented; sleep params centralized in settings; η=0 in deep/freeze.
+- `/api/util/sleep` and `/api/brain/sleep_mode` are live, but `/api/brain/sleep_policy` is still missing, so the Phase 6 roadmap goal is not fully satisfied yet.
 - Shared circuit breaker registry; memory degradation mode added: health reports `memory_degraded`, CB drives sleep FREEZE/LIGHT, writes queue to journal when circuit open (configurable), recalls auto-switch to WM-only when degraded. Needs full Docker verification and backlog flush wiring.
 
 ### 🚧 Phase 7 — Hardcoded-Value Purge & Settings Unification: IN PROGRESS

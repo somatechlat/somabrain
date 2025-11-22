@@ -6,8 +6,9 @@ import sys
 # Ensure we use the project root
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 # Set env var to point at the host memory endpoint
+from common.config.settings import settings
 os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = os.environ.get(
-    "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://host.docker.internal:9595"
+    "SOMABRAIN_MEMORY_HTTP_ENDPOINT", settings.memory_http_endpoint
 )
 # Clear somabrain modules to mimic fresh import like tests do
 for m in list(sys.modules.keys()):

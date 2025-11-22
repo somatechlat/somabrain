@@ -9,6 +9,7 @@ to `artifacts/benchmarks/seed_manifest_{timestamp}.json` with the inserted keys.
 """
 
 import argparse
+from common.config.settings import settings
 import json
 import os
 from datetime import datetime
@@ -53,7 +54,7 @@ def main(count: int, base_url: str, namespace: str | None = None):
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--count", type=int, default=1000)
-    p.add_argument("--base-url", default="http://localhost:9696")
+    p.add_argument("--base-url", default=settings.api_url)
     p.add_argument("--namespace", default=None)
     args = p.parse_args()
     main(args.count, args.base_url, args.namespace)

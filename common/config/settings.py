@@ -92,10 +92,13 @@ class Settings(BaseSettings):
         or os.getenv("REDIS_URL")
         or ""
     )
+    # Kafka bootstrap servers – strip any URL scheme (e.g. "kafka://") to provide a plain host:port string expected by confluent_kafka.
     kafka_bootstrap_servers: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_KAFKA_URL")
-        or os.getenv("KAFKA_BOOTSTRAP_SERVERS")
-        or ""
+        default_factory=lambda: (
+            os.getenv("SOMABRAIN_KAFKA_URL")
+            or os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+            or ""
+        ).replace("kafka://", "")
     )
 
     memory_http_endpoint: str = Field(
@@ -129,6 +132,30 @@ class Settings(BaseSettings):
     # can wrap with Path when needed.
     jwt_public_key_path: Optional[str] = Field(
         default=os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
+    )
+
+    # -----------------------------------------------------------------
+    # Provenance / audit settings
+    # -----------------------------------------------------------------
+    # Secret used for HMAC verification of the X-Provenance header.  If not
+    # provided the middleware will still operate but provenance validation
+    # will be disabled (the header will be ignored).
+    provenance_secret: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_PROVENANCE_SECRET")
+    )
+
+    # Toggle whether provenance verification is required for write‑like
+    # endpoints (e.g. /remember, /act).  Defaults to ``False`` for backward
+    # compatibility; set to ``True`` in production to enforce strict checks.
+    require_provenance: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_PROVENANCE", False)
+    )
+
+    # When ``True`` the middleware will reject requests that either lack a
+    # provenance header or provide an invalid HMAC signature.  Mirrors the
+    # historic ``provenance_strict_deny`` flag used in older versions.
+    provenance_strict_deny: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_PROVENANCE_STRICT_DENY", False)
     )
 
     # Feature flags --------------------------------------------------------
@@ -167,6 +194,49 @@ class Settings(BaseSettings):
         default_factory=lambda: _int_env("SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN", 120)
     )
 
+    # -----------------------------------------------------------------
+    # Additional URLs / endpoints extracted from hard‑coded literals
+    # -----------------------------------------------------------------
+    # Base API URL (used throughout benchmarks, demos, scripts)
+    api_url: str = Field(
+        default_factory=lambda: os.getenv("SOMABRAIN_API_URL") or ""
+    )
+
+    # OPA service URL (policy engine)
+    opa_url: str = Field(
+        default_factory=lambda: os.getenv("SOMABRAIN_OPA_URL") or ""
+    )
+
+    # OTEL collector endpoint (observability)
+    otel_collector_endpoint: str = Field(
+        default_factory=lambda: os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT") or ""
+    )
+
+    # Integrator and segmentation health endpoint defaults (internal services)
+    # Removed unused integrator_triplet_health_url per VIBE cleanup.
+    # Removed unused segmentation_health_url per VIBE cleanup.
+    # Base URL for the somabrain_cog service
+    # Removed unused somabrain_cog_base_url per VIBE cleanup.
+
+    # -----------------------------------------------------------------
+    # Provenance / audit control flags (used by ControlsMiddleware)
+    # -----------------------------------------------------------------
+    # Whether the middleware should enforce strict provenance validation.
+    # Defaults to ``False`` to keep existing behaviour unchanged unless the
+    # operator explicitly enables it via the ``PROVENANCE_STRICT_DENY``
+    # environment variable.
+    provenance_strict_deny: bool = Field(
+        default_factory=lambda: _bool_env("PROVENANCE_STRICT_DENY", False)
+    )
+
+    # Toggle to require provenance headers on write‑like requests (POST to
+    # ``/remember`` or ``/act``).  Historically this was ``require_provenance``
+    # in the settings model; we re‑introduce it with a safe default of ``False``
+    # so that the API remains functional without clients supplying the header.
+    require_provenance: bool = Field(
+        default_factory=lambda: _bool_env("REQUIRE_PROVENANCE", False)
+    )
+
     # OPA -----------------------------------------------------------------------------
     opa_url: str = Field(
         default=os.getenv("SOMABRAIN_OPA_URL") or os.getenv("SOMA_OPA_URL") or ""
@@ -200,6 +270,14 @@ class Settings(BaseSettings):
     )
     memory_degrade_topic: str = Field(
         default=os.getenv("SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded")
+    )
+
+    # Health poll interval for external memory service – used by the FastAPI
+    # application to periodically verify the health of the memory backend.
+    # The default matches the historic hard‑coded fallback in ``somabrain.app``
+    # (5 seconds). Allows overriding via environment variable for flexibility.
+    memory_health_poll_interval: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_MEMORY_HEALTH_POLL_INTERVAL", 5.0)
     )
 
     # Circuit‑breaker defaults ------------------------------------------------

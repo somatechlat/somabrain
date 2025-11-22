@@ -30,7 +30,8 @@ from collections import defaultdict
 def _default_base_url() -> str:
     # Use the centralized helper to obtain the API base URL, falling back to the
     # historic default only if the helper returns ``None``.
-    return (get_api_base_url() or "http://127.0.0.1:9696").rstrip("/")
+    from common.config.settings import settings
+    return (get_api_base_url() or settings.api_url).rstrip("/")
 
 
 def _default_token() -> str | None:

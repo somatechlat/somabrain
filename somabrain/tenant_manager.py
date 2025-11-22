@@ -14,7 +14,9 @@ from datetime import datetime, timedelta
 from fastapi import Request, HTTPException
 
 from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
-# Legacy config import replaced by unified Settings
+# Import get_config for legacy configuration access
+from .config import get_config
+# Unified Settings instance (still used elsewhere)
 from common.config.settings import settings
 
 logger = logging.getLogger(__name__)

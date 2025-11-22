@@ -43,27 +43,7 @@ dependencies = [
   "opentelemetry-exporter-otlp==1.37.0",
 ]
 
-[project.optional-dependencies]
-controls = ["cryptography>=41"]
-dev = [
-  "pytest>=7",
-  "pytest-cov>=4",
-  "ruff>=0.5",
-  "mypy>=1.5",
-  "matplotlib>=3.8",
-  "pyinstrument>=0.4",
-  "scalene>=1.5",
-  "py-spy>=0.3",
-  "pytest-asyncio>=0.23",
-  "PyYAML>=6.0",
-  "fastavro>=1.9",
-  "opentelemetry-semantic-conventions==0.58b0",
-  "opentelemetry-instrumentation-fastapi==0.58b0",
-  "opentelemetry-instrumentation-redis==0.58b0",
-  "opentelemetry-instrumentation-requests==0.58b0",
-  "confluent-kafka>=2.4",
-  "python-dotenv>=1.0"
-]
+# Optional dependencies have been removed to enforce a minimal, production‑only set of packages.
 
 [project.scripts]
 somabrain-api = "somabrain.cli:run_api"

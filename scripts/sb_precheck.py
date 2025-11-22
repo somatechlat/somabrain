@@ -8,6 +8,7 @@ import os
 import requests
 import redis
 from kafka import KafkaProducer
+from common.config.settings import settings
 
 kafka_port = os.environ.get("KAFKA_PORT")
 opa_port = os.environ.get("OPA_PORT")
@@ -27,9 +28,10 @@ except Exception as e:
     print("Redis check failed:", e)
     sys.exit(3)
 
-print("Checking OPA at", f"http://127.0.0.1:{opa_port}/health")
+from common.config.settings import settings as _settings
+print("Checking OPA at", _settings.opa_url)
 try:
-    resp = requests.get(f"http://127.0.0.1:{opa_port}/health", timeout=3)
+    resp = requests.get(_settings.opa_url, timeout=3)
     if resp.status_code != 200:
         print("OPA health status", resp.status_code)
         sys.exit(4)
@@ -38,9 +40,9 @@ except Exception as e:
     print("OPA check failed:", e)
     sys.exit(4)
 
-print("Checking Memory service at http://127.0.0.1:9595/health")
+print(f"Checking Memory service at {settings.memory_http_endpoint}/health")
 try:
-    resp = requests.get("http://127.0.0.1:9595/health", timeout=3)
+    resp = requests.get(f"{settings.memory_http_endpoint}/health", timeout=3)
     if resp.status_code != 200:
         print("Memory health status", resp.status_code)
         sys.exit(5)

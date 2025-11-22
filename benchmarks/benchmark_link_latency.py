@@ -33,7 +33,9 @@ def _random_coord() -> Tuple[float, float, float]:
 def run_benchmark(num_links: int = 10_000) -> None:
     cfg = copy.deepcopy(settings)
     # Ensure HTTP endpoint configured for the memory service (fallback if missing)
-    cfg.memory_http_endpoint = getattr(cfg, "memory_http_endpoint", None) or "http://localhost:9595"
+    from common.config.settings import settings
+    _settings = settings
+    cfg.memory_http_endpoint = getattr(cfg, "memory_http_endpoint", None) or _settings.memory_http_endpoint
     pool = MultiTenantMemory(cfg)
     namespace = "benchmark:link_latency"
     client = pool.for_namespace(namespace)

@@ -33,7 +33,8 @@ def _hit_endpoint(base_url: str, path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run a simple profiling load against the API.")
     parser.add_argument("--duration", type=int, default=30, help="Duration in seconds to run the load loop.")
-    parser.add_argument("--base-url", default=os.getenv("BASE_URL", "http://127.0.0.1:9696"), help="Base URL of the API.")
+    from common.config.settings import settings as _settings
+    parser.add_argument("--base-url", default=os.getenv("BASE_URL", _settings.api_url), help="Base URL of the API.")
     args = parser.parse_args()
 
     end_time = time.time() + args.duration

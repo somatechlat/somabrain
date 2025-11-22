@@ -354,8 +354,9 @@ def run_live_demonstration():
         
         import requests
         
+        from common.config.settings import settings
         response = requests.post(
-            "http://localhost:9696/remember",
+            f"{settings.api_url}/remember",
             json=payload,
             headers={"Content-Type": "application/json"},
             timeout=10
@@ -375,7 +376,7 @@ def run_live_demonstration():
             }
             
             response = requests.post(
-                "http://localhost:9696/recall",
+                f"{settings.api_url}/recall",
                 json=recall_payload,
                 headers={"Content-Type": "application/json"},
                 timeout=10
@@ -392,7 +393,7 @@ def run_live_demonstration():
                 
                 # Check if adaptive system is working
                 try:
-                    health_response = requests.get("http://localhost:9696/health", timeout=5)
+                    health_response = requests.get(f"{settings.api_url}/health", timeout=5)
                     if health_response.status_code == 200:
                         print("✅ SomaBrain system is healthy and running")
                         print("🧠 Adaptive learning system is operational!")

@@ -312,7 +312,7 @@ services:
     networks:
       - somabrain_net
     environment:
-      # Explicitly require a real external memory service; no dev fallback
+      # Use external memory service configured via environment variables (no mock)
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
@@ -351,6 +351,7 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /app/logs
+
 
   somabrain_cog:
     build:

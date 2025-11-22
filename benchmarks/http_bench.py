@@ -7,6 +7,7 @@ This sends POST requests with a simple RetrievalRequest body and prints latency 
 """
 
 import argparse
+from common.config.settings import settings
 import asyncio
 import time
 from statistics import mean, median
@@ -65,7 +66,7 @@ async def run(url: str, concurrency: int, total: int):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default="http://localhost:9696/recall")
+    parser.add_argument("--url", default=f"{settings.api_url}/recall")
     parser.add_argument("--concurrency", type=int, default=4)
     parser.add_argument("--requests", type=int, default=100)
     args = parser.parse_args()

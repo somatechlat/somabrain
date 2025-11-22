@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import json
 import os
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 import sys
 import time
 from typing import Any, Dict
@@ -46,9 +47,12 @@ def post_reward() -> None:
     taken from ``SOMABRAIN_REWARD_PORT`` (default 8083).
     """
     # Use centralized Settings for reward port
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
     port = int(shared_settings.reward_port)
-    url = f"http://localhost:{port}/reward"
+    from common.config.settings import settings
+    _settings = settings
+    url = f"{_settings.api_url}/reward"
     payload: Dict[str, Any] = {
         "tenant": shared_settings.default_tenant,
         "r_task": 0.5,

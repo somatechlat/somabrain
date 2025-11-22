@@ -24,8 +24,9 @@ from somabrain.infrastructure import (
 )
 
 # Default endpoints used when environment variables are absent.
-DEFAULT_API_URL = "http://127.0.0.1:9696"
-DEFAULT_MEMORY_HTTP_ENDPOINT = "http://127.0.0.1:9595"
+from common.config.settings import settings as _settings
+DEFAULT_API_URL = _settings.api_url
+DEFAULT_MEMORY_HTTP_ENDPOINT = _settings.memory_http_endpoint
 DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
 
 try:  # Optional dependency in some environments.

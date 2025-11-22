@@ -36,7 +36,8 @@ def plan_hit_rate(items: List[str], truths: List[str]) -> float:
     return sum(1 for t in truths if t in s) / float(len(truths))
 
 
-def run(base: str = "http://localhost:9696", tenant: str = "benchdev") -> Dict:
+from common.config.settings import settings
+def run(base: str = None, tenant: str = "benchdev") -> Dict:
     headers = {"Content-Type": "application/json", "X-Tenant-ID": tenant}
     client = httpx.Client()
 
@@ -154,7 +155,7 @@ def main():
     import argparse
 
     ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="http://localhost:9696")
+    ap.add_argument("--base", default=settings.api_url)
     ap.add_argument("--tenant", default="benchdev")
     ap.add_argument("--out", default="benchmarks/results_agent_coding.json")
     args = ap.parse_args()

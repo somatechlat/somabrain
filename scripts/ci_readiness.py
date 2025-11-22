@@ -177,7 +177,8 @@ def check_opa() -> CheckResult:
 
 
 def check_outbox_pending() -> CheckResult:
-    base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or "http://127.0.0.1:9696"
+    from common.config.settings import settings
+    base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
     token = _env("SOMABRAIN_API_TOKEN") or _env("SOMA_API_TOKEN")
     if not token:
         return CheckResult("outbox", False, "SOMABRAIN_API_TOKEN not set")

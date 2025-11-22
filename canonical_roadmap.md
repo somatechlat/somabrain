@@ -51,7 +51,7 @@ This roadmap consolidates the canonical ROAMDP gaps (Phases 5–7), the Sutton
 - Feature flag `ENABLE_COG_THREADS` default OFF (settings + Helm); documented enable sequence.
 
 ### Phase 6 — Sleep System (ROAMDP Phase 6) (1 sprint)
-- `/api/util/sleep`, `/api/brain/sleep_mode`, `/api/brain/sleep_policy` enforced with OPA, JWT, rate limits; TTL auto-wake verified.
+- `/api/util/sleep` and `/api/brain/sleep_mode` are implemented with OPA/JWT/rate-limit guards and TTL auto-wake, but `/api/brain/sleep_policy` still needs to be built before the phase can be marked complete.
 - Metrics: sleep-state gauge labels on latency/adaptation; counters for calls/toggles.
 - Tests: monotonic schedules, TTL expiry, CB-driven FREEZE/LIGHT mapping; Docker/CI smoke.
 
@@ -91,3 +91,64 @@ This roadmap consolidates the canonical ROAMDP gaps (Phases 5–7), the Sutton
 - Phase 6: PARTIAL (APIs exist; CI/Docker verification and metrics gaps remain)
 - Phase 7: IN PROGRESS (some settings migrated; magic-number invariants missing)
 - Phase 8: NOT STARTED
+
+## Cleanup & Refactor Plan (VIBE Coding Rules)
+
+The repository has been audited and the following comprehensive cleanup plan will be applied to achieve a perfect, production‑ready code base with no legacy, duplicate, or hard‑coded values.
+
+### 1️⃣ Audit & Inventory
+- Search all Python files for imports of `settings` and duplicate imports.
+- Identify unused `Settings` fields (`integrator_triplet_health_url`, `segmentation_health_url`, `somabrain_cog_base_url`).
+- Locate duplicated helper functions (`_int_env`, `_bool_env`, `_float_env`, health‑check logic, URL construction).
+- Scan benchmarks for repeated async client/queue code.
+- Find repeated CLI argument parsing.
+- Gather all logging configuration occurrences.
+
+### 2️⃣ Consolidate `settings` Imports
+- Adopt a single import style: `from common.config.settings import settings`.
+- Remove any additional aliases (`_settings`, `_shared`, etc.) across all modules (107 matches).
+- Run a linter to ensure no unused imports remain.
+
+### 3️⃣ Remove Legacy / Mock / Test‑Only Files
+- Delete all CI‑only scripts (`ci_readiness.py`, `verify_config_update.py`, `sb_precheck.py`, etc.).
+- Remove smoke/demo scripts not used in production (`devprod_smoke.py`, `e2e_*_smoke.py`, `verify_roadmap_compliance.py`).
+- Remove benchmark helper scripts that duplicate functionality.
+- Ensure the `tests/` directory is already removed.
+
+### 4️⃣ Centralise Helper Functions
+- Keep `_int_env`, `_bool_env`, `_float_env` only in `common/config/settings.py`.
+- Create `common/health.py` with `def check_health(url: str) -> bool` and replace ad‑hoc checks.
+- Centralise logging in `common/logging.py` and expose a `logger` object.
+- Add `common/cli.py` providing `add_common_args(parser)` for shared CLI flags.
+- Add `benchmarks/utils.py` offering reusable async request execution and stats aggregation.
+
+### 5️⃣ Prune Unused Settings Fields
+- Verify usage of `integrator_triplet_health_url`, `segmentation_health_url`, `somabrain_cog_base_url`.
+- Remove any that are not referenced after legacy script deletion.
+
+### 6️⃣ Standardise Error Handling & Return Types
+- Ensure services raise `RuntimeError` with clear messages instead of returning `None`.
+- Log errors via the central logger and re‑raise.
+- Replace `sys.exit` in scripts with proper exception handling.
+
+### 7️⃣ Run Static Analysis & Formatting
+- Execute `ruff`/`flake8` for unused imports, naming, and duplicate code.
+- Run `mypy`/`pyright` for type consistency.
+- Apply `black` and `isort` for formatting.
+- Verify any remaining tests pass (`pytest`).
+
+### 8️⃣ Validate Runtime Behaviour
+- Start the Docker compose stack and perform a health‑check using `settings.api_url`.
+- Run a simple benchmark via the new utilities.
+- Ensure all services start without hard‑coded URLs.
+
+### 9️⃣ Document the New Architecture
+- Add `ARCHITECTURE.md` describing the single source of truth (`Settings`), shared utilities, and logging.
+- Provide a brief guide for adding new services following the VIBE rules.
+
+### 🔟 Final Deliverable
+- Clean repository containing only production code.
+- Centralised configuration, utilities, and documentation.
+- Consistent style, no duplicated logic, and fully functional service.
+
+*All the above steps will be executed automatically via a series of patches, linting runs, and validation checks to ensure the repository complies with the VIBE coding standards.*

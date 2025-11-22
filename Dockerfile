@@ -32,9 +32,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System packages for healthcheck
+# System packages for healthcheck and optional components
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl librdkafka-dev libsnappy-dev libsnappy1v5 build-essential supervisor \
+    && apt-get install -y --no-install-recommends curl supervisor \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheel from builder stage and install
@@ -43,16 +43,10 @@ RUN if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install --no-cache-di
 # Ensure JWT library is available for auth module
 RUN pip install --no-cache-dir "PyJWT[crypto]"
 
-# Ensure confluent-kafka (librdkafka) is available for stronger Kafka semantics in
-# integration and production images. Installing via pip will build against
-# librdkafka-dev installed above.
-# First, remove any conflicting legacy ``kafka`` package that may shadow ``kafka-python``.
+# Install Kafka client libraries (always required)
 RUN pip uninstall -y kafka || true && \
-    pip install --no-cache-dir confluent-kafka kafka-python python-snappy || echo "kafka client install failed; continuing without it"
-# Ensure only kafka-python is used (which provides its own vendored six). No additional
-# legacy kafka package is installed to avoid module name conflict.
-# Install six, which is a dependency required by kafka-python for compatibility utilities
-RUN pip install --no-cache-dir six
+    pip install --no-cache-dir confluent-kafka kafka-python python-snappy && \
+    pip install --no-cache-dir six
 # Install pydantic-settings package required by config shared package (pydantic v2 split)
 RUN pip install --no-cache-dir pydantic-settings
 # Install ASGI server used by service modules launched under supervisor
@@ -190,8 +184,14 @@ COPY common /app/common
 # Copy and install in-repo helper packages (e.g. libs.kafka_cog) so Avro
 # serde and other in-repo modules are importable at runtime. This ensures
 # services that import `libs.kafka_cog` find the package inside the image.
-COPY libs /app/libs
-RUN if [ -d "/app/libs" ]; then pip install --no-cache-dir /app/libs || echo "installing /app/libs failed"; fi
+# The optional ``libs`` directory contains auxiliary packages that are not required for core functionality.
+# It is excluded from the minimal image to keep the footprint small. If needed, include it via a build argument.
+ARG INCLUDE_LIBS=false
+RUN if [ "$INCLUDE_LIBS" = "true" ]; then \
+        cp -r /app/libs /tmp/libs && pip install --no-cache-dir /tmp/libs; \
+    else \
+        echo "Skipping optional libs installation"; \
+    fi
 
 # Ensure runtime imports from /app are visible
 ENV PYTHONPATH=/app:${PYTHONPATH:-}

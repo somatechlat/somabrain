@@ -13,7 +13,8 @@ Example:
 
     from clients.python.somabrain_client import SomaBrainClient, SomaBrainUnavailableError
 
-    api = SomaBrainClient(base_url="http://127.0.0.1:9696", tenant="public")
+    from common.config.settings import settings as _settings
+    api = SomaBrainClient(base_url=_settings.api_url, tenant="public")
 
     # Health-aware recall: only calls SomaBrain when health says "up".
     try:

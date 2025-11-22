@@ -17,9 +17,11 @@ from collections import defaultdict
 class RoadmapComplianceVerifier:
     """Comprehensive verification of roadmap implementation."""
     
-    def __init__(self, base_url: str = "http://localhost:9696"):
-        self.base_url = base_url
-        self.metrics_url = "http://localhost:9696/metrics"
+    from common.config.settings import settings
+    def __init__(self, base_url: str = None):
+        # Use configured API URL if not explicitly provided
+        self.base_url = base_url or settings.api_url
+        self.metrics_url = f"{settings.api_url}/metrics"
         
     def verify_bhdc_foundation(self) -> bool:
         """Verify BHDC mathematical foundations."""

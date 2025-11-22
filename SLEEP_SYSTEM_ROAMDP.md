@@ -109,6 +109,9 @@ Sprint 3B: Documentation
 └── Migration guides
 ```
 
+## Current Implementation Gap
+- `/api/util/sleep` and `/api/brain/sleep_mode` exist in the codebase, but the `/api/brain/sleep_policy` endpoint described in the plan is not implemented anywhere yet, so the cognitive policy layer (with OPA/JWT/rate-limit enforcement) remains outstanding.
+
 ## Success Criteria
 
 ### Sprint 1: Core Foundation

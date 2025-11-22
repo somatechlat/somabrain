@@ -88,6 +88,8 @@ from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
 # Use the new TenantManager for tenant resolution.
 from somabrain.tenant_manager import get_tenant_manager
+# Import the async tenant resolver (aliased as get_tenant_async) for use in endpoints.
+from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.version import API_VERSION
 from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
@@ -1556,16 +1558,12 @@ async def _init_constitution() -> None:
 # Optional routers (strict posture; dependencies must be present for critical routes).
 # NOTE: Legacy retrieval router has been fully removed in favor of unified /memory/recall.
 
-try:
-    from somabrain.api import context_route as _context_route
+# The context router is a required component of the full‑stack deployment.
+# If it cannot be imported the application must fail fast – this guarantees that
+# `/context/evaluate` and `/context/feedback` are always available.
+from somabrain.api import context_route as _context_route
 
-    app.include_router(_context_route.router, prefix="/context")
-except Exception as _ctx_exc:
-    try:
-        _lg = logging.getLogger("somabrain")
-        _lg.warning("Context router not registered: %s", _ctx_exc, exc_info=True)
-    except Exception:
-        pass
+app.include_router(_context_route.router, prefix="/context")
 
 try:
     from somabrain.api.routers import persona as _persona_router
