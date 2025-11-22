@@ -179,7 +179,7 @@ def pytest_collection_modifyitems(config: pytest.Config, items: List[pytest.Item
         # Path-based heuristic marking
         p = Path(str(item.fspath))
         parts = [s.lower() for s in p.parts]
-        if any(s in parts for s in ["integration", "kafka", "monitoring", "e2e", "services"]):
+        if any(s in parts for s in ["integration", "kafka", "monitoring", "e2e"]):
             item.add_marker(pytest.mark.integration)
         if "benchmarks" in parts or "stress" in parts or "benchmark" in parts:
             item.add_marker(pytest.mark.benchmark)

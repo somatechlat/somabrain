@@ -34,7 +34,12 @@ except Exception:
 
     _embedder = TinyDeterministicEmbedder(dim=256)
 _working_memory = WorkingMemoryBuffer()
-_retrieval_weights = RetrievalWeights()
+_retrieval_weights = RetrievalWeights(
+    alpha=float(getattr(settings, "retrieval_alpha", 1.0)),
+    beta=float(getattr(settings, "retrieval_beta", 0.3)),
+    gamma=float(getattr(settings, "retrieval_gamma", 0.1)),
+    tau=float(getattr(settings, "retrieval_tau", 0.8)),
+)
 _utility_weights = UtilityWeights()
 
 

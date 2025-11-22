@@ -10,12 +10,20 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from typing import Any, Dict, Optional
 
 import yaml
 
 from common.config.settings import Settings
 from common.logging import logger
+from somabrain.metrics import (
+    LEARNER_EVENTS_CONSUMED,
+    LEARNER_EVENTS_FAILED,
+    LEARNER_EVENTS_PRODUCED,
+    LEARNER_EVENT_LATENCY,
+)
+from somabrain.services.learner_dlq import LearnerDLQ
 
 __all__ = ["LearnerService"]
 
@@ -46,9 +54,12 @@ class LearnerService:
         self._producer: Any = None
         # Gauge for next‑event regret – created lazily.  Tests may monkey‑patch.
         self._g_next_regret: Optional[Any] = None
+        # Track last processed timestamp per tenant for health/lag metrics
+        self._last_seen_ts: Dict[str, float] = {}
 
         # Settings singleton for topic names.
         self._settings = Settings()
+        self._dlq = LearnerDLQ()
 
     # ---------------------------------------------------------------------
     # Public API
@@ -85,9 +96,21 @@ class LearnerService:
                 "group.id": "somabrain-learner",
                 "enable.auto.commit": False,
                 "auto.offset.reset": "earliest",
+                "enable.auto.offset.store": False,
+                "enable.partition.eof": True,
+                "retries": 3,
+                "retry.backoff.ms": 200,
             }
         )
-        producer = ck.Producer({"bootstrap.servers": bootstrap})
+        producer = ck.Producer(
+            {
+                "bootstrap.servers": bootstrap,
+                "enable.idempotence": True,
+                "acks": "all",
+                "linger.ms": 5,
+                "batch.num.messages": 500,
+            }
+        )
         self._producer = producer
         consumer.subscribe([topic_next])
         logger.info("LearnerService consuming %s and emitting %s", topic_next, topic_cfg)
@@ -102,25 +125,32 @@ class LearnerService:
             try:
                 payload = msg.value()
                 event = json.loads(payload)
-                self._observe_next_event(event)
+                self._process_event(event)
+                consumer.store_offsets(msg)
                 consumer.commit(msg)
             except Exception as exc:
                 logger.exception("Failed to process next_event message: %s", exc)
+                try:
+                    self._dlq.record(event if isinstance(event, dict) else {}, str(exc))
+                except Exception:
+                    pass
 
     # ---------------------------------------------------------------------
     # Internal helpers used by the test suite
     # ---------------------------------------------------------------------
-    def _observe_next_event(self, event: Dict[str, Any]) -> None:
-        """Process a ``next_event`` payload.
+    def _process_event(self, event: Dict[str, Any]) -> None:
+        """Validate and process a ``next_event`` payload; emit metrics."""
+        t_start = time.perf_counter()
+        tenant = str(event.get("tenant") or "default")
+        try:
+            confidence = float(event.get("confidence", 0.0))
+        except Exception as exc:
+            LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="parse").inc()
+            raise ValueError("confidence missing or non-numeric") from exc
+        if not 0.0 <= confidence <= 1.0:
+            LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="bounds").inc()
+            raise ValueError("confidence out of bounds [0,1]")
 
-        The function logs the event (so that ``capsys`` captures output) and
-        records regret on ``self._g_next_regret``.  Regret is defined as
-        ``1 - confidence`` where ``confidence`` is a float in ``[0, 1]``.
-        """
-        # Emit a simple textual log for test visibility.
-        print("next_event", event)  # noqa: T201 – required for test capture
-
-        confidence = float(event.get("confidence", 0.0))
         regret = 1.0 - confidence
 
         # Lazily create the gauge if it does not exist; fail fast if metrics missing.
@@ -129,9 +159,15 @@ class LearnerService:
 
             self._g_next_regret = soma_next_event_regret
 
-        tenant = str(event.get("tenant") or "public")
+        # Idempotency: skip if already seen event_id
+        event_id = str(event.get("event_id") or "")
+        if event_id:
+            if not hasattr(self, "_seen"):
+                self._seen = set()
+            if event_id in self._seen:
+                return
+            self._seen.add(event_id)
 
-        # Record the regret.
         try:
             gauge = self._g_next_regret
             if hasattr(gauge, "labels"):
@@ -139,9 +175,21 @@ class LearnerService:
             else:
                 gauge.set(regret)  # type: ignore[call-arg]
         except Exception as exc:  # pragma: no cover – defensive logging
-            logger.exception("Failed to set regret gauge: %s", exc)
+            LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="gauge").inc()
+            raise
 
-    def _emit_cfg(self, tenant: str, tau: float, lr: float) -> None:
+        LEARNER_EVENTS_CONSUMED.labels(tenant_id=tenant).inc()
+        self._last_seen_ts[tenant] = time.time()
+        self._emit_cfg(
+            tenant,
+            tau=float(event.get("tau", 1.0)),
+            lr=float(event.get("lr", 0.0)),
+            event_id=event_id or None,
+        )
+        elapsed = time.perf_counter() - t_start
+        LEARNER_EVENT_LATENCY.labels(tenant_id=tenant).observe(elapsed)
+
+    def _emit_cfg(self, tenant: str, tau: float, lr: float, event_id: str | None = None) -> None:
         """Emit a configuration update for *tenant*.
 
         The ``tau`` value is adjusted by the tenant‑specific ``tau_decay_rate``
@@ -165,6 +213,8 @@ class LearnerService:
             "learning_rate": lr,
             "tenant": tenant,
         }
+        if event_id:
+            payload_dict["event_id"] = event_id
         payload_bytes = json.dumps(payload_dict).encode("utf-8")
 
         topic = getattr(self._settings, "topic_config_updates", "cog.config.updates")
@@ -185,8 +235,14 @@ class LearnerService:
             raise RuntimeError("LearnerService producer is not configured.")
         try:
             self._producer.produce(topic, payload_bytes, callback=_delivery_report)
-            # Flush to ensure delivery in synchronous test environments.
+            LEARNER_EVENTS_PRODUCED.labels(tenant_id=tenant).inc()
             if hasattr(self._producer, "flush"):
                 self._producer.flush()
+            # Update lag gauge post-publish
+            from somabrain.metrics import LEARNER_LAG_SECONDS
+
+            last = self._last_seen_ts.get(tenant, time.time())
+            LEARNER_LAG_SECONDS.labels(tenant_id=tenant).set(max(0.0, time.time() - last))
         except Exception as exc:  # pragma: no cover – defensive
+            LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="produce").inc()
             logger.exception("Error emitting config update: %s", exc)

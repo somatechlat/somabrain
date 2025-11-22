@@ -146,11 +146,18 @@ class Settings(BaseSettings):
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
     )
+    allow_anonymous_tenants: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_ANONYMOUS_TENANTS", False)
+    )
     predictor_provider: str = Field(
         default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
     )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)
+    )
+    # Feedback safety ------------------------------------------------------
+    feedback_rate_limit_per_minute: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN", 120)
     )
 
     # OPA -----------------------------------------------------------------------------
@@ -228,7 +235,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
     enable_cog_threads: bool = Field(
-        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", True)
+        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", False)
     )
 
     # Segmentation thresholds and health port --------------------------------

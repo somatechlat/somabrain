@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +74,13 @@ class Planner:
     def __init__(self, max_depth: int = 5):
         self.max_depth = max_depth
         logger.info("Planner created with max_depth=%s", max_depth)
+        # Action catalog: name -> (precondition, heuristic cost)
+        self._catalog: Dict[str, Tuple[Optional[Callable[[Dict[str, Any]], bool]], float]] = {
+            "retrieve_memory": (lambda ctx: bool(ctx.get("query_text")), 1.0),
+            "store_memory": (lambda ctx: "snapshot" in ctx, 1.5),
+            "communicate": (None, 0.5),
+            "analyze_goal": (None, 0.2),
+        }
 
     # ---------------------------------------------------------------------
     # Public API
@@ -88,8 +95,14 @@ class Planner:
         logger.debug("Planning for goal=%s with context keys=%s", goal, list(context))
         plan: List[Step] = []
         success = self._search(goal, context, plan, depth=0)
-        if not success:
-            logger.warning("Planner could not find a viable plan for goal=%s", goal)
+        if not success and not plan:
+            # Ensure at least an analyze step so callers never receive empty plan
+            plan.append(
+                Step(
+                    name="analyze_goal",
+                    params={"goal": goal, "signals": list(context.keys())},
+                )
+            )
         return plan
 
     # ---------------------------------------------------------------------
@@ -179,6 +192,7 @@ class Planner:
             return False
 
         candidates = self._expand(goal, context)
+        candidates.sort(key=lambda s: self._action_cost(s.name))
         logger.debug("Depth %s – %s candidate(s)", depth, len(candidates))
 
         for step in candidates:
@@ -241,6 +255,11 @@ class Planner:
         if not plan:
             return []
         return plan[:-1]
+
+    def _action_cost(self, name: str) -> float:
+        """Return heuristic cost for action ordering."""
+        entry = self._catalog.get(name)
+        return entry[1] if entry else 1.0
 
 
 # End of Planner implementation

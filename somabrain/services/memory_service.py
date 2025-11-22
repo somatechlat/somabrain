@@ -306,10 +306,22 @@ class MemoryService:
     # ---------------------------------------------------------------------
     @staticmethod
     def _update_outbox_metric(tenant: str, count: int) -> None:
-        # Placeholder – real implementation would interact with Prometheus.
-        return None
+        try:
+            from somabrain import metrics
+
+            gauge = getattr(metrics, "OUTBOX_PENDING", None)
+            if gauge is not None and hasattr(gauge, "labels"):
+                gauge.labels(tenant_id=str(tenant)).set(float(count))
+        except Exception:
+            return None
 
     @staticmethod
     def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
-        # Placeholder – kept to satisfy tests that only verify existence.
-        return None
+        try:
+            from somabrain import metrics
+
+            gauge = getattr(metrics, "OUTBOX_PENDING_BY_TENANT", None)
+            if gauge is not None and hasattr(gauge, "labels"):
+                gauge.labels(tenant_id=str(tenant)).set(float(count))
+        except Exception:
+            return None

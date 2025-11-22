@@ -282,6 +282,7 @@ class ContextBuilder:
             cap = self._get_entropy_cap_for_tenant(self._tenant_id)
         except Exception:
             cap = None
+        entropy_exceeded = False
         if isinstance(cap, (int, float)) and cap > 0.0:
             try:
                 import math as _m
@@ -296,6 +297,7 @@ class ContextBuilder:
                 probs = [v / s for v in vec]
                 H = -sum(p * _m.log(p) for p in probs)
                 if H > float(cap):
+                    entropy_exceeded = True
                     # Iteratively sharpen non-max components while preserving max component
                     largest_idx = max(range(len(vec)), key=lambda i: vec[i])
                     attempts = 0
@@ -345,6 +347,17 @@ class ContextBuilder:
             gamma=self._weights.gamma,
             tau=self._weights.tau,
         )
+        try:
+            from somabrain.metrics import LEARNING_TAU, LEARNING_ENTROPY_CAP_HITS
+
+            if hasattr(LEARNING_TAU, "labels"):
+                LEARNING_TAU.labels(tenant_id=self._tenant_id).set(self._weights.tau)
+            else:
+                LEARNING_TAU.set(self._weights.tau)
+            if entropy_exceeded:
+                LEARNING_ENTROPY_CAP_HITS.labels(tenant_id=self._tenant_id).inc()
+        except Exception:
+            pass
         return normalized.tolist()
 
     # ---------------- Tenant overrides helpers ----------------

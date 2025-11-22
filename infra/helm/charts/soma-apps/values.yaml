@@ -119,7 +119,7 @@ cog:
       cpu: "750m"
       memory: "512Mi"
   env:
-    ENABLE_COG_THREADS: "1"
+    ENABLE_COG_THREADS: "0"
     SOMA_COMPAT: "1"
     SOMABRAIN_STRICT_REAL: "1"
     # Heat diffusion method: prefer Lanczos for speed/accuracy
@@ -162,7 +162,7 @@ orchestrator:
       memory: "256Mi"
   env:
     SOMABRAIN_FF_COG_ORCHESTRATOR: "1"
-    ENABLE_COG_THREADS: "1"
+    ENABLE_COG_THREADS: "0"
 
 # Learner stack (values-gated)
 rewardProducer:
@@ -179,7 +179,7 @@ rewardProducer:
       cpu: "200m"
       memory: "192Mi"
   env:
-    ENABLE_COG_THREADS: "1"
+    ENABLE_COG_THREADS: "0"
     REWARD_PRODUCER_PORT: "8083"
 
 learnerOnline:
@@ -196,7 +196,7 @@ learnerOnline:
       cpu: "250m"
       memory: "256Mi"
   env:
-    ENABLE_COG_THREADS: "1"
+    ENABLE_COG_THREADS: "0"
     LEARNER_EMA_ALPHA: "0.2"
     LEARNER_EMIT_PERIOD: "30"
     LEARNER_ONLINE_PORT: "8084"

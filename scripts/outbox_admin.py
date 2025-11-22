@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from somabrain.infrastructure import get_api_base_url
 import sys
 from typing import Any, Dict, Iterable

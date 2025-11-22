@@ -17,6 +17,11 @@ forbidden_patterns=(
   "placeholder memory"
   "no-op placeholder"
   "DummyGauge"
+  "TODO_STUB"
+  "FIXME_STUB"
+  "placeholder implementation"
+  "fake implementation"
+  "temporary fallback"
 )
 
 failed=0

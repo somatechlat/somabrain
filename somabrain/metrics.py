@@ -164,6 +164,11 @@ def get_histogram(
 _external_metrics_lock = Lock()
 _external_metrics_scraped: dict[str, float] = {}
 _DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
+LEARNER_LAG_SECONDS = get_gauge(
+    "somabrain_learner_lag_seconds",
+    "Time since last next-event processed per tenant",
+    labelnames=["tenant_id"],
+)
 
 
 # Rebind public constructors to safe wrappers for in-module usage.
@@ -199,6 +204,18 @@ OPA_ALLOW_TOTAL = get_counter(
 OPA_DENY_TOTAL = get_counter(
     "somabrain_opa_deny_total",
     "Number of requests denied by OPA",
+)
+
+# Learning loop metrics (tau/entropy/feedback)
+LEARNING_TAU = get_gauge(
+    "somabrain_learning_tau",
+    "Current retrieval temperature per tenant",
+    ["tenant_id"],
+)
+LEARNING_ENTROPY_CAP_HITS = get_counter(
+    "somabrain_learning_entropy_cap_hits_total",
+    "Count of retrieval weight vectors that exceeded entropy cap",
+    ["tenant_id"],
 )
 # Reward Gate metrics – count allow and deny decisions
 REWARD_ALLOW_TOTAL = get_counter(
@@ -1052,6 +1069,29 @@ LEARNING_FEEDBACK_LATENCY = get_histogram(
     "Latency of feedback application (end-to-end) per tenant",
     labelnames=["tenant_id"],
     buckets=[0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0],
+)
+
+# Learner (next-event) metrics
+LEARNER_EVENTS_CONSUMED = get_counter(
+    "somabrain_learner_events_consumed_total",
+    "Next-event messages consumed",
+    labelnames=["tenant_id"],
+)
+LEARNER_EVENTS_PRODUCED = get_counter(
+    "somabrain_learner_events_produced_total",
+    "Config updates produced by learner",
+    labelnames=["tenant_id"],
+)
+LEARNER_EVENTS_FAILED = get_counter(
+    "somabrain_learner_events_failed_total",
+    "Next-event processing failures",
+    labelnames=["tenant_id", "phase"],
+)
+LEARNER_EVENT_LATENCY = get_histogram(
+    "somabrain_learner_event_latency_seconds",
+    "End-to-end processing latency for next-event messages",
+    labelnames=["tenant_id"],
+    buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
 )
 
 # Adaptation dynamics

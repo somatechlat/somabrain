@@ -74,12 +74,19 @@ class TenantManager:
                 await self.registry.update_tenant_activity(token_hash)
                 return token_hash
         
-        # Priority 3: Default tenant
+        # Priority 3: Default tenant (must be explicitly configured)
         if self._default_tenant_id:
             await self.registry.update_tenant_activity(self._default_tenant_id)
             return self._default_tenant_id
-        
-        # Fallback: Create temporary tenant
+
+        # Explicit opt-in only: anonymous/temp tenants allowed?
+        if not getattr(settings, "allow_anonymous_tenants", False):
+            raise HTTPException(
+                status_code=401,
+                detail="Anonymous tenant access is disabled. Configure a default tenant or enable SOMABRAIN_ALLOW_ANONYMOUS_TENANTS=1 explicitly.",
+            )
+
+        # Fallback: Create temporary tenant (only when allowed)
         temp_tenant_id = await self.create_temporary_tenant()
         await self.registry.update_tenant_activity(temp_tenant_id)
         return temp_tenant_id

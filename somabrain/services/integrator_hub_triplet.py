@@ -212,23 +212,50 @@ class IntegratorHub:
     def _select_leader(self) -> Optional[str]:
         if not set(self.domains).issubset(self._latest.keys()):
             return None
-        confidences = [float(self._latest[d]["confidence"]) for d in self.domains]
         cfg = self._effective_cfg()
         temperature = cfg["temperature"]
+        # Precision-weighted softmax: w = exp(-alpha * error) or confidence fallback
+        weights = {}
+        for d in self.domains:
+            rec = self._latest[d]
+            err = rec.get("delta_error")
+            if err is not None and math.isfinite(err):
+                weights[d] = math.exp(-cfg["alpha"] * float(max(err, 0.0)))
+            else:
+                weights[d] = max(0.0, float(rec.get("confidence", 0.0)))
         if temperature <= 0:
-            return max(self.domains, key=lambda d: self._latest[d]["confidence"])
-        max_c = max(confidences)
-        exps = [math.exp((c - max_c) / temperature) for c in confidences]
-        total = sum(exps) or 1.0
-        probs = [v / total for v in exps]
-        return self.domains[probs.index(max(probs))]
+            return max(weights.items(), key=lambda kv: kv[1])[0]
+        max_w = max(weights.values())
+        exps = {d: math.exp((w - max_w) / temperature) for d, w in weights.items()}
+        total = sum(exps.values()) or 1.0
+        probs = {d: v / total for d, v in exps.items()}
+        return max(probs.items(), key=lambda kv: kv[1])[0]
 
     def _publish_global(self, leader: str) -> None:
         cfg = self._effective_cfg()
         present = {d: self._latest[d] for d in self.domains if d in self._latest}
         if leader not in present:
             return
-        weights = {d: float(present[d]["confidence"]) for d in present}
+        weights = {}
+        entropy = 0.0
+        alpha = cfg["alpha"]
+        for d, rec in present.items():
+            err = rec.get("delta_error")
+            if err is not None and math.isfinite(err):
+                w = math.exp(-alpha * float(max(err, 0.0)))
+                try:
+                    INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
+                except Exception:
+                    pass
+            else:
+                w = max(0.0, float(rec.get("confidence", 0.0)))
+            weights[d] = w
+        total_w = sum(weights.values()) or 1.0
+        probs = {d: w / total_w for d, w in weights.items()}
+        try:
+            entropy = -sum(p * math.log(p) for p in probs.values() if p > 0)
+        except Exception:
+            entropy = 0.0
         now = datetime.now(timezone.utc).isoformat()
         frame = {
             "ts": now,
@@ -241,8 +268,8 @@ class IntegratorHub:
                 "election_time": now,
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
-                "entropy_cap": 0.0,
-                "current_entropy": 0.0,
+                "entropy_cap": float(getattr(shared_settings, "integrator_entropy_cap", 0.0) or 0.0),
+                "current_entropy": float(entropy),
                 "dwell_satisfied": True,
                 "transition_allowed": True,
             },

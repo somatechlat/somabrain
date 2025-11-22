@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import uuid
+import collections
 from dataclasses import asdict
 from typing import Optional
 
@@ -34,6 +35,7 @@ from somabrain import audit
 from somabrain.learning import AdaptationEngine
 from somabrain.storage.feedback import FeedbackStore
 from somabrain.storage.token_ledger import TokenLedger
+from common.config.settings import settings
 from somabrain.metrics import (
     update_learning_retrieval_weights,
     update_learning_utility_weights,
@@ -65,6 +67,26 @@ def _register_flag_gauges() -> None:
 _register_flag_gauges()
 
 router = APIRouter()
+_feedback_rate_window = collections.defaultdict(collections.deque)
+
+
+def _enforce_feedback_rate_limit(tenant_id: str) -> None:
+    """Simple per-tenant sliding-window limiter (requests per minute)."""
+    limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
+    if limit <= 0:
+        return
+    now = time.time()
+    window = _feedback_rate_window[tenant_id]
+    # Trim entries older than 60 seconds
+    while window and now - window[0] > 60.0:
+        window.popleft()
+    if len(window) >= limit:
+        raise HTTPException(
+            status_code=429,
+            detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
+        )
+    window.append(now)
+
 
 # ---------------------------------------------------------------------------
 # Feature‑flags endpoint (centralised view)
@@ -177,6 +199,7 @@ async def feedback_endpoint(
     builder = get_context_builder()
     default_tenant = get_default_tenant()
     tenant_id = payload.tenant_id or default_tenant
+    _enforce_feedback_rate_limit(tenant_id)
     # Ensure the builder knows the tenant for metric attribution
     if hasattr(builder, "set_tenant"):
         builder.set_tenant(tenant_id)

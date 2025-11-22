@@ -18,6 +18,9 @@ class _Ctx:
 @pytest.fixture(autouse=True)
 def _setup_runtime(tmp_path):
     # Configure a local runtime with in-memory backends
+    import os
+
+    os.environ["SOMABRAIN_ALLOW_LOCAL_MEMORY"] = "1"
     from somabrain import runtime as _rt
     from somabrain.config import get_config
     from somabrain.memory_pool import MultiTenantMemory
