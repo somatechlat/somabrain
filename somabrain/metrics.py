@@ -1093,6 +1093,11 @@ LEARNER_EVENT_LATENCY = get_histogram(
     labelnames=["tenant_id"],
     buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
 )
+LEARNER_DLQ_TOTAL = get_counter(
+    "somabrain_learner_dlq_total",
+    "Learner DLQ writes",
+    labelnames=["tenant_id", "reason"],
+)
 
 # Adaptation dynamics
 LEARNING_EFFECTIVE_LR = get_gauge(

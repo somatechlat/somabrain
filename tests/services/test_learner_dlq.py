@@ -43,4 +43,8 @@ def test_dlq_uses_producer_when_available(monkeypatch):
     topic, payload = prod.records[0]
     assert topic == "dlq.topic"
     assert b"oops" in payload
+    # metric increments even when using producer
+    from somabrain.metrics import LEARNER_DLQ_TOTAL
+
+    assert LEARNER_DLQ_TOTAL.labels(tenant_id="default", reason="oops")
 pytestmark = pytest.mark.unit

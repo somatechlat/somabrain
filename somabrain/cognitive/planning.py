@@ -261,5 +261,23 @@ class Planner:
         entry = self._catalog.get(name)
         return entry[1] if entry else 1.0
 
+    def execute(self, plan: List[Step], executor: Callable[[Step], bool]) -> List[Dict[str, Any]]:
+        """Execute a plan using a provided executor callable.
+
+        The executor receives a Step and returns True on success, False on failure.
+        Execution stops on first failure; returns a list of result dicts.
+        """
+        results: List[Dict[str, Any]] = []
+        for step in plan:
+            try:
+                ok = bool(executor(step))
+            except Exception as exc:  # pragma: no cover – defensive
+                logger.error("Executor raised for step %s: %s", step.name, exc)
+                ok = False
+            results.append({"step": step.name, "ok": ok})
+            if not ok:
+                break
+        return results
+
 
 # End of Planner implementation
