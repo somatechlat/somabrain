@@ -12,6 +12,60 @@
 
 **All configuration variables are centralized in `.env` file for Docker and ConfigMap for Kubernetes.**
 
+## Preflight Checklist (local & CI)
+- Memory backend reachable at **http://localhost:9595/health** (or `http://host.docker.internal:9595/health` from inside Docker). Fails here = the API will fail hard (no silent fallback).
+- Free host ports: 9696 (API), 30100–30108 (deps). On conflict run `./scripts/assign_ports.sh` or edit `.env`.
+- Clean prior stacks: `docker compose down -v` (in repo) so volumes/logs don’t mask issues. Optional deep prune if safe for your host: `docker system prune -af --volumes`.
+- Linux only: add host-gateway mapping if you run memory on the host:
+  `echo "extra_hosts:\n  - \"host.docker.internal:host-gateway\"" >> docker-compose.override.yml`
+- Credentials: replace all `*_CHANGE_IN_PRODUCTION` values before anything public.
+
+## Full-Local (Strict Cognition) Step-by-Step
+These steps produce a “full brain” local stack with cognition threads on and memory enforcement.
+
+1) **Prepare env**
+```bash
+cp .env.example .env               # or reuse .env if already tailored
+export ENABLE_COG_THREADS=1
+export SOMABRAIN_FORCE_FULL_STACK=1
+export SOMABRAIN_REQUIRE_MEMORY=1
+export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://host.docker.internal:9595  # inside Docker
+```
+2) **Preflight memory**
+```bash
+curl -fsS http://localhost:9595/health | jq
+```
+3) **Clean old stack (repo scope)**
+```bash
+docker compose down -v
+```
+4) **Rebuild images without cache (ensures newly added modules like adaptive are inside)**
+```bash
+docker compose build --no-cache somabrain_app somabrain_cog somabrain_integrator_triplet
+```
+5) **Start full stack**
+```bash
+docker compose up -d
+```
+6) **Verify containers**
+```bash
+docker compose ps
+docker compose logs -f somabrain_app | head -n 50
+```
+7) **Health & cognition on**
+```bash
+curl -fsS http://localhost:9696/health | jq
+```
+8) **Smoke cognition path (inside app container; requires memory 9595 up)**
+```bash
+docker compose exec somabrain_app pytest tests/integration/test_predictor_integrator_smoke.py -q
+```
+9) **Metrics/observability quick check**
+- `curl -fsS http://localhost:9696/metrics | head`
+- Prometheus UI: http://localhost:30105
+
+If health fails: check for `ModuleNotFoundError` or memory 9595 reachability in `docker compose logs somabrain_app`.
+
 ### Development Credentials
 ⚠️ **WARNING: The following credentials are for DEVELOPMENT ONLY**
 
@@ -95,6 +149,11 @@ Use `./scripts/assign_ports.sh` when conflicts arise; it rewrites `.env` and `po
 - Runtime image includes `somabrain/`, `scripts/`, `arc_cache.py`, and documentation required at runtime.
 - Containers run as a non-root user; ensure volumes and Kubernetes security contexts respect this constraint.
  - Compose hardening: `somabrain_app` drops all capabilities, uses a read-only root filesystem, enables `no-new-privileges`, and mounts `/app/logs` as tmpfs for write access.
+- **Image hygiene checks**
+  - Ensure no env files baked: `docker run --rm somabrain_app find /app -maxdepth 2 -name \"*.env\"`
+  - Confirm adaptive/cognition modules present: `docker run --rm somabrain_app python - <<'PY'\nimport importlib.util, sys; sys.exit(0 if importlib.util.find_spec('somabrain.adaptive') else 1)\nPY`
+  - Trim dangling layers after rebuilds (safe if you know your host): `docker image prune -f`
+  - Prune stopped project containers/volumes: `docker compose down -v && docker volume prune -f` (only after confirming you can lose local data)
 
 #### Production Docker Compose
 ```yaml

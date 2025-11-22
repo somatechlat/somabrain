@@ -19,6 +19,8 @@ dist/
 # Local envs
 .venv/
 venv/
+.env
+*.env
 
 # Not needed in image
 tests/
