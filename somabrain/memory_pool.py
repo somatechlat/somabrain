@@ -75,17 +75,17 @@ class MultiTenantMemory:
         ns = str(namespace)
         if ns not in self._pool:
             # clone config with namespace override
-            from dataclasses import replace
+            # ``self.cfg`` is a Pydantic ``BaseSettings`` instance, not a dataclass.
+            # Use the built‑in ``copy`` method to create a shallow clone with the
+            # overridden ``namespace``. This avoids the ``replace()`` TypeError
+            # and keeps the original settings object immutable for other tenants.
+            cfg2 = self.cfg.copy(update={"namespace": ns})
 
-            cfg2 = replace(self.cfg)
-            cfg2.namespace = ns
-
-            client = None
-            use_local = os.getenv("SOMABRAIN_ALLOW_LOCAL_MEMORY", "0").lower() in {"1", "true", "yes"}
-            if use_local:
-                client = LocalMemoryClient(namespace=ns)
-            else:
-                client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
+            # ALWAYS use the external HTTP MemoryClient. Fallback to a local in‑process
+            # memory store has been removed to enforce a single source of truth for
+            # memory operations. This ensures consistency across tenants and aligns
+            # with the roadmap's Phase 0 goal of eliminating stub/fallback behavior.
+            client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
             self._pool[ns] = client
 
         return self._pool[ns]

@@ -4,7 +4,13 @@ from somabrain_client import SomaBrainClient
 
 
 def main() -> None:
-    """TODO: Add docstring."""
+    """Entry point for the SomaBrain command‑line interface.
+
+    The CLI accepts a query string, optional session identifier, base URL for the
+    SomaBrain HTTP API, and an optional bearer token.  It creates a
+    :class:`SomaBrainClient`, sends the query for evaluation, and prints the
+    returned prompt to stdout.
+    """
     parser = argparse.ArgumentParser(description="SomaBrain CLI")
     parser.add_argument("query", help="Query text to evaluate")
     parser.add_argument("--session", default="cli-session", help="Session identifier")

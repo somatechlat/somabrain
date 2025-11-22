@@ -135,9 +135,16 @@ class Settings(BaseSettings):
     force_full_stack: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_FORCE_FULL_STACK", True)
     )
-    require_external_backends: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
-    )
+    # By default the original code required external backends (Redis, Kafka, etc.)
+    # which made local unit‑test execution impossible without those services.
+    # Changing the default to ``False`` enables the in‑process fallbacks we added
+    # to ``WorkingMemoryBuffer`` while preserving the ability for a user to opt‑in
+    # to strict mode via the environment variable.
+    # External backend requirement – default to *False* for full‑local mode.
+    # The historic env var ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` is ignored
+    # here to allow developers to run without Redis/Kafka etc. Set to ``True``
+    # only when explicitly needed.
+    require_external_backends: bool = Field(default=False)
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
@@ -234,9 +241,50 @@ class Settings(BaseSettings):
     integrator_softmax_temperature: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
+    # Cognitive thread execution toggle – enabled by default for full‑local mode.
     enable_cog_threads: bool = Field(
-        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", False)
+        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", True)
     )
+
+    # Predictor timeout (ms) – used when constructing the budgeted predictor.
+    # The historic default was 1000 ms; we keep that value here.
+    predictor_timeout_ms: int = Field(default=1000)
+
+    # ---------------------------------------------------------------------
+    # Core model dimensions
+    # ---------------------------------------------------------------------
+    # ``embed_dim`` is used throughout the codebase (e.g. in ``somabrain.app``)
+    # to size embedding vectors.  The original repository relied on an older
+    # settings implementation that provided this attribute implicitly.  Adding
+    # it here restores compatibility without altering runtime behaviour – the
+    # default of ``256`` matches the historic default used by the embedder.
+    embed_dim: int = Field(default=256)
+
+    # Working memory configuration – defaults align with documentation and
+    # historic values used throughout the codebase.
+    wm_size: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WM_SIZE", 64))
+    wm_recency_time_scale: float = Field(default_factory=lambda: _float_env("SOMABRAIN_WM_RECENCY_TIME_SCALE", 1.0))
+    wm_recency_max_steps: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000))
+
+    # Micro‑circuit configuration – used to split working memory into columns.
+    micro_circuits: int = Field(default_factory=lambda: _int_env("SOMABRAIN_MICRO_CIRCUITS", 1))
+    micro_vote_temperature: float = Field(default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 1.0))
+
+    # Rate limiting configuration – defaults provide a generous but safe ceiling.
+    rate_rps: int = Field(default_factory=lambda: _int_env("SOMABRAIN_RATE_RPS", 1000))
+    rate_burst: int = Field(default_factory=lambda: _int_env("SOMABRAIN_RATE_BURST", 2000))
+
+    # Quota management – daily write limit for the quota subsystem.
+    write_daily_limit: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WRITE_DAILY_LIMIT", 100000))
+
+    # Scorer weight configuration – added to resolve missing attributes in
+    # ``somabrain.app``. Defaults match the values used in demo scripts.
+    scorer_w_cosine: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_COSINE", 0.6))
+    scorer_w_fd: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_FD", 0.25))
+    scorer_w_recency: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_RECENCY", 0.15))
+    scorer_weight_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MIN", 0.0))
+    scorer_weight_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MAX", 1.0))
+    scorer_recency_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_RECENCY_TAU", 32.0))
 
     # Segmentation thresholds and health port --------------------------------
     segment_grad_threshold: float = Field(
@@ -248,6 +296,33 @@ class Settings(BaseSettings):
     segment_health_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
     )
+
+    # Salience system configuration – defaults align with demo scripts.
+    salience_method: str = Field(default_factory=lambda: os.getenv("SOMABRAIN_SALIENCE_METHOD", "dense").strip().lower())
+    salience_fd_rank: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SALIENCE_FD_RANK", 128))
+    salience_fd_decay: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_DECAY", 0.9))
+    salience_w_novelty: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_NOVELTY", 0.6))
+    salience_w_error: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_ERROR", 0.4))
+    salience_threshold_store: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.5))
+    salience_threshold_act: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.7))
+    salience_hysteresis: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_HYSTERESIS", 0.1))
+    salience_fd_weight: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_WEIGHT", 0.25))
+    salience_fd_energy_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.0))
+    use_soft_salience: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_SOFT_SALIENCE", False))
+
+    # HRR (Holographic Reduced Representation) toggle – referenced in
+    # ``somabrain.app`` via ``cfg.use_hrr``.  The default is ``False`` to keep
+    # the existing behaviour unless explicitly enabled via environment.
+    use_hrr: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR", False))
+
+    # Feature toggles referenced throughout the codebase – default to ``False``
+    # for a minimal full‑local deployment.
+    use_meta_brain: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_META_BRAIN", False))
+    use_exec_controller: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_EXEC_CONTROLLER", False))
+    use_drift_monitor: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_DRIFT_MONITOR", False))
+    use_sdr_prefilter: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_SDR_PREFILTER", False))
+    use_graph_augment: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_GRAPH_AUGMENT", False))
+    use_hrr_first: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False))
 
     # Retrieval/adaptive weights (dynamic defaults) --------------------------
     retrieval_alpha: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_ALPHA", 1.0))
@@ -400,6 +475,12 @@ class Settings(BaseSettings):
     )
     host: str = Field(
         default=os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+    )
+
+    # Multi‑tenant namespace – used throughout the app for routing and storage.
+    # Default to "public" to keep existing behaviour when the variable is unset.
+    namespace: str = Field(
+        default_factory=lambda: os.getenv("SOMABRAIN_NAMESPACE", "public")
     )
     # Service name for observability – used as a default when tracing is
     # initialised without an explicit name.

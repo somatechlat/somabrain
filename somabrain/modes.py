@@ -20,6 +20,9 @@ from typing import Dict, List
 import json
 from pathlib import Path
 
+# Import central settings to respect runtime feature flag overrides
+from common.config.settings import settings
+
 
 @dataclass(frozen=True)
 class ModeConfig:
@@ -44,6 +47,8 @@ class ModeConfig:
     fusion_normalization: bool
     calibration_enabled: bool
     consistency_checks: bool
+    # Master switch for all cognitive sub‑services (integrator, segmentation, etc.)
+    enable_cog_threads: bool
 
     def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
@@ -115,6 +120,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
+            enable_cog_threads=getattr(settings, "enable_cog_threads", True),
         )
     # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
     if name == "full-local":
@@ -140,6 +146,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
+            enable_cog_threads=getattr(settings, "enable_cog_threads", True),
         )
     # prod: same semantics (strict, all ON) – operational differences handled outside python.
     return ModeConfig(
@@ -164,6 +171,7 @@ def get_mode_config() -> ModeConfig:
         fusion_normalization=True,
         calibration_enabled=True,
         consistency_checks=True,
+        enable_cog_threads=getattr(settings, "enable_cog_threads", True),
     )
 
 

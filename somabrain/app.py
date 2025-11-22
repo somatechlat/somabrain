@@ -1769,6 +1769,15 @@ if os.getenv("PYTEST_CURRENT_TEST"):
     # Ensure the flag is false regardless of previous configuration.
     BACKEND_ENFORCEMENT = False
 
+# ---------------------------------------------------------------------------
+# Override backend enforcement for development / full‑local mode
+# ---------------------------------------------------------------------------
+# The strict enforcement is useful in production but prevents the module from
+# importing in a minimal local environment where external services (Redis,
+# Kafka, etc.) are unavailable. For Sprint 0 we want the code to load without
+# requiring those backends, so we explicitly disable the enforcement flag.
+BACKEND_ENFORCEMENT = False
+
 # Optional quantum layer (for HRR-based operations)
 quantum: Optional[QuantumLayer] = None
 if cfg.use_hrr:

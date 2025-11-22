@@ -11,12 +11,23 @@ TARGET_METADATA = db.Base.metadata
 
 
 def _get_url() -> str:
-    """TODO: Add docstring."""
+    """Return the PostgreSQL DSN for Alembic migrations.
+
+    The function first checks the ``SOMABRAIN_POSTGRES_DSN`` environment
+    variable (the same variable used by the application at runtime).  If it is
+    not set, it falls back to the default DSN provided by
+    ``somabrain.storage.db.get_default_db_url``.
+    """
     return os.getenv("SOMABRAIN_POSTGRES_DSN") or db.get_default_db_url()
 
 
 def run_migrations_offline() -> None:
-    """TODO: Add docstring."""
+    """Run Alembic migrations in *offline* mode.
+
+    Offline mode generates SQL scripts without requiring a live database
+    connection.  It is useful for CI pipelines that need to validate the
+    migration scripts without a running PostgreSQL instance.
+    """
     url = _get_url()
     context.configure(url=url, target_metadata=TARGET_METADATA, literal_binds=True)
     with context.begin_transaction():
@@ -24,7 +35,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """TODO: Add docstring."""
+    """Run Alembic migrations in *online* mode.
+
+    Online mode connects to the target database using the URL returned by
+    :func:`_get_url` and applies the migrations directly.  It is the default
+    mode used when ``alembic upgrade`` is executed against a live environment.
+    """
     cfg = config.get_section(config.config_ini_section)
     connectable = engine_from_config(
         cfg, prefix="sqlalchemy.", poolclass=pool.NullPool, url=_get_url()

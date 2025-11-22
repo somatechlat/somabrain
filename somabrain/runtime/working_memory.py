@@ -17,6 +17,7 @@ except Exception:  # pragma: no cover
     redis = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
+from common.config.settings import settings
 
 
 def _env_true(name: str, default: bool = False) -> bool:
@@ -42,7 +43,9 @@ class WorkingMemoryBuffer:
         self._max_items = max_items
         self._use_redis = False
         self._local: Dict[str, Deque[Dict]] = {}
-        require_redis = True
+        # In strict mode we require Redis; otherwise we fall back to an in‑process buffer.
+        # The ``require_external_backends`` flag from settings determines strictness.
+        require_redis = settings.require_external_backends
         if redis is not None:
             url = redis_url or get_redis_url()
             try:
@@ -72,7 +75,9 @@ class WorkingMemoryBuffer:
             pipe.expire(key, self._ttl)
             pipe.execute()
         else:
-            raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
+            # Fallback to in‑process buffer (deque) when Redis is not used.
+            dq: Deque[Dict] = self._local.setdefault(session_id, collections.deque(maxlen=self._max_items))
+            dq.append(item)
 
     def snapshot(self, session_id: str) -> List[Dict]:
         if self._use_redis and self._redis is not None:
@@ -86,13 +91,16 @@ class WorkingMemoryBuffer:
                 except Exception:
                     continue
             return list(reversed(snapshot))
-        raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
+        # In‑process fallback
+        dq: Deque[Dict] = self._local.get(session_id, collections.deque())
+        return list(dq)
 
     def clear(self, session_id: str) -> None:
         if self._use_redis and self._redis is not None:
             self._redis.delete(self._redis_key(session_id))
         else:
-            raise RuntimeError("WorkingMemoryBuffer: Redis unavailable")
+            # Clear in‑process buffer if present.
+            self._local.pop(session_id, None)
 
     def _redis_key(self, session_id: str) -> str:
         return f"{self._prefix}:{session_id}"

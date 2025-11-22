@@ -330,7 +330,7 @@ services:
       # Memory weighting is controlled by runtime config overrides (local only)
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
       # Mode: default to dev (full-local semantics) for local development parity
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
+      SOMABRAIN_MODE: "full-local"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
@@ -382,7 +382,7 @@ services:
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-full-local}"
+      SOMABRAIN_MODE: "full-local"
       SOMA_HEAT_METHOD: "lanczos"
       # Centralized feature gating; composite toggles are handled via runtime config
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"

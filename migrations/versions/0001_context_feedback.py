@@ -11,7 +11,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    """TODO: Add docstring."""
+        """Create the initial schema for context feedback and token usage.
+
+        This migration defines two tables:
+        * ``feedback_events`` – stores a single feedback interaction (query,
+            prompt, response, utility, optional reward, and metadata).
+        * ``token_usage`` – tracks token consumption per session/tenant.
+        Indexes are added on ``session_id`` for efficient look‑ups.
+        """
     op.create_table(
         "feedback_events",
         sa.Column("id", sa.String(length=64), primary_key=True),
@@ -42,7 +49,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """TODO: Add docstring."""
+    """Drop the tables created by :func:`upgrade`.
+
+    The ``feedback_events`` and ``token_usage`` tables, together with their
+    indexes, are removed.  This restores the database to the state before this
+    migration was applied.
+    """
     op.drop_index("ix_token_usage_session_id", table_name="token_usage")
     op.drop_table("token_usage")
     op.drop_index("ix_feedback_events_session_id", table_name="feedback_events")

@@ -84,38 +84,39 @@ def main() -> None:  # pragma: no cover
     # Legacy composite flag ENABLE_COG_THREADS removed – rely on central feature flags.
     # The orchestrator now starts services solely based on `feature_enabled`.
     from somabrain.modes import feature_enabled
+    from common.config.settings import settings
 
     threads: list[threading.Thread] = []
 
-    # Integrator Hub
-    if feature_enabled("integrator"):
+    # Integrator Hub (respect master cog flag)
+    if feature_enabled("integrator") and getattr(settings, "enable_cog_threads", True):
         threads.append(_start_thread(_run_integrator, "integrator_hub"))
     else:
-        print("orchestrator: integrator disabled")
+        print("orchestrator: integrator disabled (cog flag or feature)")
 
-    # Segmentation Service
-    if feature_enabled("segmentation"):
+    # Segmentation Service (respect master cog flag)
+    if feature_enabled("segmentation") and getattr(settings, "enable_cog_threads", True):
         threads.append(_start_thread(_run_segmentation, "segmentation_service"))
     else:
-        print("orchestrator: segmentation disabled")
+        print("orchestrator: segmentation disabled (cog flag or feature)")
 
-    # Drift Monitoring
-    if feature_enabled("drift"):
+    # Drift Monitoring (respect master cog flag)
+    if feature_enabled("drift") and getattr(settings, "enable_cog_threads", True):
         threads.append(_start_thread(_run_drift_monitor, "drift_monitor"))
     else:
-        print("orchestrator: drift monitoring disabled")
+        print("orchestrator: drift monitoring disabled (cog flag or feature)")
 
-    # Calibration Service
-    if feature_enabled("calibration"):
+    # Calibration Service (respect master cog flag)
+    if feature_enabled("calibration") and getattr(settings, "enable_cog_threads", True):
         threads.append(_start_thread(_run_calibration, "calibration_service"))
     else:
-        print("orchestrator: calibration disabled")
+        print("orchestrator: calibration disabled (cog flag or feature)")
 
-    # Learner Online
-    if feature_enabled("learner"):
+    # Learner Online (respect master cog flag)
+    if feature_enabled("learner") and getattr(settings, "enable_cog_threads", True):
         threads.append(_start_thread(_run_learner, "learner_online"))
     else:
-        print("orchestrator: learner disabled")
+        print("orchestrator: learner disabled (cog flag or feature)")
 
     # Handle SIGTERM/SIGINT gracefully by exiting the main loop
     stop = threading.Event()
