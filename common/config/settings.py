@@ -1329,6 +1329,31 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     # Helpers for legacy call sites
     # -----------------------------------------------------------------
+    def _env_to_attr(self, name: str) -> str:
+        """Best-effort mapping from env var name to Settings attribute.
+
+        Strips common prefixes (SOMABRAIN_, SOMA_, OPA_) and lowercases /
+        converts to snake_case to align with field names. This keeps legacy
+        ``settings.getenv("SOMABRAIN_X")`` call sites functional while the code
+        base is migrated to direct attribute access.
+        """
+        key = name.lower()
+        for prefix in ("somabrain_", "soma_", "opa_"):
+            if key.startswith(prefix):
+                key = key[len(prefix) :]
+                break
+        key = key.replace("-", "_")
+        return key
+
+    # Hard block legacy access: all call sites must be updated to use typed
+    # Settings attributes. This will raise immediately wherever getenv is still
+    # called.
+    def getenv(
+        self, name: str, default: Optional[str] = None
+    ) -> Optional[str]:  # pragma: no cover
+        raise RuntimeError(
+            f"settings.getenv('{name}') is prohibited. Replace with Settings attributes."
+        )
 
 
 # Export a singleton – mirrors the historic pattern used throughout the

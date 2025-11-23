@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Dict, Any, List
 
 from somabrain.modes import mode_config, feature_enabled
-from common.config.settings import settings
 
 
 class FeatureFlags:
@@ -84,8 +83,9 @@ class FeatureFlags:
         if cfg.name != "full-local":
             # ignore in prod
             return False
-        # Use Settings attribute for feature overrides path; default defined in Settings.
-        path = getattr(settings, "feature_overrides_path", "./data/feature_overrides.json")
+        path = settings.getenv(
+            "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
+        )
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)

@@ -15,8 +15,7 @@ from common.config.settings import settings
 
 
 def _bool(env: str, default: bool) -> bool:
-    # Use Settings attribute access instead of legacy getenv
-    raw = getattr(settings, env.lower(), None)
+    raw = settings.getenv(env)
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}

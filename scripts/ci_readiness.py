@@ -53,6 +53,7 @@ class CheckResult:
 def _env(name: str, default: str | None = None) -> str | None:
     """Retrieve a configuration value via the centralized Settings.
 
+    The original implementation used ``settings.getenv`` which is now legacy.
     This helper maps the upper‑case environment variable name to the matching
     Settings attribute (lower‑case) and returns its string representation.
     If the attribute does not exist or is empty, ``default`` is returned.
