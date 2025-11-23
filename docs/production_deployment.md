@@ -61,6 +61,7 @@ All services read configuration from the **singleton** `common.config.settings.S
 - **Postgres** – `SOMABRAIN_POSTGRES_DSN`
 - **Redis** – `SOMABRAIN_REDIS_URL`
 - **Memory** – `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, `SOMABRAIN_MEMORY_HTTP_TOKEN`
+-   Default in code is `http://localhost:9595`; set this to your actual memory service reachable from the cluster/compose network.
 - **Strictness** – `SOMABRAIN_FORCE_FULL_STACK=1`, `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1`,
   `SOMABRAIN_REQUIRE_MEMORY=1`, `SOMABRAIN_STRICT_REAL=1`
 - **Mode** – `SOMABRAIN_MODE=full-local` for local prod parity; `prod` under Kubernetes/Helm.

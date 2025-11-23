@@ -30,14 +30,16 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Set, Tuple
 
+from common.config.settings import settings
+
 
 def rwr_plan(
     task_key: str,
     mem,
-    steps: int = 20,
-    restart: float = 0.15,
+    steps: Optional[int] = None,
+    restart: Optional[float] = None,
     universe: Optional[str] = None,
-    max_items: int = 5,
+    max_items: Optional[int] = None,
 ) -> List[str]:
     """
     Generate a plan using Random Walk with Restart over the local graph.
@@ -94,10 +96,12 @@ def rwr_plan(
     frontier: List[Tuple[float, float, float]] = [start]
     visited: Set[Tuple[float, float, float]] = set([start])
     adj: Dict[Tuple[float, float, float], Dict[Tuple[float, float, float], float]] = {}
-    max_nodes = 128
+    max_nodes = max(1, int(settings.planner_rwr_max_nodes))
     while frontier and len(visited) < max_nodes:
         u = frontier.pop(0)
-        edges = mem.links_from(u, type_filter=None, limit=32)
+        edges = mem.links_from(
+            u, type_filter=None, limit=max(1, int(settings.planner_rwr_edges_per_node))
+        )
         for e in edges:
             v = tuple(e.get("to"))  # type: ignore
             w = float(e.get("weight", 1.0) or 1.0)
@@ -125,28 +129,31 @@ def rwr_plan(
         s = sum(nbrs.values()) or 1.0
         T[i] = {index[v]: w / s for v, w in nbrs.items() if v in index}
     # Power iterations with restart
-    for _ in range(max(1, int(steps))):
+    s_val = max(1, int(settings.planner_rwr_steps if steps is None else steps))
+    restart_prob = float(settings.planner_rwr_restart if restart is None else restart)
+    max_items_val = max(1, int(settings.planner_rwr_max_items if max_items is None else max_items))
+    for _ in range(s_val):
         newp = [0.0] * n
         for i, row in T.items():
             pi = p[i]
             if pi == 0.0:
                 continue
             for j, w in row.items():
-                newp[j] += (1.0 - restart) * pi * w
+                newp[j] += (1.0 - restart_prob) * pi * w
         # restart to p0
         for i in range(n):
-            newp[i] += restart * p0[i]
+            newp[i] += restart_prob * p0[i]
         p = newp
     # Rank nodes (excluding start) and map to texts
     scored = [(p[i], nodes[i]) for i in range(n) if nodes[i] != start]
     scored.sort(key=lambda t: t[0], reverse=True)
-    coords = [c for _, c in scored[:max_items]]
+    coords = [c for _, c in scored[:max_items_val]]
     items = mem.payloads_for_coords(coords, universe=universe)
     out: List[str] = []
     for it in items:
         text = str(it.get("task") or it.get("fact") or "").strip()
         if text and text not in out:
             out.append(text)
-        if len(out) >= max_items:
+        if len(out) >= max_items_val:
             break
     return out

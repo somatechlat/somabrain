@@ -74,8 +74,10 @@ class JournalConfig:
             return raw.lower() in {"1", "true", "yes", "on"}
 
         return cls(
-            journal_dir=getattr(settings, "journal_dir", None) if hasattr(settings, "journal_dir") else None
-                "SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal"
+            journal_dir=(
+                getattr(settings, "journal_dir", None)
+                if hasattr(settings, "journal_dir")
+                else "/tmp/somabrain_journal"
             ),
             max_file_size=_int("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104_857_600),
             max_files=_int("SOMABRAIN_JOURNAL_MAX_FILES", 10),

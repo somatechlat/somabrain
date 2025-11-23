@@ -1,5 +1,5 @@
 """
-Multi-Tenant HRR Context Module for SomaBrain
+ Multi-Tenant HRR Context Module for SomaBrain
 
 This module provides multi-tenant Hyperdimensional Representation (HRR) context
 management. It maintains separate HRR contexts for different tenants with LRU
@@ -28,20 +28,27 @@ Functions:
 
 from __future__ import annotations
 
+from __future__ import annotations
+
 from collections import OrderedDict
 from typing import Tuple
 
 import numpy as np
 
 from .context_hrr import CleanupResult, HRRContext, HRRContextConfig
+from common.config.settings import settings
 from .quantum import QuantumLayer
 
 
 class MultiTenantHRRContext:
-    def __init__(self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int = 1000):
+    def __init__(
+        self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None
+    ):
         self.q = q
         self.cfg = cfg
-        self.max_tenants = int(max_tenants)
+        self.max_tenants = int(
+            settings.mtwm_max_tenants if max_tenants is None else max_tenants
+        )
         self._ctxs: OrderedDict[str, HRRContext] = OrderedDict()
 
     def _ensure(self, tenant_id: str) -> HRRContext:

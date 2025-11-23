@@ -56,9 +56,7 @@ class ModeConfig:
 def _resolve_mode() -> str:
     raw = (settings.mode or "").strip().lower()
     if not raw:
-        # Use the standard HOME environment variable directly; Settings no longer provides it.
-        import os
-        return "full-local" if os.getenv("HOME") else "prod"
+        return "full-local" if settings.home_dir else "prod"
     if raw in {"full", "local", "full_local", "full-local", "dev"}:
         return "full-local"
     if raw in {"ci", "test", "testing"}:

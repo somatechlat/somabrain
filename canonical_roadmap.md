@@ -81,13 +81,13 @@ This roadmap consolidates the canonical ROAMDP gaps (Phases 5–7), the Sutton
 - Config single-sourced; flags centralized; magic-number invariants enforced.
 - Dashboards and alerts operational for learning and cognition signals.
 
-## Status (as of 2025‑11‑22)
+## Status (as of 2025‑11‑23)
 - Phase 0: PARTIAL (some stub purges pending)
 - Phase 1: NOT STARTED (entropy/τ enforcement, feedback validation outstanding)
 - Phase 2: PARTIAL (integrator/predictors exist; precision weighting + CI smokes pending)
 - Phase 3: PARTIAL (segmentation modes exist; metrics/tests/preflight pending)
 - Phase 4: NOT STARTED
-- Phase 5: PARTIAL (feature flag default misaligned across settings/Helm; smokes missing)
+- Phase 5: PARTIAL (cog threads forced ON in settings; align Helm/values and add Kafka/Redis smokes)
 - Phase 6: COMPLETE (Sleep APIs, including the policy route, enforce OPA/JWT/rate limiting, TTL auto-wake, and circuit-breaker-aware scheduling; remaining verification now post-phase instrumentation).
 - Phase 7: IN PROGRESS (some settings migrated; magic-number invariants missing)
 - Phase 8: NOT STARTED

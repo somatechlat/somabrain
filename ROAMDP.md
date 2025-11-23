@@ -33,9 +33,9 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 - 5.1 Unified predictor_update Avro schema; existing state/agent/action predictors emit it (no new services).
 - 5.2 Integrator hub upgrade: softmax leader selection with configurable alpha/temperature; optional OPA veto; Redis cache; Prom metrics.
 - 5.3 Segmentation hardening: thresholds/HMM toggle from ConfigService; metrics; topic `cog.segments` ensured in preflight.
-- 5.4 Feature flag `ENABLE_COG_THREADS` default off; end-to-end smoke (predictor → Kafka → integrator → Redis/global_frame).
+- 5.4 Feature flag `ENABLE_COG_THREADS` default on so cognition/learning threads start automatically.
 - 5.5 CI: schema compatibility + Kafka/Redis smoke tests; observability checks.
-    - Current status: 5.2 implemented (softmax, OPA optional, Redis cache, metrics); 5.1 schema exists; 5.5 CI smoke pending; flag remains OFF by default.
+    - Current status: 5.2 implemented (softmax, OPA optional, Redis cache, metrics); 5.1 schema exists; gating removed so integration runs every time.
 
 ### Phase 6 — Sleep System (Utility + Cognitive) (NEW)
 - 6.1 Implement `/api/util/sleep` (sync/async, OPA/JWT, rate/limits via ConfigService) with metrics/logging.

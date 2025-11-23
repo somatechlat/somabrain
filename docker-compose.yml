@@ -311,6 +311,9 @@ services:
         condition: service_healthy
     networks:
       - somabrain_net
+    # Ensure containers can reach host services (e.g., external memory on 9595)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use external memory service configured via environment variables (no mock)
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"

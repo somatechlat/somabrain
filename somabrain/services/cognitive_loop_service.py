@@ -2,11 +2,15 @@ from __future__ import annotations
 
 # Removed direct import of os; environment variables are accessed via Settings where needed.
 import time as _t
+import datetime
 from typing import Any, Dict, Optional
 
 import numpy as np
 
 from somabrain.modes import feature_enabled  # central flag resolution
+from somabrain.sleep import SleepState, SleepStateManager
+from somabrain.sleep.models import TenantSleepState
+from somabrain.storage.db import get_session_factory
 
 # Publish BeliefUpdate events only when centralized gating enables integrator context.
 _FF_COG_UPDATES = feature_enabled("integrator")
@@ -21,6 +25,38 @@ if _FF_COG_UPDATES:
             _BU_PUBLISHER = None
     except Exception:
         _BU_PUBLISHER = None
+
+
+# Simple TTL cache for sleep states to avoid DB hammering
+_SLEEP_STATE_CACHE: Dict[str, tuple[SleepState, float]] = {}
+_SLEEP_CACHE_TTL = 5.0  # seconds
+
+
+def _get_sleep_state(tenant_id: str) -> SleepState:
+    """Fetch the current sleep state for a tenant with short TTL caching."""
+    now = _t.time()
+    if tenant_id in _SLEEP_STATE_CACHE:
+        state, ts = _SLEEP_STATE_CACHE[tenant_id]
+        if now - ts < _SLEEP_CACHE_TTL:
+            return state
+
+    # Fallback / Cache Miss
+    try:
+        Session = get_session_factory()
+        with Session() as session:
+            ss = session.get(TenantSleepState, tenant_id)
+            if ss:
+                state = SleepState(ss.current_state)
+            else:
+                state = SleepState.ACTIVE
+    except Exception:
+        # Default to ACTIVE on DB error to fail open (or safe?)
+        # SRS implies safety, but failing to ACTIVE might be risky if we need to freeze.
+        # However, for resilience, we default to ACTIVE.
+        state = SleepState.ACTIVE
+
+    _SLEEP_STATE_CACHE[tenant_id] = (state, now)
+    return state
 
 
 def eval_step(
@@ -45,7 +81,30 @@ def eval_step(
     - gate_act: bool
     - free_energy: Optional[float]
     - modulation: Optional[float]
+    - sleep_state: str (value of SleepState)
+    - eta: float (learning rate from sleep schedule)
     """
+    # 1. Sleep System Integration
+    sleep_state = _get_sleep_state(tenant_id)
+    sleep_mgr = SleepStateManager()
+    sleep_params = sleep_mgr.compute_parameters(sleep_state)
+    eta = sleep_params["eta"]  # Learning rate (0.0 in DEEP/FREEZE)
+
+    # FREEZE Mode: Emergency read-only / no-op
+    if sleep_state == SleepState.FREEZE:
+        return {
+            "pred_error": 0.0,
+            "pred_latency": 0.0,
+            "neuromod": neuromods.get_state(),  # Unchanged
+            "salience": 0.0,
+            "gate_store": False,
+            "gate_act": False,
+            "free_energy": 0.0,
+            "modulation": 0.0,
+            "sleep_state": sleep_state.value,
+            "eta": 0.0,
+        }
+
     # Predictor (time-budgeted)
     t0 = _t.perf_counter()
     try:
@@ -84,6 +143,9 @@ def eval_step(
             from typing import Any, cast
 
             if hasattr(supervisor, "adjust"):
+                # Pass eta to supervisor if it accepts it?
+                # For now, we stick to the existing signature but knowing eta=0 means no learning
+                # should be enforced downstream.
                 nm, F, mag = cast(Any, supervisor).adjust(
                     nm, float(novelty), float(pred.error)
                 )
@@ -104,6 +166,13 @@ def eval_step(
         pass
     store_gate, act_gate = amygdala.gates(s, nm)
 
+    # Enforce Sleep Constraints (DEEP/FREEZE => eta=0 => No Storage)
+    if eta <= 0.0:
+        store_gate = False
+        # act_gate might still be True in DEEP? SRS says "Maintenance in Deep".
+        # But "Zero learning". Storage implies learning/memory formation.
+        # So forcing store_gate=False is correct.
+
     # Publish a state-domain BeliefUpdate (best-effort, feature-flagged)
     try:
         if _BU_PUBLISHER is not None:
@@ -113,6 +182,7 @@ def eval_step(
                 "tenant": str(tenant_id),
                 "novelty": f"{float(novelty):.4f}",
                 "salience": f"{float(s):.4f}",
+                "sleep_state": sleep_state.value,
             }
             model_ver = getattr(getattr(predictor, "base", predictor), "version", "v1")
             _BU_PUBLISHER.publish(
@@ -137,4 +207,6 @@ def eval_step(
         "gate_act": bool(act_gate),
         "free_energy": F,
         "modulation": mag,
+        "sleep_state": sleep_state.value,
+        "eta": eta,
     }

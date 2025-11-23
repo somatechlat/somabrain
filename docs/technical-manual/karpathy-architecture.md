@@ -454,7 +454,7 @@ Emission: P(leader_change | TRANSITION) > P(leader_change | STABLE)
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ENABLE_COG_THREADS` | `0` | Master switch for all cognitive services |
+| `ENABLE_COG_THREADS` | `1` | Master switch for all cognitive services |
 | `SOMABRAIN_FF_PREDICTOR_STATE` | `0` | Enable state predictor |
 | `SOMABRAIN_FF_PREDICTOR_AGENT` | `0` | Enable agent predictor |
 | `SOMABRAIN_FF_PREDICTOR_ACTION` | `0` | Enable action predictor |
@@ -595,7 +595,7 @@ rate(somabrain_segmentation_frames_processed_total[5m])
 **Symptoms**: No messages in `cog.{state,agent,action}.updates`
 
 **Checks**:
-1. Feature flags enabled: `ENABLE_COG_THREADS=1` or `SOMABRAIN_FF_PREDICTOR_*=1`
+1. Feature flags enabled: `ENABLE_COG_THREADS=1` or `SOMABRAIN_FF_PREDICTOR_*=1`.
 2. Kafka reachable: `curl http://localhost:30102` (or configured URL)
 3. Health endpoint: `curl http://localhost:8082/healthz` (state predictor)
 4. Logs: `docker logs somabrain_predictor_state`

@@ -171,31 +171,31 @@ class AdaptiveNeuromodulators:
         # Initialize adaptive parameters with learning bounds
         self.dopamine_param = AdaptiveParameter(
             name="dopamine",
-            initial_value=0.4,
-            min_value=0.1,
-            max_value=1.0,
-            learning_rate=0.02,
+            initial_value=settings.neuromod_dopamine_base,
+            min_value=settings.neuromod_dopamine_min,
+            max_value=settings.neuromod_dopamine_max,
+            learning_rate=settings.neuromod_dopamine_lr,
         )
         self.serotonin_param = AdaptiveParameter(
             name="serotonin",
-            initial_value=0.5,
-            min_value=0.0,
-            max_value=1.0,
-            learning_rate=0.015,
+            initial_value=settings.neuromod_serotonin_base,
+            min_value=settings.neuromod_serotonin_min,
+            max_value=settings.neuromod_serotonin_max,
+            learning_rate=settings.neuromod_serotonin_lr,
         )
         self.noradrenaline_param = AdaptiveParameter(
             name="noradrenaline",
-            initial_value=0.0,
-            min_value=0.0,
-            max_value=0.5,
-            learning_rate=0.01,
+            initial_value=settings.neuromod_noradrenaline_base,
+            min_value=settings.neuromod_noradrenaline_min,
+            max_value=settings.neuromod_noradrenaline_max,
+            learning_rate=settings.neuromod_noradrenaline_lr,
         )
         self.acetylcholine_param = AdaptiveParameter(
             name="acetylcholine",
-            initial_value=0.0,
-            min_value=0.0,
-            max_value=0.5,
-            learning_rate=0.01,
+            initial_value=settings.neuromod_acetylcholine_base,
+            min_value=settings.neuromod_acetylcholine_min,
+            max_value=settings.neuromod_acetylcholine_max,
+            learning_rate=settings.neuromod_acetylcholine_lr,
         )
 
     def get_current_state(self) -> NeuromodState:
@@ -235,9 +235,8 @@ def _calculate_dopamine_feedback(
 ) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
-    return (
-        performance.success_rate - 0.5 + (0.1 if task_type == "reward_learning" else 0)
-    )
+    boost = settings.neuromod_dopamine_reward_boost if task_type == "reward_learning" else 0.0
+    return performance.success_rate + settings.neuromod_dopamine_bias + boost
 
 
 def _calculate_serotonin_feedback(
@@ -253,8 +252,10 @@ def _calculate_noradrenaline_feedback(
 ) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
-    urgency_factor = 0.3 if task_type == "urgent" else 0.0
-    return min(0.1, (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor)
+    urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
+    floor = max(0.0, min(1.0, float(settings.neuromod_latency_floor or 0.1)))
+    latency_term = (1.0 / max(floor, performance.latency)) * settings.neuromod_latency_scale
+    return min(settings.neuromod_noradrenaline_max, latency_term + urgency_factor)
 
 
 def _calculate_acetylcholine_feedback(
@@ -262,8 +263,8 @@ def _calculate_acetylcholine_feedback(
 ) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
-    memory_factor = 0.2 if task_type == "memory" else 0.0
-    return performance.accuracy * 0.1 + memory_factor
+    memory_factor = settings.neuromod_memory_factor if task_type == "memory" else 0.0
+    return performance.accuracy * settings.neuromod_accuracy_scale + memory_factor
 
 
 class AdaptivePerTenantNeuromodulators:

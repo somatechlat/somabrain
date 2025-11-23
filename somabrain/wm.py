@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Callable, List, Tuple, TYPE_CHECKING
 
 import numpy as np
+from common.config.settings import settings
 
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
@@ -90,15 +91,16 @@ class WorkingMemory:
         self,
         capacity: int,
         dim: int,
-        alpha: float = 0.6,
-        beta: float = 0.3,
-        gamma: float = 0.1,
+        alpha: float | None = None,
+        beta: float | None = None,
+        gamma: float | None = None,
         min_capacity: int | None = None,
         max_capacity: int | None = None,
         scorer: "UnifiedScorer | None" = None,
-        recency_time_scale: float = 60.0,
-        recency_max_steps: float = 4096.0,
+        recency_time_scale: float | None = None,
+        recency_max_steps: float | None = None,
         now_fn: Callable[[], float] | None = None,
+        salience_threshold: float | None = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -114,16 +116,21 @@ class WorkingMemory:
         self.dim = int(dim)
         self._items: List[WMItem] = []
         # salience weights and capacity bounds
-        self.alpha = float(alpha)
-        self.beta = float(beta)
-        self.gamma = float(gamma)
+        self.alpha = float(settings.wm_alpha if alpha is None else alpha)
+        self.beta = float(settings.wm_beta if beta is None else beta)
+        self.gamma = float(settings.wm_gamma if gamma is None else gamma)
         self._min_cap = int(min_capacity) if min_capacity is not None else int(capacity)
         self._max_cap = int(max_capacity) if max_capacity is not None else int(capacity)
         self._t = 0  # simple timestep for recency
         self._scorer = scorer
         self._now: Callable[[], float] = now_fn or time.time
-        self._recency_scale = self._validate_scale(recency_time_scale, 60.0)
-        self._recency_cap = self._validate_scale(recency_max_steps, 4096.0)
+        r_scale = settings.wm_recency_time_scale if recency_time_scale is None else recency_time_scale
+        r_cap = settings.wm_recency_max_steps if recency_max_steps is None else recency_max_steps
+        self._recency_scale = self._validate_scale(r_scale, settings.wm_recency_time_scale)
+        self._recency_cap = self._validate_scale(r_cap, settings.wm_recency_max_steps)
+        self._default_salience_threshold = float(
+            settings.wm_salience_threshold if salience_threshold is None else salience_threshold
+        )
 
     @staticmethod
     def _validate_scale(value: float, default: float) -> float:
@@ -233,7 +240,7 @@ class WorkingMemory:
         self,
         vector: np.ndarray,
         payload: dict,
-        threshold: float = 0.4,
+        threshold: float | None = None,
         reward: float = 0.0,
         cleanup_overlap: float | None = None,
     ) -> bool:
@@ -242,7 +249,8 @@ class WorkingMemory:
         Returns True if admitted.
         """
         s = self.salience(vector, reward=reward)
-        if s >= float(threshold):
+        th = self._default_salience_threshold if threshold is None else threshold
+        if s >= float(th):
             self.admit(vector, payload, cleanup_overlap=cleanup_overlap)
             # adapt capacity towards max if many salient items; else shrink to min
             if self._max_cap > self.capacity and s > 0.8:

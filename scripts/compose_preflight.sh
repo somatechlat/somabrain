@@ -59,6 +59,16 @@ if [ "$missing" -ne 0 ]; then
   echo "[preflight] set the required variables (see config/env.example)"; exit 1;
 fi
 
+echo "[preflight] checking memory backend at ${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+mem_auth=()
+if [ -n "${SOMABRAIN_MEMORY_HTTP_TOKEN:-}" ]; then
+  mem_auth=(-H "Authorization: Bearer ${SOMABRAIN_MEMORY_HTTP_TOKEN}")
+fi
+if ! curl -fsS "${mem_auth[@]}" "${SOMABRAIN_MEMORY_HTTP_ENDPOINT%/}/health" >/dev/null 2>&1; then
+  echo "[preflight] memory backend not reachable; update SOMABRAIN_MEMORY_HTTP_ENDPOINT/TOKEN"
+  exit 1
+fi
+
 echo "[preflight] bringing up Kafka"
 docker compose up -d somabrain_kafka
 

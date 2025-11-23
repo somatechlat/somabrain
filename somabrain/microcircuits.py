@@ -31,23 +31,34 @@ from __future__ import annotations
 
 import math
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 import numpy as np
 
 from .metrics import MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST, MICRO_VOTE_ENTROPY
 from .wm import WorkingMemory
+from common.config.settings import settings
 
 
 @dataclass
 class MCConfig:
-    columns: int = 1
-    per_col_capacity: int = 64
-    vote_temperature: float = 0.25
-    max_tenants: int = 1000
-    recency_time_scale: float = 60.0
-    recency_max_steps: float = 4096.0
+    columns: int = field(default_factory=lambda: max(1, int(settings.micro_circuits)))
+    per_col_capacity: int = field(
+        default_factory=lambda: max(
+            int(settings.wm_per_col_min_capacity), int(settings.wm_size)
+        )
+    )
+    vote_temperature: float = field(
+        default_factory=lambda: float(settings.micro_vote_temperature)
+    )
+    max_tenants: int = field(default_factory=lambda: int(settings.micro_max_tenants))
+    recency_time_scale: float = field(
+        default_factory=lambda: float(settings.wm_recency_time_scale)
+    )
+    recency_max_steps: float = field(
+        default_factory=lambda: float(settings.wm_recency_max_steps)
+    )
 
 
 class MultiColumnWM:
@@ -130,14 +141,14 @@ class MultiColumnWM:
         except Exception:
             pass
         # softmax weights over best scores
-        T = max(1e-4, float(self.cfg.vote_temperature))
+        T = max(settings.wm_vote_softmax_floor, float(self.cfg.vote_temperature))
         xs = [b / T for b in bests]
         m = max(xs) if xs else 0.0
         exps = [math.exp(x - m) for x in xs]
         Z = sum(exps) or 1.0
         weights = [e / Z for e in exps]
         # record entropy of vote distribution
-        eps = 1e-9
+        eps = settings.wm_vote_entropy_eps or 1e-9
         ent = -sum(w * math.log(max(eps, w)) for w in weights if w > 0.0)
         MICRO_VOTE_ENTROPY.observe(max(0.0, float(ent)))
         # aggregate

@@ -124,14 +124,17 @@ class SlowPredictor:
         delay_ms (int): Delay in milliseconds before making prediction.
     """
 
-    def __init__(self, delay_ms: int = 1000):
+    def __init__(self, delay_ms: int | None = None):
         """
         Initialize slow predictor with delay.
 
         Args:
-            delay_ms (int): Delay in milliseconds. Default: 1000
+            delay_ms (int): Delay in milliseconds. Default read from settings.
         """
-        self.delay_ms = int(delay_ms)
+        from common.config.settings import settings
+
+        default_delay = getattr(settings, "slow_predictor_delay_ms", 1000)
+        self.delay_ms = int(default_delay if delay_ms is None else delay_ms)
 
     def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
@@ -169,7 +172,7 @@ class BudgetedPredictor:
         timeout_ms (int): Timeout in milliseconds.
     """
 
-    def __init__(self, inner: BasePredictor, timeout_ms: int = 250):
+    def __init__(self, inner: BasePredictor, timeout_ms: int | None = None):
         """
         Initialize budgeted predictor.
 
@@ -177,8 +180,11 @@ class BudgetedPredictor:
             inner (BasePredictor): Predictor to wrap with timeout.
             timeout_ms (int): Timeout in milliseconds. Default: 250
         """
+        from common.config.settings import settings
+
         self.inner = inner
-        self.timeout_ms = int(timeout_ms)
+        default_timeout = getattr(settings, "predictor_timeout_ms", 1000)
+        self.timeout_ms = int(default_timeout if timeout_ms is None else timeout_ms)
 
     def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray

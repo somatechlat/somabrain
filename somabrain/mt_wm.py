@@ -29,7 +29,7 @@ Functions:
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Tuple
 
 import numpy as np
@@ -37,6 +37,7 @@ import threading
 import logging
 
 from .wm import WorkingMemory
+from common.config.settings import settings
 
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
@@ -45,10 +46,16 @@ from . import metrics as M
 
 @dataclass
 class MTWMConfig:
-    per_tenant_capacity: int = 128
-    max_tenants: int = 1000
-    recency_time_scale: float = 60.0
-    recency_max_steps: float = 4096.0
+    per_tenant_capacity: int = field(
+        default_factory=lambda: max(1, int(settings.wm_per_tenant_capacity))
+    )
+    max_tenants: int = field(default_factory=lambda: int(settings.mtwm_max_tenants))
+    recency_time_scale: float = field(
+        default_factory=lambda: float(settings.wm_recency_time_scale)
+    )
+    recency_max_steps: float = field(
+        default_factory=lambda: float(settings.wm_recency_max_steps)
+    )
 
 
 class MultiTenantWM:

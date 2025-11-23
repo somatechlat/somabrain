@@ -96,6 +96,8 @@ class Settings(BaseSettings):
     postgres_dsn: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_POSTGRES_DSN", "")
     )
+    # Host HOME (used for mode resolution) exposed to avoid direct os.getenv in code paths.
+    home_dir: str = Field(default_factory=lambda: _str_env("HOME", "") or "")
     redis_url: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_REDIS_URL")
         or _str_env("REDIS_URL")
@@ -155,7 +157,7 @@ class Settings(BaseSettings):
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or _str_env("MEMORY_SERVICE_URL")
-        or ""
+        or "http://localhost:9595"
     )
     memory_http_token: Optional[str] = Field(
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
@@ -164,6 +166,10 @@ class Settings(BaseSettings):
     # These were previously accessed via direct ``settings.getenv`` calls.
     log_path: str = Field(
         default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
+    )
+    # Journal directory for local journal persistence.
+    journal_dir: str = Field(
+        default=_str_env("SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal")
     )
     supervisor_url: Optional[str] = Field(default=_str_env("SUPERVISOR_URL"))
     supervisor_http_user: str = Field(default=_str_env("SUPERVISOR_HTTP_USER", "admin"))
@@ -541,7 +547,7 @@ class Settings(BaseSettings):
     integrator_softmax_temperature: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
-    # Cognitive thread execution toggle – enabled by default for full‑local mode.
+    # Cognitive threads default to on (best cognition) unless explicitly disabled.
     enable_cog_threads: bool = Field(
         default_factory=lambda: _bool_env("ENABLE_COG_THREADS", True)
     )
@@ -549,6 +555,9 @@ class Settings(BaseSettings):
     # Predictor timeout (ms) – used when constructing the budgeted predictor.
     # The historic default was 1000 ms; we keep that value here.
     predictor_timeout_ms: int = Field(default=1000)
+    slow_predictor_delay_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SLOW_PREDICTOR_DELAY_MS", 1000)
+    )
 
     # ---------------------------------------------------------------------
     # Core model dimensions
@@ -569,13 +578,43 @@ class Settings(BaseSettings):
     wm_recency_max_steps: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000)
     )
+    wm_alpha: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_ALPHA", 0.6)
+    )
+    wm_beta: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3)
+    )
+    wm_gamma: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_GAMMA", 0.1)
+    )
+    wm_salience_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_SALIENCE_THRESHOLD", 0.4)
+    )
+    wm_per_col_min_capacity: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_WM_PER_COL_MIN_CAPACITY", 16)
+    )
+    wm_vote_softmax_floor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR", 1e-4)
+    )
+    wm_vote_entropy_eps: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_VOTE_ENTROPY_EPS", 1e-9)
+    )
+    wm_per_tenant_capacity: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_WM_PER_TENANT_CAPACITY", 128)
+    )
+    mtwm_max_tenants: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_MTWM_MAX_TENANTS", 1000)
+    )
 
     # Micro‑circuit configuration – used to split working memory into columns.
     micro_circuits: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_MICRO_CIRCUITS", 1)
     )
     micro_vote_temperature: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 1.0)
+        default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 0.25)
+    )
+    micro_max_tenants: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_MICRO_MAX_TENANTS", 1000)
     )
 
     # Rate limiting configuration – defaults provide a generous but safe ceiling.
@@ -760,6 +799,23 @@ class Settings(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_DUP_RATIO_THRESHOLD", 0.5)
     )
 
+    # Planner / graph walk defaults ------------------------------------------------
+    planner_rwr_steps: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_STEPS", 20)
+    )
+    planner_rwr_restart: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_RWR_RESTART", 0.15)
+    )
+    planner_rwr_max_nodes: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_MAX_NODES", 128)
+    )
+    planner_rwr_edges_per_node: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_EDGES_PER_NODE", 32)
+    )
+    planner_rwr_max_items: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_MAX_ITEMS", 5)
+    )
+
     # Neuromodulator defaults (centralized, overridable) ---------------------
     neuromod_dopamine_base: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4)
@@ -814,6 +870,21 @@ class Settings(BaseSettings):
     )
     neuromod_memory_factor: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_NEURO_MEMORY_FACTOR", 0.2)
+    )
+    neuromod_latency_scale: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_LATENCY_SCALE", 0.05)
+    )
+    neuromod_accuracy_scale: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACCURACY_SCALE", 0.1)
+    )
+    neuromod_latency_floor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_LATENCY_FLOOR", 0.1)
+    )
+    neuromod_dopamine_bias: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_BIAS", -0.5)
+    )
+    neuromod_dopamine_reward_boost: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_REWARD_BOOST", 0.1)
     )
 
     # Utility/adaptation defaults ---------------------------------------------

@@ -1900,8 +1900,8 @@ unified_scorer = UnifiedScorer(
 mt_wm = MultiTenantWM(
     dim=cfg.embed_dim,
     cfg=MTWMConfig(
-        per_tenant_capacity=max(64, cfg.wm_size),
-        max_tenants=1000,
+        per_tenant_capacity=max(cfg.wm_per_tenant_capacity, cfg.wm_size),
+        max_tenants=cfg.mtwm_max_tenants,
         recency_time_scale=cfg.wm_recency_time_scale,
         recency_max_steps=cfg.wm_recency_max_steps,
     ),
@@ -1923,6 +1923,7 @@ mc_wm = MultiColumnWM(
             )
         ),
         vote_temperature=cfg.micro_vote_temperature,
+        max_tenants=cfg.micro_max_tenants,
         recency_time_scale=cfg.wm_recency_time_scale,
         recency_max_steps=cfg.wm_recency_max_steps,
     ),

@@ -33,7 +33,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 
 ### Learning & Neuromodulation
 - **AdaptationEngine** (`somabrain/learning/adaptation.py`) provides decoupled gains for retrieval (α, β, γ, τ) and utility (λ, μ, ν), driven by tenant-specific feedback. Configured gains/bounds are mirrored in metrics and the adaptation state API.
-- **Neuromodulators** (`somabrain/neuromodulators.py`) supply dopamine/serotonin/noradrenaline/acetylcholine levels that can modulate learning rate (enable with `SOMABRAIN_LEARNING_RATE_DYNAMIC`).
+- **Neuromodulators** (`somabrain/neuromodulators.py`) supply dopamine/serotonin/noradrenaline/acetylcholine levels that can modulate learning rate (enable with `SOMABRAIN_LEARNING_RATE_DYNAMIC`). Tune noradrenaline feedback via `SOMABRAIN_NEURO_LATENCY_SCALE` and the new `SOMABRAIN_NEURO_LATENCY_FLOOR`, keeping the latency-based term finite even if latency drops toward zero.
 - **Metrics** (`somabrain/metrics.py`) track per-tenant weights, effective LR, configured gains/bounds, and feedback counts.
 
 ---
@@ -71,6 +71,8 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 - Schema registry: 30108 -> 8081
 - Reward producer: 30183 -> 8083
 - Learner online: 30184 -> 8084
+
+Memory service: by default the API points to `http://localhost:9595` (`memory_http_endpoint` in `common/config/settings.py`). Override `SOMABRAIN_MEMORY_HTTP_ENDPOINT` and `SOMABRAIN_MEMORY_HTTP_TOKEN` if your memory backend runs elsewhere or requires auth.
 
 Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config. For WSL2 or remote clients, set the EXTERNAL listener host before running dev scripts:
 
@@ -186,6 +188,8 @@ Override via environment variables (no code changes required):
 - `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
 - `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
 
+**Working-memory tuning:** adjust microcircuit column sizing and vote noise via `SOMABRAIN_WM_PER_COL_MIN_CAPACITY`, `SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR`, and `SOMABRAIN_WM_VOTE_ENTROPY_EPS` (see `common/config/settings.py` for defaults).
+
 ### Tiered Memory & Cutover
 
 SomaBrain supports governed tiered memory with namespace-level cutover:
@@ -284,6 +288,7 @@ Predictors are diffusion-backed and enabled by default so they’re always avail
 
 - Always-on defaults: `SOMABRAIN_FF_PREDICTOR_STATE=1`, `SOMABRAIN_FF_PREDICTOR_AGENT=1`, `SOMABRAIN_FF_PREDICTOR_ACTION=1`
 - Heat diffusion method via `SOMA_HEAT_METHOD=chebyshev|lanczos`; tune `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`.
+- Adjust the dev/test predictor latency with `SOMABRAIN_SLOW_PREDICTOR_DELAY_MS` so the slow predictor matches real service characteristics without hard-coded sleep values.
 - Provide production graph files via `SOMABRAIN_GRAPH_FILE_STATE`, `SOMABRAIN_GRAPH_FILE_AGENT`, `SOMABRAIN_GRAPH_FILE_ACTION` (or `SOMABRAIN_GRAPH_FILE`). Supported JSON formats: adjacency or laplacian matrices.
 - Integrator normalization (default ON): `SOMABRAIN_INTEGRATOR_ENFORCE_CONF=1` derives confidence from `delta_error` for cross-domain consistency. Set to `0` only if you must use raw predictor confidences.
 
