@@ -14,9 +14,7 @@ def check_health():
     try:
         from common.config.settings import settings
 
-        r = requests.get(
-            f"http://localhost:{settings.public_port}/health"
-        )
+        r = requests.get(f"http://localhost:{settings.public_port}/health")
         if r.status_code == 200 and r.json().get("ok"):
             print("System healthy.")
             return True

@@ -136,7 +136,8 @@ def _tenant_health_url(tenant: str) -> str:
     request context.
     """
     host = settings.public_host
-    port = settings.getenv("SOMABRAIN_PORT", "9696")
+    # Use Settings attribute for port; fallback to default string.
+    port = getattr(settings, "port", "9696")
     return f"http://{host}:{port}/health?tenant={tenant}"
 
 

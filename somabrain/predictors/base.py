@@ -10,12 +10,17 @@ import json
 
 
 def _select_heat_method() -> str:
+    """Select the heat diffusion method based on configuration.
 
-    m = (
-        (settings.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev")
-        .strip()
-        .lower()
-    )
+    The historic implementation used ``settings.getenv`` which is now prohibited.
+    The ``Settings`` model provides a ``heat_method`` attribute that defaults to
+    ``"chebyshev"``. We use that attribute directly, normalising the value.
+    """
+    # Access heat_method via Settings; default to "chebyshev"
+    m = getattr(settings, "heat_method", "chebyshev")
+    if not isinstance(m, str):
+        m = "chebyshev"
+    m = m.strip().lower()
     return m if m in ("chebyshev", "lanczos") else "chebyshev"
 
 
@@ -199,9 +204,8 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     """
     dom = (domain or "").strip().upper()
     # Graph source
-    graph_path = settings.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or settings.getenv(
-        "SOMABRAIN_GRAPH_FILE"
-    )
+    # Retrieve graph file path via Settings attributes; domain-specific first.
+    graph_path = getattr(settings, f"graph_file_{dom}", None) or getattr(settings, "graph_file", None)
     if graph_path:
         try:
             apply_A, dim = load_operator_from_file(graph_path)
@@ -221,7 +225,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
             diffusion_t=float(settings.diffusion_t or "0.5"),
             alpha=float(settings.conf_alpha or "2.0"),
             chebyshev_K=int(settings.cheb_k or "30"),
-            lanczos_m=int(settings.getenv("SOMABRAIN_LANCZOS_M", "20") or "20"),
+            lanczos_m=int(getattr(settings, "lanczos_m", 20)),
         ),
     )
     return pred, dim

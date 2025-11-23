@@ -127,12 +127,8 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     if url:
         return url
 
-    host = _first_non_empty(
-        settings.public_host, settings.public_host
-    )
-    port = _first_non_empty(
-        settings.public_port, settings.public_port
-    )
+    host = _first_non_empty(settings.public_host, settings.public_host)
+    port = _first_non_empty(settings.public_port, settings.public_port)
     scheme = (
         _first_non_empty(
             settings.api_scheme,
@@ -150,7 +146,8 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     dsn = _first_non_empty(
         _from_settings("postgres_dsn"),
         settings.postgres_dsn,
-        settings.getenv("DATABASE_URL"),
+        # Use Settings attribute instead of deprecated getenv
+        getattr(settings, "database_url", None),
     )
     if dsn:
         return dsn

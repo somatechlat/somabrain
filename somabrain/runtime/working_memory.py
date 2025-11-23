@@ -20,7 +20,8 @@ from common.config.settings import settings
 
 
 def _env_true(name: str, default: bool = False) -> bool:
-    v = settings.getenv(name)
+    # Retrieve configuration via attribute lookup; fallback to None.
+    v = getattr(settings, name.lower(), None)
     if v is None:
         return default
     try:

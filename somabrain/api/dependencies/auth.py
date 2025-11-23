@@ -30,7 +30,9 @@ def set_auth_config(cfg: Config) -> None:
     """
     global _current_config, _allowed_tenants, _default_tenant
     _current_config = cfg
-    _default_tenant = cfg.default_tenant or getattr(settings, "default_tenant", "sandbox")
+    _default_tenant = cfg.default_tenant or getattr(
+        settings, "default_tenant", "sandbox"
+    )
     _allowed_tenants = _resolve_tenants(cfg)
 
 
@@ -44,7 +46,9 @@ def _resolve_tenants(cfg: Config) -> List[str]:
     if env_tenants:
         tenants.extend(t.strip() for t in env_tenants.split(",") if t.strip())
     # From optional file (YAML list or dict with tenants/allowed)
-    file_path = cfg.sandbox_tenants_file or getattr(settings, "sandbox_tenants_file", None)
+    file_path = cfg.sandbox_tenants_file or getattr(
+        settings, "sandbox_tenants_file", None
+    )
     if file_path:
         p = Path(file_path)
         if p.exists():

@@ -82,7 +82,10 @@ class ContextBuilder:
         self._tenant_overrides_cache: Dict[str, Dict] = {}
 
         def _env_float(name: str, current: float) -> float:
-            value = settings.getenv(name)
+            # Use Settings attribute if available; fall back to None.
+            # Environment variable names are uppercase; Settings uses snake_case.
+            attr_name = name.lower()
+            value = getattr(settings, attr_name, None)
             if value is None:
                 return current
             try:

@@ -14,8 +14,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="SomaBrain CLI")
     parser.add_argument("query", help="Query text to evaluate")
     parser.add_argument("--session", default="cli-session", help="Session identifier")
+    # Use the centralized default base URL from Settings; append the context path.
+    from common.config.settings import settings
+
     parser.add_argument(
-        "--base-url", default="http://localhost:9696/context", help="Base URL"
+        "--base-url",
+        default=f"{settings.default_base_url}/context",
+        help="Base URL",
     )
     parser.add_argument("--token", help="Bearer token")
     args = parser.parse_args()

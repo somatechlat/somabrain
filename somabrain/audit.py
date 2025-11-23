@@ -50,7 +50,8 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
 
     Returns True if enqueued; False on any error. No local alternative path.
     """
-    topic_str: str = topic or settings.getenv("SOMA_AUDIT_TOPIC") or "soma.audit"
+    # Use centralized Settings for the audit topic name.
+    topic_str: str = topic or settings.audit_topic or "soma.audit"
     ev = dict(event)
     # sanitize
     sanitized = _sanitize_event(ev)

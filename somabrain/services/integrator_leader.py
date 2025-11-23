@@ -101,9 +101,7 @@ class IntegratorLeaderElection:
         self._configs: Dict[str, LeaderConfig] = {}
         self._lock_prefix = "integrator_leader"
         # Use centralized configuration for hostname
-        self._instance_id = (
-            f"{settings.hostname}-{int(time.time())}"
-        )
+        self._instance_id = f"{settings.hostname}-{int(time.time())}"
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
 

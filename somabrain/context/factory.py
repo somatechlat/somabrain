@@ -18,12 +18,8 @@ from somabrain.memory_client import MemoryClient
 _embedder = None
 try:
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
-    if settings.getenv("SOMABRAIN_ALLOW_TINY_EMBEDDER", "").strip().lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    ):
+    # Use Settings attribute "allow_tiny_embedder" (bool) instead of getenv.
+    if getattr(settings, "allow_tiny_embedder", False):
         from somabrain.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=256)

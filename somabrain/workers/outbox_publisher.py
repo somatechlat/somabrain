@@ -65,9 +65,9 @@ _PER_TENANT_QUOTA_WINDOW = max(
 )
 
 # Backpressure configuration
-_BACKPRESSURE_ENABLED = str(
-    getattr(settings, "outbox_backpressure_enabled", "true")
-).lower() == "true"
+_BACKPRESSURE_ENABLED = (
+    str(getattr(settings, "outbox_backpressure_enabled", "true")).lower() == "true"
+)
 _BACKPRESSURE_THRESHOLD = max(
     0.1,
     float(getattr(settings, "outbox_backpressure_threshold", 0.8) or 0.8),
@@ -472,15 +472,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     )
     batch_size = int(settings.outbox_batch_size or 100)
     max_retries = int(settings.outbox_max_retries or 5)
-    poll_interval = float(
-        settings.outbox_poll_interval or 1.0
-    )
-    create_retry_ms = int(
-        settings.outbox_producer_retry_ms or 1000
-    )
-    journal_replay_interval = int(
-        settings.journal_replay_interval or 300
-    )  # 5 minutes
+    poll_interval = float(settings.outbox_poll_interval or 1.0)
+    create_retry_ms = int(settings.outbox_producer_retry_ms or 1000)
+    journal_replay_interval = int(settings.journal_replay_interval or 300)  # 5 minutes
 
     session_factory = get_session_factory()
     producer = _make_producer()

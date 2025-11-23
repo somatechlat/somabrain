@@ -162,15 +162,13 @@ def _env_truthy(value: str | None) -> bool:
 
 def _default_target() -> TargetConfig:
     api_base = require(
-        get_api_base_url(DEFAULT_API_URL)
-        or settings.api_url
-        or DEFAULT_API_URL,
+        get_api_base_url(DEFAULT_API_URL) or settings.api_url or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
     memory_base = require(
         get_memory_http_endpoint(DEFAULT_MEMORY_HTTP_ENDPOINT)
-        or settings.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
-        or settings.getenv("MEMORY_SERVICE_URL"),
+        or settings.memory_http_endpoint
+        or settings.memory_http_endpoint,
         message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.",
     )
     redis_url = (
@@ -184,23 +182,23 @@ def _default_target() -> TargetConfig:
         api_base=api_base,
         memory_base=memory_base,
         redis_url=redis_url,
-        tenant=settings.getenv("SOMABRAIN_DEFAULT_TENANT"),
+        tenant=settings.default_tenant,
         postgres_dsn=settings.postgres_dsn,
-        bypass_lock_checks=_env_truthy(settings.getenv("SOMA_API_URL_LOCK_BYPASS")),
+        bypass_lock_checks=_env_truthy(settings.api_url_lock_bypass),
     )
 
 
 def _live_target_from_env() -> TargetConfig | None:
-    api = settings.getenv("SOMABRAIN_LIVE_API_URL")
+    api = settings.live_api_url
     if not api:
         return None
-    memory = settings.getenv("SOMABRAIN_LIVE_MEMORY_HTTP_ENDPOINT", api)
-    redis_url = settings.getenv("SOMABRAIN_LIVE_REDIS_URL")
-    tenant = settings.getenv("SOMABRAIN_LIVE_TENANT")
-    postgres = settings.getenv("SOMABRAIN_LIVE_POSTGRES_DSN")
-    bypass = _env_truthy(settings.getenv("SOMABRAIN_LIVE_FORCE"))
+    memory = settings.live_memory_http_endpoint or api
+    redis_url = settings.live_redis_url
+    tenant = settings.live_tenant
+    postgres = settings.live_postgres_dsn
+    bypass = _env_truthy(settings.live_force)
     return TargetConfig(
-        label=settings.getenv("SOMABRAIN_LIVE_LABEL", "live"),
+        label=settings.live_label or "live",
         api_base=api,
         memory_base=memory,
         redis_url=redis_url,

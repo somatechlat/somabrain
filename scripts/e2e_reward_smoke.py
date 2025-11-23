@@ -126,13 +126,11 @@ def main() -> int:
                 consumer = None
 
     # 1) POST a reward to the reward_producer
-    port = int(
-        settings.reward_producer_port,
-        )
-    )
-    from common.config.settings import settings as _settings
-
-    url = f"{_settings.api_url}/reward/test-frame"
+    # ``settings.reward_producer_port`` is already an int; we keep the variable for clarity
+    # even though it is not used directly in the request URL.
+    _port = settings.reward_producer_port
+    # Use the singleton ``settings`` directly for the API URL.
+    url = f"{settings.api_url}/reward/test-frame"
     payload = {
         "r_task": 0.9,
         "r_user": 0.8,

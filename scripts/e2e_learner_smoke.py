@@ -68,10 +68,9 @@ def _consume_one(topic: str, timeout_s: float) -> bool:
 def main() -> int:
     # Ensure reward -> config_update loop works end-to-end
     # 1) POST a reward to reward_producer
-    rport = int(
-        settings.reward_producer_port,
-        )
-    )
+    # Retrieve the reward producer port as an integer.
+    # ``settings.reward_producer_port`` is already an int, but we ensure the type.
+    rport = int(settings.reward_producer_port)
     from common.config.settings import settings as _settings
 
     url = f"{_settings.api_url}/reward/test-frame-learner"

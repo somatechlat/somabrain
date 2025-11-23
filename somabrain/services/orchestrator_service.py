@@ -228,9 +228,8 @@ class OrchestratorService:
         consumer = CKConsumer(
             {
                 "bootstrap.servers": _bootstrap(),
-                "group.id": settings.getenv(
-                    "SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"
-                ),
+                # Use Settings attribute for consumer group; fallback to default.
+                "group.id": getattr(settings, "consumer_group", "orchestrator-service"),
                 "enable.auto.commit": True,
                 "auto.offset.reset": "latest",
             }

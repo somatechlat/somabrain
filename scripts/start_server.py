@@ -17,26 +17,19 @@ sys.path.insert(0, "/app")
 HOST = settings.host
 
 
-# Be resilient to empty or invalid env values
-def _int_env(name: str, default: int) -> int:
-    """Read an integer environment variable directly.
-
-    The legacy ``settings.getenv`` call has been removed. For simple numeric
-    configuration values that are not part of the central ``Settings`` model,
-    we read the raw environment variable via ``os.getenv`` and coerce it to an
-    ``int`` with a safe fallback to ``default``.
-    """
-    raw = os.getenv(name)
+# Prefer centralized Settings for numeric process configuration.
+# Settings.port is stored as a string to support URL construction; coerce here safely.
+def _coerce_int(value: str | int | None, default: int) -> int:
     try:
-        if raw is None or raw.strip() == "":
+        if value is None:
             return default
-        return int(raw.strip())
+        return int(value)
     except Exception:
         return default
 
 
-PORT = _int_env("SOMABRAIN_PORT", 9696)
-WORKERS = _int_env("SOMABRAIN_WORKERS", 1)
+PORT = _coerce_int(getattr(settings, "port", None), 9696)
+WORKERS = _coerce_int(getattr(settings, "workers", None), 1)
 
 try:
     # Run the initializer (idempotent)

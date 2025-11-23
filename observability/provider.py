@@ -41,10 +41,7 @@ def init_tracing(service_name: Optional[str] = None) -> None:
         )
 
     svc = (
-        service_name
-        or settings.otel_service_name
-        or settings.service_name
-        or ""
+        service_name or settings.otel_service_name or settings.service_name or ""
     ).strip()
     if not svc:
         raise RuntimeError(

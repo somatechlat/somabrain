@@ -10,7 +10,8 @@ from typing import Dict
 def _env_port(name: str, default_val: int) -> int:
     """Get port from environment or return default value."""
     try:
-        raw = settings.getenv(name)
+        # Retrieve the setting via attribute lookup; fallback to None if missing.
+        raw = getattr(settings, name.lower(), None)
         if not raw:
             return default_val
         return int(raw)

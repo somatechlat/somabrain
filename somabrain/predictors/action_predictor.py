@@ -25,8 +25,9 @@ def _load_action_operator() -> Tuple[callable, int]:
     defined a ``RuntimeError`` is raised – this matches the VIBE rule of failing
     fast on missing configuration.
     """
-    graph_path = settings.getenv("SOMABRAIN_GRAPH_FILE_ACTION") or settings.getenv(
-        "SOMABRAIN_GRAPH_FILE"
+    # Use Settings attributes for graph file configuration.
+    graph_path = getattr(settings, "graph_file_action", None) or getattr(
+        settings, "graph_file", None
     )
     if not graph_path:
         raise RuntimeError(

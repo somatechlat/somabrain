@@ -42,7 +42,9 @@ class ContextPlanner:
         )
 
         def _env_float(name: str, current: float) -> float:
-            value = settings.getenv(name)
+            # Retrieve configuration via Settings attribute; fallback to current value.
+            attr_name = name.lower()
+            value = getattr(settings, attr_name, None)
             if value is None:
                 return current
             try:

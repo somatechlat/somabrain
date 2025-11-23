@@ -119,12 +119,8 @@ def _get_redis():
             if redis_url:
                 return redis.from_url(redis_url)
             # Legacy alternative to host/port variables without hard-coded defaults
-            redis_host = settings.redis_host or settings.getenv(
-                "REDIS_HOST"
-            )
-            redis_port = settings.redis_port or settings.getenv(
-                "REDIS_PORT"
-            )
+            redis_host = settings.redis_host or settings.redis_host
+            redis_port = settings.redis_port or settings.redis_port
             redis_db = settings.redis_db or settings.redis_db
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
@@ -332,9 +328,7 @@ class AdaptationEngine:
         if (
             self._redis
             and self._tenant_id
-            and str(settings.enable_learning_state_persistence)
-            .strip()
-            .lower()
+            and str(settings.enable_learning_state_persistence).strip().lower()
             in {"1", "true", "yes", "on"}
         ):
             self._load_state()
@@ -596,9 +590,9 @@ class AdaptationEngine:
 
             # Env alternatives for tests
             env_mode = settings.tau_anneal_mode
-            env_rate = settings.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
-            env_step = settings.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
-            env_tau_min = settings.getenv("SOMABRAIN_TAU_MIN")
+            env_rate = getattr(settings, "tau_anneal_rate", None)
+            env_step = getattr(settings, "tau_anneal_step_interval", None)
+            env_tau_min = getattr(settings, "tau_min", None)
             anneal_mode = (
                 str(env_mode).strip().lower()
                 if env_mode is not None
@@ -680,8 +674,8 @@ class AdaptationEngine:
         try:
             from somabrain import runtime_config as _rt
 
-            env_enable = settings.getenv("SOMABRAIN_ENTROPY_CAP_ENABLED")
-            env_cap = settings.getenv("SOMABRAIN_ENTROPY_CAP")
+            env_enable = getattr(settings, "entropy_cap_enabled", None)
+            env_cap = getattr(settings, "entropy_cap", None)
             enable_entropy_cap = (
                 (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
                 if env_enable is not None
