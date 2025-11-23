@@ -55,7 +55,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
 
     Returns True if enqueued; False on any error. No local alternative path.
     """
-    topic_str: str = topic or os.getenv("SOMA_AUDIT_TOPIC") or "soma.audit"
+    topic_str: str = topic or settings.getenv("SOMA_AUDIT_TOPIC") or "soma.audit"
     ev = dict(event)
     # sanitize
     sanitized = _sanitize_event(ev)

@@ -8,7 +8,7 @@ fast to enforce mandatory observability.
 
 from __future__ import annotations
 
-import os
+from common.config.settings import settings
 from typing import Optional
 
 from opentelemetry import trace
@@ -34,7 +34,7 @@ def init_tracing(service_name: Optional[str] = None) -> None:
     if _initialized:
         return
 
-    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    endpoint = settings.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
     if not endpoint:
         raise RuntimeError(
             "OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)"
@@ -42,8 +42,8 @@ def init_tracing(service_name: Optional[str] = None) -> None:
 
     svc = (
         service_name
-        or os.getenv("OTEL_SERVICE_NAME")
-        or os.getenv("SERVICE_NAME")
+        or settings.getenv("OTEL_SERVICE_NAME")
+    or settings.getenv("SERVICE_NAME")
         or ""
     ).strip()
     if not svc:

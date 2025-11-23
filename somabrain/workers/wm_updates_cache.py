@@ -37,14 +37,14 @@ except Exception:  # pragma: no cover
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    url = settings.getenv("SOMABRAIN_KAFKA_URL")
     if not url:
         raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 
 def _redis_client():
-    url = os.getenv("SOMABRAIN_REDIS_URL") or ""
+    url = settings.getenv("SOMABRAIN_REDIS_URL") or ""
     if not url or redis is None:
         return None
     try:
@@ -86,12 +86,12 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_opa=False,
     )
     r = _redis_client()
-    max_items = int(os.getenv("WM_UPDATES_MAX_ITEMS", "50") or 50)
-    ttl_seconds = int(os.getenv("WM_UPDATES_TTL_SECONDS", "8") or 8)
+    max_items = int(settings.getenv("WM_UPDATES_MAX_ITEMS", "50") or 50)
+    ttl_seconds = int(settings.getenv("WM_UPDATES_TTL_SECONDS", "8") or 8)
     consumer = CKConsumer(
         {
             "bootstrap.servers": _bootstrap(),
-            "group.id": os.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
+            "group.id": settings.getenv("SOMABRAIN_CONSUMER_GROUP", "wm-updates-cache"),
             "enable.auto.commit": True,
             "auto.offset.reset": "latest",
         }

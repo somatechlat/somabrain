@@ -55,9 +55,9 @@ class ModeConfig:
 
 
 def _resolve_mode() -> str:
-    raw = (os.getenv("SOMABRAIN_MODE") or "").strip().lower()
+    raw = (settings.getenv("SOMABRAIN_MODE") or "").strip().lower()
     if not raw:
-        return "full-local" if os.getenv("HOME") else "prod"
+        return "full-local" if settings.getenv("HOME") else "prod"
     if raw in {"full", "local", "full_local", "full-local", "dev"}:
         return "full-local"
     if raw in {"ci", "test", "testing"}:
@@ -74,7 +74,7 @@ def _load_overrides() -> List[str]:
     File format (JSON): {"disabled": ["calibration", "fusion_normalization", ...]}
     In full-local mode these are applied; ignored in prod.
     """
-    path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    path = settings.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
     try:
         p = Path(path)
         if not p.exists():
@@ -257,7 +257,7 @@ def get_learning_config() -> dict:
     # Apply developer overrides only in full-local mode
     if cfg.name == "full-local":
         try:
-            path = os.getenv(
+            path = settings.getenv(
                 "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
             )
             p = Path(path)

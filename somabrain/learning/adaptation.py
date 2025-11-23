@@ -34,7 +34,7 @@ _TENANT_OVERRIDES_PATH: str | None = None
 
 def _load_tenant_overrides() -> dict[str, dict]:
     global _TENANT_OVERRIDES, _TENANT_OVERRIDES_PATH
-    path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+    path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
     # Reload if cache empty or path changed
     if _TENANT_OVERRIDES is not None and path == _TENANT_OVERRIDES_PATH:
         return _TENANT_OVERRIDES
@@ -67,7 +67,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
                 overrides = {}
     # Optional: overrides via env JSON string
     if not overrides:
-        raw = os.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+        raw = settings.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
         if raw:
             try:
                 import json as _json
@@ -101,7 +101,7 @@ def _get_redis():
     """
     import os
 
-    require_backends = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
+    require_backends = settings.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
     require_backends = str(require_backends).strip().lower() in {
         "1",
         "true",
@@ -121,9 +121,9 @@ def _get_redis():
             if redis_url:
                 return redis.from_url(redis_url)
             # Legacy alternative to host/port variables without hard-coded defaults
-            redis_host = os.getenv("SOMABRAIN_REDIS_HOST") or os.getenv("REDIS_HOST")
-            redis_port = os.getenv("SOMABRAIN_REDIS_PORT") or os.getenv("REDIS_PORT")
-            redis_db = os.getenv("SOMABRAIN_REDIS_DB") or os.getenv("REDIS_DB", "0")
+            redis_host = settings.getenv("SOMABRAIN_REDIS_HOST") or settings.getenv("REDIS_HOST")
+            redis_port = settings.getenv("SOMABRAIN_REDIS_PORT") or settings.getenv("REDIS_PORT")
+            redis_db = settings.getenv("SOMABRAIN_REDIS_DB") or settings.getenv("REDIS_DB", "0")
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
@@ -322,7 +322,7 @@ class AdaptationEngine:
         if (
             self._redis
             and self._tenant_id
-            and str(os.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0"))
+            and str(settings.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0"))
             .strip()
             .lower()
             in {"1", "true", "yes", "on"}
@@ -553,8 +553,8 @@ class AdaptationEngine:
             from somabrain import runtime_config as _rt
 
             # Env alternative for legacy tests
-            env_enable = os.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
-            env_rate = os.getenv("SOMABRAIN_TAU_DECAY_RATE")
+            env_enable = settings.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
+            env_rate = settings.getenv("SOMABRAIN_TAU_DECAY_RATE")
             enable_tau_decay = (
                 (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
                 if env_enable is not None
@@ -583,10 +583,10 @@ class AdaptationEngine:
             from somabrain import runtime_config as _rt
 
             # Env alternatives for tests
-            env_mode = os.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
-            env_rate = os.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
-            env_step = os.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
-            env_tau_min = os.getenv("SOMABRAIN_TAU_MIN")
+            env_mode = settings.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
+            env_rate = settings.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
+            env_step = settings.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
+            env_tau_min = settings.getenv("SOMABRAIN_TAU_MIN")
             anneal_mode = (
                 str(env_mode).strip().lower()
                 if env_mode is not None
@@ -668,8 +668,8 @@ class AdaptationEngine:
         try:
             from somabrain import runtime_config as _rt
 
-            env_enable = os.getenv("SOMABRAIN_ENTROPY_CAP_ENABLED")
-            env_cap = os.getenv("SOMABRAIN_ENTROPY_CAP")
+            env_enable = settings.getenv("SOMABRAIN_ENTROPY_CAP_ENABLED")
+            env_cap = settings.getenv("SOMABRAIN_ENTROPY_CAP")
             enable_entropy_cap = (
                 (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
                 if env_enable is not None

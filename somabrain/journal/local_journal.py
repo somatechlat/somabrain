@@ -57,7 +57,7 @@ class JournalConfig:
         """
         # Helper to parse int env vars with comment stripping
         def _int(name: str, default: int) -> int:
-            raw = os.getenv(name, str(default))
+            raw = settings.getenv(name, str(default))
             raw = raw.split("#", 1)[0].strip()
             try:
                 return int(raw)
@@ -65,14 +65,14 @@ class JournalConfig:
                 return default
 
         def _bool(name: str, default: bool) -> bool:
-            raw = os.getenv(name)
+            raw = settings.getenv(name)
             if raw is None:
                 return default
             raw = raw.split("#", 1)[0].strip()
             return raw.lower() in {"1", "true", "yes", "on"}
 
         return cls(
-            journal_dir=os.getenv("SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal"),
+            journal_dir=settings.getenv("SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal"),
             max_file_size=_int("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104_857_600),
             max_files=_int("SOMABRAIN_JOURNAL_MAX_FILES", 10),
             rotation_interval=_int("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", 86_400),

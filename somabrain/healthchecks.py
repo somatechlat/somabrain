@@ -87,8 +87,8 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
 
 def check_from_env() -> dict[str, bool]:
     """Convenience: check Kafka/Postgres based on common SOMABRAIN_* envs."""
-    kafka_url = os.getenv("SOMABRAIN_KAFKA_URL")
-    pg_dsn = os.getenv("SOMABRAIN_POSTGRES_DSN")
+    kafka_url = settings.getenv("SOMABRAIN_KAFKA_URL")
+    pg_dsn = settings.getenv("SOMABRAIN_POSTGRES_DSN")
     return {
         "kafka_ok": check_kafka(kafka_url),
         "postgres_ok": check_postgres(pg_dsn),

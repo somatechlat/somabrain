@@ -51,7 +51,7 @@ if shared_settings is not None:
     except Exception:
         debug_memory_client = False
 else:
-    debug_memory_client = os.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1"
+    debug_memory_client = settings.getenv("SOMABRAIN_DEBUG_MEMORY_CLIENT") == "1"
 if debug_memory_client:
     # ensure a stderr handler exists for quick interactive debugging
     if not logger.handlers:
@@ -280,7 +280,7 @@ class MemoryClient:
             except Exception:
                 db_path = "./data/memory.db"
         else:
-            db_path = os.getenv("MEMORY_DB_PATH", "./data/memory.db")
+            db_path = settings.getenv("MEMORY_DB_PATH", "./data/memory.db")
         try:
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
         except Exception:
@@ -323,19 +323,19 @@ class MemoryClient:
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
-            max_conns = int(os.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max)))
+            max_conns = int(settings.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max)))
         except Exception:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
             keepalive = int(
-                os.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive))
+                settings.getenv("SOMABRAIN_HTTP_KEEPALIVE", str(default_keepalive))
             )
         except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
-            retries = int(os.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries)))
+            retries = int(settings.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries)))
         except Exception:
             retries = default_retries
 
@@ -352,7 +352,7 @@ class MemoryClient:
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
         candidate_base = get_memory_http_endpoint()
-        env_base = os.getenv("SOMABRAIN_HTTP_ENDPOINT") or os.getenv(
+        env_base = settings.getenv("SOMABRAIN_HTTP_ENDPOINT") or settings.getenv(
             "MEMORY_SERVICE_URL"
         )
         if not env_base:
@@ -2243,7 +2243,7 @@ class MemoryClient:
             return []
 
         if self._http is None:
-            require_memory_enabled = bool(os.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
+            require_memory_enabled = bool(settings.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
             if require_memory_enabled:
                 raise RuntimeError(
                     "MEMORY SERVICE UNAVAILABLE: payloads_for_coords requires an HTTP memory backend."

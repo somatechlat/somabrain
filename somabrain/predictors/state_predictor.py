@@ -32,7 +32,7 @@ def _load_state_operator() -> Tuple[callable, int]:
     variable is defined the function raises ``RuntimeError`` – this matches the
     VIBE rule of refusing to operate with implicit defaults.
     """
-    graph_path = os.getenv("SOMABRAIN_GRAPH_FILE_STATE") or os.getenv(
+    graph_path = settings.getenv("SOMABRAIN_GRAPH_FILE_STATE") or settings.getenv(
         "SOMABRAIN_GRAPH_FILE"
     )
     if not graph_path:

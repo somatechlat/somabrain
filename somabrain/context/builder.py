@@ -82,7 +82,7 @@ class ContextBuilder:
         self._tenant_overrides_cache: Dict[str, Dict] = {}
 
         def _env_float(name: str, current: float) -> float:
-            value = os.getenv(name)
+            value = settings.getenv(name)
             if value is None:
                 return current
             try:
@@ -376,7 +376,7 @@ class ContextBuilder:
 
     def _load_tenant_overrides(self) -> Dict[str, Dict]:
         """Load per-tenant overrides from YAML/JSON or env JSON string."""
-        path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
         overrides: Dict[str, Dict] = {}
         if path and os.path.exists(path):
             try:
@@ -405,7 +405,7 @@ class ContextBuilder:
                 except Exception:
                     overrides = {}
         if not overrides:
-            raw = os.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+            raw = settings.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
             if raw:
                 try:
                     import json as _json

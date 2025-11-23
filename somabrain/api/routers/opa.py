@@ -59,11 +59,11 @@ async def update_policy(request: Request):
     # Build policy from constitution
     policy_str = build_policy(constitution)
     # Sign policy – private key path from env (optional for testing)
-    priv_key_path = os.getenv("SOMA_OPA_PRIVKEY_PATH")
+    priv_key_path = settings.getenv("SOMA_OPA_PRIVKEY_PATH")
     # ``sign_policy`` can handle a ``None`` path (e.g., when mocked in tests).
     sig = opa_signature.sign_policy(policy_str, priv_key_path)
     # Verify signature (optional safety check)
-    pub_key_path = os.getenv("SOMA_OPA_PUBKEY_PATH")
+    pub_key_path = settings.getenv("SOMA_OPA_PUBKEY_PATH")
     if pub_key_path and not opa_signature.verify_policy(policy_str, sig, pub_key_path):
         raise HTTPException(status_code=500, detail="Signature verification failed")
     # Store in Redis (optional – ignore failures in test environments)

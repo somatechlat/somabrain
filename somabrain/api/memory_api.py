@@ -1206,7 +1206,7 @@ def _coerce_to_retrieval_request(
     # Resolve environment-backed defaults for full-power behavior with safe rollback
     def _env(name: str, default: str | None = None) -> str | None:
         try:
-            v = os.getenv(name)
+            v = settings.getenv(name)
             return v if v is not None and v != "" else default
         except Exception:
             return default

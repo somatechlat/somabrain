@@ -38,7 +38,7 @@ def _gain_setting(name: str) -> float:
         if value is not None:
             return float(value)
     env_name = f"SOMABRAIN_SCORER_{name.upper()}"
-    env_val = os.getenv(env_name)
+    env_val = settings.getenv(env_name)
     if env_val is not None:
         return float(env_val)
     raise RuntimeError(f"Required scorer setting '{name}' not configured")

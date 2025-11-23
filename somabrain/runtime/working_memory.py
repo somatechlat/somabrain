@@ -21,7 +21,7 @@ from common.config.settings import settings
 
 
 def _env_true(name: str, default: bool = False) -> bool:
-    v = os.getenv(name)
+    v = settings.getenv(name)
     if v is None:
         return default
     try:

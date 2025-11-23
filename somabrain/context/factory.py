@@ -18,7 +18,7 @@ from somabrain.memory_client import MemoryClient
 _embedder = None
 try:
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
-    if os.getenv("SOMABRAIN_ALLOW_TINY_EMBEDDER", "").strip().lower() in (
+    if settings.getenv("SOMABRAIN_ALLOW_TINY_EMBEDDER", "").strip().lower() in (
         "1",
         "true",
         "yes",

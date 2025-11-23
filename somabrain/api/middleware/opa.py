@@ -38,7 +38,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
         else:
             opa_url = None
         if not opa_url:
-            opa_url = os.getenv("SOMA_OPA_URL")
+            opa_url = settings.getenv("SOMA_OPA_URL")
         # Build minimal input payload for OPA – include request method, path and JSON body if any
         input_payload = {
             "method": request.method,

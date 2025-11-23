@@ -161,8 +161,8 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
 
     dsn = _first_non_empty(
         _from_settings("postgres_dsn"),
-        os.getenv("SOMABRAIN_POSTGRES_DSN"),
-        os.getenv("DATABASE_URL"),
+        settings.getenv("SOMABRAIN_POSTGRES_DSN"),
+        settings.getenv("DATABASE_URL"),
     )
     if dsn:
         return dsn

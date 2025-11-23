@@ -13,7 +13,7 @@ import os
 def _select_heat_method() -> str:
     import os
 
-    m = (os.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev").strip().lower()
+    m = (settings.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev").strip().lower()
     return m if m in ("chebyshev", "lanczos") else "chebyshev"
 
 
@@ -197,7 +197,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     """
     dom = (domain or "").strip().upper()
     # Graph source
-    graph_path = os.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or os.getenv(
+    graph_path = settings.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or settings.getenv(
         "SOMABRAIN_GRAPH_FILE"
     )
     if graph_path:
@@ -205,21 +205,21 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
             apply_A, dim = load_operator_from_file(graph_path)
         except Exception:
             # Use line graph if load fails
-            dim = int(os.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
+            dim = int(settings.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
             L = make_line_graph_laplacian(dim)
             apply_A = matvec_from_matrix(L)
     else:
-        dim = int(os.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
+        dim = int(settings.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
         L = make_line_graph_laplacian(dim)
         apply_A = matvec_from_matrix(L)
     pred = HeatDiffusionPredictor(
         apply_A=apply_A,
         dim=dim,
         cfg=PredictorConfig(
-            diffusion_t=float(os.getenv("SOMABRAIN_DIFFUSION_T", "0.5") or "0.5"),
-            alpha=float(os.getenv("SOMABRAIN_CONF_ALPHA", "2.0") or "2.0"),
-            chebyshev_K=int(os.getenv("SOMABRAIN_CHEB_K", "30") or "30"),
-            lanczos_m=int(os.getenv("SOMABRAIN_LANCZOS_M", "20") or "20"),
+            diffusion_t=float(settings.getenv("SOMABRAIN_DIFFUSION_T", "0.5") or "0.5"),
+            alpha=float(settings.getenv("SOMABRAIN_CONF_ALPHA", "2.0") or "2.0"),
+            chebyshev_K=int(settings.getenv("SOMABRAIN_CHEB_K", "30") or "30"),
+            lanczos_m=int(settings.getenv("SOMABRAIN_LANCZOS_M", "20") or "20"),
         ),
     )
     return pred, dim

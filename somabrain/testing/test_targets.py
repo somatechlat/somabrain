@@ -163,20 +163,20 @@ def _env_truthy(value: str | None) -> bool:
 def _default_target() -> TargetConfig:
     api_base = require(
         get_api_base_url(DEFAULT_API_URL)
-        or os.getenv("SOMA_API_URL")
+        or settings.getenv("SOMA_API_URL")
         or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
     memory_base = require(
         get_memory_http_endpoint(DEFAULT_MEMORY_HTTP_ENDPOINT)
-        or os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
-        or os.getenv("MEMORY_SERVICE_URL"),
+        or settings.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+        or settings.getenv("MEMORY_SERVICE_URL"),
         message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.",
     )
     redis_url = (
         get_redis_url(DEFAULT_REDIS_URL)
-        or os.getenv("SOMABRAIN_REDIS_URL")
-        or os.getenv("REDIS_URL")
+        or settings.getenv("SOMABRAIN_REDIS_URL")
+        or settings.getenv("REDIS_URL")
         or DEFAULT_REDIS_URL
     )
     return TargetConfig(
@@ -184,23 +184,23 @@ def _default_target() -> TargetConfig:
         api_base=api_base,
         memory_base=memory_base,
         redis_url=redis_url,
-        tenant=os.getenv("SOMABRAIN_DEFAULT_TENANT"),
-        postgres_dsn=os.getenv("SOMABRAIN_POSTGRES_DSN"),
-        bypass_lock_checks=_env_truthy(os.getenv("SOMA_API_URL_LOCK_BYPASS")),
+        tenant=settings.getenv("SOMABRAIN_DEFAULT_TENANT"),
+        postgres_dsn=settings.getenv("SOMABRAIN_POSTGRES_DSN"),
+        bypass_lock_checks=_env_truthy(settings.getenv("SOMA_API_URL_LOCK_BYPASS")),
     )
 
 
 def _live_target_from_env() -> TargetConfig | None:
-    api = os.getenv("SOMABRAIN_LIVE_API_URL")
+    api = settings.getenv("SOMABRAIN_LIVE_API_URL")
     if not api:
         return None
-    memory = os.getenv("SOMABRAIN_LIVE_MEMORY_HTTP_ENDPOINT", api)
-    redis_url = os.getenv("SOMABRAIN_LIVE_REDIS_URL")
-    tenant = os.getenv("SOMABRAIN_LIVE_TENANT")
-    postgres = os.getenv("SOMABRAIN_LIVE_POSTGRES_DSN")
-    bypass = _env_truthy(os.getenv("SOMABRAIN_LIVE_FORCE"))
+    memory = settings.getenv("SOMABRAIN_LIVE_MEMORY_HTTP_ENDPOINT", api)
+    redis_url = settings.getenv("SOMABRAIN_LIVE_REDIS_URL")
+    tenant = settings.getenv("SOMABRAIN_LIVE_TENANT")
+    postgres = settings.getenv("SOMABRAIN_LIVE_POSTGRES_DSN")
+    bypass = _env_truthy(settings.getenv("SOMABRAIN_LIVE_FORCE"))
     return TargetConfig(
-        label=os.getenv("SOMABRAIN_LIVE_LABEL", "live"),
+        label=settings.getenv("SOMABRAIN_LIVE_LABEL", "live"),
         api_base=api,
         memory_base=memory,
         redis_url=redis_url,

@@ -39,7 +39,7 @@ class ContextPlanner:
         )
 
         def _env_float(name: str, current: float) -> float:
-            value = os.getenv(name)
+            value = settings.getenv(name)
             if value is None:
                 return current
             try:

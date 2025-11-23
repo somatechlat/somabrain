@@ -83,9 +83,9 @@ class ConstitutionEngine:
         fetch keys from Vault. Otherwise, use env/PATH as before.
         """
         mapping: Dict[str, str] = {}
-        vault_addr = os.getenv("VAULT_ADDR")
-        vault_token = os.getenv("VAULT_TOKEN")
-        vault_path = os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH")
+        vault_addr = settings.getenv("VAULT_ADDR")
+        vault_token = settings.getenv("VAULT_TOKEN")
+        vault_path = settings.getenv("SOMABRAIN_VAULT_PUBKEY_PATH")
         if vault_addr and vault_token and vault_path:
             try:
                 import hvac
@@ -101,8 +101,8 @@ class ConstitutionEngine:
                 LOGGER.warning("Vault public key fetch failed: %s", exc)
         # Use env/PATH
         if not mapping:
-            env_value = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
-            single = os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
+            env_value = settings.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
+            single = settings.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
             if env_value:
                 try:
                     data = json.loads(env_value)
@@ -184,7 +184,7 @@ class ConstitutionEngine:
             LOGGER.debug("No public keys configured for constitution verification")
             return False
 
-        required = int(os.getenv("SOMABRAIN_CONSTITUTION_THRESHOLD", "1"))
+        required = int(settings.getenv("SOMABRAIN_CONSTITUTION_THRESHOLD", "1"))
         valid = 0
         errors: List[str] = []
         for sig in signatures:
@@ -228,7 +228,7 @@ class ConstitutionEngine:
 
         Returns the signature encoded as hex string, or None on failure.
         """
-        priv_path = private_key_path or os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
+        priv_path = private_key_path or settings.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
         if not priv_path:
             LOGGER.debug("No private key path configured for constitution signing")
             return None
@@ -245,7 +245,7 @@ class ConstitutionEngine:
 
             sig_bytes = priv.sign(self._checksum.encode("utf-8"))
             hexsig = sig_bytes.hex()
-            signer_id = os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
+            signer_id = settings.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
             self._signature = hexsig
             self._signatures = [
                 {
@@ -276,7 +276,7 @@ class ConstitutionEngine:
         to OPA (`/v1/data/soma/policy/allow`). If OPA is not configured or unreachable, fall
         back to a conservative local check that ensures required top-level keys exist.
         """
-        opa_url = os.getenv("SOMA_OPA_URL")
+        opa_url = settings.getenv("SOMA_OPA_URL")
         # Conservative local check
         required = ["version", "rules"]
         if opa_url:
@@ -322,7 +322,7 @@ class ConstitutionEngine:
                 LOGGER.debug("OPA validation failed: %s", e)
 
         # If HTTP OPA not available, optionally try local opa binary with a bundle
-        opa_bundle = os.getenv("OPA_BUNDLE_PATH")
+        opa_bundle = settings.getenv("OPA_BUNDLE_PATH")
         if opa_bundle:
             try:
                 import subprocess

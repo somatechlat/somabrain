@@ -130,7 +130,7 @@ def assert_ready(
     Requirements can be tuned via function args. Environment also supports
     global gate: set SOMABRAIN_REQUIRE_INFRA=0 to bypass (not recommended).
     """
-    if os.getenv("SOMABRAIN_REQUIRE_INFRA", "1").strip().lower() in {
+    if settings.getenv("SOMABRAIN_REQUIRE_INFRA", "1").strip().lower() in {
         "0",
         "false",
         "no",

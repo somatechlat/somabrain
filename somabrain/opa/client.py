@@ -52,17 +52,17 @@ class OPAClient:
                 self.timeout = 2.0
             # Policy path is derived from mode bundle when not explicitly provided
         else:
-            self.timeout = float(os.getenv("SOMA_OPA_TIMEOUT", "2"))
+            self.timeout = float(settings.getenv("SOMA_OPA_TIMEOUT", "2"))
 
         self.base_url = get_opa_url()
         if not self.base_url:
             # Legacy alternative for dev shells without explicit configuration.
             # Prefer explicit host port envs, defaulting to 30004 to align
             # with dev stack mapping.
-            host_port = os.getenv("OPA_HOST_PORT") or os.getenv("OPA_PORT") or "30004"
+            host_port = settings.getenv("OPA_HOST_PORT") or settings.getenv("OPA_PORT") or "30004"
             self.base_url = (
-                os.getenv("SOMA_OPA_URL")
-                or os.getenv("SOMABRAIN_OPA_FALLBACK")
+                settings.getenv("SOMA_OPA_URL")
+                or settings.getenv("SOMABRAIN_OPA_FALLBACK")
                 or f"http://127.0.0.1:{host_port}"
             )
         effective_path = (policy_path or _policy_path_for_mode()).rstrip("/")
@@ -91,7 +91,7 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            allow_override = os.getenv("SOMABRAIN_OPA_ALLOW_ON_ERROR") == "1"
+            allow_override = settings.getenv("SOMABRAIN_OPA_ALLOW_ON_ERROR") == "1"
             if allow_override:
                 LOGGER.warning("OPA evaluation failed (override allow): %s", e)
                 return True

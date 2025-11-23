@@ -166,7 +166,9 @@ class IntegratorHub:
                     self.send_response(404)
                     self.end_headers()
                     return
-                self.send_response(200 if hub_ref._latest else 503)
+                # Liveness/ready: the process is running if we can answer; do not
+                # fail health merely because no updates have been observed yet.
+                self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 payload = {

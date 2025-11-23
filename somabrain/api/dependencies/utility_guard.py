@@ -52,7 +52,7 @@ async def utility_guard(
         else:
             import os as _os
 
-            dev_mode = _os.getenv("SOMABRAIN_MODE", "").strip().lower() in (
+            dev_mode = _settings.getenv("SOMABRAIN_MODE", "").strip().lower() in (
                 "dev",
                 "development",
             )

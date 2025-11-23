@@ -3,7 +3,7 @@
 This module mirrors the pattern used by other services in the SomaStack.
 It provides a single ``Settings`` class (pydantic ``BaseSettings``) that
 loads values from the canonical ``.env`` file or the environment. All new code
-should import ``Settings`` from here instead of calling ``os.getenv`` directly.
+should import ``Settings`` from here instead of calling ``settings.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
@@ -40,7 +40,7 @@ def _int_env(name: str, default: int) -> int:
     before attempting conversion. If conversion fails, the provided ``default``
     is returned.
     """
-    raw = os.getenv(name, str(default))
+    raw = settings.getenv(name, str(default))
     # Remove anything after a comment marker
     raw = raw.split("#", 1)[0].strip()
     try:
@@ -54,7 +54,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
     Supports typical truthy strings and strips comments.
     """
-    raw = os.getenv(name)
+    raw = settings.getenv(name)
     if raw is None:
         return default
     raw = raw.split("#", 1)[0].strip()
@@ -66,7 +66,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
 def _float_env(name: str, default: float) -> float:
     """Parse a float environment variable safely, stripping comments."""
-    raw = os.getenv(name, str(default))
+    raw = settings.getenv(name, str(default))
     raw = raw.split("#", 1)[0].strip()
     try:
         return float(raw)
@@ -76,7 +76,7 @@ def _float_env(name: str, default: float) -> float:
 
 def _str_env(name: str, default: str | None = None) -> str | None:
     """Return a string environment variable, stripping inline comments."""
-    raw = os.getenv(name)
+    raw = settings.getenv(name)
     if raw is None:
         return default
     # remove trailing comment if present
@@ -120,7 +120,7 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
     )
     # Additional infra configuration fields used throughout the codebase.
-    # These were previously accessed via direct ``os.getenv`` calls.
+    # These were previously accessed via direct ``settings.getenv`` calls.
     log_path: str = Field(
         default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
     )
@@ -253,7 +253,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
     # Test environment detection flag (used in code paths for pytest).
-    # Centralises the environment variable read to avoid direct os.getenv usage.
+    # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(
         default=_str_env("PYTEST_CURRENT_TEST")
     )
@@ -380,10 +380,10 @@ class Settings(BaseSettings):
     debug_memory_client: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_DEBUG_MEMORY_CLIENT", False)
     )
-    log_level: str = Field(default=os.getenv("SOMABRAIN_LOG_LEVEL", "INFO"))
+    log_level: str = Field(default=settings.getenv("SOMABRAIN_LOG_LEVEL", "INFO"))
     # Additional environment variables used throughout the codebase
     health_port: Optional[int] = Field(
-        default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
+        default_factory=lambda: _int_env("HEALTH_PORT", 0) if settings.getenv("HEALTH_PORT") else None
     )
 
     # Global learning/feature toggles ------------------------------------------------
@@ -463,26 +463,26 @@ class Settings(BaseSettings):
     )
     # Orchestrator specific configuration (fallback to env vars for backward compatibility)
     orchestrator_consumer_group: str = Field(
-        default=os.getenv("SOMABRAIN_ORCH_CONSUMER_GROUP", "orchestrator-service")
+        default=settings.getenv("SOMABRAIN_ORCH_CONSUMER_GROUP", "orchestrator-service")
     )
     orchestrator_namespace: str = Field(
-        default=os.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
+        default=settings.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
     )
     orchestrator_routing: str = Field(
-        default=os.getenv("SOMABRAIN_ORCH_ROUTING", "")
+        default=settings.getenv("SOMABRAIN_ORCH_ROUTING", "")
     )
 
     # Learning tenant configuration – optional YAML file path used by several services.
     learning_tenants_file: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        default=settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
     )
     # Alternate name used by some legacy code (same purpose).
     learning_tenants_config: Optional[str] = Field(
-        default=os.getenv("LEARNING_TENANTS_CONFIG")
+        default=settings.getenv("LEARNING_TENANTS_CONFIG")
     )
 
     # Salience system configuration – defaults align with demo scripts.
-    salience_method: str = Field(default_factory=lambda: os.getenv("SOMABRAIN_SALIENCE_METHOD", "dense").strip().lower())
+    salience_method: str = Field(default_factory=lambda: settings.getenv("SOMABRAIN_SALIENCE_METHOD", "dense").strip().lower())
     salience_fd_rank: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SALIENCE_FD_RANK", 128))
     salience_fd_decay: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_DECAY", 0.9))
     salience_w_novelty: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_NOVELTY", 0.6))
@@ -652,33 +652,33 @@ class Settings(BaseSettings):
 
     # Consumer group for segmentation service -----------------------------------
     segmentation_consumer_group: str = Field(
-        default=os.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service")
+        default=settings.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service")
     )
     default_tenant: str = Field(
-        default=os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+        default=settings.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     )
     host: str = Field(
-        default=os.getenv("SOMABRAIN_HOST", "0.0.0.0")
+        default=settings.getenv("SOMABRAIN_HOST", "0.0.0.0")
     )
 
     # Multi‑tenant namespace – used throughout the app for routing and storage.
     # Default to "public" to keep existing behaviour when the variable is unset.
     namespace: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_NAMESPACE", "public")
+        default_factory=lambda: settings.getenv("SOMABRAIN_NAMESPACE", "public")
     )
     # Service name for observability – used as a default when tracing is
     # initialised without an explicit name.
     service_name: str = Field(
-        default=os.getenv("SOMABRAIN_SERVICE_NAME", "somabrain")
+        default=settings.getenv("SOMABRAIN_SERVICE_NAME", "somabrain")
     )
     log_config: str = Field(
-        default=os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
+        default=settings.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
     )
     constitution_privkey_path: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
+        default=settings.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
     )
     constitution_signer_id: str = Field(
-        default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
+        default=settings.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
     )
     # Additional optional configuration values used by scripts and CI utilities
     reward_port: int = Field(
@@ -688,20 +688,20 @@ class Settings(BaseSettings):
         default_factory=lambda: _int_env("REWARD_PRODUCER_PORT", 30183)
     )
     drift_store_path: str = Field(
-        default=os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
+        default=settings.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
     )
     universe: Optional[str] = Field(
-        default=os.getenv("SOMA_UNIVERSE")
+        default=settings.getenv("SOMA_UNIVERSE")
     )
     # Teach feedback processor configuration
     teach_feedback_proc_port: int = Field(
         default_factory=lambda: _int_env("TEACH_FEEDBACK_PROC_PORT", 8086)
     )
     teach_feedback_proc_group: str = Field(
-        default=os.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
+        default=settings.getenv("TEACH_PROC_GROUP", "teach-feedback-proc")
     )
     teach_dedup_cache_size: int = Field(
-        default_factory=lambda: int(os.getenv("TEACH_DEDUP_CACHE_SIZE", "512"))
+        default_factory=lambda: int(settings.getenv("TEACH_DEDUP_CACHE_SIZE", "512"))
     )
     # Feature flags service configuration
     feature_flags_port: int = Field(
@@ -710,103 +710,103 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     # Additional environment variables used throughout the codebase.
     # These fields provide direct access to values that were previously
-    # obtained via ``os.getenv`` in various modules.
+    # obtained via ``settings.getenv`` in various modules.
     # -----------------------------------------------------------------
     # Vault integration
-    vault_addr: Optional[str] = Field(default=os.getenv("VAULT_ADDR"))
-    vault_token: Optional[str] = Field(default=os.getenv("VAULT_TOKEN"))
-    vault_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH"))
+    vault_addr: Optional[str] = Field(default=settings.getenv("VAULT_ADDR"))
+    vault_token: Optional[str] = Field(default=settings.getenv("VAULT_TOKEN"))
+    vault_pubkey_path: Optional[str] = Field(default=settings.getenv("SOMABRAIN_VAULT_PUBKEY_PATH"))
 
     # Constitution defaults
-    constitution_pubkeys: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS"))
-    constitution_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH"))
-    constitution_privkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"))
-    constitution_signer_id: str = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default"))
+    constitution_pubkeys: Optional[str] = Field(default=settings.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS"))
+    constitution_pubkey_path: Optional[str] = Field(default=settings.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH"))
+    constitution_privkey_path: Optional[str] = Field(default=settings.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"))
+    constitution_signer_id: str = Field(default=settings.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default"))
 
     # LLM endpoint for predictor (if used)
-    llm_endpoint: Optional[str] = Field(default=os.getenv("SOMABRAIN_LLM_ENDPOINT"))
+    llm_endpoint: Optional[str] = Field(default=settings.getenv("SOMABRAIN_LLM_ENDPOINT"))
 
     # Tenant identifier (used by some services)
-    tenant_id: str = Field(default=os.getenv("SOMABRAIN_TENANT_ID", "default"))
+    tenant_id: str = Field(default=settings.getenv("SOMABRAIN_TENANT_ID", "default"))
 
     # Redis connection details (host, port, db) – separate from URL
-    redis_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_HOST"))
-    redis_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_PORT"))
-    redis_db: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_DB"))
+    redis_host: Optional[str] = Field(default=settings.getenv("SOMABRAIN_REDIS_HOST"))
+    redis_port: Optional[str] = Field(default=settings.getenv("SOMABRAIN_REDIS_PORT"))
+    redis_db: Optional[str] = Field(default=settings.getenv("SOMABRAIN_REDIS_DB"))
 
     # Memory HTTP service additional components
-    memory_http_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_HOST"))
-    memory_http_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_PORT"))
-    memory_http_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"))
+    memory_http_host: Optional[str] = Field(default=settings.getenv("SOMABRAIN_MEMORY_HTTP_HOST"))
+    memory_http_port: Optional[str] = Field(default=settings.getenv("SOMABRAIN_MEMORY_HTTP_PORT"))
+    memory_http_scheme: Optional[str] = Field(default=settings.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"))
 
     # Kafka connection details (host, port, scheme) – separate from bootstrap URL
-    kafka_bootstrap: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"))
-    kafka_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_HOST"))
-    kafka_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_PORT"))
-    kafka_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_SCHEME"))
+    kafka_bootstrap: Optional[str] = Field(default=settings.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"))
+    kafka_host: Optional[str] = Field(default=settings.getenv("SOMABRAIN_KAFKA_HOST"))
+    kafka_port: Optional[str] = Field(default=settings.getenv("SOMABRAIN_KAFKA_PORT"))
+    kafka_scheme: Optional[str] = Field(default=settings.getenv("SOMABRAIN_KAFKA_SCHEME"))
 
     # OPA service details
-    opa_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_HOST"))
-    opa_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_PORT"))
-    opa_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_SCHEME"))
+    opa_host: Optional[str] = Field(default=settings.getenv("SOMABRAIN_OPA_HOST"))
+    opa_port: Optional[str] = Field(default=settings.getenv("SOMABRAIN_OPA_PORT"))
+    opa_scheme: Optional[str] = Field(default=settings.getenv("SOMABRAIN_OPA_SCHEME"))
 
     # API URL and scheme
-    api_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_API_SCHEME"))
+    api_scheme: Optional[str] = Field(default=settings.getenv("SOMABRAIN_API_SCHEME"))
 
     # Public host/port for service exposure
-    public_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_PUBLIC_HOST"))
-    public_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_PUBLIC_PORT"))
+    public_host: Optional[str] = Field(default=settings.getenv("SOMABRAIN_PUBLIC_HOST"))
+    public_port: Optional[str] = Field(default=settings.getenv("SOMABRAIN_PUBLIC_PORT"))
     # Health endpoint URLs for integrator and segmentation services.
     # These are used by the health diagnostics endpoint.
     integrator_health_url: str = Field(
-        default=os.getenv(
+        default=settings.getenv(
             "SOMABRAIN_INTEGRATOR_HEALTH_URL",
             "http://somabrain_integrator_triplet:9015/health",
         )
     )
     segmentation_health_url: str = Field(
-        default=os.getenv(
+        default=settings.getenv(
             "SOMABRAIN_SEGMENTATION_HEALTH_URL",
             "http://somabrain_cog:9016/health",
         )
     )
     # Tiered memory cleanup configuration
     tiered_memory_cleanup_backend: str = Field(
-        default=os.getenv("SOMABRAIN_CLEANUP_BACKEND", "simple")
+        default=settings.getenv("SOMABRAIN_CLEANUP_BACKEND", "simple")
     )
     tiered_memory_cleanup_topk: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_TOPK", "64"))
+        default_factory=lambda: int(settings.getenv("SOMABRAIN_CLEANUP_TOPK", "64"))
     )
     tiered_memory_cleanup_hnsw_m: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_M", "32"))
+        default_factory=lambda: int(settings.getenv("SOMABRAIN_CLEANUP_HNSW_M", "32"))
     )
     tiered_memory_cleanup_hnsw_ef_construction: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200"))
+        default_factory=lambda: int(settings.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200"))
     )
     tiered_memory_cleanup_hnsw_ef_search: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_SEARCH", "128"))
+        default_factory=lambda: int(settings.getenv("SOMABRAIN_CLEANUP_HNSW_EF_SEARCH", "128"))
     )
     # Topic names used by scripts/CI utilities
     topic_config_updates: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
+        default=settings.getenv("SOMABRAIN_TOPIC_CONFIG_UPDATES", "cog.config.updates")
     )
     topic_next_event: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_NEXT_EVENT", "cog.next_event")
+        default=settings.getenv("SOMABRAIN_TOPIC_NEXT_EVENT", "cog.next_event")
     )
     topic_state_updates: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates")
+        default=settings.getenv("SOMABRAIN_TOPIC_STATE_UPDATES", "cog.state.updates")
     )
     topic_agent_updates: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_AGENT_UPDATES", "cog.agent.updates")
+        default=settings.getenv("SOMABRAIN_TOPIC_AGENT_UPDATES", "cog.agent.updates")
     )
     topic_action_updates: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates")
+        default=settings.getenv("SOMABRAIN_TOPIC_ACTION_UPDATES", "cog.action.updates")
     )
     topic_global_frame: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame")
+        default=settings.getenv("SOMABRAIN_TOPIC_GLOBAL_FRAME", "cog.global.frame")
     )
     topic_segments: str = Field(
-        default=os.getenv("SOMABRAIN_TOPIC_SEGMENTS", "cog.segments")
+        default=settings.getenv("SOMABRAIN_TOPIC_SEGMENTS", "cog.segments")
     )
     # Deprecated alternative toggles removed: no local/durable alternatives allowed
 
@@ -920,14 +920,14 @@ class Settings(BaseSettings):
         """
         notes: list[str] = []
         try:
-            if os.getenv("SOMABRAIN_FORCE_FULL_STACK") is not None:
+            if settings.getenv("SOMABRAIN_FORCE_FULL_STACK") is not None:
                 notes.append(
                     "SOMABRAIN_FORCE_FULL_STACK is deprecated; use SOMABRAIN_MODE with mode_require_external_backends policy."
                 )
         except Exception:
             pass
         try:
-            legacy_auth_env = os.getenv("SOMABRAIN_AUTH_LEGACY")
+            legacy_auth_env = settings.getenv("SOMABRAIN_AUTH_LEGACY")
             if legacy_auth_env is not None:
                 notes.append(
                     "Legacy auth environment variable is deprecated; auth is always required in strict mode."
@@ -957,11 +957,11 @@ class Settings(BaseSettings):
     def getenv(self, name: str, default: Optional[str] = None) -> Optional[str]:
         """Retrieve an environment variable, optionally providing a default.
 
-        This method mirrors the previous direct ``os.getenv`` usage but routes
+        This method mirrors the previous direct ``settings.getenv`` usage but routes
         through the Settings singleton, enabling future extensions such as
         logging, validation, or overrides without changing call sites.
         """
-        return os.getenv(name, default)
+        return settings.getenv(name, default)
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep
@@ -977,6 +977,6 @@ class Settings(BaseSettings):
 # codebase (``settings = Settings()``).
 settings = Settings()
 
-# Legacy compatibility shim removed. Direct ``os.getenv`` calls should now be
+# Legacy compatibility shim removed. Direct ``settings.getenv`` calls should now be
 # replaced with ``settings.getenv`` or appropriate ``Settings`` fields throughout
 # the codebase to ensure a single source of truth for configuration.
