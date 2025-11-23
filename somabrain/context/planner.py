@@ -8,10 +8,7 @@ from typing import List
 
 from somabrain.learning import UtilityWeights
 
-try:
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - optional dependency
-    shared_settings = None  # type: ignore
+from common.config.settings import settings
 
 
 @dataclass
@@ -33,24 +30,13 @@ class ContextPlanner:
         self._utility = utility_weights or UtilityWeights()
         self._length_penalty_scale = 1024.0
         self._memory_penalty_scale = 10.0
-        if shared_settings is not None:
-            try:
-                self._length_penalty_scale = float(
-                    getattr(
-                        shared_settings,
-                        "planner_length_penalty_scale",
-                        self._length_penalty_scale,
-                    )
-                )
-                self._memory_penalty_scale = float(
-                    getattr(
-                        shared_settings,
-                        "planner_memory_penalty_scale",
-                        self._memory_penalty_scale,
-                    )
-                )
-            except Exception:
-                pass
+        # Load configuration from Settings if present
+        self._length_penalty_scale = float(
+            getattr(settings, "planner_length_penalty_scale", self._length_penalty_scale)
+        )
+        self._memory_penalty_scale = float(
+            getattr(settings, "planner_memory_penalty_scale", self._memory_penalty_scale)
+        )
 
         def _env_float(name: str, current: float) -> float:
             value = os.getenv(name)

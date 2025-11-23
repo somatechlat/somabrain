@@ -88,7 +88,7 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=get_api_base_url())
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
     ap.add_argument("--universe", default=shared_settings.universe)
     args = ap.parse_args()
     try:

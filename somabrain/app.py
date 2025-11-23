@@ -101,7 +101,8 @@ except Exception:  # pragma: no cover - optional dependency
     ConstitutionEngine = None  # type: ignore[assignment]
 
 try:  # Shared configuration pulled from the platform service when available.
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:  # pragma: no cover - optional dependency during integration
     shared_settings = None  # type: ignore[var-annotated]
 
@@ -1624,11 +1625,17 @@ _EXPOSE_DEMOS = False
 
 # Sleep system routers
 try:
-    from somabrain.sleep import util_sleep_router, brain_sleep_router
+    from somabrain.sleep import (
+        util_sleep_router,
+        brain_sleep_router,
+        policy_sleep_router,
+    )
 
+    # Register sleep-related routers.
     app.include_router(util_sleep_router)
     app.include_router(brain_sleep_router)
-    # Start background TTL auto‑wake watcher for cognitive sleep.
+    app.include_router(policy_sleep_router)
+    # Start background TTL auto‑wake watcher for cognitive sleep (only once).
     try:
         # The brain_sleep_router module provides a ``start_ttl_watcher`` helper.
         brain_sleep_router.start_ttl_watcher()

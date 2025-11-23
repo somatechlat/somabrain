@@ -27,7 +27,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from .config import Config
 
 try:  # optional dependency, older deployments may not ship shared settings yet
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:  # pragma: no cover - legacy layout
     shared_settings = None  # type: ignore
 

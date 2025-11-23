@@ -13,7 +13,8 @@ from .salience import FDSalienceSketch
 _EPS = 1e-12
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:
     shared_settings = None
 

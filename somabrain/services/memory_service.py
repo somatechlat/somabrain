@@ -14,7 +14,8 @@ from typing import Any, Iterable
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
 from somabrain.infrastructure.cb_registry import get_cb
 from ..infrastructure.tenant import tenant_label, resolve_namespace
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 from somabrain.journal import get_journal, JournalEvent
 
 

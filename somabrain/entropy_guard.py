@@ -16,7 +16,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 
 logger = logging.getLogger(__name__)
 

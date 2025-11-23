@@ -27,7 +27,8 @@ import numpy as np
 from somabrain.prediction import BudgetedPredictor, MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except ImportError:
     shared_settings = None
 

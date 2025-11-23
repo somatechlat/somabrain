@@ -46,7 +46,8 @@ def _from_settings(attr: str) -> Optional[str]:
     # Shared settings are optional; we avoid importing here to keep the package
     # lightweight and avoid circular imports.
     try:
-        from common.config.settings import settings as shared_settings  # type: ignore
+        from common.config.settings import settings  # type: ignore
+        shared_settings = settings
     except Exception:  # pragma: no cover
         return None
     try:

@@ -51,7 +51,7 @@ This roadmap consolidates the canonical ROAMDP gaps (Phases 5–7), the Sutton
 - Feature flag `ENABLE_COG_THREADS` default OFF (settings + Helm); documented enable sequence.
 
 ### Phase 6 — Sleep System (ROAMDP Phase 6) (1 sprint)
-- `/api/util/sleep` and `/api/brain/sleep_mode` are implemented with OPA/JWT/rate-limit guards and TTL auto-wake, but `/api/brain/sleep_policy` still needs to be built before the phase can be marked complete.
+- `/api/util/sleep`, `/api/brain/sleep_mode`, and `/api/brain/sleep_policy` are implemented with JWT/OPA/rate-limit enforcement, TTL auto-wake, circuit-breaker-aware gating, and the required parameter scheduling invariants (η=0 in deep/freeze).
 - Metrics: sleep-state gauge labels on latency/adaptation; counters for calls/toggles.
 - Tests: monotonic schedules, TTL expiry, CB-driven FREEZE/LIGHT mapping; Docker/CI smoke.
 
@@ -88,7 +88,7 @@ This roadmap consolidates the canonical ROAMDP gaps (Phases 5–7), the Sutton
 - Phase 3: PARTIAL (segmentation modes exist; metrics/tests/preflight pending)
 - Phase 4: NOT STARTED
 - Phase 5: PARTIAL (feature flag default misaligned across settings/Helm; smokes missing)
-- Phase 6: PARTIAL (APIs exist; CI/Docker verification and metrics gaps remain)
+- Phase 6: COMPLETE (Sleep APIs, including the policy route, enforce OPA/JWT/rate limiting, TTL auto-wake, and circuit-breaker-aware scheduling; remaining verification now post-phase instrumentation).
 - Phase 7: IN PROGRESS (some settings migrated; magic-number invariants missing)
 - Phase 8: NOT STARTED
 

@@ -16,10 +16,8 @@ import os
 
 from .config import Config
 
-try:  # optional: legacy deployments may not ship shared settings yet
-    from common.config.settings import settings as shared_settings
-except Exception:  # pragma: no cover - backwards compatibility
-    shared_settings = None  # type: ignore
+# Import the canonical settings object directly.
+from common.config.settings import settings
 
 _JWT_PUBLIC_CACHE: Optional[str] = None
 _TRUE_VALUES = ("1", "true", "yes", "on")

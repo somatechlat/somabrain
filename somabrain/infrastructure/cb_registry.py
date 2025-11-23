@@ -7,7 +7,8 @@ failure state (memory service, sleep manager, health, etc.).
 from __future__ import annotations
 
 from somabrain.infrastructure.circuit_breaker import CircuitBreaker
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 
 _CB = CircuitBreaker(
     global_failure_threshold=shared_settings.circuit_failure_threshold,

@@ -13,7 +13,8 @@ import somabrain.metrics as app_metrics
 from somabrain.opa.client import opa_client, _policy_path_for_mode
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     shared_settings = None  # type: ignore
 

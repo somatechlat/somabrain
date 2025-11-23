@@ -1,3 +1,40 @@
+"""Simple health‑check utility.
+
+Provides a tiny wrapper around ``requests.get`` that returns ``True`` when the
+target URL responds with a successful (2xx) HTTP status code and ``False``
+otherwise.  The function is deliberately lightweight – it catches any
+exception (network error, timeout, etc.) and treats it as an unhealthy result.
+
+This helper is used by services that expose a ``/health`` endpoint (e.g.
+``somabrain.services.integrator_hub_triplet``) to perform a quick liveness
+probe without pulling in the full FastAPI machinery.
+"""
+
+from __future__ import annotations
+
+from typing import Final
+
+import requests
+
+DEFAULT_TIMEOUT: Final = 2.0  # seconds – reasonable default for a health probe
+
+
+def check_health(url: str, timeout: float = DEFAULT_TIMEOUT) -> bool:
+    """Return ``True`` if an HTTP GET to *url* succeeds (status code 2xx).
+
+    Args:
+        url: The full URL to query (including scheme and host).
+        timeout: Maximum time to wait for a response, in seconds.
+
+    The function catches *all* exceptions and returns ``False`` – the caller
+    can treat any ``False`` result as an indication that the service is not
+    healthy.
+    """
+    try:
+        response = requests.get(url, timeout=timeout)
+        return response.ok
+    except Exception:
+        return False
 """Utility module for simple health‑check HTTP calls.
 
 The project contains a number of ad‑hoc ``requests`` calls scattered throughout

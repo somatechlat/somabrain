@@ -14,7 +14,8 @@ from typing import Tuple
 
 import numpy as np
 
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 

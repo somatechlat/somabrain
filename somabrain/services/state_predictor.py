@@ -26,7 +26,8 @@ import numpy as np
 
 from somabrain.prediction import MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
@@ -34,7 +35,8 @@ except ImportError as e:
     raise RuntimeError(f"State predictor requires confluent-kafka: {e}")
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except ImportError:
     shared_settings = None
 

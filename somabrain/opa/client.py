@@ -9,7 +9,8 @@ from somabrain.infrastructure import get_opa_url
 LOGGER = logging.getLogger("somabrain.opa")
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     shared_settings = None  # type: ignore
 

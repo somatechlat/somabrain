@@ -24,7 +24,8 @@ except Exception:  # pragma: no cover - optional runtime dependency
     Request = Any  # type: ignore
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 except Exception:  # pragma: no cover - optional dependency
     shared_settings = None  # type: ignore
 

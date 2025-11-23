@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 import sys
 import time
 from typing import Any

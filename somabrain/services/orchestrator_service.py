@@ -34,7 +34,8 @@ from confluent_kafka import Consumer as CKConsumer  # type: ignore
 from somabrain.modes import feature_enabled
 
 try:  # Optional shared config service
-    from common.config.settings import settings as shared_settings  # type: ignore
+    from common.config.settings import settings
+    shared_settings = settings  # type: ignore
 except Exception:  # pragma: no cover
     shared_settings = None  # type: ignore
 

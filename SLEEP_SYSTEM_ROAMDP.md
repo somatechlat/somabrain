@@ -109,8 +109,8 @@ Sprint 3B: Documentation
 └── Migration guides
 ```
 
-## Current Implementation Gap
-- `/api/util/sleep` and `/api/brain/sleep_mode` exist in the codebase, but the `/api/brain/sleep_policy` endpoint described in the plan is not implemented anywhere yet, so the cognitive policy layer (with OPA/JWT/rate-limit enforcement) remains outstanding.
+## Current Status
+- `/api/util/sleep`, `/api/brain/sleep_mode`, and `/api/brain/sleep_policy` are all implemented; the policy route enforces JWT/OPA, per-tenant rate limits, CB-aware transitions, TTL persistence, and the required parameter scheduling (η=0 in deep/freeze) while updating the shared `somabrain_sleep_state` gauge.
 
 ## Success Criteria
 

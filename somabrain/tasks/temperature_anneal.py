@@ -24,7 +24,8 @@ import asyncio
 import logging
 from typing import Any
 
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
+shared_settings = settings
 
 logger = logging.getLogger(__name__)
 

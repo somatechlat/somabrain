@@ -17,7 +17,8 @@ from typing import Dict, Optional, Callable
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from common.config.settings import settings as shared_settings
+# Use the canonical settings import as per Vibe coding rules.
+from common.config.settings import settings
 import somabrain.runtime_config as runtime_config
 
 try:
@@ -92,7 +93,7 @@ class IntegratorHub:
         start_io: bool = True,
         start_health: bool = True,
     ):
-        ss = shared_settings
+        ss = settings
         # Alpha/temperature/flag are re-read at runtime (see _effective_cfg)
         if alpha is None:
             alpha = getattr(ss, "predictor_alpha", 2.0)
@@ -101,11 +102,17 @@ class IntegratorHub:
         self._initial_temperature = float(getattr(ss, "integrator_softmax_temperature", 1.0))
         self._initial_enable_flag = bool(getattr(ss, "enable_cog_threads", False))
         self._initial_opa_url = (getattr(ss, "opa_url", "") or "").strip()
-        self.bootstrap = (
-            bootstrap
-            or (ss.kafka_bootstrap_servers if ss else None)
-            or os.getenv("SOMABRAIN_KAFKA_URL")
-        )
+        # Determine Kafka bootstrap configuration. If external backends are not required,
+        # we avoid configuring Kafka to prevent container crashes in local environments.
+        if getattr(ss, "require_external_backends", False):
+            self.bootstrap = (
+                bootstrap
+                or (ss.kafka_bootstrap_servers if ss else None)
+                or os.getenv("SOMABRAIN_KAFKA_URL")
+            )
+        else:
+            # When external backends are disabled, skip Kafka bootstrap configuration.
+            self.bootstrap = None
         if not self.bootstrap:
             raise RuntimeError("Kafka bootstrap not configured for IntegratorHub.")
         self.topic_updates = topic_updates or {
@@ -116,7 +123,8 @@ class IntegratorHub:
         self.topic_global = topic_global or getattr(ss, "topic_global_frame", "cog.global.frame")
         self.consumer = None
         self.producer = producer
-        if start_io:
+        # Initialise Kafka consumer/producer only when I/O is required and a bootstrap server is configured.
+        if start_io and self.bootstrap:
             self.consumer = Consumer(
                 {
                     "bootstrap.servers": self.bootstrap,
@@ -335,3 +343,28 @@ class IntegratorHub:
                 self.consumer.commit(msg)
             except Exception as exc:
                 raise RuntimeError(f"Failed to process predictor update: {exc}")
+
+# ---------------------------------------------------------------------------
+# Module entry point
+# ---------------------------------------------------------------------------
+# When the module is executed via ``python -m somabrain.services.integrator_hub_triplet``
+# (as defined in the Docker compose ``command``), we want the process to stay
+# alive and expose the health endpoint.  The original implementation only
+# defined the ``IntegratorHub`` class without any side‑effects, causing the
+# container to exit immediately after import.  This resulted in repeated
+# restarts and failed health checks.
+#
+# The block below creates an ``IntegratorHub`` instance with ``start_io=False``
+# so it does not attempt to connect to Kafka (respecting the ``require_external_backends``
+# setting).  The health server is started automatically in ``__init__``.  We then
+# keep the process alive with a simple sleep loop, allowing the health endpoint
+# to be queried while avoiding unnecessary CPU usage.
+if __name__ == "__main__":  # pragma: no cover
+    hub = IntegratorHub(start_io=False)
+    try:
+        # Keep the process running so the health server remains reachable.
+        while True:
+            time.sleep(60)
+    except KeyboardInterrupt:
+        # Graceful shutdown on SIGINT / container stop.
+        pass

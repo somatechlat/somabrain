@@ -4,7 +4,7 @@
 This ensures that the same Python process that runs Uvicorn has the runtime
 singletons initialized, avoiding import-time backend-enforcement failures.
 """
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
 import sys
 import os
 import uvicorn
@@ -14,7 +14,7 @@ import logging.config
 # Ensure /app is on sys.path for imports
 sys.path.insert(0, "/app")
 
-HOST = shared_settings.host
+HOST = settings.host
 
 
 # Be resilient to empty or invalid env values
@@ -53,7 +53,7 @@ if WORKERS != 1:
     )
 
 # Apply optional logging config if provided
-LOG_CONFIG = shared_settings.log_config
+LOG_CONFIG = settings.log_config
 if os.path.exists(LOG_CONFIG):
     try:
         with open(LOG_CONFIG, "r", encoding="utf-8") as f:

@@ -81,7 +81,8 @@ def main() -> None:  # pragma: no cover – exercised via integration tests
         return await metrics_endpoint()
 
     # Use the centralized Settings value for the feature‑flags service port.
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings
+    shared_settings = settings
 
     port = int(shared_settings.feature_flags_port)
     import uvicorn  # type: ignore
