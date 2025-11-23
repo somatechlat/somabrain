@@ -10,9 +10,9 @@ LOGGER = logging.getLogger("somabrain.opa")
 
 try:
     from common.config.settings import settings
-    shared_settings = settings
+    settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 
 def _policy_path_for_mode() -> str:
@@ -22,9 +22,9 @@ def _policy_path_for_mode() -> str:
     - staging/prod -> somabrain/auth/allow
     """
     bundle = None
-    if shared_settings is not None:
+    if settings is not None:
         try:
-            bundle = str(getattr(shared_settings, "mode_opa_policy_bundle", "") or "")
+            bundle = str(getattr(settings, "mode_opa_policy_bundle", "") or "")
         except Exception:
             bundle = None
     bundle = (bundle or "").strip().lower()
@@ -43,10 +43,10 @@ class OPAClient:
     """
 
     def __init__(self, policy_path: str | None = None) -> None:
-        if shared_settings is not None:
+        if settings is not None:
             try:
                 self.timeout = float(
-                    getattr(shared_settings, "opa_timeout_seconds", 2.0) or 2.0
+                    getattr(settings, "opa_timeout_seconds", 2.0) or 2.0
                 )
             except Exception:
                 self.timeout = 2.0

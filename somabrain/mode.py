@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 from enum import Enum
 from dataclasses import dataclass
+from common.config.settings import settings
 
 
 class DeploymentMode(str, Enum):

@@ -103,9 +103,11 @@ except Exception:  # pragma: no cover - optional dependency
 
 try:  # Shared configuration pulled from the platform service when available.
     from common.config.settings import settings
-    shared_settings = settings
+    settings = settings
 except Exception:  # pragma: no cover - optional dependency during integration
-    shared_settings = None  # type: ignore[var-annotated]
+    settings = None  # type: ignore[var-annotated]
+
+cfg = settings
 
 
 def _score_memory_candidate(
@@ -1709,17 +1711,17 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 # such as the memory HTTP backend. It is enabled via environment variable or the
 # shared settings configuration.
 BACKEND_ENFORCEMENT = False
-if shared_settings is not None:
+if settings is not None:
     try:
         # Prefer new mode-derived enforcement (always true under Sprint policy)
         mode_policy = bool(
-            getattr(shared_settings, "mode_require_external_backends", True)
+            getattr(settings, "mode_require_external_backends", True)
         )
         if mode_policy:
             BACKEND_ENFORCEMENT = True
         else:
             BACKEND_ENFORCEMENT = bool(
-                getattr(shared_settings, "require_external_backends", False)
+                getattr(settings, "require_external_backends", False)
             )
     except Exception:
         pass

@@ -147,7 +147,7 @@ def show_adaptive_solution():
         for feature in component['features']:
             print(f"     ✅ {feature}")
     
-    print(f"\n🎯 **Key Innovation: Parameter Evolution**")
+    print("\n🎯 **Key Innovation: Parameter Evolution**")
     print("   📈 Performance feedback → Parameter adjustment")
     print("   ⚖️  Gradient estimation → Momentum-based updates") 
     print("   🎲 Learning rate adaptation → Optimal convergence")
@@ -271,7 +271,7 @@ def show_learning_mechanism():
         for detail in step['details']:
             print(f"     • {detail}")
     
-    print(f"\n🎯 **Key Learning Algorithms**")
+    print("\n🎯 **Key Learning Algorithms**")
     print("   📈 Gradient Descent with Momentum")
     print("   ⚖️  Adaptive Learning Rate Adjustment")
     print("   📊 Performance Correlation Analysis")
@@ -319,7 +319,7 @@ def show_transformation_results():
         print(f"   ❌ Before: {comp['before']}")
         print(f"   ✅ After:  {comp['after']}")
     
-    print(f"\n🧠 **TRUE DYNAMIC LEARNING ACHIEVED**")
+    print("\n🧠 **TRUE DYNAMIC LEARNING ACHIEVED**")
     print("   ✅ Parameters evolve based on experience")
     print("   ✅ No hardcoded values - all self-adapting")
     print("   ✅ Real-time performance optimization")

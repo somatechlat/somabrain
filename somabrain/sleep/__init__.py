@@ -6,7 +6,7 @@ This module provides sleep state management and consolidation cycles.
 from enum import Enum
 from typing import Dict, Any
 import dataclasses
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings as settings
 
 
 class SleepState(Enum):
@@ -20,20 +20,20 @@ class SleepState(Enum):
 @dataclasses.dataclass
 class SleepParameters:
     """Sleep parameters configuration."""
-    K: int = shared_settings.sleep_k0
-    t: float = shared_settings.sleep_t0
-    tau: float = shared_settings.sleep_tau0
-    eta: float = shared_settings.sleep_eta0
-    lambda_: float = shared_settings.sleep_lambda0
-    B: float = shared_settings.sleep_B0
+    K: int = settings.sleep_k0
+    t: float = settings.sleep_t0
+    tau: float = settings.sleep_tau0
+    eta: float = settings.sleep_eta0
+    lambda_: float = settings.sleep_lambda0
+    B: float = settings.sleep_B0
     # Bounds for validation
-    K_min: int = shared_settings.sleep_K_min
-    t_min: float = shared_settings.sleep_t_min
-    alpha_K: float = shared_settings.sleep_alpha_K
-    alpha_t: float = shared_settings.sleep_alpha_t
-    alpha_tau: float = shared_settings.sleep_alpha_tau
-    alpha_eta: float = shared_settings.sleep_alpha_eta
-    beta_B: float = shared_settings.sleep_beta_B
+    K_min: int = settings.sleep_K_min
+    t_min: float = settings.sleep_t_min
+    alpha_K: float = settings.sleep_alpha_K
+    alpha_t: float = settings.sleep_alpha_t
+    alpha_tau: float = settings.sleep_alpha_tau
+    alpha_eta: float = settings.sleep_alpha_eta
+    beta_B: float = settings.sleep_beta_B
 
 
 class SleepStateManager:

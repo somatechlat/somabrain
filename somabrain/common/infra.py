@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import socket
 from typing import Optional, Tuple
+from common.config.settings import settings
 
 
 def _strip(url: Optional[str]) -> str:
@@ -45,9 +46,8 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
     the Redis endpoint across the codebase.
     """
     # Import lazily to avoid circular imports at module load time.
-    from common.config.settings import settings as _shared_settings
-
-    url = (redis_url or getattr(_shared_settings, "redis_url", None) or "").strip()
+    # Directly use the imported ``settings`` singleton.
+    url = (redis_url or getattr(settings, "redis_url", None) or "").strip()
     if not url:
         return False
     try:
@@ -66,9 +66,8 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
     value from ``settings.postgres_dsn`` which is the authoritative source for the
     database connection string.
     """
-    from common.config.settings import settings as _shared_settings
-
-    dsn = (dsn or getattr(_shared_settings, "postgres_dsn", None) or "").strip()
+    # Directly use the imported ``settings`` singleton.
+    dsn = (dsn or getattr(settings, "postgres_dsn", None) or "").strip()
     if not dsn:
         return False
     try:
@@ -95,9 +94,8 @@ def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
     If no URL is configured we treat OPA as optional (return ``True``) to keep
     the original semantics.
     """
-    from common.config.settings import settings as _shared_settings
-
-    url = (opa_url or getattr(_shared_settings, "opa_url", None) or "").strip().rstrip("/")
+    # Directly use the imported ``settings`` singleton.
+    url = (opa_url or getattr(settings, "opa_url", None) or "").strip().rstrip("/")
     if not url:
         # Treat missing OPA as not configured rather than down
         return True
@@ -139,29 +137,27 @@ def assert_ready(
         return
     errors = []
     # Use centralized settings where possible for consistency.
-    from common.config.settings import settings as _shared_settings
-
     if require_kafka:
         if not check_kafka(
-            getattr(_shared_settings, "kafka_bootstrap_servers", None),
+            getattr(settings, "kafka_bootstrap_servers", None),
             timeout_s=timeout_s,
         ):
             errors.append("Kafka")
     if require_redis:
         if not check_redis(
-            getattr(_shared_settings, "redis_url", None),
+            getattr(settings, "redis_url", None),
             timeout_s=timeout_s,
         ):
             errors.append("Redis")
     if require_postgres:
         if not check_postgres(
-            getattr(_shared_settings, "postgres_dsn", None),
+            getattr(settings, "postgres_dsn", None),
             timeout_s=timeout_s,
         ):
             errors.append("Postgres")
     if require_opa:
         if not check_opa(
-            getattr(_shared_settings, "opa_url", None),
+            getattr(settings, "opa_url", None),
             timeout_s=timeout_s,
         ):
             errors.append("OPA")

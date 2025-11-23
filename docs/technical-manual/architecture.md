@@ -252,7 +252,7 @@ Expose these guarantees through Prometheus metrics (`SCORER_WEIGHT_CLAMPED`, `SC
 
 ## Configuration Touchpoints
 
-- Environment flags: `common.config.settings.Settings` and `somabrain.config.get_config()`
+- Environment flags: `common.config.settings.Settings` (the central configuration singleton). The legacy `somabrain.config.get_config()` reference has been removed.
 - Scorer weights: `w_cosine`, `w_fd`, `w_recency` with bounds `weight_min`/`weight_max`
 - Recency decay: `recency_tau` controls exponential decay rate (exp(-age/τ))
 - Adaptation: `learning_rate_dynamic=true` enables dopamine-modulated learning rates

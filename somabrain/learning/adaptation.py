@@ -21,9 +21,9 @@ class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in
 
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings as settings
 except Exception:  # pragma: no cover - optional dependency
-    shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
 
@@ -133,23 +133,23 @@ def _get_redis():
 
 @dataclass
 class UtilityWeights:
-    lambda_: float = float(getattr(shared_settings, "utility_lambda", 1.0))
-    mu: float = float(getattr(shared_settings, "utility_mu", 0.1))
-    nu: float = float(getattr(shared_settings, "utility_nu", 0.05))
+    lambda_: float = float(getattr(settings, "utility_lambda", 1.0))
+    mu: float = float(getattr(settings, "utility_mu", 0.1))
+    nu: float = float(getattr(settings, "utility_nu", 0.05))
 
     def clamp(
         self,
         lambda_bounds: tuple[float, float] = (
-            float(getattr(shared_settings, "utility_lambda_min", 0.0)),
-            float(getattr(shared_settings, "utility_lambda_max", 5.0)),
+            float(getattr(settings, "utility_lambda_min", 0.0)),
+            float(getattr(settings, "utility_lambda_max", 5.0)),
         ),
         mu_bounds: tuple[float, float] = (
-            float(getattr(shared_settings, "utility_mu_min", 0.0)),
-            float(getattr(shared_settings, "utility_mu_max", 5.0)),
+            float(getattr(settings, "utility_mu_min", 0.0)),
+            float(getattr(settings, "utility_mu_max", 5.0)),
         ),
         nu_bounds: tuple[float, float] = (
-            float(getattr(shared_settings, "utility_nu_min", 0.0)),
-            float(getattr(shared_settings, "utility_nu_max", 5.0)),
+            float(getattr(settings, "utility_nu_min", 0.0)),
+            float(getattr(settings, "utility_nu_max", 5.0)),
         ),
     ) -> None:
         self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
@@ -161,52 +161,52 @@ class UtilityWeights:
 class AdaptationGains:
     """Per-parameter gains applied to the learning signal (settings-driven)."""
 
-    alpha: float = float(getattr(shared_settings, "adaptation_gain_alpha", 1.0))
-    gamma: float = float(getattr(shared_settings, "adaptation_gain_gamma", -0.5))
-    lambda_: float = float(getattr(shared_settings, "adaptation_gain_lambda", 1.0))
-    mu: float = float(getattr(shared_settings, "adaptation_gain_mu", -0.25))
-    nu: float = float(getattr(shared_settings, "adaptation_gain_nu", -0.25))
+    alpha: float = float(getattr(settings, "adaptation_gain_alpha", 1.0))
+    gamma: float = float(getattr(settings, "adaptation_gain_gamma", -0.5))
+    lambda_: float = float(getattr(settings, "adaptation_gain_lambda", 1.0))
+    mu: float = float(getattr(settings, "adaptation_gain_mu", -0.25))
+    nu: float = float(getattr(settings, "adaptation_gain_nu", -0.25))
 
     @classmethod
     def from_settings(cls) -> "AdaptationGains":
         """Construct gains from centralized settings only."""
         base = cls(
-            alpha=float(getattr(shared_settings, "adaptation_gain_alpha", 1.0)),
-            gamma=float(getattr(shared_settings, "adaptation_gain_gamma", -0.5)),
-            lambda_=float(getattr(shared_settings, "adaptation_gain_lambda", 1.0)),
-            mu=float(getattr(shared_settings, "adaptation_gain_mu", -0.25)),
-            nu=float(getattr(shared_settings, "adaptation_gain_nu", -0.25)),
+            alpha=float(getattr(settings, "adaptation_gain_alpha", 1.0)),
+            gamma=float(getattr(settings, "adaptation_gain_gamma", -0.5)),
+            lambda_=float(getattr(settings, "adaptation_gain_lambda", 1.0)),
+            mu=float(getattr(settings, "adaptation_gain_mu", -0.25)),
+            nu=float(getattr(settings, "adaptation_gain_nu", -0.25)),
         )
         return base
 
 
 @dataclass(frozen=True)
 class AdaptationConstraints:
-    alpha_min: float = float(getattr(shared_settings, "adaptation_alpha_min", 0.1))
-    alpha_max: float = float(getattr(shared_settings, "adaptation_alpha_max", 5.0))
-    gamma_min: float = float(getattr(shared_settings, "adaptation_gamma_min", 0.0))
-    gamma_max: float = float(getattr(shared_settings, "adaptation_gamma_max", 1.0))
-    lambda_min: float = float(getattr(shared_settings, "adaptation_lambda_min", 0.1))
-    lambda_max: float = float(getattr(shared_settings, "adaptation_lambda_max", 5.0))
-    mu_min: float = float(getattr(shared_settings, "adaptation_mu_min", 0.01))
-    mu_max: float = float(getattr(shared_settings, "adaptation_mu_max", 5.0))
-    nu_min: float = float(getattr(shared_settings, "adaptation_nu_min", 0.01))
-    nu_max: float = float(getattr(shared_settings, "adaptation_nu_max", 5.0))
+    alpha_min: float = float(getattr(settings, "adaptation_alpha_min", 0.1))
+    alpha_max: float = float(getattr(settings, "adaptation_alpha_max", 5.0))
+    gamma_min: float = float(getattr(settings, "adaptation_gamma_min", 0.0))
+    gamma_max: float = float(getattr(settings, "adaptation_gamma_max", 1.0))
+    lambda_min: float = float(getattr(settings, "adaptation_lambda_min", 0.1))
+    lambda_max: float = float(getattr(settings, "adaptation_lambda_max", 5.0))
+    mu_min: float = float(getattr(settings, "adaptation_mu_min", 0.01))
+    mu_max: float = float(getattr(settings, "adaptation_mu_max", 5.0))
+    nu_min: float = float(getattr(settings, "adaptation_nu_min", 0.01))
+    nu_max: float = float(getattr(settings, "adaptation_nu_max", 5.0))
 
     @classmethod
     def from_settings(cls) -> "AdaptationConstraints":
         """Construct constraints from centralized settings only."""
         base = cls(
-            alpha_min=float(getattr(shared_settings, "adaptation_alpha_min", 0.1)),
-            alpha_max=float(getattr(shared_settings, "adaptation_alpha_max", 5.0)),
-            gamma_min=float(getattr(shared_settings, "adaptation_gamma_min", 0.0)),
-            gamma_max=float(getattr(shared_settings, "adaptation_gamma_max", 1.0)),
-            lambda_min=float(getattr(shared_settings, "adaptation_lambda_min", 0.1)),
-            lambda_max=float(getattr(shared_settings, "adaptation_lambda_max", 5.0)),
-            mu_min=float(getattr(shared_settings, "adaptation_mu_min", 0.01)),
-            mu_max=float(getattr(shared_settings, "adaptation_mu_max", 5.0)),
-            nu_min=float(getattr(shared_settings, "adaptation_nu_min", 0.01)),
-            nu_max=float(getattr(shared_settings, "adaptation_nu_max", 5.0)),
+            alpha_min=float(getattr(settings, "adaptation_alpha_min", 0.1)),
+            alpha_max=float(getattr(settings, "adaptation_alpha_max", 5.0)),
+            gamma_min=float(getattr(settings, "adaptation_gamma_min", 0.0)),
+            gamma_max=float(getattr(settings, "adaptation_gamma_max", 1.0)),
+            lambda_min=float(getattr(settings, "adaptation_lambda_min", 0.1)),
+            lambda_max=float(getattr(settings, "adaptation_lambda_max", 5.0)),
+            mu_min=float(getattr(settings, "adaptation_mu_min", 0.01)),
+            mu_max=float(getattr(settings, "adaptation_mu_max", 5.0)),
+            nu_min=float(getattr(settings, "adaptation_nu_min", 0.01)),
+            nu_max=float(getattr(settings, "adaptation_nu_max", 5.0)),
         )
         return base
 
@@ -231,7 +231,7 @@ class AdaptationEngine:
         enable_dynamic_lr: bool = False,
         gains: Optional[AdaptationGains] = None,
     ) -> None:
-        if shared_settings and not getattr(shared_settings, "enable_advanced_learning", True):
+        if settings and not getattr(settings, "enable_advanced_learning", True):
             raise RuntimeError(
                 "Advanced learning is disabled; set SOMABRAIN_ENABLE_ADVANCED_LEARNING=1 to enable adaptation."
             )
@@ -240,18 +240,18 @@ class AdaptationEngine:
             from somabrain.context.builder import RetrievalWeights as RetrievalWeights
 
             retrieval = RetrievalWeights(
-                getattr(shared_settings, "retrieval_alpha", 1.0),
-                getattr(shared_settings, "retrieval_beta", 0.2),
-                getattr(shared_settings, "retrieval_gamma", 0.1),
-                getattr(shared_settings, "retrieval_tau", 0.7),
+                getattr(settings, "retrieval_alpha", 1.0),
+                getattr(settings, "retrieval_beta", 0.2),
+                getattr(settings, "retrieval_gamma", 0.1),
+                getattr(settings, "retrieval_tau", 0.7),
             )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
-        lr = learning_rate if learning_rate is not None else getattr(shared_settings, "adaptation_learning_rate", 0.05)
+        lr = learning_rate if learning_rate is not None else getattr(settings, "adaptation_learning_rate", 0.05)
         self._lr = lr
         self._base_lr = lr  # Store base LR for dynamic scaling
         self._history = []  # Track (retrieval, utility) tuples for rollback
-        self._max_history = int(max_history if max_history is not None else getattr(shared_settings, "adaptation_max_history", 1000))
+        self._max_history = int(max_history if max_history is not None else getattr(settings, "adaptation_max_history", 1000))
         if isinstance(constraints, AdaptationConstraints):
             constraint_bounds = constraints
         elif isinstance(constraints, dict) and constraints:
@@ -290,10 +290,10 @@ class AdaptationEngine:
         self._redis = _get_redis()
         # Ensure the dynamic LR flag is a proper boolean. Environment variable overrides if set.
         dyn_lr = bool(enable_dynamic_lr)
-        if shared_settings is not None:
+        if settings is not None:
             try:
                 dyn_lr = dyn_lr or bool(
-                    getattr(shared_settings, "learning_rate_dynamic", False)
+                    getattr(settings, "learning_rate_dynamic", False)
                 )
             except Exception:
                 pass

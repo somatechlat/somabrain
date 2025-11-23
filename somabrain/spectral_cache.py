@@ -16,6 +16,7 @@ Implementation notes:
 from __future__ import annotations
 
 import hashlib
+import os
 from common.config.settings import settings
 from pathlib import Path
 from typing import Optional, Tuple

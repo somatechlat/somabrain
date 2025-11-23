@@ -22,7 +22,7 @@ except Exception as exc:  # pragma: no cover - intentionally strict
 
 
 from typing import Optional
-from common.config.settings import settings as shared_settings
+from common.config.settings import settings
 
 
 def init_tracing(
@@ -47,7 +47,7 @@ def init_tracing(
     """
     try:
         # Resolve a sane default when the caller does not provide a name.
-        effective_name = service_name or getattr(shared_settings, "service_name", "somabrain")
+        effective_name = service_name or getattr(settings, "service_name", "somabrain")
         resource = Resource.create({"service.name": effective_name})
         provider = TracerProvider(resource=resource)
         if console_export:

@@ -43,6 +43,7 @@ from somabrain.journal import get_journal
 from somabrain.db.outbox import replay_journal_events
 from somabrain.storage.db import get_session_factory
 from somabrain.common.infra import assert_ready
+from common.config.settings import settings
 
 # Per-tenant batch processing configuration
 _PER_TENANT_BATCH_LIMIT = max(

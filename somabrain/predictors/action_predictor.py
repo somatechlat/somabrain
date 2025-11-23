@@ -15,7 +15,7 @@ from typing import Tuple
 import numpy as np
 
 from common.config.settings import settings
-shared_settings = settings
+settings = settings
 from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 
@@ -48,10 +48,10 @@ class ActionPredictor(HeatDiffusionPredictor):
     def __init__(self) -> None:
         apply_A, dim = _load_action_operator()
         cfg = PredictorConfig(
-            diffusion_t=getattr(shared_settings, "diffusion_t", 0.5),
-            alpha=getattr(shared_settings, "predictor_alpha", 2.0),
-            chebyshev_K=getattr(shared_settings, "chebyshev_K", 30),
-            lanczos_m=getattr(shared_settings, "lanczos_m", 20),
+            diffusion_t=getattr(settings, "diffusion_t", 0.5),
+            alpha=getattr(settings, "predictor_alpha", 2.0),
+            chebyshev_K=getattr(settings, "chebyshev_K", 30),
+            lanczos_m=getattr(settings, "lanczos_m", 20),
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 

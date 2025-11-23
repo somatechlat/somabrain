@@ -33,11 +33,8 @@ from typing import Any, Dict, Optional
 from confluent_kafka import Consumer as CKConsumer  # type: ignore
 from somabrain.modes import feature_enabled
 
-try:  # Optional shared config service
-    from common.config.settings import settings
-    shared_settings = settings  # type: ignore
-except Exception:  # pragma: no cover
-    shared_settings = None  # type: ignore
+# Central configuration import per VIBE rules
+from common.config.settings import settings
 
 # Optional Avro serde
 try:  # pragma: no cover
@@ -52,14 +49,15 @@ from somabrain.db.outbox import enqueue_event  # type: ignore
 from somabrain.common.infra import assert_ready
 
 
+# Topic configuration constants (top-level, no extra indentation)
     GLOBAL_FRAME_TOPIC = settings.getenv(
-    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-    getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
-)
+        "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+        getattr(settings, "topic_global_frame", "cog.global.frame"),
+    )
     SEGMENTS_TOPIC = settings.getenv(
-    "SOMABRAIN_TOPIC_SEGMENTS",
-    getattr(shared_settings, "topic_segments", "cog.segments"),
-)
+        "SOMABRAIN_TOPIC_SEGMENTS",
+        getattr(settings, "topic_segments", "cog.segments"),
+    )
 
 
 @dataclass

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from common.config.settings import settings
-shared_settings = settings
 import sys
 import time
 from typing import Any
@@ -37,7 +36,7 @@ else:
 
 
 def _bootstrap() -> str:
-    url = shared_settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
+    url = settings.kafka_bootstrap_servers or "kafka://127.0.0.1:30001"
     return str(url).replace("kafka://", "")
 
 

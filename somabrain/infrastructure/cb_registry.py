@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 from common.config.settings import settings
-shared_settings = settings
+settings = settings
 
 _CB = CircuitBreaker(
-    global_failure_threshold=shared_settings.circuit_failure_threshold,
-    global_reset_interval=shared_settings.circuit_reset_interval,
-    global_cooldown_interval=shared_settings.circuit_cooldown_interval,
+    global_failure_threshold=settings.circuit_failure_threshold,
+    global_reset_interval=settings.circuit_reset_interval,
+    global_cooldown_interval=settings.circuit_cooldown_interval,
 )
 
 

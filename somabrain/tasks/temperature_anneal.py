@@ -25,7 +25,7 @@ import logging
 from typing import Any
 
 from common.config.settings import settings
-shared_settings = settings
+settings = settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,9 @@ def _load_config() -> dict[str, Any]:
     * ``tau_anneal_interval`` – interval in seconds between decays.
     """
     try:
-        factor = float(getattr(shared_settings, "tau_decay_factor", 0.95))
-        floor = float(getattr(shared_settings, "tau_min_floor", 0.1))
-        interval = float(getattr(shared_settings, "tau_anneal_interval", 60.0))
+        factor = float(getattr(settings, "tau_decay_factor", 0.95))
+        floor = float(getattr(settings, "tau_min_floor", 0.1))
+        interval = float(getattr(settings, "tau_anneal_interval", 60.0))
     except Exception as exc:
         raise RuntimeError("Invalid temperature annealing configuration") from exc
     if factor <= 0 or factor >= 1:

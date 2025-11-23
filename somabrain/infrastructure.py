@@ -8,9 +8,9 @@ from typing import Optional
 try:
     # Shared settings loader; optional in some runtimes.
     from common.config.settings import settings
-    shared_settings = settings  # type: ignore
+    settings = settings  # type: ignore
 except Exception:  # pragma: no cover - optional dependency in lean environments
-    shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
@@ -32,10 +32,10 @@ def _first_non_empty(*values: Optional[str]) -> Optional[str]:
 
 
 def _from_settings(attr: str) -> Optional[str]:
-    if shared_settings is None:
+    if settings is None:
         return None
     try:
-        return _clean(getattr(shared_settings, attr, None))
+        return _clean(getattr(settings, attr, None))
     except Exception:
         return None
 

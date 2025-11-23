@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 # Use the unified Settings singleton for configuration.
-from common.config.settings import Settings as Config, settings as shared_settings
+from common.config.settings import Settings as Config, settings
 import os
 from typing import Tuple
 

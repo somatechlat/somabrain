@@ -176,14 +176,14 @@ mypy somabrain                 # Type checking
 pytest                         # Test suite
 ```
 
-### Environment Management
+# Environment Management
 ```bash
-# Check current configuration
-python -c "from somabrain.config import get_config; print(get_config())"
+# Inspect the current configuration using the new Settings singleton
+python -c "from common.config.settings import settings; print(settings.dict())"
 
-# Reload configuration after YAML changes
-python -c "from somabrain.config import reload_config; reload_config()"
-
+# Reload configuration is no longer required – Settings reads directly from the environment
+# If you need to refresh after changing environment variables, simply re‑run the process.
+```
 # View active ports
 cat ports.json | jq
 ```

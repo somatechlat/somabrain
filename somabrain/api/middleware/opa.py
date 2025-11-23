@@ -14,9 +14,9 @@ from somabrain.opa.client import opa_client, _policy_path_for_mode
 
 try:
     from common.config.settings import settings
-    shared_settings = settings
+    settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 LOGGER = logging.getLogger("somabrain.api.middleware.opa")
 
@@ -30,9 +30,9 @@ class OpaMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        if shared_settings is not None:
+        if settings is not None:
             try:
-                opa_url = getattr(shared_settings, "opa_url", None)
+                opa_url = getattr(settings, "opa_url", None)
             except Exception:
                 opa_url = None
         else:
@@ -96,10 +96,10 @@ class OpaMiddleware(BaseHTTPMiddleware):
             import httpx
 
             timeout_seconds = 2.0
-            if shared_settings is not None:
+            if settings is not None:
                 try:
                     timeout_seconds = float(
-                        getattr(shared_settings, "opa_timeout_seconds", 2.0)
+                        getattr(settings, "opa_timeout_seconds", 2.0)
                     )
                 except Exception:
                     timeout_seconds = 2.0

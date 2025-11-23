@@ -7,10 +7,11 @@ from fastapi import Depends, Request
 from somabrain import metrics as M
 from somabrain.constitution import ConstitutionEngine
 
-try:  # Centralized settings for mode-aware behavior
-    from common.config.settings import settings as _shared_settings  # type: ignore
+# Centralized settings for mode-aware behavior
+try:
+    from common.config.settings import settings  # type: ignore
 except Exception:  # pragma: no cover - optional in some envs
-    _shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 
 def compute_utility(
@@ -47,8 +48,8 @@ async def utility_guard(
     # Determine mode; in dev, relax strict constitution requirement (no mocks otherwise)
     dev_mode = False
     try:
-        if _shared_settings is not None:
-            dev_mode = getattr(_shared_settings, "mode_normalized", "prod") == "dev"
+        if settings is not None:
+            dev_mode = getattr(settings, "mode_normalized", "prod") == "dev"
         else:
             import os as _os
 

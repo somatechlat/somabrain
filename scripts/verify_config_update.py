@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 from common.config.settings import settings
-shared_settings = settings
 import sys
 import time
 from typing import Any, Dict
@@ -48,13 +47,13 @@ def post_reward() -> None:
     """
     # Use centralized Settings for reward port
     from common.config.settings import settings
-    shared_settings = settings
-    port = int(shared_settings.reward_port)
+    settings = settings
+    port = int(settings.reward_port)
     from common.config.settings import settings
     _settings = settings
     url = f"{_settings.api_url}/reward"
     payload: Dict[str, Any] = {
-        "tenant": shared_settings.default_tenant,
+        "tenant": settings.default_tenant,
         "r_task": 0.5,
         "r_user": 0.5,
         "r_latency": 0.1,
@@ -76,10 +75,10 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
     Returns the decoded JSON dict or ``None`` if the timeout expires.
     """
     kafka_bootstrap = (
-        shared_settings.kafka_bootstrap_servers
+        settings.kafka_bootstrap_servers
         or "localhost:9092"
     )
-    topic = shared_settings.topic_config_updates
+    topic = settings.topic_config_updates
     consumer_conf = {
         "bootstrap.servers": kafka_bootstrap,
         "group.id": "ci-config-verify",

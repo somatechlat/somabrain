@@ -26,16 +26,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .config import Config
 
-try:  # optional dependency, older deployments may not ship shared settings yet
-    from common.config.settings import settings
-    shared_settings = settings
-except Exception:  # pragma: no cover - legacy layout
-    shared_settings = None  # type: ignore
-
-try:  # Import the settings object under a distinct name for strict-mode checks.
-    from common.config.settings import settings as _shared_settings
-except Exception:  # pragma: no cover - not always available in local runs
-    _shared_settings = None  # type: ignore
+from common.config.settings import settings
 
 from somabrain.infrastructure import get_memory_http_endpoint
 from somabrain.interfaces.memory import MemoryBackend
@@ -43,10 +34,10 @@ from somabrain.interfaces.memory import MemoryBackend
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
 debug_memory_client = False
-if shared_settings is not None:
+if settings is not None:
     try:
         debug_memory_client = bool(
-            getattr(shared_settings, "debug_memory_client", False)
+            getattr(settings, "debug_memory_client", False)
         )
     except Exception:
         debug_memory_client = False
@@ -69,9 +60,9 @@ _TRUE_VALUES = ("1", "true", "yes", "on")
 def _http_setting(attr: str, default_val: int) -> int:
     """Fetch HTTP client tuning knobs from shared settings with default."""
 
-    if shared_settings is not None:
+    if settings is not None:
         try:
-            value = getattr(shared_settings, attr)
+            value = getattr(settings, attr)
             if value is None:
                 return default_val
             return int(value)
@@ -272,10 +263,10 @@ class MemoryClient:
         self._http_async: Optional[Any] = None
         # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
-        if shared_settings is not None:
+        if settings is not None:
             try:
                 db_path = str(
-                    getattr(shared_settings, "memory_db_path", "./data/memory.db")
+                    getattr(settings, "memory_db_path", "./data/memory.db")
                 )
             except Exception:
                 db_path = "./data/memory.db"
@@ -1249,14 +1240,14 @@ class MemoryClient:
         weighting_enabled = False
         priors_env = ""
         quality_exp = 1.0
-        if shared_settings is not None:
+        if settings is not None:
             try:
                 weighting_enabled = bool(
-                    getattr(shared_settings, "memory_enable_weighting", False)
+                    getattr(settings, "memory_enable_weighting", False)
                 )
-                priors_env = getattr(shared_settings, "memory_phase_priors", "") or ""
+                priors_env = getattr(settings, "memory_phase_priors", "") or ""
                 quality_exp = float(
-                    getattr(shared_settings, "memory_quality_exp", 1.0) or 1.0
+                    getattr(settings, "memory_quality_exp", 1.0) or 1.0
                 )
             except Exception:
                 weighting_enabled = False
@@ -1467,9 +1458,9 @@ class MemoryClient:
 
         # Synchronous callers: default is blocking persist, but allow an opt-in
         # fast-ack mode schedules persistence on a background executor so we don't block.
-        if shared_settings is not None:
+        if settings is not None:
             try:
-                fast_ack = bool(getattr(shared_settings, "memory_fast_ack", False))
+                fast_ack = bool(getattr(settings, "memory_fast_ack", False))
             except Exception:
                 fast_ack = False
         else:

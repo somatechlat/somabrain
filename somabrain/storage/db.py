@@ -19,9 +19,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 try:
-    from common.config.settings import settings as shared_settings
+    from common.config.settings import settings as settings
 except Exception:  # pragma: no cover - optional dependency during migration
-    shared_settings = None  # type: ignore
+    settings = None  # type: ignore
 
 Base = declarative_base()
 _ENGINE: Optional[Engine] = None
@@ -36,9 +36,9 @@ def get_default_db_url() -> str:
     trigger a RuntimeError to fail fast.
     """
     url: Optional[str] = None
-    if shared_settings is not None:
+    if settings is not None:
         try:
-            raw = str(getattr(shared_settings, "postgres_dsn", "") or "").strip()
+            raw = str(getattr(settings, "postgres_dsn", "") or "").strip()
             url = raw or None
         except Exception:
             url = None

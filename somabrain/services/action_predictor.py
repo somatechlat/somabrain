@@ -28,9 +28,9 @@ from somabrain.prediction import LLMPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
 try:
     from common.config.settings import settings
-    shared_settings = settings
+    settings = settings
 except ImportError:
-    shared_settings = None
+    settings = None
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
@@ -42,9 +42,9 @@ logger = logging.getLogger("somabrain.services.action_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(shared_settings, "topic_next_event", "cog.next_event")
-PUBLISH_TOPIC = getattr(shared_settings, "topic_action_updates", "cog.action.updates")
-PREDICTOR_ALPHA = float(getattr(shared_settings, "predictor_alpha", 2.0))
+CONSUME_TOPIC = getattr(settings, "topic_next_event", "cog.next_event")
+PUBLISH_TOPIC = getattr(settings, "topic_action_updates", "cog.action.updates")
+PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 
 
 class ActionPredictorService:
@@ -54,7 +54,7 @@ class ActionPredictorService:
         """Initialize the action predictor service."""
         # Use LLM predictor for action prediction (more suitable for action sequences)
         # Use centralized Settings for LLM endpoint; Settings provides default handling
-        llm_endpoint = getattr(shared_settings, "llm_endpoint", None)
+        llm_endpoint = getattr(settings, "llm_endpoint", None)
         if not llm_endpoint:
             raise RuntimeError("LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)")
 
@@ -62,13 +62,13 @@ class ActionPredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant ID from Settings (fallback to default defined in Settings)
-        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
+        self.tenant_id = getattr(settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Prefer Settings' kafka_bootstrap_servers, fallback to legacy env vars for compatibility
-        # Use central Settings for Kafka bootstrap; fallback to shared_settings if defined.
-        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
+        # Use central Settings for Kafka bootstrap; fallback to settings if defined.
+        bs = getattr(settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

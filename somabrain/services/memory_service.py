@@ -15,7 +15,7 @@ from typing import Any, Iterable
 from somabrain.infrastructure.cb_registry import get_cb
 from ..infrastructure.tenant import tenant_label, resolve_namespace
 from common.config.settings import settings
-shared_settings = settings
+settings = settings
 from somabrain.journal import get_journal, JournalEvent
 
 
@@ -37,11 +37,11 @@ class MemoryService:
         self._backend = backend
         self.namespace = namespace or ""
         self._cb = get_cb()
-        self._degrade_queue = bool(getattr(shared_settings, "memory_degrade_queue", True))
+        self._degrade_queue = bool(getattr(settings, "memory_degrade_queue", True))
         self._degrade_readonly = bool(
-            getattr(shared_settings, "memory_degrade_readonly", False)
+            getattr(settings, "memory_degrade_readonly", False)
         )
-        self._degrade_topic = getattr(shared_settings, "memory_degrade_topic", "memory.degraded")
+        self._degrade_topic = getattr(settings, "memory_degrade_topic", "memory.degraded")
 
     # ---------------------------------------------------------------------
     # Backend accessor helpers

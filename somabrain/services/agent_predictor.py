@@ -25,11 +25,7 @@ import numpy as np
 
 from somabrain.prediction import BudgetedPredictor, MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
-try:
-    from common.config.settings import settings
-    shared_settings = settings
-except ImportError:
-    shared_settings = None
+from common.config.settings import settings
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
@@ -41,9 +37,9 @@ logger = logging.getLogger("somabrain.services.agent_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(shared_settings, "topic_global_frame", "cog.global.frame")
-PUBLISH_TOPIC = getattr(shared_settings, "topic_agent_updates", "cog.agent.updates")
-PREDICTOR_ALPHA = float(getattr(shared_settings, "predictor_alpha", 2.0))
+CONSUME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
+PUBLISH_TOPIC = getattr(settings, "topic_agent_updates", "cog.agent.updates")
+PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 
 
 class AgentPredictorService:
@@ -57,15 +53,15 @@ class AgentPredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Use centralized Settings for tenant ID, default handled by Settings
-        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
+        self.tenant_id = getattr(settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
         # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
         # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars for compatibility
-        # Use central Settings for Kafka bootstrap; fallback to shared_settings if defined.
-        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
+        # Use central Settings for Kafka bootstrap; fallback to settings if defined.
+        bs = getattr(settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

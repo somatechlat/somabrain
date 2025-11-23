@@ -27,7 +27,7 @@ import numpy as np
 from somabrain.prediction import MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
 from common.config.settings import settings
-shared_settings = settings
+settings = settings
 
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
@@ -36,18 +36,18 @@ except ImportError as e:
 
 try:
     from common.config.settings import settings
-    shared_settings = settings
+    settings = settings
 except ImportError:
-    shared_settings = None
+    settings = None
 
 # Logging setup
 logger = logging.getLogger("somabrain.services.state_predictor")
 
 # Kafka configuration (prod-like defaults, override via env/settings)
 SCHEMA_NAME = "predictor_update"
-CONSUME_TOPIC = getattr(shared_settings, "topic_global_frame", "cog.global.frame")
-PUBLISH_TOPIC = getattr(shared_settings, "topic_state_updates", "cog.state.updates")
-PREDICTOR_ALPHA = float(getattr(shared_settings, "predictor_alpha", 2.0))
+CONSUME_TOPIC = getattr(settings, "topic_global_frame", "cog.global.frame")
+PUBLISH_TOPIC = getattr(settings, "topic_state_updates", "cog.state.updates")
+PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 
 
 class StatePredictorService:
@@ -59,12 +59,12 @@ class StatePredictorService:
         self.producer = make_producer()
         self.consumer = self._create_consumer()
         # Tenant identifier from centralized Settings (default defined there).
-        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
+        self.tenant_id = getattr(settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Use centralized Settings for Kafka bootstrap servers.
-        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
+        bs = getattr(settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

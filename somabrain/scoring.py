@@ -12,11 +12,7 @@ from .salience import FDSalienceSketch
 
 _EPS = 1e-12
 
-try:
-    from common.config.settings import settings
-    shared_settings = settings
-except Exception:
-    shared_settings = None
+from common.config.settings import settings
 
 try:
     from . import metrics as M
@@ -33,8 +29,7 @@ class ScorerWeights:
 
 def _gain_setting(name: str) -> float:
     """Fetch required float setting from shared settings or environment."""
-    if shared_settings is not None:
-        value = getattr(shared_settings, f"scorer_{name}", None)
+    value = getattr(settings, f"scorer_{name}", None)
         if value is not None:
             return float(value)
     env_name = f"SOMABRAIN_SCORER_{name.upper()}"

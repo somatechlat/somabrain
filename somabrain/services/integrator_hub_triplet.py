@@ -213,7 +213,7 @@ class IntegratorHub:
             except Exception:
                 return default
 
-        alpha = _get_float("predictor_alpha", getattr(shared_settings, "predictor_alpha", self.alpha))
+        alpha = _get_float("predictor_alpha", getattr(settings, "predictor_alpha", self.alpha))
         temp = _get_float("integrator_temperature", self._initial_temperature)
         flag = _get_bool("enable_cog_threads", self._initial_enable_flag)
         opa_url = _get_str("opa_url", self._initial_opa_url).strip()
@@ -278,7 +278,7 @@ class IntegratorHub:
                 "election_time": now,
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
-                "entropy_cap": float(getattr(shared_settings, "integrator_entropy_cap", 0.0) or 0.0),
+                "entropy_cap": float(getattr(settings, "integrator_entropy_cap", 0.0) or 0.0),
                 "current_entropy": float(entropy),
                 "dwell_satisfied": True,
                 "transition_allowed": True,

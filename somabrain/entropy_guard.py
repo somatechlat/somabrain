@@ -17,7 +17,6 @@ import logging
 from typing import Optional
 
 from common.config.settings import settings
-shared_settings = settings
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,7 @@ def get_entropy_cap() -> float:
     ``RuntimeError`` is raised. This mirrors the VIBE rule of failing fast on
     missing configuration.
     """
-    cap = getattr(shared_settings, "entropy_cap", None)
+    cap = getattr(settings, "entropy_cap", None)
     if cap is None:
         raise RuntimeError(
             "Entropy cap is not configured. Set 'entropy_cap' in the settings."

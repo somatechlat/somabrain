@@ -51,7 +51,9 @@ import numpy as np
 from somabrain.core.memory_manager import MemoryManager
 from somabrain.models.memory import Memory, MemoryMetadata
 from somabrain.database.connection import DatabaseManager
-from somabrain.config import TestConfig
+# NOTE: Legacy `TestConfig` has been removed. Tests now rely on the central `Settings`
+# singleton from `common.config.settings`. Use environment variables or the
+# `settings` object directly for test configuration.
 
 # Pytest configuration
 def pytest_configure(config):
@@ -604,7 +606,9 @@ import os
 
 from somabrain.database.models import Base, Memory, Tenant
 from somabrain.database.connection import DatabaseManager
-from somabrain.config import TestConfig
+# Legacy `TestConfig` has been removed. Tests should use the central `Settings`
+# singleton from `common.config.settings`. Environment variables can be set
+# directly, or the `settings` object accessed in fixtures.
 
 @pytest.fixture(scope="session")
 async def test_database():
@@ -808,7 +812,9 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from somabrain.api.main import create_app
-from somabrain.config import TestConfig
+# Legacy `TestConfig` has been removed. Tests now use the central `Settings`
+# singleton from `common.config.settings`. Import it when specific configuration
+# values are needed, e.g., `from common.config.settings import settings`.
 
 @pytest.fixture(scope="session")
 async def test_app():
