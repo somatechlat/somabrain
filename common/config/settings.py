@@ -54,7 +54,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
     Supports typical truthy strings and strips comments.
     """
-    raw = settings.getenv(name)
+    raw = os.getenv(name)
     if raw is None:
         return default
     raw = raw.split("#", 1)[0].strip()
@@ -66,7 +66,7 @@ def _bool_env(name: str, default: bool) -> bool:
 
 def _float_env(name: str, default: float) -> float:
     """Parse a float environment variable safely, stripping comments."""
-    raw = settings.getenv(name, str(default))
+    raw = os.getenv(name, str(default))
     raw = raw.split("#", 1)[0].strip()
     try:
         return float(raw)
@@ -76,7 +76,7 @@ def _float_env(name: str, default: float) -> float:
 
 def _str_env(name: str, default: str | None = None) -> str | None:
     """Return a string environment variable, stripping inline comments."""
-    raw = settings.getenv(name)
+    raw = os.getenv(name)
     if raw is None:
         return default
     # remove trailing comment if present

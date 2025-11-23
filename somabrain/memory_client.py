@@ -1474,7 +1474,7 @@ class MemoryClient:
                 fast_ack = False
         else:
             try:
-                from somabrain.config import runtime as _rt
+                from common.config.settings import settings as _rt
 
                 fast_ack = _rt.get_bool("memory_fast_ack", False)
             except Exception:

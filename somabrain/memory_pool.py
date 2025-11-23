@@ -9,14 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-# Updated import to use shared settings
-# Use the legacy ``Config`` wrapper that provides the ``http`` attribute.
-# ``get_config`` returns a ``Config`` instance populated from the global
-# ``Settings``. This ensures callers receive an object with the expected
-# ``http`` property.
-from somabrain.config import Config, get_config
-
-shared_settings = get_config()
+# Use the unified Settings singleton for configuration.
+from common.config.settings import Settings as Config, settings as shared_settings
 import os
 from typing import Tuple
 

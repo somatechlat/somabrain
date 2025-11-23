@@ -60,10 +60,10 @@ async def put_persona(
             mem_backend = None
     if mem_backend is None:
         try:
-            from somabrain.config import get_config as _get_cfg
+            from common.config.settings import settings as _cfg
             from somabrain.memory_pool import MultiTenantMemory
 
-            mem_backend = MultiTenantMemory(_get_cfg())
+            mem_backend = MultiTenantMemory(_cfg)
             try:
                 setattr(_rt, "mt_memory", mem_backend)
             except Exception:

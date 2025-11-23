@@ -4,7 +4,7 @@ FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=0
 
 WORKDIR /build
 
@@ -20,7 +20,8 @@ COPY scripts /build/scripts
 COPY arc_cache.py /build/
 
 # Build a wheel reproducibly using build
-RUN python -m pip install --upgrade pip build setuptools wheel \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --upgrade pip build setuptools wheel \
     && python -m build --wheel --no-isolation -o /build/dist
 
 ### Runtime stage: slim image with only runtime deps and wheel installed
@@ -28,7 +29,7 @@ FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=0
 
 WORKDIR /app
 
@@ -39,20 +40,21 @@ RUN apt-get update \
 
 # Copy wheel from builder stage and install
 COPY --from=builder /build/dist /dist
-RUN if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install --no-cache-dir /dist/*.whl; else echo "No wheel files found"; exit 1; fi
+RUN --mount=type=cache,target=/root/.cache/pip \
+    if [ -d "/dist" ] && [ -n "$(ls -A /dist)" ]; then pip install /dist/*.whl; else echo "No wheel files found"; exit 1; fi
 # Ensure JWT library is available for auth module
-RUN pip install --no-cache-dir "PyJWT[crypto]"
+RUN --mount=type=cache,target=/root/.cache/pip pip install "PyJWT[crypto]"
 
 # Install Kafka client libraries (always required)
-RUN pip uninstall -y kafka || true && \
-    pip install --no-cache-dir confluent-kafka kafka-python python-snappy && \
-    pip install --no-cache-dir six
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip uninstall -y kafka || true && \
+    pip install confluent-kafka kafka-python python-snappy six
 # Install pydantic-settings package required by config shared package (pydantic v2 split)
-RUN pip install --no-cache-dir pydantic-settings
+RUN --mount=type=cache,target=/root/.cache/pip pip install pydantic-settings
 # Install ASGI server used by service modules launched under supervisor
-RUN pip install --no-cache-dir "uvicorn[standard]"
+RUN --mount=type=cache,target=/root/.cache/pip pip install "uvicorn[standard]"
 # Install fastavro for Avro deserialization in strict mode
-RUN pip install --no-cache-dir fastavro
+RUN --mount=type=cache,target=/root/.cache/pip pip install fastavro
 
 # Copy docs, scripts, and memory (for runtime import)
 COPY docs /app/docs

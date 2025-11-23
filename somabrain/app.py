@@ -48,7 +48,7 @@ from somabrain.auth import require_admin_auth, require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
 # Use the unified Settings instance for configuration.
 from common.config.settings import settings
-from somabrain.config import get_config
+from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
@@ -803,7 +803,7 @@ class SecurityMiddleware:
 #
 # Application bootstrap
 #
-cfg = get_config()
+    cfg = config
 
 _MINIMAL_API = False
 # Minimal public API flag is now derived from centralized Settings
