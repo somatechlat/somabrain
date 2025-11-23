@@ -37,7 +37,8 @@ def _default_base_url() -> str:
 
 def _default_token() -> str | None:
     # Use centralized Settings for token retrieval.
-    return settings.getenv("SOMABRAIN_API_TOKEN") or settings.getenv("SOMA_API_TOKEN")
+    # Use the centralized Settings field for the outbox API token.
+    return settings.outbox_api_token
 
 
 def _auth_headers(token: str | None) -> dict[str, str]:

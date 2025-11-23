@@ -7,7 +7,7 @@ from somabrain.common.kafka import make_producer, encode
 
 
 def _bootstrap_from_env() -> Optional[str]:
-    url = settings.getenv("SOMABRAIN_KAFKA_URL")
+    url = settings.kafka_bootstrap_servers
     if not url:
         return None
     return url.replace("kafka://", "").strip()

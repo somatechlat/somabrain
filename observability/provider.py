@@ -34,7 +34,7 @@ def init_tracing(service_name: Optional[str] = None) -> None:
     if _initialized:
         return
 
-    endpoint = settings.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
+    endpoint = settings.otel_exporter_otlp_endpoint.strip()
     if not endpoint:
         raise RuntimeError(
             "OTEL_EXPORTER_OTLP_ENDPOINT is required for tracing (strict mode)"
@@ -42,8 +42,8 @@ def init_tracing(service_name: Optional[str] = None) -> None:
 
     svc = (
         service_name
-        or settings.getenv("OTEL_SERVICE_NAME")
-        or settings.getenv("SERVICE_NAME")
+        or settings.otel_service_name
+        or settings.service_name
         or ""
     ).strip()
     if not svc:

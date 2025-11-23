@@ -51,11 +51,21 @@ class CheckResult:
 
 
 def _env(name: str, default: str | None = None) -> str | None:
-    # Use centralized Settings for environment variable access.
-    val = settings.getenv(name)
-    if val is None or not str(val).strip():
-        return default
-    return str(val).strip()
+    """Retrieve a configuration value via the centralized Settings.
+
+    The original implementation used ``settings.getenv`` which is now legacy.
+    This helper maps the upper‑case environment variable name to the matching
+    Settings attribute (lower‑case) and returns its string representation.
+    If the attribute does not exist or is empty, ``default`` is returned.
+    """
+    attr = name.lower()
+    if hasattr(settings, attr):
+        val = getattr(settings, attr)
+        if val is None:
+            return default
+        return str(val).strip()
+    # Fallback – maintain previous behaviour for any unexpected names.
+    return default
 
 
 # Strict mode utilities removed: no host-port fallback mappings

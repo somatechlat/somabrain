@@ -49,37 +49,37 @@ from common.config.settings import settings
 # Per-tenant batch processing configuration
 _PER_TENANT_BATCH_LIMIT = max(
     1,
-    int(settings.getenv("SOMABRAIN_OUTBOX_TENANT_BATCH_LIMIT", "50") or 50),
+    int(getattr(settings, "outbox_tenant_batch_limit", 50) or 50),
 )
 
 # Per-tenant quota configuration
 _PER_TENANT_QUOTA_LIMIT = max(
     1,
-    int(settings.getenv("SOMABRAIN_OUTBOX_TENANT_QUOTA_LIMIT", "1000") or 1000),
+    int(getattr(settings, "outbox_tenant_quota_limit", 1000) or 1000),
 )
 
 # Per-tenant quota window in seconds
 _PER_TENANT_QUOTA_WINDOW = max(
     1,
-    int(settings.getenv("SOMABRAIN_OUTBOX_TENANT_QUOTA_WINDOW", "60") or 60),
+    int(getattr(settings, "outbox_tenant_quota_window", 60) or 60),
 )
 
 # Backpressure configuration
-_BACKPRESSURE_ENABLED = (
-    settings.getenv("SOMABRAIN_OUTBOX_BACKPRESSURE_ENABLED", "true").lower() == "true"
-)
+_BACKPRESSURE_ENABLED = str(
+    getattr(settings, "outbox_backpressure_enabled", "true")
+).lower() == "true"
 _BACKPRESSURE_THRESHOLD = max(
     0.1,
-    float(settings.getenv("SOMABRAIN_OUTBOX_BACKPRESSURE_THRESHOLD", "0.8") or 0.8),
+    float(getattr(settings, "outbox_backpressure_threshold", 0.8) or 0.8),
 )
 
 
 def _bootstrap() -> Optional[str]:
     # Prefer explicit SOMA_KAFKA_BOOTSTRAP if present (plain host:port)
-    direct = (settings.getenv("SOMA_KAFKA_BOOTSTRAP") or "").strip()
+    direct = (getattr(settings, "kafka_bootstrap", "") or "").strip()
     if direct:
         return direct
-    url = settings.getenv("SOMABRAIN_KAFKA_URL")
+    url = getattr(settings, "kafka_bootstrap_servers", "")
     if not url:
         return None
     return url.replace("kafka://", "").strip()
@@ -470,16 +470,16 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_postgres=True,
         require_opa=False,
     )
-    batch_size = int(settings.getenv("SOMABRAIN_OUTBOX_BATCH_SIZE", "100") or 100)
-    max_retries = int(settings.getenv("SOMABRAIN_OUTBOX_MAX_RETRIES", "5") or 5)
+    batch_size = int(settings.outbox_batch_size or 100)
+    max_retries = int(settings.outbox_max_retries or 5)
     poll_interval = float(
-        settings.getenv("SOMABRAIN_OUTBOX_POLL_INTERVAL", "1.0") or 1.0
+        settings.outbox_poll_interval or 1.0
     )
     create_retry_ms = int(
-        settings.getenv("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", "1000") or 1000
+        settings.outbox_producer_retry_ms or 1000
     )
     journal_replay_interval = int(
-        settings.getenv("SOMABRAIN_JOURNAL_REPLAY_INTERVAL", "300") or 300
+        settings.journal_replay_interval or 300
     )  # 5 minutes
 
     session_factory = get_session_factory()

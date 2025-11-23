@@ -87,7 +87,7 @@ class ConstitutionStorage:
         db_url: Optional[str] = None,
     ) -> None:
         self._redis_client = redis_client
-        self._redis_url = redis_url or settings.getenv("SOMABRAIN_REDIS_URL")
+        self._redis_url = redis_url or settings.redis_url
         self._redis_key = redis_key
         self._redis_sig_key = redis_sig_key
         self._redis_checksum_key = f"{redis_key}:checksum"
@@ -245,7 +245,7 @@ class ConstitutionStorage:
         }
         # Local snapshot
         local_path = None
-        target = settings.getenv("SOMABRAIN_CONSTITUTION_SNAPSHOT_DIR")
+        target = settings.constitution_snapshot_dir
         if target:
             path = pathlib.Path(target)
             path.mkdir(parents=True, exist_ok=True)
@@ -254,7 +254,7 @@ class ConstitutionStorage:
             LOGGER.info("wrote constitution snapshot to %s", outfile)
             local_path = str(outfile)
         # S3 snapshot
-        s3_bucket = settings.getenv("SOMABRAIN_CONSTITUTION_S3_BUCKET")
+        s3_bucket = settings.constitution_s3_bucket
         s3_uri = None
         if s3_bucket:
             try:

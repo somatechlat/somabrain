@@ -135,7 +135,7 @@ def _tenant_health_url(tenant: str) -> str:
     internal implementation of ``MemoryService`` which resolves tenant from the
     request context.
     """
-    host = settings.getenv("SOMABRAIN_HOST", "127.0.0.1")
+    host = settings.public_host
     port = settings.getenv("SOMABRAIN_PORT", "9696")
     return f"http://{host}:{port}/health?tenant={tenant}"
 

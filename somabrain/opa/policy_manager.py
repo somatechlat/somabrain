@@ -34,8 +34,8 @@ def _redis_cache() -> Optional[RedisCache]:
         return None
 
 
-_POLICY_KEY = settings.getenv("SOMA_OPA_POLICY_KEY", "soma:opa:policy")
-_SIG_KEY = settings.getenv("SOMA_OPA_POLICY_SIG_KEY", f"{_POLICY_KEY}:sig")
+_POLICY_KEY = settings.opa_policy_key
+_SIG_KEY = settings.opa_policy_sig_key
 
 
 def store_policy(policy: str, signature: Optional[str] = None) -> bool:

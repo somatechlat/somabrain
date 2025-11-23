@@ -102,7 +102,7 @@ class IntegratorLeaderElection:
         self._lock_prefix = "integrator_leader"
         # Use centralized configuration for hostname
         self._instance_id = (
-            f"{settings.getenv('HOSTNAME', 'unknown')}-{int(time.time())}"
+            f"{settings.hostname}-{int(time.time())}"
         )
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
@@ -138,8 +138,8 @@ class IntegratorLeaderElection:
             import yaml
 
             config_path = (
-                settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
-                or settings.getenv("LEARNING_TENANTS_CONFIG")
+                settings.learning_tenants_file
+                or settings.learning_tenants_config
                 or "config/learning.tenants.yaml"
             )
 

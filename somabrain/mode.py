@@ -67,7 +67,7 @@ class ModeConfig:
     }
 
     def __init__(self, mode_str: str | None = None):
-        mode_str = mode_str or settings.getenv("SOMABRAIN_MODE", "enterprise")
+        mode_str = mode_str or settings.mode
         self.mode = self._parse_mode(mode_str)
         self.profile = self.PROFILES[self.mode]
         self._validate()

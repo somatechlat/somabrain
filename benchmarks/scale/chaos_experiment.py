@@ -15,7 +15,7 @@ def check_health():
         from common.config.settings import settings
 
         r = requests.get(
-            f"http://localhost:{settings.getenv('SOMABRAIN_HOST_PORT', '9696')}/health"
+            f"http://localhost:{settings.public_port}/health"
         )
         if r.status_code == 200 and r.json().get("ok"):
             print("System healthy.")

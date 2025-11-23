@@ -376,7 +376,7 @@ class ContextBuilder:
 
     def _load_tenant_overrides(self) -> Dict[str, Dict]:
         """Load per-tenant overrides from YAML/JSON or env JSON string."""
-        path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        path = settings.learning_tenants_file
         overrides: Dict[str, Dict] = {}
         if path and os.path.exists(path):
             try:
@@ -405,7 +405,7 @@ class ContextBuilder:
                 except Exception:
                     overrides = {}
         if not overrides:
-            raw = settings.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+            raw = settings.learning_tenants_overrides.strip()
             if raw:
                 try:
                     import json as _json

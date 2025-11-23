@@ -54,7 +54,7 @@ class ModeConfig:
 
 
 def _resolve_mode() -> str:
-    raw = (settings.getenv("SOMABRAIN_MODE") or "").strip().lower()
+    raw = (settings.mode or "").strip().lower()
     if not raw:
         return "full-local" if settings.getenv("HOME") else "prod"
     if raw in {"full", "local", "full_local", "full-local", "dev"}:

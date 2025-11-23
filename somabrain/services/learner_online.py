@@ -40,7 +40,7 @@ class LearnerService:
     def __init__(self) -> None:
         # Load tenant overrides from the optional YAML file.
         self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
-        overrides_path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        overrides_path = settings.learning_tenants_file
         if overrides_path:
             try:
                 with open(overrides_path, "r", encoding="utf-8") as f:

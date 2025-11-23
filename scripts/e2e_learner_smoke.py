@@ -69,9 +69,7 @@ def main() -> int:
     # Ensure reward -> config_update loop works end-to-end
     # 1) POST a reward to reward_producer
     rport = int(
-        settings.getenv(
-            "REWARD_PRODUCER_PORT",
-            settings.getenv("REWARD_PRODUCER_HOST_PORT", "30183"),
+        settings.reward_producer_port,
         )
     )
     from common.config.settings import settings as _settings

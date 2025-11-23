@@ -207,20 +207,20 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
             apply_A, dim = load_operator_from_file(graph_path)
         except Exception:
             # Use line graph if load fails
-            dim = int(settings.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
+            dim = int(settings.predictor_dim or "16")
             L = make_line_graph_laplacian(dim)
             apply_A = matvec_from_matrix(L)
     else:
-        dim = int(settings.getenv("SOMABRAIN_PREDICTOR_DIM", "16") or "16")
+        dim = int(settings.predictor_dim or "16")
         L = make_line_graph_laplacian(dim)
         apply_A = matvec_from_matrix(L)
     pred = HeatDiffusionPredictor(
         apply_A=apply_A,
         dim=dim,
         cfg=PredictorConfig(
-            diffusion_t=float(settings.getenv("SOMABRAIN_DIFFUSION_T", "0.5") or "0.5"),
-            alpha=float(settings.getenv("SOMABRAIN_CONF_ALPHA", "2.0") or "2.0"),
-            chebyshev_K=int(settings.getenv("SOMABRAIN_CHEB_K", "30") or "30"),
+            diffusion_t=float(settings.diffusion_t or "0.5"),
+            alpha=float(settings.conf_alpha or "2.0"),
+            chebyshev_K=int(settings.cheb_k or "30"),
             lanczos_m=int(settings.getenv("SOMABRAIN_LANCZOS_M", "20") or "20"),
         ),
     )

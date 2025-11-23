@@ -120,23 +120,23 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
 def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     """Return the primary SomaBrain API base URL."""
     url = _first_non_empty(
-        settings.getenv("SOMABRAIN_API_URL"),
-        settings.getenv("SOMA_API_URL"),
-        settings.getenv("TEST_SERVER_URL"),
+        settings.api_url,
+        settings.api_url,
+        settings.api_url,
     )
     if url:
         return url
 
     host = _first_non_empty(
-        settings.getenv("SOMABRAIN_PUBLIC_HOST"), settings.getenv("SOMABRAIN_HOST")
+        settings.public_host, settings.public_host
     )
     port = _first_non_empty(
-        settings.getenv("SOMABRAIN_PUBLIC_PORT"), settings.getenv("SOMABRAIN_HOST_PORT")
+        settings.public_port, settings.public_port
     )
     scheme = (
         _first_non_empty(
-            settings.getenv("SOMABRAIN_API_SCHEME"),
-            settings.getenv("API_SCHEME"),
+            settings.api_scheme,
+            settings.api_scheme,
         )
         or "http"
     )
@@ -149,7 +149,7 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     """Return the Postgres DSN."""
     dsn = _first_non_empty(
         _from_settings("postgres_dsn"),
-        settings.getenv("SOMABRAIN_POSTGRES_DSN"),
+        settings.postgres_dsn,
         settings.getenv("DATABASE_URL"),
     )
     if dsn:

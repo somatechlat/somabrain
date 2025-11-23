@@ -41,7 +41,7 @@ def get_default_db_url() -> str:
         except Exception:
             url = None
     if not url:
-        url = (settings.getenv("SOMABRAIN_POSTGRES_DSN") or "").strip() or None
+        url = (settings.postgres_dsn or "").strip() or None
     if not url:
         raise RuntimeError(
             "storage.db: SOMABRAIN_POSTGRES_DSN not set (Postgres required)"

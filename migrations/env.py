@@ -17,7 +17,7 @@ def _get_url() -> str:
     not set, it falls back to the default DSN provided by
     ``somabrain.storage.db.get_default_db_url``.
     """
-    return settings.getenv("SOMABRAIN_POSTGRES_DSN") or db.get_default_db_url()
+    return settings.postgres_dsn or db.get_default_db_url()
 
 
 def run_migrations_offline() -> None:

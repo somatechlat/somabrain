@@ -127,7 +127,7 @@ def main() -> int:
     # 3️⃣ Auto‑generate required secrets if they are still empty. This keeps the
     #    script usable out‑of‑the‑box for local development while still enforcing
     #    that a value exists (security pattern: never run with empty auth secrets).
-    if not settings.getenv("SOMABRAIN_JWT_SECRET"):
+    if not settings.jwt_secret:
         # Generate a 32‑byte base64 secret – suitable for HMAC JWT signing.
         secret = (
             subprocess.check_output(["openssl", "rand", "-base64", "32"])
@@ -140,7 +140,7 @@ def main() -> int:
             f.write(f"\nSOMABRAIN_JWT_SECRET={secret}\n")
         print("🔑 Generated dev JWT secret and wrote to .env")
 
-    if not settings.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH"):
+    if not settings.jwt_public_key_path:
         # Create a minimal public key placeholder for dev. In a real deployment a
         # proper RSA/ECDSA key pair would be generated. Here we write a static
         # PEM header/footer to satisfy the import path.

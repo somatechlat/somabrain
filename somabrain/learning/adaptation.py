@@ -33,7 +33,7 @@ _TENANT_OVERRIDES_PATH: str | None = None
 
 def _load_tenant_overrides() -> dict[str, dict]:
     global _TENANT_OVERRIDES, _TENANT_OVERRIDES_PATH
-    path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+    path = settings.learning_tenants_file
     # Reload if cache empty or path changed
     if _TENANT_OVERRIDES is not None and path == _TENANT_OVERRIDES_PATH:
         return _TENANT_OVERRIDES
@@ -66,7 +66,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
                 overrides = {}
     # Optional: overrides via env JSON string
     if not overrides:
-        raw = settings.getenv("SOMABRAIN_LEARNING_TENANTS_OVERRIDES", "").strip()
+        raw = settings.learning_tenants_overrides.strip()
         if raw:
             try:
                 import json as _json
@@ -99,7 +99,7 @@ def _get_redis():
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL). Test doubles removed.
     """
 
-    require_backends = settings.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
+    require_backends = settings.require_external_backends
     require_backends = str(require_backends).strip().lower() in {
         "1",
         "true",
@@ -119,15 +119,13 @@ def _get_redis():
             if redis_url:
                 return redis.from_url(redis_url)
             # Legacy alternative to host/port variables without hard-coded defaults
-            redis_host = settings.getenv("SOMABRAIN_REDIS_HOST") or settings.getenv(
+            redis_host = settings.redis_host or settings.getenv(
                 "REDIS_HOST"
             )
-            redis_port = settings.getenv("SOMABRAIN_REDIS_PORT") or settings.getenv(
+            redis_port = settings.redis_port or settings.getenv(
                 "REDIS_PORT"
             )
-            redis_db = settings.getenv("SOMABRAIN_REDIS_DB") or settings.getenv(
-                "REDIS_DB", "0"
-            )
+            redis_db = settings.redis_db or settings.redis_db
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
@@ -334,7 +332,7 @@ class AdaptationEngine:
         if (
             self._redis
             and self._tenant_id
-            and str(settings.getenv("SOMABRAIN_ENABLE_LEARNING_STATE_PERSISTENCE", "0"))
+            and str(settings.enable_learning_state_persistence)
             .strip()
             .lower()
             in {"1", "true", "yes", "on"}
@@ -567,8 +565,8 @@ class AdaptationEngine:
             from somabrain import runtime_config as _rt
 
             # Env alternative for legacy tests
-            env_enable = settings.getenv("SOMABRAIN_TAU_DECAY_ENABLED")
-            env_rate = settings.getenv("SOMABRAIN_TAU_DECAY_RATE")
+            env_enable = settings.tau_decay_enabled
+            env_rate = settings.tau_decay_rate
             enable_tau_decay = (
                 (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
                 if env_enable is not None
@@ -597,7 +595,7 @@ class AdaptationEngine:
             from somabrain import runtime_config as _rt
 
             # Env alternatives for tests
-            env_mode = settings.getenv("SOMABRAIN_TAU_ANNEAL_MODE")
+            env_mode = settings.tau_anneal_mode
             env_rate = settings.getenv("SOMABRAIN_TAU_ANNEAL_RATE")
             env_step = settings.getenv("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL")
             env_tau_min = settings.getenv("SOMABRAIN_TAU_MIN")

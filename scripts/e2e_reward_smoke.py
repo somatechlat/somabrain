@@ -127,9 +127,7 @@ def main() -> int:
 
     # 1) POST a reward to the reward_producer
     port = int(
-        settings.getenv(
-            "REWARD_PRODUCER_PORT",
-            settings.getenv("REWARD_PRODUCER_HOST_PORT", "30183"),
+        settings.reward_producer_port,
         )
     )
     from common.config.settings import settings as _settings

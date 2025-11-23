@@ -19,15 +19,18 @@ HOST = settings.host
 
 # Be resilient to empty or invalid env values
 def _int_env(name: str, default: int) -> int:
-    # Use centralized Settings for environment variable access
-    raw = settings.getenv(name)
+    """Read an integer environment variable directly.
+
+    The legacy ``settings.getenv`` call has been removed. For simple numeric
+    configuration values that are not part of the central ``Settings`` model,
+    we read the raw environment variable via ``os.getenv`` and coerce it to an
+    ``int`` with a safe fallback to ``default``.
+    """
+    raw = os.getenv(name)
     try:
-        if raw is None:
+        if raw is None or raw.strip() == "":
             return default
-        raw = str(raw).strip()
-        if raw == "":
-            return default
-        return int(raw)
+        return int(raw.strip())
     except Exception:
         return default
 

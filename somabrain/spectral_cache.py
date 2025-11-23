@@ -25,7 +25,7 @@ import numpy as np
 
 
 def _default_cache_dir() -> Path:
-    env = settings.getenv("SOMABRAIN_SPECTRAL_CACHE_DIR")
+    env = settings.spectral_cache_dir
     if env:
         p = Path(env).expanduser()
     else:

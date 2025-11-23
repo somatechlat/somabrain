@@ -47,7 +47,7 @@ def main() -> None:
     # Use centralized Settings for environment variable access.
     parser.add_argument(
         "--base-url",
-        default=_settings.getenv("BASE_URL", _settings.api_url),
+        default=_settings.api_url,
         help="Base URL of the API.",
     )
     args = parser.parse_args()

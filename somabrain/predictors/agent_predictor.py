@@ -29,12 +29,14 @@ def _load_agent_operator() -> Tuple[callable, int]:
     variable is defined the function raises ``RuntimeError`` – this matches the
     VIBE rule of refusing to operate with implicit defaults.
     """
-    graph_path = settings.getenv("SOMABRAIN_GRAPH_FILE_AGENT") or settings.getenv(
-        "SOMABRAIN_GRAPH_FILE"
-    )
+    # VIBE rule: avoid indirect env var look‑ups; rely solely on the centralized Settings.
+    # The generic ``SOMABRAIN_GRAPH_FILE`` fallback is removed – the specific
+    # ``graph_file_agent`` field must be configured. If it is unset, raise an
+    # explicit error to fail fast.
+    graph_path = settings.graph_file_agent
     if not graph_path:
         raise RuntimeError(
-            "Agent predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_AGENT or SOMABRAIN_GRAPH_FILE."
+            "Agent predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_AGENT."
         )
     return load_operator_from_file(graph_path)
 

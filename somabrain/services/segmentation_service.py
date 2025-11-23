@@ -50,8 +50,8 @@ HMM_THRESHOLD = float(getattr(settings, "segment_hmm_threshold", 0.6))
 
 class SegmentationService:
     def __init__(self):
-        bs = settings.getenv("SOMA_KAFKA_BOOTSTRAP") or settings.getenv(
-            "SOMABRAIN_KAFKA_URL"
+        bs = getattr(settings, "kafka_bootstrap", None) or getattr(
+            settings, "kafka_bootstrap_servers", None
         )
         if not bs:
             raise RuntimeError(
@@ -63,14 +63,14 @@ class SegmentationService:
                 "SegmentationService requires PUBLISH_TOPIC for segments"
             )
         self.consumer = self._create_consumer()
-        self.tenant = settings.getenv("SOMABRAIN_TENANT_ID", "default")
+        self.tenant = getattr(settings, "tenant_id", "default")
         self.producer = make_producer()
         try:
             self._health_port = int(getattr(settings, "segment_health_port", 9016))
         except Exception:
             self._health_port = 9016
-        start_health = settings.getenv(
-            "SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1"
+        start_health = str(
+            getattr(settings, "segment_health_enable", "1")
         ).strip().lower() in {"1", "true", "yes", "on"}
         if start_health:
             self._health_thread = threading.Thread(

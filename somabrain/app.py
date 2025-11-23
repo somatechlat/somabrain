@@ -2030,7 +2030,7 @@ __ENFORCEMENT = BACKEND_ENFORCEMENT
 # running. We therefore disable enforcement when pytest is active. Checking both
 # ``sys.modules`` and the ``PYTEST_CURRENT_TEST`` environment variable covers the
 # import phase and the execution phase.
-if "pytest" in sys.modules or settings.getenv("PYTEST_CURRENT_TEST"):
+if "pytest" in sys.modules or settings.pytest_current_test:
     __ENFORCEMENT = False
 
 # Strict mode: no test-mode bypass. All required singletons must be present,

@@ -49,7 +49,7 @@ async def utility_guard(
             dev_mode = getattr(settings, "mode_normalized", "prod") == "dev"
         else:
 
-            dev_mode = _settings.getenv("SOMABRAIN_MODE", "").strip().lower() in (
+            dev_mode = _settings.mode.strip().lower() in (
                 "dev",
                 "development",
             )

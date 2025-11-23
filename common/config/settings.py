@@ -465,6 +465,35 @@ class Settings(BaseSettings):
         )
     )
 
+    # -----------------------------------------------------------------
+    # Additional optional configuration used by scripts / benchmarks.
+    # These fields replace direct ``settings.getenv`` calls throughout the
+    # repository, providing a single source of truth.
+    # -----------------------------------------------------------------
+    reward_producer_host_port: int = Field(
+        default_factory=lambda: _int_env("REWARD_PRODUCER_HOST_PORT", 30183)
+    )
+    jwt_secret: Optional[str] = Field(default=_str_env("SOMABRAIN_JWT_SECRET"))
+    jwt_public_key_path: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
+    )
+    host_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
+    )
+    base_url: str = Field(default=_str_env("BASE_URL", ""))
+
+    # -----------------------------------------------------------------
+    # Vault and Constitution related configuration (used by the
+    # `somabrain.constitution` package). These fields replace direct
+    # ``settings.getenv`` calls, centralising all environment variables.
+    # -----------------------------------------------------------------
+    vault_addr: str = Field(default=_str_env("VAULT_ADDR", ""))
+    vault_token: str = Field(default=_str_env("VAULT_TOKEN", ""))
+    vault_pubkey_path: str = Field(default=_str_env("SOMABRAIN_VAULT_PUBKEY_PATH", ""))
+    constitution_pubkeys: str = Field(default=_str_env("SOMABRAIN_CONSTITUTION_PUBKEYS", ""))
+    constitution_pubkey_path: str = Field(default=_str_env("SOMABRAIN_CONSTITUTION_PUBKEY_PATH", ""))
+    constitution_threshold: int = Field(default_factory=lambda: _int_env("SOMABRAIN_CONSTITUTION_THRESHOLD", 1))
+
     # Global learning/feature toggles ------------------------------------------------
     enable_advanced_learning: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_ADVANCED_LEARNING", True)
@@ -1286,23 +1315,13 @@ class Settings(BaseSettings):
         key = key.replace("-", "_")
         return key
 
-    # Generic getenv helper to centralise environment variable access.
-    # Allows callers to use ``os.getenv('VAR', default)`` without importing ``os`` directly.
-    def getenv(self, name: str, default: Optional[str] = None) -> Optional[str]:
-        """Retrieve a configuration value using the central Settings instance.
-
-        Order of resolution:
-        1) Try to map the env-style name to a Settings attribute and return it
-           if present (avoids scattered os.getenv reads).
-        2) Fall back to the actual environment for backward compatibility.
-        3) Return *default* if nothing is set.
-        """
-        attr = self._env_to_attr(name)
-        if hasattr(self, attr):
-            val = getattr(self, attr)
-            if val is not None:
-                return str(val) if isinstance(default, str) else val
-        return os.getenv(name, default)
+    # Hard block legacy access: all call sites must be updated to use typed
+    # Settings attributes. This will raise immediately wherever getenv is still
+    # called.
+    def getenv(self, name: str, default: Optional[str] = None) -> Optional[str]:  # pragma: no cover
+        raise RuntimeError(
+            f"settings.getenv('{name}') is prohibited. Replace with Settings attributes."
+        )
 
 
 # Export a singleton – mirrors the historic pattern used throughout the

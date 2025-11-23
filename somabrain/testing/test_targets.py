@@ -163,7 +163,7 @@ def _env_truthy(value: str | None) -> bool:
 def _default_target() -> TargetConfig:
     api_base = require(
         get_api_base_url(DEFAULT_API_URL)
-        or settings.getenv("SOMA_API_URL")
+        or settings.api_url
         or DEFAULT_API_URL,
         message="Set SOMABRAIN_API_URL (see .env) before running tests.",
     )
@@ -175,8 +175,8 @@ def _default_target() -> TargetConfig:
     )
     redis_url = (
         get_redis_url(DEFAULT_REDIS_URL)
-        or settings.getenv("SOMABRAIN_REDIS_URL")
-        or settings.getenv("REDIS_URL")
+        or settings.redis_url
+        or settings.redis_url
         or DEFAULT_REDIS_URL
     )
     return TargetConfig(
@@ -185,7 +185,7 @@ def _default_target() -> TargetConfig:
         memory_base=memory_base,
         redis_url=redis_url,
         tenant=settings.getenv("SOMABRAIN_DEFAULT_TENANT"),
-        postgres_dsn=settings.getenv("SOMABRAIN_POSTGRES_DSN"),
+        postgres_dsn=settings.postgres_dsn,
         bypass_lock_checks=_env_truthy(settings.getenv("SOMA_API_URL_LOCK_BYPASS")),
     )
 
