@@ -50,14 +50,14 @@ from somabrain.common.infra import assert_ready
 
 
 # Topic configuration constants (top-level, no extra indentation)
-    GLOBAL_FRAME_TOPIC = settings.getenv(
-        "SOMABRAIN_TOPIC_GLOBAL_FRAME",
-        getattr(settings, "topic_global_frame", "cog.global.frame"),
-    )
-    SEGMENTS_TOPIC = settings.getenv(
-        "SOMABRAIN_TOPIC_SEGMENTS",
-        getattr(settings, "topic_segments", "cog.segments"),
-    )
+GLOBAL_FRAME_TOPIC = settings.getenv(
+    "SOMABRAIN_TOPIC_GLOBAL_FRAME",
+    getattr(settings, "topic_global_frame", "cog.global.frame"),
+)
+SEGMENTS_TOPIC = settings.getenv(
+    "SOMABRAIN_TOPIC_SEGMENTS",
+    getattr(settings, "topic_segments", "cog.segments"),
+)
 
 
 @dataclass

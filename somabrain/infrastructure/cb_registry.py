@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 from common.config.settings import settings
-settings = settings
 
 _CB = CircuitBreaker(
     global_failure_threshold=settings.circuit_failure_threshold,

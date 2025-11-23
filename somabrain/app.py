@@ -2622,10 +2622,9 @@ async def diagnostics() -> dict:
     ext_req = settings.require_external_backends
     require_memory = settings.require_memory
 
-    # Presence of the shared Settings instance (always true in this codebase).
-    shared_present = True
-    shared_mem = settings.memory_http_endpoint
-
+    # Presence of the Settings instance (always true in this codebase).
+    # The explicit ``shared_*`` diagnostic fields have been removed in favor of
+    # using the direct ``settings`` attributes.
     return {
         "in_container": in_docker,
         "mode": mode or "",
@@ -2633,8 +2632,6 @@ async def diagnostics() -> dict:
         "require_memory": require_memory,
         "memory_endpoint": ep or "",
         "env_memory_endpoint": settings.memory_http_endpoint,
-        "shared_settings_present": shared_present,
-        "shared_settings_memory_endpoint": str(shared_mem or ""),
         "memory_token_present": bool(
             getattr(getattr(cfg, "http", object()), "token", None)
         ),

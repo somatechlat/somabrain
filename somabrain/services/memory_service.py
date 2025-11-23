@@ -15,7 +15,6 @@ from typing import Any, Iterable
 from somabrain.infrastructure.cb_registry import get_cb
 from ..infrastructure.tenant import tenant_label, resolve_namespace
 from common.config.settings import settings
-settings = settings
 from somabrain.journal import get_journal, JournalEvent
 
 

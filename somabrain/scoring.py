@@ -30,8 +30,8 @@ class ScorerWeights:
 def _gain_setting(name: str) -> float:
     """Fetch required float setting from shared settings or environment."""
     value = getattr(settings, f"scorer_{name}", None)
-        if value is not None:
-            return float(value)
+    if value is not None:
+        return float(value)
     env_name = f"SOMABRAIN_SCORER_{name.upper()}"
     env_val = settings.getenv(env_name)
     if env_val is not None:

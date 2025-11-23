@@ -22,7 +22,6 @@ except Exception as exc:  # pragma: no cover
     raise RuntimeError("confluent_kafka required for segmentation_service") from exc
 
 from common.config.settings import settings
-settings = settings
 from somabrain.segmentation.hmm import HMMParams, online_viterbi_probs, detect_boundaries
 from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
 import somabrain.metrics as metrics
