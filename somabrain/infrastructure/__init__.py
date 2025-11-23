@@ -55,21 +55,13 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
     """Return the Redis connection URL from environment or shared settings."""
     url = _first_non_empty(
         _from_settings("redis_url"),
-        settings.getenv("SOMABRAIN_REDIS_URL"),
-        settings.getenv("REDIS_URL"),
     )
     if url:
         return url
 
-    host = _first_non_empty(
-        settings.getenv("SOMABRAIN_REDIS_HOST"), settings.getenv("REDIS_HOST")
-    )
-    port = _first_non_empty(
-        settings.getenv("SOMABRAIN_REDIS_PORT"), settings.getenv("REDIS_PORT")
-    )
-    db = _first_non_empty(
-        settings.getenv("SOMABRAIN_REDIS_DB"), settings.getenv("REDIS_DB")
-    )
+    host = _from_settings("redis_host")
+    port = _from_settings("redis_port")
+    db = _from_settings("redis_db")
     if host and port:
         suffix = f"/{db}" if db else ""
         return f"redis://{host}:{port}{suffix}"
@@ -80,28 +72,13 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
     """Return the configured Memory HTTP endpoint."""
     endpoint = _first_non_empty(
         _from_settings("memory_http_endpoint"),
-        settings.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT"),
-        settings.getenv("SOMABRAIN_HTTP_ENDPOINT"),
-        settings.getenv("MEMORY_SERVICE_URL"),
     )
     if endpoint:
         return endpoint
 
-    host = _first_non_empty(
-        settings.getenv("SOMABRAIN_MEMORY_HTTP_HOST"),
-        settings.getenv("MEMORY_HTTP_HOST"),
-    )
-    port = _first_non_empty(
-        settings.getenv("SOMABRAIN_MEMORY_HTTP_PORT"),
-        settings.getenv("MEMORY_HTTP_PORT"),
-    )
-    scheme = (
-        _first_non_empty(
-            settings.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"),
-            settings.getenv("MEMORY_HTTP_SCHEME"),
-        )
-        or "http"
-    )
+    host = _from_settings("memory_http_host")
+    port = _from_settings("memory_http_port")
+    scheme = _from_settings("memory_http_scheme") or "http"
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default
@@ -111,26 +88,14 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
     """Return the Kafka bootstrap server list."""
     bootstrap = _first_non_empty(
         _from_settings("kafka_bootstrap_servers"),
-        settings.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"),
-        settings.getenv("SOMABRAIN_KAFKA_URL"),
-        settings.getenv("KAFKA_BOOTSTRAP_SERVERS"),
+        _from_settings("kafka_bootstrap"),
     )
     if bootstrap:
         return bootstrap
 
-    host = _first_non_empty(
-        settings.getenv("SOMABRAIN_KAFKA_HOST"), settings.getenv("KAFKA_HOST")
-    )
-    port = _first_non_empty(
-        settings.getenv("SOMABRAIN_KAFKA_PORT"), settings.getenv("KAFKA_PORT")
-    )
-    scheme = (
-        _first_non_empty(
-            settings.getenv("SOMABRAIN_KAFKA_SCHEME"),
-            settings.getenv("KAFKA_SCHEME"),
-        )
-        or "kafka"
-    )
+    host = _from_settings("kafka_host")
+    port = _from_settings("kafka_port")
+    scheme = _from_settings("kafka_scheme") or "kafka"
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default
@@ -140,25 +105,13 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
     """Return the Open Policy Agent endpoint."""
     url = _first_non_empty(
         _from_settings("opa_url"),
-        settings.getenv("SOMABRAIN_OPA_URL"),
-        settings.getenv("SOMA_OPA_URL"),
     )
     if url:
         return url
 
-    host = _first_non_empty(
-        settings.getenv("SOMABRAIN_OPA_HOST"), settings.getenv("OPA_HOST")
-    )
-    port = _first_non_empty(
-        settings.getenv("SOMABRAIN_OPA_PORT"), settings.getenv("OPA_PORT")
-    )
-    scheme = (
-        _first_non_empty(
-            settings.getenv("SOMABRAIN_OPA_SCHEME"),
-            settings.getenv("OPA_SCHEME"),
-        )
-        or "http"
-    )
+    host = _from_settings("opa_host")
+    port = _from_settings("opa_port")
+    scheme = _from_settings("opa_scheme") or "http"
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default

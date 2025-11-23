@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from common.config.settings import settings
+
 
 def _strip_scheme(url: str) -> str:
     try:
@@ -86,8 +88,8 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
 
 def check_from_env() -> dict[str, bool]:
     """Convenience: check Kafka/Postgres based on common SOMABRAIN_* envs."""
-    kafka_url = settings.getenv("SOMABRAIN_KAFKA_URL")
-    pg_dsn = settings.getenv("SOMABRAIN_POSTGRES_DSN")
+    kafka_url = getattr(settings, "kafka_bootstrap_servers", "")
+    pg_dsn = getattr(settings, "postgres_dsn", "")
     return {
         "kafka_ok": check_kafka(kafka_url),
         "postgres_ok": check_postgres(pg_dsn),

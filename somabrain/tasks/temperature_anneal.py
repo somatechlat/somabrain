@@ -26,8 +26,6 @@ from typing import Any
 
 from common.config.settings import settings
 
-settings = settings
-
 logger = logging.getLogger(__name__)
 
 

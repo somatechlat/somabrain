@@ -107,6 +107,65 @@ class Settings(BaseSettings):
             _str_env("SOMABRAIN_KAFKA_URL") or _str_env("KAFKA_BOOTSTRAP_SERVERS") or ""
         ).replace("kafka://", "")
     )
+    # Host/port overrides used by infra helpers
+    redis_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_REDIS_HOST") or _str_env("REDIS_HOST")
+    )
+    redis_port: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_REDIS_PORT", _int_env("REDIS_PORT", 6379))
+    )
+    redis_db: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_REDIS_DB", _int_env("REDIS_DB", 0))
+    )
+
+    memory_http_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_MEMORY_HTTP_HOST") or _str_env("MEMORY_HTTP_HOST")
+    )
+    memory_http_port: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_MEMORY_HTTP_PORT", _int_env("MEMORY_HTTP_PORT", 0))
+    )
+    memory_http_scheme: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_MEMORY_HTTP_SCHEME")
+        or _str_env("MEMORY_HTTP_SCHEME")
+        or "http"
+    )
+
+    kafka_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_KAFKA_HOST") or _str_env("KAFKA_HOST")
+    )
+    kafka_port: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_KAFKA_PORT", _int_env("KAFKA_PORT", 0))
+    )
+    kafka_scheme: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_KAFKA_SCHEME") or _str_env("KAFKA_SCHEME") or "kafka"
+    )
+
+    opa_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_OPA_HOST") or _str_env("OPA_HOST")
+    )
+    opa_port: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_OPA_PORT", _int_env("OPA_PORT", 0))
+    )
+    opa_scheme: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_OPA_SCHEME") or _str_env("OPA_SCHEME") or "http"
+    )
+
+    api_url: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_API_URL")
+        or _str_env("SOMA_API_URL")
+        or _str_env("TEST_SERVER_URL")
+    )
+    public_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_PUBLIC_HOST") or _str_env("SOMABRAIN_HOST")
+    )
+    public_port: Optional[int] = Field(
+        default=_int_env(
+            "SOMABRAIN_PUBLIC_PORT", _int_env("SOMABRAIN_HOST_PORT", 9696)
+        )
+    )
+    api_scheme: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_API_SCHEME") or _str_env("API_SCHEME")
+    )
 
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
@@ -213,20 +272,11 @@ class Settings(BaseSettings):
     # The older duplicated definitions are removed to avoid confusion.
 
     # Feature flags --------------------------------------------------------
-    force_full_stack: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_FORCE_FULL_STACK", True)
-    )
-    # By default the original code required external backends (Redis, Kafka, etc.)
-    # which made local unit‑test execution impossible without those services.
-    # Changing the default to ``False`` enables the in‑process fallbacks we added
-    # to ``WorkingMemoryBuffer`` while preserving the ability for a user to opt‑in
-    # to strict mode via the environment variable.
-    # External backend requirement – default to *False* for full‑local mode.
-    # The historic env var ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` is ignored
-    # here to allow developers to run without Redis/Kafka etc. Set to ``True``
-    # only when explicitly needed.
-    # In the current stack we explicitly require real backends (no shims),
-    # so honour SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS and default it to True.
+    # ``require_external_backends`` is the canonical flag that replaces the
+    # legacy ``force_full_stack``. It controls whether external services (Redis,
+    # Kafka, etc.) must be available. The default mirrors the historic behaviour
+    # of ``SOMABRAIN_FORCE_FULL_STACK`` (True) but can be overridden via the
+    # ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` environment variable.
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
@@ -246,6 +296,54 @@ class Settings(BaseSettings):
     )
     predictor_provider: str = Field(
         default=_str_env("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
+    )
+    # Feature/guard rails
+    block_ua_regex: str = Field(default=_str_env("SOMABRAIN_BLOCK_UA_REGEX", ""))
+    kill_switch: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_KILL_SWITCH", False)
+    )
+    allow_tiny_embedder: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_TINY_EMBEDDER", False)
+    )
+
+    # Kafka aliases / topics (keep compatibility with legacy env names)
+    kafka_bootstrap: str = Field(default_factory=lambda: _str_env("SOMA_KAFKA_BOOTSTRAP", ""))
+
+    # Learning / tenant config overrides
+    learning_tenants_overrides: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_LEARNING_TENANTS_OVERRIDES")
+    )
+    learning_tenants_config: Optional[str] = Field(
+        default=_str_env("LEARNING_TENANTS_CONFIG")
+    )
+
+    # Tau / entropy tuning knobs (used in learning.adaptation)
+    tau_decay_enabled: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_TAU_DECAY_ENABLED", False)
+    )
+    tau_decay_rate: Optional[float] = Field(
+        default=_float_env("SOMABRAIN_TAU_DECAY_RATE", 0.0)
+    )
+    tau_anneal_mode: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_TAU_ANNEAL_MODE")
+    )
+    tau_anneal_rate: Optional[float] = Field(
+        default=_float_env("SOMABRAIN_TAU_ANNEAL_RATE", 0.0)
+    )
+    tau_anneal_step_interval: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_TAU_ANNEAL_STEP_INTERVAL", 0)
+    )
+    tau_min: Optional[float] = Field(default=_float_env("SOMABRAIN_TAU_MIN", 0.0))
+    entropy_cap_enabled: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ENTROPY_CAP_ENABLED", False)
+    )
+    entropy_cap: Optional[float] = Field(
+        default=_float_env("SOMABRAIN_ENTROPY_CAP", 0.0)
+    )
+
+    # OPA behaviour knobs
+    opa_allow_on_error: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_OPA_ALLOW_ON_ERROR", False)
     )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)
@@ -295,8 +393,12 @@ class Settings(BaseSettings):
     )
 
     # OPA -----------------------------------------------------------------------------
+    # The single canonical OPA endpoint field. It falls back to the historic
+    # OPA endpoint is fixed to the internal service address. If the environment
+    # variable ``SOMABRAIN_OPA_URL`` is unset or empty, fall back to the internal
+    # URL. This prevents an empty string from overriding the constant.
     opa_url: str = Field(
-        default=_str_env("SOMABRAIN_OPA_URL") or _str_env("SOMA_OPA_URL") or ""
+        default_factory=lambda: _str_env("SOMABRAIN_OPA_URL") or "http://opa:8181"
     )
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
@@ -1165,11 +1267,49 @@ class Settings(BaseSettings):
         "extra": "allow",
     }
 
+    # -----------------------------------------------------------------
+    # Helpers for legacy call sites
+    # -----------------------------------------------------------------
+    def _env_to_attr(self, name: str) -> str:
+        """Best-effort mapping from env var name to Settings attribute.
+
+        Strips common prefixes (SOMABRAIN_, SOMA_, OPA_) and lowercases /
+        converts to snake_case to align with field names. This keeps legacy
+        ``settings.getenv("SOMABRAIN_X")`` call sites functional while the code
+        base is migrated to direct attribute access.
+        """
+        key = name.lower()
+        for prefix in ("somabrain_", "soma_", "opa_"):
+            if key.startswith(prefix):
+                key = key[len(prefix) :]
+                break
+        key = key.replace("-", "_")
+        return key
+
+    # Generic getenv helper to centralise environment variable access.
+    # Allows callers to use ``os.getenv('VAR', default)`` without importing ``os`` directly.
+    def getenv(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        """Retrieve a configuration value using the central Settings instance.
+
+        Order of resolution:
+        1) Try to map the env-style name to a Settings attribute and return it
+           if present (avoids scattered os.getenv reads).
+        2) Fall back to the actual environment for backward compatibility.
+        3) Return *default* if nothing is set.
+        """
+        attr = self._env_to_attr(name)
+        if hasattr(self, attr):
+            val = getattr(self, attr)
+            if val is not None:
+                return str(val) if isinstance(default, str) else val
+        return os.getenv(name, default)
+
 
 # Export a singleton – mirrors the historic pattern used throughout the
 # codebase (``settings = Settings()``).
 settings = Settings()
 
 # Legacy compatibility shim removed. Direct ``settings.getenv`` calls should now be
-# replaced with ``settings.getenv`` or appropriate ``Settings`` fields throughout
-# the codebase to ensure a single source of truth for configuration.
+# replaced with ``settings`` attributes throughout the codebase to ensure a single
+# source of truth. Until migration is complete, ``getenv`` maps env-style names to
+# Settings attributes to keep behaviour centralised.

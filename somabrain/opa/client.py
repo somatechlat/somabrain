@@ -9,8 +9,6 @@ LOGGER = logging.getLogger("somabrain.opa")
 
 try:
     from common.config.settings import settings
-
-    settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     settings = None  # type: ignore
 
@@ -43,6 +41,8 @@ class OPAClient:
     """
 
     def __init__(self, policy_path: str | None = None) -> None:
+        # Use the canonical Settings field for the OPA request timeout.
+        # If the Settings instance is unavailable (unlikely), fall back to 2 seconds.
         if settings is not None:
             try:
                 self.timeout = float(
@@ -50,25 +50,18 @@ class OPAClient:
                 )
             except Exception:
                 self.timeout = 2.0
-            # Policy path is derived from mode bundle when not explicitly provided
         else:
-            self.timeout = float(settings.getenv("SOMA_OPA_TIMEOUT", "2"))
+            self.timeout = 2.0
 
+        # Resolve the OPA endpoint via the centralized ``get_opa_url`` helper.
+        # This function already respects the ``SOMABRAIN_OPA_URL`` environment
+        # variable and returns ``None`` when the service is not configured.
         self.base_url = get_opa_url()
         if not self.base_url:
-            # Legacy alternative for dev shells without explicit configuration.
-            # Prefer explicit host port envs, defaulting to 30004 to align
-            # with dev stack mapping.
-            host_port = (
-                settings.getenv("OPA_HOST_PORT")
-                or settings.getenv("OPA_PORT")
-                or "30004"
-            )
-            self.base_url = (
-                settings.getenv("SOMA_OPA_URL")
-                or settings.getenv("SOMABRAIN_OPA_FALLBACK")
-                or f"http://127.0.0.1:{host_port}"
-            )
+            # In a strict deployment the OPA service must be reachable; raise a
+            # clear error rather than silently falling back to a dev‑only URL.
+            raise RuntimeError("OPA URL is not configured; set SOMABRAIN_OPA_URL")
+
         effective_path = (policy_path or _policy_path_for_mode()).rstrip("/")
         self.policy_path = effective_path
         self.session = requests.Session()
@@ -95,10 +88,7 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            allow_override = settings.getenv("SOMABRAIN_OPA_ALLOW_ON_ERROR") == "1"
-            if allow_override:
-                LOGGER.warning("OPA evaluation failed (override allow): %s", e)
-                return True
+            # VIBE rule: on evaluation failure, deny the request (fail‑closed).
             LOGGER.error("OPA evaluation failed (deny): %s", e)
             return False
 

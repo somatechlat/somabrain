@@ -27,8 +27,6 @@ from somabrain.prediction import MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
 from common.config.settings import settings
 
-settings = settings
-
 try:
     from confluent_kafka import Consumer as CKConsumer, KafkaException
 except ImportError as e:
@@ -36,8 +34,6 @@ except ImportError as e:
 
 try:
     from common.config.settings import settings
-
-    settings = settings
 except ImportError:
     settings = None
 

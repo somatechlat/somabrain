@@ -33,8 +33,8 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 opa_url = None
         else:
             opa_url = None
-        if not opa_url:
-            opa_url = settings.getenv("SOMA_OPA_URL")
+        # No legacy fallback – rely solely on the canonical ``opa_url`` field.
+        # If ``opa_url`` is empty, the middleware will treat OPA as unavailable.
         # Build minimal input payload for OPA – include request method, path and JSON body if any
         input_payload = {
             "method": request.method,

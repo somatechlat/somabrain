@@ -8,7 +8,7 @@ try:
     # Shared settings loader; optional in some runtimes.
     from common.config.settings import settings
 
-    settings = settings  # type: ignore
+    # The Settings singleton is imported above; no need for a redundant alias.
 except Exception:  # pragma: no cover - optional dependency in lean environments
     settings = None  # type: ignore
 
@@ -161,8 +161,6 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
 
     dsn = _first_non_empty(
         _from_settings("postgres_dsn"),
-        settings.getenv("SOMABRAIN_POSTGRES_DSN"),
-        settings.getenv("DATABASE_URL"),
     )
     if dsn:
         return dsn
