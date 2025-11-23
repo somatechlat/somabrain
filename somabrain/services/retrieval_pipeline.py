@@ -102,7 +102,11 @@ async def run_retrieval_pipeline(
             payload = {"task": key}
         candidates.append(
             _candidate_from_payload(
-                payload, retriever="exact", key=key, coord=_safe_coord_from_str(coord) or None, score=score
+                payload,
+                retriever="exact",
+                key=key,
+                coord=_safe_coord_from_str(coord) or None,
+                score=score,
             )
         )
     elif coord:
@@ -122,7 +126,9 @@ async def run_retrieval_pipeline(
             try:
                 q_vec = embedder.embed(req.query)
                 # Compare against any memory we can fetch
-                hits = memsvc.client().recall(req.query, top_k=req.top_k or 3, universe=universe)
+                hits = memsvc.client().recall(
+                    req.query, top_k=req.top_k or 3, universe=universe
+                )
                 for h in hits:
                     pvec = embedder.embed(str(h.get("payload", {})))
                     score = max(score, float(scorer.score(q_vec, pvec)))

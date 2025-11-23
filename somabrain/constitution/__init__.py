@@ -228,7 +228,9 @@ class ConstitutionEngine:
 
         Returns the signature encoded as hex string, or None on failure.
         """
-        priv_path = private_key_path or settings.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
+        priv_path = private_key_path or settings.getenv(
+            "SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"
+        )
         if not priv_path:
             LOGGER.debug("No private key path configured for constitution signing")
             return None

@@ -22,6 +22,7 @@ import pstats
 import io
 import os
 
+
 def _hit_endpoint(base_url: str, path: str) -> None:
     try:
         resp = httpx.get(f"{base_url}{path}", timeout=5.0)
@@ -30,12 +31,25 @@ def _hit_endpoint(base_url: str, path: str) -> None:
         # In CI we don't fail the profiling run on occasional request errors.
         print(f"Request to {path} failed: {exc}")
 
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run a simple profiling load against the API.")
-    parser.add_argument("--duration", type=int, default=30, help="Duration in seconds to run the load loop.")
+    parser = argparse.ArgumentParser(
+        description="Run a simple profiling load against the API."
+    )
+    parser.add_argument(
+        "--duration",
+        type=int,
+        default=30,
+        help="Duration in seconds to run the load loop.",
+    )
     from common.config.settings import settings as _settings
+
     # Use centralized Settings for environment variable access.
-    parser.add_argument("--base-url", default=_settings.getenv("BASE_URL", _settings.api_url), help="Base URL of the API.")
+    parser.add_argument(
+        "--base-url",
+        default=_settings.getenv("BASE_URL", _settings.api_url),
+        help="Base URL of the API.",
+    )
     args = parser.parse_args()
 
     end_time = time.time() + args.duration
@@ -56,6 +70,7 @@ def main() -> None:
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report)
     print(f"Profiling report written to {report_path}")
+
 
 if __name__ == "__main__":
     main()

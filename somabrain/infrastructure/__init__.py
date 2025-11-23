@@ -24,6 +24,7 @@ from typing import Optional
 # Helper implementations – duplicated from ``somabrain/infrastructure.py``
 # ---------------------------------------------------------------------------
 
+
 def _clean(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
@@ -60,9 +61,15 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
     if url:
         return url
 
-    host = _first_non_empty(settings.getenv("SOMABRAIN_REDIS_HOST"), settings.getenv("REDIS_HOST"))
-    port = _first_non_empty(settings.getenv("SOMABRAIN_REDIS_PORT"), settings.getenv("REDIS_PORT"))
-    db = _first_non_empty(settings.getenv("SOMABRAIN_REDIS_DB"), settings.getenv("REDIS_DB"))
+    host = _first_non_empty(
+        settings.getenv("SOMABRAIN_REDIS_HOST"), settings.getenv("REDIS_HOST")
+    )
+    port = _first_non_empty(
+        settings.getenv("SOMABRAIN_REDIS_PORT"), settings.getenv("REDIS_PORT")
+    )
+    db = _first_non_empty(
+        settings.getenv("SOMABRAIN_REDIS_DB"), settings.getenv("REDIS_DB")
+    )
     if host and port:
         suffix = f"/{db}" if db else ""
         return f"redis://{host}:{port}{suffix}"
@@ -80,11 +87,21 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
     if endpoint:
         return endpoint
 
-    host = _first_non_empty(settings.getenv("SOMABRAIN_MEMORY_HTTP_HOST"), settings.getenv("MEMORY_HTTP_HOST"))
-    port = _first_non_empty(settings.getenv("SOMABRAIN_MEMORY_HTTP_PORT"), settings.getenv("MEMORY_HTTP_PORT"))
-    scheme = _first_non_empty(
-        settings.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"), settings.getenv("MEMORY_HTTP_SCHEME"),
-    ) or "http"
+    host = _first_non_empty(
+        settings.getenv("SOMABRAIN_MEMORY_HTTP_HOST"),
+        settings.getenv("MEMORY_HTTP_HOST"),
+    )
+    port = _first_non_empty(
+        settings.getenv("SOMABRAIN_MEMORY_HTTP_PORT"),
+        settings.getenv("MEMORY_HTTP_PORT"),
+    )
+    scheme = (
+        _first_non_empty(
+            settings.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"),
+            settings.getenv("MEMORY_HTTP_SCHEME"),
+        )
+        or "http"
+    )
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default
@@ -101,11 +118,19 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
     if bootstrap:
         return bootstrap
 
-    host = _first_non_empty(settings.getenv("SOMABRAIN_KAFKA_HOST"), settings.getenv("KAFKA_HOST"))
-    port = _first_non_empty(settings.getenv("SOMABRAIN_KAFKA_PORT"), settings.getenv("KAFKA_PORT"))
-    scheme = _first_non_empty(
-        settings.getenv("SOMABRAIN_KAFKA_SCHEME"), settings.getenv("KAFKA_SCHEME"),
-    ) or "kafka"
+    host = _first_non_empty(
+        settings.getenv("SOMABRAIN_KAFKA_HOST"), settings.getenv("KAFKA_HOST")
+    )
+    port = _first_non_empty(
+        settings.getenv("SOMABRAIN_KAFKA_PORT"), settings.getenv("KAFKA_PORT")
+    )
+    scheme = (
+        _first_non_empty(
+            settings.getenv("SOMABRAIN_KAFKA_SCHEME"),
+            settings.getenv("KAFKA_SCHEME"),
+        )
+        or "kafka"
+    )
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default
@@ -121,11 +146,19 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
     if url:
         return url
 
-    host = _first_non_empty(settings.getenv("SOMABRAIN_OPA_HOST"), settings.getenv("OPA_HOST"))
-    port = _first_non_empty(settings.getenv("SOMABRAIN_OPA_PORT"), settings.getenv("OPA_PORT"))
-    scheme = _first_non_empty(
-        settings.getenv("SOMABRAIN_OPA_SCHEME"), settings.getenv("OPA_SCHEME"),
-    ) or "http"
+    host = _first_non_empty(
+        settings.getenv("SOMABRAIN_OPA_HOST"), settings.getenv("OPA_HOST")
+    )
+    port = _first_non_empty(
+        settings.getenv("SOMABRAIN_OPA_PORT"), settings.getenv("OPA_PORT")
+    )
+    scheme = (
+        _first_non_empty(
+            settings.getenv("SOMABRAIN_OPA_SCHEME"),
+            settings.getenv("OPA_SCHEME"),
+        )
+        or "http"
+    )
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default
@@ -141,11 +174,19 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     if url:
         return url
 
-    host = _first_non_empty(settings.getenv("SOMABRAIN_PUBLIC_HOST"), settings.getenv("SOMABRAIN_HOST"))
-    port = _first_non_empty(settings.getenv("SOMABRAIN_PUBLIC_PORT"), settings.getenv("SOMABRAIN_HOST_PORT"))
-    scheme = _first_non_empty(
-        settings.getenv("SOMABRAIN_API_SCHEME"), settings.getenv("API_SCHEME"),
-    ) or "http"
+    host = _first_non_empty(
+        settings.getenv("SOMABRAIN_PUBLIC_HOST"), settings.getenv("SOMABRAIN_HOST")
+    )
+    port = _first_non_empty(
+        settings.getenv("SOMABRAIN_PUBLIC_PORT"), settings.getenv("SOMABRAIN_HOST_PORT")
+    )
+    scheme = (
+        _first_non_empty(
+            settings.getenv("SOMABRAIN_API_SCHEME"),
+            settings.getenv("API_SCHEME"),
+        )
+        or "http"
+    )
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default

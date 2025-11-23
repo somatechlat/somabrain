@@ -37,6 +37,8 @@ def plan_hit_rate(items: List[str], truths: List[str]) -> float:
 
 
 from common.config.settings import settings
+
+
 def run(base: str = None, tenant: str = "benchdev") -> Dict:
     headers = {"Content-Type": "application/json", "X-Tenant-ID": tenant}
     client = httpx.Client()

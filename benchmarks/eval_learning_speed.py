@@ -133,6 +133,7 @@ def main():
         description="Evaluate learning speed (precision@1 vs N)"
     )
     from common.config.settings import settings
+
     ap.add_argument(
         "--base", default=os.environ.get("SOMABRAIN_BASE", settings.api_url)
     )

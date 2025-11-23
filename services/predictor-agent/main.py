@@ -28,6 +28,7 @@ SOMA_TOPIC = TOPICS["soma_agent"]
 def _bootstrap() -> str:
     # Use the centralized Settings singleton for the Kafka bootstrap URL.
     from common.config.settings import settings as _settings  # type: ignore
+
     url = _settings.kafka_bootstrap_servers
     if not url:
         raise RuntimeError(

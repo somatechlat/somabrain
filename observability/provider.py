@@ -43,7 +43,7 @@ def init_tracing(service_name: Optional[str] = None) -> None:
     svc = (
         service_name
         or settings.getenv("OTEL_SERVICE_NAME")
-    or settings.getenv("SERVICE_NAME")
+        or settings.getenv("SERVICE_NAME")
         or ""
     ).strip()
     if not svc:

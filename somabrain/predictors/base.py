@@ -13,7 +13,11 @@ import os
 def _select_heat_method() -> str:
     import os
 
-    m = (settings.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev").strip().lower()
+    m = (
+        (settings.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev")
+        .strip()
+        .lower()
+    )
     return m if m in ("chebyshev", "lanczos") else "chebyshev"
 
 

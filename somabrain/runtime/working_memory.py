@@ -76,7 +76,9 @@ class WorkingMemoryBuffer:
             pipe.execute()
         else:
             # Fallback to in‑process buffer (deque) when Redis is not used.
-            dq: Deque[Dict] = self._local.setdefault(session_id, collections.deque(maxlen=self._max_items))
+            dq: Deque[Dict] = self._local.setdefault(
+                session_id, collections.deque(maxlen=self._max_items)
+            )
             dq.append(item)
 
     def snapshot(self, session_id: str) -> List[Dict]:

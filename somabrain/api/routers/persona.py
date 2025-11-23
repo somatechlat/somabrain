@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 from fastapi import APIRouter, Header, HTTPException, Request, Response
 
 from somabrain.auth import require_auth
+
 # Unified configuration and tenant management
 from common.config.settings import settings
 from somabrain.schemas import Persona

@@ -99,17 +99,16 @@ class IntegratorHub:
             alpha = getattr(ss, "predictor_alpha", 2.0)
         self.alpha = float(alpha)
         self.domains = domains or ["state", "agent", "action"]
-        self._initial_temperature = float(getattr(ss, "integrator_softmax_temperature", 1.0))
+        self._initial_temperature = float(
+            getattr(ss, "integrator_softmax_temperature", 1.0)
+        )
         self._initial_enable_flag = bool(getattr(ss, "enable_cog_threads", False))
         self._initial_opa_url = (getattr(ss, "opa_url", "") or "").strip()
         # Determine Kafka bootstrap configuration. If external backends are not required,
         # we avoid configuring Kafka to prevent container crashes in local environments.
         if getattr(ss, "require_external_backends", False):
             # Use central settings for Kafka bootstrap; fallback to provided arg.
-            self.bootstrap = (
-                bootstrap
-                or ss.kafka_bootstrap_servers
-            )
+            self.bootstrap = bootstrap or ss.kafka_bootstrap_servers
         else:
             # When external backends are disabled, skip Kafka bootstrap configuration.
             self.bootstrap = None
@@ -120,7 +119,9 @@ class IntegratorHub:
             "agent": getattr(ss, "topic_agent_updates", "cog.agent.updates"),
             "action": getattr(ss, "topic_action_updates", "cog.action.updates"),
         }
-        self.topic_global = topic_global or getattr(ss, "topic_global_frame", "cog.global.frame")
+        self.topic_global = topic_global or getattr(
+            ss, "topic_global_frame", "cog.global.frame"
+        )
         self.consumer = None
         self.producer = producer
         # Initialise Kafka consumer/producer only when I/O is required and a bootstrap server is configured.
@@ -195,6 +196,7 @@ class IntegratorHub:
 
     def _effective_cfg(self) -> Dict[str, float | bool | str]:
         """Load current config, allowing runtime overrides via runtime_config."""
+
         def _get_bool(key: str, default: bool) -> bool:
             try:
                 return runtime_config.get_bool(key, default)
@@ -213,7 +215,9 @@ class IntegratorHub:
             except Exception:
                 return default
 
-        alpha = _get_float("predictor_alpha", getattr(settings, "predictor_alpha", self.alpha))
+        alpha = _get_float(
+            "predictor_alpha", getattr(settings, "predictor_alpha", self.alpha)
+        )
         temp = _get_float("integrator_temperature", self._initial_temperature)
         flag = _get_bool("enable_cog_threads", self._initial_enable_flag)
         opa_url = _get_str("opa_url", self._initial_opa_url).strip()
@@ -278,7 +282,9 @@ class IntegratorHub:
                 "election_time": now,
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
-                "entropy_cap": float(getattr(settings, "integrator_entropy_cap", 0.0) or 0.0),
+                "entropy_cap": float(
+                    getattr(settings, "integrator_entropy_cap", 0.0) or 0.0
+                ),
                 "current_entropy": float(entropy),
                 "dwell_satisfied": True,
                 "transition_allowed": True,
@@ -294,7 +300,9 @@ class IntegratorHub:
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
-                if not self._opa_request(opa_url, {"leader": leader, "weights": weights}):
+                if not self._opa_request(
+                    opa_url, {"leader": leader, "weights": weights}
+                ):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
             except Exception:
@@ -345,6 +353,7 @@ class IntegratorHub:
                 self.consumer.commit(msg)
             except Exception as exc:
                 raise RuntimeError(f"Failed to process predictor update: {exc}")
+
 
 # ---------------------------------------------------------------------------
 # Module entry point

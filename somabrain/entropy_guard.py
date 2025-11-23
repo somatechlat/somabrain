@@ -39,7 +39,9 @@ def get_entropy_cap() -> float:
         raise RuntimeError(f"Invalid entropy_cap value: {cap}") from exc
 
 
-def should_switch_leader(current_entropy: float, candidate: Optional[str] = None) -> bool:
+def should_switch_leader(
+    current_entropy: float, candidate: Optional[str] = None
+) -> bool:
     """Determine whether the leader should be switched.
 
     Parameters
@@ -63,7 +65,5 @@ def should_switch_leader(current_entropy: float, candidate: Optional[str] = None
             cap,
         )
         return True
-    logger.debug(
-        "Entropy %s within cap %s – no leader change.", current_entropy, cap
-    )
+    logger.debug("Entropy %s within cap %s – no leader change.", current_entropy, cap)
     return False

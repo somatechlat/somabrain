@@ -27,6 +27,7 @@ import numpy as np
 from somabrain.prediction import MahalanobisPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
 from common.config.settings import settings
+
 settings = settings
 
 try:
@@ -36,6 +37,7 @@ except ImportError as e:
 
 try:
     from common.config.settings import settings
+
     settings = settings
 except ImportError:
     settings = None
@@ -75,7 +77,7 @@ class StatePredictorService:
             "auto.offset.reset": "latest",
             "enable.auto.commit": True,
         }
-        
+
         try:
             consumer = CKConsumer(config)
             consumer.subscribe([CONSUME_TOPIC])
@@ -83,31 +85,33 @@ class StatePredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_state_vector(self, message_data: Dict[str, Any]) -> Optional[np.ndarray]:
+    def _extract_state_vector(
+        self, message_data: Dict[str, Any]
+    ) -> Optional[np.ndarray]:
         """Extract state vector from global frame message."""
         try:
             # Assuming global frame contains a 'state_vector' field
             vector_data = message_data.get("state_vector")
             if vector_data is None:
                 return None
-            
+
             if isinstance(vector_data, list):
                 return np.array(vector_data, dtype=np.float32)
             elif isinstance(vector_data, dict):
                 # Handle embedded vector format
                 values = vector_data.get("values", [])
                 return np.array(values, dtype=np.float32)
-            
+
             return None
         except Exception as e:
             logger.error(f"Failed to extract state vector: {e}")
             return None
 
     def _create_predictor_update(
-        self, 
-        prediction_result: PredictionResult, 
+        self,
+        prediction_result: PredictionResult,
         latency_ms: float,
-        domain: str = "state"
+        domain: str = "state",
     ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
         err = float(prediction_result.error)
@@ -137,13 +141,12 @@ class StatePredictorService:
             # For state prediction, we predict the next state based on current state
             # Using the same vector as both expected and actual for error calculation
             prediction_result = self.predictor.predict_and_compare(
-                expected_vec=state_vector,
-                actual_vec=state_vector
+                expected_vec=state_vector, actual_vec=state_vector
             )
         except Exception as e:
             logger.error(f"Prediction failed: {e}")
             raise RuntimeError(f"State prediction failed: {e}")
-        
+
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
 
@@ -156,7 +159,9 @@ class StatePredictorService:
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
-            logger.debug(f"Published state predictor update: error={prediction_result.error:.4f}")
+            logger.debug(
+                f"Published state predictor update: error={prediction_result.error:.4f}"
+            )
         except Exception as e:
             logger.error(f"Failed to publish predictor update: {e}")
             raise RuntimeError(f"Failed to publish predictor update: {e}")
@@ -164,7 +169,7 @@ class StatePredictorService:
     async def run(self) -> None:
         """Main service loop."""
         logger.info("Starting State Predictor Service")
-        
+
         try:
             while True:
                 try:
@@ -172,23 +177,23 @@ class StatePredictorService:
                     msg = self.consumer.poll(timeout=1.0)
                     if msg is None:
                         continue
-                    
+
                     if msg.error():
                         if msg.error().code() == KafkaException._PARTITION_EOF:
                             continue
                         else:
                             raise RuntimeError(f"Kafka consumer error: {msg.error()}")
-                    
+
                     # Decode message (assuming JSON for now, will be Avro when schema ready)
                     try:
-                        message_data = json.loads(msg.value().decode('utf-8'))
+                        message_data = json.loads(msg.value().decode("utf-8"))
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to decode message as JSON: {e}")
                         continue
-                    
+
                     # Process the message
                     await self.process_message(message_data)
-                    
+
                 except KeyboardInterrupt:
                     logger.info("Received shutdown signal")
                     break
@@ -196,7 +201,7 @@ class StatePredictorService:
                     logger.error(f"Error processing message: {e}")
                     # Strict mode: re-raise errors instead of continuing
                     raise
-                    
+
         finally:
             logger.info("Shutting down State Predictor Service")
             self.consumer.close()

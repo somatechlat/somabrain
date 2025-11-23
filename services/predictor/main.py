@@ -142,6 +142,7 @@ def _get_runtime():
     """
     try:
         from somabrain import runtime_config as _rt  # type: ignore
+
         return _rt
     except Exception as exc:  # pragma: no cover
         # Propagate a meaningful error – the caller (run_forever) will abort.
@@ -249,12 +250,16 @@ def run_forever() -> None:  # pragma: no cover
                         try:
                             counters[domain].inc()
                         except Exception as exc:
-                            logger.exception("Failed to increment emitted metric for %s", domain)
+                            logger.exception(
+                                "Failed to increment emitted metric for %s", domain
+                            )
                     if err_hist is not None:
                         try:
                             err_hist.labels(domain=domain).observe(float(delta_error))
                         except Exception as exc:
-                            logger.exception("Failed to record error histogram for %s", domain)
+                            logger.exception(
+                                "Failed to record error histogram for %s", domain
+                            )
                     if soma_compat:
                         try:
                             soma_rec = {
@@ -269,7 +274,10 @@ def run_forever() -> None:  # pragma: no cover
                                 value=encode(soma_rec, soma_schema),
                             )
                         except Exception as exc:
-                            logger.exception("Failed to emit soma-compatible belief update for %s", domain)
+                            logger.exception(
+                                "Failed to emit soma-compatible belief update for %s",
+                                domain,
+                            )
                     next_ev = build_next_event(
                         domain, tenant, float(confidence), next_state
                     )

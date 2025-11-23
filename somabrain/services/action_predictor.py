@@ -26,8 +26,10 @@ import numpy as np
 
 from somabrain.prediction import LLMPredictor, PredictionResult
 from somabrain.common.kafka import encode, make_producer
+
 try:
     from common.config.settings import settings
+
     settings = settings
 except ImportError:
     settings = None
@@ -56,7 +58,9 @@ class ActionPredictorService:
         # Use centralized Settings for LLM endpoint; Settings provides default handling
         llm_endpoint = getattr(settings, "llm_endpoint", None)
         if not llm_endpoint:
-            raise RuntimeError("LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)")
+            raise RuntimeError(
+                "LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)"
+            )
 
         self.predictor = LLMPredictor(endpoint=llm_endpoint)
         self.producer = make_producer()
@@ -79,7 +83,7 @@ class ActionPredictorService:
             "auto.offset.reset": "latest",
             "enable.auto.commit": True,
         }
-        
+
         try:
             consumer = CKConsumer(config)
             consumer.subscribe([CONSUME_TOPIC])
@@ -87,23 +91,25 @@ class ActionPredictorService:
         except Exception as e:
             raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-    def _extract_action_vector(self, message_data: Dict[str, Any]) -> Optional[np.ndarray]:
+    def _extract_action_vector(
+        self, message_data: Dict[str, Any]
+    ) -> Optional[np.ndarray]:
         """Extract action vector from next event message."""
         try:
             # Assuming next events contain action-related predictions
             action_data = message_data.get("action_prediction")
-            
+
             if action_data is None:
                 # Try alternative field names
                 action_data = (
-                    message_data.get("predicted_action") or
-                    message_data.get("action_vector") or
-                    message_data.get("next_action")
+                    message_data.get("predicted_action")
+                    or message_data.get("action_vector")
+                    or message_data.get("next_action")
                 )
-            
+
             if action_data is None:
                 return None
-            
+
             if isinstance(action_data, list):
                 return np.array(action_data, dtype=np.float32)
             elif isinstance(action_data, dict):
@@ -113,24 +119,25 @@ class ActionPredictorService:
             elif isinstance(action_data, str):
                 # Convert text action to simple vector representation
                 # This is a simplified approach - in practice would use proper embeddings
-                action_bytes = action_data.encode('utf-8')
+                action_bytes = action_data.encode("utf-8")
                 # Create fixed-size vector from hash
                 import hashlib
+
                 hash_obj = hashlib.md5(action_bytes)
                 hash_bytes = hash_obj.digest()
                 vector = np.frombuffer(hash_bytes, dtype=np.uint8).astype(np.float32)
                 return vector / 255.0  # Normalize to [0,1]
-            
+
             return None
         except Exception as e:
             logger.error(f"Failed to extract action vector: {e}")
             return None
 
     def _create_predictor_update(
-        self, 
-        prediction_result: PredictionResult, 
+        self,
+        prediction_result: PredictionResult,
         latency_ms: float,
-        domain: str = "action"
+        domain: str = "action",
     ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
         err = float(prediction_result.error)
@@ -159,13 +166,12 @@ class ActionPredictorService:
         try:
             # For action prediction, we predict next actions based on current context
             prediction_result = self.predictor.predict_and_compare(
-                expected_vec=action_vector,
-                actual_vec=action_vector
+                expected_vec=action_vector, actual_vec=action_vector
             )
         except Exception as e:
             logger.error(f"Action prediction failed: {e}")
             raise RuntimeError(f"Action prediction failed: {e}")
-        
+
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
 
@@ -178,7 +184,9 @@ class ActionPredictorService:
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
-            logger.debug(f"Published action predictor update: error={prediction_result.error:.4f}")
+            logger.debug(
+                f"Published action predictor update: error={prediction_result.error:.4f}"
+            )
         except Exception as e:
             logger.error(f"Failed to publish predictor update: {e}")
             raise RuntimeError(f"Failed to publish predictor update: {e}")
@@ -186,7 +194,7 @@ class ActionPredictorService:
     async def run(self) -> None:
         """Main service loop."""
         logger.info("Starting Action Predictor Service")
-        
+
         try:
             while True:
                 try:
@@ -194,23 +202,23 @@ class ActionPredictorService:
                     msg = self.consumer.poll(timeout=1.0)
                     if msg is None:
                         continue
-                    
+
                     if msg.error():
                         if msg.error().code() == KafkaException._PARTITION_EOF:
                             continue
                         else:
                             raise RuntimeError(f"Kafka consumer error: {msg.error()}")
-                    
+
                     # Decode message (assuming JSON for now, will be Avro when schema ready)
                     try:
-                        message_data = json.loads(msg.value().decode('utf-8'))
+                        message_data = json.loads(msg.value().decode("utf-8"))
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to decode message as JSON: {e}")
                         continue
-                    
+
                     # Process the message
                     await self.process_message(message_data)
-                    
+
                 except KeyboardInterrupt:
                     logger.info("Received shutdown signal")
                     break
@@ -218,7 +226,7 @@ class ActionPredictorService:
                     logger.error(f"Error processing message: {e}")
                     # Strict mode: re-raise errors instead of continuing
                     raise
-                    
+
         finally:
             logger.info("Shutting down Action Predictor Service")
             self.consumer.close()

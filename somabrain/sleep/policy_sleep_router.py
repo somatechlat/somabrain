@@ -91,7 +91,9 @@ async def brain_sleep_policy(request: Request, body: SleepRequest) -> Dict[str, 
         "target_state": body.target_state.value,
     }
     if not opa_client.evaluate(opa_input):
-        raise HTTPException(status_code=403, detail="OPA policy denied cognitive sleep policy request")
+        raise HTTPException(
+            status_code=403, detail="OPA policy denied cognitive sleep policy request"
+        )
 
     manager = SleepStateManager()
     cb = get_cb()
@@ -119,7 +121,9 @@ async def brain_sleep_policy(request: Request, body: SleepRequest) -> Dict[str, 
         ss.current_state = target_state.value
         ss.target_state = target_state.value
         if body.ttl_seconds is not None:
-            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
+            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
+                seconds=body.ttl_seconds
+            )
             ss.ttl = ttl_dt
             ss.scheduled_wake = ttl_dt
         else:
@@ -133,6 +137,7 @@ async def brain_sleep_policy(request: Request, body: SleepRequest) -> Dict[str, 
     state_int = _STATE_TO_INT.get(target_state.value, 0)
     _sleep_state_gauge.labels(tenant=tenant_id, state=str(state_int)).set(1)
     return {"ok": True, "tenant": tenant_id, "new_state": target_state.value}
+
 
 # ---------------------------------------------------------------------------
 # Background TTL auto‑wake task – reuse the same implementation as the brain
@@ -165,7 +170,9 @@ async def _ttl_watcher_loop(poll_seconds: float = 30.0) -> None:
         except Exception as exc:  # pragma: no cover – defensive logging
             import logging
 
-            logging.getLogger(__name__).error("Error in TTL watcher (policy router): %s", exc)
+            logging.getLogger(__name__).error(
+                "Error in TTL watcher (policy router): %s", exc
+            )
         await asyncio.sleep(poll_seconds)
 
 

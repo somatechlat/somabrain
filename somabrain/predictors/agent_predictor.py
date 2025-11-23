@@ -58,7 +58,9 @@ class AgentPredictor(HeatDiffusionPredictor):
         )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 
-    def predict(self, source_idx: int, observed: np.ndarray) -> Tuple[np.ndarray, float, float]:
+    def predict(
+        self, source_idx: int, observed: np.ndarray
+    ) -> Tuple[np.ndarray, float, float]:
         """Run a single prediction step for the agent domain.
 
         Parameters

@@ -52,7 +52,9 @@ class BHDCFusionLayer:
     def alpha(self) -> float:
         return self._alpha
 
-    def update_alpha(self, *, performance_score: float, target: float = 0.9, rate: float = 0.2) -> None:
+    def update_alpha(
+        self, *, performance_score: float, target: float = 0.9, rate: float = 0.2
+    ) -> None:
         """Adapt alpha based on a performance signal.
 
         If performance is below target, increase alpha slightly to sharpen the
@@ -98,7 +100,9 @@ class BHDCFusionLayer:
         return v / (n + self._epsilon)
 
     # Optional math utilities (not required by current tests)
-    def normalized_error(self, errors: np.ndarray, mu: float, sigma: float) -> np.ndarray:
+    def normalized_error(
+        self, errors: np.ndarray, mu: float, sigma: float
+    ) -> np.ndarray:
         """Compute e_norm = (errors - mu) / (sigma + eps)."""
         e = np.asarray(errors, dtype=np.float64)
         return (e - float(mu)) / (float(sigma) + self._epsilon)

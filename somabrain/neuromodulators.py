@@ -71,10 +71,14 @@ class NeuromodState:
         default_factory=lambda: float(getattr(settings, "neuromod_serotonin_base", 0.5))
     )
     noradrenaline: float = field(
-        default_factory=lambda: float(getattr(settings, "neuromod_noradrenaline_base", 0.0))
+        default_factory=lambda: float(
+            getattr(settings, "neuromod_noradrenaline_base", 0.0)
+        )
     )
     acetylcholine: float = field(
-        default_factory=lambda: float(getattr(settings, "neuromod_acetylcholine_base", 0.0))
+        default_factory=lambda: float(
+            getattr(settings, "neuromod_acetylcholine_base", 0.0)
+        )
     )
     timestamp: float = field(default_factory=lambda: time.time())
 
@@ -157,43 +161,43 @@ class PerTenantNeuromodulators:
 @dataclass
 class AdaptiveNeuromodulators:
     """True learning neuromodulator system with adaptive parameters."""
-    
+
     dopamine_param: AdaptiveParameter
     serotonin_param: AdaptiveParameter
     noradrenaline_param: AdaptiveParameter
     acetylcholine_param: AdaptiveParameter
-    
+
     def __init__(self):
         # Initialize adaptive parameters with learning bounds
         self.dopamine_param = AdaptiveParameter(
-            name="dopamine", 
-            initial_value=0.4, 
-            min_value=0.1, 
-            max_value=1.0, 
-            learning_rate=0.02
+            name="dopamine",
+            initial_value=0.4,
+            min_value=0.1,
+            max_value=1.0,
+            learning_rate=0.02,
         )
         self.serotonin_param = AdaptiveParameter(
-            name="serotonin", 
-            initial_value=0.5, 
-            min_value=0.0, 
-            max_value=1.0, 
-            learning_rate=0.015
+            name="serotonin",
+            initial_value=0.5,
+            min_value=0.0,
+            max_value=1.0,
+            learning_rate=0.015,
         )
         self.noradrenaline_param = AdaptiveParameter(
-            name="noradrenaline", 
-            initial_value=0.0, 
-            min_value=0.0, 
-            max_value=0.5, 
-            learning_rate=0.01
+            name="noradrenaline",
+            initial_value=0.0,
+            min_value=0.0,
+            max_value=0.5,
+            learning_rate=0.01,
         )
         self.acetylcholine_param = AdaptiveParameter(
-            name="acetylcholine", 
-            initial_value=0.0, 
-            min_value=0.0, 
-            max_value=0.5, 
-            learning_rate=0.01
+            name="acetylcholine",
+            initial_value=0.0,
+            min_value=0.0,
+            max_value=0.5,
+            learning_rate=0.01,
         )
-    
+
     def get_current_state(self) -> NeuromodState:
         """Get current neuromodulator state from adaptive parameters."""
         return NeuromodState(
@@ -201,50 +205,61 @@ class AdaptiveNeuromodulators:
             serotonin=self.serotonin_param.current_value,
             noradrenaline=self.noradrenaline_param.current_value,
             acetylcholine=self.acetylcholine_param.current_value,
-            timestamp=time.time()
+            timestamp=time.time(),
         )
-    
-    def update_from_performance(self, performance: PerformanceMetrics, 
-                                task_type: str = "general") -> NeuromodState:
+
+    def update_from_performance(
+        self, performance: PerformanceMetrics, task_type: str = "general"
+    ) -> NeuromodState:
         """Update neuromodulators based on performance feedback."""
-        
+
         # Calculate component-specific feedback
         component_perfs = {
             "dopamine": _calculate_dopamine_feedback(performance, task_type),
             "serotonin": _calculate_serotonin_feedback(performance, task_type),
             "noradrenaline": _calculate_noradrenaline_feedback(performance, task_type),
-            "acetylcholine": _calculate_acetylcholine_feedback(performance, task_type)
+            "acetylcholine": _calculate_acetylcholine_feedback(performance, task_type),
         }
-        
+
         # Update each parameter
         self.dopamine_param.update(performance, component_perfs["dopamine"])
         self.serotonin_param.update(performance, component_perfs["serotonin"])
         self.noradrenaline_param.update(performance, component_perfs["noradrenaline"])
         self.acetylcholine_param.update(performance, component_perfs["acetylcholine"])
-        
+
         return self.get_current_state()
 
 
-def _calculate_dopamine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_dopamine_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
-    return performance.success_rate - 0.5 + (0.1 if task_type == "reward_learning" else 0)
+    return (
+        performance.success_rate - 0.5 + (0.1 if task_type == "reward_learning" else 0)
+    )
 
 
-def _calculate_serotonin_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_serotonin_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate serotonin feedback based on emotional stability."""
     # Higher serotonin for stable, consistent performance
     return 1.0 - performance.error_rate
 
 
-def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_noradrenaline_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = 0.3 if task_type == "urgent" else 0.0
     return min(0.1, (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor)
 
 
-def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
+def _calculate_acetylcholine_feedback(
+    performance: PerformanceMetrics, task_type: str
+) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
     memory_factor = 0.2 if task_type == "memory" else 0.0
@@ -253,25 +268,29 @@ def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type
 
 class AdaptivePerTenantNeuromodulators:
     """Per-tenant adaptive neuromodulator system."""
-    
+
     def __init__(self):
         self._adaptive_systems: Dict[str, AdaptiveNeuromodulators] = {}
         self._global = AdaptiveNeuromodulators()
-    
+
     def get_adaptive_system(self, tenant_id: str) -> AdaptiveNeuromodulators:
         """Get or create adaptive system for tenant."""
         if tenant_id not in self._adaptive_systems:
             self._adaptive_systems[tenant_id] = AdaptiveNeuromodulators()
         return self._adaptive_systems[tenant_id]
-    
+
     def get_state(self, tenant_id: str | None = None) -> NeuromodState:
         """Get current neuromodulator state."""
         if tenant_id is None:
             return self._global.get_current_state()
         return self.get_adaptive_system(tenant_id).get_current_state()
-    
-    def adapt_from_performance(self, tenant_id: str, performance: PerformanceMetrics, 
-                             task_type: str = "general") -> NeuromodState:
+
+    def adapt_from_performance(
+        self,
+        tenant_id: str,
+        performance: PerformanceMetrics,
+        task_type: str = "general",
+    ) -> NeuromodState:
         """Adapt neuromodulators based on performance for specific tenant."""
         system = self.get_adaptive_system(tenant_id)
         return system.update_from_performance(performance, task_type)

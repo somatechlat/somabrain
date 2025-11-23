@@ -74,7 +74,9 @@ class GlobalFrameCtx:
 def _bootstrap() -> str:
     url = settings.getenv("SOMABRAIN_KAFKA_URL")
     if not url:
-        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
+        raise ValueError(
+            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
+        )
     return url.replace("kafka://", "")
 
 
@@ -146,6 +148,7 @@ class OrchestratorService:
         # Optional health / metrics server
         try:
             from common.config.settings import settings as _settings  # type: ignore
+
             if _settings.health_port:
                 self._start_health_server()
         except Exception:

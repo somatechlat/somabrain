@@ -10,6 +10,7 @@ LOGGER = logging.getLogger("somabrain.opa")
 
 try:
     from common.config.settings import settings
+
     settings = settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
     settings = None  # type: ignore
@@ -59,7 +60,11 @@ class OPAClient:
             # Legacy alternative for dev shells without explicit configuration.
             # Prefer explicit host port envs, defaulting to 30004 to align
             # with dev stack mapping.
-            host_port = settings.getenv("OPA_HOST_PORT") or settings.getenv("OPA_PORT") or "30004"
+            host_port = (
+                settings.getenv("OPA_HOST_PORT")
+                or settings.getenv("OPA_PORT")
+                or "30004"
+            )
             self.base_url = (
                 settings.getenv("SOMA_OPA_URL")
                 or settings.getenv("SOMABRAIN_OPA_FALLBACK")

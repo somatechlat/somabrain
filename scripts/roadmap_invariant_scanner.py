@@ -53,7 +53,15 @@ class RoadmapInvariantScanner:
         return any(part in SCOPED_PREFIXES for part in file_path.parts)
 
     def _should_skip_file(self, file_path: Path) -> bool:
-        skip_parts = {"tests", "node_modules", "dist", "build", "__pycache__", ".venv", "venv"}
+        skip_parts = {
+            "tests",
+            "node_modules",
+            "dist",
+            "build",
+            "__pycache__",
+            ".venv",
+            "venv",
+        }
         return any(part in skip_parts for part in file_path.parts)
 
     def _check_banned_keywords(self, file_path: Path, lines: List[str]) -> None:
@@ -61,7 +69,9 @@ class RoadmapInvariantScanner:
             stripped = re.sub(r"#.*$", "", line)
             for keyword in BANNED_KEYWORDS:
                 if keyword.lower() in stripped.lower():
-                    self._record_violation(file_path, lineno, "BANNED_KEYWORD", line.strip())
+                    self._record_violation(
+                        file_path, lineno, "BANNED_KEYWORD", line.strip()
+                    )
 
     def _check_banned_identifiers(self, file_path: Path, content: str) -> None:
         for ident in BANNED_IDENTIFIERS:
@@ -88,7 +98,9 @@ class RoadmapInvariantScanner:
         if visitor.found:
             self._record_violation(file_path, 0, "BANNED_IDENTIFIER", "AST usage")
 
-    def _record_violation(self, file_path: Path, lineno: int, typ: str, detail: str) -> None:
+    def _record_violation(
+        self, file_path: Path, lineno: int, typ: str, detail: str
+    ) -> None:
         self.violations.append((str(file_path), lineno, typ, detail))
 
     def report(self) -> str:

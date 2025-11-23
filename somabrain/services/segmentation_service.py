@@ -22,7 +22,11 @@ except Exception as exc:  # pragma: no cover
     raise RuntimeError("confluent_kafka required for segmentation_service") from exc
 
 from common.config.settings import settings
-from somabrain.segmentation.hmm import HMMParams, online_viterbi_probs, detect_boundaries
+from somabrain.segmentation.hmm import (
+    HMMParams,
+    online_viterbi_probs,
+    detect_boundaries,
+)
 from somabrain.segmentation.evaluator import evaluate_boundaries, update_metrics
 import somabrain.metrics as metrics
 from somabrain.common.kafka import make_producer, encode
@@ -48,12 +52,18 @@ HMM_THRESHOLD = float(getattr(settings, "segment_hmm_threshold", 0.6))
 
 class SegmentationService:
     def __init__(self):
-        bs = settings.getenv("SOMA_KAFKA_BOOTSTRAP") or settings.getenv("SOMABRAIN_KAFKA_URL")
+        bs = settings.getenv("SOMA_KAFKA_BOOTSTRAP") or settings.getenv(
+            "SOMABRAIN_KAFKA_URL"
+        )
         if not bs:
-            raise RuntimeError("Kafka bootstrap servers required for segmentation_service")
+            raise RuntimeError(
+                "Kafka bootstrap servers required for segmentation_service"
+            )
         self.bootstrap = bs.replace("kafka://", "")
         if not PUBLISH_TOPIC:
-            raise RuntimeError("SegmentationService requires PUBLISH_TOPIC for segments")
+            raise RuntimeError(
+                "SegmentationService requires PUBLISH_TOPIC for segments"
+            )
         self.consumer = self._create_consumer()
         self.tenant = settings.getenv("SOMABRAIN_TENANT_ID", "default")
         self.producer = make_producer()
@@ -61,7 +71,9 @@ class SegmentationService:
             self._health_port = int(getattr(settings, "segment_health_port", 9016))
         except Exception:
             self._health_port = 9016
-        start_health = settings.getenv("SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1").strip().lower() in {"1", "true", "yes", "on"}
+        start_health = settings.getenv(
+            "SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1"
+        ).strip().lower() in {"1", "true", "yes", "on"}
         if start_health:
             self._health_thread = threading.Thread(
                 target=self._serve_health, name="segmentation_health", daemon=True
@@ -70,8 +82,12 @@ class SegmentationService:
         else:
             self._health_thread = None
         # Runtime refresh of thresholds from settings/runtime_config
-        self._grad_thresh = float(getattr(settings, "segment_grad_threshold", GRAD_THRESH))
-        self._hmm_thresh = float(getattr(settings, "segment_hmm_threshold", HMM_THRESHOLD))
+        self._grad_thresh = float(
+            getattr(settings, "segment_grad_threshold", GRAD_THRESH)
+        )
+        self._hmm_thresh = float(
+            getattr(settings, "segment_hmm_threshold", HMM_THRESHOLD)
+        )
 
     def _create_consumer(self) -> CKConsumer:
         cfg = {
@@ -96,7 +112,10 @@ class SegmentationService:
         if not values:
             return []
         mu = (float(np.median(values)), float(np.percentile(values, 85)))
-        sigma = (max(1e-3, float(np.std(values))), max(1e-3, float(np.std(values) * 1.5)))
+        sigma = (
+            max(1e-3, float(np.std(values))),
+            max(1e-3, float(np.std(values) * 1.5)),
+        )
         params = HMMParams(
             A=((0.95, 0.05), (0.10, 0.90)),
             mu=mu,
@@ -191,9 +210,11 @@ class SegmentationService:
             except Exception:
                 pass
 
+
 # ---------------------------------------------------------------------------
 # Compatibility aliases expected by the test suite
 # ---------------------------------------------------------------------------
+
 
 class Segmenter(SegmentationService):
     """Alias for backward compatibility – behaves exactly like ``SegmentationService``."""
@@ -214,4 +235,3 @@ class HazardSegmenter(SegmentationService):
     It currently does not add extra behaviour but provides a distinct type so
     that ``isinstance`` checks succeed.
     """
-

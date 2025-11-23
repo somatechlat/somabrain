@@ -24,7 +24,9 @@ class CalibrationPipeline:
         self.calibration_params: dict = {}
 
     # --- Metrics ---
-    def calculate_ece(self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10) -> float:
+    def calculate_ece(
+        self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
+    ) -> float:
         p = np.asarray(predictions, dtype=float).reshape(-1)
         a = np.asarray(actual, dtype=float).reshape(-1)
         a = np.clip(a, 0.0, 1.0)
@@ -120,23 +122,31 @@ class CalibrationPipeline:
         brier = self.calculate_brier(predictions, actual)
         self.calibration_params.update({"ece": float(ece), "brier": float(brier)})
 
-    def multiclass_ece(self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10) -> float:
+    def multiclass_ece(
+        self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
+    ) -> float:
         P = np.asarray(predictions, dtype=float)
         Y = np.asarray(actual, dtype=float)
         if P.ndim != 2 or Y.ndim != 2 or P.shape != Y.shape:
-            raise ValueError("multiclass_ece expects (n,k) predictions and one-hot actuals of same shape")
+            raise ValueError(
+                "multiclass_ece expects (n,k) predictions and one-hot actuals of same shape"
+            )
         conf = P.max(axis=1)
         correct = (np.argmax(P, axis=1) == np.argmax(Y, axis=1)).astype(float)
         return float(compute_ece(conf.tolist(), correct.tolist(), n_bins=n_bins))
 
     # --- Confidence intervals (lightweight approximations for tests) ---
-    def calculate_ece_confidence_interval(self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10) -> Tuple[float, float]:
+    def calculate_ece_confidence_interval(
+        self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
+    ) -> Tuple[float, float]:
         e = self.calculate_ece(predictions, actual, n_bins=n_bins)
         lo = float(max(0.0, e - 0.1))
         hi = float(min(1.0, e + 0.1))
         return lo, hi
 
-    def calculate_brier_confidence_interval(self, predictions: np.ndarray, actual: np.ndarray) -> Tuple[float, float]:
+    def calculate_brier_confidence_interval(
+        self, predictions: np.ndarray, actual: np.ndarray
+    ) -> Tuple[float, float]:
         b = self.calculate_brier(predictions, actual)
         lo = float(max(0.0, b - 0.1))
         hi = float(min(1.0, b + 0.1))

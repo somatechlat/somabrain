@@ -6,6 +6,7 @@ vectors (or pairwise distances) and compute an OT plan using sinkhorn.
 
 import numpy as np
 from somabrain.math.sinkhorn import sinkhorn_log_stabilized
+
 # Use unified settings for configuration defaults
 from common.config.settings import settings
 

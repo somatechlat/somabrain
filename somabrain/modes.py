@@ -74,7 +74,9 @@ def _load_overrides() -> List[str]:
     File format (JSON): {"disabled": ["calibration", "fusion_normalization", ...]}
     In full-local mode these are applied; ignored in prod.
     """
-    path = settings.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    path = settings.getenv(
+        "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
+    )
     try:
         p = Path(path)
         if not p.exists():

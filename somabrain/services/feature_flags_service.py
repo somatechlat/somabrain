@@ -67,9 +67,7 @@ def _periodic_update(stop_event: threading.Event, interval: float = 5.0) -> None
 def main() -> None:  # pragma: no cover – exercised via integration tests
     # Start a background thread that updates the gauges.
     stop_event = threading.Event()
-    thread = threading.Thread(
-        target=_periodic_update, args=(stop_event,), daemon=True
-    )
+    thread = threading.Thread(target=_periodic_update, args=(stop_event,), daemon=True)
     thread.start()
 
     # FastAPI will serve both /feature-flags and /metrics (the latter is
@@ -82,6 +80,7 @@ def main() -> None:  # pragma: no cover – exercised via integration tests
 
     # Use the centralized Settings value for the feature‑flags service port.
     from common.config.settings import settings
+
     settings = settings
 
     port = int(settings.feature_flags_port)

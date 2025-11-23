@@ -45,13 +45,8 @@ def post_reward() -> None:
     runs on ``localhost`` inside the Docker compose network; the host port is
     taken from ``SOMABRAIN_REWARD_PORT`` (default 8083).
     """
-    # Use centralized Settings for reward port
-    from common.config.settings import settings
-    settings = settings
-    port = int(settings.reward_port)
-    from common.config.settings import settings
-    _settings = settings
-    url = f"{_settings.api_url}/reward"
+    # Use centralized Settings for reward port and API URL
+    url = f"{settings.api_url}/reward"
     payload: Dict[str, Any] = {
         "tenant": settings.default_tenant,
         "r_task": 0.5,
@@ -74,10 +69,7 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
 
     Returns the decoded JSON dict or ``None`` if the timeout expires.
     """
-    kafka_bootstrap = (
-        settings.kafka_bootstrap_servers
-        or "localhost:9092"
-    )
+    kafka_bootstrap = settings.kafka_bootstrap_servers or "localhost:9092"
     topic = settings.topic_config_updates
     consumer_conf = {
         "bootstrap.servers": kafka_bootstrap,

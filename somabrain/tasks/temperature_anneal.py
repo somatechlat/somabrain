@@ -25,6 +25,7 @@ import logging
 from typing import Any
 
 from common.config.settings import settings
+
 settings = settings
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,9 @@ def _load_config() -> dict[str, Any]:
     return {"factor": factor, "floor": floor, "interval": interval}
 
 
-async def run_anneal_task(get_current_tau: callable[[], float], set_tau: callable[[float], None]) -> None:
+async def run_anneal_task(
+    get_current_tau: callable[[], float], set_tau: callable[[float], None]
+) -> None:
     """Background task that decays ``tau`` over time.
 
     Parameters

@@ -89,6 +89,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=get_api_base_url())
     from common.config.settings import settings
+
     ap.add_argument("--universe", default=settings.universe)
     args = ap.parse_args()
     try:

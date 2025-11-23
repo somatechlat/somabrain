@@ -10,6 +10,7 @@ Sends minimal valid RememberRequest bodies and then queries /recall.
 from __future__ import annotations
 
 import asyncio
+
 # Removed direct os import; using centralized settings for environment variables.
 import statistics
 import time
@@ -37,6 +38,7 @@ def read_env_port() -> int:
 
 
 from common.config.settings import settings
+
 API_PORT = read_env_port()
 BASE = settings.api_url
 

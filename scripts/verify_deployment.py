@@ -65,7 +65,9 @@ def _ensure_env_file() -> None:
         sys.exit(1)
 
     env_path.write_text(example_path.read_text())
-    print("⚙️  Created .env from config/env.example – will now ensure required values are present.")
+    print(
+        "⚙️  Created .env from config/env.example – will now ensure required values are present."
+    )
 
 
 def _collect_missing(settings_obj: Settings) -> list[str]:
@@ -98,7 +100,9 @@ def _collect_missing(settings_obj: Settings) -> list[str]:
     optional_empty = {"memory_http_token", "jwt_secret", "jwt_public_key_path"}
     # Pydantic v2 renamed ``__fields__`` to ``model_fields``.  Fall back to the
     # older attribute for compatibility with any pinned v1 installations.
-    field_dict = getattr(settings_obj, "model_fields", getattr(settings_obj, "__fields__", {}))
+    field_dict = getattr(
+        settings_obj, "model_fields", getattr(settings_obj, "__fields__", {})
+    )
     for field_name, model_field in field_dict.items():
         val = getattr(settings_obj, field_name)
         if isinstance(val, str) and not val.strip():
@@ -125,7 +129,11 @@ def main() -> int:
     #    that a value exists (security pattern: never run with empty auth secrets).
     if not settings.getenv("SOMABRAIN_JWT_SECRET"):
         # Generate a 32‑byte base64 secret – suitable for HMAC JWT signing.
-        secret = subprocess.check_output(["openssl", "rand", "-base64", "32"]).decode().strip()
+        secret = (
+            subprocess.check_output(["openssl", "rand", "-base64", "32"])
+            .decode()
+            .strip()
+        )
         os.environ["SOMABRAIN_JWT_SECRET"] = secret
         # Persist to .env for subsequent runs.
         with Path(".env").open("a") as f:
@@ -138,11 +146,15 @@ def main() -> int:
         # PEM header/footer to satisfy the import path.
         key_path = Path("./keys/jwt_public.pem")
         key_path.parent.mkdir(parents=True, exist_ok=True)
-        key_path.write_text("-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn...\n-----END PUBLIC KEY-----\n")
+        key_path.write_text(
+            "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn...\n-----END PUBLIC KEY-----\n"
+        )
         os.environ["SOMABRAIN_JWT_PUBLIC_KEY_PATH"] = str(key_path)
         with Path(".env").open("a") as f:
             f.write(f"\nSOMABRAIN_JWT_PUBLIC_KEY_PATH={key_path}\n")
-        print(f"🔐 Generated placeholder JWT public key at {key_path} and wrote to .env")
+        print(
+            f"🔐 Generated placeholder JWT public key at {key_path} and wrote to .env"
+        )
 
     # 4️⃣ Re‑instantiate Settings now that the environment is fully populated.
     fresh = _load_fresh_settings()
@@ -152,7 +164,7 @@ def main() -> int:
         print("❌ Missing or empty required configuration values:")
         for name in missing:
             print(f"  - {name.upper()}")
-        print('\nEdit the .env file and provide real values for the above entries.')
+        print("\nEdit the .env file and provide real values for the above entries.")
         return 1
 
     print("✅ All required environment variables are set and non‑empty.")

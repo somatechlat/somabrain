@@ -32,7 +32,13 @@ class LocalMemoryClient:
     async def aremember(self, key: str, payload: dict):
         return self.remember(key, payload)
 
-    def recall(self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None):
+    def recall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ):
         q_lower = (query or "").lower()
         hits = []
         for k, v in self._store.items():
@@ -49,10 +55,18 @@ class LocalMemoryClient:
         hits.sort(key=lambda h: (-h["score"], h["id"]))
         return hits[: max(1, top_k or 3)]
 
-    async def arecall(self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None):
+    async def arecall(
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
+    ):
         return self.recall(query, top_k, universe, request_id)
 
-    def coord_for_key(self, key: str, universe: str | None = None) -> Tuple[float, float, float]:
+    def coord_for_key(
+        self, key: str, universe: str | None = None
+    ) -> Tuple[float, float, float]:
         uni = universe or "real"
         return _stable_coord(f"{uni}::{key}")
 

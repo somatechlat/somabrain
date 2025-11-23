@@ -49,7 +49,8 @@ async def update_policy(request: Request):
     engine = getattr(request.app.state, "constitution_engine", None)
     if engine is None or not getattr(engine, "get_constitution", None):
         raise HTTPException(
-            status_code=500, detail="Constitution engine unavailable; cannot build policy"
+            status_code=500,
+            detail="Constitution engine unavailable; cannot build policy",
         )
     constitution = engine.get_constitution()
     if not constitution:

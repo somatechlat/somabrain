@@ -108,7 +108,9 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         ss.current_state = target_state.value
         ss.target_state = target_state.value
         if body.ttl_seconds is not None:
-            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
+            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
+                seconds=body.ttl_seconds
+            )
             ss.ttl = ttl_dt
             ss.scheduled_wake = ttl_dt
         else:

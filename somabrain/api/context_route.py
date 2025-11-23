@@ -45,9 +45,11 @@ from somabrain.metrics import (
     update_learning_effective_lr,
 )
 import math
+
 # Import central feature flag view and metrics utilities
 from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
+
 
 # Register Prometheus gauges for each feature flag so they are exposed via
 # ``/metrics``. ``_metrics.get_gauge`` returns an existing gauge if one was
@@ -62,6 +64,7 @@ def _register_flag_gauges() -> None:
             labelnames=["flag"],
         )
         gauge.labels(flag=name).set(1 if enabled else 0)
+
 
 # Initialise gauges at import time.
 _register_flag_gauges()
@@ -92,6 +95,7 @@ def _enforce_feedback_rate_limit(tenant_id: str) -> None:
 # Feature‑flags endpoint (centralised view)
 # ---------------------------------------------------------------------------
 
+
 @router.get("/feature-flags")
 def feature_flags_endpoint() -> dict:
     """Expose the current feature‑flag status.
@@ -104,6 +108,7 @@ def feature_flags_endpoint() -> dict:
     # Refresh gauges in case overrides have changed since import time.
     _register_flag_gauges()
     return FeatureFlags.get_status()
+
 
 # Store initialization is lazy to avoid import-time failures that would
 # prevent the router from registering (and thus 404 the entire /context API).
@@ -382,6 +387,7 @@ async def feedback_endpoint(
 
 def _constitution_checksum() -> Optional[str]:
     from somabrain.constitution import ConstitutionEngine
+
     engine = ConstitutionEngine()
     engine.load()
     return engine.get_checksum()

@@ -33,7 +33,9 @@ class ConsistencyChecker:
     def is_consistent(self, p: np.ndarray, q: np.ndarray) -> bool:
         return self.calculate_kappa(p, q) >= self.threshold
 
-    def generate_consistency_report(self, distributions: Dict[str, np.ndarray]) -> Dict[str, object]:
+    def generate_consistency_report(
+        self, distributions: Dict[str, np.ndarray]
+    ) -> Dict[str, object]:
         keys = list(distributions.keys())
         pairwise: Dict[str, float] = {}
         kappas = []

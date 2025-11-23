@@ -13,6 +13,7 @@ from typing import Dict, Tuple
 
 from common.config.settings import settings
 
+
 def _bool(env: str, default: bool) -> bool:
     raw = settings.getenv(env)
     if raw is None:
@@ -22,12 +23,16 @@ def _bool(env: str, default: bool) -> bool:
 
 @dataclass
 class CalibrationService:
-    enabled: bool = field(default_factory=lambda: _bool("SOMABRAIN_CALIBRATION_ENABLED", False))
+    enabled: bool = field(
+        default_factory=lambda: _bool("SOMABRAIN_CALIBRATION_ENABLED", False)
+    )
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
     _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)
 
-    def record_prediction(self, domain: str, tenant: str, confidence: float, correct: bool) -> None:
+    def record_prediction(
+        self, domain: str, tenant: str, confidence: float, correct: bool
+    ) -> None:
         if not self.enabled:
             return
         key = (domain, tenant)
@@ -50,7 +55,10 @@ class CalibrationService:
     def get_all_calibration_status(self) -> dict:
         with self._lock:
             return {
-                f"{d}:{t}": {"seen": c, "temperature": self._temperature.get((d, t), 1.0)}
+                f"{d}:{t}": {
+                    "seen": c,
+                    "temperature": self._temperature.get((d, t), 1.0),
+                }
                 for (d, t), c in self._counts.items()
             }
 

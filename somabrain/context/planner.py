@@ -32,10 +32,14 @@ class ContextPlanner:
         self._memory_penalty_scale = 10.0
         # Load configuration from Settings if present
         self._length_penalty_scale = float(
-            getattr(settings, "planner_length_penalty_scale", self._length_penalty_scale)
+            getattr(
+                settings, "planner_length_penalty_scale", self._length_penalty_scale
+            )
         )
         self._memory_penalty_scale = float(
-            getattr(settings, "planner_memory_penalty_scale", self._memory_penalty_scale)
+            getattr(
+                settings, "planner_memory_penalty_scale", self._memory_penalty_scale
+            )
         )
 
         def _env_float(name: str, current: float) -> float:

@@ -35,6 +35,7 @@ class FeatureFlags:
     @staticmethod
     def _load_overrides() -> List[str]:
         from common.config.settings import settings as cfg
+
         path = cfg.feature_overrides_path
         try:
             p = Path(path)
@@ -83,7 +84,9 @@ class FeatureFlags:
         if cfg.name != "full-local":
             # ignore in prod
             return False
-        path = settings.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        path = settings.getenv(
+            "SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json"
+        )
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)

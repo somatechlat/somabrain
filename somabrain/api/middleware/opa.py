@@ -12,11 +12,8 @@ from starlette.responses import Response
 import somabrain.metrics as app_metrics
 from somabrain.opa.client import opa_client, _policy_path_for_mode
 
-try:
-    from common.config.settings import settings
-    settings = settings
-except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    settings = None  # type: ignore
+# Import shared configuration; let import errors propagate if settings module is unavailable.
+from common.config.settings import settings
 
 LOGGER = logging.getLogger("somabrain.api.middleware.opa")
 
@@ -195,8 +192,6 @@ async def opa_enforcement(
         # Strict mode: fail-closed on unexpected middleware error
         LOGGER.error("OPA middleware error, denying request: %s", e)
         app_metrics.OPA_DENY_TOTAL.inc()
-        return JSONResponse(
-            status_code=403, content={"detail": "OPA middleware error"}
-        )
+        return JSONResponse(status_code=403, content={"detail": "OPA middleware error"})
     response = await call_next(request)
     return response

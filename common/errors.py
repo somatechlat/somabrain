@@ -19,7 +19,13 @@ class SomabrainError(RuntimeError):
     traces.
     """
 
-    def __init__(self, message: str, *, code: Optional[str] = None, cause: Optional[BaseException] = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: Optional[str] = None,
+        cause: Optional[BaseException] = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.__cause__ = cause

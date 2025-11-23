@@ -83,7 +83,9 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
     except Exception:
-        LOGGER.exception("Failed to enqueue audit event to outbox (no alternative path)")
+        LOGGER.exception(
+            "Failed to enqueue audit event to outbox (no alternative path)"
+        )
         return False
 
 

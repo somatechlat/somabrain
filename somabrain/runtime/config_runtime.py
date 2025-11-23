@@ -9,6 +9,7 @@ from typing import Awaitable, Callable, List, Optional
 # Legacy Config replaced by unified Settings
 from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
+
 try:
     from somabrain.services.cutover_controller import CutoverController
 except Exception:  # pragma: no cover - optional

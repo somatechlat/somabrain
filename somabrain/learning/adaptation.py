@@ -121,9 +121,15 @@ def _get_redis():
             if redis_url:
                 return redis.from_url(redis_url)
             # Legacy alternative to host/port variables without hard-coded defaults
-            redis_host = settings.getenv("SOMABRAIN_REDIS_HOST") or settings.getenv("REDIS_HOST")
-            redis_port = settings.getenv("SOMABRAIN_REDIS_PORT") or settings.getenv("REDIS_PORT")
-            redis_db = settings.getenv("SOMABRAIN_REDIS_DB") or settings.getenv("REDIS_DB", "0")
+            redis_host = settings.getenv("SOMABRAIN_REDIS_HOST") or settings.getenv(
+                "REDIS_HOST"
+            )
+            redis_port = settings.getenv("SOMABRAIN_REDIS_PORT") or settings.getenv(
+                "REDIS_PORT"
+            )
+            redis_db = settings.getenv("SOMABRAIN_REDIS_DB") or settings.getenv(
+                "REDIS_DB", "0"
+            )
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
@@ -247,11 +253,19 @@ class AdaptationEngine:
             )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
-        lr = learning_rate if learning_rate is not None else getattr(settings, "adaptation_learning_rate", 0.05)
+        lr = (
+            learning_rate
+            if learning_rate is not None
+            else getattr(settings, "adaptation_learning_rate", 0.05)
+        )
         self._lr = lr
         self._base_lr = lr  # Store base LR for dynamic scaling
         self._history = []  # Track (retrieval, utility) tuples for rollback
-        self._max_history = int(max_history if max_history is not None else getattr(settings, "adaptation_max_history", 1000))
+        self._max_history = int(
+            max_history
+            if max_history is not None
+            else getattr(settings, "adaptation_max_history", 1000)
+        )
         if isinstance(constraints, AdaptationConstraints):
             constraint_bounds = constraints
         elif isinstance(constraints, dict) and constraints:
@@ -504,7 +518,9 @@ class AdaptationEngine:
 
         # Compute learning rate based on configuration
         # Tests expect no implicit dopamine scaling when gains explicitly provided.
-        dyn_lr_active = self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
+        dyn_lr_active = (
+            self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
+        )
         if dyn_lr_active:
             dopamine = self._get_dopamine_level()
             lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
@@ -850,7 +866,9 @@ class AdaptationEngine:
         self.apply_feedback(utility=reward, reward=reward)
         # Simple tau adjustment responsive to error
         try:
-            self._retrieval.tau = _clamp(self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0)
+            self._retrieval.tau = _clamp(
+                self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
+            )
         except Exception:
             pass
 
@@ -890,7 +908,9 @@ class AdaptationEngine:
         except Exception:
             pass
         try:
-            reward = float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
+            reward = (
+                float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
+            )
             self.apply_feedback(utility=reward, reward=reward)
         except Exception:
             pass

@@ -8,6 +8,7 @@ from typing import Optional
 try:
     # Shared settings loader; optional in some runtimes.
     from common.config.settings import settings
+
     settings = settings  # type: ignore
 except Exception:  # pragma: no cover - optional dependency in lean environments
     settings = None  # type: ignore

@@ -35,6 +35,8 @@ def check_health(url: str, timeout: float = DEFAULT_TIMEOUT) -> bool:
         return response.ok
     except Exception:
         return False
+
+
 """Utility module for simple health‑check HTTP calls.
 
 The project contains a number of ad‑hoc ``requests`` calls scattered throughout
@@ -82,7 +84,9 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
             return None
     # Fallback to urllib
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as resp:  # noqa: S310 – URL is provided by caller.
+        with urllib.request.urlopen(
+            url, timeout=timeout
+        ) as resp:  # noqa: S310 – URL is provided by caller.
             return resp.getcode()
     except Exception:
         return None

@@ -101,11 +101,8 @@ try:  # Constitution engine is optional in minimal deployments.
 except Exception:  # pragma: no cover - optional dependency
     ConstitutionEngine = None  # type: ignore[assignment]
 
-try:  # Shared configuration pulled from the platform service when available.
-    from common.config.settings import settings
-    settings = settings
-except Exception:  # pragma: no cover - optional dependency during integration
-    settings = None  # type: ignore[var-annotated]
+# Shared configuration pulled from the platform service when available.
+from common.config.settings import settings
 
 cfg = settings
 

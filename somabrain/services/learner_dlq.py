@@ -23,7 +23,12 @@ DLQ_TOPIC = settings.learner_dlq_topic
 
 
 class LearnerDLQ:
-    def __init__(self, producer: Any | None = None, topic: str | None = DLQ_TOPIC, path: str | None = None):
+    def __init__(
+        self,
+        producer: Any | None = None,
+        topic: str | None = DLQ_TOPIC,
+        path: str | None = None,
+    ):
         self.producer = producer
         self.topic = topic
         self.path = path or DLQ_DEFAULT_PATH

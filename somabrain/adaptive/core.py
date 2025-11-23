@@ -54,7 +54,9 @@ class AdaptiveParameter:
         self._clamp()
 
     def _clamp(self) -> None:
-        self.current_value = min(max(self.current_value, self.min_value), self.max_value)
+        self.current_value = min(
+            max(self.current_value, self.min_value), self.max_value
+        )
 
     def update(self, perf: PerformanceMetrics, delta: float) -> float:
         """Apply an update scaled by learning_rate; returns new value."""
@@ -72,6 +74,7 @@ class AdaptiveParameter:
             "lr": self.learning_rate,
         }
 
+
 # NOTE: Historically the codebase referenced an ``AdaptiveCore`` class that
 # provided a higher‑level interface to the adaptive subsystem.  The current
 # implementation only defines ``AdaptiveParameter`` and ``PerformanceMetrics``.
@@ -79,6 +82,7 @@ class AdaptiveParameter:
 # ``demo_adaptive_transformation.py`` import ``AdaptiveCore``), we expose a thin
 # wrapper that forwards to ``AdaptiveIntegrator``.  This keeps the public API
 # stable without re‑implementing the full original functionality.
+
 
 class AdaptiveCore:
     """Compatibility shim for the legacy ``AdaptiveCore`` API.

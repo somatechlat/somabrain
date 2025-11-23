@@ -128,10 +128,12 @@ def main() -> int:
     # 1) POST a reward to the reward_producer
     port = int(
         settings.getenv(
-            "REWARD_PRODUCER_PORT", settings.getenv("REWARD_PRODUCER_HOST_PORT", "30183")
+            "REWARD_PRODUCER_PORT",
+            settings.getenv("REWARD_PRODUCER_HOST_PORT", "30183"),
         )
     )
     from common.config.settings import settings as _settings
+
     url = f"{_settings.api_url}/reward/test-frame"
     payload = {
         "r_task": 0.9,

@@ -53,7 +53,9 @@ class Hippocampus:
                 from importlib import import_module
 
                 _rt = import_module("somabrain.runtime_module")  # loaded by app
-            mt_memory = getattr(_rt, "mt_memory", None) if mt_memory is None else mt_memory
+            mt_memory = (
+                getattr(_rt, "mt_memory", None) if mt_memory is None else mt_memory
+            )
             mt_wm = getattr(_rt, "mt_wm", None) if mt_wm is None else mt_wm
         self._mt_memory = mt_memory
         self._mt_wm = mt_wm

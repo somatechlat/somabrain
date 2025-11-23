@@ -18,4 +18,3 @@ _CB = CircuitBreaker(
 
 def get_cb() -> CircuitBreaker:
     return _CB
-

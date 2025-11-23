@@ -51,6 +51,7 @@ def get_config() -> Config:
 # Compatibility alias for callers that import ``Settings`` directly.
 Settings = _Settings
 
+
 # Backward‑compatible ``Config`` alias
 # Some modules (e.g., ``memory_client``) import ``Config`` expecting a dataclass
 # with attribute access.  The modern ``Settings`` instance provides the same

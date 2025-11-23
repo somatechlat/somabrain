@@ -28,7 +28,9 @@ def _bootstrap_url() -> str:
     """
     bs = settings.kafka_bootstrap_servers
     if not bs:
-        raise RuntimeError("Kafka bootstrap servers are required (settings.kafka_bootstrap_servers)")
+        raise RuntimeError(
+            "Kafka bootstrap servers are required (settings.kafka_bootstrap_servers)"
+        )
     return bs.replace("kafka://", "")
 
 

@@ -11,6 +11,7 @@ from common.config.settings import settings as settings
 
 class SleepState(Enum):
     """Sleep state enumeration."""
+
     ACTIVE = "active"
     LIGHT = "light"
     DEEP = "deep"
@@ -20,6 +21,7 @@ class SleepState(Enum):
 @dataclasses.dataclass
 class SleepParameters:
     """Sleep parameters configuration."""
+
     K: int = settings.sleep_k0
     t: float = settings.sleep_t0
     tau: float = settings.sleep_tau0
@@ -38,10 +40,10 @@ class SleepParameters:
 
 class SleepStateManager:
     """Manages sleep state transitions and parameters."""
-    
+
     def __init__(self):
         self.parameters = SleepParameters()
-    
+
     def compute_parameters(self, state: SleepState) -> Dict[str, float]:
         """Compute parameters for a given sleep state (hot-configurable)."""
         p = self.parameters  # already sourced from settings
@@ -71,14 +73,14 @@ class SleepStateManager:
             lambda_ = p.lambda_
 
         return {
-            'K': K,
-            't': t,
-            'tau': tau,
-            'eta': eta,
-            'lambda': lambda_,
-            'B': B,
+            "K": K,
+            "t": t,
+            "tau": tau,
+            "eta": eta,
+            "lambda": lambda_,
+            "B": B,
         }
-    
+
     def can_transition(self, from_state: SleepState, to_state: SleepState) -> bool:
         """Check if state transition is valid."""
         # The allowed state transition graph is:
@@ -93,5 +95,5 @@ class SleepStateManager:
             SleepState.DEEP: [SleepState.FREEZE],
             SleepState.FREEZE: [SleepState.LIGHT],
         }
-        
+
         return to_state in valid_transitions.get(from_state, [])

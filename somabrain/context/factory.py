@@ -9,6 +9,7 @@ from somabrain.context.builder import ContextBuilder, RetrievalWeights
 from somabrain.context.planner import ContextPlanner
 from somabrain.learning import UtilityWeights
 from somabrain.runtime.working_memory import WorkingMemoryBuffer
+
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
 from somabrain.embeddings import make_embedder

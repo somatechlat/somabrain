@@ -23,9 +23,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("outbox_events") as batch_op:
-        batch_op.drop_constraint(
-            "outbox_events_dedupe_key_key", type_="unique"
-        )
+        batch_op.drop_constraint("outbox_events_dedupe_key_key", type_="unique")
         batch_op.create_unique_constraint(
             "uq_outbox_tenant_dedupe", ["tenant_id", "dedupe_key"]
         )
@@ -42,9 +40,7 @@ def downgrade() -> None:
         table_name="outbox_events",
     )
     with op.batch_alter_table("outbox_events") as batch_op:
-        batch_op.drop_constraint(
-            "uq_outbox_tenant_dedupe", type_="unique"
-        )
+        batch_op.drop_constraint("uq_outbox_tenant_dedupe", type_="unique")
         batch_op.create_unique_constraint(
             "outbox_events_dedupe_key_key", ["dedupe_key"]
         )

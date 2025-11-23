@@ -179,6 +179,7 @@ def check_opa() -> CheckResult:
 
 def check_outbox_pending() -> CheckResult:
     from common.config.settings import settings
+
     base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
     token = _env("SOMABRAIN_API_TOKEN") or _env("SOMA_API_TOKEN")
     if not token:
@@ -217,7 +218,9 @@ def check_outbox_pending() -> CheckResult:
             timeout=60,
         )
     except Exception as exc:  # noqa: BLE001
-        return CheckResult("outbox", False, f"check failed: {type(exc).__name__}: {exc}")
+        return CheckResult(
+            "outbox", False, f"check failed: {type(exc).__name__}: {exc}"
+        )
     ok = proc.returncode == 0
     detail = (proc.stdout or proc.stderr).strip() or f"exit {proc.returncode}"
     return CheckResult("outbox", ok, detail)

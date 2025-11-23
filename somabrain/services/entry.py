@@ -21,8 +21,6 @@ import time
 from typing import Callable, Optional
 
 
-
-
 def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
     th = threading.Thread(target=target, name=name, daemon=True)
     th.start()
@@ -95,7 +93,9 @@ def main() -> None:  # pragma: no cover
         print("orchestrator: integrator disabled (cog flag or feature)")
 
     # Segmentation Service (respect master cog flag)
-    if feature_enabled("segmentation") and getattr(settings, "enable_cog_threads", True):
+    if feature_enabled("segmentation") and getattr(
+        settings, "enable_cog_threads", True
+    ):
         threads.append(_start_thread(_run_segmentation, "segmentation_service"))
     else:
         print("orchestrator: segmentation disabled (cog flag or feature)")

@@ -105,9 +105,7 @@ class Settings(BaseSettings):
     # Kafka bootstrap servers – strip any URL scheme (e.g. "kafka://") to provide a plain host:port string expected by confluent_kafka.
     kafka_bootstrap_servers: str = Field(
         default_factory=lambda: (
-            _str_env("SOMABRAIN_KAFKA_URL")
-            or _str_env("KAFKA_BOOTSTRAP_SERVERS")
-            or ""
+            _str_env("SOMABRAIN_KAFKA_URL") or _str_env("KAFKA_BOOTSTRAP_SERVERS") or ""
         ).replace("kafka://", "")
     )
 
@@ -124,26 +122,16 @@ class Settings(BaseSettings):
     log_path: str = Field(
         default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
     )
-    supervisor_url: Optional[str] = Field(
-        default=_str_env("SUPERVISOR_URL")
-    )
-    supervisor_http_user: str = Field(
-        default=_str_env("SUPERVISOR_HTTP_USER", "admin")
-    )
-    supervisor_http_pass: str = Field(
-        default=_str_env("SUPERVISOR_HTTP_PASS", "soma")
-    )
+    supervisor_url: Optional[str] = Field(default=_str_env("SUPERVISOR_URL"))
+    supervisor_http_user: str = Field(default=_str_env("SUPERVISOR_HTTP_USER", "admin"))
+    supervisor_http_pass: str = Field(default=_str_env("SUPERVISOR_HTTP_PASS", "soma"))
     # Runtime environment flags
     running_in_docker: bool = Field(
         default_factory=lambda: _bool_env("RUNNING_IN_DOCKER", False)
     )
     # Integrator and segmentation service URLs (optional external services)
-    integrator_url: Optional[str] = Field(
-        default=_str_env("INTEGRATOR_URL")
-    )
-    segmentation_url: Optional[str] = Field(
-        default=_str_env("SEGMENTATION_URL")
-    )
+    integrator_url: Optional[str] = Field(default=_str_env("INTEGRATOR_URL"))
+    segmentation_url: Optional[str] = Field(default=_str_env("SEGMENTATION_URL"))
 
     # Additional utility fields used by scripts / benchmarks
     reward_producer_port: int = Field(
@@ -158,9 +146,7 @@ class Settings(BaseSettings):
     host_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
     )
-    providers_path: Optional[str] = Field(
-        default=_str_env("PROVIDERS_PATH")
-    )
+    providers_path: Optional[str] = Field(default=_str_env("PROVIDERS_PATH"))
     spectral_cache_dir: Optional[str] = Field(
         default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
     )
@@ -171,12 +157,8 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_LEARNER_DLQ_TOPIC")
     )
     # New fields for script / service configuration
-    log_config: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_LOG_CONFIG")
-    )
-    workers: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_WORKERS", 1)
-    )
+    log_config: Optional[str] = Field(default=_str_env("SOMABRAIN_LOG_CONFIG"))
+    workers: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WORKERS", 1))
     outbox_api_token: Optional[str] = Field(
         default=_str_env("SOMABRAIN_API_TOKEN") or _str_env("SOMA_API_TOKEN")
     )
@@ -254,9 +236,7 @@ class Settings(BaseSettings):
     )
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
-    pytest_current_test: Optional[str] = Field(
-        default=_str_env("PYTEST_CURRENT_TEST")
-    )
+    pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
     # Auth is always-on in strict mode; legacy auth toggle removed.
     mode: str = Field(default=_str_env("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
@@ -280,14 +260,10 @@ class Settings(BaseSettings):
     # Additional URLs / endpoints extracted from hard‑coded literals
     # -----------------------------------------------------------------
     # Base API URL (used throughout benchmarks, demos, scripts)
-    api_url: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_API_URL", "")
-    )
+    api_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_URL", ""))
 
     # OPA service URL (policy engine)
-    opa_url: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", "")
-    )
+    opa_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", ""))
 
     # OTEL collector endpoint (observability)
     otel_collector_endpoint: str = Field(
@@ -383,7 +359,9 @@ class Settings(BaseSettings):
     log_level: str = Field(default=os.getenv("SOMABRAIN_LOG_LEVEL", "INFO"))
     # Additional environment variables used throughout the codebase
     health_port: Optional[int] = Field(
-        default_factory=lambda: _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
+        default_factory=lambda: (
+            _int_env("HEALTH_PORT", 0) if os.getenv("HEALTH_PORT") else None
+        )
     )
 
     # Global learning/feature toggles ------------------------------------------------
@@ -423,28 +401,52 @@ class Settings(BaseSettings):
     # Working memory configuration – defaults align with documentation and
     # historic values used throughout the codebase.
     wm_size: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WM_SIZE", 64))
-    wm_recency_time_scale: float = Field(default_factory=lambda: _float_env("SOMABRAIN_WM_RECENCY_TIME_SCALE", 1.0))
-    wm_recency_max_steps: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000))
+    wm_recency_time_scale: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_WM_RECENCY_TIME_SCALE", 1.0)
+    )
+    wm_recency_max_steps: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_WM_RECENCY_MAX_STEPS", 1000)
+    )
 
     # Micro‑circuit configuration – used to split working memory into columns.
-    micro_circuits: int = Field(default_factory=lambda: _int_env("SOMABRAIN_MICRO_CIRCUITS", 1))
-    micro_vote_temperature: float = Field(default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 1.0))
+    micro_circuits: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_MICRO_CIRCUITS", 1)
+    )
+    micro_vote_temperature: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 1.0)
+    )
 
     # Rate limiting configuration – defaults provide a generous but safe ceiling.
     rate_rps: int = Field(default_factory=lambda: _int_env("SOMABRAIN_RATE_RPS", 1000))
-    rate_burst: int = Field(default_factory=lambda: _int_env("SOMABRAIN_RATE_BURST", 2000))
+    rate_burst: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_RATE_BURST", 2000)
+    )
 
     # Quota management – daily write limit for the quota subsystem.
-    write_daily_limit: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WRITE_DAILY_LIMIT", 100000))
+    write_daily_limit: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_WRITE_DAILY_LIMIT", 100000)
+    )
 
     # Scorer weight configuration – added to resolve missing attributes in
     # ``somabrain.app``. Defaults match the values used in demo scripts.
-    scorer_w_cosine: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_COSINE", 0.6))
-    scorer_w_fd: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_FD", 0.25))
-    scorer_w_recency: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_RECENCY", 0.15))
-    scorer_weight_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MIN", 0.0))
-    scorer_weight_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MAX", 1.0))
-    scorer_recency_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SCORER_RECENCY_TAU", 32.0))
+    scorer_w_cosine: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_COSINE", 0.6)
+    )
+    scorer_w_fd: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_FD", 0.25)
+    )
+    scorer_w_recency: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_W_RECENCY", 0.15)
+    )
+    scorer_weight_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MIN", 0.0)
+    )
+    scorer_weight_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_WEIGHT_MAX", 1.0)
+    )
+    scorer_recency_tau: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SCORER_RECENCY_TAU", 32.0)
+    )
 
     # Segmentation thresholds and health port --------------------------------
     segment_grad_threshold: float = Field(
@@ -468,9 +470,7 @@ class Settings(BaseSettings):
     orchestrator_namespace: str = Field(
         default=os.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
     )
-    orchestrator_routing: str = Field(
-        default=os.getenv("SOMABRAIN_ORCH_ROUTING", "")
-    )
+    orchestrator_routing: str = Field(default=os.getenv("SOMABRAIN_ORCH_ROUTING", ""))
 
     # Learning tenant configuration – optional YAML file path used by several services.
     learning_tenants_file: Optional[str] = Field(
@@ -482,17 +482,41 @@ class Settings(BaseSettings):
     )
 
     # Salience system configuration – defaults align with demo scripts.
-    salience_method: str = Field(default_factory=lambda: os.getenv("SOMABRAIN_SALIENCE_METHOD", "dense").strip().lower())
-    salience_fd_rank: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SALIENCE_FD_RANK", 128))
-    salience_fd_decay: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_DECAY", 0.9))
-    salience_w_novelty: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_NOVELTY", 0.6))
-    salience_w_error: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_ERROR", 0.4))
-    salience_threshold_store: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.5))
-    salience_threshold_act: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.7))
-    salience_hysteresis: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_HYSTERESIS", 0.1))
-    salience_fd_weight: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_WEIGHT", 0.25))
-    salience_fd_energy_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.0))
-    use_soft_salience: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_SOFT_SALIENCE", False))
+    salience_method: str = Field(
+        default_factory=lambda: os.getenv("SOMABRAIN_SALIENCE_METHOD", "dense")
+        .strip()
+        .lower()
+    )
+    salience_fd_rank: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SALIENCE_FD_RANK", 128)
+    )
+    salience_fd_decay: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_DECAY", 0.9)
+    )
+    salience_w_novelty: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_NOVELTY", 0.6)
+    )
+    salience_w_error: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_W_ERROR", 0.4)
+    )
+    salience_threshold_store: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_STORE", 0.5)
+    )
+    salience_threshold_act: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_THRESHOLD_ACT", 0.7)
+    )
+    salience_hysteresis: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_HYSTERESIS", 0.1)
+    )
+    salience_fd_weight: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_WEIGHT", 0.25)
+    )
+    salience_fd_energy_floor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.0)
+    )
+    use_soft_salience: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_SOFT_SALIENCE", False)
+    )
 
     # HRR (Holographic Reduced Representation) toggle – referenced in
     # ``somabrain.app`` via ``cfg.use_hrr``.  The default is ``False`` to keep
@@ -501,93 +525,249 @@ class Settings(BaseSettings):
 
     # Feature toggles referenced throughout the codebase – default to ``False``
     # for a minimal full‑local deployment.
-    use_meta_brain: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_META_BRAIN", False))
-    use_exec_controller: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_EXEC_CONTROLLER", False))
-    use_drift_monitor: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_DRIFT_MONITOR", False))
-    use_sdr_prefilter: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_SDR_PREFILTER", False))
-    use_graph_augment: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_GRAPH_AUGMENT", False))
-    use_hrr_first: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False))
+    use_meta_brain: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_META_BRAIN", False)
+    )
+    use_exec_controller: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_EXEC_CONTROLLER", False)
+    )
+    use_drift_monitor: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_DRIFT_MONITOR", False)
+    )
+    use_sdr_prefilter: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_SDR_PREFILTER", False)
+    )
+    use_graph_augment: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_GRAPH_AUGMENT", False)
+    )
+    use_hrr_first: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False)
+    )
 
     # Retrieval/adaptive weights (dynamic defaults) --------------------------
-    retrieval_alpha: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_ALPHA", 1.0))
-    retrieval_beta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_BETA", 0.2))
-    retrieval_gamma: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_GAMMA", 0.1))
-    retrieval_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_TAU", 0.7))
-    retrieval_recency_half_life: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_HALF_LIFE", 60.0))
-    retrieval_recency_sharpness: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_SHARPNESS", 1.2))
-    retrieval_recency_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_RECENCY_FLOOR", 0.05))
-    retrieval_density_target: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_TARGET", 0.2))
-    retrieval_density_floor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_FLOOR", 0.6))
-    retrieval_density_weight: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DENSITY_WEIGHT", 0.35))
-    retrieval_tau_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_MIN", 0.4))
-    retrieval_tau_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_MAX", 1.2))
-    retrieval_tau_increment_up: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_UP", 0.1))
-    retrieval_tau_increment_down: float = Field(default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_DOWN", 0.05))
-    retrieval_dup_ratio_threshold: float = Field(default_factory=lambda: _float_env("SOMABRAIN_DUP_RATIO_THRESHOLD", 0.5))
+    retrieval_alpha: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_ALPHA", 1.0)
+    )
+    retrieval_beta: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_BETA", 0.2)
+    )
+    retrieval_gamma: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_GAMMA", 0.1)
+    )
+    retrieval_tau: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RETRIEVAL_TAU", 0.7)
+    )
+    retrieval_recency_half_life: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RECENCY_HALF_LIFE", 60.0)
+    )
+    retrieval_recency_sharpness: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RECENCY_SHARPNESS", 1.2)
+    )
+    retrieval_recency_floor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_RECENCY_FLOOR", 0.05)
+    )
+    retrieval_density_target: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_DENSITY_TARGET", 0.2)
+    )
+    retrieval_density_floor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_DENSITY_FLOOR", 0.6)
+    )
+    retrieval_density_weight: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_DENSITY_WEIGHT", 0.35)
+    )
+    retrieval_tau_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_TAU_MIN", 0.4)
+    )
+    retrieval_tau_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_TAU_MAX", 1.2)
+    )
+    retrieval_tau_increment_up: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_UP", 0.1)
+    )
+    retrieval_tau_increment_down: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_TAU_INC_DOWN", 0.05)
+    )
+    retrieval_dup_ratio_threshold: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_DUP_RATIO_THRESHOLD", 0.5)
+    )
 
     # Neuromodulator defaults (centralized, overridable) ---------------------
-    neuromod_dopamine_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4))
-    neuromod_serotonin_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5))
-    neuromod_noradrenaline_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_BASE", 0.0))
-    neuromod_acetylcholine_base: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_BASE", 0.0))
-    neuromod_dopamine_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MIN", 0.1))
-    neuromod_dopamine_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MAX", 1.0))
-    neuromod_serotonin_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MIN", 0.0))
-    neuromod_serotonin_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MAX", 1.0))
-    neuromod_noradrenaline_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MIN", 0.0))
-    neuromod_noradrenaline_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MAX", 0.5))
-    neuromod_acetylcholine_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MIN", 0.0))
-    neuromod_acetylcholine_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MAX", 0.5))
-    neuromod_dopamine_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_LR", 0.02))
-    neuromod_serotonin_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_LR", 0.015))
-    neuromod_noradrenaline_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_LR", 0.01))
-    neuromod_acetylcholine_lr: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_LR", 0.01))
-    neuromod_urgency_factor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_URGENCY_FACTOR", 0.3))
-    neuromod_memory_factor: float = Field(default_factory=lambda: _float_env("SOMABRAIN_NEURO_MEMORY_FACTOR", 0.2))
+    neuromod_dopamine_base: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_BASE", 0.4)
+    )
+    neuromod_serotonin_base: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_BASE", 0.5)
+    )
+    neuromod_noradrenaline_base: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_BASE", 0.0)
+    )
+    neuromod_acetylcholine_base: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_BASE", 0.0)
+    )
+    neuromod_dopamine_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MIN", 0.1)
+    )
+    neuromod_dopamine_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_MAX", 1.0)
+    )
+    neuromod_serotonin_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MIN", 0.0)
+    )
+    neuromod_serotonin_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_MAX", 1.0)
+    )
+    neuromod_noradrenaline_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MIN", 0.0)
+    )
+    neuromod_noradrenaline_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_MAX", 0.5)
+    )
+    neuromod_acetylcholine_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MIN", 0.0)
+    )
+    neuromod_acetylcholine_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_MAX", 0.5)
+    )
+    neuromod_dopamine_lr: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_DOPAMINE_LR", 0.02)
+    )
+    neuromod_serotonin_lr: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_SEROTONIN_LR", 0.015)
+    )
+    neuromod_noradrenaline_lr: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_NORAD_LR", 0.01)
+    )
+    neuromod_acetylcholine_lr: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_ACETYL_LR", 0.01)
+    )
+    neuromod_urgency_factor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_URGENCY_FACTOR", 0.3)
+    )
+    neuromod_memory_factor: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_NEURO_MEMORY_FACTOR", 0.2)
+    )
 
     # Utility/adaptation defaults ---------------------------------------------
-    utility_lambda: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA", 1.0))
-    utility_mu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU", 0.1))
-    utility_nu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU", 0.05))
-    utility_lambda_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MIN", 0.0))
-    utility_lambda_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MAX", 5.0))
-    utility_mu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MIN", 0.0))
-    utility_mu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MAX", 5.0))
-    utility_nu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MIN", 0.0))
-    utility_nu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MAX", 5.0))
-    adaptation_learning_rate: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LR", 0.05))
-    adaptation_max_history: int = Field(default_factory=lambda: _int_env("SOMABRAIN_ADAPT_MAX_HISTORY", 1000))
-    adaptation_alpha_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MIN", 0.1))
-    adaptation_alpha_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MAX", 5.0))
-    adaptation_gamma_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MIN", 0.0))
-    adaptation_gamma_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MAX", 1.0))
-    adaptation_lambda_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MIN", 0.1))
-    adaptation_lambda_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MAX", 5.0))
-    adaptation_mu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MIN", 0.01))
-    adaptation_mu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MAX", 5.0))
-    adaptation_nu_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MIN", 0.01))
-    adaptation_nu_max: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MAX", 5.0))
-    adaptation_gain_alpha: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_ALPHA", 1.0))
-    adaptation_gain_gamma: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_GAMMA", -0.5))
-    adaptation_gain_lambda: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_LAMBDA", 1.0))
-    adaptation_gain_mu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_MU", -0.25))
-    adaptation_gain_nu: float = Field(default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_NU", -0.25))
+    utility_lambda: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA", 1.0)
+    )
+    utility_mu: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU", 0.1)
+    )
+    utility_nu: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU", 0.05)
+    )
+    utility_lambda_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MIN", 0.0)
+    )
+    utility_lambda_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_LAMBDA_MAX", 5.0)
+    )
+    utility_mu_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MIN", 0.0)
+    )
+    utility_mu_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_MU_MAX", 5.0)
+    )
+    utility_nu_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MIN", 0.0)
+    )
+    utility_nu_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_UTILITY_NU_MAX", 5.0)
+    )
+    adaptation_learning_rate: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LR", 0.05)
+    )
+    adaptation_max_history: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_ADAPT_MAX_HISTORY", 1000)
+    )
+    adaptation_alpha_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MIN", 0.1)
+    )
+    adaptation_alpha_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_ALPHA_MAX", 5.0)
+    )
+    adaptation_gamma_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MIN", 0.0)
+    )
+    adaptation_gamma_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAMMA_MAX", 1.0)
+    )
+    adaptation_lambda_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MIN", 0.1)
+    )
+    adaptation_lambda_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_LAMBDA_MAX", 5.0)
+    )
+    adaptation_mu_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MIN", 0.01)
+    )
+    adaptation_mu_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_MU_MAX", 5.0)
+    )
+    adaptation_nu_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MIN", 0.01)
+    )
+    adaptation_nu_max: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_NU_MAX", 5.0)
+    )
+    adaptation_gain_alpha: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_ALPHA", 1.0)
+    )
+    adaptation_gain_gamma: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_GAMMA", -0.5)
+    )
+    adaptation_gain_lambda: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_LAMBDA", 1.0)
+    )
+    adaptation_gain_mu: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_MU", -0.25)
+    )
+    adaptation_gain_nu: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_ADAPT_GAIN_NU", -0.25)
+    )
 
     # Sleep system (hot-configurable) ----------------------------------------
-    enable_sleep_system: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_SLEEP", True))
+    enable_sleep_system: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_SLEEP", True)
+    )
     sleep_k0: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K0", 100))
-    sleep_t0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T0", 10.0))
-    sleep_tau0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_TAU0", 1.0))
-    sleep_eta0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ETA0", 0.1))
-    sleep_lambda0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_LAMBDA0", 0.01))
-    sleep_B0: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_B0", 0.5))
-    sleep_K_min: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K_MIN", 1))
-    sleep_t_min: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T_MIN", 0.1))
-    sleep_alpha_K: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_K", 0.8))
-    sleep_alpha_t: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_T", 0.5))
-    sleep_alpha_tau: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_TAU", 0.5))
-    sleep_alpha_eta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_ETA", 1.0))
-    sleep_beta_B: float = Field(default_factory=lambda: _float_env("SOMABRAIN_SLEEP_BETA_B", 0.5))
+    sleep_t0: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T0", 10.0)
+    )
+    sleep_tau0: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_TAU0", 1.0)
+    )
+    sleep_eta0: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ETA0", 0.1)
+    )
+    sleep_lambda0: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_LAMBDA0", 0.01)
+    )
+    sleep_B0: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_B0", 0.5)
+    )
+    sleep_K_min: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K_MIN", 1)
+    )
+    sleep_t_min: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T_MIN", 0.1)
+    )
+    sleep_alpha_K: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_K", 0.8)
+    )
+    sleep_alpha_t: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_T", 0.5)
+    )
+    sleep_alpha_tau: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_TAU", 0.5)
+    )
+    sleep_alpha_eta: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_ALPHA_ETA", 1.0)
+    )
+    sleep_beta_B: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SLEEP_BETA_B", 0.5)
+    )
 
     # Predictor / integrator configuration -----------------------------------
     predictor_alpha: float = Field(
@@ -616,16 +796,16 @@ class Settings(BaseSettings):
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_MIN_GAP_MS", 250)
     )
     segment_write_gap_threshold_ms: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_SEGMENT_WRITE_GAP_THRESHOLD_MS", 30000)
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_SEGMENT_WRITE_GAP_THRESHOLD_MS", 30000
+        )
     )
 
     # CPD segmentation parameters -----------------------------------------------
     cpd_min_samples: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_CPD_MIN_SAMPLES", 20)
     )
-    cpd_z: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_CPD_Z", 4.0)
-    )
+    cpd_z: float = Field(default_factory=lambda: _float_env("SOMABRAIN_CPD_Z", 4.0))
     cpd_min_gap_ms: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_CPD_MIN_GAP_MS", 1000)
     )
@@ -654,12 +834,8 @@ class Settings(BaseSettings):
     segmentation_consumer_group: str = Field(
         default=os.getenv("SOMABRAIN_CONSUMER_GROUP", "segmentation-service")
     )
-    default_tenant: str = Field(
-        default=os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
-    )
-    host: str = Field(
-        default=os.getenv("SOMABRAIN_HOST", "0.0.0.0")
-    )
+    default_tenant: str = Field(default=os.getenv("SOMABRAIN_DEFAULT_TENANT", "public"))
+    host: str = Field(default=os.getenv("SOMABRAIN_HOST", "0.0.0.0"))
 
     # Multi‑tenant namespace – used throughout the app for routing and storage.
     # Default to "public" to keep existing behaviour when the variable is unset.
@@ -668,9 +844,7 @@ class Settings(BaseSettings):
     )
     # Service name for observability – used as a default when tracing is
     # initialised without an explicit name.
-    service_name: str = Field(
-        default=os.getenv("SOMABRAIN_SERVICE_NAME", "somabrain")
-    )
+    service_name: str = Field(default=os.getenv("SOMABRAIN_SERVICE_NAME", "somabrain"))
     log_config: str = Field(
         default=os.getenv("SOMABRAIN_LOG_CONFIG", "/app/config/logging.yaml")
     )
@@ -690,9 +864,7 @@ class Settings(BaseSettings):
     drift_store_path: str = Field(
         default=os.getenv("SOMABRAIN_DRIFT_STORE", "./data/drift/state.json")
     )
-    universe: Optional[str] = Field(
-        default=os.getenv("SOMA_UNIVERSE")
-    )
+    universe: Optional[str] = Field(default=os.getenv("SOMA_UNIVERSE"))
     # Teach feedback processor configuration
     teach_feedback_proc_port: int = Field(
         default_factory=lambda: _int_env("TEACH_FEEDBACK_PROC_PORT", 8086)
@@ -715,13 +887,23 @@ class Settings(BaseSettings):
     # Vault integration
     vault_addr: Optional[str] = Field(default=os.getenv("VAULT_ADDR"))
     vault_token: Optional[str] = Field(default=os.getenv("VAULT_TOKEN"))
-    vault_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH"))
+    vault_pubkey_path: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH")
+    )
 
     # Constitution defaults
-    constitution_pubkeys: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS"))
-    constitution_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH"))
-    constitution_privkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"))
-    constitution_signer_id: str = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default"))
+    constitution_pubkeys: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS")
+    )
+    constitution_pubkey_path: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH")
+    )
+    constitution_privkey_path: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH")
+    )
+    constitution_signer_id: str = Field(
+        default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
+    )
 
     # LLM endpoint for predictor (if used)
     llm_endpoint: Optional[str] = Field(default=os.getenv("SOMABRAIN_LLM_ENDPOINT"))
@@ -735,12 +917,20 @@ class Settings(BaseSettings):
     redis_db: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_DB"))
 
     # Memory HTTP service additional components
-    memory_http_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_HOST"))
-    memory_http_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_PORT"))
-    memory_http_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"))
+    memory_http_host: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_MEMORY_HTTP_HOST")
+    )
+    memory_http_port: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_MEMORY_HTTP_PORT")
+    )
+    memory_http_scheme: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME")
+    )
 
     # Kafka connection details (host, port, scheme) – separate from bootstrap URL
-    kafka_bootstrap: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"))
+    kafka_bootstrap: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP")
+    )
     kafka_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_HOST"))
     kafka_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_PORT"))
     kafka_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_SCHEME"))
@@ -781,10 +971,14 @@ class Settings(BaseSettings):
         default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_M", "32"))
     )
     tiered_memory_cleanup_hnsw_ef_construction: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200"))
+        default_factory=lambda: int(
+            os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_CONSTRUCTION", "200")
+        )
     )
     tiered_memory_cleanup_hnsw_ef_search: int = Field(
-        default_factory=lambda: int(os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_SEARCH", "128"))
+        default_factory=lambda: int(
+            os.getenv("SOMABRAIN_CLEANUP_HNSW_EF_SEARCH", "128")
+        )
     )
     # Topic names used by scripts/CI utilities
     topic_config_updates: str = Field(

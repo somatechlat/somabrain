@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+
 def _svc():
     try:
         from somabrain.runtime import config_runtime as _rt_impl

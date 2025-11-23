@@ -3,6 +3,7 @@ collect_ignore = [
     "scripts/kafka_smoke_test.py",
 ]
 
+
 def pytest_ignore_collect(path, config):
     """Prevent pytest from collecting the problematic Kafka smoke test script.
 
@@ -10,6 +11,7 @@ def pytest_ignore_collect(path, config):
     unique within the repository.
     """
     return "scripts/kafka_smoke_test.py" in str(path)
+
 
 # ---------------------------------------------------------------------------
 # Hypothesis configuration

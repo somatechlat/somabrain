@@ -29,6 +29,7 @@ except Exception as e:
     sys.exit(3)
 
 from common.config.settings import settings as _settings
+
 print("Checking OPA at", _settings.opa_url)
 try:
     resp = requests.get(_settings.opa_url, timeout=3)

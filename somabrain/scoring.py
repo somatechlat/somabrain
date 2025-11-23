@@ -41,7 +41,7 @@ def _gain_setting(name: str) -> float:
 
 class UnifiedScorer:
     """Combine multiple similarity signals.
-    
+
     Components:
     - Cosine similarity in the base space
     - FD subspace cosine (projection via Frequent-Directions sketch)
@@ -64,7 +64,7 @@ class UnifiedScorer:
         fd_val = _gain_setting("w_fd")
         recency_val = _gain_setting("w_recency")
         tau_val = _gain_setting("recency_tau")
-        
+
         self._weights = ScorerWeights(
             w_cosine=self._clamp("cosine", cosine_val, lo, hi),
             w_fd=self._clamp("fd", fd_val, lo, hi),
@@ -141,7 +141,7 @@ class UnifiedScorer:
 
         if M:
             M.SCORER_FINAL.observe(total_score)
-                
+
         return total_score
 
     def stats(self) -> dict[str, float | dict[str, float | bool]]:

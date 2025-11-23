@@ -40,7 +40,9 @@ class MemoryService:
         self._degrade_readonly = bool(
             getattr(settings, "memory_degrade_readonly", False)
         )
-        self._degrade_topic = getattr(settings, "memory_degrade_topic", "memory.degraded")
+        self._degrade_topic = getattr(
+            settings, "memory_degrade_topic", "memory.degraded"
+        )
 
     # ---------------------------------------------------------------------
     # Backend accessor helpers
@@ -152,7 +154,9 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
-    def link(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
+    def link(
+        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
+    ):
         if self._is_circuit_open():
             self._queue_degraded(
                 "link",
@@ -175,7 +179,9 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
-    async def alink(self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0):
+    async def alink(
+        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
+    ):
         if self._is_circuit_open():
             self._queue_degraded(
                 "link",

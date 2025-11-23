@@ -43,6 +43,7 @@ import asyncio
 @dataclass
 class QuotaInfo:
     """Information about a tenant's quota status."""
+
     tenant_id: str
     daily_limit: int
     remaining: int
@@ -150,7 +151,9 @@ class QuotaManager:
         if cur_day != day:
             cnt = 0
         now = datetime.now(timezone.utc)
-        reset_time = datetime(now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc)
+        reset_time = datetime(
+            now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc
+        )
         # Move to next day safely
         reset_time = reset_time + timedelta(days=1)
         return QuotaInfo(
@@ -191,7 +194,7 @@ class QuotaManager:
         # Update the global configuration used by the manager
         self.cfg.daily_writes = new_limit
         return True
-    
+
     def _get_tenant_quota_limit(self, tenant_id: str) -> int:
         """Get tenant-specific quota limit, falling back to global config."""
         try:
@@ -201,7 +204,9 @@ class QuotaManager:
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-            quota_config = loop.run_until_complete(tenant_manager.get_tenant_quota_config(tenant_id))
+            quota_config = loop.run_until_complete(
+                tenant_manager.get_tenant_quota_config(tenant_id)
+            )
             return quota_config.get("daily_quota", self.cfg.daily_writes)
         except Exception:
             return self.cfg.daily_writes

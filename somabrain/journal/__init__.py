@@ -14,14 +14,14 @@ Features:
 
 Usage:
     from somabrain.journal import get_journal, init_journal
-    
+
     # Get the global journal instance
     journal = get_journal()
-    
+
     # Initialize with custom config
     config = JournalConfig(enabled=True, journal_dir="/custom/path")
     journal = init_journal(config)
-    
+
     # Append an event
     event = JournalEvent(
         id="event-123",
@@ -30,7 +30,7 @@ Usage:
         tenant_id="tenant-789"
     )
     journal.append_event(event)
-    
+
     # Read events with filtering
     events = journal.read_events(tenant_id="tenant-789", status="pending")
 """
@@ -45,7 +45,7 @@ from .local_journal import (
 
 __all__ = [
     "JournalConfig",
-    "JournalEvent", 
+    "JournalEvent",
     "LocalJournal",
     "get_journal",
     "init_journal",

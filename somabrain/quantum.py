@@ -127,7 +127,9 @@ class QuantumLayer:
         return self._renorm(self._encoder.vector_for_key(text))
 
     def superpose(self, *vectors) -> np.ndarray:
-        from somabrain.metrics_extra.advanced_math_metrics import AdvancedMathematicalMetrics
+        from somabrain.metrics_extra.advanced_math_metrics import (
+            AdvancedMathematicalMetrics,
+        )
 
         acc: Optional[np.ndarray] = None
 
@@ -175,7 +177,9 @@ class QuantumLayer:
         MathematicalMetrics.verify_operation_correctness("bind", cosine_a)
 
         # Record binder condition number for diagnostics
-        from somabrain.metrics_extra.advanced_math_metrics import AdvancedMathematicalMetrics
+        from somabrain.metrics_extra.advanced_math_metrics import (
+            AdvancedMathematicalMetrics,
+        )
 
         denom_abs = np.abs(b_vec)
         min_val = float(np.min(denom_abs)) if denom_abs.size else 0.0
@@ -236,7 +240,9 @@ class QuantumLayer:
         return role
 
     def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
-        from somabrain.metrics_extra.advanced_math_metrics import AdvancedMathematicalMetrics
+        from somabrain.metrics_extra.advanced_math_metrics import (
+            AdvancedMathematicalMetrics,
+        )
 
         a_vec = self._ensure_vector(a, name="bind_unitary.a")
         role_vec = self.make_unitary_role(role_token)
@@ -346,7 +352,9 @@ class QuantumLayer:
             "unitary_role_norm", abs(norm - 1.0)
         )
 
-        from somabrain.metrics_extra.advanced_math_metrics import AdvancedMathematicalMetrics
+        from somabrain.metrics_extra.advanced_math_metrics import (
+            AdvancedMathematicalMetrics,
+        )
 
         AdvancedMathematicalMetrics.record_numerical_error(abs(norm - 1.0))
 

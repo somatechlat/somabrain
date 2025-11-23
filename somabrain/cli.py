@@ -18,6 +18,7 @@ import sys
 # Direct import of the shared settings object.
 from common.config.settings import settings
 
+
 def get_config():
     """Compatibility wrapper returning the shared settings.
 
@@ -25,6 +26,7 @@ def get_config():
     object.  We simply return the ``settings`` instance imported above.
     """
     return settings
+
 
 # Journal subsystem removed: compact_journal / rotate_journal no longer available.
 

@@ -51,6 +51,7 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
     if path:
         candidates.append(Path(path))
     from common.config.settings import settings as cfg
+
     env_path = cfg.providers_path
     if env_path:
         candidates.append(Path(env_path))

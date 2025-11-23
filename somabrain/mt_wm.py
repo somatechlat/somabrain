@@ -37,6 +37,7 @@ import threading
 import logging
 
 from .wm import WorkingMemory
+
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
 from . import metrics as M
@@ -96,7 +97,9 @@ class MultiTenantWM:
             try:
                 total_items = sum(len(w._items) for w in self._wms.values())
                 total_capacity = self.cfg.max_tenants * self.cfg.per_tenant_capacity
-                M.WM_UTILIZATION.set(total_items / total_capacity if total_capacity else 0.0)
+                M.WM_UTILIZATION.set(
+                    total_items / total_capacity if total_capacity else 0.0
+                )
             except Exception:
                 pass
             return wm

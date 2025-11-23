@@ -32,6 +32,7 @@ def main() -> None:
     else:
         # Use centralized Settings for drift store path
         from common.config.settings import settings
+
         store_path = settings.drift_store_path
         p = Path(store_path)
         if p.exists():

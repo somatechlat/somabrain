@@ -68,7 +68,9 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         "target_state": body.target_state.value,
     }
     if not opa_client.evaluate(opa_input):
-        raise HTTPException(status_code=403, detail="OPA policy denied cognitive sleep request")
+        raise HTTPException(
+            status_code=403, detail="OPA policy denied cognitive sleep request"
+        )
 
     manager = SleepStateManager()
     cb = get_cb()
@@ -96,7 +98,9 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         ss.current_state = target_state.value
         ss.target_state = target_state.value
         if body.ttl_seconds is not None:
-            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
+            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
+                seconds=body.ttl_seconds
+            )
             ss.ttl = ttl_dt
             ss.scheduled_wake = ttl_dt
         else:
