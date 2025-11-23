@@ -50,20 +50,15 @@ class PolicyDecision:
 class PolicyEngine:
     def __init__(self, safety_threshold: float = 0.9):
         self.safety_threshold = float(safety_threshold)
-        pat = settings.getenv("SOMABRAIN_BLOCK_UA_REGEX", "").strip()
+        pat = getattr(settings, "block_ua_regex", "").strip()
         self._block_ua = re.compile(pat) if pat else None
 
     def _kill_switch(self) -> bool:
         # Disable kill switch during test runs to prevent unintended denial of requests.
         # Pytest sets the PYTEST_CURRENT_TEST environment variable for each test.
-        if settings.getenv("PYTEST_CURRENT_TEST"):
+        if getattr(settings, "pytest_current_test", None):
             return False
-        return str(settings.getenv("SOMABRAIN_KILL_SWITCH", "")).lower() in (
-            "1",
-            "true",
-            "on",
-            "yes",
-        )
+        return bool(getattr(settings, "kill_switch", False))
 
     def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
         # Global kill switch

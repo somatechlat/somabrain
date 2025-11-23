@@ -19,7 +19,7 @@ from common.config.settings import Settings as Config
 
 _current_config: Optional[Config] = None
 _allowed_tenants: List[str] = []
-_default_tenant: str = "sandbox"  # DEPRECATED: Use tenant_registry instead
+_default_tenant: str = getattr(settings, "default_tenant", "sandbox")
 
 
 def set_auth_config(cfg: Config) -> None:
@@ -30,10 +30,7 @@ def set_auth_config(cfg: Config) -> None:
     """
     global _current_config, _allowed_tenants, _default_tenant
     _current_config = cfg
-    _default_tenant = cfg.default_tenant or settings.getenv(
-        "SOMABRAIN_DEFAULT_TENANT", "sandbox"
-    )
-    os.environ.setdefault("SOMABRAIN_DEFAULT_TENANT", _default_tenant)
+    _default_tenant = cfg.default_tenant or getattr(settings, "default_tenant", "sandbox")
     _allowed_tenants = _resolve_tenants(cfg)
 
 
@@ -43,13 +40,11 @@ def _resolve_tenants(cfg: Config) -> List[str]:
     if getattr(cfg, "sandbox_tenants", None):
         tenants.extend(str(t).strip() for t in cfg.sandbox_tenants if str(t).strip())
     # From env comma-separated list
-    env_tenants = settings.getenv("SOMABRAIN_SANDBOX_TENANTS")
+    env_tenants = getattr(settings, "sandbox_tenants", None)
     if env_tenants:
         tenants.extend(t.strip() for t in env_tenants.split(",") if t.strip())
     # From optional file (YAML list or dict with tenants/allowed)
-    file_path = cfg.sandbox_tenants_file or settings.getenv(
-        "SOMABRAIN_SANDBOX_TENANTS_FILE"
-    )
+    file_path = cfg.sandbox_tenants_file or getattr(settings, "sandbox_tenants_file", None)
     if file_path:
         p = Path(file_path)
         if p.exists():

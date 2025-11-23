@@ -26,12 +26,9 @@ class OpaMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        if settings is not None:
-            try:
-                opa_url = getattr(settings, "opa_url", None)
-            except Exception:
-                opa_url = None
-        else:
+        try:
+            opa_url = getattr(settings, "opa_url", None)
+        except Exception:
             opa_url = None
         # No legacy fallback – rely solely on the canonical ``opa_url`` field.
         # If ``opa_url`` is empty, the middleware will treat OPA as unavailable.
