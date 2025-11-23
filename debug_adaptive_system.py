@@ -4,7 +4,6 @@ Debug script to check if adaptive learning system is working.
 """
 
 import sys
-import os
 
 # Add the somabrain module to the path
 sys.path.insert(0, "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain")

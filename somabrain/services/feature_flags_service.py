@@ -81,8 +81,6 @@ def main() -> None:  # pragma: no cover – exercised via integration tests
     # Use the centralized Settings value for the feature‑flags service port.
     from common.config.settings import settings
 
-    settings = settings
-
     port = int(settings.feature_flags_port)
     import uvicorn  # type: ignore
 

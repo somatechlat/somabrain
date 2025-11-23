@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from common.config.settings import settings
 import socket
 from typing import Dict

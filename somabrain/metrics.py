@@ -35,7 +35,6 @@ Functions:
 from __future__ import annotations
 
 import time
-import os
 from threading import Lock
 from typing import Any, Awaitable, Callable, Iterable
 import builtins as _builtins
@@ -928,9 +927,7 @@ def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
         pass
 
 
-def report_outbox_processed(
-    tenant_id: str | None, topic: str, count: int = 1
-) -> None:
+def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -> None:
     try:
         OUTBOX_PROCESSED_TOTAL.labels(
             tenant_id=_normalize_tenant_label(tenant_id),
@@ -942,11 +939,13 @@ def report_outbox_processed(
 
 def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
     try:
-        OUTBOX_REPLAYED_TOTAL.labels(
-            tenant_id=_normalize_tenant_label(tenant_id)
-        ).inc(max(0, int(count)))
+        OUTBOX_REPLAYED_TOTAL.labels(tenant_id=_normalize_tenant_label(tenant_id)).inc(
+            max(0, int(count))
+        )
     except Exception:
         pass
+
+
 # Ensure HTTP_FAILURES counter is only created once per process.
 if "memory_http_failures_total" in REGISTRY._names_to_collectors:
     HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]

@@ -9,7 +9,6 @@ import collections
 import json
 
 from typing import Deque, Dict, List, Optional
-import os
 
 try:  # pragma: no cover - optional dependency
     import redis  # type: ignore

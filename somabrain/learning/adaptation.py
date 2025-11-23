@@ -8,7 +8,6 @@ from dataclasses import asdict, dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from somabrain.context.builder import RetrievalWeights as _RetrievalWeights
     from somabrain.feedback import Feedback
 
 
@@ -99,7 +98,6 @@ def _get_redis():
     """Get Redis client for per-tenant state persistence.
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL). Test doubles removed.
     """
-    import os
 
     require_backends = settings.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "0")
     require_backends = str(require_backends).strip().lower() in {

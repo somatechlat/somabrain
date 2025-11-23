@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict
 
 import somabrain.metrics as app_metrics
 

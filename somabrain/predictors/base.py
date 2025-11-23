@@ -7,11 +7,9 @@ import numpy as np
 
 from somabrain.math.graph_heat import graph_heat_chebyshev, graph_heat_lanczos
 import json
-import os
 
 
 def _select_heat_method() -> str:
-    import os
 
     m = (
         (settings.getenv("SOMA_HEAT_METHOD", "chebyshev") or "chebyshev")

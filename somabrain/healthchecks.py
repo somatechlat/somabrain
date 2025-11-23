@@ -11,7 +11,6 @@ possible. This provides a truthful readiness signal for a real server.
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
 

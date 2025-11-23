@@ -13,7 +13,6 @@ default to the current variables.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Optional, Any
 
 BaseSettings: Any  # forward-declare for mypy

@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Sequence
 
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

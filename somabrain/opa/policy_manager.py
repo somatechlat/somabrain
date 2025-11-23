@@ -9,7 +9,6 @@ Keys used:
 from __future__ import annotations
 
 import logging
-import os
 from typing import Optional, Tuple
 
 from common.utils import RedisCache

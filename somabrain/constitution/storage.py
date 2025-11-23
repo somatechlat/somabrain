@@ -7,7 +7,6 @@ import datetime as dt
 import hashlib
 import json
 import logging
-import os
 import pathlib
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
@@ -235,7 +234,6 @@ class ConstitutionStorage:
         Returns the local file path or S3 URI, whichever is used/preferred.
         """
         import json
-        import os
         import datetime as dt
 
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")

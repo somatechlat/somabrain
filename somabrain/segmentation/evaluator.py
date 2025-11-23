@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import List, Tuple, Dict, Iterable
 import random
-import math
 
 try:
     from somabrain import metrics  # type: ignore

@@ -5,7 +5,7 @@ Tracks calibration performance over time for each predictor domain.
 """
 
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict
 from dataclasses import dataclass
 from collections import defaultdict, deque
 import threading
@@ -124,7 +124,6 @@ class CalibrationTracker:
         not persisted (to keep file small). This allows warm restarts with
         previously learned temperatures while new observations accumulate.
         """
-        import json
         import os
 
         data: Dict[str, Dict[str, float]] = {}
@@ -151,7 +150,6 @@ class CalibrationTracker:
 
     def load(self, path: str) -> None:
         """Load persisted temperature parameters if available."""
-        import json
 
         try:
             with open(path, "r", encoding="utf-8") as f:

@@ -12,12 +12,10 @@ from typing import Optional
 import jwt
 from fastapi import HTTPException, Request
 from jwt.exceptions import PyJWTError
-import os
 
 from .config import Config
 
 # Import the canonical settings object directly.
-from common.config.settings import settings
 
 _JWT_PUBLIC_CACHE: Optional[str] = None
 _TRUE_VALUES = ("1", "true", "yes", "on")

@@ -8,8 +8,6 @@ and per-tenant overrides.
 from __future__ import annotations
 
 import json
-import os
-import sys
 import time
 from typing import Any, Dict, Optional
 
@@ -176,7 +174,7 @@ class LearnerService:
                 gauge.labels(tenant_id=tenant).set(regret)  # type: ignore[attr-defined]
             else:
                 gauge.set(regret)  # type: ignore[call-arg]
-        except Exception as exc:  # pragma: no cover – defensive logging
+        except Exception:  # pragma: no cover – defensive logging
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="gauge").inc()
             raise
 

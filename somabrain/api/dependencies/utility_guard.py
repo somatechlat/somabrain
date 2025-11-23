@@ -48,7 +48,6 @@ async def utility_guard(
         if settings is not None:
             dev_mode = getattr(settings, "mode_normalized", "prod") == "dev"
         else:
-            import os as _os
 
             dev_mode = _settings.getenv("SOMABRAIN_MODE", "").strip().lower() in (
                 "dev",

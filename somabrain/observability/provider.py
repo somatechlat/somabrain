@@ -8,7 +8,6 @@ raises an explicit error so missing instrumentation is addressed during deploy.
 
 from __future__ import annotations
 
-from typing import Any
 
 try:
     from opentelemetry import trace

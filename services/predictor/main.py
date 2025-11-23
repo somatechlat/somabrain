@@ -22,13 +22,12 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
-import os
 from common.config.settings import settings
 from common.logging import logger
 import random
 import threading
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 
 import numpy as np
 
@@ -118,7 +117,7 @@ def _maybe_health_server():  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
@@ -126,7 +125,7 @@ def _maybe_health_server():  # pragma: no cover
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception as exc:
+    except Exception:
         logger.exception("Health server startup failed")
 
 
@@ -249,14 +248,14 @@ def run_forever() -> None:  # pragma: no cover
                     if counters.get(domain):
                         try:
                             counters[domain].inc()
-                        except Exception as exc:
+                        except Exception:
                             logger.exception(
                                 "Failed to increment emitted metric for %s", domain
                             )
                     if err_hist is not None:
                         try:
                             err_hist.labels(domain=domain).observe(float(delta_error))
-                        except Exception as exc:
+                        except Exception:
                             logger.exception(
                                 "Failed to record error histogram for %s", domain
                             )
@@ -273,7 +272,7 @@ def run_forever() -> None:  # pragma: no cover
                                 TOPICS[f"soma_{domain}"],
                                 value=encode(soma_rec, soma_schema),
                             )
-                        except Exception as exc:
+                        except Exception:
                             logger.exception(
                                 "Failed to emit soma-compatible belief update for %s",
                                 domain,
@@ -285,14 +284,14 @@ def run_forever() -> None:  # pragma: no cover
                     if next_counter is not None:
                         try:
                             next_counter.inc()
-                        except Exception as exc:
+                        except Exception:
                             logger.exception("Failed to increment next event metric")
             time.sleep(0.05)
     finally:
         try:
             prod.flush(2)
             prod.close()
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed during producer cleanup in unified predictor")
 
 

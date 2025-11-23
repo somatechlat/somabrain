@@ -15,7 +15,6 @@ Feature gating is centralized via somabrain.modes.feature_enabled("wm_updates_ca
 from __future__ import annotations
 
 import json
-import os
 from typing import Any, Dict, Optional
 from somabrain.modes import feature_enabled
 

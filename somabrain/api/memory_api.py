@@ -9,7 +9,6 @@ so they stay in sync with the main application surface.
 from __future__ import annotations
 
 import copy
-import os
 import time
 import uuid
 from threading import RLock
@@ -33,10 +32,11 @@ from somabrain.runtime.config_runtime import (
     submit_metrics_snapshot,
     get_cutover_controller,
 )
+
 # Unified configuration: use the central Settings instance from common.config.settings.
 from common.config.settings import settings
+
 # Use the new TenantManager for tenant resolution.
-from somabrain.tenant_manager import get_tenant_manager
 from somabrain.auth import require_auth, require_admin_auth
 from somabrain.schemas import RetrievalRequest
 from somabrain.db import outbox as outbox_db
@@ -385,7 +385,9 @@ class OutboxEventSummary(BaseModel):
 
 
 class OutboxReplayRequest(BaseModel):
-    ids: List[int] = Field(..., min_items=1, description="Outbox event IDs to mark for replay")
+    ids: List[int] = Field(
+        ..., min_items=1, description="Outbox event IDs to mark for replay"
+    )
 
 
 def _runtime_module():

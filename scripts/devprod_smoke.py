@@ -17,7 +17,6 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import os
 from somabrain.infrastructure import get_api_base_url
 import sys
 import time

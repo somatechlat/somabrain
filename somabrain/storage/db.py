@@ -9,8 +9,6 @@ prevents silent divergence between dev/test and production storage behaviour.
 from __future__ import annotations
 
 import json
-import os
-import pathlib
 from typing import Optional
 
 from sqlalchemy import create_engine

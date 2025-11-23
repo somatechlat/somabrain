@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from somabrain.common.kafka import make_producer, encode
 

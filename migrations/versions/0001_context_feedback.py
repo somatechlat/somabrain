@@ -11,14 +11,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-        """Create the initial schema for context feedback and token usage.
+    """Create the initial schema for context feedback and token usage.
 
-        This migration defines two tables:
-        * ``feedback_events`` – stores a single feedback interaction (query,
-            prompt, response, utility, optional reward, and metadata).
-        * ``token_usage`` – tracks token consumption per session/tenant.
-        Indexes are added on ``session_id`` for efficient look‑ups.
-        """
+    This migration defines two tables:
+    * ``feedback_events`` – stores a single feedback interaction (query,
+        prompt, response, utility, optional reward, and metadata).
+    * ``token_usage`` – tracks token consumption per session/tenant.
+    Indexes are added on ``session_id`` for efficient look‑ups.
+    """
     op.create_table(
         "feedback_events",
         sa.Column("id", sa.String(length=64), primary_key=True),

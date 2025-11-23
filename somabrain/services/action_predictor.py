@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -29,8 +28,6 @@ from somabrain.common.kafka import encode, make_producer
 
 try:
     from common.config.settings import settings
-
-    settings = settings
 except ImportError:
     settings = None
 

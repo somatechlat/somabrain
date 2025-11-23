@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List
 from .adaptive.core import AdaptiveParameter, PerformanceMetrics
 from common.config.settings import settings
 

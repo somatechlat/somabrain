@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
-import os
 from typing import Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from config.feature_flags import FeatureFlags
 

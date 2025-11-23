@@ -19,7 +19,6 @@ from common.config.settings import settings
 import time
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple
 
 from somabrain.common.infra import assert_ready
@@ -210,7 +209,7 @@ class IntegratorLeaderElection:
 
             return False
 
-        except Exception as e:
+        except Exception:
             LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="redis_error").set(0)
             return False
 
@@ -255,7 +254,7 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception as e:
+        except Exception:
             LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="error").inc()
             return False
 
@@ -408,7 +407,6 @@ class IntegratorLeaderElection:
 
 def main() -> None:  # pragma: no cover
     """Test entry point for leader election service."""
-    from somabrain.modes import feature_enabled, mode_config
 
     if not feature_enabled("integrator"):
         print("integrator_leader: disabled via mode")

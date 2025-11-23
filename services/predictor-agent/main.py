@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-import os
 from common.config.settings import settings
 from common.logging import logger
 import random
@@ -104,14 +102,14 @@ def run_forever() -> None:  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception as exc:
+    except Exception:
         logger.exception("Health server startup failed")
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
@@ -179,12 +177,12 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
-                    except Exception as exc:
+                    except Exception:
                         logger.exception("Failed to increment emitted metric")
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="agent").observe(float(delta_error))
-                    except Exception as exc:
+                    except Exception:
                         logger.exception("Failed to record error histogram")
                 if soma_compat:
                     try:
@@ -220,7 +218,7 @@ def run_forever() -> None:  # pragma: no cover
         try:
             prod.flush(2)
             prod.close()
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed to flush/close producer during shutdown")
 
 

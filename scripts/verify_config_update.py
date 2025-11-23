@@ -17,7 +17,6 @@ than silently succeeding.
 from __future__ import annotations
 
 import json
-import os
 from common.config.settings import settings
 import sys
 import time

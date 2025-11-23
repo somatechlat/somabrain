@@ -14,10 +14,7 @@ Run this demo to see:
 USAGE: python demo_adaptive_transformation.py
 """
 
-import sys
 import time
-import json
-from typing import Dict, Any
 
 
 def show_hardcoded_problem():

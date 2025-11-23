@@ -22,7 +22,6 @@ database and OPA service, satisfying the VIBE "no‑guess" rule.
 from __future__ import annotations
 
 import datetime
-from enum import Enum
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request

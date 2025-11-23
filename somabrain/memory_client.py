@@ -36,9 +36,7 @@ logger = logging.getLogger(__name__)
 debug_memory_client = False
 if settings is not None:
     try:
-        debug_memory_client = bool(
-            getattr(settings, "debug_memory_client", False)
-        )
+        debug_memory_client = bool(getattr(settings, "debug_memory_client", False))
     except Exception:
         debug_memory_client = False
 else:
@@ -54,7 +52,6 @@ if debug_memory_client:
     logger.setLevel(logging.DEBUG)
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
-
 
 
 def _http_setting(attr: str, default_val: int) -> int:
@@ -265,9 +262,7 @@ class MemoryClient:
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if settings is not None:
             try:
-                db_path = str(
-                    getattr(settings, "memory_db_path", "./data/memory.db")
-                )
+                db_path = str(getattr(settings, "memory_db_path", "./data/memory.db"))
             except Exception:
                 db_path = "./data/memory.db"
         else:
@@ -314,7 +309,9 @@ class MemoryClient:
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
-            max_conns = int(settings.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max)))
+            max_conns = int(
+                settings.getenv("SOMABRAIN_HTTP_MAX_CONNS", str(default_max))
+            )
         except Exception:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
@@ -326,7 +323,9 @@ class MemoryClient:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
-            retries = int(settings.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries)))
+            retries = int(
+                settings.getenv("SOMABRAIN_HTTP_RETRIES", str(default_retries))
+            )
         except Exception:
             retries = default_retries
 
@@ -1246,9 +1245,7 @@ class MemoryClient:
                     getattr(settings, "memory_enable_weighting", False)
                 )
                 priors_env = getattr(settings, "memory_phase_priors", "") or ""
-                quality_exp = float(
-                    getattr(settings, "memory_quality_exp", 1.0) or 1.0
-                )
+                quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
             except Exception:
                 weighting_enabled = False
         else:
@@ -1256,9 +1253,13 @@ class MemoryClient:
             try:
                 from common.config.settings import settings as _settings
 
-                weighting_enabled = bool(getattr(_settings, "memory_enable_weighting", False))
+                weighting_enabled = bool(
+                    getattr(_settings, "memory_enable_weighting", False)
+                )
                 priors_env = getattr(_settings, "memory_phase_priors", "") or ""
-                quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0)
+                quality_exp = float(
+                    getattr(_settings, "memory_quality_exp", 1.0) or 1.0
+                )
             except Exception:
                 weighting_enabled = False
         if not weighting_enabled:
@@ -1756,9 +1757,7 @@ class MemoryClient:
                 "MEMORY SERVICE REQUIRED: HTTP memory backend not available (set SOMABRAIN_MEMORY_HTTP_ENDPOINT)."
             )
         rid = request_id or str(uuid.uuid4())
-        return self._http_recall_aggregate_sync(
-            query, top_k, universe or "real", rid
-        )
+        return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
 
     def recall_with_scores(
         self,
@@ -2234,7 +2233,10 @@ class MemoryClient:
             return []
 
         if self._http is None:
-            require_memory_enabled = bool(settings.getenv("SOMABRAIN_REQUIRE_MEMORY", "0") in {"1","true","TRUE"})
+            require_memory_enabled = bool(
+                settings.getenv("SOMABRAIN_REQUIRE_MEMORY", "0")
+                in {"1", "true", "TRUE"}
+            )
             if require_memory_enabled:
                 raise RuntimeError(
                     "MEMORY SERVICE UNAVAILABLE: payloads_for_coords requires an HTTP memory backend."

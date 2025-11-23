@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
 from common.config.settings import settings
 from common.logging import logger
 import random
 import time
-from typing import Any
 import threading
 import numpy as np
 
@@ -22,10 +20,6 @@ from somabrain.services.calibration_service import calibration_service
 
 # Diffusion predictor
 from somabrain.predictors.base import (
-    HeatDiffusionPredictor,
-    PredictorConfig,
-    make_line_graph_laplacian,
-    matvec_from_matrix,
     build_predictor_from_env,
 )
 
@@ -83,14 +77,14 @@ def run_forever() -> None:  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception as exc:
+            except Exception:
                 logger.exception("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception as exc:
+    except Exception:
         logger.exception("Health server startup failed")
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
@@ -178,12 +172,12 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
-                    except Exception as exc:
+                    except Exception:
                         logger.exception("Failed to increment emitted metric")
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="state").observe(float(delta_error))
-                    except Exception as exc:
+                    except Exception:
                         logger.exception("Failed to record error histogram")
                 if soma_compat:
                     # Map to soma-compatible BeliefUpdate
@@ -201,7 +195,7 @@ def run_forever() -> None:  # pragma: no cover
                         }
                         payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
-                    except Exception as exc:
+                    except Exception:
                         logger.exception("Failed to emit soma-compatible belief update")
                 # NextEvent emission (derived): predicted_state based on stability
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
@@ -220,7 +214,7 @@ def run_forever() -> None:  # pragma: no cover
         try:
             prod.flush(2)
             prod.close()
-        except Exception as exc:
+        except Exception:
             logger.exception("Failed during producer cleanup")
 
 

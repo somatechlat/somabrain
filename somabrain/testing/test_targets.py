@@ -9,7 +9,6 @@ configs and skip gracefully when a target is unavailable.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from typing import Iterable, Iterator
 from urllib.parse import urlparse

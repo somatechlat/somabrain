@@ -8,7 +8,6 @@ generation, stores the policy and signature in Redis, and reloads OPA.
 from __future__ import annotations
 
 import logging
-import os
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse

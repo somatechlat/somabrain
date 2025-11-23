@@ -41,7 +41,7 @@ import random
 from typing import List, Tuple
 import time as _time
 
-from .config import Config, get_config
+from .config import Config
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
 from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH

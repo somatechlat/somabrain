@@ -7,7 +7,6 @@ flags are removed; optional local overrides are persisted in a JSON file and
 applied only in `full-local` mode.
 """
 
-import os
 import json
 from pathlib import Path
 from typing import Dict, Any, List

@@ -9,7 +9,6 @@ Usage:
 If the detector is not enabled, it will still attempt to read the persistence file.
 """
 import json
-import os
 from pathlib import Path
 from datetime import datetime
 

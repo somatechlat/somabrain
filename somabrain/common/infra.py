@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
-import socket
-from typing import Optional, Tuple
+from typing import Optional
 from common.config.settings import settings
 
 

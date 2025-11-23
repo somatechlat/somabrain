@@ -16,7 +16,6 @@ import json
 from common.config.settings import settings
 import sys
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 try:
