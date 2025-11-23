@@ -74,6 +74,16 @@ def _float_env(name: str, default: float) -> float:
         return default
 
 
+def _str_env(name: str, default: str | None = None) -> str | None:
+    """Return a string environment variable, stripping inline comments."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    # remove trailing comment if present
+    raw = raw.split("#", 1)[0].strip()
+    return raw if raw != "" else default
+
+
 class Settings(BaseSettings):
     """Application‑wide settings.
 
@@ -85,29 +95,99 @@ class Settings(BaseSettings):
     # Core infra -----------------------------------------------------------
     # Postgres DSN is required; no SQLite alternative permitted in strict mode.
     postgres_dsn: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_POSTGRES_DSN", "")
+        default_factory=lambda: _str_env("SOMABRAIN_POSTGRES_DSN", "")
     )
     redis_url: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_REDIS_URL")
-        or os.getenv("REDIS_URL")
+        default_factory=lambda: _str_env("SOMABRAIN_REDIS_URL")
+        or _str_env("REDIS_URL")
         or ""
     )
     # Kafka bootstrap servers – strip any URL scheme (e.g. "kafka://") to provide a plain host:port string expected by confluent_kafka.
     kafka_bootstrap_servers: str = Field(
         default_factory=lambda: (
-            os.getenv("SOMABRAIN_KAFKA_URL")
-            or os.getenv("KAFKA_BOOTSTRAP_SERVERS")
+            _str_env("SOMABRAIN_KAFKA_URL")
+            or _str_env("KAFKA_BOOTSTRAP_SERVERS")
             or ""
         ).replace("kafka://", "")
     )
 
     memory_http_endpoint: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
-        or os.getenv("MEMORY_SERVICE_URL")
+        default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
+        or _str_env("MEMORY_SERVICE_URL")
         or ""
     )
     memory_http_token: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN")
+        default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
+    )
+    # Additional infra configuration fields used throughout the codebase.
+    # These were previously accessed via direct ``os.getenv`` calls.
+    log_path: str = Field(
+        default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
+    )
+    supervisor_url: Optional[str] = Field(
+        default=_str_env("SUPERVISOR_URL")
+    )
+    supervisor_http_user: str = Field(
+        default=_str_env("SUPERVISOR_HTTP_USER", "admin")
+    )
+    supervisor_http_pass: str = Field(
+        default=_str_env("SUPERVISOR_HTTP_PASS", "soma")
+    )
+    # Runtime environment flags
+    running_in_docker: bool = Field(
+        default_factory=lambda: _bool_env("RUNNING_IN_DOCKER", False)
+    )
+    # Integrator and segmentation service URLs (optional external services)
+    integrator_url: Optional[str] = Field(
+        default=_str_env("INTEGRATOR_URL")
+    )
+    segmentation_url: Optional[str] = Field(
+        default=_str_env("SEGMENTATION_URL")
+    )
+
+    # Additional utility fields used by scripts / benchmarks
+    reward_producer_port: int = Field(
+        default_factory=lambda: _int_env("REWARD_PRODUCER_PORT", 30183)
+    )
+    reward_producer_host_port: int = Field(
+        default_factory=lambda: _int_env("REWARD_PRODUCER_HOST_PORT", 30183)
+    )
+    bench_timeout: float = Field(
+        default_factory=lambda: _float_env("BENCH_TIMEOUT", 90.0)
+    )
+    host_port: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
+    )
+    providers_path: Optional[str] = Field(
+        default=_str_env("PROVIDERS_PATH")
+    )
+    spectral_cache_dir: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
+    )
+    learner_dlq_path: str = Field(
+        default=_str_env("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
+    )
+    learner_dlq_topic: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_LEARNER_DLQ_TOPIC")
+    )
+    # New fields for script / service configuration
+    log_config: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_LOG_CONFIG")
+    )
+    workers: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_WORKERS", 1)
+    )
+    outbox_api_token: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_API_TOKEN") or _str_env("SOMA_API_TOKEN")
+    )
+    feature_overrides_path: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    )
+    graph_file_action: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_GRAPH_FILE_ACTION")
+    )
+    graph_file_agent: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_GRAPH_FILE_AGENT")
     )
     http_max_connections: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_HTTP_MAX_CONNS", 64)
@@ -120,18 +200,18 @@ class Settings(BaseSettings):
     )
 
     auth_service_url: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_AUTH_SERVICE_URL")
+        default=_str_env("SOMABRAIN_AUTH_SERVICE_URL")
     )
     auth_service_api_key: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_AUTH_SERVICE_API_KEY")
+        default=_str_env("SOMABRAIN_AUTH_SERVICE_API_KEY")
     )
 
     # Auth / JWT -----------------------------------------------------------
-    jwt_secret: Optional[str] = Field(default=os.getenv("SOMABRAIN_JWT_SECRET"))
+    jwt_secret: Optional[str] = Field(default=_str_env("SOMABRAIN_JWT_SECRET"))
     # Use str for path to avoid mypy complaining about default type; callers
     # can wrap with Path when needed.
     jwt_public_key_path: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
+        default=_str_env("SOMABRAIN_JWT_PUBLIC_KEY_PATH")
     )
 
     # -----------------------------------------------------------------
@@ -141,22 +221,15 @@ class Settings(BaseSettings):
     # provided the middleware will still operate but provenance validation
     # will be disabled (the header will be ignored).
     provenance_secret: Optional[str] = Field(
-        default=os.getenv("SOMABRAIN_PROVENANCE_SECRET")
+        default=_str_env("SOMABRAIN_PROVENANCE_SECRET")
     )
 
     # Toggle whether provenance verification is required for write‑like
     # endpoints (e.g. /remember, /act).  Defaults to ``False`` for backward
     # compatibility; set to ``True`` in production to enforce strict checks.
-    require_provenance: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_PROVENANCE", False)
-    )
-
-    # When ``True`` the middleware will reject requests that either lack a
-    # provenance header or provide an invalid HMAC signature.  Mirrors the
-    # historic ``provenance_strict_deny`` flag used in older versions.
-    provenance_strict_deny: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_PROVENANCE_STRICT_DENY", False)
-    )
+    # The unified provenance flags are defined later in the file (environment
+    # variable names ``REQUIRE_PROVENANCE`` and ``PROVENANCE_STRICT_DENY``).
+    # The older duplicated definitions are removed to avoid confusion.
 
     # Feature flags --------------------------------------------------------
     force_full_stack: bool = Field(
@@ -171,12 +244,21 @@ class Settings(BaseSettings):
     # The historic env var ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` is ignored
     # here to allow developers to run without Redis/Kafka etc. Set to ``True``
     # only when explicitly needed.
-    require_external_backends: bool = Field(default=False)
+    # In the current stack we explicitly require real backends (no shims),
+    # so honour SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS and default it to True.
+    require_external_backends: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
+    )
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )
+    # Test environment detection flag (used in code paths for pytest).
+    # Centralises the environment variable read to avoid direct os.getenv usage.
+    pytest_current_test: Optional[str] = Field(
+        default=_str_env("PYTEST_CURRENT_TEST")
+    )
     # Auth is always-on in strict mode; legacy auth toggle removed.
-    mode: str = Field(default=os.getenv("SOMABRAIN_MODE", "full-local"))
+    mode: str = Field(default=_str_env("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
     )
@@ -184,7 +266,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_ANONYMOUS_TENANTS", False)
     )
     predictor_provider: str = Field(
-        default=os.getenv("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
+        default=_str_env("SOMABRAIN_PREDICTOR_PROVIDER", "").strip().lower() or "mahal"
     )
     relax_predictor_ready: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_RELAX_PREDICTOR_READY", False)
@@ -199,17 +281,17 @@ class Settings(BaseSettings):
     # -----------------------------------------------------------------
     # Base API URL (used throughout benchmarks, demos, scripts)
     api_url: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_API_URL") or ""
+        default_factory=lambda: _str_env("SOMABRAIN_API_URL", "")
     )
 
     # OPA service URL (policy engine)
     opa_url: str = Field(
-        default_factory=lambda: os.getenv("SOMABRAIN_OPA_URL") or ""
+        default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", "")
     )
 
     # OTEL collector endpoint (observability)
     otel_collector_endpoint: str = Field(
-        default_factory=lambda: os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT") or ""
+        default_factory=lambda: _str_env("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     )
 
     # Integrator and segmentation health endpoint defaults (internal services)
@@ -239,7 +321,7 @@ class Settings(BaseSettings):
 
     # OPA -----------------------------------------------------------------------------
     opa_url: str = Field(
-        default=os.getenv("SOMABRAIN_OPA_URL") or os.getenv("SOMA_OPA_URL") or ""
+        default=_str_env("SOMABRAIN_OPA_URL") or _str_env("SOMA_OPA_URL") or ""
     )
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
@@ -252,7 +334,7 @@ class Settings(BaseSettings):
         or _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
     )
     memory_phase_priors: str = Field(
-        default=os.getenv("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
+        default=_str_env("SOMABRAIN_MEMORY_PHASE_PRIORS", "")
     )
     memory_quality_exp: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_MEMORY_QUALITY_EXP", 1.0)
@@ -260,7 +342,7 @@ class Settings(BaseSettings):
     memory_fast_ack: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_FAST_ACK", False)
     )
-    memory_db_path: str = Field(default=os.getenv("MEMORY_DB_PATH", "./data/memory.db"))
+    memory_db_path: str = Field(default=_str_env("MEMORY_DB_PATH", "./data/memory.db"))
     # Degradation behaviour when external memory backend is unavailable
     memory_degrade_queue: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_DEGRADE_QUEUE", True)
@@ -269,7 +351,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_MEMORY_DEGRADE_READONLY", False)
     )
     memory_degrade_topic: str = Field(
-        default=os.getenv("SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded")
+        default=_str_env("SOMABRAIN_MEMORY_DEGRADE_TOPIC", "memory.degraded")
     )
 
     # Health poll interval for external memory service – used by the FastAPI
@@ -373,6 +455,30 @@ class Settings(BaseSettings):
     )
     segment_health_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
+    )
+    # Enable flag for segmentation health endpoint (legacy env var).
+    # Historically defaulted to "1" (enabled).  Stored as a bool.
+    segment_health_enable: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_SEGMENT_HEALTH_ENABLE", True)
+    )
+    # Orchestrator specific configuration (fallback to env vars for backward compatibility)
+    orchestrator_consumer_group: str = Field(
+        default=os.getenv("SOMABRAIN_ORCH_CONSUMER_GROUP", "orchestrator-service")
+    )
+    orchestrator_namespace: str = Field(
+        default=os.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
+    )
+    orchestrator_routing: str = Field(
+        default=os.getenv("SOMABRAIN_ORCH_ROUTING", "")
+    )
+
+    # Learning tenant configuration – optional YAML file path used by several services.
+    learning_tenants_file: Optional[str] = Field(
+        default=os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+    )
+    # Alternate name used by some legacy code (same purpose).
+    learning_tenants_config: Optional[str] = Field(
+        default=os.getenv("LEARNING_TENANTS_CONFIG")
     )
 
     # Salience system configuration – defaults align with demo scripts.
@@ -601,6 +707,69 @@ class Settings(BaseSettings):
     feature_flags_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_FEATURE_FLAGS_PORT", 9697)
     )
+    # -----------------------------------------------------------------
+    # Additional environment variables used throughout the codebase.
+    # These fields provide direct access to values that were previously
+    # obtained via ``os.getenv`` in various modules.
+    # -----------------------------------------------------------------
+    # Vault integration
+    vault_addr: Optional[str] = Field(default=os.getenv("VAULT_ADDR"))
+    vault_token: Optional[str] = Field(default=os.getenv("VAULT_TOKEN"))
+    vault_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_VAULT_PUBKEY_PATH"))
+
+    # Constitution defaults
+    constitution_pubkeys: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEYS"))
+    constitution_pubkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PUBKEY_PATH"))
+    constitution_privkey_path: Optional[str] = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_PRIVKEY_PATH"))
+    constitution_signer_id: str = Field(default=os.getenv("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default"))
+
+    # LLM endpoint for predictor (if used)
+    llm_endpoint: Optional[str] = Field(default=os.getenv("SOMABRAIN_LLM_ENDPOINT"))
+
+    # Tenant identifier (used by some services)
+    tenant_id: str = Field(default=os.getenv("SOMABRAIN_TENANT_ID", "default"))
+
+    # Redis connection details (host, port, db) – separate from URL
+    redis_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_HOST"))
+    redis_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_PORT"))
+    redis_db: Optional[str] = Field(default=os.getenv("SOMABRAIN_REDIS_DB"))
+
+    # Memory HTTP service additional components
+    memory_http_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_HOST"))
+    memory_http_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_PORT"))
+    memory_http_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"))
+
+    # Kafka connection details (host, port, scheme) – separate from bootstrap URL
+    kafka_bootstrap: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"))
+    kafka_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_HOST"))
+    kafka_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_PORT"))
+    kafka_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_KAFKA_SCHEME"))
+
+    # OPA service details
+    opa_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_HOST"))
+    opa_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_PORT"))
+    opa_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_OPA_SCHEME"))
+
+    # API URL and scheme
+    api_scheme: Optional[str] = Field(default=os.getenv("SOMABRAIN_API_SCHEME"))
+
+    # Public host/port for service exposure
+    public_host: Optional[str] = Field(default=os.getenv("SOMABRAIN_PUBLIC_HOST"))
+    public_port: Optional[str] = Field(default=os.getenv("SOMABRAIN_PUBLIC_PORT"))
+    # Health endpoint URLs for integrator and segmentation services.
+    # These are used by the health diagnostics endpoint.
+    integrator_health_url: str = Field(
+        default=os.getenv(
+            "SOMABRAIN_INTEGRATOR_HEALTH_URL",
+            "http://somabrain_integrator_triplet:9015/health",
+        )
+    )
+    segmentation_health_url: str = Field(
+        default=os.getenv(
+            "SOMABRAIN_SEGMENTATION_HEALTH_URL",
+            "http://somabrain_cog:9016/health",
+        )
+    )
     # Tiered memory cleanup configuration
     tiered_memory_cleanup_backend: str = Field(
         default=os.getenv("SOMABRAIN_CLEANUP_BACKEND", "simple")
@@ -783,6 +952,17 @@ class Settings(BaseSettings):
             pass
         return notes
 
+    # Generic getenv helper to centralise environment variable access.
+    # Allows callers to use ``settings.getenv('VAR', default)`` without importing ``os`` directly.
+    def getenv(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        """Retrieve an environment variable, optionally providing a default.
+
+        This method mirrors the previous direct ``os.getenv`` usage but routes
+        through the Settings singleton, enabling future extensions such as
+        logging, validation, or overrides without changing call sites.
+        """
+        return os.getenv(name, default)
+
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
     # settings loader permissive: allow extra environment variables and keep
     # case-insensitive env names. The `env_file` points to the canonical `.env`.
@@ -796,3 +976,7 @@ class Settings(BaseSettings):
 # Export a singleton – mirrors the historic pattern used throughout the
 # codebase (``settings = Settings()``).
 settings = Settings()
+
+# Legacy compatibility shim removed. Direct ``os.getenv`` calls should now be
+# replaced with ``settings.getenv`` or appropriate ``Settings`` fields throughout
+# the codebase to ensure a single source of truth for configuration.

@@ -15,6 +15,7 @@ Key features:
 from __future__ import annotations
 
 import os
+from common.config.settings import settings
 import time
 import threading
 from dataclasses import dataclass
@@ -94,12 +95,14 @@ class IntegratorLeaderElection:
     """Redis-based leader election service for integrator instances."""
     
     def __init__(self, redis_url: Optional[str] = None) -> None:
-        self._redis_url = redis_url or os.getenv("SOMABRAIN_REDIS_URL", "")
+        # Prefer explicit argument; fall back to central settings.
+        self._redis_url = redis_url or settings.redis_url or ""
         self._redis_client = None
         self._leader_states: Dict[str, LeaderState] = {}
         self._configs: Dict[str, LeaderConfig] = {}
         self._lock_prefix = "integrator_leader"
-        self._instance_id = f"{os.getenv('HOSTNAME', 'unknown')}-{int(time.time())}"
+        # Use centralized configuration for hostname
+        self._instance_id = f"{settings.getenv('HOSTNAME', 'unknown')}-{int(time.time())}"
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
         
@@ -132,8 +135,8 @@ class IntegratorLeaderElection:
         try:
             import yaml
             config_path = (
-                os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
-                or os.getenv("LEARNING_TENANTS_CONFIG")
+                settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+                or settings.getenv("LEARNING_TENANTS_CONFIG")
                 or "config/learning.tenants.yaml"
             )
             

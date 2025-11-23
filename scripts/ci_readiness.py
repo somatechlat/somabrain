@@ -22,7 +22,7 @@ Environment variables (taken from existing config):
 Strict posture: no silent alternatives; if any component is unavailable the script exits 1.
 """
 from __future__ import annotations
-import os
+from common.config.settings import settings
 import sys
 import socket
 import time
@@ -52,10 +52,11 @@ class CheckResult:
 
 
 def _env(name: str, default: str | None = None) -> str | None:
-    val = os.getenv(name)
-    if val is None or not val.strip():
+    # Use centralized Settings for environment variable access.
+    val = settings.getenv(name)
+    if val is None or not str(val).strip():
         return default
-    return val.strip()
+    return str(val).strip()
 
 
 # Strict mode utilities removed: no host-port fallback mappings

@@ -16,7 +16,7 @@ Implementation notes:
 from __future__ import annotations
 
 import hashlib
-import os
+from common.config.settings import settings
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -24,7 +24,7 @@ import numpy as np
 
 
 def _default_cache_dir() -> Path:
-    env = os.getenv("SOMABRAIN_SPECTRAL_CACHE_DIR")
+    env = settings.getenv("SOMABRAIN_SPECTRAL_CACHE_DIR")
     if env:
         p = Path(env).expanduser()
     else:

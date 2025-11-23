@@ -34,7 +34,8 @@ class FeatureFlags:
 
     @staticmethod
     def _load_overrides() -> List[str]:
-        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        from common.config.settings import settings as cfg
+        path = cfg.feature_overrides_path
         try:
             p = Path(path)
             if not p.exists():

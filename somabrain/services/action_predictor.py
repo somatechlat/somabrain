@@ -53,18 +53,22 @@ class ActionPredictorService:
     def __init__(self):
         """Initialize the action predictor service."""
         # Use LLM predictor for action prediction (more suitable for action sequences)
-        llm_endpoint = os.getenv("SOMABRAIN_LLM_ENDPOINT")
+        # Use centralized Settings for LLM endpoint; Settings provides default handling
+        llm_endpoint = getattr(shared_settings, "llm_endpoint", None)
         if not llm_endpoint:
             raise RuntimeError("LLM endpoint required for action predictor (set SOMABRAIN_LLM_ENDPOINT)")
-        
+
         self.predictor = LLMPredictor(endpoint=llm_endpoint)
         self.producer = make_producer()
         self.consumer = self._create_consumer()
-        self.tenant_id = os.getenv("SOMABRAIN_TENANT_ID", "default")
+        # Tenant ID from Settings (fallback to default defined in Settings)
+        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        # Prefer Settings' kafka_bootstrap_servers, fallback to legacy env vars for compatibility
+        # Use central Settings for Kafka bootstrap; fallback to shared_settings if defined.
+        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

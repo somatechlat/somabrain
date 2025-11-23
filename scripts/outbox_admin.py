@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
+from common.config.settings import settings
 from somabrain.infrastructure import get_api_base_url
 import sys
 from typing import Any, Dict, Iterable
@@ -35,7 +35,8 @@ def _default_base_url() -> str:
 
 
 def _default_token() -> str | None:
-    return os.getenv("SOMABRAIN_API_TOKEN") or os.getenv("SOMA_API_TOKEN")
+    # Use centralized Settings for token retrieval.
+    return settings.getenv("SOMABRAIN_API_TOKEN") or settings.getenv("SOMA_API_TOKEN")
 
 
 def _auth_headers(token: str | None) -> dict[str, str]:

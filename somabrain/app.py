@@ -48,6 +48,7 @@ from somabrain.auth import require_admin_auth, require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
 # Use the unified Settings instance for configuration.
 from common.config.settings import settings
+from somabrain.config import get_config
 from somabrain.context_hrr import HRRContextConfig
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
@@ -463,7 +464,8 @@ def setup_logging():
 
         # Resolve a writable file path for logs under hardened containers
         # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
-        log_path = os.getenv("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
+        # Use centralized Settings for log path
+        log_path = settings.log_path
         candidate = log_path
         try:
             if not os.path.isabs(candidate):
@@ -801,15 +803,12 @@ class SecurityMiddleware:
 #
 # Application bootstrap
 #
-cfg = settings
+cfg = get_config()
 
 _MINIMAL_API = False
-try:
-    env_flag = (os.getenv("SOMABRAIN_MINIMAL_PUBLIC_API", "").strip() or "").lower()
-    if env_flag in ("1", "true", "yes", "on"):
-        _MINIMAL_API = True
-except Exception:
-    pass
+# Minimal public API flag is now derived from centralized Settings
+if settings.minimal_public_api:
+    _MINIMAL_API = True
 try:
     if bool(getattr(cfg, "minimal_public_api", False)):
         _MINIMAL_API = True
@@ -848,9 +847,8 @@ try:
                 getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
             ).strip()
             token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
-            in_docker = bool(_os.path.exists("/.dockerenv")) or (
-                _os.getenv("RUNNING_IN_DOCKER") == "1"
-            )
+            # Use centralized Settings flag for Docker detection
+            in_docker = bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
             # Prefer shared settings for mode and policy flags
             try:
                 from common.config.settings import settings as _shared
@@ -867,17 +865,9 @@ try:
                     )
                     require_memory = bool(getattr(_shared, "require_memory", True))
                 else:
-                    mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
-                    ext_req = (
-                        _os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower()
-                        in ("1", "true", "yes", "on")
-                    ) or (
-                        _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower()
-                        in ("1", "true", "yes", "on")
-                    )
-                    require_memory = _os.getenv(
-                        "SOMABRAIN_REQUIRE_MEMORY", "1"
-                    ).lower() in ("1", "true", "yes", "on")
+                    mode = settings.mode.strip()
+                    ext_req = settings.require_external_backends
+                    require_memory = settings.require_memory
             except Exception:
                 pass
 
@@ -974,11 +964,11 @@ except Exception as e:
         log.debug("Reward Gate middleware not registered: %s", e, exc_info=True)
 
 # Supervisor (cog) control client
-_SUPERVISOR_URL = os.getenv("SUPERVISOR_URL") or None
+_SUPERVISOR_URL = settings.supervisor_url or None
 if not _SUPERVISOR_URL:
     # Default to supervisor inet_http_server in somabrain_cog on internal network
-    user = os.getenv("SUPERVISOR_HTTP_USER", "admin")
-    pwd = os.getenv("SUPERVISOR_HTTP_PASS", "soma")
+    user = settings.supervisor_http_user
+    pwd = settings.supervisor_http_pass
     _SUPERVISOR_URL = f"http://{user}:{pwd}@somabrain_cog:9001/RPC2"
 
 
@@ -1735,7 +1725,7 @@ if shared_settings is not None:
         pass
 if not BACKEND_ENFORCEMENT:
     try:
-        enforcement_env = os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS")
+        enforcement_env = settings.require_external_backends
         if enforcement_env is not None:
             BACKEND_ENFORCEMENT = enforcement_env.strip().lower() in (
                 "1",
@@ -1770,7 +1760,7 @@ if "pytest" in sys.modules:
 # launched by pytest. pytest sets the ``PYTEST_CURRENT_TEST`` environment
 # variable for each test; its presence is a reliable indicator that we are in a
 # test run.
-if os.getenv("PYTEST_CURRENT_TEST"):
+if settings.pytest_current_test:
     # Ensure the flag is false regardless of previous configuration.
     BACKEND_ENFORCEMENT = False
 
@@ -1833,7 +1823,7 @@ def _make_predictor() -> BudgetedPredictor:
     Stubs are no longer permitted: requesting a 'stub' or 'baseline' provider
     will raise explicitly. The default provider is now 'mahal' (Mahalanobis).
     """
-    provider_override = os.getenv("SOMABRAIN_PREDICTOR_PROVIDER")
+    provider_override = settings.predictor_provider
     provider = str(
         (provider_override or getattr(cfg, "predictor_provider", "mahal") or "mahal")
     ).lower()
@@ -2565,13 +2555,8 @@ async def health(request: Request) -> S.HealthResponse:
         except Exception:
             return False
 
-    integrator_url = os.getenv(
-        "SOMABRAIN_INTEGRATOR_HEALTH_URL",
-        "http://somabrain_integrator_triplet:9015/health",
-    )
-    segmentation_url = os.getenv(
-        "SOMABRAIN_SEGMENTATION_HEALTH_URL", "http://somabrain_cog:9016/health"
-    )
+    integrator_url = settings.integrator_health_url
+    segmentation_url = settings.segmentation_health_url
     resp["integrator_health"] = _ping(integrator_url)
     resp["segmentation_health"] = _ping(segmentation_url)
 
@@ -2581,8 +2566,8 @@ async def health(request: Request) -> S.HealthResponse:
     )
     embedder_ok = resp["embedder"]["dim"] is not None or embedder is not None
 
-    kafka_ok = check_kafka(os.getenv("SOMABRAIN_KAFKA_URL"))
-    postgres_ok = check_postgres(os.getenv("SOMABRAIN_POSTGRES_DSN"))
+    kafka_ok = check_kafka(settings.kafka_bootstrap_servers)
+    postgres_ok = check_postgres(settings.postgres_dsn)
 
     resp["kafka_ok"] = bool(kafka_ok)
     resp["postgres_ok"] = bool(postgres_ok)
@@ -2625,52 +2610,27 @@ async def healthz(request: Request) -> dict:
 # Lightweight diagnostics (sanitized; no secrets)
 @app.get("/diagnostics", include_in_schema=False)
 async def diagnostics() -> dict:
-    try:
-        import os as _os
-
-        in_docker = bool(_os.path.exists("/.dockerenv")) or (
-            _os.getenv("RUNNING_IN_DOCKER") == "1"
-        )
-    except Exception:
-        in_docker = False
+    # Determine if running inside a Docker container using the centralized
+    # Settings flag. This avoids direct environment access.
+    in_docker = settings.running_in_docker
     ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
-    # Prefer shared settings for mode and flags
-    try:
-        from common.config.settings import settings as _shared
 
-        mode = str(getattr(_shared, "mode", "") or "").strip()
-        ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
-        require_memory = bool(getattr(_shared, "require_memory", True))
-    except Exception:
-        mode = str(_os.getenv("SOMABRAIN_MODE", "") or "").strip()
-        ext_req = (
-            _os.getenv("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", "").lower()
-            in ("1", "true", "yes", "on")
-        ) or (
-            _os.getenv("SOMABRAIN_FORCE_FULL_STACK", "").lower()
-            in ("1", "true", "yes", "on")
-        )
-        require_memory = _os.getenv("SOMABRAIN_REQUIRE_MEMORY", "1").lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
-    try:
-        from common.config.settings import settings as _shared
+    # Centralized configuration for mode and related flags.
+    mode = settings.mode.strip()
+    ext_req = settings.require_external_backends
+    require_memory = settings.require_memory
 
-        shared_present = True
-        shared_mem = getattr(_shared, "memory_http_endpoint", None)
-    except Exception:
-        shared_present = False
-        shared_mem = None
+    # Presence of the shared Settings instance (always true in this codebase).
+    shared_present = True
+    shared_mem = settings.memory_http_endpoint
+
     return {
         "in_container": in_docker,
         "mode": mode or "",
         "external_backends_required": ext_req,
         "require_memory": require_memory,
         "memory_endpoint": ep or "",
-        "env_memory_endpoint": _os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT", ""),
+        "env_memory_endpoint": settings.memory_http_endpoint,
         "shared_settings_present": shared_present,
         "shared_settings_memory_endpoint": str(shared_mem or ""),
         "memory_token_present": bool(

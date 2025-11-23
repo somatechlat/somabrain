@@ -19,7 +19,8 @@ HOST = settings.host
 
 # Be resilient to empty or invalid env values
 def _int_env(name: str, default: int) -> int:
-    raw = os.getenv(name)
+    # Use centralized Settings for environment variable access
+    raw = settings.getenv(name)
     try:
         if raw is None:
             return default

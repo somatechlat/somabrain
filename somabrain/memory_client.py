@@ -304,10 +304,8 @@ class MemoryClient:
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
-        token_value = None
-        if self.cfg.http and getattr(self.cfg.http, "token", None):
-            token_value = self.cfg.http.token
-            # Prefer standard Bearer auth, but include common alternatives for dev services
+        token_value = getattr(self.cfg, "memory_http_token", None)
+        if token_value:
             headers["Authorization"] = f"Bearer {token_value}"
             headers.setdefault("X-API-Key", token_value)
             headers.setdefault("X-Auth-Token", token_value)
@@ -370,7 +368,7 @@ class MemoryClient:
                     env_base = env_base[: -len("/openapi.json")]
             except Exception:
                 env_base = None
-        base_url = str(getattr(self.cfg.http, "endpoint", "") or "")
+        base_url = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
         if not base_url and env_base:
             base_url = env_base
         # Strict mode: memory endpoint is always required

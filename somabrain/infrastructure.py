@@ -45,24 +45,17 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
 
     url = _first_non_empty(
         _from_settings("redis_url"),
-        os.getenv("SOMABRAIN_REDIS_URL"),
-        os.getenv("REDIS_URL"),
+        # Settings provides redis_host, redis_port, redis_db as fallbacks
+        _from_settings("redis_host"),
+        _from_settings("redis_port"),
+        _from_settings("redis_db"),
     )
     if url:
         return url
 
-    host = _first_non_empty(
-        os.getenv("SOMABRAIN_REDIS_HOST"),
-        os.getenv("REDIS_HOST"),
-    )
-    port = _first_non_empty(
-        os.getenv("SOMABRAIN_REDIS_PORT"),
-        os.getenv("REDIS_PORT"),
-    )
-    db = _first_non_empty(
-        os.getenv("SOMABRAIN_REDIS_DB"),
-        os.getenv("REDIS_DB"),
-    )
+    host = _from_settings("redis_host")
+    port = _from_settings("redis_port")
+    db = _from_settings("redis_db")
 
     if host and port:
         suffix = f"/{db}" if db else ""
@@ -76,28 +69,17 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
 
     endpoint = _first_non_empty(
         _from_settings("memory_http_endpoint"),
-        os.getenv("SOMABRAIN_MEMORY_HTTP_ENDPOINT"),
-        os.getenv("SOMABRAIN_HTTP_ENDPOINT"),
-        os.getenv("MEMORY_SERVICE_URL"),
+        # fallbacks via Settings fields
+        _from_settings("memory_http_host"),
+        _from_settings("memory_http_port"),
+        _from_settings("memory_http_scheme"),
     )
     if endpoint:
         return endpoint
 
-    host = _first_non_empty(
-        os.getenv("SOMABRAIN_MEMORY_HTTP_HOST"),
-        os.getenv("MEMORY_HTTP_HOST"),
-    )
-    port = _first_non_empty(
-        os.getenv("SOMABRAIN_MEMORY_HTTP_PORT"),
-        os.getenv("MEMORY_HTTP_PORT"),
-    )
-    scheme = (
-        _first_non_empty(
-            os.getenv("SOMABRAIN_MEMORY_HTTP_SCHEME"),
-            os.getenv("MEMORY_HTTP_SCHEME"),
-        )
-        or "http"
-    )
+    host = _from_settings("memory_http_host")
+    port = _from_settings("memory_http_port")
+    scheme = _from_settings("memory_http_scheme") or "http"
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -110,28 +92,17 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
 
     bootstrap = _first_non_empty(
         _from_settings("kafka_bootstrap_servers"),
-        os.getenv("SOMABRAIN_KAFKA_BOOTSTRAP"),
-        os.getenv("SOMABRAIN_KAFKA_URL"),
-        os.getenv("KAFKA_BOOTSTRAP_SERVERS"),
+        # Settings may provide host/port/scheme as fallbacks
+        _from_settings("kafka_host"),
+        _from_settings("kafka_port"),
+        _from_settings("kafka_scheme"),
     )
     if bootstrap:
         return bootstrap
 
-    host = _first_non_empty(
-        os.getenv("SOMABRAIN_KAFKA_HOST"),
-        os.getenv("KAFKA_HOST"),
-    )
-    port = _first_non_empty(
-        os.getenv("SOMABRAIN_KAFKA_PORT"),
-        os.getenv("KAFKA_PORT"),
-    )
-    scheme = (
-        _first_non_empty(
-            os.getenv("SOMABRAIN_KAFKA_SCHEME"),
-            os.getenv("KAFKA_SCHEME"),
-        )
-        or "kafka"
-    )
+    host = _from_settings("kafka_host")
+    port = _from_settings("kafka_port")
+    scheme = _from_settings("kafka_scheme") or "kafka"
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -144,27 +115,17 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
 
     url = _first_non_empty(
         _from_settings("opa_url"),
-        os.getenv("SOMABRAIN_OPA_URL"),
-        os.getenv("SOMA_OPA_URL"),
+        # Settings fallbacks via host/port/scheme
+        _from_settings("opa_host"),
+        _from_settings("opa_port"),
+        _from_settings("opa_scheme"),
     )
     if url:
         return url
 
-    host = _first_non_empty(
-        os.getenv("SOMABRAIN_OPA_HOST"),
-        os.getenv("OPA_HOST"),
-    )
-    port = _first_non_empty(
-        os.getenv("SOMABRAIN_OPA_PORT"),
-        os.getenv("OPA_PORT"),
-    )
-    scheme = (
-        _first_non_empty(
-            os.getenv("SOMABRAIN_OPA_SCHEME"),
-            os.getenv("OPA_SCHEME"),
-        )
-        or "http"
-    )
+    host = _from_settings("opa_host")
+    port = _from_settings("opa_port")
+    scheme = _from_settings("opa_scheme") or "http"
 
     if host and port:
         return f"{scheme}://{host}:{port}"
@@ -176,28 +137,18 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
     """Return the primary SomaBrain API base URL."""
 
     url = _first_non_empty(
-        os.getenv("SOMABRAIN_API_URL"),
-        os.getenv("SOMA_API_URL"),
-        os.getenv("TEST_SERVER_URL"),
+        _from_settings("api_url"),
+        # Settings fallbacks via host/port/scheme
+        _from_settings("public_host"),
+        _from_settings("public_port"),
+        _from_settings("api_scheme"),
     )
     if url:
         return url
 
-    host = _first_non_empty(
-        os.getenv("SOMABRAIN_PUBLIC_HOST"),
-        os.getenv("SOMABRAIN_HOST"),
-    )
-    port = _first_non_empty(
-        os.getenv("SOMABRAIN_PUBLIC_PORT"),
-        os.getenv("SOMABRAIN_HOST_PORT"),
-    )
-    scheme = (
-        _first_non_empty(
-            os.getenv("SOMABRAIN_API_SCHEME"),
-            os.getenv("API_SCHEME"),
-        )
-        or "http"
-    )
+    host = _from_settings("public_host")
+    port = _from_settings("public_port")
+    scheme = _from_settings("api_scheme") or "http"
 
     if host and port:
         return f"{scheme}://{host}:{port}"

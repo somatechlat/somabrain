@@ -6,14 +6,15 @@ to record prediction outcomes and surface basic calibration telemetry.
 
 from __future__ import annotations
 
-import os
 import threading
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
 
+from common.config.settings import settings
+
 def _bool(env: str, default: bool) -> bool:
-    raw = os.getenv(env)
+    raw = settings.getenv(env)
     if raw is None:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}

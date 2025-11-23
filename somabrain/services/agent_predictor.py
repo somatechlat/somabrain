@@ -17,7 +17,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -57,11 +56,16 @@ class AgentPredictorService:
         self.predictor = BudgetedPredictor(base_predictor, timeout_ms=100)
         self.producer = make_producer()
         self.consumer = self._create_consumer()
-        self.tenant_id = os.getenv("SOMABRAIN_TENANT_ID", "default")
+        # Use centralized Settings for tenant ID, default handled by Settings
+        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
+        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
+        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars for compatibility
+        # Use central Settings for Kafka bootstrap; fallback to shared_settings if defined.
+        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

@@ -34,7 +34,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run a simple profiling load against the API.")
     parser.add_argument("--duration", type=int, default=30, help="Duration in seconds to run the load loop.")
     from common.config.settings import settings as _settings
-    parser.add_argument("--base-url", default=os.getenv("BASE_URL", _settings.api_url), help="Base URL of the API.")
+    # Use centralized Settings for environment variable access.
+    parser.add_argument("--base-url", default=_settings.getenv("BASE_URL", _settings.api_url), help="Base URL of the API.")
     args = parser.parse_args()
 
     end_time = time.time() + args.duration

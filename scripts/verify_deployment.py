@@ -16,7 +16,6 @@ that the environment is correctly configured for the **full‑local** mode
 (``SOMABRAIN_MODE=full-local``) required by the ROAMDP implementation.
 """
 
-import os
 import sys
 import subprocess
 from pathlib import Path
@@ -31,7 +30,7 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 # Import the Settings class – the singleton ``settings`` will read the .env file.
-from common.config.settings import Settings
+from common.config.settings import Settings, settings
 
 # Load environment variables from a .env file. ``python-dotenv`` is a required
 # development dependency for this script.  If it is missing the script will raise
@@ -124,7 +123,7 @@ def main() -> int:
     # 3️⃣ Auto‑generate required secrets if they are still empty. This keeps the
     #    script usable out‑of‑the‑box for local development while still enforcing
     #    that a value exists (security pattern: never run with empty auth secrets).
-    if not os.getenv("SOMABRAIN_JWT_SECRET"):
+    if not settings.getenv("SOMABRAIN_JWT_SECRET"):
         # Generate a 32‑byte base64 secret – suitable for HMAC JWT signing.
         secret = subprocess.check_output(["openssl", "rand", "-base64", "32"]).decode().strip()
         os.environ["SOMABRAIN_JWT_SECRET"] = secret
@@ -133,7 +132,7 @@ def main() -> int:
             f.write(f"\nSOMABRAIN_JWT_SECRET={secret}\n")
         print("🔑 Generated dev JWT secret and wrote to .env")
 
-    if not os.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH"):
+    if not settings.getenv("SOMABRAIN_JWT_PUBLIC_KEY_PATH"):
         # Create a minimal public key placeholder for dev. In a real deployment a
         # proper RSA/ECDSA key pair would be generated. Here we write a static
         # PEM header/footer to satisfy the import path.

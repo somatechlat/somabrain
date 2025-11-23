@@ -58,11 +58,13 @@ class StatePredictorService:
         self.predictor = MahalanobisPredictor()
         self.producer = make_producer()
         self.consumer = self._create_consumer()
-        self.tenant_id = os.getenv("SOMABRAIN_TENANT_ID", "default")
+        # Tenant identifier from centralized Settings (default defined there).
+        self.tenant_id = getattr(shared_settings, "tenant_id", "default")
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        # Use centralized Settings for Kafka bootstrap servers.
+        bs = getattr(shared_settings, "kafka_bootstrap_servers", None)
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required but not configured")
         bootstrap_servers = bs.replace("kafka://", "")

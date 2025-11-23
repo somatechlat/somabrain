@@ -50,7 +50,8 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
     candidates = []
     if path:
         candidates.append(Path(path))
-    env_path = os.getenv("PROVIDERS_PATH")
+    from common.config.settings import settings as cfg
+    env_path = cfg.providers_path
     if env_path:
         candidates.append(Path(env_path))
     repo_root = Path(__file__).resolve().parents[2]

@@ -42,7 +42,7 @@ class LearnerService:
     def __init__(self) -> None:
         # Load tenant overrides from the optional YAML file.
         self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
-        overrides_path = os.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
+        overrides_path = settings.getenv("SOMABRAIN_LEARNING_TENANTS_FILE")
         if overrides_path:
             try:
                 with open(overrides_path, "r", encoding="utf-8") as f:
@@ -71,17 +71,15 @@ class LearnerService:
         ``confluent_kafka`` is not installed. This avoids the silent no‑op
         behavior of the earlier stub.
         """
-        bootstrap = getattr(self._settings, "kafka_bootstrap_servers", "") or os.getenv(
-            "SOMABRAIN_KAFKA_URL"
-        )
+        # Use centralized Settings for Kafka bootstrap; no env fallback needed.
+        bootstrap = getattr(self._settings, "kafka_bootstrap_servers", "")
         if not bootstrap:
             raise RuntimeError(
                 "LearnerService requires Kafka bootstrap servers "
                 "(set SOMABRAIN_KAFKA_URL or kafka_bootstrap_servers)."
             )
-        topic_next = getattr(self._settings, "topic_next_event", None) or os.getenv(
-            "SOMABRAIN_TOPIC_NEXT_EVENT", "cog.next_event"
-        )
+        # Use Settings for the next-event topic; fallback handled by Settings default.
+        topic_next = getattr(self._settings, "topic_next_event", None)
         topic_cfg = getattr(self._settings, "topic_config_updates", "cog.config.updates")
         try:
             import confluent_kafka as ck  # type: ignore

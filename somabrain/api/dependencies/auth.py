@@ -6,7 +6,7 @@ to provide dynamic tenant resolution and validation.
 
 from __future__ import annotations
 
-import os
+from common.config.settings import settings
 from pathlib import Path
 from typing import List, Optional
 
@@ -29,7 +29,7 @@ def set_auth_config(cfg: Config) -> None:
     """
     global _current_config, _allowed_tenants, _default_tenant
     _current_config = cfg
-    _default_tenant = cfg.default_tenant or os.getenv(
+    _default_tenant = cfg.default_tenant or settings.getenv(
         "SOMABRAIN_DEFAULT_TENANT", "sandbox"
     )
     os.environ.setdefault("SOMABRAIN_DEFAULT_TENANT", _default_tenant)
@@ -42,11 +42,11 @@ def _resolve_tenants(cfg: Config) -> List[str]:
     if getattr(cfg, "sandbox_tenants", None):
         tenants.extend(str(t).strip() for t in cfg.sandbox_tenants if str(t).strip())
     # From env comma-separated list
-    env_tenants = os.getenv("SOMABRAIN_SANDBOX_TENANTS")
+    env_tenants = settings.getenv("SOMABRAIN_SANDBOX_TENANTS")
     if env_tenants:
         tenants.extend(t.strip() for t in env_tenants.split(",") if t.strip())
     # From optional file (YAML list or dict with tenants/allowed)
-    file_path = cfg.sandbox_tenants_file or os.getenv("SOMABRAIN_SANDBOX_TENANTS_FILE")
+    file_path = cfg.sandbox_tenants_file or settings.getenv("SOMABRAIN_SANDBOX_TENANTS_FILE")
     if file_path:
         p = Path(file_path)
         if p.exists():

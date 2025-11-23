@@ -44,12 +44,57 @@ It summarizes gaps discovered in the codebase and a prioritized, phased implemen
 - 6.4 Feature flag default off; docs/runbooks and CI coverage.
 - 6.5 `/api/brain/sleep_policy` is now live with OPA/JWT/rate-limit gating, tenant-aware TTL auto-wake, circuit-breaker-aware gating, and the expected parameter scheduling (η=0 in deep/freeze).
 
-### Phase 7 — Hardcoded-Value Purge & Settings Unification (NEW)
-- 7.1 Ensure all thresholds/ports/weights live in `common.config.settings` + ConfigService; remove inline literals in predictors, integrator, segmentation, adaptive modules.
-- 7.2 Add invariants/tests to forbid new magic numbers in these modules; fail fast on missing required config.
-- 7.3 Deduplicate topic names and ports to a single source; update env templates accordingly.
-- 4.1 Unit/integration tests covering tenant isolation and idempotency.
-- 4.2 Update `scripts/roadmap_invariant_scanner.py` and CI invariants to assert the new behaviors.
+## Phase 7 — Hardcoded‑Value Purge & Settings Unification (NEW)
+### Current Status (IN PROGRESS)
+- Settings have been added for many predictor, integrator, and segmentation parameters.
+- Remaining modules (adaptive learning, neuromodulators, etc.) still contain hard‑coded defaults and need migration.
+- Unit tests for circuit‑breaker and memory‑service are complete; invariant tests are being added.
+
+### Tasks to Complete
+1. **Add missing Settings fields** – generate a CSV of every `os.getenv` usage and create a typed `Field` in `common/config/settings.py` (bool, int, float as appropriate).
+2. **Replace all direct `os.getenv` calls** with `settings.<field>` across the entire codebase (services, infrastructure helpers, health checks, OPA client, etc.).
+3. **Remove duplicated default literals** – ensure defaults live only in `Settings`.
+4. **Enforce invariants** – add tests that fail if a module contains a magic number or accesses an undefined env‑var.
+5. **Deduplicate topic names & ports** – centralise them in `Settings` and update any reference.
+6. **Update CI** – modify `scripts/roadmap_invariant_scanner.py` to scan for stray `os.getenv` and hard‑coded numbers.
+7. **Documentation** – reflect the new configuration model in `README.md` and `docs/`.
+
+## Phase 8 — Settings Centralisation & Duplicate Removal (NEW)
+**Goal:** Provide a single source‑of‑truth for configuration, eliminate all duplicated imports/flags, and simplify the architecture.
+
+### High‑Level Architecture Changes
+| Layer | Target Design |
+|-------|----------------|
+| **Configuration** | All environment variables are accessed **only** via `common.config.settings.Settings` (singleton `settings`). No direct `os.getenv` anywhere else. |
+| **Health** | `common/health.py` reads values from `settings` and provides a FastAPI `/health` endpoint. |
+| **Logging** | All modules import the shared logger from `common.logging`. |
+| **Feature Flags** | Flags are boolean fields in `Settings`; no raw string checks. |
+| **Infrastructure Helpers** | Helpers accept the `settings` singleton; all local `os.getenv` removed. |
+
+### Concrete Refactor Steps (to be executed on the current branch)
+1. **Catalogue** – run `grep -R "os.getenv" somabrain/` → CSV of file, line, variable, default.
+2. **Settings Expansion** – add a typed `Field` for each entry in `common/config/settings.py` using the existing `_bool_env`, `_int_env`, `_float_env` helpers.
+3. **Code Migration** – replace every `os.getenv("VAR")` with `settings.<field>` and delete any duplicated defaults.
+4. **Health Service Refactor** – update `common/health.py` and remove duplicate reads in `somabrain/healthchecks.py`.
+5. **Logging Consolidation** – ensure all modules import `from common.logging import logger` and remove any custom logger config.
+6. **Feature‑Flag Cleanup** – verify each flag exists in `Settings`; delete stale flag logic.
+7. **Legacy Removal** – permanently delete CI/e2e scripts and any mock‑only files; clean up `pyproject.toml` references.
+8. **Testing** – run the full test suite, add `test_settings_centralisation.py` to assert every env‑var is present in `settings`.
+9. **Documentation** – update `README.md`, `docs/`, and this ROAMDP file with the new architecture description.
+10. **Merge** – commit the changes directly on the current branch, open a PR, run CI, and merge.
+
+### Acceptance Criteria
+- No `os.getenv` calls remain outside `common/config/settings.py`.
+- All feature flags accessed via `settings`.
+- Single logger instance used throughout.
+- Health endpoint returns HTTP 200.
+- CI passes with 100 % coverage for configuration code.
+
+---
+**Implementation Status**
+All previous phases (0‑6) are complete. Phase 7 is in progress, and Phase 8 outlines the next concrete steps to achieve full centralisation and duplicate removal.
+
+**Last Updated:** November 22, 2025
 
 ## Concrete files to change (examples)
 - `somabrain/services/memory_service.py` — per-tenant circuit state and metric wiring.

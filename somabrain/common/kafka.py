@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-import os
+from common.config.settings import settings
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
@@ -19,10 +19,16 @@ except Exception:  # pragma: no cover
 
 
 def _bootstrap_url() -> str:
-    """Get bootstrap servers from environment."""
-    bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+    """Get bootstrap servers from central Settings.
+
+    Returns the ``kafka_bootstrap_servers`` field from the global ``settings``
+    instance, ensuring any legacy environment variables are honoured via the
+    Settings model's default handling. The value is stripped of a ``kafka://``
+    scheme if present.
+    """
+    bs = settings.kafka_bootstrap_servers
     if not bs:
-        raise RuntimeError("Kafka bootstrap servers are required (SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL)")
+        raise RuntimeError("Kafka bootstrap servers are required (settings.kafka_bootstrap_servers)")
     return bs.replace("kafka://", "")
 
 

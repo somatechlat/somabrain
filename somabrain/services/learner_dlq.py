@@ -15,8 +15,11 @@ from typing import Any, Dict, Optional
 from common.logging import logger
 from somabrain.metrics import LEARNER_DLQ_TOTAL
 
-DLQ_DEFAULT_PATH = os.getenv("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
-DLQ_TOPIC = os.getenv("SOMABRAIN_LEARNER_DLQ_TOPIC", "").strip() or None
+from common.config.settings import settings
+
+# Use centralized Settings for DLQ configuration.
+DLQ_DEFAULT_PATH = settings.learner_dlq_path or "./data/learner_dlq.jsonl"
+DLQ_TOPIC = settings.learner_dlq_topic
 
 
 class LearnerDLQ:

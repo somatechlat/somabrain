@@ -38,10 +38,9 @@ PUBLISH_TOPIC = getattr(shared_settings, "topic_segments", "cog.segments")
 
 # Thresholds are sourced from central settings – no hard‑coded literals.
 GRAD_THRESH = float(getattr(shared_settings, "segment_grad_threshold", 0.2))
-# HMM toggle respects three sources: explicit env var, feature flag, and the master cog flag.
-_env_hmm = os.getenv("SOMABRAIN_SEGMENT_HMM", "1").strip().lower() in {"1", "true", "yes", "on"}
+# HMM toggle respects feature flag and centralized Settings (which may incorporate env var fallback).
 HMM_ENABLED = (
-    _env_hmm
+    getattr(shared_settings, "segment_hmm_enabled", True)
     and feature_enabled("hmm_segmentation")
     and getattr(shared_settings, "enable_cog_threads", True)
 )
@@ -50,20 +49,20 @@ HMM_THRESHOLD = float(getattr(shared_settings, "segment_hmm_threshold", 0.6))
 
 class SegmentationService:
     def __init__(self):
-        bs = os.getenv("SOMA_KAFKA_BOOTSTRAP") or os.getenv("SOMABRAIN_KAFKA_URL")
+        bs = settings.getenv("SOMA_KAFKA_BOOTSTRAP") or settings.getenv("SOMABRAIN_KAFKA_URL")
         if not bs:
             raise RuntimeError("Kafka bootstrap servers required for segmentation_service")
         self.bootstrap = bs.replace("kafka://", "")
         if not PUBLISH_TOPIC:
             raise RuntimeError("SegmentationService requires PUBLISH_TOPIC for segments")
         self.consumer = self._create_consumer()
-        self.tenant = os.getenv("SOMABRAIN_TENANT_ID", "default")
+        self.tenant = settings.getenv("SOMABRAIN_TENANT_ID", "default")
         self.producer = make_producer()
         try:
             self._health_port = int(getattr(shared_settings, "segment_health_port", 9016))
         except Exception:
             self._health_port = 9016
-        start_health = os.getenv("SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1").strip().lower() in {"1", "true", "yes", "on"}
+        start_health = settings.getenv("SOMABRAIN_SEGMENT_HEALTH_ENABLE", "1").strip().lower() in {"1", "true", "yes", "on"}
         if start_health:
             self._health_thread = threading.Thread(
                 target=self._serve_health, name="segmentation_health", daemon=True

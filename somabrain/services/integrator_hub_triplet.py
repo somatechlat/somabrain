@@ -105,10 +105,10 @@ class IntegratorHub:
         # Determine Kafka bootstrap configuration. If external backends are not required,
         # we avoid configuring Kafka to prevent container crashes in local environments.
         if getattr(ss, "require_external_backends", False):
+            # Use central settings for Kafka bootstrap; fallback to provided arg.
             self.bootstrap = (
                 bootstrap
-                or (ss.kafka_bootstrap_servers if ss else None)
-                or os.getenv("SOMABRAIN_KAFKA_URL")
+                or ss.kafka_bootstrap_servers
             )
         else:
             # When external backends are disabled, skip Kafka bootstrap configuration.

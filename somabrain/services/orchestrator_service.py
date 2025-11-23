@@ -52,11 +52,11 @@ from somabrain.db.outbox import enqueue_event  # type: ignore
 from somabrain.common.infra import assert_ready
 
 
-GLOBAL_FRAME_TOPIC = os.getenv(
+    GLOBAL_FRAME_TOPIC = settings.getenv(
     "SOMABRAIN_TOPIC_GLOBAL_FRAME",
     getattr(shared_settings, "topic_global_frame", "cog.global.frame"),
 )
-SEGMENTS_TOPIC = os.getenv(
+    SEGMENTS_TOPIC = settings.getenv(
     "SOMABRAIN_TOPIC_SEGMENTS",
     getattr(shared_settings, "topic_segments", "cog.segments"),
 )
@@ -74,7 +74,7 @@ class GlobalFrameCtx:
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    url = settings.getenv("SOMABRAIN_KAFKA_URL")
     if not url:
         raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
@@ -136,10 +136,10 @@ class OrchestratorService:
                 self._serde_sb = AvroSerde(load_schema("segment_boundary"))  # type: ignore[arg-type]
             except Exception:
                 self._serde_sb = None
-        self._ns = os.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
+        self._ns = settings.getenv("SOMABRAIN_ORCH_NAMESPACE", "cog")
         # Minimal leader->tools routing (JSON via env)
         try:
-            routing_raw = os.getenv("SOMABRAIN_ORCH_ROUTING", "")
+            routing_raw = settings.getenv("SOMABRAIN_ORCH_ROUTING", "")
             self._routing = json.loads(routing_raw) if routing_raw else {}
         except Exception:
             self._routing = {}
@@ -234,7 +234,7 @@ class OrchestratorService:
         consumer = CKConsumer(
             {
                 "bootstrap.servers": _bootstrap(),
-                "group.id": os.getenv(
+                "group.id": settings.getenv(
                     "SOMABRAIN_CONSUMER_GROUP", "orchestrator-service"
                 ),
                 "enable.auto.commit": True,
