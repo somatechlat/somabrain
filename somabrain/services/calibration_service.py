@@ -8,24 +8,22 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 
 from common.config.settings import settings
-
-
-def _bool(env: str, default: bool) -> bool:
-    raw = settings.getenv(env)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+from common.logging import logger
+from somabrain.calibration.calibration_metrics import CalibrationTracker
 
 
 @dataclass
 class CalibrationService:
+    """Service for managing predictor calibration."""
+
     enabled: bool = field(
-        default_factory=lambda: _bool("SOMABRAIN_CALIBRATION_ENABLED", False)
+        default_factory=lambda: settings.calibration_enabled
     )
+    trackers: Dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
     _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)

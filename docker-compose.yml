@@ -15,13 +15,13 @@ services:
     ports:
       - "${REDIS_HOST_PORT:-30100}:${REDIS_CONTAINER_PORT:-6379}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 30s
       timeout: 5s
       retries: 3
     volumes:
       - redis_data:/data
-    command: ["sh", "-c", "rm -f /data/dump.rdb && redis-server"]
+    command: [ "sh", "-c", "rm -f /data/dump.rdb && redis-server" ]
 
   somabrain_kafka:
     image: apache/kafka:3.7.0
@@ -66,42 +66,42 @@ services:
       - bash
       - -c
       - |
-          set -e
-          mkdir -p /var/lib/kafka/data
-          CONFIG_PATH=/tmp/kafka-server.properties
-          cp /opt/kafka/config/kraft/server.properties "$${CONFIG_PATH}"
-          {
-            echo "process.roles=$${KAFKA_CFG_PROCESS_ROLES}"
-            echo "node.id=$${KAFKA_CFG_NODE_ID}"
-            # Some base configs may still read broker.id; set it explicitly for safety
-            echo "broker.id=$${KAFKA_CFG_NODE_ID}"
-            echo "controller.listener.names=$${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}"
-            echo "controller.quorum.voters=$${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}"
-            echo "listeners=$${KAFKA_CFG_LISTENERS}"
-            echo "advertised.listeners=$${KAFKA_CFG_ADVERTISED_LISTENERS}"
-            echo "listener.security.protocol.map=$${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}"
-            echo "inter.broker.listener.name=$${KAFKA_CFG_INTER_BROKER_LISTENER_NAME}"
-            echo "log.dirs=$${KAFKA_CFG_LOG_DIRS}"
-            echo "auto.create.topics.enable=$${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE}"
-            echo "num.partitions=$${KAFKA_CFG_NUM_PARTITIONS}"
-            echo "default.replication.factor=$${KAFKA_CFG_DEFAULT_REPLICATION_FACTOR}"
-            echo "offsets.topic.replication.factor=$${KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR}"
-            echo "transaction.state.log.replication.factor=$${KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}"
-            echo "transaction.state.log.min.isr=$${KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR}"
-            echo "compression.type=$${KAFKA_CFG_COMPRESSION_TYPE}"
-            echo "log.retention.ms=$${KAFKA_CFG_LOG_RETENTION_MS}"
-            echo "log.segment.bytes=$${KAFKA_CFG_LOG_SEGMENT_BYTES}"
-            echo "log.retention.bytes=$${KAFKA_CFG_LOG_RETENTION_BYTES}"
-          } >> "$${CONFIG_PATH}"
-          if [ ! -f /var/lib/kafka/data/meta.properties ]; then
-            /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew} --config "$${CONFIG_PATH}"
-          fi
-          exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
+        set -e
+        mkdir -p /var/lib/kafka/data
+        CONFIG_PATH=/tmp/kafka-server.properties
+        cp /opt/kafka/config/kraft/server.properties "$${CONFIG_PATH}"
+        {
+          echo "process.roles=$${KAFKA_CFG_PROCESS_ROLES}"
+          echo "node.id=$${KAFKA_CFG_NODE_ID}"
+          # Some base configs may still read broker.id; set it explicitly for safety
+          echo "broker.id=$${KAFKA_CFG_NODE_ID}"
+          echo "controller.listener.names=$${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}"
+          echo "controller.quorum.voters=$${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}"
+          echo "listeners=$${KAFKA_CFG_LISTENERS}"
+          echo "advertised.listeners=$${KAFKA_CFG_ADVERTISED_LISTENERS}"
+          echo "listener.security.protocol.map=$${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}"
+          echo "inter.broker.listener.name=$${KAFKA_CFG_INTER_BROKER_LISTENER_NAME}"
+          echo "log.dirs=$${KAFKA_CFG_LOG_DIRS}"
+          echo "auto.create.topics.enable=$${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE}"
+          echo "num.partitions=$${KAFKA_CFG_NUM_PARTITIONS}"
+          echo "default.replication.factor=$${KAFKA_CFG_DEFAULT_REPLICATION_FACTOR}"
+          echo "offsets.topic.replication.factor=$${KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR}"
+          echo "transaction.state.log.replication.factor=$${KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR}"
+          echo "transaction.state.log.min.isr=$${KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR}"
+          echo "compression.type=$${KAFKA_CFG_COMPRESSION_TYPE}"
+          echo "log.retention.ms=$${KAFKA_CFG_LOG_RETENTION_MS}"
+          echo "log.segment.bytes=$${KAFKA_CFG_LOG_SEGMENT_BYTES}"
+          echo "log.retention.bytes=$${KAFKA_CFG_LOG_RETENTION_BYTES}"
+        } >> "$${CONFIG_PATH}"
+        if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+          /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew} --config "$${CONFIG_PATH}"
+        fi
+        exec /opt/kafka/bin/kafka-server-start.sh "$${CONFIG_PATH}"
     ports:
       # Expose only the EXTERNAL listener container port to the host
       - "${KAFKA_BROKER_HOST_PORT:-30102}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT:-9094}"
     healthcheck:
-      test: ["CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1"]
+      test: [ "CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1" ]
       interval: 20s
       timeout: 20s
       start_period: 60s
@@ -128,11 +128,10 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:${KAFKA_EXPORTER_CONTAINER_PORT}/"]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:${KAFKA_EXPORTER_CONTAINER_PORT}/" ]
       interval: 30s
       timeout: 5s
       retries: 3
-
 
   somabrain_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
@@ -149,7 +148,7 @@ services:
     ports:
       - "${SCHEMA_REGISTRY_HOST_PORT:-30008}:8081"
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:8081/subjects"]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:8081/subjects" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -160,10 +159,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 128M
         reservations:
-          memory: 32M
-    command: ["run", "--server", "--addr=0.0.0.0:${OPA_CONTAINER_PORT}", "--diagnostic-addr=0.0.0.0:8282", "/policies"]
+          memory: 64M
+    command: [ "run", "--server", "--addr=0.0.0.0:${OPA_CONTAINER_PORT}", "--diagnostic-addr=0.0.0.0:8282", "/policies" ]
     networks:
       - somabrain_net
     ports:
@@ -172,7 +171,7 @@ services:
       - ./ops/opa/policies:/policies:ro
       - opa_data:/var/lib/opa
     healthcheck:
-      test: ["CMD", "opa", "eval", "--format=raw", "http.send({\"method\": \"GET\", \"url\": \"http://127.0.0.1:${OPA_CONTAINER_PORT}/health?plugins\"}).status == \"200 OK\""]
+      test: [ "CMD", "opa", "eval", "--format=raw", "http.send({\"method\": \"GET\", \"url\": \"http://127.0.0.1:${OPA_CONTAINER_PORT}/health?plugins\"}).status == \"200 OK\"" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -214,7 +213,7 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:16686/"]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:16686/" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -239,7 +238,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -260,9 +259,9 @@ services:
       SOMABRAIN_POSTGRES_DSN: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@somabrain_postgres:5432/${POSTGRES_DB}"
     # Dev convenience: try to upgrade; if the schema already exists without Alembic history,
     # stamp to heads to align the version table. Safe for local dev; don't use this in prod.
-    command: ["sh", "-lc", "cd /app && alembic -c /app/alembic.ini upgrade heads || alembic -c /app/alembic.ini stamp heads"]
+    command: [ "sh", "-lc", "cd /app && alembic -c /app/alembic.ini upgrade heads || alembic -c /app/alembic.ini stamp heads" ]
     restart: "no"
-    profiles: ["dev"]
+    profiles: [ "dev" ]
 
   somabrain_postgres_exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
@@ -283,7 +282,7 @@ services:
     networks:
       - somabrain_net
     healthcheck:
-      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:${POSTGRES_EXPORTER_CONTAINER_PORT}/"]
+      test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:${POSTGRES_EXPORTER_CONTAINER_PORT}/" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -297,9 +296,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 1G
         reservations:
-          memory: 96M
+          memory: 512M
     depends_on:
       somabrain_redis:
         condition: service_healthy
@@ -341,20 +340,19 @@ services:
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:${SOMABRAIN_PORT:-9696}"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1"]
+      test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1" ]
       interval: 30s
       timeout: 5s
       retries: 3
     # No local journal volume; fail-fast only
     # Security hardening: drop all capabilities, run with read-only rootfs, and disallow privilege escalation.
     # Note: we mount a tmpfs for /app/logs to keep runtime logs writable.
-    cap_drop: ["ALL"]
+    cap_drop: [ "ALL" ]
     read_only: true
     security_opt:
       - no-new-privileges:true
     tmpfs:
       - /app/logs
-
 
   somabrain_cog:
     build:
@@ -420,13 +418,13 @@ services:
       - "${COG_INTEGRATOR_HEALTH_HOST_PORT:-30010}:9010"
       # Segmentation health
       - "${SEGMENTATION_HEALTH_HOST_PORT:-30116}:9016"
-    command: ["/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf", "-l", "/dev/stdout"]
+    command: [ "/usr/bin/supervisord", "-c", "/app/ops/supervisor/supervisord.conf", "-l", "/dev/stdout" ]
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://admin:soma@localhost:9001"]
+      test: [ "CMD", "curl", "-fsS", "http://admin:soma@localhost:9001" ]
       interval: 30s
       timeout: 5s
       retries: 5
-    cap_drop: ["ALL"]
+    cap_drop: [ "ALL" ]
     # read_only disabled to allow supervisor tmp/log paths in minimal dev
     security_opt:
       - no-new-privileges:true
@@ -453,7 +451,7 @@ services:
         condition: service_healthy
     networks:
       - somabrain_net
-    command: ["python", "-m", "somabrain.workers.outbox_publisher"]
+    command: [ "python", "-m", "somabrain.workers.outbox_publisher" ]
     environment:
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
@@ -466,7 +464,7 @@ services:
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:-5.0}
     # No journal mount required
-    cap_drop: ["ALL"]
+    cap_drop: [ "ALL" ]
     read_only: true
     security_opt:
       - no-new-privileges:true
@@ -474,7 +472,7 @@ services:
       - /app/logs:rw,size=64m,mode=1777
       - /tmp:rw,size=64m,mode=1777
     healthcheck:
-      test: ["CMD", "true"]
+      test: [ "CMD", "true" ]
       interval: 30s
       timeout: 5s
       retries: 1
@@ -506,7 +504,7 @@ services:
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_REQUIRE_MEMORY: "${SOMABRAIN_REQUIRE_MEMORY:-1}"
-    command: ["python", "-m", "somabrain.services.integrator_hub_triplet"]
+    command: [ "python", "-m", "somabrain.services.integrator_hub_triplet" ]
     deploy:
       resources:
         limits:
@@ -514,7 +512,7 @@ services:
         reservations:
           memory: 192M
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9015/health"]
+      test: [ "CMD", "curl", "-fsS", "http://localhost:9015/health" ]
       interval: 30s
       timeout: 5s
       retries: 1
@@ -532,7 +530,6 @@ volumes:
     driver: local
   prometheus_data:
     driver: local
-  
 
 networks:
   somabrain_net:

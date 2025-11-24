@@ -547,10 +547,11 @@ class Settings(BaseSettings):
     integrator_softmax_temperature: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
-    # Cognitive threads default to on (best cognition) unless explicitly disabled.
-    enable_cog_threads: bool = Field(
-        default_factory=lambda: _bool_env("ENABLE_COG_THREADS", True)
-    )
+    # Calibration
+    calibration_enabled: bool = Field(default=False, description="Enable predictor calibration service")
+
+    # Feature Flags
+    enable_cog_threads: bool = Field(default=False, description="Enable Cognitive Threads v2")
 
     # Predictor timeout (ms) – used when constructing the budgeted predictor.
     # The historic default was 1000 ms; we keep that value here.

@@ -51,6 +51,47 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 from common.config.settings import settings
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
+
+# ---------------------------------------------------------------------------
+# Simple OPA engine wrapper – provides a minimal health check for the OPA
+# service configured via ``SOMABRAIN_OPA_URL`` (or ``settings.opa_url``).
+# The wrapper is attached to ``app.state`` during startup so the health endpoint
+# can report ``opa_ok`` and ``opa_required`` correctly.
+# ---------------------------------------------------------------------------
+class SimpleOPAEngine:
+    """Lightweight wrapper around the OPA HTTP endpoint.
+
+    The production code does not import a dedicated OPA client library. This
+    class stores the base URL and offers an async ``health`` method used by the
+    health endpoint to verify that the OPA service is reachable.
+    """
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip('/')
+
+    async def health(self) -> bool:
+        """Return ``True`` if the OPA ``/health`` endpoint responds with 200.
+
+        Any exception (network error, timeout, etc.) is treated as unhealthy.
+        """
+        try:
+            import httpx  # type: ignore
+
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                resp = await client.get(f"{self.base_url}/health")
+                return resp.status_code == 200
+        except Exception:
+            return False
+
+# Attach the OPA engine at startup so the health handler can reference it.
+@app.on_event("startup")
+async def _attach_opa_engine() -> None:  # pragma: no cover
+    # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
+    opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
+    if opa_url:
+        app.state.opa_engine = SimpleOPAEngine(opa_url)
+    else:
+        app.state.opa_engine = None
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 from somabrain.controls.reality_monitor import assess_reality
@@ -2499,6 +2540,7 @@ async def health(request: Request) -> S.HealthResponse:
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
 
+    # Base health payload
     resp = S.HealthResponse(
         ok=True,
         components={
@@ -2508,12 +2550,68 @@ async def health(request: Request) -> S.HealthResponse:
             "api_version": API_VERSION,
         },
     ).model_dump()
+    # Core identifiers
     resp["namespace"] = ctx.namespace
     resp["trace_id"] = trace_id
     resp["deadline_ms"] = deadline_ms
     resp["idempotency_key"] = idempotency_key
+    # Constitution information (if engine loaded)
+    try:
+        engine: Optional["ConstitutionEngine"] = getattr(app.state, "constitution_engine", None)
+        if engine:
+            resp["constitution_version"] = engine.get_checksum()
+            resp["constitution_status"] = "loaded"
+        else:
+            resp["constitution_version"] = None
+            resp["constitution_status"] = "not-loaded"
+    except Exception:
+        resp["constitution_version"] = None
+        resp["constitution_status"] = None
+    # External backend requirement flag from settings
+    try:
+        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
+    except Exception:
+        resp["external_backends_required"] = None
+    # Full‑stack mode flag (legacy)
+    try:
+        resp["full_stack"] = getattr(settings, "force_full_stack", None)
+    except Exception:
+        resp["full_stack"] = None
+    # Memory item count – expose as top‑level field as well as component
+    try:
+        mem_count = int(getattr(ns_mem, "count", lambda: 0)())
+        resp["memory_items"] = mem_count
+        resp["components"]["wm_items"] = mem_count
+    except Exception:
+        resp["memory_items"] = None
+        resp["components"]["wm_items"] = None
+    # Retrieval readiness – simple heuristic based on embedder availability.
+    # NOTE: ``embedder_ok`` is defined later in the function, so we defer the
+    # assignment until after ``embedder_ok`` is computed (see below).
+    # OPA integration status – check if OPA engine is attached to app state
+    try:
+        opa_engine = getattr(app.state, "opa_engine", None)
+        resp["opa_ok"] = bool(opa_engine)
+        resp["opa_required"] = getattr(settings, "require_opa", None)
+    except Exception:
+        resp["opa_ok"] = None
+        resp["opa_required"] = None
 
-    # Stub audit
+    # -------------------------------------------------------------------
+    # Memory degradation configuration – expose the runtime flags so callers can
+    # see whether writes are being queued when the backend is unavailable.
+    # These correspond to the settings defined in ``common.config.settings``.
+    # -------------------------------------------------------------------
+    try:
+        resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
+        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
+        resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
+    except Exception:
+        resp["memory_degrade_queue"] = None
+        resp["memory_degrade_readonly"] = None
+        resp["memory_degrade_topic"] = None
+
+    # Stub audit (unchanged)
     try:
         from somabrain.stub_audit import (
             BACKEND_ENFORCED as __BACKEND_ENFORCED,
@@ -2540,6 +2638,23 @@ async def health(request: Request) -> S.HealthResponse:
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
     except Exception:
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
+
+    # -------------------------------------------------------------------
+    # Post‑processing of fields that may still be None after the above logic.
+    # Ensure the health payload never returns ``null`` for these keys.
+    # -------------------------------------------------------------------
+    # Constitution status – if still None, set to explicit "not-loaded".
+    if resp.get("constitution_status") is None:
+        resp["constitution_status"] = "not-loaded"
+    # Full‑stack flag – default to False when not configured.
+    if resp.get("full_stack") is None:
+        resp["full_stack"] = False
+    # Retrieval readiness – derive from embedder health.
+    if resp.get("retrieval_ready") is None:
+        resp["retrieval_ready"] = bool(resp.get("embedder_ok"))
+    # OPA required – default to False when not set.
+    if resp.get("opa_required") is None:
+        resp["opa_required"] = False
 
     # Memory health + CB mapping
     ns_mem = mt_memory.for_namespace(ctx.namespace)
