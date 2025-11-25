@@ -83,7 +83,7 @@ rate_burst: 100000
 write_daily_limit: 100000000
 
 # Planner (optional)
-use_planner: false
+use_planner: true
 plan_max_steps: 5
 plan_rel_types: depends_on,causes,part_of,motivates,related
 

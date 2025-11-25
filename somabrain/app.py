@@ -1704,10 +1704,10 @@ try:
         policy_sleep_router,
     )
 
-    # Register sleep-related routers.
-    app.include_router(util_sleep_router)
-    app.include_router(brain_sleep_router)
-    app.include_router(policy_sleep_router)
+    # Register sleep-related routers using the actual APIRouter objects.
+    app.include_router(util_sleep_router.router)
+    app.include_router(brain_sleep_router.router)
+    app.include_router(policy_sleep_router.router)
     # Start background TTL auto‑wake watcher for cognitive sleep (only once).
     try:
         # The brain_sleep_router module provides a ``start_ttl_watcher`` helper.

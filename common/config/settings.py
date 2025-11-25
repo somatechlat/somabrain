@@ -1024,6 +1024,27 @@ class Settings(BaseSettings):
     sleep_beta_B: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_SLEEP_BETA_B", 0.5)
     )
+    # Maximum number of summaries to generate per consolidation cycle (NREM/REM).
+    # This mirrors the historic ``max_summaries_per_cycle`` setting used by the
+    # sleep and consolidation code paths.
+    max_summaries_per_cycle: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_MAX_SUMMARIES_PER_CYCLE", 3)
+    )
+    # Batch sizes for consolidation (NREM/REM) – hot‑configurable defaults
+    nrem_batch_size: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_NREM_BATCH_SIZE", 32)
+    )
+    rem_batch_size: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_REM_BATCH_SIZE", 32)
+    )
+    # Recombination rate for REM consolidation – used by the REM algorithm to
+    # determine how many pairs of episodic memories to recombine.  Historically
+    # this was a hard‑coded constant (0.2) in several modules; exposing it as a
+    # configurable setting restores compatibility with the existing code that
+    # expects ``cfg.rem_recomb_rate``.
+    rem_recomb_rate: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_REM_RECOMB_RATE", 0.2)
+    )
 
     # Predictor / integrator configuration -----------------------------------
     predictor_alpha: float = Field(
