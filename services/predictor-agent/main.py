@@ -161,8 +161,9 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["agent"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    from common.logging import logger
+                    logger.exception("Calibration scaling failed in predictor-agent: %s", exc)
                 rec = {
                     "domain": "agent",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

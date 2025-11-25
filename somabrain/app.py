@@ -83,9 +83,16 @@ class SimpleOPAEngine:
         except Exception:
             return False
 
-# Attach the OPA engine at startup so the health handler can reference it.
-@app.on_event("startup")
+# Define OPA engine attachment function (will be registered after FastAPI app creation).
 async def _attach_opa_engine() -> None:  # pragma: no cover
+    """Initialize the OPA engine and store it in ``app.state``.
+
+    This function is deliberately defined *before* the FastAPI ``app`` instance
+    is created to avoid the ``NameError`` that occurs when using the
+    ``@app.on_event`` decorator before ``app`` exists. The function will be
+    registered as a startup event handler after the ``FastAPI`` instance is
+    instantiated.
+    """
     # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
     opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
     if opa_url:
@@ -871,6 +878,12 @@ app = FastAPI(
     description="Low-latency cognitive services with strict production-mode enforcement.",
     version=str(API_VERSION),
 )
+
+# Register the OPA engine initialization to run on FastAPI startup.
+# ``_attach_opa_engine`` is defined earlier in this file without the decorator
+# to avoid a NameError at import time. Adding it here ensures the engine is
+# available via ``app.state.opa_engine`` before any request handling.
+app.add_event_handler("startup", _attach_opa_engine)
 
 try:
     _sphinx_build = os.environ.get("SPHINX_BUILD") or ("sphinx" in sys.modules)

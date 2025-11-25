@@ -187,8 +187,10 @@ class TieredMemory:
                     promote_margin=self._wm_policy.promote_margin,
                 ).validate()
                 self._wm_policy = new_policy
-            except Exception:
-                pass
+            except Exception as exc:
+                # Log the failure to update the policy instead of silently ignoring it.
+                from common.logging import logger
+                logger.exception("Failed to validate LayerPolicy from wm_tau: %s", exc)
 
     def rebuild_cleanup_indexes(
         self,

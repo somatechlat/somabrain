@@ -134,8 +134,10 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["state"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    # Log calibration failures; they should not stop the predictor.
+                    from common.logging import logger
+                    logger.exception("Calibration scaling failed in predictor-state: %s", exc)
 
                 # Calibration tracking
                 if calibration_service.enabled:

@@ -34,3 +34,10 @@ Log*.txt
 
 # Explicitly include arc_cache.py
 !arc_cache.py
+
+# Exclude large documentation and example scripts that are not required at runtime
+docs/
+scripts/
+!scripts/start_server.py
+examples/
+requirements-dev.txt

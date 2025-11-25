@@ -16,7 +16,10 @@ RUN apt-get update \
 COPY pyproject.toml README.md /build/
 COPY somabrain /build/somabrain
 COPY common /build/common
-COPY scripts /build/scripts
+# The scripts directory is only needed for development and testing. It is
+# excluded from the build context via .dockerignore, so we do not copy it
+# into the builder image.
+# COPY scripts /build/scripts
 COPY arc_cache.py /build/
 
 # Build a wheel reproducibly using build
@@ -56,18 +59,27 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install "uvicorn[standard]"
 # Install fastavro for Avro deserialization in strict mode
 RUN --mount=type=cache,target=/root/.cache/pip pip install fastavro
 
-# Copy docs, scripts, and memory (for runtime import)
-COPY docs /app/docs
-COPY scripts /app/scripts
-COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
+# Copy only essential runtime assets. Documentation, development scripts and
+# example files are excluded to keep the image lean. The .dockerignore file
+# already prevents those directories from being added, but we explicitly omit
+# them here for clarity.
 COPY arc_cache.py /app/
 COPY observability /app/observability
 COPY services /app/services
 COPY config /app/config
 COPY alembic.ini /app/alembic.ini
 COPY migrations /app/migrations
-# Copy Avro/IDL schemas used at runtime by cognition services
+# Avro/IDL schemas are required for the cognition services
 COPY proto /app/proto
+
+# ---------------------------------------------------------------------------
+# Runtime scripts needed by the entrypoint
+# ---------------------------------------------------------------------------
+# The entrypoint expects /app/scripts/start_server.py to launch the FastAPI
+# application. The original source resides in the repository's scripts/ folder
+# but is excluded from the build context via .dockerignore. We copy the single
+# required file explicitly.
+COPY scripts/start_server.py /app/scripts/start_server.py
 
 # Belt-and-suspenders: write the hippocampus module directly to the image to
 # avoid any context filtering issues. This mirrors the in-repo file exactly.
@@ -171,9 +183,9 @@ class Hippocampus:
         return stats
 PYCODE
 
-# Include development requirements so this image can install pytest/dev extras
-# when needed (e.g., ``pip install -r /app/requirements-dev.txt`` inside a container).
-COPY requirements-dev.txt /app/requirements-dev.txt
+# Development requirements are optional and not required for the runtime image.
+# Uncomment the line below if you need to install dev extras inside the container.
+# COPY requirements-dev.txt /app/requirements-dev.txt
 
 # Also copy source tree to ensure latest local code is importable at runtime (overrides wheel)
 COPY somabrain /app/somabrain

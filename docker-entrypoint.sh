@@ -19,25 +19,30 @@ EXTRA_ARGS="${SOMABRAIN_EXTRA_ARGS}"
 echo "Starting SomaBrain API on $HOST:$PORT with $WORKERS worker(s)"
 echo "SOMABRAIN container starting on host: ${SOMABRAIN_HOST}, port: ${SOMABRAIN_PORT}"
 
-# Wait for critical dependencies (Kafka broker and OPA) to be reachable before starting
+# Wait for critical dependencies (Kafka broker and OPA) to be reachable before starting.
+# In development mode we allow Kafka to be optional. Set SOMABRAIN_REQUIRE_KAFKA=0
+# to skip the Kafka check. OPA is still required because the auth layer depends on it.
 echo "Checking dependencies: Kafka and OPA (fail-fast)"
 KAFKA_OK=0
 OPA_OK=0
 
-# Use the real Kafka smoke test for health check
-# Single canonical env: SOMABRAIN_KAFKA_URL (optionally prefixed with kafka://)
+# Determine whether we should enforce Kafka reachability.
+REQUIRE_KAFKA="${SOMABRAIN_REQUIRE_KAFKA:-1}"
+
+# Use the real Kafka smoke test for health check when required.
 KAFKA_BROKER="${SOMABRAIN_KAFKA_URL:-}"
 if [ -n "$KAFKA_BROKER" ]; then
   KAFKA_BROKER="${KAFKA_BROKER#kafka://}"
 fi
-if [ -n "$KAFKA_BROKER" ]; then
+if [ "$REQUIRE_KAFKA" = "1" ] && [ -n "$KAFKA_BROKER" ]; then
   for i in 1 2 3 4 5 6; do
     echo "Attempt $i: checking Kafka broker..."
     python3 scripts/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
     sleep 2
   done
 else
-  echo "Warning: SOMABRAIN_KAFKA_URL is not set; skipping Kafka smoke test"
+  echo "Skipping Kafka check (SOMABRAIN_REQUIRE_KAFKA=$REQUIRE_KAFKA)"
+  KAFKA_OK=1
 fi
 
 for i in 1 2 3 4 5 6; do

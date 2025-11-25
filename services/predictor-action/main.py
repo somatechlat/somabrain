@@ -158,8 +158,9 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["action"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    from common.logging import logger
+                    logger.exception("Calibration scaling failed in predictor-action: %s", exc)
                 posterior = {"next_action": random.choice(actions)}
                 rec = {
                     "domain": "action",

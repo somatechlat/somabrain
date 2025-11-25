@@ -199,6 +199,14 @@ class Settings(BaseSettings):
     spectral_cache_dir: Optional[str] = Field(
         default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
     )
+
+    # Authentication configuration ------------------------------------------------
+    # ``auth_required`` determines whether the API enforces bearer‑token auth.
+    # It defaults to ``False`` for local development (mirroring ``config.yaml``).
+    # ``api_token`` holds the static token value when ``auth_required`` is True.
+    # Both values can be overridden via environment variables for production.
+    auth_required: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False))
+    api_token: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_TOKEN", ""))
     learner_dlq_path: str = Field(
         default=_str_env("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
     )
@@ -613,6 +621,13 @@ class Settings(BaseSettings):
     )
     micro_vote_temperature: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_MICRO_VOTE_TEMPERATURE", 0.25)
+    )
+
+    # Compatibility flag for the memory pipeline – older code uses ``use_microcircuits``
+    # while the YAML config defines ``micro_circuits``. Provide both names so the
+    # attribute lookup succeeds regardless of which spelling is used.
+    use_microcircuits: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_MICROCIRCUITS", False)
     )
     micro_max_tenants: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_MICRO_MAX_TENANTS", 1000)

@@ -143,9 +143,10 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                             },
                         },
                     )
-        except Exception:
-            # best-effort guard; fall through to normal handling
-            pass
+        except Exception as exc:
+            # best-effort guard; log the failure and continue with normal handling
+            from common.logging import logger
+            logger.exception("OPA policy evaluation failed: %s", exc)
         dec = self.engine.evaluate(ctx)
         try:
             POLICY_DECISIONS.labels(decision=dec.decision).inc()

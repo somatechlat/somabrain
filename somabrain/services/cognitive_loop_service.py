@@ -49,10 +49,12 @@ def _get_sleep_state(tenant_id: str) -> SleepState:
                 state = SleepState(ss.current_state)
             else:
                 state = SleepState.ACTIVE
-    except Exception:
+    except Exception as exc:
         # Default to ACTIVE on DB error to fail open (or safe?)
         # SRS implies safety, but failing to ACTIVE might be risky if we need to freeze.
         # However, for resilience, we default to ACTIVE.
+        from common.logging import logger
+        logger.exception("Failed to retrieve sleep state from DB: %s", exc)
         state = SleepState.ACTIVE
 
     _SLEEP_STATE_CACHE[tenant_id] = (state, now)
@@ -109,7 +111,7 @@ def eval_step(
     t0 = _t.perf_counter()
     try:
         pred = predictor.predict_and_compare(wm_vec, wm_vec)
-    except Exception:
+    except Exception as exc:
         # degrade: zero error if predictor fails (BudgetedPredictor may timeout)
         try:
             from .. import metrics as M  # local import to avoid cycles in tests
@@ -120,6 +122,8 @@ def eval_step(
         pred = type(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
+        from common.logging import logger
+        logger.exception("Predictor failed, falling back to zero-error placeholder: %s", exc)
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     # Neuromodulation (personality + supervisor)
@@ -149,8 +153,9 @@ def eval_step(
                 nm, F, mag = cast(Any, supervisor).adjust(
                     nm, float(novelty), float(pred.error)
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            from common.logging import logger
+            logger.exception("Supervisor adjustment failed: %s", exc)
 
     # Salience and gates (raw, before executive inhibition)
     s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
@@ -194,9 +199,10 @@ def eval_step(
                 model_ver=str(model_ver),
                 latency_ms=latency_ms,
             )
-    except Exception:
+    except Exception as exc:
         # Never fail the cognitive loop due to telemetry
-        pass
+        from common.logging import logger
+        logger.exception("Telemetry publishing failed: %s", exc)
 
     return {
         "pred_error": float(pred.error),
