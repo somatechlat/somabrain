@@ -203,8 +203,11 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     """
     dom = (domain or "").strip().upper()
     # Graph source
-    graph_path = settings.getenv(f"SOMABRAIN_GRAPH_FILE_{dom}") or settings.getenv(
-        "SOMABRAIN_GRAPH_FILE"
+    # Retrieve a domain‑specific graph file, falling back to the generic one.
+    # ``settings.getenv`` is removed; we use ``getattr`` which safely returns
+    # ``None`` when the attribute does not exist.
+    graph_path = getattr(settings, f"graph_file_{dom.lower()}", None) or getattr(
+        settings, "graph_file", None
     )
     if graph_path:
         try:
@@ -225,7 +228,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
             diffusion_t=float(settings.diffusion_t or "0.5"),
             alpha=float(settings.conf_alpha or "2.0"),
             chebyshev_K=int(settings.cheb_k or "30"),
-            lanczos_m=int(settings.getenv("SOMABRAIN_LANCZOS_M", "20") or "20"),
+            lanczos_m=int(getattr(settings, "lanczos_m", 20)),
         ),
     )
     return pred, dim

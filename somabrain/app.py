@@ -51,6 +51,9 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 from common.config.settings import settings
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
+# Oak feature imports
+from somabrain.oak.option_manager import option_manager
+from somabrain.oak.planner import plan_for_tenant
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -3708,6 +3711,34 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     except Exception:
         plan_result = []
     return {"plan": plan_result}
+
+# ---------------------------------------------------------------------------
+# Oak option creation endpoint (ROAMDP feature)
+# ---------------------------------------------------------------------------
+@app.post("/oak/option/create", response_model=S.OakPlanSuggestResponse)
+async def oak_option_create(body: S.OakOptionCreateRequest, request: Request):
+    """Create a new Oak option and return its identifier.
+
+    The request payload must contain a base64‑encoded ``payload`` field. An
+    ``option_id`` may be supplied; otherwise a timestamp‑based identifier is
+    generated. The option is stored via ``option_manager`` and an ``option_created``
+    event is emitted.
+    """
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+    # Decode payload safely
+    try:
+        import base64
+
+        payload_bytes = base64.b64decode(body.payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+    opt_id = body.option_id or f"opt_{int(time.time() * 1000)}"
+    try:
+        opt = option_manager.create_option(ctx.tenant_id, opt_id, payload_bytes)
+    except ValueError as ve:
+        raise HTTPException(status_code=409, detail=str(ve))
+    return S.OakPlanSuggestResponse(plan=[opt.option_id])
 
 
 @app.post("/delete", response_model=S.DeleteResponse)

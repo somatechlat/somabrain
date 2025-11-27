@@ -42,7 +42,10 @@ class ContextPlanner:
         )
 
         def _env_float(name: str, current: float) -> float:
-            value = settings.getenv(name)
+            # ``settings.getenv`` is no longer available. We retrieve the value
+            # via ``getattr`` which returns ``None`` when the attribute does not
+            # exist, mirroring the previous fallback behaviour.
+            value = getattr(settings, name.lower(), None)
             if value is None:
                 return current
             try:

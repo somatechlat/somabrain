@@ -30,7 +30,10 @@ def _load_state_operator() -> Tuple[callable, int]:
     variable is defined the function raises ``RuntimeError`` – this matches the
     VIBE rule of refusing to operate with implicit defaults.
     """
-    graph_path = settings.graph_file_state or settings.getenv("SOMABRAIN_GRAPH_FILE")
+    # Fallback to the generic graph file if the state‑specific one is not set.
+    # ``settings.getenv`` is prohibited; we use ``getattr`` which returns ``None``
+    # when the attribute does not exist (mirroring the previous behaviour).
+    graph_path = settings.graph_file_state or getattr(settings, "graph_file", None)
     if not graph_path:
         raise RuntimeError(
             "State predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_STATE or SOMABRAIN_GRAPH_FILE."

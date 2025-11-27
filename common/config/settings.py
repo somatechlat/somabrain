@@ -178,6 +178,20 @@ class Settings(BaseSettings):
     running_in_docker: bool = Field(
         default_factory=lambda: _bool_env("RUNNING_IN_DOCKER", False)
     )
+
+    # --- Milvus configuration (ROAMDP) --------------------------------------
+    milvus_host: Optional[str] = Field(
+        default=_str_env("MILVUS_HOST") or _str_env("SOMABRAIN_MILVUS_HOST")
+    )
+    milvus_port: Optional[int] = Field(
+        default=_int_env(
+            "MILVUS_PORT",
+            _int_env("SOMABRAIN_MILVUS_PORT", 19530),
+        )
+    )
+    milvus_collection: str = Field(
+        default=_str_env("MILVUS_COLLECTION", "oak_options")
+    )
     # Integrator and segmentation service URLs (optional external services)
     integrator_url: Optional[str] = Field(default=_str_env("INTEGRATOR_URL"))
     segmentation_url: Optional[str] = Field(default=_str_env("SEGMENTATION_URL"))
