@@ -200,6 +200,23 @@ OPA_ALLOW_TOTAL = get_counter(
     "somabrain_opa_allow_total",
     "Number of requests allowed by OPA",
 )
+
+# ---------------------------------------------------------------------------
+# Oak‑specific observability (ROAMDP)
+# ---------------------------------------------------------------------------
+# Average utility of created Oak options, labelled by tenant.
+OPTION_UTILITY_AVG = get_gauge(
+    "somabrain_option_utility_avg",
+    "Average utility of created Oak options per tenant",
+    ["tenant_id"],
+)
+
+# Total number of Oak options stored per tenant.
+OPTION_COUNT = get_gauge(
+    "somabrain_option_count",
+    "Total number of Oak options stored per tenant",
+    ["tenant_id"],
+)
 OPA_DENY_TOTAL = get_counter(
     "somabrain_opa_deny_total",
     "Number of requests denied by OPA",

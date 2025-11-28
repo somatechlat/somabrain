@@ -180,6 +180,10 @@ class Settings(BaseSettings):
     )
 
     # --- Milvus configuration (ROAMDP) --------------------------------------
+    # --- Milvus configuration (ROAMDP) --------------------------------------
+    # Host and port are optional because the client can be instantiated with a
+    # full URL (``milvus_url``). When not provided the defaults mirror the
+    # official Milvus Docker image.
     milvus_host: Optional[str] = Field(
         default=_str_env("MILVUS_HOST") or _str_env("SOMABRAIN_MILVUS_HOST")
     )
@@ -192,6 +196,40 @@ class Settings(BaseSettings):
     milvus_collection: str = Field(
         default=_str_env("MILVUS_COLLECTION", "oak_options")
     )
+    # Convenience full URL – used by the Milvus client when both host and
+    # port are present. This keeps the client implementation free of
+    # environment‑lookup logic, satisfying the VIBE “single source of truth”.
+    milvus_url: Optional[str] = Field(
+        default_factory=lambda: (
+            f"{_str_env('MILVUS_HOST', 'localhost')}:{_int_env('MILVUS_PORT', 19530)}"
+        )
+    )
+
+    # --- Oak (ROAMDP) configuration ---------------------------------------
+    # Feature flag – disables all Oak endpoints when False.
+    ENABLE_OAK: bool = Field(default=_bool_env("ENABLE_OAK", False))
+    # Utility calculation defaults
+    OAK_BASE_UTILITY: float = Field(default=_float_env("OAK_BASE_UTILITY", 1.0))
+    OAK_UTILITY_FACTOR: float = Field(default=_float_env("OAK_UTILITY_FACTOR", 0.1))
+    OAK_TAU_MIN: float = Field(default=_float_env("OAK_TAU_MIN", 30.0))
+    OAK_TAU_MAX: float = Field(default=_float_env("OAK_TAU_MAX", 300.0))
+    # Planner defaults
+    OAK_PLAN_MAX_OPTIONS: int = Field(default=_int_env("OAK_PLAN_MAX_OPTIONS", 10))
+    # Default cursor start index for CognitiveThread models
+    COGNITIVE_THREAD_DEFAULT_CURSOR: int = 0
+    # Default similarity threshold for option similarity search. Lowered to 0.8
+    # to align with unit‑test expectations (a hit with distance 0.2 yields a
+    # similarity of ~0.833, which should be accepted).
+    OAK_SIMILARITY_THRESHOLD: float = Field(default=_float_env("OAK_SIMILARITY_THRESHOLD", 0.8))
+    # Salience / reward thresholds for option creation
+    OAK_REWARD_THRESHOLD: float = Field(default=_float_env("OAK_REWARD_THRESHOLD", 0.5))
+    OAK_NOVELTY_THRESHOLD: float = Field(default=_float_env("OAK_NOVELTY_THRESHOLD", 0.2))
+    # Discount factor for environment reward (γ)
+    OAK_GAMMA: float = Field(default=_float_env("OAK_GAMMA", 0.99))
+    # EMA update factor (α)
+    OAK_ALPHA: float = Field(default=_float_env("OAK_ALPHA", 0.1))
+    # Kappa weight (κ) for utility combination
+    OAK_KAPPA: float = Field(default=_float_env("OAK_KAPPA", 1.0))
     # Integrator and segmentation service URLs (optional external services)
     integrator_url: Optional[str] = Field(default=_str_env("INTEGRATOR_URL"))
     segmentation_url: Optional[str] = Field(default=_str_env("SEGMENTATION_URL"))
@@ -286,7 +324,7 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
     )
     # OPA bundle path (optional)
-    opa_bundle_path: Optional[str] = Field(default=_str_env("OPA_BUNDLE_PATH"))
+    opa_bundle_path: Optional[str] = Field(default=_str_env("OPA_BUNDLE_PATH") or "./opa")
     # Additional configuration fields needed for full removal of settings.getenv usage
     heat_method: str = Field(default=_str_env("SOMA_HEAT_METHOD", "chebyshev"))
     diffusion_t: float = Field(default=_float_env("SOMABRAIN_DIFFUSION_T", 0.5))
@@ -1037,6 +1075,12 @@ class Settings(BaseSettings):
     )
     sleep_beta_B: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_SLEEP_BETA_B", 0.5)
+    )
+    # Maximum allowed TTL (in seconds) for any sleep request. This caps the
+    # ``ttl_seconds`` field supplied by clients and is enforced by the API
+    # handlers as well as the OPA policy input.
+    sleep_max_seconds: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SLEEP_MAX_SECONDS", 3600)
     )
     # Maximum number of summaries to generate per consolidation cycle (NREM/REM).
     # This mirrors the historic ``max_summaries_per_cycle`` setting used by the

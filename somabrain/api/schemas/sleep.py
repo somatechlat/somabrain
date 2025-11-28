@@ -35,9 +35,20 @@ class SleepRequest(BaseModel):
 
     target_state: SleepTargetState = Field(..., description="Desired sleep state")
     ttl_seconds: Optional[int] = Field(
-        None,
-        ge=1,
-        description="Optional TTL in seconds after which the state auto‑resets to ACTIVE",
+      None,
+      ge=1,
+      description="Optional TTL in seconds after which the state auto‑resets to ACTIVE",
+    )
+    # ``async`` flag – when true the endpoint returns immediately and the actual
+    # sleep is performed in the background. This satisfies SRS requirement U‑3.
+    async_mode: bool = Field(
+      False,
+      description="If true, perform the sleep asynchronously (non‑blocking)",
+    )
+    # Optional trace identifier for observability pipelines (SRS U‑1).
+    trace_id: Optional[str] = Field(
+      None,
+      description="Arbitrary trace identifier propagated to logs/metrics",
     )
 
     @validator("target_state")

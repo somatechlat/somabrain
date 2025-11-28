@@ -715,33 +715,20 @@ class AdaptationEngine:
             except Exception:
                 pass
             if entropy_cap > 0.0 and entropy > entropy_cap:
-                # Simplified deterministic sharpening: keep the largest component unchanged
-                # and collapse the others to a minimal value, guaranteeing entropy reduction.
-                # This satisfies the strict test expectation that entropy falls below the cap
-                # after a single feedback application.
-                largest_idx = max(range(len(vec)), key=lambda i: vec[i])
-                # Set non‑max components to a tiny fraction of the max to sharply lower entropy.
-                max_val = vec[largest_idx]
-                for i in range(len(vec)):
-                    if i != largest_idx:
-                        vec[i] = max_val * 0.01  # 1% of the dominant weight
-                # Renormalize to keep a valid probability distribution.
-                total = sum(vec)
-                if total > 0:
-                    vec = [v / total for v in vec]
-                # Assign back preserving ordering.
-                (
-                    self._retrieval.alpha,
-                    self._retrieval.beta,
-                    self._retrieval.gamma,
-                    self._retrieval.tau,
-                ) = vec
+                # Increment the cap‑hit metric before aborting – this satisfies the VIBE rule
+                # that every observable side‑effect must happen prior to raising.
                 try:
                     from somabrain import metrics as _metrics
 
                     _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
                 except Exception:
                     pass
+                # Raise an explicit error to signal a policy violation. The calling
+                # code (feedback processing) will treat this as a failure and the
+                # health endpoint will still report the current metric values.
+                raise RuntimeError(
+                    f"Entropy {entropy:.4f} exceeds configured cap {entropy_cap:.4f} for tenant {self._tenant_id}"
+                )
 
         # Track that a feedback event was applied
         try:

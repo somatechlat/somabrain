@@ -54,6 +54,12 @@ from somabrain.context_hrr import HRRContextConfig
 # Oak feature imports
 from somabrain.oak.option_manager import option_manager
 from somabrain.oak.planner import plan_for_tenant
+# Oak health dependencies – Milvus client for persistence health checks.
+from somabrain.milvus_client import MilvusClient
+# Oak FastAPI router that now talks to Milvus
+from somabrain.oak.router import router as oak_router
+# Cognitive Threads router (Phase 5)
+from somabrain.cognitive.thread_router import router as thread_router
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -1641,6 +1647,11 @@ async def _init_constitution() -> None:
 from somabrain.api import context_route as _context_route
 
 app.include_router(_context_route.router, prefix="/context")
+# Oak-specific routes providing option management backed by Milvus.
+# The router is imported as ``oak_router`` earlier in this file.
+    app.include_router(oak_router, prefix="/oak")
+    # Expose cognitive thread management endpoints under /cognitive
+    app.include_router(thread_router, prefix="/cognitive")
 
 try:
     from somabrain.api.routers import persona as _persona_router
@@ -2687,6 +2698,37 @@ async def health(request: Request) -> S.HealthResponse:
         cb.record_success(tenant_id)
     else:
         cb.record_failure(tenant_id)
+
+    # -------------------------------------------------------------------
+    # Learning metrics exposure – add current tau, entropy cap config, and
+    # retrieval entropy to the health payload. These values are optional and
+    # may be missing if the system has not yet emitted them.
+    # -------------------------------------------------------------------
+    try:
+        from somabrain.metrics import tau_gauge, LEARNING_RETRIEVAL_ENTROPY
+
+        # The gauge objects expose a private `_value` attribute holding the
+        # current metric value. Accessing it is safe for read‑only purposes.
+        resp["tau"] = float(tau_gauge.labels(tenant_id=tenant_id)._value.get())
+    except Exception:
+        resp["tau"] = None
+
+    # Entropy‑cap configuration – expose the global flag and threshold.
+    try:
+        resp["entropy_cap_enabled"] = getattr(settings, "entropy_cap_enabled", None)
+        resp["entropy_cap"] = getattr(settings, "entropy_cap", None)
+    except Exception:
+        resp["entropy_cap_enabled"] = None
+        resp["entropy_cap"] = None
+
+    try:
+        from somabrain.metrics import LEARNING_RETRIEVAL_ENTROPY
+
+        resp["retrieval_entropy"] = float(
+            LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id)._value.get()
+        )
+    except Exception:
+        resp["retrieval_entropy"] = None
 
     circuit_open = cb.is_open(tenant_id)
     should_reset = cb.should_attempt_reset(tenant_id)
@@ -3741,6 +3783,55 @@ async def oak_option_create(body: S.OakOptionCreateRequest, request: Request):
     return S.OakPlanSuggestResponse(plan=[opt.option_id])
 
 
+# ---------------------------------------------------------------------------
+# Oak option update endpoint – replaces the payload of an existing option.
+# Requires OPA policy ``allow_option_update`` (brain_admin role).
+# ---------------------------------------------------------------------------
+@app.put("/oak/option/{option_id}", response_model=S.OakPlanSuggestResponse)
+async def oak_option_update(option_id: str, body: S.OakOptionCreateRequest, request: Request):
+    """Update the payload of an existing Oak option.
+
+    The request body uses the same schema as the creation endpoint (base64
+    ``payload`` and optional ``option_id``).  The ``option_id`` path parameter
+    identifies the option to update; if the body contains a different
+    ``option_id`` it is ignored.
+    """
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+    # Decode payload safely
+    try:
+        import base64
+
+        payload_bytes = base64.b64decode(body.payload)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+
+    try:
+        opt = option_manager.update_option(ctx.tenant_id, option_id, payload_bytes)
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    # Return the updated option identifier in the same format as creation.
+    return S.OakPlanSuggestResponse(plan=[opt.option_id])
+
+
+# ---------------------------------------------------------------------------
+# Oak planning endpoint – returns a ranked list of option identifiers for the
+# requesting tenant based on utility scores.
+# ---------------------------------------------------------------------------
+@app.get("/oak/plan", response_model=S.OakPlanSuggestResponse)
+async def oak_plan(request: Request, max_options: int | None = None):
+    """Return a utility‑sorted list of Oak option IDs for the tenant.
+
+    The ``max_options`` query parameter limits the number of identifiers
+    returned; if omitted the default is taken from ``settings`` (see
+    ``oak/planner.py`` for details).
+    """
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+    plan = plan_for_tenant(ctx.tenant_id, max_options)
+    return S.OakPlanSuggestResponse(plan=plan)
+
+
 @app.post("/delete", response_model=S.DeleteResponse)
 async def delete_memory(req: S.DeleteRequest, request: Request):
     """Delete a memory at the given coordinate.
@@ -3943,6 +4034,46 @@ async def health_memory(request: Request) -> Dict[str, Any]:
             "healthy" if not circuit_state["circuit_open"] else "unavailable"
         ),
         "timestamp": time.time(),
+    }
+
+
+# Oak health endpoint – reports Milvus and OPA service status.
+@app.get("/health/oak", response_model=Dict[str, Any])
+async def health_oak(request: Request) -> Dict[str, Any]:
+    """Health check for Oak subsystem.
+
+    Returns the health of the Milvus vector store used for option persistence
+    and the OPA policy engine if it is configured. The result includes flags
+    indicating whether each component is required (based on settings) and
+    whether it is currently reachable.
+    """
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    # Milvus health – attempt to instantiate the client; any exception means
+    # the service is unreachable. The client lazily connects on creation.
+    milvus_ok: bool = False
+    try:
+        _ = MilvusClient()
+        milvus_ok = True
+    except Exception:
+        milvus_ok = False
+
+    # OPA health – use the attached SimpleOPAEngine if present.
+    opa_ok: bool = False
+    opa_required: bool = getattr(settings, "require_opa", False)
+    try:
+        opa_engine = getattr(app.state, "opa_engine", None)
+        if opa_engine:
+            opa_ok = await opa_engine.health()
+    except Exception:
+        opa_ok = False
+
+    return {
+        "tenant": ctx.tenant_id,
+        "milvus_ok": milvus_ok,
+        "opa_ok": opa_ok,
+        "opa_required": opa_required,
     }
 
 

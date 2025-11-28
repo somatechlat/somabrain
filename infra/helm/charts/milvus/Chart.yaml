@@ -1,0 +1,6 @@
+apiVersion: v2
+name: milvus
+description: Official Milvus vector database Helm chart (minimal wrapper for the official image)
+type: application
+version: 0.1.0
+appVersion: "2.4"

@@ -407,6 +407,31 @@ class PlanSuggestRequest(BaseModel):
 class PlanSuggestResponse(BaseModel):
     plan: List[str]
 
+# ---------------------------------------------------------------------------
+# Oak (ROAMDP) specific schemas
+# ---------------------------------------------------------------------------
+
+class OakOptionCreateRequest(BaseModel):
+    """Request body for creating a new Oak option.
+
+    The ``payload`` field must be a base64‑encoded string containing the binary
+    option data. ``option_id`` is optional; if omitted the server will generate a
+    timestamp‑based identifier.
+    """
+
+    option_id: Optional[str] = None
+    payload: str = Field(..., description="Base64‑encoded option payload")
+
+
+class OakPlanSuggestResponse(BaseModel):
+    """Response model for Oak endpoints that return a list of option identifiers.
+
+    The ``plan`` field contains the identifiers of created options or, in a
+    future planning endpoint, a sequence of suggested option IDs.
+    """
+
+    plan: List[str]
+
 
 class LinkRequest(BaseModel):
     from_key: Optional[str] = None
@@ -652,6 +677,11 @@ class HealthResponse(BaseModel):
     fd_psd_ok: Optional[bool] = None
     fd_capture_ratio: Optional[float] = None
     scorer: Optional[Dict[str, Any]] = None
+    # Learning metrics exposure
+    tau: Optional[float] = None
+    entropy_cap_enabled: Optional[bool] = None
+    entropy_cap: Optional[float] = None
+    retrieval_entropy: Optional[float] = None
 
 
 class PersonalityState(BaseModel):
