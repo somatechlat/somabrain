@@ -37,7 +37,14 @@ services:
       KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES:-broker,controller}
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:-1@somabrain_kafka:9093}
       KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS:-INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093}
-      KAFKA_CFG_ADVERTISED_LISTENERS: ${KAFKA_CFG_ADVERTISED_LISTENERS:-INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:${KAFKA_BROKER_HOST_PORT:-30102}}
+      # Advertised listeners for internal and external access. We avoid nested
+      # default substitutions which Docker Compose does not resolve. The
+      # environment variable KAFKA_BROKER_HOST_PORT provides the external port.
+      # Advertised listeners for internal and external access. Use a fallback
+      # default for the external port if the variable is not set.
+      # Advertised listeners for internal and external access.
+      # Hardcode external port for local development to avoid variable substitution issues.
+      KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:30102
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES:-CONTROLLER}
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: ${KAFKA_CFG_INTER_BROKER_LISTENER_NAME:-INTERNAL}
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:-CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT}

@@ -205,6 +205,29 @@ start-servers:
 	@$(MAKE) smoke-e2e
 
 # ---------------------------------------------------------------------------
+# Full local development workflow: build images, apply DB migrations, start the stack,
+# and run an end‑to‑end memory smoke test.
+.PHONY: full-setup
+full-setup: ## Build, migrate, start services and run memory e2e test
+	@echo "--- Building Docker images ---"
+	@$(COMPOSE_CMD) build
+	@echo "--- Applying database migrations ---"
+	@$(COMPOSE_CMD) run --rm somabrain_db_migrate
+	@echo "--- Starting development stack (API, Kafka, Postgres, Redis) ---"
+	# Export a custom memory endpoint to avoid port conflicts with any existing service.
+	export SOMABRAIN_MEMORY_HTTP_ENDPOINT=http://localhost:9596 && \
+	$(COMPOSE_CMD) up -d somabrain_app somabrain_postgres somabrain_kafka somabrain_redis
+	@echo "Waiting for API health..."
+	@for i in $$(seq 1 30); do \
+		if curl -fsS http://127.0.0.1:9696/health >/dev/null; then \
+			echo "API healthy"; \
+			break; \
+		fi; \
+		sleep 1; \
+		done;
+	@echo "--- Running end‑to‑end memory smoke test ---"
+	@bash ./scripts/run_memory_e2e_test.sh
+	@echo "--- Full setup completed successfully ---"
 # Two canonical modes: dev (embedded small services) and prod-like (full stack)
 # ---------------------------------------------------------------------------
 

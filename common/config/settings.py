@@ -247,6 +247,20 @@ class Settings(BaseSettings):
     host_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
     )
+    # Public API host/port configuration used for constructing the base URL.
+    # These map to SOMABRAIN_PUBLIC_HOST and SOMABRAIN_PUBLIC_PORT environment
+    # variables. Defaults mirror the historic host_port values for backward
+    # compatibility.
+    public_host: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_PUBLIC_HOST") or "localhost"
+    )
+    public_port: Optional[int] = Field(
+        default=_int_env("SOMABRAIN_PUBLIC_PORT", 9696)
+    )
+    # API scheme (http/https) – used when constructing the base URL.
+    api_scheme: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_API_SCHEME") or "http"
+    )
     providers_path: Optional[str] = Field(default=_str_env("PROVIDERS_PATH"))
     spectral_cache_dir: Optional[str] = Field(
         default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
@@ -325,6 +339,28 @@ class Settings(BaseSettings):
     )
     # OPA bundle path (optional)
     opa_bundle_path: Optional[str] = Field(default=_str_env("OPA_BUNDLE_PATH") or "./opa")
+
+    # -----------------------------------------------------------------
+    # Outbox worker configuration (environment variables used by
+    # ``somabrain.workers.outbox_publisher``). These defaults mirror the
+    # historic hard‑coded values and provide typed access for the worker.
+    # -----------------------------------------------------------------
+    outbox_batch_size: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_BATCH_SIZE", 100)
+    )
+    outbox_max_retries: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_MAX_RETRIES", 5)
+    )
+    outbox_poll_interval: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_OUTBOX_POLL_INTERVAL", 1.0)
+    )
+    outbox_producer_retry_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", 1000)
+    )
+    # Interval (seconds) for replaying journal events to the database.
+    journal_replay_interval: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_REPLAY_INTERVAL", 300)
+    )
     # Additional configuration fields needed for full removal of settings.getenv usage
     heat_method: str = Field(default=_str_env("SOMA_HEAT_METHOD", "chebyshev"))
     diffusion_t: float = Field(default=_float_env("SOMABRAIN_DIFFUSION_T", 0.5))
