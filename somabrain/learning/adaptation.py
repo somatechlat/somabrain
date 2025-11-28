@@ -125,7 +125,7 @@ def _get_redis():
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return None
 
 
@@ -302,14 +302,14 @@ class AdaptationEngine:
                     getattr(settings, "learning_rate_dynamic", False)
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         else:
             try:
                 from somabrain import runtime_config as _rt
 
                 dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         self._enable_dynamic_lr = dyn_lr
         self._gains = gains or AdaptationGains.from_settings()
 
@@ -322,7 +322,7 @@ class AdaptationEngine:
                 self._retrieval.tau + offset
             )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Load state from Redis only when explicitly enabled (test isolation by default)
         if (
@@ -657,7 +657,7 @@ class AdaptationEngine:
 
                     _metrics.tau_anneal_events.labels(tenant_id=self._tenant_id).inc()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Legacy tau decay path only if no annealing applied
         if not applied_anneal and enable_tau_decay and tau_decay_rate > 0.0:
             old_tau = float(self._retrieval.tau)
@@ -668,7 +668,7 @@ class AdaptationEngine:
 
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
@@ -713,7 +713,7 @@ class AdaptationEngine:
 
                 _metrics.update_learning_retrieval_entropy(self._tenant_id, entropy)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             if entropy_cap > 0.0 and entropy > entropy_cap:
                 # Increment the cap‑hit metric before aborting – this satisfies the VIBE rule
                 # that every observable side‑effect must happen prior to raising.
@@ -722,7 +722,7 @@ class AdaptationEngine:
 
                     _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 # Raise an explicit error to signal a policy violation. The calling
                 # code (feedback processing) will treat this as a failure and the
                 # health endpoint will still report the current metric values.
@@ -734,7 +734,7 @@ class AdaptationEngine:
         try:
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Persist state only if enabled via env flag
         try:
@@ -774,9 +774,9 @@ class AdaptationEngine:
                     **asdict(self._constraint_bounds),
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Ensure state persisted even if metric update fails (duplicate call is safe) when enabled
         if _persist_enabled:
             self._persist_state()
@@ -847,7 +847,7 @@ class AdaptationEngine:
                 self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
             )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def update_from_experience(self, exp: dict) -> None:
         # Track experiences for tests; optionally route reward to apply_feedback
@@ -859,7 +859,7 @@ class AdaptationEngine:
             reward = float(exp.get("reward", 0.0)) if isinstance(exp, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     @property
     def alpha(self) -> float:  # expose retrieval alpha for bounds test
@@ -871,11 +871,11 @@ class AdaptationEngine:
         try:
             self._lr = float(prior_params.get("learning_rate", self._lr))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def monitor_performance(self, metrics: dict) -> None:
         # Record metrics and use reward (if present) to trigger adaptation
@@ -883,14 +883,14 @@ class AdaptationEngine:
             self.performance_history = getattr(self, "performance_history", [])
             self.performance_history.append(dict(metrics))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             reward = (
                 float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
             )
             self.apply_feedback(utility=reward, reward=reward)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def set_curriculum_stage(self, stage: str) -> None:
         key = str(stage).strip().lower()
@@ -1007,7 +1007,7 @@ class AdaptationEngine:
             self._feedback_count = state.get("feedback_count", 0)
             self._lr = state.get("learning_rate", self._base_lr)
         except Exception:
-            pass  # Continue with defaults if load fails
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # Re-export RetrievalWeights for external imports (tests expect it here)
@@ -1016,7 +1016,7 @@ try:
         RetrievalWeights as RetrievalWeights,
     )  # noqa: F401
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:

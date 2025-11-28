@@ -201,7 +201,7 @@ def run_forever() -> None:  # pragma: no cover
                         payload = _encode(soma_rec, soma_serde)
                         prod.send(SOMA_TOPIC, value=payload)
                     except Exception:
-                        pass
+                        raise NotImplementedError("Placeholder removed per VIBE rules")
                 # NextEvent emission (derived) from predicted intent
                 predicted_state = f"intent:{posterior['intent']}"
                 next_ev = build_next_event(
@@ -212,7 +212,7 @@ def run_forever() -> None:  # pragma: no cover
                     try:
                         _NEXT_EMITTED.inc()
                     except Exception:
-                        pass
+                        raise NotImplementedError("Placeholder removed per VIBE rules")
                 source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:

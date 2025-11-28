@@ -133,7 +133,7 @@ class LearnerService:
                 try:
                     self._dlq.record(event if isinstance(event, dict) else {}, str(exc))
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # ---------------------------------------------------------------------
     # Internal helpers used by the test suite

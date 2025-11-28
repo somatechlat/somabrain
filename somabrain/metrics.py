@@ -69,7 +69,7 @@ if not _reg:
     try:
         setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 registry = _reg
 
 
@@ -648,7 +648,7 @@ def record_planning_latency(backend: str, latency_seconds: float) -> None:
             idx = max(0, int(0.99 * (len(ordered) - 1)))
             PLANNING_LATENCY_P99.set(ordered[idx])
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # Decision attribution / recall quality
@@ -932,7 +932,7 @@ def report_outbox_pending(tenant_id: str | None, count: int) -> None:
     try:
         OUTBOX_PENDING.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(count)
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
@@ -941,7 +941,7 @@ def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
             1 if is_open else 0
         )
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -> None:
@@ -951,7 +951,7 @@ def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -
             topic=str(topic),
         ).inc(max(0, int(count)))
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
@@ -960,7 +960,7 @@ def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
             max(0, int(count))
         )
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # Ensure HTTP_FAILURES counter is only created once per process.
@@ -1275,14 +1275,14 @@ def record_regret(tenant_id: str, regret: float) -> None:
         _regret_ema[t] = ema
         LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
     try:
         LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def record_learning_rollback(tenant_id: str):
@@ -1321,7 +1321,7 @@ def mark_external_metric_scraped(source: str) -> None:
     try:
         EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(1)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def external_metrics_ready(
@@ -1366,7 +1366,7 @@ def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
         try:
             EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
         except Exception:
-            pass
+            raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def record_memory_snapshot(
@@ -1396,7 +1396,7 @@ def record_memory_snapshot(
         if config_version is not None:
             CONFIG_VERSION.labels(tenant=t, namespace=ns).set(float(config_version))
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
@@ -1406,7 +1406,7 @@ def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
     try:
         RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
@@ -1416,7 +1416,7 @@ def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
     try:
         ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
     except Exception:
-        pass
+        raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def mark_controller_change(parameter: str) -> None:
@@ -1426,7 +1426,7 @@ def mark_controller_change(parameter: str) -> None:
     try:
         CONTROLLER_CHANGES.labels(parameter=name).inc()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 async def metrics_endpoint() -> Any:

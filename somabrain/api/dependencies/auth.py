@@ -63,7 +63,7 @@ def _resolve_tenants(cfg: Config) -> List[str]:
                 elif isinstance(data, list):
                     tenants.extend(str(t).strip() for t in data if str(t).strip())
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return sorted(set(t for t in tenants if t))
 
 

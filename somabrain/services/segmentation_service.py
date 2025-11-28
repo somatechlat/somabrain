@@ -201,12 +201,12 @@ class SegmentationService:
                     ).labels(tenant=self.tenant).set(1 if HMM_ENABLED else 0)
                     update_metrics(self.tenant, f1, false_rate, mean_latency)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         finally:
             try:
                 self.consumer.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # ---------------------------------------------------------------------------

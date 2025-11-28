@@ -64,7 +64,7 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
                     return [nxt]
     except Exception:
         # Any failure (e.g., missing table) falls back to utility ranking.
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Retrieve only the tenant's options and sort by utility (high → low).
     # Import lazily to avoid side‑effects during module import (MemoryClient init).

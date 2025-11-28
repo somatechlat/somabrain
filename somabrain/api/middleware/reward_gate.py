@@ -50,7 +50,7 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
             try:
                 app_metrics.REWARD_ALLOW_TOTAL.inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             # Continue with request processing.
             from starlette.responses import JSONResponse
 

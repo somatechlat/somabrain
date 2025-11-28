@@ -52,5 +52,5 @@ def assess_reality(
     try:
         (REALITY_OK if ok else REALITY_LOW).inc()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return {"ok": ok, "sources": sources, "confidence": conf}

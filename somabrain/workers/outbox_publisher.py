@@ -333,7 +333,7 @@ def _update_outbox_pending_metrics() -> None:
     try:
         counts = get_pending_counts_by_tenant()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     current_tenants = set(counts.keys())
     if not current_tenants:
         counts = {DEFAULT_TENANT_LABEL: 0}
@@ -436,7 +436,7 @@ def _process_batch(
             # confluent-kafka and kafka-python both expose flush(timeout)
             producer.flush(5)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Report processed events
     if report_outbox_processed is not None:

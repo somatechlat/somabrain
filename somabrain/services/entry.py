@@ -129,7 +129,7 @@ def main() -> None:  # pragma: no cover
         signal.signal(signal.SIGINT, _sig_handler)
         signal.signal(signal.SIGTERM, _sig_handler)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Keep the main thread alive while workers run
     try:

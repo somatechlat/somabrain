@@ -156,7 +156,7 @@ class ExecutiveController:
                     arm=("explore" if use_graph else "baseline")
                 ).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))
         inhibit_act = False
         inhibit_store = False

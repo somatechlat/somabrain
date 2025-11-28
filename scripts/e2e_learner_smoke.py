@@ -62,7 +62,7 @@ def _consume_one(topic: str, timeout_s: float) -> bool:
         try:
             c.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def main() -> int:

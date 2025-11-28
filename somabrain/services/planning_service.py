@@ -33,7 +33,7 @@ def make_plan(
             try:
                 M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def make_plan_auto(
@@ -70,4 +70,4 @@ def make_plan_auto(
             try:
                 M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")

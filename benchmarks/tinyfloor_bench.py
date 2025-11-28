@@ -112,7 +112,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         try:
             _ = p.unbind(c, b)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # compare rec to original a
         mse = float(np.mean((a - rec) ** 2))

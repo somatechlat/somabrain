@@ -133,7 +133,7 @@ def recall_ltm(
                         seen.add(kp)
                     mem_payloads = out
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.
@@ -173,7 +173,7 @@ def recall_ltm(
                     p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
                 ]
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Deterministic read-your-writes alternative:
     # If no payloads were returned via SDR/recall, derive the coordinate
     # from the query text (used as key on store) and fetch directly.
@@ -184,7 +184,7 @@ def recall_ltm(
             if direct:
                 mem_payloads = direct
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Filter by universe if any
     if universe:
         mem_payloads = [
@@ -300,5 +300,5 @@ async def recall_ltm_async(
             payloads = [h.payload for h in ahits]
             hits = ahits
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return payloads, hits

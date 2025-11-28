@@ -283,7 +283,7 @@ def make_embedder(cfg, quantum=None):
         if bool(getattr(cfg, "fde_enabled", False)):
             plabel = "fde"
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Optional cache wrapper
     cached = _CachedEmbedder(jl.embed, cache_size=cache_size, provider_label=plabel)
     return cached

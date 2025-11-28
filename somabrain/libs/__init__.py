@@ -16,4 +16,4 @@ for sub in ("kafka_cog",):
         _sys.modules[f"{__name__}.{sub}"] = _mod
     except Exception:
         # Leave missing; importing code should fail-fast at use site
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")

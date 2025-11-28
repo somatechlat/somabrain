@@ -101,7 +101,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             try:
                 M.RATE_LIMITED_TOTAL.labels(path=_RATE_LIMIT_PATH).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             raise HTTPException(status_code=429, detail="rate limit exceeded")
 
         # OPA policy enforcement – include the same payload shape and max_seconds.

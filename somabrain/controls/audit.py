@@ -87,7 +87,7 @@ class AuditLogger:
                 try:
                     AUDIT_WRITES.inc()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             except Exception:
                 # best-effort; do not crash request path
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")

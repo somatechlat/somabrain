@@ -54,7 +54,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
             request._receive = receive  # type: ignore[attr-defined]
         except Exception:
             # If reading the body fails we continue with method/path only
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # If OPA URL is not configured, fall back to local opa_client evaluation
         if not opa_url:

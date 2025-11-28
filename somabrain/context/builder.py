@@ -248,7 +248,7 @@ class ContextBuilder:
                 try:
                     mem.metadata.setdefault("_density_factor", density_factor)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             raw_scores.append(combined)
         if not raw_scores:
             return []
@@ -337,7 +337,7 @@ class ContextBuilder:
                         float(vec[3]),
                     )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Emit metric for the current tenant (import inside to respect monkeypatch)
         from somabrain.metrics import (
             update_learning_retrieval_weights as _update_metric,
@@ -360,7 +360,7 @@ class ContextBuilder:
             if entropy_exceeded:
                 LEARNING_ENTROPY_CAP_HITS.labels(tenant_id=self._tenant_id).inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return normalized.tolist()
 
     # ---------------- Tenant overrides helpers ----------------

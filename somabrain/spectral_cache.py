@@ -90,4 +90,4 @@ def set_role(token: str, role_time: np.ndarray, role_fft: np.ndarray) -> None:
             try:
                 tmp.unlink()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")

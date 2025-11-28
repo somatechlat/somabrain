@@ -159,7 +159,7 @@ def update_metrics(
         if _mx_latency is not None:
             _mx_latency.observe(max(0.0, mean_latency))
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def evaluate_sequence(

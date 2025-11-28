@@ -183,7 +183,7 @@ def main():
         try:
             cps.append(int(token))
         except ValueError:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     cps = sorted(set([c for c in cps if c > 0]))
     cps.append(len(items))  # ensure max
 

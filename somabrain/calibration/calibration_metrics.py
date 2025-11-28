@@ -140,13 +140,13 @@ class CalibrationTracker:
         try:
             os.makedirs(os.path.dirname(path), exist_ok=True)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"version": 1, "calibration": data}, f, indent=2)
         except Exception:
             # Fail-open: persistence is best-effort
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def load(self, path: str) -> None:
         """Load persisted temperature parameters if available."""

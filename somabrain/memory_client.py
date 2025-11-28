@@ -62,7 +62,7 @@ def _http_setting(attr: str, default_val: int) -> int:
                 return default_val
             return int(value)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return default_val
 
 
@@ -163,14 +163,14 @@ def _extract_memory_coord(
                 try:
                     return _stable_coord(str(mid))
                 except (TypeError, ValueError):
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         mid = data_dict.get("id") or data_dict.get("memory_id")
         if mid is not None:
             try:
                 return _stable_coord(str(mid))
             except (TypeError, ValueError):
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     if idempotency_key:
         try:
@@ -268,7 +268,7 @@ class MemoryClient:
         try:
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Store for potential future use (e.g., passing to the local backend)
         self._memory_db_path = db_path
         # Initialize HTTP client (primary runtime path). Local/redis
@@ -302,7 +302,7 @@ class MemoryClient:
                 tenant_guess = ns.split(":")[-1] if ":" in ns else ns
                 headers["X-Soma-Tenant"] = tenant_guess
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
@@ -345,7 +345,7 @@ class MemoryClient:
             try:
                 env_base = str(env_base).strip()
                 if "://" not in env_base and env_base.startswith("/"):
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
                 if env_base.endswith("/openapi.json"):
@@ -372,7 +372,7 @@ class MemoryClient:
         try:
             logger.debug("MemoryClient HTTP base_url=%r", base_url)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         if limits is not None:
             client_kwargs["limits"] = limits
 
@@ -400,7 +400,7 @@ class MemoryClient:
                 self._http = None
                 self._http_async = None
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Strict mode: memory is always required
         if self._http is None:
             raise RuntimeError(
@@ -420,7 +420,7 @@ class MemoryClient:
                     "Memory HTTP client initialized without token; proceeding without auth."
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
@@ -669,7 +669,7 @@ class MemoryClient:
             try:
                 return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         if isinstance(payload, dict):
             for key in ("id", "memory_id", "key", "coord_key"):
@@ -847,7 +847,7 @@ class MemoryClient:
                     hit.score = lex_bonus
                     payload.setdefault("_score", hit.score)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             ranked.append((final_score, lex_bonus, weight, -idx, hit))
         ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
         return [item[-1] for item in ranked]
@@ -1203,7 +1203,7 @@ class MemoryClient:
                     payload.setdefault("_recency_steps", recency_steps)
                     payload.setdefault("_recency_boost", recency_boost)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
             margin = self._extract_cleanup_margin(hit)
             density_factor = self._density_factor(margin)
@@ -1212,7 +1212,7 @@ class MemoryClient:
                 try:
                     payload.setdefault("_density_factor", density_factor)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             new_score = max(0.0, min(1.0, float(new_score)))
 
             hit.score = new_score
@@ -1263,7 +1263,7 @@ class MemoryClient:
                     try:
                         priors[k.strip().lower()] = float(v)
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             for hit in hits:
                 payload = hit.payload
                 phase_factor = 1.0
@@ -1287,7 +1287,7 @@ class MemoryClient:
                 try:
                     payload.setdefault("_weight_factor", phase_factor * quality_factor)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         except Exception:
             return
 
@@ -1328,7 +1328,7 @@ class MemoryClient:
             if ns and not p.get("namespace"):
                 p["namespace"] = ns
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Extra headers for HTTP calls
         headers = {"X-Universe": universe}
         return p, universe, headers
@@ -1403,7 +1403,7 @@ class MemoryClient:
                     payload.pop("reasoning_chain", None)
         except Exception:
             # Never fail store because of metadata normalization
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Detect async context: if present, schedule background persistence
         try:
@@ -1415,7 +1415,7 @@ class MemoryClient:
         try:
             payload.setdefault("coordinate", coord)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         import uuid
 
@@ -1443,7 +1443,7 @@ class MemoryClient:
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return coord
 
         # Synchronous callers: default is blocking persist, but allow an opt-in
@@ -1472,7 +1472,7 @@ class MemoryClient:
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return coord
 
         # Default (no fast-ack): perform the persist synchronously (blocking)
@@ -1484,7 +1484,7 @@ class MemoryClient:
             try:
                 payload["coordinate"] = server_coord
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return coord
 
     def remember_bulk(
@@ -1569,7 +1569,7 @@ class MemoryClient:
                     try:
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return coords
 
         if status in (404, 405):
@@ -1631,18 +1631,18 @@ class MemoryClient:
                         try:
                             enriched["coordinate"] = server_coord
                         except Exception:
-                            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                         if p2 is not None:
                             try:
                                 p2["coordinate"] = server_coord
                             except Exception:
-                                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                         if getattr(self.cfg, "prefer_server_coords_for_links", False):
                             return server_coord
                         return server_coord
                 return coord
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Alternative: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.remember, coord_key, payload)
@@ -1714,7 +1714,7 @@ class MemoryClient:
                     try:
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return coords
 
         if status in (404, 405):
@@ -2402,7 +2402,7 @@ class MemoryClient:
                     try:
                         payload["coordinate"] = server_coord
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         except Exception:
             logger.exception("Background memory persist failed")
 

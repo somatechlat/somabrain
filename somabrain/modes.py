@@ -84,7 +84,7 @@ def _load_overrides() -> List[str]:
         if isinstance(disabled, list):
             return [str(x).strip().lower() for x in disabled]
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return []
 
 
@@ -272,5 +272,5 @@ def get_learning_config() -> dict:
                         if k in constraints_defaults and isinstance(v, (int, float)):
                             constraints_defaults[k] = float(v)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return {"gains": gains_defaults, "constraints": constraints_defaults}

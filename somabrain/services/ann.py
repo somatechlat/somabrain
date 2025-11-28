@@ -126,7 +126,7 @@ class HNSWAnnIndex(CleanupIndex):
             try:
                 self._index.set_ef(int(ef_search))
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def create_cleanup_index(dim: int, cfg: Optional[AnnConfig]) -> CleanupIndex:

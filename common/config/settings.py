@@ -1502,7 +1502,7 @@ class Settings(BaseSettings):
                     "SOMABRAIN_FORCE_FULL_STACK is deprecated; use SOMABRAIN_MODE with mode_require_external_backends policy."
                 )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             legacy_auth_env = _str_env("SOMABRAIN_AUTH_LEGACY")
             if legacy_auth_env is not None:
@@ -1510,7 +1510,7 @@ class Settings(BaseSettings):
                     "Legacy auth environment variable is deprecated; auth is always required in strict mode."
                 )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Warn on unknown modes
         try:
             raw = (self.mode or "").strip().lower()
@@ -1526,7 +1526,7 @@ class Settings(BaseSettings):
                     f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
                 )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return notes
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the

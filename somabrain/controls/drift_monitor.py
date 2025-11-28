@@ -80,7 +80,7 @@ class DriftMonitor:
             if score >= float(self.cfg.threshold):
                 DRIFT_ALERT.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return {
             "score": score,
             "alert": bool(score >= float(self.cfg.threshold)),

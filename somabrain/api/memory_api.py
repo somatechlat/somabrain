@@ -65,7 +65,7 @@ def _handle_config_event(event) -> None:
             config_version=event.version,
         )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 register_config_listener(_handle_config_event)
@@ -409,7 +409,7 @@ def _runtime_module():
 
         return rt
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Last resort: find a loaded module referencing runtime.py by filepath
     for mod in list(sys.modules.values()):
         try:
@@ -650,7 +650,7 @@ async def remember_memory(
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     signal_feedback = MemorySignalFeedback(
         importance=signal_data.get("importance"),
@@ -777,7 +777,7 @@ async def remember_memory_batch(
             try:
                 ctx["payload"]["coordinate"] = coordinate
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         promoted_to_wm = False
         if ctx["vector"] is not None:
@@ -833,7 +833,7 @@ async def remember_memory_batch(
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return MemoryBatchWriteResponse(
         ok=True,
@@ -958,7 +958,7 @@ async def _perform_recall(
 
                 M.RECALL_WM_LAT.labels(cohort="memory_api").observe(stage_dur)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             for score, item_payload in hits:
                 if not isinstance(item_payload, dict):
                     continue
@@ -974,7 +974,7 @@ async def _perform_recall(
         except HTTPException:
             raise
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     if layer in {"ltm", "all"}:
         pool = _get_memory_pool()
@@ -1001,7 +1001,7 @@ async def _perform_recall(
 
             M.RECALL_LTM_LAT.labels(cohort="memory_api").observe(stage_dur)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         for hit in hits:
             payload_obj = getattr(hit, "payload", None)
             if not isinstance(payload_obj, dict):
@@ -1086,7 +1086,7 @@ async def _perform_recall(
     try:
         observe_recall_latency(payload.namespace, duration)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()
@@ -1109,7 +1109,7 @@ async def _perform_recall(
                 sparsity=tiered_sparsity_value,
             )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     top_confidence = 0.0
     if all_results:
@@ -1131,7 +1131,7 @@ async def _perform_recall(
             )
         )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
     try:
@@ -1145,7 +1145,7 @@ async def _perform_recall(
         )
     except Exception:
         # Best-effort: ignore when no plan is open or namespaces do not match.
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -1384,7 +1384,7 @@ async def recall_memory(
 
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Prepare response
     return MemoryRecallResponse(
@@ -1465,7 +1465,7 @@ async def memory_metrics(
     try:
         record_memory_snapshot(tenant, namespace, items=wm_items)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return MemoryMetricsResponse(
         tenant=tenant,

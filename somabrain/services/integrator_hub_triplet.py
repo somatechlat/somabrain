@@ -260,7 +260,7 @@ class IntegratorHub:
                 try:
                     INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             else:
                 w = max(0.0, float(rec.get("confidence", 0.0)))
             weights[d] = w
@@ -296,7 +296,7 @@ class IntegratorHub:
                 self._redis_client.setex(f"globalframe:{leader}", 300, payload)
                 INTEGRATOR_REDIS_CACHE.labels(leader=leader).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
@@ -378,4 +378,4 @@ if __name__ == "__main__":  # pragma: no cover
             time.sleep(60)
     except KeyboardInterrupt:
         # Graceful shutdown on SIGINT / container stop.
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")

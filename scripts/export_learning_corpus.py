@@ -29,7 +29,7 @@ def _git_metadata() -> Dict[str, Any]:
         if commit:
             meta["commit"] = commit
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     try:
         status = subprocess.run(
@@ -44,7 +44,7 @@ def _git_metadata() -> Dict[str, Any]:
         elif meta:
             meta["dirty"] = False
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return meta
 
 

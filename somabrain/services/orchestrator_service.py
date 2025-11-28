@@ -145,7 +145,7 @@ class OrchestratorService:
             if _settings.health_port:
                 self._start_health_server()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def _start_health_server(self) -> None:
         try:
@@ -173,7 +173,7 @@ class OrchestratorService:
             srv = HTTPServer(("", port), _Handler)
             threading.Thread(target=srv.serve_forever, daemon=True).start()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         gf = self._ctx.get(tenant)
@@ -203,7 +203,7 @@ class OrchestratorService:
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
@@ -222,7 +222,7 @@ class OrchestratorService:
             )
         except Exception:
             # best-effort enqueue; drop on error
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
         consumer = CKConsumer(
@@ -266,7 +266,7 @@ class OrchestratorService:
             try:
                 consumer.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def main() -> None:  # pragma: no cover - entrypoint
@@ -282,7 +282,7 @@ def main() -> None:  # pragma: no cover - entrypoint
             )
             _MX_ORCH_DISABLED.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return
     # Ensure Kafka and Postgres (for outbox) are reachable before starting
     assert_ready(

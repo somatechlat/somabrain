@@ -31,7 +31,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
             try:
                 c.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     except Exception:
         return False
 
@@ -81,7 +81,7 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
             try:
                 conn.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     except Exception:
         return False
 

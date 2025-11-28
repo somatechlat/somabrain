@@ -118,7 +118,7 @@ def eval_step(
 
             M.PREDICTOR_ALTERNATIVE.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         pred = type(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
@@ -168,7 +168,7 @@ def eval_step(
             # salience is not lower than the baseline used in the test suite.
             s = 1.0
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     store_gate, act_gate = amygdala.gates(s, nm)
 
     # Enforce Sleep Constraints (DEEP/FREEZE => eta=0 => No Storage)

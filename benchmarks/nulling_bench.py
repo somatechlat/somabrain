@@ -104,7 +104,7 @@ def run_bench(
             plt.savefig(out_png, dpi=150)
             plt.close()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def main():

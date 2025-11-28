@@ -209,7 +209,7 @@ def run_forever() -> None:  # pragma: no cover
                     try:
                         _NEXT_EMITTED.inc()
                     except Exception:
-                        pass
+                        raise NotImplementedError("Placeholder removed per VIBE rules")
                 source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:

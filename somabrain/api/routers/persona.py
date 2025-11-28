@@ -17,7 +17,7 @@ from types import SimpleNamespace
 
 if TYPE_CHECKING:
     # runtime-only imports omitted for doc builds and static analysis
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 router = APIRouter(prefix="/persona")
 
@@ -68,7 +68,7 @@ async def put_persona(
             try:
                 setattr(_rt, "mt_memory", mem_backend)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         except Exception:
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
@@ -117,7 +117,7 @@ async def put_persona(
         _ps.set(ctx.tenant_id, dict(persona.properties or {}))
     except Exception:
         # Non‑critical: ignore if store unavailable
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     new_etag = _compute_etag(payload)
     response.headers["ETag"] = new_etag

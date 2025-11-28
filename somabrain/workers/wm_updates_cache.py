@@ -68,7 +68,7 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
         try:
             return serde.deserialize(payload)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     try:
         return json.loads(payload.decode("utf-8"))
     except Exception:
@@ -119,7 +119,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 try:
@@ -130,15 +130,15 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     if ttl_seconds > 0:
                         r.expire(key, ttl_seconds)
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             except Exception:
                 # swallow and continue
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     finally:
         try:
             consumer.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def main() -> None:  # pragma: no cover

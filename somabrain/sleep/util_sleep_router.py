@@ -105,7 +105,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             try:
                 M.RATE_LIMITED_TOTAL.labels(path=_RATE_LIMIT_PATH).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             raise HTTPException(status_code=429, detail="rate limit exceeded")
 
         # 4. OPA policy enforcement – include max_seconds for validation.

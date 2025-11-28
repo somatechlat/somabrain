@@ -333,7 +333,7 @@ class QuantumLayer:
                         + (1 - alpha) * score
                     )
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             if score > best_score:
                 best_score = score
                 best_id = key

@@ -67,7 +67,7 @@ class _ProducerShim:
         try:
             self._ck.flush(5)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def make_producer() -> _ProducerShim:  # pragma: no cover - integration path

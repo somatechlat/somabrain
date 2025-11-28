@@ -63,7 +63,7 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
         try:
             c.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
@@ -94,7 +94,7 @@ def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
         try:
             c.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def main() -> int:
@@ -146,7 +146,7 @@ def main() -> int:
             try:
                 consumer.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return 2
     try:
         data = resp.json()
@@ -156,7 +156,7 @@ def main() -> int:
                 try:
                     consumer.close()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return 3
     except Exception as e:
         print(f"invalid response: {e}")
@@ -164,7 +164,7 @@ def main() -> int:
             try:
                 consumer.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return 4
 
     # 2) Consume one record from cog.reward.events
@@ -188,7 +188,7 @@ def main() -> int:
             try:
                 consumer.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     if not ok:
         print(
             "no reward event observed on Kafka topic cog.reward.events within timeout"

@@ -21,5 +21,5 @@ def span(name: str, **attrs):
             try:
                 s.set_attribute(k, v)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         yield s

@@ -33,7 +33,7 @@ LOGGER = logging.getLogger("somabrain.constitution")
 
 
 class ConstitutionError(Exception):
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _decode_signature(sig: str) -> bytes:
@@ -261,7 +261,7 @@ class ConstitutionEngine:
                 if client is not None:
                     client.set(self._sig_key, hexsig)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return hexsig
         except Exception as e:
             LOGGER.debug("Constitution signing failed: %s", e)
@@ -496,7 +496,7 @@ class ConstitutionEngine:
                     self._constitution, self._checksum, self._signatures
                 )  # type: ignore[attr-defined]
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 __all__ = ["ConstitutionEngine", "ConstitutionError"]

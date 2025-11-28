@@ -71,7 +71,7 @@ class CognitiveThread(Base):
             if isinstance(data, list):
                 return [str(item) for item in data]
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return []
 
     def set_options(self, options: List[Any]) -> None:

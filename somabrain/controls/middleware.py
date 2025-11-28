@@ -151,7 +151,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
         try:
             POLICY_DECISIONS.labels(decision=dec.decision).inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Audit pre decision
         self.audit.write(
             {

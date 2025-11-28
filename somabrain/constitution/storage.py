@@ -412,7 +412,7 @@ class ConstitutionStorage:
                     parsed = parsed.replace(tzinfo=dt.timezone.utc)
                 return parsed.astimezone(dt.timezone.utc)
             except ValueError:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return dt.datetime.now(dt.timezone.utc)
 
 

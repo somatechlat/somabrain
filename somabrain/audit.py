@@ -41,7 +41,7 @@ def _schema_path() -> Optional[Path]:
         if sp.exists():
             return sp
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return None
 
 
@@ -77,7 +77,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                     "Audit event schema validation failed; continuing (no alternative path)"
                 )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     try:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])

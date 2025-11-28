@@ -93,7 +93,7 @@ class MultiTenantWM:
                 try:
                     M.WM_EVICTIONS.inc()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 logger = logging.getLogger(__name__)
                 logger.debug(
                     "Evicted tenant %s from MultiTenantWM (max_tenants=%s)",
@@ -108,7 +108,7 @@ class MultiTenantWM:
                     total_items / total_capacity if total_capacity else 0.0
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             return wm
 
     def admit(
@@ -130,7 +130,7 @@ class MultiTenantWM:
         try:
             M.WM_ADMIT.labels(source=tenant_id[:50]).inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
@@ -148,7 +148,7 @@ class MultiTenantWM:
             else:
                 M.WM_MISSES.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         return results
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:

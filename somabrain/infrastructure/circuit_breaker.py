@@ -96,7 +96,7 @@ class CircuitBreaker:
                 )
         except Exception:
             # In environments without Prometheus the import may fail – silently ignore.
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # ---------------------------------------------------------------------
     # Public API – used by services

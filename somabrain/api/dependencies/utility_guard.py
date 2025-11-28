@@ -88,13 +88,13 @@ async def utility_guard(
     try:
         M.UTILITY_VALUE.set(u)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # In dev mode, be permissive: allow negative utility or missing confidence.
     if u < 0 and not dev_mode:
         try:
             M.UTILITY_NEGATIVE.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # do not perform side effects; the route can choose to inspect this and return 403
         from fastapi import HTTPException
 

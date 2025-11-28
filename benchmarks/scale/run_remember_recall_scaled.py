@@ -32,7 +32,7 @@ def read_env_port() -> int:
                     try:
                         port = int(v)
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return port or DEFAULT_PORT
 
 
@@ -131,7 +131,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
                 try:
                     t.cancel()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             results = await asyncio.gather(*tasks, return_exceptions=True)
         total_ms = (time.perf_counter() - start) * 1000.0
         # Normalize results: some entries may be exceptions; convert to consistent dicts

@@ -158,7 +158,7 @@ try:
                     getattr(_rt, "mc_wm", None),
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             _rt.set_singletons(
                 _embedder=embedder,
                 _quantum=quantum,
@@ -177,7 +177,7 @@ try:
                     getattr(_rt, "mc_wm", None),
                 )
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             print("initialize_runtime: set_singletons executed")
         except Exception:
             print(

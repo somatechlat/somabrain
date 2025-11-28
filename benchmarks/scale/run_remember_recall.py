@@ -33,7 +33,7 @@ def read_env_port() -> int:
                     try:
                         port = int(v)
                     except Exception:
-                        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return port or DEFAULT_PORT
 
 

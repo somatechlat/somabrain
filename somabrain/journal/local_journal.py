@@ -200,7 +200,7 @@ class LocalJournal:
             try:
                 self.current_file_handle.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             self.current_file_handle = None
 
         # Create new journal file
@@ -356,7 +356,7 @@ class LocalJournal:
             try:
                 self.current_file_handle.close()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             self.current_file_handle = None
 
         # Remove existing journal files
@@ -414,7 +414,7 @@ class LocalJournal:
                 try:
                     self.current_file_handle.close()
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 self.current_file_handle = None
             self._initialized = False
 

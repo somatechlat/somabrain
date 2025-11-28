@@ -59,7 +59,7 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
             if isinstance(out, dict):
                 return out
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Use JSON alternative
     try:
         return json.loads(value.decode("utf-8"))
@@ -119,7 +119,7 @@ def main() -> None:
             prod.flush(5)
             prod.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     cons = KafkaConsumer(
         REWARD_TOPIC,
@@ -136,7 +136,7 @@ def main() -> None:
         try:
             cons.close()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     if not ok:
         print(

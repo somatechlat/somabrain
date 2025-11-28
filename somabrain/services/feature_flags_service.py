@@ -50,7 +50,7 @@ def _register_flag_gauges() -> None:
         except Exception:
             # In strict mode we never hide errors, but metric registration
             # failures should not crash the service.
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _periodic_update(stop_event: threading.Event, interval: float = 5.0) -> None:

@@ -275,7 +275,7 @@ def _score_memory_candidate(
             if alpha > 0.0:
                 score = (1.0 - alpha) * score + alpha * hsim
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return float(max(0.0, min(1.0, score)))
 
@@ -471,7 +471,7 @@ def _collect_candidate_keys(payload: Any) -> set[tuple[str, Any]]:
             try:
                 keys.add(("coord", tuple(coord)))
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         for k in ("id", "memory_id", "key"):
             v = payload.get(k)
             if isinstance(v, str) and v.strip():
@@ -543,7 +543,7 @@ def setup_logging():
             handlers.append(logging.FileHandler(candidate, mode="a"))
         except Exception:
             # File logging not available (likely read-only FS). Continue with stream only.
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         logging.basicConfig(
             level=logging.INFO,
@@ -857,7 +857,7 @@ class SecurityMiddleware:
         for header in suspicious_headers:
             if header in headers:
                 # Additional validation could be added here
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         return False
 
@@ -875,7 +875,7 @@ try:
     if bool(getattr(cfg, "minimal_public_api", False)):
         _MINIMAL_API = True
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     _EXPOSE_DEMOS = bool(getattr(cfg, "expose_brain_demos", False))
@@ -939,7 +939,7 @@ try:
                     ext_req = settings.require_external_backends
                     require_memory = settings.require_memory
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
             _log.info(
                 "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
@@ -964,10 +964,10 @@ try:
                 )
         except Exception:
             # never fail startup on diagnostics
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 # Initialize observability/tracing when available. Fail-open so the API still starts.
 try:
@@ -984,7 +984,7 @@ try:
                 log.debug("Tracing initialization failed", exc_info=True)
 
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 # Add timing middleware for request instrumentation
 try:
@@ -992,7 +992,7 @@ try:
 
     app.middleware("http")(timing_middleware)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 app.add_middleware(SecurityMiddleware)
 try:
@@ -1015,7 +1015,7 @@ try:
 
     app.middleware("http")(timing_middleware)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api.middleware.opa import OpaMiddleware
@@ -1154,7 +1154,7 @@ async def service_restart(name: str):
         try:
             s.supervisor.stopProcess(name, False)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
@@ -1192,7 +1192,7 @@ async def admin_list_outbox(
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return S.OutboxListResponse(
         events=[S.OutboxEventModel.model_validate(ev) for ev in events],
@@ -1211,7 +1211,7 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="error").inc(len(body.event_ids))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise exc
     if count == 0:
         try:
@@ -1219,12 +1219,12 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
                 len(body.event_ids)
             )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise HTTPException(status_code=404, detail="No matching events to replay")
     try:
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return S.OutboxReplayResponse(replayed=count)
 
 
@@ -1245,13 +1245,13 @@ async def admin_replay_tenant_outbox(body: S.OutboxTenantReplayRequest):
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_error").inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise exc
     if count == 0:
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_not_found").inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise HTTPException(
             status_code=404,
             detail=f"No matching events to replay for tenant '{body.tenant_id}'",
@@ -1263,9 +1263,9 @@ async def admin_replay_tenant_outbox(body: S.OutboxTenantReplayRequest):
         try:
             M.report_outbox_replayed(tenant_label, count)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return S.OutboxTenantReplayResponse(
         tenant_id=body.tenant_id, replayed=count, status=body.status
     )
@@ -1297,7 +1297,7 @@ async def admin_get_tenant_outbox(
         try:
             M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc(len(events))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return S.OutboxTenantListResponse(
         tenant_id=tenant_id,
@@ -1461,7 +1461,7 @@ async def admin_reset_quota(
         try:
             M.QUOTA_RESETS.labels(tenant_id=tenant_id).inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         return S.QuotaResetResponse(
             tenant_id=tenant_id,
@@ -1525,7 +1525,7 @@ async def admin_adjust_quota(
         try:
             M.QUOTA_ADJUSTMENTS.labels(tenant_id=tenant_id).inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         return S.QuotaAdjustResponse(
             tenant_id=tenant_id,
@@ -1601,7 +1601,7 @@ async def _startup_mode_banner() -> None:
         try:
             lg.debug("Failed to emit startup mode banner", exc_info=True)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @app.on_event("startup")
@@ -1611,7 +1611,7 @@ async def _init_constitution() -> None:
     try:
         M.CONSTITUTION_VERIFIED.set(0.0)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     if ConstitutionEngine is None:
         return
     start = time.perf_counter()
@@ -1635,7 +1635,7 @@ async def _init_constitution() -> None:
         M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
         M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # Optional routers (strict posture; dependencies must be present for critical routes).
@@ -1658,54 +1658,54 @@ try:
 
     app.include_router(_persona_router.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 try:
     from somabrain.api.routers import calibration as _calibration_router
 
     app.include_router(_calibration_router.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 try:
     from somabrain.api.routers import features as _features_router
 
     app.include_router(_features_router.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api.routers import link as _link_router
 
     app.include_router(_link_router.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api import config_api as _config_api
 
     app.include_router(_config_api.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api import memory_api as _memory_api
 
     app.include_router(_memory_api.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api.routers import constitution as _constitution_router
 
     app.include_router(_constitution_router.router, prefix="/constitution")
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:
     from somabrain.api.routers import opa as _opa_router
 
     app.include_router(_opa_router.router)
 except Exception:
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 # Demo router support removed: demo endpoints are intentionally deleted
 _EXPOSE_DEMOS = False
@@ -1732,7 +1732,7 @@ try:
     logger.info("Sleep system routers registered")
 except Exception as e:
     logger.warning(f"Failed to register sleep system: {e}")
-    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @app.exception_handler(RequestValidationError)
@@ -1755,7 +1755,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
             body_preview,
         )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     details = exc.errors() if hasattr(exc, "errors") else []
     # Provide route‑specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
@@ -1817,7 +1817,7 @@ if settings is not None:
                 getattr(settings, "require_external_backends", False)
             )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 if not BACKEND_ENFORCEMENT:
     try:
         enforcement_env = settings.require_external_backends
@@ -1829,7 +1829,7 @@ if not BACKEND_ENFORCEMENT:
                 "on",
             )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 # ---------------------------------------------------------------------------
 # Test‑environment override
@@ -2270,7 +2270,7 @@ async def _start_memory_watchdog() -> None:
                 # Attempt circuit reset periodically; updates circuit breaker metric internally
                 memory_service._reset_circuit_if_needed()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             await asyncio.sleep(5.0)
 
     try:
@@ -2278,7 +2278,7 @@ async def _start_memory_watchdog() -> None:
         app.state._memory_watchdog = task  # type: ignore[attr-defined]
     except Exception:
         # best-effort; don't fail startup on watchdog init
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @app.on_event("shutdown")
@@ -2288,7 +2288,7 @@ async def _stop_memory_watchdog() -> None:
         if task is not None:
             task.cancel()
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 # PHASE 3: REVOLUTIONARY FEATURES - AUTO-SCALING FRACTAL INTELLIGENCE
@@ -2547,7 +2547,7 @@ def _sleep_loop():
                 )
                 _sleep_last.setdefault(tid, {})["rem"] = _time.time()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         _sleep_stop.wait(interval)
 
 
@@ -2963,14 +2963,14 @@ async def recall(req: S.RecallRequest, request: Request):
             req.query = CognitiveInputValidator.sanitize_query(req.query)
     except Exception:
         # Silently ignore sanitization errors; proceed with original query.
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # rate limit per tenant
     if not rate_limiter.allow(ctx.tenant_id):
         try:
             M.RATE_LIMITED_TOTAL.labels(path="/recall").inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise HTTPException(status_code=429, detail="rate limit exceeded")
 
     data = thalamus.normalize(req.model_dump())
@@ -3023,7 +3023,7 @@ async def recall(req: S.RecallRequest, request: Request):
             mean_k = sum(float(s) for s, _ in wm_hits[:mcount]) / float(mcount)
             M.RECALL_SIM_TOPK_MEAN.observe(mean_k)
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Optional HRR-first re-ranking of WM hits (optionally gated by margin)
     if cfg.use_hrr_first and quantum is not None:
         try:
@@ -3058,7 +3058,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 wm_hits = reranked[: max(0, int(req.top_k))]
                 M.HRR_RERANK_APPLIED.inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Filter WM hits by universe if specified (default unseen items assume 'real')
     if universe:
         wm_hits = [
@@ -3098,7 +3098,7 @@ async def recall(req: S.RecallRequest, request: Request):
             sat = 0.0 if amax <= 0 else float(acnt) / float(amax)
             M.HRR_CONTEXT_SAT.observe(max(0.0, min(1.0, sat)))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # per-tenant recall cache
     cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=2048, ttl=2.0))
     ckey = f"{(universe or 'all')}:{text}:{req.top_k}"
@@ -3133,7 +3133,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 if direct:
                     mem_payloads = direct
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
         if (
             cfg.use_hrr_first
@@ -3161,7 +3161,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 mem_payloads = [p for _, p in ranked]
                 M.HRR_RERANK_LTM_APPLIED.inc()
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # If still empty, backfill from WM hits that lexically match the query
         if not mem_payloads and wm_hits:
             try:
@@ -3191,7 +3191,7 @@ async def recall(req: S.RecallRequest, request: Request):
                     uniq.append(p)
                 mem_payloads = uniq
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Ultimate alternative: lift matching items from WM into the memory list
         if not mem_payloads:
             try:
@@ -3310,9 +3310,9 @@ async def recall(req: S.RecallRequest, request: Request):
 
                             _mx.WM_ADMIT.labels(source="promote_token").inc()
                         except Exception:
-                            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Apply composite ranking so the most relevant (math-focused) memories rise first.
         try:
@@ -3349,7 +3349,7 @@ async def recall(req: S.RecallRequest, request: Request):
                 mem_payloads = [p for _, p in scored]
                 cache[ckey] = mem_payloads
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Optional diversity pass (MMR)
         if getattr(cfg, "use_diversity", False):
@@ -3393,9 +3393,9 @@ async def recall(req: S.RecallRequest, request: Request):
                             if cnt > 0:
                                 M.DIVERSITY_PAIRWISE_MEAN.observe(dsum / float(cnt))
                 except Exception:
-                    pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     else:
         M.RECALL_CACHE_HIT.labels(cohort=cohort).inc()
         mem_payloads = cached
@@ -3436,7 +3436,7 @@ async def recall(req: S.RecallRequest, request: Request):
                     resp["memory"].extend(normalized)
                     resp["results"] = resp["memory"]
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Reality monitor (optional header X-Min-Sources)
     try:
         min_src = int(request.headers.get("X-Min-Sources", "1"))
@@ -3494,13 +3494,13 @@ async def remember(body: dict, request: Request):
         try:
             M.RATE_LIMITED_TOTAL.labels(path="/remember").inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise HTTPException(status_code=429, detail="rate limit exceeded")
     if not quotas.allow_write(ctx.tenant_id, 1):
         try:
             M.QUOTA_DENIED_TOTAL.labels(reason="daily_write_quota").inc()
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         raise HTTPException(status_code=429, detail="daily write quota exceeded")
     # if coord not provided, key by task + timestamp for stable coord
     key = coord or (payload_obj.task or "task")
@@ -3546,7 +3546,7 @@ async def remember(body: dict, request: Request):
     try:
         M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # No journaling: writes must succeed against the real backend
     # also admit to WM
     text = payload.get("task") or ""
@@ -3568,7 +3568,7 @@ async def remember(body: dict, request: Request):
             payload.setdefault("_cleanup_best", cleanup_overlap)
             payload.setdefault("_cleanup_margin", cleanup_margin)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     (mc_wm if cfg.use_microcircuits else mt_wm).admit(
         ctx.tenant_id,
@@ -3587,9 +3587,9 @@ async def remember(body: dict, request: Request):
             cap = max(1, int(getattr(cfg, "wm_size", 64) or 64))
             M.WM_UTILIZATION.set(min(1.0, float(len(items)) / float(cap)))
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     if mt_ctx is not None and hrr_vec is not None:
         anchor_id = key or text
         mt_ctx.admit(ctx.tenant_id, anchor_id, hrr_vec)
@@ -3609,7 +3609,7 @@ async def remember(body: dict, request: Request):
             coord = _sc(text)
             idx.add(coord, bits)
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Enforce DTO contract fields
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
@@ -3949,7 +3949,7 @@ async def get_neuromodulators(request: Request):
     try:
         audit.log_admin_action(request, "neuromodulators_read")
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     # Return current state; the Neuromodulators singleton holds a NeuromodState
     tenant_ctx = await get_tenant_async(request, cfg.namespace)
     state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
@@ -3995,7 +3995,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
             },
         )
     except Exception:
-        pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
     return S.NeuromodStateModel(
         dopamine=new_state.dopamine,
         serotonin=new_state.serotonin,
@@ -4118,7 +4118,7 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
                 repr(_mc),
             )
         except Exception:
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         edges = memsvc.links_from(
             start_coord,
             type_filter=body.type,

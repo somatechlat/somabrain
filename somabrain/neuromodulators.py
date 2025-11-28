@@ -113,7 +113,7 @@ class Neuromodulators:
             try:
                 cb(s)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
         # Update Prometheus metrics for neuromodulator values and count updates
         try:
             from . import metrics as _mx
@@ -125,7 +125,7 @@ class Neuromodulators:
             _mx.NEUROMOD_UPDATE_COUNT.inc()
         except Exception:
             # Metrics optional – ignore failures during state update
-            pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def subscribe(self, cb: Callable[[NeuromodState], None]) -> None:
         self._subs.append(cb)
@@ -155,7 +155,7 @@ class PerTenantNeuromodulators:
             try:
                 cb(state)
             except Exception:
-                pass
+raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @dataclass
