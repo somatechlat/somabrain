@@ -1649,9 +1649,9 @@ from somabrain.api import context_route as _context_route
 app.include_router(_context_route.router, prefix="/context")
 # Oak-specific routes providing option management backed by Milvus.
 # The router is imported as ``oak_router`` earlier in this file.
-    app.include_router(oak_router, prefix="/oak")
-    # Expose cognitive thread management endpoints under /cognitive
-    app.include_router(thread_router, prefix="/cognitive")
+app.include_router(oak_router, prefix="/oak")
+# Expose cognitive thread management endpoints under /cognitive
+app.include_router(thread_router, prefix="/cognitive")
 
 try:
     from somabrain.api.routers import persona as _persona_router

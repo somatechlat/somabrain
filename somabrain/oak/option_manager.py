@@ -81,7 +81,13 @@ class OptionManager:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
-        self._client = MemoryClient()
+        # Initialise MemoryClient with the global settings configuration.
+        # Other components (e.g., context factories) instantiate MemoryClient
+        # as ``MemoryClient(cfg=settings)``. The previous bare construction
+        # caused ``TypeError: MemoryClient.__init__() missing 1 required positional argument: 'cfg'``
+        # during application startup. Passing the ``settings`` object resolves the
+        # dependency and aligns with the rest of the codebase.
+        self._client = MemoryClient(cfg=settings)
         # Initialize Milvus client for vector persistence.
         self._milvus = MilvusClient()
         # Initialize metrics (will be imported lazily to avoid circular imports)

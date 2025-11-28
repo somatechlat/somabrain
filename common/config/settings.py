@@ -399,6 +399,16 @@ class Settings(BaseSettings):
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
+    # Global infra requirement flag – used by workers to optionally bypass
+    # infra readiness checks (e.g., during unit tests). The original code
+    # accessed ``settings.require_infra`` but the field was never defined,
+    # causing an ``AttributeError`` in the outbox publisher and other workers.
+    # We expose it here with the same semantics: a truthy value (default ``True``)
+    # means infra must be ready; setting ``SOMABRAIN_REQUIRE_INFRA=0`` disables
+    # the check.
+    require_infra: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_INFRA", True)
+    )
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
     )

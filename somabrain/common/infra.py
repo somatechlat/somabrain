@@ -126,12 +126,11 @@ def assert_ready(
     Requirements can be tuned via function args. Environment also supports
     global gate: set SOMABRAIN_REQUIRE_INFRA=0 to bypass (not recommended).
     """
-    if settings.require_infra.strip().lower() in {
-        "0",
-        "false",
-        "no",
-        "off",
-    }:
+    # ``require_infra`` is now a boolean flag. If it is False, skip all infra checks.
+    # Previously the code expected a string and called ``strip().lower()`` which
+    # caused an ``AttributeError`` after the field was added as a bool. The new
+    # logic mirrors the original intent: treat a falsy value as a bypass.
+    if not getattr(settings, "require_infra", True):
         return
     errors = []
     # Use centralized settings where possible for consistency.
