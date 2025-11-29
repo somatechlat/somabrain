@@ -17,7 +17,7 @@ def make_plan(
 
     try:
         from .. import metrics as M  # lazy to avoid import cycles in tests
-    except Exception:
+    except Exception as exc: raise
         M = None
     t0 = time.perf_counter()
     try:
@@ -32,8 +32,7 @@ def make_plan(
         if "t0" in locals() and M is not None:
             try:
                 M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
 
 def make_plan_auto(
@@ -45,7 +44,7 @@ def make_plan_auto(
 
     try:
         from .. import metrics as M
-    except Exception:
+    except Exception as exc: raise
         M = None
     t0 = time.perf_counter()
     try:
@@ -69,5 +68,4 @@ def make_plan_auto(
         if "t0" in locals() and M is not None:
             try:
                 M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise

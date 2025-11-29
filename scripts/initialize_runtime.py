@@ -16,7 +16,6 @@ import traceback
 try:
     # Ensure the package path includes /app where the copied code lives
     sys.path.insert(0, "/app")
-    # Use unified Config wrapper (provides legacy .http attribute)
     from common.config.settings import settings as config
 
     cfg = config
@@ -41,7 +40,7 @@ try:
                     ),
                 )
             )
-        except Exception:
+        except Exception as exc: raise
             try:
                 from somabrain.quantum import QuantumLayer, HRRConfig
 
@@ -60,7 +59,7 @@ try:
                         ),
                     )
                 )
-            except Exception:
+            except Exception as exc: raise
                 quantum = None
 
     # Create embedder and working memories
@@ -72,7 +71,7 @@ try:
     embedder = None
     try:
         embedder = make_embedder(cfg, quantum)
-    except Exception:
+    except Exception as exc: raise
         embedder = None
 
     try:
@@ -85,7 +84,7 @@ try:
                 recency_max_steps=cfg.wm_recency_max_steps,
             ),
         )
-    except Exception:
+    except Exception as exc: raise
         mt_wm = None
 
     try:
@@ -101,12 +100,12 @@ try:
                 recency_max_steps=cfg.wm_recency_max_steps,
             ),
         )
-    except Exception:
+    except Exception as exc: raise
         mc_wm = None
 
     try:
         mt_memory = MultiTenantMemory(cfg)
-    except Exception:
+    except Exception as exc: raise
         mt_memory = None
 
     # App expects the runtime code loaded under the name 'somabrain.runtime_module'
@@ -137,7 +136,7 @@ try:
             print(
                 f"initialize_runtime: loaded somabrain.runtime_module from file -> {_rt} (id={id(_rt)})"
             )
-    except Exception:
+    except Exception as exc: raise
         print(
             "initialize_runtime: could not load somabrain.runtime_module; pkg_path=",
             locals().get("pkg_path", None),
@@ -157,8 +156,7 @@ try:
                     "mc_wm=",
                     getattr(_rt, "mc_wm", None),
                 )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             _rt.set_singletons(
                 _embedder=embedder,
                 _quantum=quantum,
@@ -176,15 +174,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     "mc_wm=",
                     getattr(_rt, "mc_wm", None),
                 )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             print("initialize_runtime: set_singletons executed")
-        except Exception:
+        except Exception as exc: raise
             print(
                 "initialize_runtime: set_singletons failed:\n", traceback.format_exc()
             )
     else:
         print("initialize_runtime: runtime module not loaded; skipping set_singletons")
 
-except Exception:
+except Exception as exc: raise
     print("initialize_runtime: failed to initialize runtime:\n", traceback.format_exc())

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 try:
     from pydantic import BaseModel, Field
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     BaseModel = object  # type: ignore
 
     def Field(*a, **k):  # type: ignore

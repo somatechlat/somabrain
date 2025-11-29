@@ -108,7 +108,7 @@ def _make_producer():  # pragma: no cover - optional at runtime
             "client.id": f"somabrain-outbox-{os.getpid()}",
         }
         return Producer(conf)
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -332,8 +332,7 @@ def _update_outbox_pending_metrics() -> None:
     counts: dict[str, int] = {}
     try:
         counts = get_pending_counts_by_tenant()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     current_tenants = set(counts.keys())
     if not current_tenants:
         counts = {DEFAULT_TENANT_LABEL: 0}
@@ -435,15 +434,14 @@ def _process_batch(
         if producer is not None:
             # confluent-kafka and kafka-python both expose flush(timeout)
             producer.flush(5)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     # Report processed events
     if report_outbox_processed is not None:
         for (tenant_label, topic), count in processed_counts.items():
             try:
                 report_outbox_processed(tenant_label, topic, count)
-            except Exception:
+            except Exception as exc: raise
                 continue
 
     # Log skipped tenants due to quota limits

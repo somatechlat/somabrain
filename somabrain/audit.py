@@ -19,7 +19,7 @@ from somabrain.db.outbox import enqueue_event
 # Import FastAPI Request only if available to avoid hard dependency at import time
 try:
     from fastapi import Request  # type: ignore
-except Exception:  # pragma: no cover - optional runtime dependency
+except Exception as exc: raise  # pragma: no cover - optional runtime dependency
     Request = Any  # type: ignore
 
 from common.config.settings import settings
@@ -40,8 +40,7 @@ def _schema_path() -> Optional[Path]:
         )
         if sp.exists():
             return sp
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return None
 
 
@@ -72,17 +71,16 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
                 schema = json.load(sf)
             try:
                 jsonschema.validate(instance=ev, schema=schema)
-            except Exception:
+            except Exception as exc: raise
                 LOGGER.debug(
                     "Audit event schema validation failed; continuing (no alternative path)"
                 )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     try:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
-    except Exception:
+    except Exception as exc: raise
         LOGGER.exception(
             "Failed to enqueue audit event to outbox (no alternative path)"
         )
@@ -111,7 +109,7 @@ def log_admin_action(
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("a", encoding="utf-8") as f:
             f.write(json.dumps(ev, ensure_ascii=False) + "\n")
-    except Exception:
+    except Exception as exc: raise
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
 
@@ -163,7 +161,7 @@ def _mask_value(v: Any) -> Any:
         if "token" in ls or "secret" in ls or len(s) >= 16:
             return _MASK
         return s
-    except Exception:
+    except Exception as exc: raise
         return _MASK
 
 
@@ -208,9 +206,9 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
             return obj
 
         return _walk(ev)
-    except Exception:
+    except Exception as exc: raise
         # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
         try:
             return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}  # type: ignore[return-value]
-        except Exception:
+        except Exception as exc: raise
             return ev

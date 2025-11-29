@@ -61,7 +61,7 @@ def get_role(token: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
             # ensure expected dtypes
             role_fft = role_fft.astype(np.complex128, copy=False)
             return role_time, role_fft
-    except Exception:
+    except Exception as exc: raise
         # If reading fails for any reason, act as cache miss
         return None
 
@@ -89,5 +89,4 @@ def set_role(token: str, role_time: np.ndarray, role_fft: np.ndarray) -> None:
         if tmp.exists():
             try:
                 tmp.unlink()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise

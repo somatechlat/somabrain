@@ -30,7 +30,7 @@ def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     r.raise_for_status()
     try:
         return r.json()
-    except Exception:
+    except Exception as exc: raise
         raise RuntimeError(f"Non-JSON response from {url}: {r.text[:200]}")
 
 

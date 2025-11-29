@@ -23,28 +23,28 @@ def snapshot() -> Dict[str, Any]:
             "type": "counter",
             "value": int(_m.UNBIND_PATH._value.get()),
         }
-    except Exception:
+    except Exception as exc: raise
         # Prometheus Counter internal structure may differ; default to 0
         try:
             out["unbind_path_total"] = {
                 "type": "counter",
                 "value": int(_m.UNBIND_PATH._value.get()),
             }
-        except Exception:
+        except Exception as exc: raise
             out["unbind_path_total"] = {"type": "counter", "value": 0}
     try:
         out["unbind_wiener_floor"] = {
             "type": "gauge",
             "value": float(_m.UNBIND_WIENER_FLOOR._value.get()),
         }
-    except Exception:
+    except Exception as exc: raise
         out["unbind_wiener_floor"] = {"type": "gauge", "value": 0.0}
     try:
         out["unbind_k_est"] = {
             "type": "gauge",
             "value": float(_m.UNBIND_K_EST._value.get()),
         }
-    except Exception:
+    except Exception as exc: raise
         out["unbind_k_est"] = {"type": "gauge", "value": 0.0}
     return out
 

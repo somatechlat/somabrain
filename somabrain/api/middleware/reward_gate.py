@@ -31,7 +31,7 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
                 if hdr is not None:
                     try:
                         utility = float(hdr)
-                    except Exception:
+                    except Exception as exc: raise
                         utility = None
 
             # Proceed with request handling first.
@@ -49,8 +49,7 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
             # Increment allow metric as we are allowing the request.
             try:
                 app_metrics.REWARD_ALLOW_TOTAL.inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             # Continue with request processing.
             from starlette.responses import JSONResponse
 

@@ -29,7 +29,7 @@ from somabrain.storage import db as storage_db
 
 try:  # pragma: no cover - redis is optional during unit tests
     import redis  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     redis = None  # type: ignore[assignment]
 
 LOGGER = logging.getLogger("somabrain.constitution.storage")
@@ -216,7 +216,7 @@ class ConstitutionStorage:
             return []
         try:
             data = json.loads(raw)
-        except Exception:
+        except Exception as exc: raise
             LOGGER.debug("Unable to decode redis signature cache")
             return []
         if isinstance(data, list):
@@ -285,7 +285,7 @@ class ConstitutionStorage:
                 session.rollback()
             else:
                 session.commit()
-        except Exception:
+        except Exception as exc: raise
             session.rollback()
             raise
         finally:
@@ -369,7 +369,7 @@ class ConstitutionStorage:
                 ts = meta_payload.get("created_at")
                 if ts:
                     created_at = self._ensure_datetime(ts)
-            except Exception:
+            except Exception as exc: raise
                 LOGGER.debug("Unable to parse redis constitution metadata")
         signatures = self.get_signatures(checksum)
         return ConstitutionRecord(
@@ -412,7 +412,6 @@ class ConstitutionStorage:
                     parsed = parsed.replace(tzinfo=dt.timezone.utc)
                 return parsed.astimezone(dt.timezone.utc)
             except ValueError:
-raise NotImplementedError("Placeholder removed per VIBE rules")
         return dt.datetime.now(dt.timezone.utc)
 
 

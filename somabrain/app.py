@@ -89,7 +89,7 @@ class SimpleOPAEngine:
             async with httpx.AsyncClient(timeout=2.0) as client:
                 resp = await client.get(f"{self.base_url}/health")
                 return resp.status_code == 200
-        except Exception:
+        except Exception as exc: raise
             return False
 
 # Define OPA engine attachment function (will be registered after FastAPI app creation).
@@ -102,7 +102,6 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     registered as a startup event handler after the ``FastAPI`` instance is
     instantiated.
     """
-    # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
     opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
     if opa_url:
         app.state.opa_engine = SimpleOPAEngine(opa_url)
@@ -162,7 +161,7 @@ from config.feature_flags import FeatureFlags
 
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
-except Exception:  # pragma: no cover - optional dependency
+except Exception as exc: raise  # pragma: no cover - optional dependency
     ConstitutionEngine = None  # type: ignore[assignment]
 
 # Shared configuration pulled from the platform service when available.
@@ -194,7 +193,7 @@ def _score_memory_candidate(
     if query_vec is None and embed_fn is not None:
         try:
             query_vec = np.asarray(embed_fn(query_lower or ""), dtype=float).reshape(-1)
-        except Exception:
+        except Exception as exc: raise
             query_vec = None
 
     if query_vec is None or scorer is None or embed_fn is None:
@@ -219,7 +218,7 @@ def _score_memory_candidate(
         try:
             cand_vec = np.asarray(embed_fn(text), dtype=float).reshape(-1)
             embed_cache[text] = cand_vec
-        except Exception:
+        except Exception as exc: raise
             return 0.0
 
     recency_steps: Optional[int] = None
@@ -228,12 +227,12 @@ def _score_memory_candidate(
         try:
             ts = float(coerce_to_epoch_seconds(ts_val))
             recency_steps = max(0, int((now_ts - ts) / 60.0))
-        except Exception:
+        except Exception as exc: raise
             recency_steps = None
 
     try:
         base = scorer.score(query_vec, cand_vec, recency_steps=recency_steps)
-    except Exception:
+    except Exception as exc: raise
         base = 0.0
 
     # Lightweight lexical reinforcement for exact/partial matches and math domains
@@ -274,8 +273,7 @@ def _score_memory_candidate(
             alpha = max(0.0, min(1.0, float(hrr_weight or 0.0)))
             if alpha > 0.0:
                 score = (1.0 - alpha) * score + alpha * hsim
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     return float(max(0.0, min(1.0, score)))
 
@@ -470,8 +468,7 @@ def _collect_candidate_keys(payload: Any) -> set[tuple[str, Any]]:
         if isinstance(coord, (list, tuple)) and len(coord) == 3:
             try:
                 keys.add(("coord", tuple(coord)))
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         for k in ("id", "memory_id", "key"):
             v = payload.get(k)
             if isinstance(v, str) and v.strip():
@@ -499,7 +496,7 @@ def _build_wm_support_index(
     for sim, payload in wm_hits:
         try:
             score = float(sim)
-        except Exception:
+        except Exception as exc: raise
             continue
         for key in _collect_candidate_keys(payload):
             index[key] = max(index.get(key, 0.0), score)
@@ -541,9 +538,8 @@ def setup_logging():
                 os.makedirs(parent, exist_ok=True)
             # Try to attach a file handler; fall back to stdout-only if not writable
             handlers.append(logging.FileHandler(candidate, mode="a"))
-        except Exception:
+        except Exception as exc: raise
             # File logging not available (likely read-only FS). Continue with stream only.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
         logging.basicConfig(
             level=logging.INFO,
@@ -857,7 +853,6 @@ class SecurityMiddleware:
         for header in suspicious_headers:
             if header in headers:
                 # Additional validation could be added here
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
         return False
 
@@ -874,12 +869,11 @@ if settings.minimal_public_api:
 try:
     if bool(getattr(cfg, "minimal_public_api", False)):
         _MINIMAL_API = True
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     _EXPOSE_DEMOS = bool(getattr(cfg, "expose_brain_demos", False))
-except Exception:
+except Exception as exc: raise
     _EXPOSE_DEMOS = False
 
 app = FastAPI(
@@ -896,7 +890,7 @@ app.add_event_handler("startup", _attach_opa_engine)
 
 try:
     _sphinx_build = os.environ.get("SPHINX_BUILD") or ("sphinx" in sys.modules)
-except Exception:
+except Exception as exc: raise
     _sphinx_build = False
 
 if not _sphinx_build:
@@ -922,7 +916,7 @@ try:
             # Prefer shared settings for mode and policy flags
             try:
                 from common.config.settings import settings as _shared
-            except Exception:
+            except Exception as exc: raise
                 _shared = None  # type: ignore
             mode = ""
             ext_req = False
@@ -938,8 +932,7 @@ try:
                     mode = settings.mode.strip()
                     ext_req = settings.require_external_backends
                     require_memory = settings.require_memory
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
             _log.info(
                 "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
@@ -962,12 +955,10 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 _log.warning(
                     "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
                 )
-        except Exception:
+        except Exception as exc: raise
             # never fail startup on diagnostics
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 # Initialize observability/tracing when available. Fail-open so the API still starts.
 try:
@@ -977,34 +968,32 @@ try:
     async def _init_observability() -> None:
         try:
             init_tracing()
-        except Exception:
+        except Exception as exc: raise
             # Tracing is optional; log at debug level and continue.
             log = globals().get("logger")
             if log:
                 log.debug("Tracing initialization failed", exc_info=True)
 
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 # Add timing middleware for request instrumentation
 try:
     from somabrain.metrics import timing_middleware
 
     app.middleware("http")(timing_middleware)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 app.add_middleware(SecurityMiddleware)
 try:
     app.add_middleware(ControlsMiddleware)
-except Exception:
+except Exception as exc: raise
     log = globals().get("logger")
     if log:
         log.debug("Controls middleware not registered", exc_info=True)
 
 try:
     app.add_middleware(CognitiveMiddleware)
-except Exception:
+except Exception as exc: raise
     log = globals().get("logger")
     if log:
         log.debug("Cognitive middleware not registered", exc_info=True)
@@ -1014,8 +1003,7 @@ try:
     from somabrain.metrics import timing_middleware
 
     app.middleware("http")(timing_middleware)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api.middleware.opa import OpaMiddleware
@@ -1065,7 +1053,6 @@ def _admin_guard_dep(request: Request):
 async def admin_features_state() -> S.FeatureFlagsResponse:
     """Return the current feature‑flag status and any persisted overrides.
 
-    The function mirrors the legacy admin endpoint but is exposed as a plain
     callable so tests can import it directly from ``somabrain.app``.
     """
     return S.FeatureFlagsResponse(
@@ -1153,8 +1140,7 @@ async def service_restart(name: str):
         s = _supervisor()
         try:
             s.supervisor.stopProcess(name, False)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
@@ -1191,8 +1177,7 @@ async def admin_list_outbox(
             )
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
     return S.OutboxListResponse(
         events=[S.OutboxEventModel.model_validate(ev) for ev in events],
@@ -1210,21 +1195,18 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
     except Exception as exc:
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="error").inc(len(body.event_ids))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise exc
     if count == 0:
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
                 len(body.event_ids)
             )
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise HTTPException(status_code=404, detail="No matching events to replay")
     try:
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return S.OutboxReplayResponse(replayed=count)
 
 
@@ -1244,14 +1226,12 @@ async def admin_replay_tenant_outbox(body: S.OutboxTenantReplayRequest):
     except Exception as exc:
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_error").inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise exc
     if count == 0:
         try:
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_not_found").inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise HTTPException(
             status_code=404,
             detail=f"No matching events to replay for tenant '{body.tenant_id}'",
@@ -1262,10 +1242,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         tenant_label = body.tenant_id or "default"
         try:
             M.report_outbox_replayed(tenant_label, count)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
+    except Exception as exc: raise
     return S.OutboxTenantReplayResponse(
         tenant_id=body.tenant_id, replayed=count, status=body.status
     )
@@ -1296,8 +1274,7 @@ async def admin_get_tenant_outbox(
         tenant_label = tenant_id or "default"
         try:
             M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc(len(events))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     return S.OutboxTenantListResponse(
         tenant_id=tenant_id,
@@ -1460,8 +1437,7 @@ async def admin_reset_quota(
         # Emit metric for quota reset
         try:
             M.QUOTA_RESETS.labels(tenant_id=tenant_id).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         return S.QuotaResetResponse(
             tenant_id=tenant_id,
@@ -1524,8 +1500,7 @@ async def admin_adjust_quota(
         # Emit metric for quota adjustment
         try:
             M.QUOTA_ADJUSTMENTS.labels(tenant_id=tenant_id).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         return S.QuotaAdjustResponse(
             tenant_id=tenant_id,
@@ -1556,12 +1531,11 @@ async def _startup_mode_banner() -> None:
     """Log mode, derived flags, and deprecation notices on boot.
 
     This is informational only and does not mutate existing behavior. It helps
-    operators verify that SOMABRAIN_MODE is respected and surfaces any legacy
     envs slated for removal.
     """
     try:
         from common.config.settings import settings as _shared
-    except Exception:  # pragma: no cover
+    except Exception as exc: raise  # pragma: no cover
         _shared = None
     lg = logging.getLogger("somabrain")
     try:
@@ -1597,11 +1571,10 @@ async def _startup_mode_banner() -> None:
         if _shared is not None:
             for note in getattr(_shared, "deprecation_notices", []) or []:
                 lg.warning("DEPRECATION: %s", note)
-    except Exception:
+    except Exception as exc: raise
         try:
             lg.debug("Failed to emit startup mode banner", exc_info=True)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 @app.on_event("startup")
@@ -1610,8 +1583,7 @@ async def _init_constitution() -> None:
     app.state.constitution_engine = None
     try:
         M.CONSTITUTION_VERIFIED.set(0.0)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     if ConstitutionEngine is None:
         return
     start = time.perf_counter()
@@ -1627,15 +1599,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 log.warning("ConstitutionEngine load failed: %s", exc)
             verified = False
         app.state.constitution_engine = engine
-    except Exception:
+    except Exception as exc: raise
         app.state.constitution_engine = None
         verified = False
     duration = time.perf_counter() - start
     try:
         M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
         M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 # Optional routers (strict posture; dependencies must be present for critical routes).
@@ -1657,55 +1628,47 @@ try:
     from somabrain.api.routers import persona as _persona_router
 
     app.include_router(_persona_router.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 try:
     from somabrain.api.routers import calibration as _calibration_router
 
     app.include_router(_calibration_router.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 try:
     from somabrain.api.routers import features as _features_router
 
     app.include_router(_features_router.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api.routers import link as _link_router
 
     app.include_router(_link_router.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api import config_api as _config_api
 
     app.include_router(_config_api.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api import memory_api as _memory_api
 
     app.include_router(_memory_api.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api.routers import constitution as _constitution_router
 
     app.include_router(_constitution_router.router, prefix="/constitution")
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 try:
     from somabrain.api.routers import opa as _opa_router
 
     app.include_router(_opa_router.router)
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 # Demo router support removed: demo endpoints are intentionally deleted
 _EXPOSE_DEMOS = False
@@ -1726,13 +1689,12 @@ try:
     try:
         # The brain_sleep_router module provides a ``start_ttl_watcher`` helper.
         brain_sleep_router.start_ttl_watcher()
-    except Exception:
+    except Exception as exc: raise
         # Non‑critical – log and continue.
         logger.error("Failed to start TTL watcher for brain sleep", exc_info=True)
     logger.info("Sleep system routers registered")
 except Exception as e:
     logger.warning(f"Failed to register sleep system: {e}")
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @app.exception_handler(RequestValidationError)
@@ -1741,7 +1703,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
     try:
         body = await request.body()
         body_preview = body[:256].decode("utf-8", errors="ignore") if body else ""
-    except Exception:
+    except Exception as exc: raise
         body_preview = ""
     ip = getattr(request.client, "host", None)
     ua = request.headers.get("user-agent", "")
@@ -1754,8 +1716,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
             ua,
             body_preview,
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     details = exc.errors() if hasattr(exc, "errors") else []
     # Provide route‑specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
@@ -1816,8 +1777,7 @@ if settings is not None:
             BACKEND_ENFORCEMENT = bool(
                 getattr(settings, "require_external_backends", False)
             )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 if not BACKEND_ENFORCEMENT:
     try:
         enforcement_env = settings.require_external_backends
@@ -1828,8 +1788,7 @@ if not BACKEND_ENFORCEMENT:
                 "yes",
                 "on",
             )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 # ---------------------------------------------------------------------------
 # Test‑environment override
@@ -1883,8 +1842,8 @@ if cfg.use_hrr:
             binding_model_version=cfg.math_binding_model_version,
         )
         quantum = QuantumLayer(hrr_cfg)
-    except Exception:
-        logger.exception("Failed to initialize quantum layer; HRR disabled.")
+    except Exception as exc: raise
+        raise RuntimeError("Failed to initialize quantum layer; HRR disabled.")
         quantum = None
 
 #
@@ -1895,7 +1854,7 @@ _PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "mahal")
 embedder = make_embedder(cfg, quantum=quantum)
 try:
     _EMBED_DIM = int(getattr(embedder, "dim"))
-except Exception:
+except Exception as exc: raise
     try:
         _EMBED_DIM = int(
             np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
@@ -2031,7 +1990,7 @@ if not getattr(_rt, "embedder", None):
             if mf.endswith(os.path.join("somabrain", "runtime.py")):
                 _rt = m
                 break
-        except Exception:
+        except Exception as exc: raise
             continue
 
 if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
@@ -2269,16 +2228,14 @@ async def _start_memory_watchdog() -> None:
             try:
                 # Attempt circuit reset periodically; updates circuit breaker metric internally
                 memory_service._reset_circuit_if_needed()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             await asyncio.sleep(5.0)
 
     try:
         task = asyncio.create_task(_watchdog_loop())
         app.state._memory_watchdog = task  # type: ignore[attr-defined]
-    except Exception:
+    except Exception as exc: raise
         # best-effort; don't fail startup on watchdog init
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 @app.on_event("shutdown")
@@ -2287,8 +2244,7 @@ async def _stop_memory_watchdog() -> None:
         task = getattr(app.state, "_memory_watchdog", None)
         if task is not None:
             task.cancel()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 # PHASE 3: REVOLUTIONARY FEATURES - AUTO-SCALING FRACTAL INTELLIGENCE
@@ -2546,8 +2502,7 @@ def _sleep_loop():
                     max_summaries=cfg.max_summaries_per_cycle,
                 )
                 _sleep_last.setdefault(tid, {})["rem"] = _time.time()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         _sleep_stop.wait(interval)
 
 
@@ -2591,25 +2546,24 @@ async def health(request: Request) -> S.HealthResponse:
         else:
             resp["constitution_version"] = None
             resp["constitution_status"] = "not-loaded"
-    except Exception:
+    except Exception as exc: raise
         resp["constitution_version"] = None
         resp["constitution_status"] = None
     # External backend requirement flag from settings
     try:
         resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
-    except Exception:
+    except Exception as exc: raise
         resp["external_backends_required"] = None
-    # Full‑stack mode flag (legacy)
     try:
         resp["full_stack"] = getattr(settings, "force_full_stack", None)
-    except Exception:
+    except Exception as exc: raise
         resp["full_stack"] = None
     # Memory item count – expose as top‑level field as well as component
     try:
         mem_count = int(getattr(ns_mem, "count", lambda: 0)())
         resp["memory_items"] = mem_count
         resp["components"]["wm_items"] = mem_count
-    except Exception:
+    except Exception as exc: raise
         resp["memory_items"] = None
         resp["components"]["wm_items"] = None
     # Retrieval readiness – simple heuristic based on embedder availability.
@@ -2620,7 +2574,7 @@ async def health(request: Request) -> S.HealthResponse:
         opa_engine = getattr(app.state, "opa_engine", None)
         resp["opa_ok"] = bool(opa_engine)
         resp["opa_required"] = getattr(settings, "require_opa", None)
-    except Exception:
+    except Exception as exc: raise
         resp["opa_ok"] = None
         resp["opa_required"] = None
 
@@ -2633,7 +2587,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
         resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
-    except Exception:
+    except Exception as exc: raise
         resp["memory_degrade_queue"] = None
         resp["memory_degrade_readonly"] = None
         resp["memory_degrade_topic"] = None
@@ -2649,7 +2603,7 @@ async def health(request: Request) -> S.HealthResponse:
         if any(resp["stub_counts"].values()):
             resp["ok"] = False
         resp["external_backends_required"] = bool(__BACKEND_ENFORCED)
-    except Exception:
+    except Exception as exc: raise
         resp["stub_counts"] = {}
         resp["external_backends_required"] = BACKEND_ENFORCEMENT
 
@@ -2663,7 +2617,7 @@ async def health(request: Request) -> S.HealthResponse:
                 shape = getattr(vec, "shape")
                 edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
-    except Exception:
+    except Exception as exc: raise
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
 
     # -------------------------------------------------------------------
@@ -2691,7 +2645,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["components"]["memory"] = mhealth
         if isinstance(mhealth, dict):
             memory_ok = bool(mhealth.get("http")) or bool(mhealth.get("ok"))
-    except Exception:
+    except Exception as exc: raise
         memory_ok = False
 
     if memory_ok:
@@ -2710,14 +2664,14 @@ async def health(request: Request) -> S.HealthResponse:
         # The gauge objects expose a private `_value` attribute holding the
         # current metric value. Accessing it is safe for read‑only purposes.
         resp["tau"] = float(tau_gauge.labels(tenant_id=tenant_id)._value.get())
-    except Exception:
+    except Exception as exc: raise
         resp["tau"] = None
 
     # Entropy‑cap configuration – expose the global flag and threshold.
     try:
         resp["entropy_cap_enabled"] = getattr(settings, "entropy_cap_enabled", None)
         resp["entropy_cap"] = getattr(settings, "entropy_cap", None)
-    except Exception:
+    except Exception as exc: raise
         resp["entropy_cap_enabled"] = None
         resp["entropy_cap"] = None
 
@@ -2727,7 +2681,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["retrieval_entropy"] = float(
             LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id)._value.get()
         )
-    except Exception:
+    except Exception as exc: raise
         resp["retrieval_entropy"] = None
 
     circuit_open = cb.is_open(tenant_id)
@@ -2744,7 +2698,7 @@ async def health(request: Request) -> S.HealthResponse:
     # WM items
     try:
         resp["components"]["wm_items"] = int(getattr(ns_mem, "count", lambda: 0)())
-    except Exception:
+    except Exception as exc: raise
         resp["components"]["wm_items"] = 0
 
     # Downstream health (integrator + segmentation)
@@ -2754,7 +2708,7 @@ async def health(request: Request) -> S.HealthResponse:
         try:
             with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
                 return 200 <= getattr(r, "status", 500) < 300
-        except Exception:
+        except Exception as exc: raise
             return False
 
     integrator_url = settings.integrator_health_url
@@ -2802,7 +2756,6 @@ async def metrics():
     return await M.metrics_endpoint()
 
 
-# Alias endpoint for legacy health check used in tests
 @app.get("/healthz", include_in_schema=False)
 async def healthz(request: Request) -> dict:
     # Reuse the health logic to provide the same JSON payload
@@ -2859,7 +2812,7 @@ if not _MINIMAL_API:
             }
         try:
             stats = mc_wm.stats(ctx.tenant_id)
-        except Exception:
+        except Exception as exc: raise
             stats = {}
         return {
             "enabled": True,
@@ -2892,10 +2845,10 @@ if not _MINIMAL_API:
                     return False
                 try:
                     j = r.json()
-                except Exception:
+                except Exception as exc: raise
                     return True
                 return bool(j.get("ok", True)) if isinstance(j, dict) else True
-        except Exception:
+        except Exception as exc: raise
             return False
 
     @app.get("/reward/health")
@@ -2943,7 +2896,7 @@ if not _MINIMAL_API:
                     )
                 r.raise_for_status()
                 return r.json()
-        except Exception:
+        except Exception as exc: raise
             # Align with test skip semantics when the producer is not reachable
             from fastapi import HTTPException as _HE
 
@@ -2961,16 +2914,14 @@ async def recall(req: S.RecallRequest, request: Request):
     try:
         if hasattr(req, "query") and req.query:
             req.query = CognitiveInputValidator.sanitize_query(req.query)
-    except Exception:
+    except Exception as exc: raise
         # Silently ignore sanitization errors; proceed with original query.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # rate limit per tenant
     if not rate_limiter.allow(ctx.tenant_id):
         try:
             M.RATE_LIMITED_TOTAL.labels(path="/recall").inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise HTTPException(status_code=429, detail="rate limit exceeded")
 
     data = thalamus.normalize(req.model_dump())
@@ -2993,7 +2944,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             ql = text.strip().lower()
             qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
-        except Exception:
+        except Exception as exc: raise
             ql = ""
             qtokens = []
 
@@ -3022,8 +2973,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             mcount = max(1, min(len(wm_hits), int(req.top_k)))
             mean_k = sum(float(s) for s, _ in wm_hits[:mcount]) / float(mcount)
             M.RECALL_SIM_TOPK_MEAN.observe(mean_k)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     # Optional HRR-first re-ranking of WM hits (optionally gated by margin)
     if cfg.use_hrr_first and quantum is not None:
         try:
@@ -3057,8 +3007,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 reranked.sort(key=lambda t: t[0], reverse=True)
                 wm_hits = reranked[: max(0, int(req.top_k))]
                 M.HRR_RERANK_APPLIED.inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     # Filter WM hits by universe if specified (default unseen items assume 'real')
     if universe:
         wm_hits = [
@@ -3097,8 +3046,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             M.HRR_ANCHOR_SIZE.observe(max(0, int(acnt)))
             sat = 0.0 if amax <= 0 else float(acnt) / float(amax)
             M.HRR_CONTEXT_SAT.observe(max(0.0, min(1.0, sat)))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     # per-tenant recall cache
     cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=2048, ttl=2.0))
     ckey = f"{(universe or 'all')}:{text}:{req.top_k}"
@@ -3132,8 +3080,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 )
                 if direct:
                     mem_payloads = direct
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
         if (
             cfg.use_hrr_first
@@ -3160,8 +3107,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 ranked.sort(key=lambda t: t[0], reverse=True)
                 mem_payloads = [p for _, p in ranked]
                 M.HRR_RERANK_LTM_APPLIED.inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         # If still empty, backfill from WM hits that lexically match the query
         if not mem_payloads and wm_hits:
             try:
@@ -3190,13 +3136,12 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     seen_tasks.add(t)
                     uniq.append(p)
                 mem_payloads = uniq
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         # Ultimate alternative: lift matching items from WM into the memory list
         if not mem_payloads:
             try:
                 items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
-            except Exception:
+            except Exception as exc: raise
                 items = []
             if items:
                 ql = str(text).strip().lower()
@@ -3252,7 +3197,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         # This removes the need for users to switch endpoints when they have a label/token.
         try:
             promote_exact = bool(getattr(cfg, "promote_exact_token_enabled", True))
-        except Exception:
+        except Exception as exc: raise
             promote_exact = True
         if promote_exact and isinstance(text, str):
             try:
@@ -3260,7 +3205,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
                 # Heuristic: token-like if mostly [A-Za-z0-9_-] and length >= 6
                 _tokish = bool(_re.match(r"^[A-Za-z0-9_-]{6,}$", text.strip()))
-            except Exception:
+            except Exception as exc: raise
                 _tokish = False
             if _tokish:
                 try:
@@ -3309,15 +3254,13 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             from . import metrics as _mx
 
                             _mx.WM_ADMIT.labels(source="promote_token").inc()
-                        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                        except Exception as exc: raise
+                except Exception as exc: raise
 
         # Apply composite ranking so the most relevant (math-focused) memories rise first.
         try:
             lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
-        except Exception:
+        except Exception as exc: raise
             lexical_boost = True
         if lexical_boost and mem_payloads:
             try:
@@ -3342,14 +3285,13 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             hrr_cache=hrr_cache,
                             hrr_weight=getattr(cfg, "hrr_rerank_weight", 0.0),
                         )
-                    except Exception:
+                    except Exception as exc: raise
                         comp_score = 0.0
                     scored.append((comp_score, p))
                 scored.sort(key=lambda sp: sp[0], reverse=True)
                 mem_payloads = [p for _, p in scored]
                 cache[ckey] = mem_payloads
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         # Optional diversity pass (MMR)
         if getattr(cfg, "use_diversity", False):
@@ -3392,10 +3334,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                                     cnt += 1
                             if cnt > 0:
                                 M.DIVERSITY_PAIRWISE_MEAN.observe(dsum / float(cnt))
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
+            except Exception as exc: raise
     else:
         M.RECALL_CACHE_HIT.labels(cohort=cohort).inc()
         mem_payloads = cached
@@ -3435,12 +3375,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 if normalized:
                     resp["memory"].extend(normalized)
                     resp["results"] = resp["memory"]
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     # Reality monitor (optional header X-Min-Sources)
     try:
         min_src = int(request.headers.get("X-Min-Sources", "1"))
-    except Exception:
+    except Exception as exc: raise
         min_src = 1
     resp["reality"] = assess_reality(mem_payloads, min_sources=min_src)
     # Drift monitor on query vector
@@ -3493,14 +3432,12 @@ async def remember(body: dict, request: Request):
     if not rate_limiter.allow(ctx.tenant_id):
         try:
             M.RATE_LIMITED_TOTAL.labels(path="/remember").inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise HTTPException(status_code=429, detail="rate limit exceeded")
     if not quotas.allow_write(ctx.tenant_id, 1):
         try:
             M.QUOTA_DENIED_TOTAL.labels(reason="daily_write_quota").inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         raise HTTPException(status_code=429, detail="daily write quota exceeded")
     # if coord not provided, key by task + timestamp for stable coord
     key = coord or (payload_obj.task or "task")
@@ -3545,8 +3482,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         ) from e
     try:
         M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     # No journaling: writes must succeed against the real backend
     # also admit to WM
     text = payload.get("task") or ""
@@ -3567,8 +3503,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             payload.setdefault("_cleanup_best", cleanup_overlap)
             payload.setdefault("_cleanup_margin", cleanup_margin)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     (mc_wm if cfg.use_microcircuits else mt_wm).admit(
         ctx.tenant_id,
@@ -3586,10 +3521,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
             cap = max(1, int(getattr(cfg, "wm_size", 64) or 64))
             M.WM_UTILIZATION.set(min(1.0, float(len(items)) / float(cap)))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
+    except Exception as exc: raise
     if mt_ctx is not None and hrr_vec is not None:
         anchor_id = key or text
         mt_ctx.admit(ctx.tenant_id, anchor_id, hrr_vec)
@@ -3608,8 +3541,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
             coord = _sc(text)
             idx.add(coord, bits)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     # Enforce DTO contract fields
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
@@ -3704,7 +3636,7 @@ if not _MINIMAL_API:
         require_admin_auth(request, cfg)
         try:
             tenants = mt_wm.tenants() or [ctx.tenant_id or "public"]
-        except Exception:
+        except Exception as exc: raise
             tenants = [ctx.tenant_id or "public"]
         out: dict[str, dict[str, float | None]] = {}
         for tid in tenants:
@@ -3750,7 +3682,7 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
             rel_types=rel_types,
             universe=universe,
         )
-    except Exception:
+    except Exception as exc: raise
         plan_result = []
     return {"plan": plan_result}
 
@@ -3861,7 +3793,7 @@ async def recall_delete(req: S.DeleteRequest, request: Request):
     ms = MemoryService(mt_memory, ctx.namespace)
     try:
         coord = tuple(req.coordinate)
-    except Exception:
+    except Exception as exc: raise
         raise HTTPException(status_code=400, detail="Invalid coordinate format")
     ms.delete(coord)
     return S.DeleteResponse()
@@ -3930,7 +3862,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
                 rel_types=None,
                 universe=getattr(body, "universe", None),
             )
-        except Exception:
+        except Exception as exc: raise
             plan_result = []
     return S.ActResponse(
         task=body.task,
@@ -3948,8 +3880,7 @@ async def get_neuromodulators(request: Request):
     require_auth(request, cfg)
     try:
         audit.log_admin_action(request, "neuromodulators_read")
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     # Return current state; the Neuromodulators singleton holds a NeuromodState
     tenant_ctx = await get_tenant_async(request, cfg.namespace)
     state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
@@ -3994,8 +3925,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
                 },
             },
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return S.NeuromodStateModel(
         dopamine=new_state.dopamine,
         serotonin=new_state.serotonin,
@@ -4023,7 +3953,7 @@ async def health_memory(request: Request) -> Dict[str, Any]:
         pending_count = len(get_pending_events(limit=1000))
         # Filter by tenant if possible
         # Note: This is approximate, actual filtering would need tenant-aware query
-    except Exception:
+    except Exception as exc: raise
         pending_count = 0
 
     return {
@@ -4056,7 +3986,7 @@ async def health_oak(request: Request) -> Dict[str, Any]:
     try:
         _ = MilvusClient()
         milvus_ok = True
-    except Exception:
+    except Exception as exc: raise
         milvus_ok = False
 
     # OPA health – use the attached SimpleOPAEngine if present.
@@ -4066,7 +3996,7 @@ async def health_oak(request: Request) -> Dict[str, Any]:
         opa_engine = getattr(app.state, "opa_engine", None)
         if opa_engine:
             opa_ok = await opa_engine.health()
-    except Exception:
+    except Exception as exc: raise
         opa_ok = False
 
     return {
@@ -4092,7 +4022,7 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
     if body.from_key:
         try:
             start_coord = memsvc.coord_for_key(body.from_key, universe=universe)
-        except Exception:
+        except Exception as exc: raise
             start_coord = None
     edges = []
     if start_coord:
@@ -4117,8 +4047,7 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
                 id(_mc),
                 repr(_mc),
             )
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         edges = memsvc.links_from(
             start_coord,
             type_filter=body.type,

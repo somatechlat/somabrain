@@ -36,7 +36,7 @@ from typing import Optional
 
 try:
     import requests  # type: ignore
-except Exception:  # pragma: no cover – ``requests`` may be unavailable in minimal envs.
+except Exception as exc: raise  # pragma: no cover – ``requests`` may be unavailable in minimal envs.
     requests = None  # type: ignore
 
 
@@ -53,7 +53,7 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
         try:
             resp = requests.get(url, timeout=timeout)
             return resp.status_code
-        except Exception:
+        except Exception as exc: raise
             return None
     # Fallback to urllib
     try:
@@ -61,7 +61,7 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
             url, timeout=timeout
         ) as resp:  # noqa: S310 – URL is provided by caller.
             return resp.getcode()
-    except Exception:
+    except Exception as exc: raise
         return None
 
 

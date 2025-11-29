@@ -1,4 +1,3 @@
-"""Utility script to bulk replace legacy ``settings.getenv`` calls with
 the new ``Settings`` attributes.
 
 The project now centralises configuration in ``common.config.settings``
@@ -25,7 +24,6 @@ import pathlib
 import re
 from typing import Dict, List
 
-# Mapping from legacy environment variable names to Settings attribute names.
 ENV_TO_ATTR: Dict[str, str] = {
     "SOMABRAIN_POSTGRES_DSN": "postgres_dsn",
     "SOMABRAIN_REDIS_URL": "redis_url",

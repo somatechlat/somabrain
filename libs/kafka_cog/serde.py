@@ -5,7 +5,7 @@ from typing import Any, Dict
 try:
     # Optional dependency; tests may skip when unavailable.
     from fastavro import parse_schema, schemaless_reader, schemaless_writer  # type: ignore
-except Exception:  # pragma: no cover - optional in minimal envs
+except Exception as exc: raise  # pragma: no cover - optional in minimal envs
     parse_schema = None  # type: ignore
     schemaless_reader = None  # type: ignore
     schemaless_writer = None  # type: ignore

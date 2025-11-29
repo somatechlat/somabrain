@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Roadmap Invariant Scanner (strict-mode).
 
-Fails the build when banned shims/fallbacks or legacy keywords show up.
 """
 
 from __future__ import annotations

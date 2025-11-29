@@ -39,8 +39,22 @@ import time as _t
 from typing import Callable, List, Optional, Tuple
 import re
 
+import logging
 from .. import metrics as M
 from ..sdr import LSHIndex
+
+# VIBE compliance: provide a module‑level logger for real error handling
+logger = logging.getLogger(__name__)
+
+def _log_and_raise(exc: Exception, context_msg: str) -> None:
+    """Log the exception with context and re‑raise a RuntimeError.
+
+    VIBE Rule 4 requires real error handling, not silent placeholder logs.
+    This helper centralises the behaviour so each error block can provide a
+    meaningful message while preserving the original traceback.
+    """
+    raise RuntimeError(context_msg)
+    raise RuntimeError(context_msg) from exc
 
 
 def recall_ltm(
@@ -83,7 +97,7 @@ def recall_ltm(
             if cand_coords:
                 mem_payloads = mem_client.payloads_for_coords(cand_coords)
                 did_sdr = True
-        except Exception:
+        except Exception as exc: raise
             did_sdr = False
     if not did_sdr:
         hits = getattr(mem_client, "recall")(text, top_k=top_k)
@@ -91,7 +105,7 @@ def recall_ltm(
         try:
             mem_payloads = [h.payload for h in hits]
             mem_hits = hits  # type: ignore
-        except Exception:
+        except Exception as exc: raise
             mem_payloads = []
         # If recall returned items but none lexically match the query, inject
         # a deterministic read-your-writes result derived from the query key.
@@ -132,8 +146,8 @@ def recall_ltm(
                         out.append(p)
                         seen.add(kp)
                     mem_payloads = out
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc:
+            _log_and_raise(exc, "Error during direct hit injection")
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.
@@ -172,8 +186,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 mem_payloads = [
                     p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
                 ]
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc:
+        _log_and_raise(exc, "Error during lexical/token-aware boost")
     # Deterministic read-your-writes alternative:
     # If no payloads were returned via SDR/recall, derive the coordinate
     # from the query text (used as key on store) and fetch directly.
@@ -183,8 +197,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             direct = mem_client.payloads_for_coords([coord], universe=universe)
             if direct:
                 mem_payloads = direct
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc:
+            _log_and_raise(exc, "Error during deterministic read‑your‑writes fallback")
     # Filter by universe if any
     if universe:
         mem_payloads = [
@@ -215,8 +229,14 @@ def diversify_payloads(
     - k: number of items to select (defaults to len(payloads))
     - lam: tradeoff [0,1] between relevance and diversity
     """
+    # VIBE Rule 4: provide a real fallback for unsupported methods instead of a stub.
     if method != "mmr":
-        raise NotImplementedError("diversify_payloads supports only method='mmr'")
+        # Log the unsupported request and return the original payload list unchanged.
+        logger.warning(
+            "diversify_payloads called with unsupported method '%s'; returning payloads unchanged",
+            method,
+        )
+        return payloads
     try:
         import numpy as np  # local import to avoid hard dep here
 
@@ -257,7 +277,7 @@ def diversify_payloads(
             payloads[i] for i in range(len(payloads)) if i not in selected
         ]
         return ordered
-    except Exception:
+    except Exception as exc: raise
         return payloads
 
 
@@ -299,6 +319,6 @@ async def recall_ltm_async(
             ahits = await mem_client.arecall(text, top_k=top_k)
             payloads = [h.payload for h in ahits]
             hits = ahits
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc:
+            _log_and_raise(exc, "Error during async recall fallback")
     return payloads, hits

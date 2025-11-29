@@ -119,7 +119,7 @@ def run_nrem(
                 factor=float(getattr(cfg, "link_decay_factor", 0.98) or 0.98),
                 min_weight=float(getattr(cfg, "link_min_weight", 0.05) or 0.05),
             )
-    except Exception:
+    except Exception as exc: raise
         pruned = 0
     return {"created": 1, "reinforced": reinforced, "pruned": pruned}
 

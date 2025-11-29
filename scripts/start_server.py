@@ -24,7 +24,7 @@ def _coerce_int(value: str | int | None, default: int) -> int:
         if value is None:
             return default
         return int(value)
-    except Exception:
+    except Exception as exc: raise
         return default
 
 

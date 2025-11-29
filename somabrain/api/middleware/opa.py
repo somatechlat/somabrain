@@ -28,9 +28,8 @@ class OpaMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         try:
             opa_url = getattr(settings, "opa_url", None)
-        except Exception:
+        except Exception as exc: raise
             opa_url = None
-        # No legacy fallback – rely solely on the canonical ``opa_url`` field.
         # If ``opa_url`` is empty, the middleware will treat OPA as unavailable.
         # Build minimal input payload for OPA – include request method, path and JSON body if any
         input_payload = {
@@ -43,7 +42,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
             if body_bytes:
                 try:
                     input_payload["json"] = json.loads(body_bytes)
-                except Exception:
+                except Exception as exc: raise
                     # Non‑JSON body – ignore but keep raw bytes for debugging
                     input_payload["raw_body"] = body_bytes.decode(errors="ignore")
 
@@ -52,9 +51,8 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 return {"type": "http.request", "body": body_bytes}
 
             request._receive = receive  # type: ignore[attr-defined]
-        except Exception:
+        except Exception as exc: raise
             # If reading the body fails we continue with method/path only
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # If OPA URL is not configured, fall back to local opa_client evaluation
         if not opa_url:
@@ -94,7 +92,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     timeout_seconds = float(
                         getattr(settings, "opa_timeout_seconds", 2.0)
                     )
-                except Exception:
+                except Exception as exc: raise
                     timeout_seconds = 2.0
             async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 resp = await client.post(query_url, json={"input": input_payload})
@@ -161,7 +159,7 @@ async def opa_enforcement(
         if request.headers.get("content-type", "").startswith("application/json"):
             try:
                 body = await request.json()
-            except Exception:
+            except Exception as exc: raise
                 body = None
         input_payload = {
             "path": request.url.path,

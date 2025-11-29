@@ -17,7 +17,6 @@ from types import SimpleNamespace
 
 if TYPE_CHECKING:
     # runtime-only imports omitted for doc builds and static analysis
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 router = APIRouter(prefix="/persona")
 
@@ -57,7 +56,7 @@ async def put_persona(
             import somabrain.app as _app_mod
 
             mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
-        except Exception:
+        except Exception as exc: raise
             mem_backend = None
     if mem_backend is None:
         try:
@@ -67,9 +66,8 @@ async def put_persona(
             mem_backend = MultiTenantMemory(_cfg)
             try:
                 setattr(_rt, "mt_memory", mem_backend)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-        except Exception:
+            except Exception as exc: raise
+        except Exception as exc: raise
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
@@ -78,7 +76,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
     coord = ms.coord_for_key(key)
     try:
         existing = ms.payloads_for_coords([coord]) or []
-    except Exception:
+    except Exception as exc: raise
         existing = []
 
     # Find most recent persona payload (exclude tombstones)
@@ -115,9 +113,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # persona.traits may be a dict; ensure proper type
         _ps.set(ctx.tenant_id, dict(persona.properties or {}))
-    except Exception:
+    except Exception as exc: raise
         # Non‑critical: ignore if store unavailable
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     new_etag = _compute_etag(payload)
     response.headers["ETag"] = new_etag
@@ -142,7 +139,7 @@ async def get_persona(pid: str, request: Request, response: Response):
             import somabrain.app as _app_mod
 
             mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
-        except Exception:
+        except Exception as exc: raise
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
@@ -180,7 +177,7 @@ async def delete_persona(pid: str, request: Request):
             import somabrain.app as _app_mod
 
             mem_backend = getattr(_app_mod, "mt_memory", None) or mem_backend
-        except Exception:
+        except Exception as exc: raise
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"

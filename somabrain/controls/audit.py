@@ -62,7 +62,7 @@ class AuditLogger:
                     return ""
                 rec = json.loads(last.decode("utf-8"))
                 return str(rec.get("hash", ""))
-        except Exception:
+        except Exception as exc: raise
             return ""
 
     def _hash(self, rec: Dict[str, Any]) -> str:
@@ -86,8 +86,6 @@ class AuditLogger:
                 self._prev_hash = h
                 try:
                     AUDIT_WRITES.inc()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-            except Exception:
+                except Exception as exc: raise
+            except Exception as exc: raise
                 # best-effort; do not crash request path
-raise NotImplementedError("Placeholder removed per VIBE rules")

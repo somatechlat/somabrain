@@ -64,7 +64,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                 raw_body = await request.body()
                 # restore for downstream handlers
                 request._body = raw_body  # type: ignore[attr-defined]
-        except Exception:
+        except Exception as exc: raise
             raw_body = b""
         headers = dict(request.headers)
         # Load configuration once per request using cached helper
@@ -101,7 +101,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                     raw_body,
                     header_str,  # type: ignore[arg-type]
                 )
-            except Exception:
+            except Exception as exc: raise
                 ctx["provenance_valid"] = None
 
         # Compatibility guard: common mistake where clients send a list of chat turns to /remember
@@ -146,12 +146,11 @@ class ControlsMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             # best-effort guard; log the failure and continue with normal handling
             from common.logging import logger
-            logger.exception("OPA policy evaluation failed: %s", exc)
+            raise RuntimeError("OPA policy evaluation failed: %s", exc)
         dec = self.engine.evaluate(ctx)
         try:
             POLICY_DECISIONS.labels(decision=dec.decision).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # Audit pre decision
         self.audit.write(
             {

@@ -94,9 +94,8 @@ class CircuitBreaker:
                 gauge.labels(tenant_id=str(tenant)).set(
                     1 if self._circuit_open.get(tenant, False) else 0
                 )
-        except Exception:
+        except Exception as exc: raise
             # In environments without Prometheus the import may fail – silently ignore.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # ---------------------------------------------------------------------
     # Public API – used by services

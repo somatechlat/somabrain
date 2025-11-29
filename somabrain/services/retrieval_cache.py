@@ -48,8 +48,7 @@ def store_candidates(
             key[1],
             len(_cache.get(key, [])),
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateRecord]:
@@ -66,8 +65,7 @@ def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateR
             key[1],
             len(out),
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return out
 
 
@@ -84,6 +82,5 @@ def get_candidates_any(namespace: str | None) -> List[_CandidateRecord]:
                 out.extend([dict(c) for c in entries])
     try:
         _log.debug("retrieval_cache.get_any: ns=%r total=%d", ns, len(out))
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return out

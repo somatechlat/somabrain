@@ -37,7 +37,6 @@ def compute_tiny_floor(
     floors for FFT bins should square this and divide by D
     (power_per_bin = tiny_amp**2 / D).
 
-    Accepts the legacy flexible calling convention (dtype or dim first).
     The returned value is cached on canonical primitive keys to avoid
     lru_cache errors with unhashable args.
     """
@@ -47,7 +46,7 @@ def compute_tiny_floor(
 
         dt_try = np.dtype(_cast(_Any, dim_or_array))
         is_dtype_like = True
-    except Exception:
+    except Exception as exc: raise
         is_dtype_like = False
 
     if is_dtype_like and isinstance(dtype, (int, np.integer)):
@@ -61,12 +60,12 @@ def compute_tiny_floor(
             if shape is not None:
                 try:
                     D = int(shape[-1])
-                except Exception:
+                except Exception as exc: raise
                     D = int(np.prod(shape))
             else:
                 try:
                     D = int(len(dim_or_array))  # type: ignore[arg-type]
-                except Exception:
+                except Exception as exc: raise
                     D = 1
         dt = np.dtype(dtype)
 
@@ -119,7 +118,6 @@ def normalize_array(
     tiny_floor_strategy: str = "sqrt",
     dtype: Any = np.float32,
     strict: bool = False,
-    mode: str = "legacy_zero",
     **kwargs,
 ) -> np.ndarray:
     """
@@ -131,11 +129,8 @@ def normalize_array(
     # Legacy compatibility:
     # - allow old keyword `raise_on_subtiny` -> strict
     # - tolerate callers that passed `dim` as the axis (e.g. axis >= arr.ndim)
-    # - detect legacy positional usage: normalize_array(x, D, dtype, raise_on_subtiny=...)
     if "raise_on_subtiny" in kwargs:
         strict = bool(kwargs.pop("raise_on_subtiny"))
-    # mode choices: 'legacy_zero' (default), 'robust' (baseline unit-vector), 'strict'
-    if mode not in ("legacy_zero", "robust", "strict"):
         raise ValueError(f"unknown normalize mode: {mode}")
 
     arr = np.asarray(x)
@@ -148,22 +143,21 @@ def normalize_array(
     axis_norm = axis if axis >= 0 else ndim + axis
     try:
         D = arr.shape[axis_norm]
-    except Exception:
+    except Exception as exc: raise
         # Treat axis param as D when it doesn't index into arr
         try:
             D = int(axis_param)
-        except Exception:
+        except Exception as exc: raise
             D = arr.shape[-1]
         # use last axis for normalization in this compatibility case
         axis = -1
         axis_norm = ndim - 1
-    # Handle legacy positional dtype passed as `keepdims` (e.g. 'float32')
     if not isinstance(keepdims, (bool,)):
         try:
             # caller passed dtype as the second positional argument
             dtype = np.dtype(keepdims)
             keepdims = False
-        except Exception:
+        except Exception as exc: raise
             # keepdims really was a truthy/falsey value
             keepdims = bool(keepdims)
 
@@ -175,7 +169,7 @@ def normalize_array(
     # dim as the second argument.
     try:
         cur_len = arr.shape[axis_norm]
-    except Exception:
+    except Exception as exc: raise
         cur_len = None
     if cur_len is not None and cur_len != D:
         if cur_len < D:
@@ -212,7 +206,6 @@ def normalize_array(
     if np.any(mask_subtiny):
         if strict or mode == "strict":
             raise ValueError("vector norm below tiny_floor in strict mode")
-        if mode == "legacy_zero":
             # Legacy behaviour: return zero-vector for subtiny norms
             zero_full = np.zeros_like(arr, dtype=arr.dtype)
             if mask_subtiny.ndim == 0:
@@ -283,7 +276,6 @@ def normalize_array(
 # Backwards-compatible wrappers: tests and older code expect `make_unitary_role`
 # to accept a token/name and keyword args like `D` and `global_seed`. The
 # canonical implementation lives in `somabrain.roles` which uses a (dim, seed)
-# signature. Provide a thin adapter here to preserve the legacy API.
 
 
 def make_unitary_role(
@@ -347,7 +339,7 @@ def spectral_floor_from_tiny(tiny_amplitude: float, dim: int) -> float:
     """
     try:
         D = int(dim)
-    except Exception:
+    except Exception as exc: raise
         D = int(getattr(dim, "__len__", lambda: dim)())
     # convert amplitude floor (||x||_2 units) to per-frequency-bin power floor
     tiny_amp = float(tiny_amplitude)

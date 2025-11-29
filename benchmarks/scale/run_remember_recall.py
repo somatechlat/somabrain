@@ -32,8 +32,7 @@ def read_env_port() -> int:
                     _, v = line.strip().split("=", 1)
                     try:
                         port = int(v)
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
     return port or DEFAULT_PORT
 
 

@@ -43,8 +43,7 @@ class FeatureFlags:
             disabled = data.get("disabled")
             if isinstance(disabled, list):
                 return [str(x).strip().lower() for x in disabled]
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         return []
 
     @classmethod
@@ -90,5 +89,5 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
             )
             return True
-        except Exception:
+        except Exception as exc: raise
             return False

@@ -31,8 +31,7 @@ def read_env_port() -> int:
                     _, v = line.strip().split("=", 1)
                     try:
                         port = int(v)
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
     return port or DEFAULT_PORT
 
 
@@ -130,8 +129,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
             for t in tasks:
                 try:
                     t.cancel()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             results = await asyncio.gather(*tasks, return_exceptions=True)
         total_ms = (time.perf_counter() - start) * 1000.0
         # Normalize results: some entries may be exceptions; convert to consistent dicts
@@ -179,7 +177,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if recall_status == 200:
                 try:
                     recall_json = r.json()
-                except Exception:
+                except Exception as exc: raise
                     recall_json = {"error": "invalid json response"}
             else:
                 recall_text = r.text

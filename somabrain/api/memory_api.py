@@ -64,8 +64,7 @@ def _handle_config_event(event) -> None:
             sparsity=metrics.get("sparsity"),
             config_version=event.version,
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 register_config_listener(_handle_config_event)
@@ -297,7 +296,6 @@ class CutoverPlanResponse(BaseModel):
 
 
 def _tiered_enabled() -> bool:
-    # Centralized feature gating with legacy env compatibility handled in modes
     from somabrain.modes import feature_enabled
 
     return feature_enabled("tiered_memory")
@@ -408,15 +406,14 @@ def _runtime_module():
         from somabrain import runtime as rt  # type: ignore
 
         return rt
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     # Last resort: find a loaded module referencing runtime.py by filepath
     for mod in list(sys.modules.values()):
         try:
             mf = getattr(mod, "__file__", "") or ""
             if mf.endswith("somabrain/runtime.py"):
                 return mod
-        except Exception:
+        except Exception as exc: raise
             continue
     # If nothing found, import the package module now
     from somabrain import runtime as rt  # type: ignore
@@ -467,7 +464,7 @@ def _serialize_coord(coord: Any) -> Optional[List[float]]:
     if isinstance(coord, (list, tuple)) and len(coord) == 3:
         try:
             return [float(coord[0]), float(coord[1]), float(coord[2])]
-        except Exception:
+        except Exception as exc: raise
             return None
     return None
 
@@ -645,12 +642,11 @@ async def remember_memory(
 
     try:
         items = len(wm.items(payload.tenant))
-    except Exception:
+    except Exception as exc: raise
         items = 0
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     signal_feedback = MemorySignalFeedback(
         importance=signal_data.get("importance"),
@@ -776,8 +772,7 @@ async def remember_memory_batch(
         if coordinate is not None:
             try:
                 ctx["payload"]["coordinate"] = coordinate
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         promoted_to_wm = False
         if ctx["vector"] is not None:
@@ -828,12 +823,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
     try:
         items = len(wm.items(payload.tenant))
-    except Exception:
+    except Exception as exc: raise
         items = 0
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     return MemoryBatchWriteResponse(
         ok=True,
@@ -866,7 +860,7 @@ async def _perform_recall(
     except HTTPException:
         if layer in {"wm", "all"}:
             raise
-    except Exception:
+    except Exception as exc: raise
         embedder = None
         query_vec = None
 
@@ -903,7 +897,7 @@ async def _perform_recall(
                 else:
                     continue
                 return time.time() - ts <= payload.max_age_seconds
-            except Exception:
+            except Exception as exc: raise
                 continue
         return False
 
@@ -957,8 +951,7 @@ async def _perform_recall(
                 from somabrain import metrics as M
 
                 M.RECALL_WM_LAT.labels(cohort="memory_api").observe(stage_dur)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             for score, item_payload in hits:
                 if not isinstance(item_payload, dict):
                     continue
@@ -973,8 +966,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     wm_hits.append(item)
         except HTTPException:
             raise
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     if layer in {"ltm", "all"}:
         pool = _get_memory_pool()
@@ -1000,8 +992,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             from somabrain import metrics as M
 
             M.RECALL_LTM_LAT.labels(cohort="memory_api").observe(stage_dur)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         for hit in hits:
             payload_obj = getattr(hit, "payload", None)
             if not isinstance(payload_obj, dict):
@@ -1029,7 +1020,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 payload.namespace,
                 query_vector=query_vec,
             )
-        except Exception:
+        except Exception as exc: raise
             tiered_hit = None
         if tiered_hit is not None and tiered_hit.payload is not None:
             payload_copy = copy.deepcopy(tiered_hit.payload)
@@ -1085,8 +1076,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
     duration = time.perf_counter() - start
     try:
         observe_recall_latency(payload.namespace, duration)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()
@@ -1108,8 +1098,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 eta=tiered_eta_value,
                 sparsity=tiered_sparsity_value,
             )
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     top_confidence = 0.0
     if all_results:
@@ -1117,7 +1106,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if confidence is not None:
             try:
                 top_confidence = float(confidence)
-            except Exception:
+            except Exception as exc: raise
                 top_confidence = 0.0
 
     try:
@@ -1130,8 +1119,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 latency_p95_ms=duration * 1000.0,
             )
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
     try:
@@ -1143,9 +1131,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             margin=float(tiered_margin_value or 0.0),
             latency_p95_ms=duration * 1000.0,
         )
-    except Exception:
+    except Exception as exc: raise
         # Best-effort: ignore when no plan is open or namespaces do not match.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -1168,14 +1155,14 @@ def _as_float_list(coord: object) -> Optional[List[float]]:
     if isinstance(coord, (list, tuple)) and len(coord) >= 3:
         try:
             return [float(coord[0]), float(coord[1]), float(coord[2])]
-        except Exception:
+        except Exception as exc: raise
             return None
     if isinstance(coord, str):
         try:
             parts = [float(x.strip()) for x in coord.split(",")]
             if len(parts) >= 3:
                 return [parts[0], parts[1], parts[2]]
-        except Exception:
+        except Exception as exc: raise
             return None
     return None
 
@@ -1211,7 +1198,7 @@ def _coerce_to_retrieval_request(
             # Retrieve configuration via attribute lookup; fallback to None.
             v = getattr(settings, name.lower(), None)
             return v if v is not None and v != "" else default
-        except Exception:
+        except Exception as exc: raise
             return default
 
     def _env_bool(name: str, default: bool) -> bool:
@@ -1327,7 +1314,6 @@ async def recall_memory(
     """Unified recall endpoint backed by the retrieval pipeline.
 
     Accepts either a plain string (JSON string) or an object body. For object bodies,
-    accepts the legacy MemoryRecallRequest fields as well as RetrievalRequest fields.
     """
     await _ensure_config_runtime_started()
     cfg = settings
@@ -1383,8 +1369,7 @@ async def recall_memory(
         from somabrain import metrics as M
 
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     # Prepare response
     return MemoryRecallResponse(
@@ -1458,14 +1443,13 @@ async def memory_metrics(
 
     try:
         wm_items = len(wm.items(tenant))
-    except Exception:
+    except Exception as exc: raise
         wm_items = 0
 
     # No local outbox/journal; fail-fast semantics only
     try:
         record_memory_snapshot(tenant, namespace, items=wm_items)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     return MemoryMetricsResponse(
         tenant=tenant,
@@ -1519,7 +1503,7 @@ async def list_outbox_events(
         try:
             if ev.created_at is not None:
                 created_ts = ev.created_at.timestamp()
-        except Exception:
+        except Exception as exc: raise
             created_ts = 0.0
         summaries.append(
             OutboxEventSummary(

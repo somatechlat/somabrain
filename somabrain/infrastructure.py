@@ -9,7 +9,7 @@ try:
     from common.config.settings import settings
 
     # The Settings singleton is imported above; no need for a redundant alias.
-except Exception:  # pragma: no cover - optional dependency in lean environments
+except Exception as exc: raise  # pragma: no cover - optional dependency in lean environments
     settings = None  # type: ignore
 
 
@@ -18,7 +18,7 @@ def _clean(value: Optional[str]) -> Optional[str]:
         return None
     try:
         text = str(value).strip()
-    except Exception:
+    except Exception as exc: raise
         return None
     return text or None
 
@@ -36,7 +36,7 @@ def _from_settings(attr: str) -> Optional[str]:
         return None
     try:
         return _clean(getattr(settings, attr, None))
-    except Exception:
+    except Exception as exc: raise
         return None
 
 

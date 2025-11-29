@@ -96,7 +96,6 @@ class QuotaManager:
     def _is_exempt(self, tenant_id: str) -> bool:
         """Return True if the tenant should bypass quota checks.
 
-        Uses the (now synchronous) tenant manager. Falls back to legacy
         behaviour for exempt tenants such as ``AGENT_ZERO``.
         """
         try:
@@ -108,7 +107,7 @@ class QuotaManager:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
             return loop.run_until_complete(tenant_manager.is_exempt_tenant(tenant_id))
-        except Exception:
+        except Exception as exc: raise
             return "agent_zero" in tenant_id.lower()
 
     def allow_write(self, tenant_id: str, n: int = 1) -> bool:
@@ -208,5 +207,5 @@ class QuotaManager:
                 tenant_manager.get_tenant_quota_config(tenant_id)
             )
             return quota_config.get("daily_quota", self.cfg.daily_writes)
-        except Exception:
+        except Exception as exc: raise
             return self.cfg.daily_writes

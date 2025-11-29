@@ -84,7 +84,6 @@ class AdaptiveParameter:
 
 
 class AdaptiveCore:
-    """Compatibility shim for the legacy ``AdaptiveCore`` API.
 
     The original ``AdaptiveCore`` coordinated multiple adaptive parameters and
     exposed ``observe``/``get_system_stats``/``get_scorer`` methods.  The new

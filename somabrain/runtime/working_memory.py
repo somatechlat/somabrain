@@ -12,7 +12,7 @@ from typing import Deque, Dict, List, Optional
 
 try:  # pragma: no cover - optional dependency
     import redis  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     redis = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
@@ -26,7 +26,7 @@ def _env_true(name: str, default: bool = False) -> bool:
         return default
     try:
         return v.strip().lower() in ("1", "true", "yes", "on")
-    except Exception:
+    except Exception as exc: raise
         return default
 
 
@@ -56,7 +56,7 @@ class WorkingMemoryBuffer:
                     self._use_redis = True
                 else:
                     self._redis = None
-            except Exception:
+            except Exception as exc: raise
                 self._redis = None
         else:
             self._redis = None
@@ -90,7 +90,7 @@ class WorkingMemoryBuffer:
                 try:
                     data = json.loads(raw)
                     snapshot.append(data)
-                except Exception:
+                except Exception as exc: raise
                     continue
             return list(reversed(snapshot))
         # In‑process fallback

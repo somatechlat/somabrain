@@ -207,7 +207,7 @@ class IntegratorLeaderElection:
 
             return False
 
-        except Exception:
+        except Exception as exc: raise
             LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="redis_error").set(0)
             return False
 
@@ -252,7 +252,7 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception:
+        except Exception as exc: raise
             LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="error").inc()
             return False
 
@@ -290,7 +290,7 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception:
+        except Exception as exc: raise
             LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="heartbeat").set(0)
             return False
 
@@ -322,7 +322,7 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception:
+        except Exception as exc: raise
             return False
 
     def get_leader_info(self, tenant: str) -> Optional[Tuple[str, float]]:
@@ -338,7 +338,7 @@ class IntegratorLeaderElection:
 
             return None
 
-        except Exception:
+        except Exception as exc: raise
             return None
 
     def can_transition_leader(self, tenant: str, current_entropy: float) -> bool:

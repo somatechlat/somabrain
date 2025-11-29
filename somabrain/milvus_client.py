@@ -35,7 +35,7 @@ try:
     )
     from pymilvus.exceptions import MilvusException
     _PYMILVUS_AVAILABLE = True
-except Exception:  # pragma: no cover – exercised only when pymilvus missing
+except Exception as exc: raise  # pragma: no cover – exercised only when pymilvus missing
     _PYMILVUS_AVAILABLE = False
     # Minimal stand‑ins that satisfy type checking and allow the module to be
     # imported. The real functionality is mocked in the test suite.

@@ -26,5 +26,5 @@ def compute_regret_from_confidence(confidence: float) -> float:
     """
     try:
         return max(0.0, min(1.0, 1.0 - float(confidence)))
-    except Exception:
+    except Exception as exc: raise
         return 1.0

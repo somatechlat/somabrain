@@ -45,7 +45,6 @@ class DummySession:
 
     def commit(self) -> None:
         # No‑op for the in‑memory mock.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def test_cognitive_thread_basic_operations():

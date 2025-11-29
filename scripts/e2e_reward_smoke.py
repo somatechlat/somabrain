@@ -8,7 +8,7 @@ from typing import Any
 
 try:
     import requests  # type: ignore
-except Exception:
+except Exception as exc: raise
     # requests may not be installed in CI uv env; use stdlib alternative
     import urllib.request as _rq  # type: ignore
 
@@ -43,7 +43,7 @@ def _bootstrap() -> str:
 def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
     try:
         from kafka import KafkaConsumer  # type: ignore
-    except Exception:
+    except Exception as exc: raise
         return False
     c = KafkaConsumer(
         topic,
@@ -62,14 +62,13 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
     finally:
         try:
             c.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
     try:
         from confluent_kafka import Consumer  # type: ignore
-    except Exception:
+    except Exception as exc: raise
         return False
     conf = {
         "bootstrap.servers": _bootstrap(),
@@ -93,8 +92,7 @@ def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
     finally:
         try:
             c.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def main() -> int:
@@ -103,13 +101,13 @@ def main() -> int:
     use_ck = False
     try:
         use_ck = True
-    except Exception:
+    except Exception as exc: raise
         use_ck = False
     consumer = None
     if not use_ck:
         try:
             from kafka import KafkaConsumer  # type: ignore
-        except Exception:
+        except Exception as exc: raise
             KafkaConsumer = None  # type: ignore
         if KafkaConsumer is not None:
             try:
@@ -122,7 +120,7 @@ def main() -> int:
                     consumer_timeout_ms=int(45.0 * 1000),
                     group_id=f"reward-smoke-{int(time.time())}",
                 )
-            except Exception:
+            except Exception as exc: raise
                 consumer = None
 
     # 1) POST a reward to the reward_producer
@@ -145,8 +143,7 @@ def main() -> int:
         if consumer is not None:
             try:
                 consumer.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         return 2
     try:
         data = resp.json()
@@ -155,16 +152,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if consumer is not None:
                 try:
                     consumer.close()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             return 3
     except Exception as e:
         print(f"invalid response: {e}")
         if consumer is not None:
             try:
                 consumer.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         return 4
 
     # 2) Consume one record from cog.reward.events
@@ -187,8 +182,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         finally:
             try:
                 consumer.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
     if not ok:
         print(
             "no reward event observed on Kafka topic cog.reward.events within timeout"

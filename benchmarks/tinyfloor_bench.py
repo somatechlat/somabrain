@@ -76,7 +76,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
                     # if first arg looks like a dtype and second an int, swap
                     np.dtype(a0)
                     is_dtype_like = True
-                except Exception:
+                except Exception as exc: raise
                     is_dtype_like = False
                 if is_dtype_like and isinstance(a1, (int, np.integer)):
                     dtype = a0
@@ -94,7 +94,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
                 dtype = kwargs.get("dtype", np.float32)
             try:
                 return tiny_floor_sqrt(dtype, int(dim))
-            except Exception:
+            except Exception as exc: raise
                 # As a last resort, coerce and retry
                 return tiny_floor_sqrt(np.dtype(dtype), int(dim))
 
@@ -111,8 +111,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         # oracle (pure) unbind may raise; we skip oracle errors
         try:
             _ = p.unbind(c, b)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         # compare rec to original a
         mse = float(np.mean((a - rec) ** 2))

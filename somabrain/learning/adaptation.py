@@ -21,7 +21,7 @@ class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in
 
 try:
     from common.config.settings import settings as settings
-except Exception:  # pragma: no cover - optional dependency
+except Exception as exc: raise  # pragma: no cover - optional dependency
     settings = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
@@ -49,7 +49,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
                 overrides = {
                     str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                 }
-        except Exception:
+        except Exception as exc: raise
             # Fallback to JSON parse if YAML not available or fails
             try:
                 import json as _json
@@ -62,7 +62,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception:
+            except Exception as exc: raise
                 overrides = {}
     # Optional: overrides via env JSON string
     if not overrides:
@@ -78,7 +78,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception:
+            except Exception as exc: raise
                 overrides = {}
     _TENANT_OVERRIDES = overrides
     _TENANT_OVERRIDES_PATH = path
@@ -89,7 +89,7 @@ def _get_tenant_override(tenant_id: str) -> dict:
     try:
         ov = _load_tenant_overrides()
         return ov.get(str(tenant_id), {})
-    except Exception:
+    except Exception as exc: raise
         return {}
 
 
@@ -124,8 +124,7 @@ def _get_redis():
             redis_db = settings.redis_db or settings.redis_db
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     return None
 
 
@@ -301,15 +300,13 @@ class AdaptationEngine:
                 dyn_lr = dyn_lr or bool(
                     getattr(settings, "learning_rate_dynamic", False)
                 )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         else:
             try:
                 from somabrain import runtime_config as _rt
 
                 dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         self._enable_dynamic_lr = dyn_lr
         self._gains = gains or AdaptationGains.from_settings()
 
@@ -321,8 +318,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             tau_gauge.labels(tenant_id=self._tenant_id).set(
                 self._retrieval.tau + offset
             )
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         # Load state from Redis only when explicitly enabled (test isolation by default)
         if (
@@ -355,7 +351,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         """Update base learning rate and reset effective LR to base."""
         try:
             self._base_lr = float(base_lr)
-        except Exception:
+        except Exception as exc: raise
             return
         self._lr = self._base_lr
 
@@ -390,7 +386,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 self._retrieval.beta = float(rw.beta)
                 self._retrieval.gamma = float(rw.gamma)
                 self._retrieval.tau = float(rw.tau)
-            except Exception:
+            except Exception as exc: raise
                 self._retrieval.alpha = 1.0
                 self._retrieval.beta = 0.2
                 self._retrieval.gamma = 0.1
@@ -470,7 +466,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
             neuromod = PerTenantNeuromodulators()
             return neuromod.get_state(self._tenant_id)
-        except Exception:
+        except Exception as exc: raise
             return None
 
     @property
@@ -558,7 +554,6 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             from somabrain import runtime_config as _rt
 
-            # Env alternative for legacy tests
             env_enable = settings.tau_decay_enabled
             env_rate = settings.tau_decay_rate
             enable_tau_decay = (
@@ -581,10 +576,9 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             ov = getattr(self, "_tenant_override", {})
             if isinstance(ov.get("tau_decay_rate"), (int, float)):
                 tau_decay_rate = float(ov["tau_decay_rate"])  # override rate
-        except Exception:
+        except Exception as exc: raise
             enable_tau_decay = False
             tau_decay_rate = 0.0
-        # Annealing schedule supersedes legacy decay if enabled
         try:
             from somabrain import runtime_config as _rt
 
@@ -627,7 +621,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 anneal_step_interval = int(
                     ov.get("tau_step_interval", anneal_step_interval)
                 )
-        except Exception:
+        except Exception as exc: raise
             anneal_mode = ""
             anneal_rate = 0.0
             anneal_step_interval = 10
@@ -656,8 +650,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     from somabrain import metrics as _metrics
 
                     _metrics.tau_anneal_events.labels(tenant_id=self._tenant_id).inc()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
         # Legacy tau decay path only if no annealing applied
         if not applied_anneal and enable_tau_decay and tau_decay_rate > 0.0:
             old_tau = float(self._retrieval.tau)
@@ -667,8 +660,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 from somabrain import metrics as _metrics
 
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
@@ -690,7 +682,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             ov = _get_tenant_override(self._tenant_id)
             if isinstance(ov.get("entropy_cap"), (int, float)):
                 entropy_cap = float(ov["entropy_cap"])  # override cap
-        except Exception:
+        except Exception as exc: raise
             enable_entropy_cap = False
             entropy_cap = 0.0
         # Apply entropy cap whenever a positive cap is configured, regardless of the enable flag.
@@ -712,8 +704,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 from somabrain import metrics as _metrics
 
                 _metrics.update_learning_retrieval_entropy(self._tenant_id, entropy)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             if entropy_cap > 0.0 and entropy > entropy_cap:
                 # Increment the cap‑hit metric before aborting – this satisfies the VIBE rule
                 # that every observable side‑effect must happen prior to raising.
@@ -721,8 +712,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     from somabrain import metrics as _metrics
 
                     _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
                 # Raise an explicit error to signal a policy violation. The calling
                 # code (feedback processing) will treat this as a failure and the
                 # health endpoint will still report the current metric values.
@@ -733,15 +723,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         # Track that a feedback event was applied
         try:
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         # Persist state only if enabled via env flag
         try:
             from somabrain import runtime_config as _rt
 
             _persist_enabled = _rt.get_bool("learning_state_persistence", False)
-        except Exception:
+        except Exception as exc: raise
             _persist_enabled = False
         if _persist_enabled:
             if not self._redis:
@@ -773,10 +762,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     tenant_id=self._tenant_id,
                     **asdict(self._constraint_bounds),
                 )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
+        except Exception as exc: raise
         # Ensure state persisted even if metric update fails (duplicate call is safe) when enabled
         if _persist_enabled:
             self._persist_state()
@@ -833,11 +820,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if isinstance(feedback, dict):
             try:
                 reward = float(feedback.get("reward", 0.0))
-            except Exception:
+            except Exception as exc: raise
                 reward = 0.0
             try:
                 error = float(feedback.get("error", 0.0))
-            except Exception:
+            except Exception as exc: raise
                 error = 0.0
         # Drive adaptation via existing feedback path
         self.apply_feedback(utility=reward, reward=reward)
@@ -846,20 +833,18 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             self._retrieval.tau = _clamp(
                 self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
             )
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def update_from_experience(self, exp: dict) -> None:
         # Track experiences for tests; optionally route reward to apply_feedback
         try:
             self.total_experiences = int(getattr(self, "total_experiences", 0)) + 1
-        except Exception:
+        except Exception as exc: raise
             self.total_experiences = 1
         try:
             reward = float(exp.get("reward", 0.0)) if isinstance(exp, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     @property
     def alpha(self) -> float:  # expose retrieval alpha for bounds test
@@ -870,27 +855,23 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             return
         try:
             self._lr = float(prior_params.get("learning_rate", self._lr))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         try:
             self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def monitor_performance(self, metrics: dict) -> None:
         # Record metrics and use reward (if present) to trigger adaptation
         try:
             self.performance_history = getattr(self, "performance_history", [])
             self.performance_history.append(dict(metrics))
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         try:
             reward = (
                 float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
             )
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def set_curriculum_stage(self, stage: str) -> None:
         key = str(stage).strip().lower()
@@ -948,7 +929,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             neuromod = PerTenantNeuromodulators()
             state = neuromod.get_state(self._tenant_id)
             return state.dopamine
-        except Exception:
+        except Exception as exc: raise
             return 0.0  # Neutral if unavailable
 
     def _persist_state(self):
@@ -1006,8 +987,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             # Restore counters
             self._feedback_count = state.get("feedback_count", 0)
             self._lr = state.get("learning_rate", self._base_lr)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 # Re-export RetrievalWeights for external imports (tests expect it here)
@@ -1015,8 +995,7 @@ try:
     from somabrain.context.builder import (
         RetrievalWeights as RetrievalWeights,
     )  # noqa: F401
-except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+except Exception as exc: raise
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:

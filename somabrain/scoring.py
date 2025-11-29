@@ -15,7 +15,7 @@ from common.config.settings import settings
 
 try:
     from . import metrics as M
-except Exception:
+except Exception as exc: raise
     M = None
 
 

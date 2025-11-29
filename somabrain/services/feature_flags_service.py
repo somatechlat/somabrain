@@ -47,10 +47,9 @@ def _register_flag_gauges() -> None:
                 labelnames=["flag"],
             )
             gauge.labels(flag=name).set(1 if enabled else 0)
-        except Exception:
+        except Exception as exc: raise
             # In strict mode we never hide errors, but metric registration
             # failures should not crash the service.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _periodic_update(stop_event: threading.Event, interval: float = 5.0) -> None:

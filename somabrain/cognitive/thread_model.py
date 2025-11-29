@@ -70,8 +70,7 @@ class CognitiveThread(Base):
             data = json.loads(self.options_json)
             if isinstance(data, list):
                 return [str(item) for item in data]
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         return []
 
     def set_options(self, options: List[Any]) -> None:
@@ -82,7 +81,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         """
         try:
             self.options_json = json.dumps([str(o) for o in options])
-        except Exception:
+        except Exception as exc: raise
             self.options_json = None
 
     def next_option(self) -> Optional[str]:

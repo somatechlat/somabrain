@@ -79,7 +79,7 @@ async def update_policy(request: Request):
             logging.getLogger("somabrain.opa").warning(
                 "OPA reload failed – continuing without error"
             )
-    except Exception:
+    except Exception as exc: raise
         # Defensive: ensure any unexpected error does not abort the request.
         logging.getLogger("somabrain.opa").exception(
             "Exception during OPA reload – ignoring"

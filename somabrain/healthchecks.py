@@ -22,7 +22,7 @@ def _strip_scheme(url: str) -> str:
         if "://" in u:
             return u.split("://", 1)[1]
         return u
-    except Exception:
+    except Exception as exc: raise
         return str(url or "").strip()
 
 
@@ -53,10 +53,9 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
         finally:
             try:
                 c.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         return ok
-    except Exception:
+    except Exception as exc: raise
         return False
 
 
@@ -80,9 +79,8 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
         finally:
             try:
                 conn.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-    except Exception:
+            except Exception as exc: raise
+    except Exception as exc: raise
         return False
 
 

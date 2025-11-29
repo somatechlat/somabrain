@@ -8,7 +8,6 @@ Procedure:
 
 Notes:
 - The processor may emit Avro-schemaless or JSON; we try Avro first (if fastavro available)
-  using the legacy reward_event schema, then use JSON alternative.
 """
 from __future__ import annotations
 
@@ -20,14 +19,14 @@ from typing import Any, Dict, Optional
 
 try:
     from kafka import KafkaProducer, KafkaConsumer  # type: ignore
-except Exception:
+except Exception as exc: raise
     print("kafka-python not installed", file=sys.stderr)
     sys.exit(2)
 
 try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:
+except Exception as exc: raise
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
@@ -46,7 +45,7 @@ def _avro_reward_serde() -> Optional[AvroSerde]:
         return None
     try:
         return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -58,12 +57,11 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
             out = serde.deserialize(value)  # type: ignore[arg-type]
             if isinstance(out, dict):
                 return out
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     # Use JSON alternative
     try:
         return json.loads(value.decode("utf-8"))
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -118,8 +116,7 @@ def main() -> None:
         try:
             prod.flush(5)
             prod.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     cons = KafkaConsumer(
         REWARD_TOPIC,
@@ -135,8 +132,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
     finally:
         try:
             cons.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     if not ok:
         print(

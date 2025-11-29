@@ -20,8 +20,7 @@ def require_tcp_endpoint(host: str, port: int, *, timeout: float = 1.0) -> None:
     finally:
         try:
             sock.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def require_http_service(

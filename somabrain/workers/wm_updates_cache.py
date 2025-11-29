@@ -9,7 +9,6 @@ Keys: wm:updates:{tenant}:{domain}
  - Store last N (configurable) items
  - Set TTL per key (default 8s)
 
-Feature gating is centralized via somabrain.modes.feature_enabled("wm_updates_cache"); legacy SOMABRAIN_FF_WM_UPDATES_CACHE removed.
 """
 
 from __future__ import annotations
@@ -24,13 +23,13 @@ from somabrain.common.infra import assert_ready
 
 try:  # Redis optional
     import redis  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     redis = None  # type: ignore
 
 try:
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
@@ -50,7 +49,7 @@ def _redis_client():
         return None
     try:
         return redis.Redis.from_url(url)
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -59,7 +58,7 @@ def _serde() -> Optional[AvroSerde]:
         return None
     try:
         return AvroSerde(load_schema("belief_update"))  # type: ignore[arg-type]
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -67,11 +66,10 @@ def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, An
     if serde is not None:
         try:
             return serde.deserialize(payload)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     try:
         return json.loads(payload.decode("utf-8"))
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -118,8 +116,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                 try:
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 try:
@@ -129,16 +126,13 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         r.ltrim(key, 0, max_items - 1)
                     if ttl_seconds > 0:
                         r.expire(key, ttl_seconds)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-            except Exception:
+                except Exception as exc: raise
+            except Exception as exc: raise
                 # swallow and continue
-raise NotImplementedError("Placeholder removed per VIBE rules")
     finally:
         try:
             consumer.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def main() -> None:  # pragma: no cover

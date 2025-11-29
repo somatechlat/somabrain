@@ -87,7 +87,7 @@ class FeedbackStore:
         except SQLAlchemyError:
             session.rollback()
             return 0
-        except Exception:
+        except Exception as exc: raise
             return 0
         finally:
             session.close()

@@ -76,7 +76,7 @@ def recall_memory(query_vector: List[float], top_k: int = 3) -> List[Memory]:
         top_k = 3
     try:
         top_k = max(0, int(top_k))
-    except Exception:
+    except Exception as exc: raise
         top_k = 3
     if not MEMORY_STORE or top_k == 0:
         return []

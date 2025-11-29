@@ -203,7 +203,7 @@ class SuperposedTrace:
         if eta is not None:
             try:
                 new_eta = float(eta)
-            except Exception:
+            except Exception as exc: raise
                 new_eta = self._eta
             if math.isfinite(new_eta) and 0.0 < new_eta <= 1.0:
                 self._eta = new_eta
@@ -212,7 +212,7 @@ class SuperposedTrace:
         if cleanup_topk is not None:
             try:
                 topk = int(cleanup_topk)
-            except Exception:
+            except Exception as exc: raise
                 topk = cfg.cleanup_topk
             if topk > 0 and topk != cfg.cleanup_topk:
                 cfg = replace(cfg, cleanup_topk=topk)
@@ -226,7 +226,7 @@ class SuperposedTrace:
                     ef_search=cleanup_params.get("ef_search"),
                 )
             except Exception as exc:
-                logger.exception("Failed to configure cleanup index: %s", exc)
+                raise RuntimeError("Failed to configure cleanup index: %s", exc)
 
     def rebuild_cleanup_index(
         self, cleanup_index: Optional["CleanupIndex"] = None
@@ -243,7 +243,7 @@ class SuperposedTrace:
                     self._cleanup_index.upsert(anchor_id, vec)
                     count += 1
                 except Exception as exc:
-                    logger.exception("Failed to upsert anchor %s into cleanup index: %s", anchor_id, exc)
+                    raise RuntimeError("Failed to upsert anchor %s into cleanup index: %s", anchor_id, exc)
                     continue
         return count
 

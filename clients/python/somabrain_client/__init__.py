@@ -54,7 +54,7 @@ class SomaBrainClient:
             # Import the logger lazily to avoid circular imports at module load.
             from common.logging import logger
 
-            logger.exception("Failed to load ports from ports.json: %s", exc)
+                raise RuntimeError("Failed to load ports from ports.json: %s", exc)
 
     def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any]:
         """Send an evaluation request to the SomaBrain service.

@@ -31,7 +31,7 @@ def _service_available() -> bool:
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.head("/")
             return resp.status_code < 500
-    except Exception:
+    except Exception as exc: raise
         return False
 
 

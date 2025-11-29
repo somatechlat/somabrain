@@ -19,6 +19,5 @@ def map_cb_to_sleep(cb, tenant_id: str, current: SleepState) -> SleepState:
             return SleepState.FREEZE
         if cb.should_attempt_reset(tenant_id):
             return SleepState.LIGHT
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return current

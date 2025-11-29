@@ -32,7 +32,6 @@ def load_config() -> _Settings:
 def get_config() -> Config:
     """Legacy accessor returning a ``Config`` instance.
 
-    ``MemoryClient`` (and other legacy callers) expect the returned object to
     expose an ``http`` attribute. The ``Config`` subclass defined below provides
     this attribute via a property. To maintain backward compatibility we create a
     ``Config`` instance populated with the current settings values.
@@ -42,7 +41,7 @@ def get_config() -> Config:
     # which inherits from ``Settings`` and therefore retains the same fields.
     try:
         data = _settings.dict()
-    except Exception:
+    except Exception as exc: raise
         # Fallback: use ``model_dump`` for pydantic v2 compatibility.
         data = getattr(_settings, "model_dump", lambda: dict(_settings))()
     return Config(**data)

@@ -89,8 +89,7 @@ def run(
             plot_dir.mkdir(parents=True, exist_ok=True)
             plt.savefig(plot_dir / f"capacity_D{D}.png", dpi=150)
             plt.close()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 if __name__ == "__main__":

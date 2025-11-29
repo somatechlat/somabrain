@@ -67,7 +67,7 @@ class SegmentationService:
         self.producer = make_producer()
         try:
             self._health_port = int(getattr(settings, "segment_health_port", 9016))
-        except Exception:
+        except Exception as exc: raise
             self._health_port = 9016
         start_health = str(
             getattr(settings, "segment_health_enable", "1")
@@ -200,13 +200,11 @@ class SegmentationService:
                         labelnames=["tenant"],
                     ).labels(tenant=self.tenant).set(1 if HMM_ENABLED else 0)
                     update_metrics(self.tenant, f1, false_rate, mean_latency)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
         finally:
             try:
                 self.consumer.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
 
 # ---------------------------------------------------------------------------

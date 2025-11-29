@@ -1,6 +1,5 @@
 """Centralized SomaBrain mode constants.
 
-This module collapses legacy multi‑mode/dev abstractions into a single
 enterprise mode constant. Dynamic/local override behaviours have been
 removed to enforce a unified runtime configuration surface.
 """

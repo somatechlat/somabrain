@@ -257,8 +257,7 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
         if report_outbox_replayed is not None and count > 0:
             try:
                 report_outbox_replayed(tenant_label, count)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         return count
 
@@ -306,8 +305,7 @@ def mark_tenant_events_for_replay(
         if report_outbox_replayed is not None and count > 0:
             try:
                 report_outbox_replayed(tenant_id, count)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         return count
 

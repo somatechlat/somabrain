@@ -49,7 +49,7 @@ class Hippocampus:
         if mt_memory is None or mt_wm is None:
             try:
                 from . import runtime as _rt  # type: ignore
-            except Exception:
+            except Exception as exc: raise
                 from importlib import import_module
 
                 _rt = import_module("somabrain.runtime_module")  # loaded by app
@@ -78,7 +78,7 @@ class Hippocampus:
                 vec = p.get("vector")
                 if vec is not None:
                     self._mt_wm.admit(tenant, vec, p)
-            except Exception:
+            except Exception as exc: raise
                 # Do not swallow silently; raise so caller can see real failure
                 raise
 

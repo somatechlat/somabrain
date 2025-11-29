@@ -25,7 +25,7 @@ def _svc():
 def get(key: str, default: Optional[Any] = None) -> Any:
     try:
         return _svc().effective_config("", "").get(key, default)
-    except Exception:
+    except Exception as exc: raise
         return default
 
 
@@ -38,7 +38,7 @@ def get_bool(key: str, default: bool = False) -> bool:
             return bool(val)
         if isinstance(val, str):
             return val.strip().lower() in {"1", "true", "yes", "on"}
-    except Exception:
+    except Exception as exc: raise
         return default
     return default
 
@@ -47,7 +47,7 @@ def get_float(key: str, default: float = 0.0) -> float:
     try:
         val = get(key, default)
         return float(val)
-    except Exception:
+    except Exception as exc: raise
         return default
 
 
@@ -55,5 +55,5 @@ def get_str(key: str, default: str = "") -> str:
     try:
         val = get(key, default)
         return str(val)
-    except Exception:
+    except Exception as exc: raise
         return default

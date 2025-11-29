@@ -57,7 +57,7 @@ class TenantSleepState(Base):
         else:
             try:
                 self.parameters_json = json.dumps(params, sort_keys=True)
-            except Exception:
+            except Exception as exc: raise
                 # Fallback to string representation if JSON fails.
                 self.parameters_json = str(params)
 
@@ -67,7 +67,7 @@ class TenantSleepState(Base):
             return None
         try:
             return json.loads(self.parameters_json)
-        except Exception:
+        except Exception as exc: raise
             return None
 
     def __repr__(self) -> str:

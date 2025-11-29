@@ -24,7 +24,7 @@ from scipy.linalg import expm
 
 try:
     import matplotlib.pyplot as plt
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     raise SystemExit(
         "matplotlib is required to run this benchmark. Install it and retry."
     )

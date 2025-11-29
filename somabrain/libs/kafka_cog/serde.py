@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 try:
     from fastavro import parse_schema, schemaless_reader, schemaless_writer  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     parse_schema = None  # type: ignore
     schemaless_reader = None  # type: ignore
     schemaless_writer = None  # type: ignore

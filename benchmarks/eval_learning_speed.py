@@ -32,7 +32,7 @@ def _git_sha() -> str:
             .decode()
             .strip()
         )
-    except Exception:
+    except Exception as exc: raise
         return "unknown"
 
 
@@ -183,7 +183,6 @@ def main():
         try:
             cps.append(int(token))
         except ValueError:
-raise NotImplementedError("Placeholder removed per VIBE rules")
     cps = sorted(set([c for c in cps if c > 0]))
     cps.append(len(items))  # ensure max
 

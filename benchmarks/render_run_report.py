@@ -17,7 +17,7 @@ def _read_json(p: Path) -> Any:
         return None
     try:
         return json.loads(p.read_text())
-    except Exception:
+    except Exception as exc: raise
         return None
 
 

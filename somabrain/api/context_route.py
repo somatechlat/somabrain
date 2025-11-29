@@ -227,7 +227,7 @@ async def feedback_endpoint(
     if payload.metadata is not None:
         try:
             encoded_metadata = json.dumps(payload.metadata)
-        except Exception:
+        except Exception as exc: raise
             raise HTTPException(status_code=400, detail="invalid metadata encoding")
         if len(encoded_metadata) > 8 * 1024:
             raise HTTPException(status_code=400, detail="metadata exceeds 8 KB")
@@ -237,13 +237,13 @@ async def feedback_endpoint(
         raise HTTPException(status_code=400, detail="reward and utility are required")
     try:
         reward_val = float(payload.reward)
-    except Exception:
+    except Exception as exc: raise
         raise HTTPException(status_code=400, detail="reward must be numeric")
     if not math.isfinite(reward_val) or reward_val < -10_000 or reward_val > 10_000:
         raise HTTPException(status_code=400, detail="reward out of bounds")
     try:
         util_val = float(payload.utility)
-    except Exception:
+    except Exception as exc: raise
         raise HTTPException(status_code=400, detail="utility must be numeric")
     if not math.isfinite(util_val) or util_val < -10_000 or util_val > 10_000:
         raise HTTPException(status_code=400, detail="utility out of bounds")
@@ -501,16 +501,13 @@ async def adaptation_reset_endpoint(
             )
     except HTTPException:
         raise
-    except Exception:
-        # If settings cannot be imported, remain conservative and allow only when legacy auth is disabled
+    except Exception as exc: raise
         try:
-            from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
 
-            if not _legacy_auth_disabled():
                 raise HTTPException(
                     status_code=403, detail="adaptation reset blocked (no mode info)"
                 )
-        except Exception:
+        except Exception as exc: raise
             raise HTTPException(
                 status_code=403, detail="adaptation reset blocked (no mode info)"
             )

@@ -25,7 +25,7 @@ try:
         _embedder = TinyDeterministicEmbedder(dim=256)
     else:
         _embedder = make_embedder(settings, quantum=None)
-except Exception:
+except Exception as exc: raise
     from somabrain.embeddings import TinyDeterministicEmbedder
 
     _embedder = TinyDeterministicEmbedder(dim=256)

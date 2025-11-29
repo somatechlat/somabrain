@@ -26,20 +26,19 @@ try:
 
     # publish_event returns bool; log_admin_action is kept for admin paths
     _PUBLISH_EVENT = getattr(_audit, "publish_event", None)
-except Exception:
+except Exception as exc: raise
     _PUBLISH_EVENT = None
 
 LOGGER = logging.getLogger("somabrain.constitution")
 
 
 class ConstitutionError(Exception):
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 
 def _decode_signature(sig: str) -> bytes:
     try:
         return bytes.fromhex(sig)
-    except Exception:
+    except Exception as exc: raise
         import base64
 
         return base64.b64decode(sig)
@@ -72,7 +71,6 @@ class ConstitutionEngine:
         self._signatures: List[Dict[str, str]] = []
         self._metadata: Optional[Dict[str, Any]] = None
         self._pubkey_map = self._load_pubkey_map()
-        # legacy attributes for compatibility with tests/scripts
         self._key = self._storage._redis_key
         self._sig_key = self._storage._redis_sig_key
 
@@ -83,7 +81,6 @@ class ConstitutionEngine:
         fetch keys from Vault. Otherwise, use env/PATH as before.
         """
         mapping: Dict[str, str] = {}
-        # Use Settings attributes instead of legacy getenv calls
         vault_addr = getattr(settings, "vault_addr", None)
         vault_token = getattr(settings, "vault_token", None)
         vault_path = getattr(settings, "vault_pubkey_path", None)
@@ -109,7 +106,7 @@ class ConstitutionEngine:
                     data = json.loads(env_value)
                     if isinstance(data, dict):
                         mapping = {str(k): str(v) for k, v in data.items()}
-                except Exception:
+                except Exception as exc: raise
                     parts = [p for p in env_value.split(",") if ":" in p]
                     for part in parts:
                         signer, path = part.split(":", 1)
@@ -176,7 +173,6 @@ class ConstitutionEngine:
         if not signatures:
             return False
 
-        # runtime override for legacy single-key path
         if pubkey_path:
             key_map = {"default": pubkey_path}
         else:
@@ -260,8 +256,7 @@ class ConstitutionEngine:
                 client = self._storage._connect_redis()  # type: ignore[attr-defined]
                 if client is not None:
                     client.set(self._sig_key, hexsig)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             return hexsig
         except Exception as e:
             LOGGER.debug("Constitution signing failed: %s", e)
@@ -314,7 +309,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             if self._signature:
                                 evt["constitution_sig"] = self._signature
                             _PUBLISH_EVENT(evt)
-                    except Exception:
+                    except Exception as exc: raise
                         LOGGER.debug("audit publish failed for OPA result")
                     return result
                 else:
@@ -377,7 +372,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             if self._signatures:
                                 evt["constitution_sig_set"] = self._signatures
                             _PUBLISH_EVENT(evt)
-                    except Exception:
+                    except Exception as exc: raise
                         LOGGER.debug("audit publish failed for opa bundle result")
                     return result
             except Exception as e:
@@ -398,7 +393,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception:
+            except Exception as exc: raise
                 LOGGER.debug("audit publish failed for missing constitution")
             return result
 
@@ -420,7 +415,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception:
+            except Exception as exc: raise
                 LOGGER.debug("audit publish failed for missing keys")
             return result
 
@@ -446,7 +441,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception:
+            except Exception as exc: raise
                 LOGGER.debug("audit publish failed for forbidden instance")
             return result
 
@@ -465,7 +460,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 if self._signatures:
                     evt["constitution_sig_set"] = self._signatures
                 _PUBLISH_EVENT(evt)
-        except Exception:
+        except Exception as exc: raise
             LOGGER.debug("audit publish failed for allow decision")
         return result
 
@@ -481,22 +476,16 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             client = self._storage._connect_redis()  # type: ignore[attr-defined]
             if client is not None:
                 try:
-                    legacy = client.get(self._sig_key)
-                except Exception:
-                    legacy = None
-                if legacy:
+                except Exception as exc: raise
                     try:
-                        self._signature = legacy.decode("utf-8")
-                    except Exception:
-                        self._signature = str(legacy)
+                    except Exception as exc: raise
         # If we loaded from storage but Redis signature set is empty, push current values
         if self._signatures and self._constitution:
             try:
                 self._storage._write_redis(
                     self._constitution, self._checksum, self._signatures
                 )  # type: ignore[attr-defined]
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
 
 __all__ = ["ConstitutionEngine", "ConstitutionError"]

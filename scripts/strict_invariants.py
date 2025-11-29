@@ -30,7 +30,6 @@ BAN_TOKENS = [
     "fakeredis",
     "sqlite://",
     "disable_auth",
-    # legacy kafka-python producer usage (must standardize on confluent-kafka)
     "from kafka import",
     "KafkaProducer(",
 ]
@@ -54,7 +53,7 @@ def is_text(path: Path) -> bool:
             return True
         # Heuristic: no NUL bytes
         return b"\x00" not in chunk
-    except Exception:
+    except Exception as exc: raise
         return False
 
 
@@ -70,13 +69,13 @@ def main() -> int:
             try:
                 if path.stat().st_size > MAX_SIZE:
                     continue
-            except Exception:
+            except Exception as exc: raise
                 continue
             if not is_text(path):
                 continue
             try:
                 text = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
+            except Exception as exc: raise
                 continue
             lower = text.lower()
             for token in BAN_TOKENS:

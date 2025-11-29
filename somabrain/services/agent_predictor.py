@@ -61,9 +61,6 @@ class AgentPredictorService:
 
     def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
-        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
-        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars if not set
-        # Prefer Settings' kafka_bootstrap_servers, falling back to legacy env vars for compatibility
         # Use central Settings for Kafka bootstrap; fallback to settings if defined.
         bs = getattr(settings, "kafka_bootstrap_servers", None)
         if not bs:

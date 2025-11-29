@@ -26,7 +26,7 @@ def consistency_score(
     try:
         intent = str(agent_posterior.get("intent") or "").strip().lower()
         action = str(action_posterior.get("next_action") or "").strip().lower()
-    except Exception:
+    except Exception as exc: raise
         return None
     if not intent or not action:
         return None

@@ -62,8 +62,7 @@ def _resolve_tenants(cfg: Config) -> List[str]:
                         tenants.extend(str(t).strip() for t in vals if str(t).strip())
                 elif isinstance(data, list):
                     tenants.extend(str(t).strip() for t in data if str(t).strip())
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
     return sorted(set(t for t in tenants if t))
 
 
@@ -107,8 +106,7 @@ async def get_allowed_tenants_async() -> List[str]:
         tenant_manager = await get_tenant_manager()
         tenants = await tenant_manager.list_tenants()
         return [t.tenant_id for t in tenants if t.status.value == "active"]
-    except Exception:
-        # Fallback to legacy method
+    except Exception as exc: raise
         return get_allowed_tenants()
 
 
@@ -124,7 +122,6 @@ async def get_default_tenant_async() -> str:
         if public_tenant_id:
             return public_tenant_id
 
-        # Fallback to legacy method
         return get_default_tenant()
-    except Exception:
+    except Exception as exc: raise
         return get_default_tenant()

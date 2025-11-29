@@ -50,7 +50,7 @@ class ContextPlanner:
                 return current
             try:
                 return float(value)
-            except Exception:
+            except Exception as exc: raise
                 return current
 
         self._length_penalty_scale = _env_float(

@@ -2,7 +2,6 @@
 
 Two pathways are exposed:
 
-* Dense weighting (legacy): salience := clamp(w_novelty·novelty + w_error·error).
 * FD sketching (new): maintains a low-rank Frequent-Directions sketch of the
   incoming working-memory vectors and exposes residual energy as an additional
   salience feature.

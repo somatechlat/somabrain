@@ -12,7 +12,7 @@ from somabrain.services.config_service import ConfigEvent, ConfigService
 
 try:
     from somabrain.services.cutover_controller import CutoverController
-except Exception:  # pragma: no cover - optional
+except Exception as exc: raise  # pragma: no cover - optional
     CutoverController = None  # type: ignore
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
@@ -73,8 +73,8 @@ async def _dispatch_events() -> None:
                 result = callback(event)
                 if asyncio.iscoroutine(result):
                     await result
-            except Exception:
-                _logger.exception("Config listener failed")
+            except Exception as exc: raise
+                _raise RuntimeError("Config listener failed")
 
 
 async def ensure_supervisor_worker() -> None:
@@ -98,7 +98,7 @@ async def _run_supervisor() -> None:
         snapshot = await _supervisor_queue.get()
         try:
             await _supervisor.evaluate(snapshot)
-        except Exception:
+        except Exception as exc: raise
             _logger.exception(
                 "ParameterSupervisor evaluation failed for %s/%s",
                 snapshot.tenant,

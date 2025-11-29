@@ -21,7 +21,6 @@ from somabrain.tenant import get_tenant as get_tenant_async
 
 if TYPE_CHECKING:
     # Import heavy/runtime-only types only for type checking and docs
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
 router = APIRouter()
 

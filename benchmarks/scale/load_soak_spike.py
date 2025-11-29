@@ -35,7 +35,7 @@ def run_pattern(pattern, duration_s, concurrency, rps=None):
                 if r.status_code != 200:
                     with lock:
                         errors += 1
-            except Exception:
+            except Exception as exc: raise
                 with lock:
                     errors += 1
             if rps:

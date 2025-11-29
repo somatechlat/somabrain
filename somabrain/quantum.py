@@ -1,6 +1,5 @@
 """BHDC quantum layer implementation for SomaBrain.
 
-Binary/sparse hypervectors with permutation binding replace legacy FFT and
 mask-based composers. Binding is hardware-friendly and invertible by
 construction.
 
@@ -27,7 +26,7 @@ from somabrain.seed import seed_to_uint64
 
 try:
     from memory.density import DensityMatrix  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
+except Exception as exc: raise  # pragma: no cover - optional dependency
     DensityMatrix = None  # type: ignore
 
 
@@ -74,7 +73,6 @@ class QuantumLayer:
     def __init__(self, cfg: HRRConfig):
         self.cfg = cfg
         self._role_cache: Dict[str, np.ndarray] = {}
-        # Compatibility caches expected by legacy numerics tests
         self._role_fft_cache: Dict[str, np.ndarray] = {}
         self._rng = np.random.default_rng(int(cfg.seed))
         self._encoder = BHDCEncoder(
@@ -332,8 +330,7 @@ class QuantumLayer:
                         alpha * float(density_matrix.score(query, candidate))
                         + (1 - alpha) * score
                     )
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             if score > best_score:
                 best_score = score
                 best_id = key

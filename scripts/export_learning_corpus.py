@@ -28,8 +28,7 @@ def _git_metadata() -> Dict[str, Any]:
         ).stdout.strip()
         if commit:
             meta["commit"] = commit
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
     try:
         status = subprocess.run(
@@ -43,8 +42,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             meta["status"] = status.splitlines()
         elif meta:
             meta["dirty"] = False
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return meta
 
 
@@ -62,7 +60,7 @@ def _config_snapshot() -> Dict[str, Any]:
         snapshot["targets"] = cfg_dict.get("targets")
         # Generate deterministic digest for the full config to aid audits
         snapshot["digest"] = _digest_dict(cfg_dict)
-    except Exception:
+    except Exception as exc: raise
         snapshot["error"] = "failed_to_serialize_config"
     return snapshot
 
@@ -70,7 +68,7 @@ def _config_snapshot() -> Dict[str, Any]:
 def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
     try:
         blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
-    except Exception:
+    except Exception as exc: raise
         return None
     import hashlib
 

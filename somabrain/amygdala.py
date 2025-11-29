@@ -142,8 +142,7 @@ class AmygdalaSalience:
                 stats = self._fd.stats()
                 M.FD_TRACE_ERROR.set(stats["trace_norm_error"])
                 M.FD_PSD_INVARIANT.set(1.0 if stats["psd_ok"] else 0.0)
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         else:
             self._last_fd_residual = 0.0
             self._last_fd_capture = 1.0

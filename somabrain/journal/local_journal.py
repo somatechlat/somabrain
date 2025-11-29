@@ -63,7 +63,7 @@ class JournalConfig:
             raw = raw.split("#", 1)[0].strip()
             try:
                 return int(raw)
-            except Exception:
+            except Exception as exc: raise
                 return default
 
         def _bool(name: str, default: bool) -> bool:
@@ -199,8 +199,7 @@ class LocalJournal:
         if self.current_file_handle:
             try:
                 self.current_file_handle.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             self.current_file_handle = None
 
         # Create new journal file
@@ -355,8 +354,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if self.current_file_handle:
             try:
                 self.current_file_handle.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
             self.current_file_handle = None
 
         # Remove existing journal files
@@ -413,8 +411,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if self.current_file_handle:
                 try:
                     self.current_file_handle.close()
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
                 self.current_file_handle = None
             self._initialized = False
 

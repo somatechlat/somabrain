@@ -30,7 +30,7 @@ def _clean(value: Optional[str]) -> Optional[str]:
         return None
     try:
         text = str(value).strip()
-    except Exception:
+    except Exception as exc: raise
         return None
     return text or None
 
@@ -47,7 +47,7 @@ def _from_settings(attr: str) -> Optional[str]:
     # Retrieve configuration from the centralized Settings singleton.
     try:
         return _clean(getattr(settings, attr, None))
-    except Exception:
+    except Exception as exc: raise
         return None
 
 

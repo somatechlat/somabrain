@@ -136,7 +136,7 @@ class WorkingMemory:
     def _validate_scale(value: float, default: float) -> float:
         try:
             v = float(value)
-        except Exception:
+        except Exception as exc: raise
             return float(default)
         if not math.isfinite(v) or v <= 0:
             return float(default)
@@ -201,7 +201,7 @@ class WorkingMemory:
         if cleanup_overlap is not None:
             try:
                 overlap = float(cleanup_overlap)
-            except Exception:
+            except Exception as exc: raise
                 overlap = 0.0
             if not math.isfinite(overlap) or overlap < 0.0:
                 overlap = 0.0

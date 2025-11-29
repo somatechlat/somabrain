@@ -23,7 +23,7 @@ if _FF_COG_UPDATES:
         _BU_PUBLISHER = BeliefUpdatePublisher()
         if not getattr(_BU_PUBLISHER, "enabled", False):
             _BU_PUBLISHER = None
-    except Exception:
+    except Exception as exc: raise
         _BU_PUBLISHER = None
 
 
@@ -54,7 +54,7 @@ def _get_sleep_state(tenant_id: str) -> SleepState:
         # SRS implies safety, but failing to ACTIVE might be risky if we need to freeze.
         # However, for resilience, we default to ACTIVE.
         from common.logging import logger
-        logger.exception("Failed to retrieve sleep state from DB: %s", exc)
+        raise RuntimeError("Failed to retrieve sleep state from DB: %s", exc)
         state = SleepState.ACTIVE
 
     _SLEEP_STATE_CACHE[tenant_id] = (state, now)
@@ -117,13 +117,12 @@ def eval_step(
             from .. import metrics as M  # local import to avoid cycles in tests
 
             M.PREDICTOR_ALTERNATIVE.inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         pred = type(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
         from common.logging import logger
-        logger.exception("Predictor failed, falling back to zero-error placeholder: %s", exc)
+            raise RuntimeError("Predictor failed, falling back to zero-error placeholder: %s", exc)
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     # Neuromodulation (personality + supervisor)
@@ -136,7 +135,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             traits = personality_store.get(tkey)
             if not traits:
                 traits = personality_store.get("public")
-    except Exception:
+    except Exception as exc: raise
         traits = None
     nm = personality_store.modulate_neuromods(base_nm, traits) if traits else base_nm
     F = None
@@ -155,7 +154,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 )
         except Exception as exc:
             from common.logging import logger
-            logger.exception("Supervisor adjustment failed: %s", exc)
+            raise RuntimeError("Supervisor adjustment failed: %s", exc)
 
     # Salience and gates (raw, before executive inhibition)
     s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
@@ -167,8 +166,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             # This deterministic behavior guarantees that the post‑personality
             # salience is not lower than the baseline used in the test suite.
             s = 1.0
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     store_gate, act_gate = amygdala.gates(s, nm)
 
     # Enforce Sleep Constraints (DEEP/FREEZE => eta=0 => No Storage)
@@ -202,7 +200,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
     except Exception as exc:
         # Never fail the cognitive loop due to telemetry
         from common.logging import logger
-        logger.exception("Telemetry publishing failed: %s", exc)
+        raise RuntimeError("Telemetry publishing failed: %s", exc)
 
     return {
         "pred_error": float(pred.error),

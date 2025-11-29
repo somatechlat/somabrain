@@ -95,7 +95,7 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
             # installed.
             data = json.loads(payload.decode("utf-8"))
             return data
-        except Exception:
+        except Exception as exc: raise
             continue
     return None
 

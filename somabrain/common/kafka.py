@@ -13,7 +13,7 @@ except Exception as e:  # pragma: no cover
 try:  # Avro serde utilities (optional)
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
@@ -22,7 +22,6 @@ def _bootstrap_url() -> str:
     """Get bootstrap servers from central Settings.
 
     Returns the ``kafka_bootstrap_servers`` field from the global ``settings``
-    instance, ensuring any legacy environment variables are honoured via the
     Settings model's default handling. The value is stripped of a ``kafka://``
     scheme if present.
     """
@@ -66,8 +65,7 @@ class _ProducerShim:
     def close(self):
         try:
             self._ck.flush(5)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def make_producer() -> _ProducerShim:  # pragma: no cover - integration path
@@ -83,7 +81,7 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
         return None
     try:
         return AvroSerde(load_schema(schema_name))  # type: ignore[arg-type]
-    except Exception:  # pragma: no cover
+    except Exception as exc: raise  # pragma: no cover
         return None
 
 

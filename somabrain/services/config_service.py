@@ -201,7 +201,7 @@ class ConfigService:
     def _config_to_dict(cfg: Config) -> Dict[str, Any]:
         try:
             return asdict(cfg)
-        except Exception:
+        except Exception as exc: raise
             return copy.deepcopy(cfg.__dict__)
 
     @staticmethod

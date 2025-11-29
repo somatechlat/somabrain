@@ -62,16 +62,15 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
                     # Persist cursor advancement.
                     session.commit()
                     return [nxt]
-    except Exception:
+    except Exception as exc: raise
         # Any failure (e.g., missing table) falls back to utility ranking.
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     # Retrieve only the tenant's options and sort by utility (high → low).
     # Import lazily to avoid side‑effects during module import (MemoryClient init).
     try:
         from .option_manager import option_manager  # pylint: disable=import-outside-toplevel
         options = option_manager.list_options(tenant_id)
-    except Exception:
+    except Exception as exc: raise
         # If the option manager cannot be imported (e.g., missing cfg), fallback to empty list.
         options = []
     sorted_opts = sorted(options, key=lambda o: getattr(o, "utility", 0.0), reverse=True)

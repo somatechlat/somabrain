@@ -62,14 +62,13 @@ except Exception as e:  # pragma: no cover
 # Share a single registry across module reloads/process components.
 try:
     _reg = getattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY")
-except Exception:
+except Exception as exc: raise
     _reg = None
 if not _reg:
     _reg = CollectorRegistry()
     try:
         setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 registry = _reg
 
 
@@ -77,10 +76,10 @@ def _get_existing(name: str):
     # Prefer the app registry mapping if present; fall back to global REGISTRY
     try:
         return registry._names_to_collectors.get(name)
-    except Exception:
+    except Exception as exc: raise
         try:
             return REGISTRY._names_to_collectors.get(name)
-        except Exception:
+        except Exception as exc: raise
             return None
 
 
@@ -647,8 +646,7 @@ def record_planning_latency(backend: str, latency_seconds: float) -> None:
             ordered = sorted(_planning_samples)
             idx = max(0, int(0.99 * (len(ordered) - 1)))
             PLANNING_LATENCY_P99.set(ordered[idx])
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 # Decision attribution / recall quality
@@ -931,8 +929,7 @@ OUTBOX_REPLAYED_TOTAL = _counter(
 def report_outbox_pending(tenant_id: str | None, count: int) -> None:
     try:
         OUTBOX_PENDING.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(count)
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
@@ -940,8 +937,7 @@ def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
         CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(
             1 if is_open else 0
         )
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -> None:
@@ -950,8 +946,7 @@ def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -
             tenant_id=_normalize_tenant_label(tenant_id),
             topic=str(topic),
         ).inc(max(0, int(count)))
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
@@ -959,8 +954,7 @@ def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
         OUTBOX_REPLAYED_TOTAL.labels(tenant_id=_normalize_tenant_label(tenant_id)).inc(
             max(0, int(count))
         )
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 # Ensure HTTP_FAILURES counter is only created once per process.
@@ -1251,7 +1245,6 @@ LEARNING_REGRET_EWMA = get_gauge(
     labelnames=["tenant_id"],
 )
 
-# Next-event regret gauge (legacy single-value view)
 soma_next_event_regret = get_gauge(
     "soma_next_event_regret",
     "Instantaneous next-event regret (0-1)",
@@ -1274,15 +1267,13 @@ def record_regret(tenant_id: str, regret: float) -> None:
             ema = _REGRET_ALPHA * r + (1.0 - _REGRET_ALPHA) * prev
         _regret_ema[t] = ema
         LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
     try:
         LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def record_learning_rollback(tenant_id: str):
@@ -1320,8 +1311,7 @@ def mark_external_metric_scraped(source: str) -> None:
         _external_metrics_scraped[label] = now
     try:
         EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(1)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def external_metrics_ready(
@@ -1365,8 +1355,7 @@ def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
             continue
         try:
             EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
-        except Exception:
-            raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def record_memory_snapshot(
@@ -1395,8 +1384,7 @@ def record_memory_snapshot(
             MARGIN_MEAN.labels(tenant=t, namespace=ns).set(float(margin))
         if config_version is not None:
             CONFIG_VERSION.labels(tenant=t, namespace=ns).set(float(config_version))
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
@@ -1405,8 +1393,7 @@ def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
     ns = str(namespace or "").strip() or "default"
     try:
         RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
@@ -1415,8 +1402,7 @@ def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
     ns = str(namespace or "").strip() or "default"
     try:
         ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception:
-        raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def mark_controller_change(parameter: str) -> None:
@@ -1425,8 +1411,7 @@ def mark_controller_change(parameter: str) -> None:
     name = str(parameter or "unknown").strip() or "unknown"
     try:
         CONTROLLER_CHANGES.labels(parameter=name).inc()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 async def metrics_endpoint() -> Any:
@@ -1447,17 +1432,17 @@ async def metrics_endpoint() -> Any:
     # import Response locally to avoid hard dependency at module import time
     try:
         from fastapi import Response  # type: ignore
-    except Exception:  # pragma: no cover - optional runtime dependency
+    except Exception as exc: raise  # pragma: no cover - optional runtime dependency
         # If FastAPI isn't present, return raw bytes from the shared registry
         try:
             return generate_latest(registry)
-        except Exception:
+        except Exception as exc: raise
             return b""
 
     # Export only real counters from the shared registry – no synthetic increments.
     try:
         data = generate_latest(registry)
-    except Exception:
+    except Exception as exc: raise
         data = b""
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
@@ -1505,7 +1490,6 @@ CIRCUIT_BREAKER_STATE = Gauge(
 )
 MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     "somabrain_memory_outbox_sync_total",
-    "Total number of memory sync operations from the outbox (legacy gauge removed).",
     ["status"],
     registry=registry,
 )

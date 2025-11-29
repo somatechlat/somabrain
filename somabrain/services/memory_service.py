@@ -85,7 +85,7 @@ class MemoryService:
                 timestamp=None,
             )
             journal.append_event(ev)
-        except Exception:
+        except Exception as exc: raise
             # Journal is best-effort; do not raise.
             return
 
@@ -210,7 +210,7 @@ class MemoryService:
     def _health_check(self) -> bool:
         try:
             health = self.client().health()
-        except Exception:
+        except Exception as exc: raise
             return False
         if isinstance(health, dict):
             if "http" in health:
@@ -254,7 +254,6 @@ class MemoryService:
         fields required by the tests.
         """
         state = self.__class__._circuit_breaker.get_state(self.tenant_id)
-        # Add compatibility fields expected by the legacy test suite.
         state.update({"tenant": self.tenant_id, "namespace": self.namespace})
         return state
 
@@ -318,7 +317,7 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception:
+        except Exception as exc: raise
             return None
 
     @staticmethod
@@ -329,5 +328,5 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING_BY_TENANT", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception:
+        except Exception as exc: raise
             return None

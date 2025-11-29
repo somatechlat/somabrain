@@ -37,7 +37,7 @@ debug_memory_client = False
 if settings is not None:
     try:
         debug_memory_client = bool(getattr(settings, "debug_memory_client", False))
-    except Exception:
+    except Exception as exc: raise
         debug_memory_client = False
 if debug_memory_client:
     # ensure a stderr handler exists for quick interactive debugging
@@ -61,8 +61,9 @@ def _http_setting(attr: str, default_val: int) -> int:
             if value is None:
                 return default_val
             return int(value)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
+            # If settings lookup fails, fall back to the provided default.
+            return default_val
     return default_val
 
 
@@ -81,7 +82,7 @@ def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
         parts = [float(x.strip()) for x in str(s).split(",")]
         if len(parts) >= 3:
             return (parts[0], parts[1], parts[2])
-    except Exception:
+    except Exception as exc: raise
         return None
     return None
 
@@ -163,14 +164,12 @@ def _extract_memory_coord(
                 try:
                     return _stable_coord(str(mid))
                 except (TypeError, ValueError):
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
         mid = data_dict.get("id") or data_dict.get("memory_id")
         if mid is not None:
             try:
                 return _stable_coord(str(mid))
             except (TypeError, ValueError):
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     if idempotency_key:
         try:
@@ -261,14 +260,13 @@ class MemoryClient:
         if settings is not None:
             try:
                 db_path = str(getattr(settings, "memory_db_path", "./data/memory.db"))
-            except Exception:
+            except Exception as exc: raise
                 db_path = "./data/memory.db"
         else:
             db_path = "./data/memory.db"
         try:
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # Store for potential future use (e.g., passing to the local backend)
         self._memory_db_path = db_path
         # Initialize HTTP client (primary runtime path). Local/redis
@@ -301,26 +299,25 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             try:
                 tenant_guess = ns.split(":")[-1] if ":" in ns else ns
                 headers["X-Soma-Tenant"] = tenant_guess
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
         # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
             max_conns = int(getattr(settings, "http_max_connections", default_max))
-        except Exception:
+        except Exception as exc: raise
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
             keepalive = int(
                 getattr(settings, "http_keepalive_connections", default_keepalive)
             )
-        except Exception:
+        except Exception as exc: raise
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
             retries = int(getattr(settings, "http_retries", default_retries))
-        except Exception:
+        except Exception as exc: raise
             retries = default_retries
 
         limits = None
@@ -328,7 +325,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             limits = httpx.Limits(
                 max_connections=max_conns, max_keepalive_connections=keepalive
             )
-        except Exception:
+        except Exception as exc: raise
             limits = None
 
         # Allow overriding the HTTP memory endpoint via environment variable
@@ -345,12 +342,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             try:
                 env_base = str(env_base).strip()
                 if "://" not in env_base and env_base.startswith("/"):
-raise NotImplementedError("Placeholder removed per VIBE rules")
                 elif "://" not in env_base:
                     env_base = f"http://{env_base}"
                 if env_base.endswith("/openapi.json"):
                     env_base = env_base[: -len("/openapi.json")]
-            except Exception:
+            except Exception as exc: raise
                 env_base = None
         base_url = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
         if not base_url and env_base:
@@ -371,15 +367,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         # Diagnostic: record chosen endpoint for debugging in tests
         try:
             logger.debug("MemoryClient HTTP base_url=%r", base_url)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         if limits is not None:
             client_kwargs["limits"] = limits
 
         # Create sync client
         try:
             self._http = httpx.Client(**client_kwargs)
-        except Exception:
+        except Exception as exc: raise
             self._http = None
 
         # Create async client with configurable transport retries
@@ -388,10 +383,10 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             async_kwargs = dict(client_kwargs)
             async_kwargs["transport"] = transport
             self._http_async = httpx.AsyncClient(**async_kwargs)
-        except Exception:
+        except Exception as exc: raise
             try:
                 self._http_async = httpx.AsyncClient(**client_kwargs)
-            except Exception:
+            except Exception as exc: raise
                 self._http_async = None
 
         # If endpoint is empty, treat HTTP client as unavailable
@@ -399,8 +394,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if not base_url:
                 self._http = None
                 self._http_async = None
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # Strict mode: memory is always required
         if self._http is None:
             raise RuntimeError(
@@ -419,8 +413,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 logger.warning(
                     "Memory HTTP client initialized without token; proceeding without auth."
                 )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
@@ -437,11 +430,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         r = self._http.get(path)
                         if int(getattr(r, "status_code", 0) or 0) == 200:
                             return {"http": True}
-                    except Exception:
+                    except Exception as exc: raise
                         # Try next path
                         continue
                 return {"http": False}
-        except Exception:
+        except Exception as exc: raise
             return {"ok": False}
         return {"ok": True}
 
@@ -451,7 +444,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             if hasattr(resp, "json") and callable(resp.json):
                 return resp.json()
-        except Exception:
+        except Exception as exc: raise
             return None
         return None
 
@@ -470,7 +463,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         for attempt in range(max_retries + 1):
             try:
                 resp = self._http.post(endpoint, json=body, headers=headers)
-            except Exception:
+            except Exception as exc: raise
                 if attempt < max_retries:
                     time.sleep(0.01 + random.random() * 0.02)
                 continue
@@ -500,7 +493,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         for attempt in range(max_retries + 1):
             try:
                 resp = await self._http_async.post(endpoint, json=body, headers=headers)
-            except Exception:
+            except Exception as exc: raise
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)
                 continue
@@ -629,7 +622,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         if score_val is not None:
                             score = float(score_val)
                             payload.setdefault("_score", score)
-                    except Exception:
+                    except Exception as exc: raise
                         score = None
                     coord = _extract_memory_coord(item)
                     if coord and "coordinate" not in payload:
@@ -668,8 +661,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if coord:
             try:
                 return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         if isinstance(payload, dict):
             for key in ("id", "memory_id", "key", "coord_key"):
@@ -685,7 +677,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             serial = json.dumps(raw, sort_keys=True, default=str)
             digest = hashlib.blake2s(serial.encode("utf-8"), digest_size=16).hexdigest()
             return f"hash:{digest}"
-        except Exception:
+        except Exception as exc: raise
             return f"obj:{id(hit)}"
 
     def _hit_score(self, hit: RecallHit) -> float | None:
@@ -706,7 +698,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             try:
                 if math.isnan(float(value)):
                     return None
-            except Exception:
+            except Exception as exc: raise
                 return None
             return float(value)
         if isinstance(value, str):
@@ -720,10 +712,10 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 else:
                     dt = datetime.fromisoformat(text)
                 return dt.timestamp()
-            except Exception:
+            except Exception as exc: raise
                 try:
                     return float(text)
-                except Exception:
+                except Exception as exc: raise
                     return None
         if isinstance(value, datetime):
             if value.tzinfo is None:
@@ -831,7 +823,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     base = float(hit.score)
                     if abs(base) > 1.0:
                         base = math.copysign(math.log1p(abs(base)), base)
-                except Exception:
+                except Exception as exc: raise
                     base = 0.0
             weight = 1.0
             if isinstance(payload, dict):
@@ -839,15 +831,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     wf = payload.get("_weight_factor")
                     if isinstance(wf, (int, float)):
                         weight = float(wf)
-                except Exception:
+                except Exception as exc: raise
                     weight = 1.0
             final_score = (base * weight) + lex_bonus
             if hit.score is None and lex_bonus > 0:
                 try:
                     hit.score = lex_bonus
                     payload.setdefault("_score", hit.score)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             ranked.append((final_score, lex_bonus, weight, -idx, hit))
         ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
         return [item[-1] for item in ranked]
@@ -1026,14 +1017,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         sharpness = getattr(self.cfg, "recall_recency_sharpness", 1.2)
         try:
             sharpness = float(sharpness)
-        except Exception:
+        except Exception as exc: raise
             sharpness = 1.2
         if not math.isfinite(sharpness) or sharpness <= 0:
             sharpness = 1.0
         floor = getattr(self.cfg, "recall_recency_floor", 0.05)
         try:
             floor = float(floor)
-        except Exception:
+        except Exception as exc: raise
             floor = 0.05
         if not math.isfinite(floor) or floor < 0:
             floor = 0.0
@@ -1055,7 +1046,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         recency_steps = min(damp_steps, cap)
         try:
             damp = math.exp(-(normalised**sharpness))
-        except Exception:
+        except Exception as exc: raise
             damp = 0.0
         boost = max(floor, min(1.0, damp))
         return recency_steps, boost
@@ -1066,7 +1057,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             return None
         try:
             numeric = float(value)
-        except Exception:
+        except Exception as exc: raise
             return None
         if not math.isfinite(numeric):
             return None
@@ -1096,11 +1087,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         else:
                             dt = dt.astimezone(timezone.utc)
                         return float(dt.timestamp())
-                    except Exception:
+                    except Exception as exc: raise
                         return None
             else:
                 return None
-        except Exception:
+        except Exception as exc: raise
             return None
         if not math.isfinite(value):
             return None
@@ -1130,13 +1121,13 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         weight = getattr(self.cfg, "recall_density_margin_weight", 0.35)
         try:
             target = float(target)
-        except Exception:
+        except Exception as exc: raise
             target = 0.2
         if not math.isfinite(target) or target <= 0:
             target = 0.2
         try:
             floor = float(floor)
-        except Exception:
+        except Exception as exc: raise
             floor = 0.6
         if not math.isfinite(floor) or floor < 0:
             floor = 0.0
@@ -1144,7 +1135,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             floor = 1.0
         try:
             weight = float(weight)
-        except Exception:
+        except Exception as exc: raise
             weight = 0.35
         if not math.isfinite(weight) or weight < 0:
             weight = 0.0
@@ -1202,8 +1193,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 try:
                     payload.setdefault("_recency_steps", recency_steps)
                     payload.setdefault("_recency_boost", recency_boost)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
 
             margin = self._extract_cleanup_margin(hit)
             density_factor = self._density_factor(margin)
@@ -1211,8 +1201,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if density_factor != 1.0:
                 try:
                     payload.setdefault("_density_factor", density_factor)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             new_score = max(0.0, min(1.0, float(new_score)))
 
             hit.score = new_score
@@ -1235,10 +1224,9 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 )
                 priors_env = getattr(settings, "memory_phase_priors", "") or ""
                 quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
-            except Exception:
+            except Exception as exc: raise
                 weighting_enabled = False
         else:
-            # Fallback to unified settings when legacy runtime is unavailable
             try:
                 from common.config.settings import settings as _settings
 
@@ -1249,7 +1237,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 quality_exp = float(
                     getattr(_settings, "memory_quality_exp", 1.0) or 1.0
                 )
-            except Exception:
+            except Exception as exc: raise
                 weighting_enabled = False
         if not weighting_enabled:
             return
@@ -1262,8 +1250,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     k, v = part.split(":", 1)
                     try:
                         priors[k.strip().lower()] = float(v)
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
             for hit in hits:
                 payload = hit.payload
                 phase_factor = 1.0
@@ -1272,7 +1259,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     phase = payload.get("phase") if isinstance(payload, dict) else None
                     if phase and priors:
                         phase_factor = float(priors.get(str(phase).lower(), 1.0))
-                except Exception:
+                except Exception as exc: raise
                     phase_factor = 1.0
                 try:
                     if isinstance(payload, dict) and "quality_score" in payload:
@@ -1282,13 +1269,12 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         if qs > 1:
                             qs = 1.0
                         quality_factor = (qs**quality_exp) if qs > 0 else 0.0
-                except Exception:
+                except Exception as exc: raise
                     quality_factor = 1.0
                 try:
                     payload.setdefault("_weight_factor", phase_factor * quality_factor)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-        except Exception:
+                except Exception as exc: raise
+        except Exception as exc: raise
             return
 
     # --- HTTP compatibility helpers -------------------------------------------------
@@ -1327,8 +1313,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             ns = getattr(self.cfg, "namespace", None)
             if ns and not p.get("namespace"):
                 p["namespace"] = ns
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # Extra headers for HTTP calls
         headers = {"X-Universe": universe}
         return p, universe, headers
@@ -1371,7 +1356,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     if qs > 1:
                         qs = 1.0
                     payload["quality_score"] = qs
-                except Exception:
+                except Exception as exc: raise
                     payload.pop("quality_score", None)
             # domains
             if "domains" in payload:
@@ -1401,21 +1386,19 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     payload["reasoning_chain"] = [rc]
                 else:
                     payload.pop("reasoning_chain", None)
-        except Exception:
+        except Exception as exc: raise
             # Never fail store because of metadata normalization
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
         # Detect async context: if present, schedule background persistence
         try:
             loop = asyncio.get_running_loop()
             in_async = True
-        except Exception:
+        except Exception as exc: raise
             in_async = False
 
         try:
             payload.setdefault("coordinate", coord)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
         import uuid
 
@@ -1439,11 +1422,10 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     loop.run_in_executor(
                         None, self._remember_sync_persist, coord_key, payload, rid
                     )
-            except Exception:
+            except Exception as exc: raise
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             return coord
 
         # Synchronous callers: default is blocking persist, but allow an opt-in
@@ -1451,14 +1433,14 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if settings is not None:
             try:
                 fast_ack = bool(getattr(settings, "memory_fast_ack", False))
-            except Exception:
+            except Exception as exc: raise
                 fast_ack = False
         else:
             try:
                 from common.config.settings import settings as _rt
 
                 fast_ack = _rt.get_bool("memory_fast_ack", False)
-            except Exception:
+            except Exception as exc: raise
                 fast_ack = False
         if fast_ack:
             try:
@@ -1467,12 +1449,11 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 loop.run_in_executor(
                     None, self._remember_sync_persist, coord_key, payload, rid
                 )
-            except Exception:
+            except Exception as exc: raise
                 # last resort: run sync persist (best-effort)
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             return coord
 
         # Default (no fast-ack): perform the persist synchronously (blocking)
@@ -1483,8 +1464,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             coord = server_coord
             try:
                 payload["coordinate"] = server_coord
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         return coord
 
     def remember_bulk(
@@ -1568,8 +1548,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     coords[idx] = server_coord
                     try:
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
             return coords
 
         if status in (404, 405):
@@ -1630,19 +1609,16 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     if server_coord:
                         try:
                             enriched["coordinate"] = server_coord
-                        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                        except Exception as exc: raise
                         if p2 is not None:
                             try:
                                 p2["coordinate"] = server_coord
-                            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                            except Exception as exc: raise
                         if getattr(self.cfg, "prefer_server_coords_for_links", False):
                             return server_coord
                         return server_coord
                 return coord
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         # Alternative: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.remember, coord_key, payload)
@@ -1713,8 +1689,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                     coords[idx] = server_coord
                     try:
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
             return coords
 
         if status in (404, 405):
@@ -1944,7 +1919,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         and len(out) >= max_items
                     ):
                         break
-                except Exception:
+                except Exception as exc: raise
                     continue
         except Exception as exc:
             logger.debug("links_from request failed: %r", exc)
@@ -2057,7 +2032,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if success and isinstance(data, dict):
             try:
                 removed = int(data.get("removed") or data.get("count") or 0)
-            except Exception:
+            except Exception as exc: raise
                 removed = 0
             return removed
 
@@ -2089,7 +2064,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if success and isinstance(data, dict):
                 try:
                     return int(data.get("removed") or data.get("count") or 0)
-                except Exception:
+                except Exception as exc: raise
                     return 0
 
         loop = asyncio.get_running_loop()
@@ -2111,7 +2086,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         try:
             neighbors = self.links_from(node, limit=1024)
             return len(neighbors)
-        except Exception:
+        except Exception as exc: raise
             return 0
 
     def centrality(self, node: Tuple[float, float, float]) -> float:
@@ -2139,7 +2114,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if total <= 1:
                 return 0.0
             return deg / float(total - 1)
-        except Exception:
+        except Exception as exc: raise
             return 0.0
 
     # --- Compatibility helper methods expected by migration and other code ---
@@ -2185,7 +2160,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         neigh = self.links_from(
                             node, type_filter=type_filter, limit=limit
                         )
-                    except Exception:
+                    except Exception as exc: raise
                         neigh = []
                     for e in neigh:
                         to_coord = e.get("to")
@@ -2204,7 +2179,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 if not frontier:
                     break
             return out
-        except Exception:
+        except Exception as exc: raise
             return []
 
     def payloads_for_coords(
@@ -2266,7 +2241,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                                 float(coord_value[1]),
                                 float(coord_value[2]),
                             )
-                        except Exception:
+                        except Exception as exc: raise
                             parsed_coord = None
                     if parsed_coord is not None:
                         payload["coordinate"] = parsed_coord
@@ -2291,7 +2266,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         float(coord[1]),
                         float(coord[2]),
                     )
-                except Exception:
+                except Exception as exc: raise
                     return False
                 rid = request_id or str(uuid.uuid4())
                 headers = {"X-Request-ID": rid}
@@ -2315,7 +2290,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             )
             self.remember(str(key), payload, request_id=request_id)
             return True
-        except Exception:
+        except Exception as exc: raise
             return False
 
     def _remember_sync_persist(
@@ -2352,7 +2327,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         if self._http is not None:
             try:
                 stored, response_payload = self._store_http_sync(body, rid_hdr)
-            except Exception:
+            except Exception as exc: raise
                 stored = False
         server_coord: Tuple[float, float, float] | None = None
         if stored and response_payload is not None:
@@ -2360,7 +2335,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 server_coord = _extract_memory_coord(
                     response_payload, idempotency_key=rid
                 )
-            except Exception:
+            except Exception as exc: raise
                 server_coord = None
 
         if not stored:
@@ -2401,10 +2376,9 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 if server_coord:
                     try:
                         payload["coordinate"] = server_coord
-                    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-        except Exception:
-            logger.exception("Background memory persist failed")
+                    except Exception as exc: raise
+        except Exception as exc: raise
+            raise RuntimeError("Background memory persist failed")
 
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.

@@ -155,8 +155,7 @@ class ExecutiveController:
                 _mx.EXEC_BANDIT_ARM.labels(
                     arm=("explore" if use_graph else "baseline")
                 ).inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))
         inhibit_act = False
         inhibit_store = False

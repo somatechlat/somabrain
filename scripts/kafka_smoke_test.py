@@ -56,7 +56,7 @@ def main():
                 if isinstance(v, dict) and v.get("id") == key:
                     print("Smoke test succeeded: message roundtrip confirmed")
                     return 0
-            except Exception:
+            except Exception as exc: raise
                 continue
             if time.time() - start > args.timeout:
                 break

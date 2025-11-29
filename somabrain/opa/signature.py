@@ -17,7 +17,7 @@ try:
         load_pem_private_key,
         load_pem_public_key,
     )
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     hashes = None
     padding = None
     load_pem_private_key = None
@@ -76,11 +76,11 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
         public_key = load_pem_public_key(f.read())
     try:
         signature = bytes.fromhex(signature_hex)
-    except Exception:
+    except Exception as exc: raise
         # try base64 alternative
         try:
             signature = base64.b64decode(signature_hex)
-        except Exception:
+        except Exception as exc: raise
             return False
     try:
         public_key.verify(
@@ -90,7 +90,7 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
             hashes.SHA256(),
         )
         return True
-    except Exception:
+    except Exception as exc: raise
         return False
 
 

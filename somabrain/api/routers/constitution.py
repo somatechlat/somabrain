@@ -57,7 +57,7 @@ async def validate(req: ValidateRequest, request: Request):
                 "constitution_sig": engine.get_signature(),
             }
             audit.publish_event(event)
-        except Exception:
+        except Exception as exc: raise
             LOGGER.exception("Failed to emit constitution audit event")
         return result
     except ConstitutionError as e:

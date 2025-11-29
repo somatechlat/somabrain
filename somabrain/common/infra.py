@@ -30,9 +30,8 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
         finally:
             try:
                 c.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-    except Exception:
+            except Exception as exc: raise
+    except Exception as exc: raise
         return False
 
 
@@ -53,7 +52,7 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
 
         r = redis.from_url(url, socket_timeout=timeout_s)
         return bool(r.ping())
-    except Exception:
+    except Exception as exc: raise
         return False
 
 
@@ -80,9 +79,8 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
         finally:
             try:
                 conn.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-    except Exception:
+            except Exception as exc: raise
+    except Exception as exc: raise
         return False
 
 
@@ -106,10 +104,10 @@ def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
                 resp = requests.get(url + path, timeout=timeout_s)
                 if resp.status_code < 500:
                     return True
-            except Exception:
+            except Exception as exc: raise
                 continue
         return False
-    except Exception:
+    except Exception as exc: raise
         return False
 
 

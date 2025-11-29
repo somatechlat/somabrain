@@ -35,7 +35,6 @@ class CleanupResult:
     best_score: float
     second_score: float
 
-    def __iter__(self):  # allow tuple unpacking for legacy callers
         yield self.best_id
         yield self.best_score
 

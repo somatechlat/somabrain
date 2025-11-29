@@ -8,7 +8,7 @@ from typing import Any
 
 try:
     import requests  # type: ignore
-except Exception:
+except Exception as exc: raise
     import urllib.request as _rq  # type: ignore
 
     class _Resp:
@@ -42,7 +42,7 @@ def _bootstrap() -> str:
 def _consume_one(topic: str, timeout_s: float) -> bool:
     try:
         from kafka import KafkaConsumer  # type: ignore
-    except Exception:
+    except Exception as exc: raise
         return False
     c = KafkaConsumer(
         topic,
@@ -61,8 +61,7 @@ def _consume_one(topic: str, timeout_s: float) -> bool:
     finally:
         try:
             c.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 def main() -> int:
@@ -88,7 +87,7 @@ def main() -> int:
         return 2
     try:
         ok = resp.json().get("status") == "ok"
-    except Exception:
+    except Exception as exc: raise
         ok = False
     if not ok:
         print("reward producer response invalid")

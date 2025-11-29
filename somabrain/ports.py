@@ -15,7 +15,7 @@ def _env_port(name: str, default_val: int) -> int:
         if not raw:
             return default_val
         return int(raw)
-    except Exception:
+    except Exception as exc: raise
         return default_val
 
 

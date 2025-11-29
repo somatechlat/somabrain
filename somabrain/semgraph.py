@@ -82,6 +82,6 @@ def normalize_relation(t: str | None) -> str:
         return RelationType.related.value
     try:
         return RelationType(t).value
-    except Exception:
+    except Exception as exc: raise
         # alternative to generic
         return RelationType.related.value

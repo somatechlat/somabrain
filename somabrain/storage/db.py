@@ -18,7 +18,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 try:
     from common.config.settings import settings as settings
-except Exception:  # pragma: no cover - optional dependency during migration
+except Exception as exc: raise  # pragma: no cover - optional dependency during migration
     settings = None  # type: ignore
 
 Base = declarative_base()
@@ -38,7 +38,7 @@ def get_default_db_url() -> str:
         try:
             raw = str(getattr(settings, "postgres_dsn", "") or "").strip()
             url = raw or None
-        except Exception:
+        except Exception as exc: raise
             url = None
     if not url:
         url = (settings.postgres_dsn or "").strip() or None

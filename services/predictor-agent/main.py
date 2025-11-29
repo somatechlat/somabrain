@@ -15,7 +15,7 @@ from somabrain.common.events import build_next_event
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     _metrics = None  # type: ignore
 
 TOPIC = TOPICS["agent"]
@@ -102,15 +102,15 @@ def run_forever() -> None:  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+            except Exception as exc: raise
+                raise RuntimeError("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception:
-        logger.exception("Health server startup failed")
+    except Exception as exc: raise
+        raise RuntimeError("Health server startup failed")
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
 
@@ -118,7 +118,7 @@ def run_forever() -> None:  # pragma: no cover
         from somabrain import runtime_config as _rt
 
         composite = _rt.get_bool("cog_composite", True)
-    except Exception:
+    except Exception as exc: raise
         composite = True
     if not (composite or feature_enabled("learner")):
         print("predictor-agent: disabled by mode; exiting.")
@@ -163,7 +163,7 @@ def run_forever() -> None:  # pragma: no cover
                         confidence = float(scaler.scale(float(confidence)))
                 except Exception as exc:
                     from common.logging import logger
-                    logger.exception("Calibration scaling failed in predictor-agent: %s", exc)
+                    raise RuntimeError("Calibration scaling failed in predictor-agent: %s", exc)
                 rec = {
                     "domain": "agent",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -178,13 +178,13 @@ def run_forever() -> None:  # pragma: no cover
                 if _EMITTED is not None:
                     try:
                         _EMITTED.inc()
-                    except Exception:
-                        logger.exception("Failed to increment emitted metric")
+                    except Exception as exc: raise
+                        raise RuntimeError("Failed to increment emitted metric")
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="agent").observe(float(delta_error))
-                    except Exception:
-                        logger.exception("Failed to record error histogram")
+                    except Exception as exc: raise
+                        raise RuntimeError("Failed to record error histogram")
                 if soma_compat:
                     try:
                         ts_ms = int(time.time() * 1000)
@@ -200,8 +200,9 @@ def run_forever() -> None:  # pragma: no cover
                         }
                         payload = _encode(soma_rec, soma_serde)
                         prod.send(SOMA_TOPIC, value=payload)
-                    except Exception:
-                        raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
+                        # Placeholder removed per VIBE rules – log and continue
+                        raise RuntimeError("Placeholder encountered in predictor-agent block")
                 # NextEvent emission (derived) from predicted intent
                 predicted_state = f"intent:{posterior['intent']}"
                 next_ev = build_next_event(
@@ -211,16 +212,17 @@ def run_forever() -> None:  # pragma: no cover
                 if _NEXT_EMITTED is not None:
                     try:
                         _NEXT_EMITTED.inc()
-                    except Exception:
-                        raise NotImplementedError("Placeholder removed per VIBE rules")
+                    except Exception as exc: raise
+                        # Placeholder removed per VIBE rules – log and continue
+                        raise RuntimeError("Placeholder encountered in predictor-agent block")
                 source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:
         try:
             prod.flush(2)
             prod.close()
-        except Exception:
-            logger.exception("Failed to flush/close producer during shutdown")
+        except Exception as exc: raise
+            raise RuntimeError("Failed to flush/close producer during shutdown")
 
 
 if __name__ == "__main__":  # pragma: no cover

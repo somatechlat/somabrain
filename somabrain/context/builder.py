@@ -90,7 +90,7 @@ class ContextBuilder:
                 return current
             try:
                 return float(value)
-            except Exception:
+            except Exception as exc: raise
                 return current
 
         # Environment overrides for tau tuning
@@ -197,7 +197,7 @@ class ContextBuilder:
         try:
             hits = self._memory.recall_with_scores(query_text, top_k=top_k)
             return self._hits_to_results(hits)
-        except Exception:
+        except Exception as exc: raise
             return []
 
     def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
@@ -247,8 +247,7 @@ class ContextBuilder:
             if density_factor != 1.0:
                 try:
                     mem.metadata.setdefault("_density_factor", density_factor)
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             raw_scores.append(combined)
         if not raw_scores:
             return []
@@ -267,7 +266,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             ids = [m.id for m in memories]
             unique = len(set(ids))
             dup_ratio = 1.0 - (unique / max(len(ids), 1))
-        except Exception:
+        except Exception as exc: raise
             dup_ratio = 0.0
         # Adjust tau within the configured range.
         if dup_ratio > self._dup_ratio_threshold:
@@ -283,7 +282,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         # ==== Apply per-tenant entropy cap on retrieval parameter vector (alpha,beta,gamma,tau) ====
         try:
             cap = self._get_entropy_cap_for_tenant(self._tenant_id)
-        except Exception:
+        except Exception as exc: raise
             cap = None
         entropy_exceeded = False
         if isinstance(cap, (int, float)) and cap > 0.0:
@@ -336,8 +335,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         float(vec[2]),
                         float(vec[3]),
                     )
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         # Emit metric for the current tenant (import inside to respect monkeypatch)
         from somabrain.metrics import (
             update_learning_retrieval_weights as _update_metric,
@@ -359,8 +357,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 LEARNING_TAU.set(self._weights.tau)
             if entropy_exceeded:
                 LEARNING_ENTROPY_CAP_HITS.labels(tenant_id=self._tenant_id).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         return normalized.tolist()
 
     # ---------------- Tenant overrides helpers ----------------
@@ -374,7 +371,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         cap = ov.get("entropy_cap") if isinstance(ov, dict) else None
         try:
             return float(cap) if cap is not None else None
-        except Exception:
+        except Exception as exc: raise
             return None
 
     def _load_tenant_overrides(self) -> Dict[str, Dict]:
@@ -393,7 +390,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception:
+            except Exception as exc: raise
                 try:
                     import json as _json
 
@@ -405,7 +402,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             for k, v in data.items()
                             if isinstance(v, dict)
                         }
-                except Exception:
+                except Exception as exc: raise
                     overrides = {}
         if not overrides:
             raw = settings.learning_tenants_overrides.strip()
@@ -420,7 +417,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                             for k, v in data.items()
                             if isinstance(v, dict)
                         }
-                except Exception:
+                except Exception as exc: raise
                     overrides = {}
         return overrides
 
@@ -481,7 +478,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if normalised <= 0:
                 return 1.0
             damp = math.exp(-(normalised ** max(self._recency_sharpness, 1e-3)))
-        except Exception:
+        except Exception as exc: raise
             damp = 0.0
         return float(max(self._recency_floor, min(1.0, damp)))
 
@@ -493,7 +490,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             margin = metadata.get("cleanup_margin")
         try:
             margin_val = float(margin)
-        except Exception:
+        except Exception as exc: raise
             return 1.0
         if not math.isfinite(margin_val) or margin_val < 0:
             return 1.0
@@ -509,5 +506,5 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
 
 try:  # circular import guard
     from somabrain.runtime.working_memory import WorkingMemoryBuffer
-except Exception:  # pragma: no cover - runtime optional during static analysis
+except Exception as exc: raise  # pragma: no cover - runtime optional during static analysis
     WorkingMemoryBuffer = None  # type: ignore

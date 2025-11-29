@@ -136,7 +136,7 @@ def _to_ndarray(obj: object) -> Optional[np.ndarray]:
         arr = np.array(obj, dtype=float)
         if arr.ndim == 2 and arr.shape[0] == arr.shape[1]:
             return arr
-    except Exception:
+    except Exception as exc: raise
         return None
     return None
 
@@ -212,7 +212,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     if graph_path:
         try:
             apply_A, dim = load_operator_from_file(graph_path)
-        except Exception:
+        except Exception as exc: raise
             # Use line graph if load fails
             dim = int(settings.predictor_dim or "16")
             L = make_line_graph_laplacian(dim)

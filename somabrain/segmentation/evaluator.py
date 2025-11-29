@@ -16,7 +16,7 @@ import random
 
 try:
     from somabrain import metrics  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     metrics = None  # type: ignore
 
 
@@ -37,7 +37,7 @@ def _ensure_metrics() -> None:
                 "Segmentation boundary F1 score",
                 labelnames=["tenant"],
             )
-        except Exception:
+        except Exception as exc: raise
             _mx_f1 = None
     if _mx_false_rate is None:
         try:
@@ -46,7 +46,7 @@ def _ensure_metrics() -> None:
                 "Rate of false emitted boundaries (FP / emitted)",
                 labelnames=["tenant"],
             )
-        except Exception:
+        except Exception as exc: raise
             _mx_false_rate = None
     if _mx_latency is None:
         try:
@@ -55,7 +55,7 @@ def _ensure_metrics() -> None:
                 "Average dwell latency between true changes (ticks)",
                 buckets=(1, 2, 3, 4, 5, 8, 13, 21, 34, 55),
             )
-        except Exception:
+        except Exception as exc: raise
             _mx_latency = None
 
 
@@ -158,8 +158,7 @@ def update_metrics(
             _mx_false_rate.labels(tenant=t).set(false_rate)
         if _mx_latency is not None:
             _mx_latency.observe(max(0.0, mean_latency))
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
 
 
 def evaluate_sequence(

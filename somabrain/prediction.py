@@ -429,7 +429,7 @@ class LLMPredictor:
                 return PredictionResult(
                     predicted_vec=expected_vec, actual_vec=actual_vec, error=err
                 )
-        except Exception:
+        except Exception as exc: raise
             return PredictionResult(
                 predicted_vec=expected_vec, actual_vec=actual_vec, error=base_err
             )

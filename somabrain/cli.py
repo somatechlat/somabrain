@@ -60,7 +60,7 @@ def run_api() -> None:
     """
     try:
         import uvicorn  # type: ignore
-    except Exception:
+    except Exception as exc: raise
         print(
             "uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr
         )

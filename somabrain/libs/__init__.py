@@ -14,6 +14,5 @@ for sub in ("kafka_cog",):
     try:
         _mod = importlib.import_module(f"libs.{sub}")
         _sys.modules[f"{__name__}.{sub}"] = _mod
-    except Exception:
+    except Exception as exc: raise
         # Leave missing; importing code should fail-fast at use site
-raise NotImplementedError("Placeholder removed per VIBE rules")

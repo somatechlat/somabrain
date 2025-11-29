@@ -94,8 +94,7 @@ def main() -> None:
     finally:
         try:
             admin.close()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
 
 if __name__ == "__main__":

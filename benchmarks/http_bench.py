@@ -25,14 +25,14 @@ async def worker(client: httpx.AsyncClient, url: str, q: asyncio.Queue, results:
     while True:
         try:
             _ = q.get_nowait()
-        except Exception:
+        except Exception as exc: raise
             break
         t0 = time.perf_counter()
         try:
             r = await client.post(url, json=DEFAULT_BODY, timeout=30.0)
             latency = time.perf_counter() - t0
             results.append((r.status_code, latency))
-        except Exception:
+        except Exception as exc: raise
             latency = time.perf_counter() - t0
             results.append((None, latency))
 

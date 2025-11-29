@@ -17,7 +17,6 @@ Design:
 Environment:
 - SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
 - SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
-Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy env flags removed.
 
 """
 
@@ -39,7 +38,7 @@ from common.config.settings import settings
 try:  # pragma: no cover
     from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
     from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     load_schema = None  # type: ignore
     AvroSerde = None  # type: ignore
 
@@ -101,7 +100,7 @@ def _parse_global_frame(
             rationale=rationale,
             count=1,
         )
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -112,7 +111,7 @@ def _parse_segment_boundary(
         if serde is not None:
             return serde.deserialize(raw)  # type: ignore[arg-type]
         return json.loads(raw.decode("utf-8"))
-    except Exception:
+    except Exception as exc: raise
         return None
 
 
@@ -123,18 +122,18 @@ class OrchestratorService:
         if load_schema is not None and AvroSerde is not None:
             try:
                 self._serde_gf = AvroSerde(load_schema("global_frame"))  # type: ignore[arg-type]
-            except Exception:
+            except Exception as exc: raise
                 self._serde_gf = None
             try:
                 self._serde_sb = AvroSerde(load_schema("segment_boundary"))  # type: ignore[arg-type]
-            except Exception:
+            except Exception as exc: raise
                 self._serde_sb = None
         self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
         # Minimal leader->tools routing (JSON via env)
         try:
             routing_raw = getattr(settings, "orchestrator_routing", "") or ""
             self._routing = json.loads(routing_raw) if routing_raw else {}
-        except Exception:
+        except Exception as exc: raise
             self._routing = {}
         # per-tenant rolling context for current segment
         self._ctx: Dict[str, GlobalFrameCtx] = {}
@@ -144,8 +143,7 @@ class OrchestratorService:
 
             if _settings.health_port:
                 self._start_health_server()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def _start_health_server(self) -> None:
         try:
@@ -172,8 +170,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             port = int(_settings.health_port)
             srv = HTTPServer(("", port), _Handler)
             threading.Thread(target=srv.serve_forever, daemon=True).start()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         gf = self._ctx.get(tenant)
@@ -202,8 +199,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 tools = self._routing.get(gf.leader)
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
@@ -220,9 +216,8 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 dedupe_key=f"{tenant}:{key}",
                 tenant_id=tenant,
             )
-        except Exception:
+        except Exception as exc: raise
             # best-effort enqueue; drop on error
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
         consumer = CKConsumer(
@@ -265,8 +260,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         finally:
             try:
                 consumer.close()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
 
 
 def main() -> None:  # pragma: no cover - entrypoint
@@ -281,8 +275,7 @@ def main() -> None:  # pragma: no cover - entrypoint
                 "Count of orchestrator disabled exits",
             )
             _MX_ORCH_DISABLED.inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         return
     # Ensure Kafka and Postgres (for outbox) are reachable before starting
     assert_ready(

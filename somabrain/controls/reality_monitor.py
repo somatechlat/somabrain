@@ -51,6 +51,5 @@ def assess_reality(
     conf = min(1.0, float(sources) / float(max(1, min_sources * 2)))
     try:
         (REALITY_OK if ok else REALITY_LOW).inc()
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     return {"ok": ok, "sources": sources, "confidence": conf}

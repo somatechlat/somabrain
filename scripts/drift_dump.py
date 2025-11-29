@@ -20,7 +20,7 @@ def _human(ts: float) -> str:
         return "-"
     try:
         return datetime.utcfromtimestamp(ts).isoformat() + "Z"
-    except Exception:
+    except Exception as exc: raise
         return str(ts)
 
 
@@ -38,7 +38,7 @@ def main() -> None:
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
                 state = data.get("entries", {}) if isinstance(data, dict) else {}
-            except Exception:
+            except Exception as exc: raise
                 state = {}
         else:
             state = {}

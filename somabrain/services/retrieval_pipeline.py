@@ -56,7 +56,7 @@ def _safe_coord_from_str(coord_str: str) -> Optional[str]:
         parts = [float(x) for x in coord_str.split(",") if x.strip()]
         if len(parts) >= 3:
             return ",".join(str(float(x)) for x in parts[:3])
-    except Exception:
+    except Exception as exc: raise
         return None
     return None
 
@@ -96,7 +96,7 @@ async def run_retrieval_pipeline(
                 score = float(hit.get("score", 1.0))
             else:
                 score = 1.0
-        except Exception:
+        except Exception as exc: raise
             score = 1.0
         if not payload:
             payload = {"task": key}
@@ -140,7 +140,7 @@ async def run_retrieval_pipeline(
                             score=float(score),
                         )
                     )
-            except Exception:
+            except Exception as exc: raise
                 candidates.append(
                     _candidate_from_payload(
                         {"task": req.query},

@@ -120,8 +120,7 @@ class MultiColumnWM:
         cols[idx].admit(vec, dict(payload), cleanup_overlap=cleanup_overlap)
         try:
             MICRO_COLUMN_ADMIT.labels(column=str(idx)).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
@@ -138,8 +137,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if bests:
                 best_idx = int(max(range(len(bests)), key=lambda i: bests[i]))
                 MICRO_COLUMN_BEST.labels(column=str(best_idx)).inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # softmax weights over best scores
         T = max(settings.wm_vote_softmax_floor, float(self.cfg.vote_temperature))
         xs = [b / T for b in bests]

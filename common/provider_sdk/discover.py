@@ -14,7 +14,7 @@ from typing import Dict, Any
 
 try:
     import yaml
-except Exception:  # pragma: no cover - optional dependency
+except Exception as exc: raise  # pragma: no cover - optional dependency
     yaml = None
 
 
@@ -73,9 +73,9 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
             txt = p.read_text()
             try:
                 return json.loads(txt)
-            except Exception:
+            except Exception as exc: raise
                 if yaml is not None:
                     return yaml.safe_load(txt) or {}
-        except Exception:
+        except Exception as exc: raise
             continue
     return {}

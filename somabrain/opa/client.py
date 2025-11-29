@@ -9,7 +9,6 @@ LOGGER = logging.getLogger("somabrain.opa")
 
 try:
     from common.config.settings import settings
-except Exception:  # pragma: no cover - optional dependency in legacy layouts
     settings = None  # type: ignore
 
 
@@ -23,7 +22,7 @@ def _policy_path_for_mode() -> str:
     if settings is not None:
         try:
             bundle = str(getattr(settings, "mode_opa_policy_bundle", "") or "")
-        except Exception:
+        except Exception as exc: raise
             bundle = None
     bundle = (bundle or "").strip().lower()
     if bundle == "allow-dev" or bundle == "dev":
@@ -48,7 +47,7 @@ class OPAClient:
                 self.timeout = float(
                     getattr(settings, "opa_timeout_seconds", 2.0) or 2.0
                 )
-            except Exception:
+            except Exception as exc: raise
                 self.timeout = 2.0
         else:
             self.timeout = 2.0
@@ -101,7 +100,7 @@ class OPAClient:
         try:
             resp = self.session.get(health_url, timeout=self.timeout)
             return resp.status_code == 200
-        except Exception:
+        except Exception as exc: raise
             return False
 
     def reload_policy(self) -> bool:

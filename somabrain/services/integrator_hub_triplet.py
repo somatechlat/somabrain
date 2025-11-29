@@ -146,7 +146,7 @@ class IntegratorHub:
                     import redis
 
                     self._redis_client = redis.from_url(redis_url)
-            except Exception:
+            except Exception as exc: raise
                 self._redis_client = None
         self._opa_request = opa_request or self._default_opa_request
         # Health server
@@ -200,19 +200,19 @@ class IntegratorHub:
         def _get_bool(key: str, default: bool) -> bool:
             try:
                 return runtime_config.get_bool(key, default)
-            except Exception:
+            except Exception as exc: raise
                 return default
 
         def _get_float(key: str, default: float) -> float:
             try:
                 return float(runtime_config.get_float(key, default))
-            except Exception:
+            except Exception as exc: raise
                 return default
 
         def _get_str(key: str, default: str) -> str:
             try:
                 return str(runtime_config.get_str(key, default))
-            except Exception:
+            except Exception as exc: raise
                 return default
 
         alpha = _get_float(
@@ -259,8 +259,7 @@ class IntegratorHub:
                 w = math.exp(-alpha * float(max(err, 0.0)))
                 try:
                     INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
             else:
                 w = max(0.0, float(rec.get("confidence", 0.0)))
             weights[d] = w
@@ -268,7 +267,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         probs = {d: w / total_w for d, w in weights.items()}
         try:
             entropy = -sum(p * math.log(p) for p in probs.values() if p > 0)
-        except Exception:
+        except Exception as exc: raise
             entropy = 0.0
         now = datetime.now(timezone.utc).isoformat()
         frame = {
@@ -295,8 +294,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             try:
                 self._redis_client.setex(f"globalframe:{leader}", 300, payload)
                 INTEGRATOR_REDIS_CACHE.labels(leader=leader).inc()
-            except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+            except Exception as exc: raise
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
@@ -305,7 +303,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 ):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
-            except Exception:
+            except Exception as exc: raise
                 INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                 return
         self.producer.produce(self.topic_global, payload)
@@ -317,7 +315,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             if not resp.ok:
                 return False
             return bool(resp.json().get("result", False))
-        except Exception:
+        except Exception as exc: raise
             return False
 
     def run(self) -> None:  # pragma: no cover (I/O loop)
@@ -378,4 +376,3 @@ if __name__ == "__main__":  # pragma: no cover
             time.sleep(60)
     except KeyboardInterrupt:
         # Graceful shutdown on SIGINT / container stop.
-raise NotImplementedError("Placeholder removed per VIBE rules")

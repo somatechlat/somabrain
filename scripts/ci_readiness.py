@@ -53,7 +53,6 @@ class CheckResult:
 def _env(name: str, default: str | None = None) -> str | None:
     """Retrieve a configuration value via the centralized Settings.
 
-    The original implementation used ``settings.getenv`` which is now legacy.
     This helper maps the upper‑case environment variable name to the matching
     Settings attribute (lower‑case) and returns its string representation.
     If the attribute does not exist or is empty, ``default`` is returned.
@@ -103,7 +102,7 @@ def _socket_connect(host: str, port: int, timeout: float = 3.0) -> bool:
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except Exception:
+    except Exception as exc: raise
         return False
 
 
@@ -122,7 +121,7 @@ def check_kafka() -> List[CheckResult]:
     host, _, port_str = host_port.partition(":")
     try:
         port = int(port_str) if port_str else 9092
-    except Exception:
+    except Exception as exc: raise
         port = 9092
     if not _socket_connect(host, port):
         return [CheckResult("kafka", False, f"TCP connect failed to {host}:{port}")]
@@ -195,12 +194,12 @@ def check_outbox_pending() -> CheckResult:
         return CheckResult("outbox", False, "SOMABRAIN_API_TOKEN not set")
     try:
         max_pending = int(_env("SOMABRAIN_OUTBOX_MAX_PENDING", "100") or 100)
-    except Exception:
+    except Exception as exc: raise
         max_pending = 100
     status = _env("SOMABRAIN_OUTBOX_CHECK_STATUS", "pending") or "pending"
     try:
         page_size = int(_env("SOMABRAIN_OUTBOX_CHECK_PAGE", "500") or 500)
-    except Exception:
+    except Exception as exc: raise
         page_size = 500
 
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "outbox_admin.py"

@@ -54,7 +54,6 @@ def main():
             print(f"Failed to parse {p}: {e}", file=sys.stderr)
             sys.exit(1)
 
-    # Compare RewardEvent if legacy exists
     old_reward = old_dir / "reward_event.avsc"
     new_reward = new_dir / "RewardEvent.avsc"
     if old_reward.exists() and new_reward.exists():

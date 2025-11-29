@@ -46,7 +46,7 @@ class LearnerService:
                 with open(overrides_path, "r", encoding="utf-8") as f:
                     self._tenant_overrides = yaml.safe_load(f) or {}
             except Exception as exc:  # pragma: no cover – defensive
-                logger.exception("Failed to load learner tenant overrides: %s", exc)
+                    raise RuntimeError("Failed to load learner tenant overrides: %s", exc)
 
         # Producer is set by the run loop or injected by tests.
         self._producer: Any = None
@@ -129,11 +129,10 @@ class LearnerService:
                 consumer.store_offsets(msg)
                 consumer.commit(msg)
             except Exception as exc:
-                logger.exception("Failed to process next_event message: %s", exc)
+                raise RuntimeError("Failed to process next_event message: %s", exc)
                 try:
                     self._dlq.record(event if isinstance(event, dict) else {}, str(exc))
-                except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+                except Exception as exc: raise
 
     # ---------------------------------------------------------------------
     # Internal helpers used by the test suite
@@ -174,7 +173,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
                 gauge.labels(tenant_id=tenant).set(regret)  # type: ignore[attr-defined]
             else:
                 gauge.set(regret)  # type: ignore[call-arg]
-        except Exception:  # pragma: no cover – defensive logging
+        except Exception as exc: raise  # pragma: no cover – defensive logging
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="gauge").inc()
             raise
 
@@ -206,7 +205,7 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         )
         try:
             decay_rate = float(decay_rate)
-        except Exception:
+        except Exception as exc: raise
             decay_rate = 0.0
         new_tau = tau * (1.0 - decay_rate)
 
@@ -249,4 +248,4 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
             )
         except Exception as exc:  # pragma: no cover – defensive
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="produce").inc()
-            logger.exception("Error emitting config update: %s", exc)
+                raise RuntimeError("Error emitting config update: %s", exc)

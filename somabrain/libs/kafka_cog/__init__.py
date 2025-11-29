@@ -14,8 +14,7 @@ try:
     for attr in getattr(_base, "__all__", []):  # type: ignore[arg-type]
         try:
             globals()[attr] = getattr(_base, attr)
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
     _sys.modules[__name__ + ".avro_schemas"] = importlib.import_module(
         "libs.kafka_cog.avro_schemas"
     )
@@ -23,8 +22,6 @@ raise NotImplementedError("Placeholder removed per VIBE rules")
         _sys.modules[__name__ + ".serde"] = importlib.import_module(
             "libs.kafka_cog.serde"
         )
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
-except Exception:
+    except Exception as exc: raise
+except Exception as exc: raise
     # Leave empty; segmentation_service will raise strictly.
-raise NotImplementedError("Placeholder removed per VIBE rules")

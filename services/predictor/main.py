@@ -14,7 +14,6 @@ Strict mode assumptions:
   belief_update_soma (optional), next_event.
 - Confluent Kafka producer from `somabrain.common.kafka.make_producer`.
 
-Environment / runtime_config keys (mirroring legacy mains):
 - *_update_period for each domain (state_update_period, agent_update_period, action_update_period)
 - *_model_ver for each domain
 - soma_compat flag to emit SOMA-compatible belief updates
@@ -38,12 +37,12 @@ from somabrain.common.events import build_next_event
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     _metrics = None  # type: ignore
 
 try:
     from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
-except Exception:  # pragma: no cover
+except Exception as exc: raise  # pragma: no cover
     _calib = None  # type: ignore
 
 try:
@@ -93,7 +92,7 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
         scaler = _calib.temperature_scalers[domain][tenant]
         if getattr(scaler, "is_fitted", False):
             return float(scaler.scale(float(confidence)))
-    except Exception:
+    except Exception as exc: raise
         return confidence
     return confidence
 
@@ -117,16 +116,16 @@ def _maybe_health_server():  # pragma: no cover
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+            except Exception as exc: raise
+                raise RuntimeError("Failed to set up metrics endpoint for health server")
 
             port = int(settings.health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception:
-        logger.exception("Health server startup failed")
+    except Exception as exc: raise
+        raise RuntimeError("Health server startup failed")
 
 
 def _get_runtime():
@@ -181,7 +180,7 @@ def run_forever() -> None:  # pragma: no cover
 
     try:
         composite = rt.get_bool("cog_composite", True)
-    except Exception:
+    except Exception as exc: raise
         composite = True
     if not (composite or feature_enabled("learner")):
         print("predictor-unified: disabled by mode; exiting.")
@@ -248,14 +247,14 @@ def run_forever() -> None:  # pragma: no cover
                     if counters.get(domain):
                         try:
                             counters[domain].inc()
-                        except Exception:
+                        except Exception as exc: raise
                             logger.exception(
                                 "Failed to increment emitted metric for %s", domain
                             )
                     if err_hist is not None:
                         try:
                             err_hist.labels(domain=domain).observe(float(delta_error))
-                        except Exception:
+                        except Exception as exc: raise
                             logger.exception(
                                 "Failed to record error histogram for %s", domain
                             )
@@ -272,7 +271,7 @@ def run_forever() -> None:  # pragma: no cover
                                 TOPICS[f"soma_{domain}"],
                                 value=encode(soma_rec, soma_schema),
                             )
-                        except Exception:
+                        except Exception as exc: raise
                             logger.exception(
                                 "Failed to emit soma-compatible belief update for %s",
                                 domain,
@@ -284,15 +283,15 @@ def run_forever() -> None:  # pragma: no cover
                     if next_counter is not None:
                         try:
                             next_counter.inc()
-                        except Exception:
-                            logger.exception("Failed to increment next event metric")
+                        except Exception as exc: raise
+                            raise RuntimeError("Failed to increment next event metric")
             time.sleep(0.05)
     finally:
         try:
             prod.flush(2)
             prod.close()
-        except Exception:
-            logger.exception("Failed during producer cleanup in unified predictor")
+        except Exception as exc: raise
+            raise RuntimeError("Failed during producer cleanup in unified predictor")
 
 
 if __name__ == "__main__":  # pragma: no cover

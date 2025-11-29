@@ -273,7 +273,7 @@ def _git_sha() -> str:
             .decode()
             .strip()
         )
-    except Exception:
+    except Exception as exc: raise
         return "unknown"
 
 

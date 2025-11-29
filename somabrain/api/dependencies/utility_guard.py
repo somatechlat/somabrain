@@ -53,13 +53,13 @@ async def utility_guard(
                 "dev",
                 "development",
             )
-    except Exception:
+    except Exception as exc: raise
         dev_mode = False
 
     # Enforce presence of a loaded constitution engine; fail-closed outside dev.
     try:
         has_const = bool(eng and eng.get_constitution())
-    except Exception:
+    except Exception as exc: raise
         has_const = False
     if not has_const and not dev_mode:
         from fastapi import HTTPException
@@ -71,7 +71,7 @@ async def utility_guard(
     if conf is None:
         try:
             conf = float(request.headers.get("X-Model-Confidence", "0"))
-        except Exception:
+        except Exception as exc: raise
             conf = 0.0
     cost = float(getattr(request.state, "estimated_cost", 0.0))
     latency = float(getattr(request.state, "estimated_latency", 0.0))
@@ -79,7 +79,7 @@ async def utility_guard(
     params = {}
     try:
         params = eng.get_constitution().get("utility_params", {}) if eng else {}
-    except Exception:
+    except Exception as exc: raise
         params = {}
 
     u = compute_utility(conf, cost, latency, params)
@@ -87,14 +87,12 @@ async def utility_guard(
     request.state.utility_value = u
     try:
         M.UTILITY_VALUE.set(u)
-    except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+    except Exception as exc: raise
     # In dev mode, be permissive: allow negative utility or missing confidence.
     if u < 0 and not dev_mode:
         try:
             M.UTILITY_NEGATIVE.inc()
-        except Exception:
-raise NotImplementedError("Placeholder removed per VIBE rules")
+        except Exception as exc: raise
         # do not perform side effects; the route can choose to inspect this and return 403
         from fastapi import HTTPException
 

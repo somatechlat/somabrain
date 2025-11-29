@@ -18,7 +18,6 @@ def _log_cfg_event(event):
 if not hasattr(mod, "cfg") or getattr(mod, "cfg", None) is None:
 
     class _TmpCfg:
-raise NotImplementedError("Placeholder removed per VIBE rules")
 
     setattr(mod, "cfg", _TmpCfg())
     _log_cfg_event(
