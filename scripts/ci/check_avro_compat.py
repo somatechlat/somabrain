@@ -1,12 +1,9 @@
+#!/usr/bin/env python3
 import json
 import sys
 from pathlib import Path
-from common.logging import logger
-
-#!/usr/bin/env python3
 
 # Minimal compatibility check:
-    pass
 # - New schemas must be valid JSON
 # - If there is an older schema with the same (aliased) name, any NEW fields must have defaults
 # This is a conservative approximation; a registry-based check is recommended.
@@ -52,15 +49,12 @@ def main():
 
     for p in new_schemas:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _ = load_schema(p)
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            print(f"Failed to parse {p}: {e}", file=sys.stderr)
+            sys.exit(1)
 
+    # Compare RewardEvent if legacy exists
     old_reward = old_dir / "reward_event.avsc"
     new_reward = new_dir / "RewardEvent.avsc"
     if old_reward.exists() and new_reward.exists():
@@ -70,7 +64,8 @@ def main():
         if problems:
             print(
                 "RewardEvent compatibility issues:\n  - " + "\n  - ".join(problems),
-                file=sys.stderr, )
+                file=sys.stderr,
+            )
             sys.exit(2)
 
     print("Avro schema checks passed.")

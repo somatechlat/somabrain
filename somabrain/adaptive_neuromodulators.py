@@ -1,10 +1,3 @@
-from __future__ import annotations
-import time
-from typing import Dict, Optional
-from .adaptive.core import AdaptiveParameter, PerformanceMetrics
-from .neuromodulators import NeuromodState
-from common.config.settings import settings
-
 """
 Adaptive Neuromodulators Module for TRUE LEARNING
 
@@ -12,7 +5,6 @@ This module replaces static neuromodulator values with adaptive parameters
 that learn from performance feedback, eliminating the mock brain behavior.
 
 Key Features:
-    pass
 - Adaptive dopamine levels based on reward prediction errors
 - Dynamic serotonin based on emotional stability feedback
 - Learning noradrenaline based on urgency/arousal needs
@@ -25,13 +17,19 @@ Classes:
     AdaptivePerTenantNeuromodulators: Per-tenant adaptive neuromodulation
 """
 
+from __future__ import annotations
 
+import time
+from typing import Dict, Optional
+from .adaptive.core import AdaptiveParameter, PerformanceMetrics
+from .neuromodulators import NeuromodState
+from common.config.settings import settings
 
 
 class AdaptiveNeuromodulators:
     """True learning neuromodulator system with adaptive parameters."""
 
-def __init__(self):
+    def __init__(self):
         if not settings.enable_advanced_learning:
             raise RuntimeError(
                 "Advanced learning is disabled; enable SOMABRAIN_ENABLE_ADVANCED_LEARNING to init adaptive neuromodulators."
@@ -42,36 +40,41 @@ def __init__(self):
             initial_value=settings.neuromod_dopamine_base,
             min_value=settings.neuromod_dopamine_min,
             max_value=settings.neuromod_dopamine_max,
-            learning_rate=settings.neuromod_dopamine_lr, )
+            learning_rate=settings.neuromod_dopamine_lr,
+        )
         self.serotonin_param = AdaptiveParameter(
             name="serotonin",
             initial_value=settings.neuromod_serotonin_base,
             min_value=settings.neuromod_serotonin_min,
             max_value=settings.neuromod_serotonin_max,
-            learning_rate=settings.neuromod_serotonin_lr, )
+            learning_rate=settings.neuromod_serotonin_lr,
+        )
         self.noradrenaline_param = AdaptiveParameter(
             name="noradrenaline",
             initial_value=settings.neuromod_noradrenaline_base,
             min_value=settings.neuromod_noradrenaline_min,
             max_value=settings.neuromod_noradrenaline_max,
-            learning_rate=settings.neuromod_noradrenaline_lr, )
+            learning_rate=settings.neuromod_noradrenaline_lr,
+        )
         self.acetylcholine_param = AdaptiveParameter(
             name="acetylcholine",
             initial_value=settings.neuromod_acetylcholine_base,
             min_value=settings.neuromod_acetylcholine_min,
             max_value=settings.neuromod_acetylcholine_max,
-            learning_rate=settings.neuromod_acetylcholine_lr, )
+            learning_rate=settings.neuromod_acetylcholine_lr,
+        )
 
-def get_current_state(self) -> NeuromodState:
+    def get_current_state(self) -> NeuromodState:
         """Get current neuromodulator state from adaptive parameters."""
         return NeuromodState(
             dopamine=self.dopamine_param.current_value,
             serotonin=self.serotonin_param.current_value,
             noradrenaline=self.noradrenaline_param.current_value,
             acetylcholine=self.acetylcholine_param.current_value,
-            timestamp=time.time(), )
+            timestamp=time.time(),
+        )
 
-def update_from_performance(
+    def update_from_performance(
         self, performance: PerformanceMetrics, task_type: str = "general"
     ) -> NeuromodState:
         """Update neuromodulators based on performance feedback."""
@@ -92,7 +95,7 @@ def update_from_performance(
 
         return self.get_current_state()
 
-def get_adaptation_stats(self) -> Dict[str, any]:
+    def get_adaptation_stats(self) -> Dict[str, any]:
         """Get adaptation statistics for verification."""
         return {
             "dopamine": self.dopamine_param.get_stats(),
@@ -105,33 +108,33 @@ def get_adaptation_stats(self) -> Dict[str, any]:
 class AdaptivePerTenantNeuromodulators:
     """Per-tenant adaptive neuromodulator system."""
 
-def __init__(self):
+    def __init__(self):
         self._adaptive_systems: Dict[str, AdaptiveNeuromodulators] = {}
         self._global = AdaptiveNeuromodulators()
 
-def get_adaptive_system(self, tenant_id: str) -> AdaptiveNeuromodulators:
+    def get_adaptive_system(self, tenant_id: str) -> AdaptiveNeuromodulators:
         """Get or create adaptive system for tenant."""
         if tenant_id not in self._adaptive_systems:
             self._adaptive_systems[tenant_id] = AdaptiveNeuromodulators()
         return self._adaptive_systems[tenant_id]
 
-def get_state(self, tenant_id: Optional[str] = None) -> NeuromodState:
+    def get_state(self, tenant_id: Optional[str] = None) -> NeuromodState:
         """Get current neuromodulator state."""
         if tenant_id is None:
             return self._global.get_current_state()
         return self.get_adaptive_system(tenant_id).get_current_state()
 
-def adapt_from_performance(
+    def adapt_from_performance(
         self,
         tenant_id: str,
         performance: PerformanceMetrics,
-        task_type: str = "general", ) -> NeuromodState:
-            pass
+        task_type: str = "general",
+    ) -> NeuromodState:
         """Adapt neuromodulators based on performance for specific tenant."""
         system = self.get_adaptive_system(tenant_id)
         return system.update_from_performance(performance, task_type)
 
-def get_adaptation_stats(self, tenant_id: Optional[str] = None) -> Dict[str, any]:
+    def get_adaptation_stats(self, tenant_id: Optional[str] = None) -> Dict[str, any]:
         """Get adaptation statistics."""
         if tenant_id is None:
             return self._global.get_adaptation_stats()
@@ -164,7 +167,8 @@ def _calculate_noradrenaline_feedback(
     urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
     return min(
         settings.neuromod_noradrenaline_max,
-        (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor, )
+        (1.0 / max(0.1, performance.latency)) * 0.05 + urgency_factor,
+    )
 
 
 def _calculate_acetylcholine_feedback(

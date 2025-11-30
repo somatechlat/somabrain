@@ -1,16 +1,3 @@
-from __future__ import annotations
-import json
-import time
-from typing import Any, Dict, Optional
-import yaml
-from common.config.settings import Settings
-from common.logging import logger
-from somabrain.metrics import (
-from somabrain.services.learner_dlq import LearnerDLQ
-import confluent_kafka as ck  # type: ignore
-from somabrain.metrics import soma_next_event_regret
-from somabrain.metrics import LEARNER_LAG_SECONDS
-
 """Learner Online service.
 
 Consumes next-event feedback from Kafka, computes regret, updates metrics, and
@@ -18,13 +5,23 @@ emits configuration updates. Designed for production use with the real transport
 and per-tenant overrides.
 """
 
+from __future__ import annotations
 
+import json
+import time
+from typing import Any, Dict, Optional
 
+import yaml
 
+from common.config.settings import Settings
+from common.logging import logger
+from somabrain.metrics import (
     LEARNER_EVENTS_CONSUMED,
     LEARNER_EVENTS_FAILED,
     LEARNER_EVENTS_PRODUCED,
-    LEARNER_EVENT_LATENCY, )
+    LEARNER_EVENT_LATENCY,
+)
+from somabrain.services.learner_dlq import LearnerDLQ
 
 __all__ = ["LearnerService"]
 
@@ -35,26 +32,21 @@ class LearnerService:
     The implementation focuses on the parts exercised by the test suite.  It
     loads tenant overrides from a YAML file (if the environment variable is set)
     and provides two internal helper methods:
-        pass
 
     * ``_observe_next_event`` – records regret on a gauge.
     * ``_emit_cfg`` – emits a configuration update with a decayed ``tau``.
     """
 
-def __init__(self) -> None:
+    def __init__(self) -> None:
         # Load tenant overrides from the optional YAML file.
         self._tenant_overrides: Dict[str, Dict[str, Any]] = {}
         overrides_path = settings.learning_tenants_file
         if overrides_path:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 with open(overrides_path, "r", encoding="utf-8") as f:
                     self._tenant_overrides = yaml.safe_load(f) or {}
             except Exception as exc:  # pragma: no cover – defensive
-                    raise RuntimeError("Failed to load learner tenant overrides: %s", exc)
+                logger.exception("Failed to load learner tenant overrides: %s", exc)
 
         # Producer is set by the run loop or injected by tests.
         self._producer: Any = None
@@ -70,7 +62,7 @@ def __init__(self) -> None:
     # ---------------------------------------------------------------------
     # Public API
     # ---------------------------------------------------------------------
-def run(self) -> None:  # pragma: no cover – heavy I/O
+    def run(self) -> None:  # pragma: no cover – heavy I/O
         """Start the learner event loop against the real Kafka transport.
 
         Fail fast when Kafka bootstrap or topics are not configured or when
@@ -90,10 +82,7 @@ def run(self) -> None:  # pragma: no cover – heavy I/O
             self._settings, "topic_config_updates", "cog.config.updates"
         )
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            import confluent_kafka as ck  # type: ignore
         except Exception as exc:  # pragma: no cover
             raise RuntimeError(
                 "confluent_kafka is required for LearnerService.run(); install the dependency."
@@ -134,44 +123,30 @@ def run(self) -> None:  # pragma: no cover – heavy I/O
                 logger.error("Kafka error: %s", msg.error())
                 continue
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 payload = msg.value()
                 event = json.loads(payload)
                 self._process_event(event)
                 consumer.store_offsets(msg)
                 consumer.commit(msg)
             except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise RuntimeError("Failed to process next_event message: %s", exc)
+                logger.exception("Failed to process next_event message: %s", exc)
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     self._dlq.record(event if isinstance(event, dict) else {}, str(exc))
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
-    raise
+                except Exception:
+                    pass
+
+    # ---------------------------------------------------------------------
     # Internal helpers used by the test suite
     # ---------------------------------------------------------------------
-def _process_event(self, event: Dict[str, Any]) -> None:
+    def _process_event(self, event: Dict[str, Any]) -> None:
         """Validate and process a ``next_event`` payload; emit metrics."""
         t_start = time.perf_counter()
         tenant = str(event.get("tenant") or "default")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             confidence = float(event.get("confidence", 0.0))
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="parse").inc()
+            raise ValueError("confidence missing or non-numeric") from exc
         if not 0.0 <= confidence <= 1.0:
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="bounds").inc()
             raise ValueError("confidence out of bounds [0,1]")
@@ -180,7 +155,7 @@ def _process_event(self, event: Dict[str, Any]) -> None:
 
         # Lazily create the gauge if it does not exist; fail fast if metrics missing.
         if self._g_next_regret is None:
-            pass
+            from somabrain.metrics import soma_next_event_regret
 
             self._g_next_regret = soma_next_event_regret
 
@@ -194,18 +169,12 @@ def _process_event(self, event: Dict[str, Any]) -> None:
             self._seen.add(event_id)
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             gauge = self._g_next_regret
             if hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=tenant).set(regret)  # type: ignore[attr-defined]
             else:
                 gauge.set(regret)  # type: ignore[call-arg]
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:  # pragma: no cover – defensive logging
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="gauge").inc()
             raise
 
@@ -215,11 +184,12 @@ def _process_event(self, event: Dict[str, Any]) -> None:
             tenant,
             tau=float(event.get("tau", 1.0)),
             lr=float(event.get("lr", 0.0)),
-            event_id=event_id or None, )
+            event_id=event_id or None,
+        )
         elapsed = time.perf_counter() - t_start
         LEARNER_EVENT_LATENCY.labels(tenant_id=tenant).observe(elapsed)
 
-def _emit_cfg(
+    def _emit_cfg(
         self, tenant: str, tau: float, lr: float, event_id: str | None = None
     ) -> None:
         """Emit a configuration update for *tenant*.
@@ -235,14 +205,8 @@ def _emit_cfg(
             self._tenant_overrides.get(tenant, {}).get("tau_decay_rate", 0.0) or 0.0
         )
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             decay_rate = float(decay_rate)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             decay_rate = 0.0
         new_tau = tau * (1.0 - decay_rate)
 
@@ -257,7 +221,7 @@ def _emit_cfg(
 
         topic = getattr(self._settings, "topic_config_updates", "cog.config.updates")
 
-def _delivery_report(err: Optional[Exception], msg: Any) -> None:
+        def _delivery_report(err: Optional[Exception], msg: Any) -> None:
             if err is not None:
                 logger.error("Failed to deliver config update: %s", err)
             else:
@@ -265,21 +229,19 @@ def _delivery_report(err: Optional[Exception], msg: Any) -> None:
                     "Config update delivered to %s [partition=%s, offset=%s]",
                     topic,
                     getattr(msg, "partition", lambda: None)(),
-                    getattr(msg, "offset", lambda: None)(), )
+                    getattr(msg, "offset", lambda: None)(),
+                )
 
         # Guard against a missing producer.
         if self._producer is None:
             raise RuntimeError("LearnerService producer is not configured.")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._producer.produce(topic, payload_bytes, callback=_delivery_report)
             LEARNER_EVENTS_PRODUCED.labels(tenant_id=tenant).inc()
             if hasattr(self._producer, "flush"):
                 self._producer.flush()
             # Update lag gauge post-publish
+            from somabrain.metrics import LEARNER_LAG_SECONDS
 
             last = self._last_seen_ts.get(tenant, time.time())
             LEARNER_LAG_SECONDS.labels(tenant_id=tenant).set(
@@ -287,4 +249,4 @@ def _delivery_report(err: Optional[Exception], msg: Any) -> None:
             )
         except Exception as exc:  # pragma: no cover – defensive
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="produce").inc()
-                raise RuntimeError("Error emitting config update: %s", exc)
+            logger.exception("Error emitting config update: %s", exc)

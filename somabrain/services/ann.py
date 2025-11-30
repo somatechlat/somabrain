@@ -1,5 +1,3 @@
-import hnswlib  # type: ignore
-
 """Cleanup index implementations (simple cosine + optional HNSW)."""
 
 from __future__ import annotations
@@ -11,7 +9,6 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 
 from somabrain.memory.superposed_trace import CleanupIndex
-from common.logging import logger
 
 
 @dataclass
@@ -22,28 +19,28 @@ class AnnConfig:
     hnsw_ef_construction: int = 200
     hnsw_ef_search: int = 128
 
-def with_updates(self, **kwargs: object) -> "AnnConfig":
+    def with_updates(self, **kwargs: object) -> "AnnConfig":
         return replace(self, **kwargs)
 
 
 class SimpleAnnIndex(CleanupIndex):
     """Naive cosine search over stored vectors. Deterministic and thread-safe."""
 
-def __init__(self, dim: int) -> None:
+    def __init__(self, dim: int) -> None:
         self._dim = int(dim)
         self._vectors: Dict[str, np.ndarray] = {}
         self._lock = threading.Lock()
 
-def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
+    def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
         vec = _normalize(vector, self._dim)
         with self._lock:
             self._vectors[anchor_id] = vec
 
-def remove(self, anchor_id: str) -> None:
+    def remove(self, anchor_id: str) -> None:
         with self._lock:
             self._vectors.pop(anchor_id, None)
 
-def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         vec = _normalize(query, self._dim)
         with self._lock:
             scores = [
@@ -53,7 +50,7 @@ def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         scores.sort(key=lambda item: item[1], reverse=True)
         return scores[: max(0, int(top_k))]
 
-def configure(
+    def configure(
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
     ) -> None:
         # Simple backend does not require tuning.
@@ -63,14 +60,11 @@ def configure(
 class HNSWAnnIndex(CleanupIndex):
     """Thin wrapper around hnswlib; falls back to SimpleAnnIndex if library missing."""
 
-def __init__(
+    def __init__(
         self, dim: int, *, m: int, ef_construction: int, ef_search: int
     ) -> None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            import hnswlib  # type: ignore
         except Exception as exc:  # pragma: no cover - optional dependency
             raise RuntimeError("hnswlib not available") from exc
 
@@ -85,7 +79,7 @@ def __init__(
         self._ids: Dict[str, int] = {}
         self._deleted: Dict[str, int] = {}
 
-def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
+    def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
         vec = _normalize(vector, self._dim)
         arr = vec.reshape(1, -1)
         with self._lock:
@@ -96,13 +90,13 @@ def upsert(self, anchor_id: str, vector: np.ndarray) -> None:
             self._index.add_items(arr, ids=np.array([idx], dtype=np.int32))
             self._ids[anchor_id] = idx
 
-def remove(self, anchor_id: str) -> None:
+    def remove(self, anchor_id: str) -> None:
         with self._lock:
             idx = self._ids.pop(anchor_id, None)
             if idx is not None:
                 self._index.mark_deleted(idx)
 
-def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
+    def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         vec = _normalize(query, self._dim)
         k = max(1, int(top_k))
         with self._lock:
@@ -123,22 +117,16 @@ def search(self, query: np.ndarray, top_k: int) -> List[Tuple[str, float]]:
         results.sort(key=lambda item: item[1], reverse=True)
         return results[:k]
 
-def configure(
+    def configure(
         self, *, top_k: Optional[int] = None, ef_search: Optional[int] = None
     ) -> None:
         if ef_search is None:
             return
         with self._lock:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self._index.set_ef(int(ef_search))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
 
 def create_cleanup_index(dim: int, cfg: Optional[AnnConfig]) -> CleanupIndex:
@@ -146,18 +134,14 @@ def create_cleanup_index(dim: int, cfg: Optional[AnnConfig]) -> CleanupIndex:
     backend = (config.backend or "simple").lower()
     if backend == "hnsw":
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return HNSWAnnIndex(
                 dim,
                 m=config.hnsw_m,
                 ef_construction=config.hnsw_ef_construction,
-                ef_search=config.hnsw_ef_search, )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                ef_search=config.hnsw_ef_search,
+            )
+        except Exception:
+            # fall back to simple if hnsw unavailable
             return SimpleAnnIndex(dim)
     return SimpleAnnIndex(dim)
 

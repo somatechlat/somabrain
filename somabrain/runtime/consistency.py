@@ -13,16 +13,16 @@ class ConsistencyChecker:
     kappa = 1 - JSD_norm, where JSD_norm = JSD / log(K), K = support size.
     """
 
-def __init__(self, threshold: float = 0.8) -> None:
+    def __init__(self, threshold: float = 0.8) -> None:
         self.threshold = float(threshold)
 
-def js_divergence(self, p: np.ndarray, q: np.ndarray) -> float:
+    def js_divergence(self, p: np.ndarray, q: np.ndarray) -> float:
         P = self._as_prob(p)
         Q = self._as_prob(q)
         M = 0.5 * (P + Q)
         return 0.5 * (self._kl_div(P, M) + self._kl_div(Q, M))
 
-def calculate_kappa(self, p: np.ndarray, q: np.ndarray) -> float:
+    def calculate_kappa(self, p: np.ndarray, q: np.ndarray) -> float:
         jsd = self.js_divergence(p, q)
         k = int(max(len(p.reshape(-1)), 2))
         denom = math.log(k)
@@ -30,10 +30,10 @@ def calculate_kappa(self, p: np.ndarray, q: np.ndarray) -> float:
         kappa = 1.0 - jsd_norm
         return float(max(0.0, min(1.0, kappa)))
 
-def is_consistent(self, p: np.ndarray, q: np.ndarray) -> bool:
+    def is_consistent(self, p: np.ndarray, q: np.ndarray) -> bool:
         return self.calculate_kappa(p, q) >= self.threshold
 
-def generate_consistency_report(
+    def generate_consistency_report(
         self, distributions: Dict[str, np.ndarray]
     ) -> Dict[str, object]:
         keys = list(distributions.keys())
@@ -49,13 +49,13 @@ def generate_consistency_report(
         return {"pairwise_kappa": pairwise, "overall_consistency": overall}
 
     # --- helpers ---
-def _as_prob(self, x: np.ndarray) -> np.ndarray:
+    def _as_prob(self, x: np.ndarray) -> np.ndarray:
         v = np.asarray(x, dtype=float).reshape(-1)
         v = np.clip(v, 1e-12, None)
         s = float(v.sum())
         return v / s if s > 0 else np.full_like(v, 1.0 / max(v.size, 1))
 
-def _kl_div(self, p: np.ndarray, q: np.ndarray) -> float:
+    def _kl_div(self, p: np.ndarray, q: np.ndarray) -> float:
         p = np.clip(p, 1e-12, None)
         q = np.clip(q, 1e-12, None)
         return float(np.sum(p * (np.log(p) - np.log(q))))

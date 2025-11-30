@@ -1,17 +1,16 @@
-from typing import Callable
-import numpy as np
-from somabrain.math.lanczos_chebyshev import (
-from common.logging import logger
-
 """Graph heat-kernel helpers that wrap the Chebyshev and Lanczos methods.
 
 Provides utilities to apply heat diffusion to a vector on a graph given a
 sparse adjacency apply function.
 """
 
+from typing import Callable
+import numpy as np
+from somabrain.math.lanczos_chebyshev import (
     estimate_spectral_interval,
     chebyshev_heat_apply,
-    lanczos_expv, )
+    lanczos_expv,
+)
 
 
 def graph_heat_chebyshev(

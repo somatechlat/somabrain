@@ -1,14 +1,12 @@
-from enum import Enum
-from typing import Dict, Any
-import dataclasses
-from common.config.settings import settings as settings
-from common.logging import logger
-
 """Sleep system for SomaBrain.
 
 This module provides sleep state management and consolidation cycles.
 """
 
+from enum import Enum
+from typing import Dict, Any
+import dataclasses
+from common.config.settings import settings as settings
 
 
 class SleepState(Enum):
@@ -43,10 +41,10 @@ class SleepParameters:
 class SleepStateManager:
     """Manages sleep state transitions and parameters."""
 
-def __init__(self):
+    def __init__(self):
         self.parameters = SleepParameters()
 
-def compute_parameters(self, state: SleepState) -> Dict[str, float]:
+    def compute_parameters(self, state: SleepState) -> Dict[str, float]:
         """Compute parameters for a given sleep state (hot-configurable)."""
         p = self.parameters  # already sourced from settings
         state_scalar = {
@@ -83,10 +81,9 @@ def compute_parameters(self, state: SleepState) -> Dict[str, float]:
             "B": B,
         }
 
-def can_transition(self, from_state: SleepState, to_state: SleepState) -> bool:
+    def can_transition(self, from_state: SleepState, to_state: SleepState) -> bool:
         """Check if state transition is valid."""
         # The allowed state transition graph is:
-            pass
         #   ACTIVE → LIGHT → DEEP → FREEZE → LIGHT (and then back to ACTIVE is NOT allowed)
         # Only the forward edges are permitted.  The previous implementation also
         # allowed ``LIGHT → ACTIVE`` which contradicts the specification and the

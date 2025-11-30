@@ -23,28 +23,31 @@ class AvroSerde:
     integration can be added later using Confluent serializers with magic bytes.
     """
 
+
 def __init__(self, schema: Dict[str, Any]):
-        if parse_schema is None:
-            raise RuntimeError(
-                "fastavro not installed; install fastavro or use dev extras to enable Avro serde"
-            )
-        # fastavro requires named types to be pre-declared; parse_schema handles that.
-        self._schema = parse_schema(schema)
+    if parse_schema is None:
+        raise RuntimeError(
+            "fastavro not installed; install fastavro or use dev extras to enable Avro serde"
+        )
+    # fastavro requires named types to be pre-declared; parse_schema handles that.
+    self._schema = parse_schema(schema)
+
 
 def serialize(self, record: Dict[str, Any]) -> bytes:
-        if schemaless_writer is None:
-            raise RuntimeError("fastavro not available for serialization")
+    if schemaless_writer is None:
+        raise RuntimeError("fastavro not available for serialization")
 
-        buf = io.BytesIO()
-        schemaless_writer(buf, self._schema, record)
-        return buf.getvalue()
+    buf = io.BytesIO()
+    schemaless_writer(buf, self._schema, record)
+    return buf.getvalue()
+
 
 def deserialize(self, payload: bytes) -> Dict[str, Any]:
-        if schemaless_reader is None:
-            raise RuntimeError("fastavro not available for deserialization")
+    if schemaless_reader is None:
+        raise RuntimeError("fastavro not available for deserialization")
 
-        buf = io.BytesIO(payload)
-        return schemaless_reader(buf, self._schema)
+    buf = io.BytesIO(payload)
+    return schemaless_reader(buf, self._schema)
 
 
 __all__ = ["AvroSerde"]

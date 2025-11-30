@@ -33,10 +33,11 @@ the modified files.
 """
 
 
-
 ROOT = pathlib.Path(__file__).parent
 
-EXCEPT_RE = re.compile(r"^(?P<indent>\s*)except\s+Exception(?:\s+as\s+(?P<var>\w+))?:\s*$")
+EXCEPT_RE = re.compile(
+    r"^(?P<indent>\s*)except\s+Exception(?:\s+as\s+(?P<var>\w+))?:\s*$"
+)
 
 
 def ensure_logger_import(lines: List[str]) -> List[str]:
@@ -76,7 +77,9 @@ def process_file(path: pathlib.Path) -> bool:
             var_name = m.group("var") or "exc"
             # Write the corrected block
             new_lines.append(f"{indent}except Exception as {var_name}:")
-            new_lines.append(f"{indent}    logger.exception(\"Exception caught: %s\", {var_name})")
+            new_lines.append(
+                f'{indent}    logger.exception("Exception caught: %s", {var_name})'
+            )
             new_lines.append(f"{indent}    raise")
             changed = True
             # Skip original block lines: advance until a line with indentation <= current block

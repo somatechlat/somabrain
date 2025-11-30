@@ -1,13 +1,3 @@
-from __future__ import annotations
-import argparse
-import asyncio
-import json
-import os
-import statistics
-import time
-import httpx
-from common.logging import logger
-
 """Scaled harness: POST N /remember concurrently, then /recall.
 
 Usage:
@@ -16,9 +6,17 @@ Usage:
 This runs against SOMABRAIN_HOST_PORT from .env or default 9696.
 """
 
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+import os
+import statistics
+import time
 
 
-
+import httpx
 
 ENV_FILE = ".env"
 DEFAULT_PORT = 9696
@@ -32,15 +30,9 @@ def read_env_port() -> int:
                 if line.strip().startswith("SOMABRAIN_HOST_PORT="):
                     _, v = line.strip().split("=", 1)
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         port = int(v)
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
-    raise
+                    except Exception:
+                        pass
     return port or DEFAULT_PORT
 
 
@@ -78,20 +70,12 @@ async def post_remember(
     body = make_payload(i)
     attempt = 0
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         while True:
             attempt += 1
             # semaphore acquisition can be cancelled; let CancelledError propagate to outer handler
             async with sem:
                 start = time.perf_counter()
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     r = await client.post(
                         "/remember", json=body, headers=HEADERS, timeout=30.0
                     )
@@ -107,8 +91,11 @@ async def post_remember(
                     elapsed = (time.perf_counter() - start) * 1000.0
                     return {"i": i, "status": -1, "text": "cancelled", "ms": elapsed}
                 except Exception as e:
-                    logger.exception("Exception caught: %s", e)
-                    raise
+                    elapsed = (time.perf_counter() - start) * 1000.0
+                    if attempt > retries:
+                        return {"i": i, "status": 0, "text": repr(e), "ms": elapsed}
+                    backoff = 0.1 * attempt
+                    await asyncio.sleep(backoff)
     except asyncio.CancelledError:
         # task was cancelled while sleeping or outside semaphore; return a cancel marker
         return {"i": i, "status": -1, "text": "cancelled", "ms": 0.0}
@@ -133,10 +120,6 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
         )
         start = time.perf_counter()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # Collect results; use return_exceptions=True so we can handle partial failures
             results = await asyncio.gather(*tasks, return_exceptions=True)
         except (asyncio.CancelledError, KeyboardInterrupt):
@@ -146,14 +129,9 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
             )
             for t in tasks:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     t.cancel()
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             results = await asyncio.gather(*tasks, return_exceptions=True)
         total_ms = (time.perf_counter() - start) * 1000.0
         # Normalize results: some entries may be exceptions; convert to consistent dicts
@@ -188,36 +166,28 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
         await asyncio.sleep(1.0)
         qstart = time.perf_counter()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # use await for the POST call and then inspect/await the response methods
             r = await client.post(
                 "/recall",
                 json={"query": "scale-memory", "top_k": 20},
                 headers=HEADERS,
-                timeout=30.0, )
+                timeout=30.0,
+            )
             recall_time_ms = (time.perf_counter() - qstart) * 1000.0
             recall_status = r.status_code
             recall_json = None
             if recall_status == 200:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     recall_json = r.json()
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     recall_json = {"error": "invalid json response"}
             else:
                 recall_text = r.text
                 recall_json = {"error": recall_text}
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            recall_time_ms = (time.perf_counter() - qstart) * 1000.0
+            recall_status = 0
+            recall_json = {"error": repr(e)}
 
         return {
             "write_stats": stats,
@@ -235,12 +205,14 @@ if __name__ == "__main__":
         "--host",
         type=str,
         default=None,
-        help="Host for Somabrain API (default 127.0.0.1)", )
+        help="Host for Somabrain API (default 127.0.0.1)",
+    )
     p.add_argument(
         "--port",
         type=int,
         default=None,
-        help="Port for Somabrain API (overrides .env)", )
+        help="Port for Somabrain API (overrides .env)",
+    )
     p.add_argument("--out", type=str, default="artifacts/benchmarks/rr.json")
     args = p.parse_args()
     os.makedirs(os.path.dirname(args.out), exist_ok=True)

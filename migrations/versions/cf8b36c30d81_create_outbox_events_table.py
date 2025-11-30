@@ -12,9 +12,6 @@ Create Date: 2025-10-15 14:00:00.000000
 """
 
 
-
-
-
 # revision identifiers, used by Alembic.
 revision: str = "cf8b36c30d81"
 down_revision: str | None = "0001_context_feedback"
@@ -35,7 +32,8 @@ def upgrade() -> None:
         sa.Column("tenant_id", sa.String(), nullable=True),
         sa.Column("last_error", sa.String(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("dedupe_key"), )
+        sa.UniqueConstraint("dedupe_key"),
+    )
 
 
 def downgrade() -> None:

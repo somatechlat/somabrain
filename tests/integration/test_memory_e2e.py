@@ -19,8 +19,6 @@ service is unavailable the test will be skipped.
 """
 
 
-
-
 def _service_available() -> bool:
     """Quick check that the HTTP endpoint is reachable.
 
@@ -44,7 +42,9 @@ def _service_available() -> bool:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(not _service_available(), reason="Memory HTTP service not reachable")
+@pytest.mark.skipif(
+    not _service_available(), reason="Memory HTTP service not reachable"
+)
 def test_memory_remember_and_recall() -> None:
     """Store a payload and verify it can be recalled.
 
@@ -70,4 +70,6 @@ def test_memory_remember_and_recall() -> None:
 
     # Recall using a query that should match the ``content`` field.
     hits: list[RecallHit] = client.recall(query="hello", top_k=5)
-    assert any(hit.payload.get("key") == test_key for hit in hits), "Stored memory not found in recall results"
+    assert any(
+        hit.payload.get("key") == test_key for hit in hits
+    ), "Stored memory not found in recall results"

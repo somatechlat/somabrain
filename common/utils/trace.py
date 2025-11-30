@@ -6,12 +6,12 @@ import logging
 from typing import Optional
 
 try:  # pragma: no cover - optional dependency guard
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Tracer
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import Tracer
 except Exception as exc:  # pragma: no cover
     # Log the import failure for debugging purposes while keeping the optional nature.
     _LOG.exception("Failed to import OpenTelemetry modules: %s", exc)
@@ -23,8 +23,8 @@ _LOG = logging.getLogger(__name__)
 
 def configure_tracing(
     service_name: str,
-    collector_endpoint: str = "http://otel-collector.soma-infra.svc.cluster.local:4317", ) -> None:
-        pass
+    collector_endpoint: str = "http://otel-collector.soma-infra.svc.cluster.local:4317",
+) -> None:
     """Initialise OpenTelemetry tracing for a service."""
 
     if trace is None:  # pragma: no cover - executed when OTel missing

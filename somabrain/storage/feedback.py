@@ -11,7 +11,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from somabrain.storage import db
-from common.logging import logger
 
 
 class FeedbackEvent(db.Base):
@@ -31,13 +30,12 @@ class FeedbackEvent(db.Base):
 
 
 class FeedbackStore:
-    pass
-def __init__(self, engine_url: Optional[str] = None) -> None:
+    def __init__(self, engine_url: Optional[str] = None) -> None:
         self._engine = db.get_engine(engine_url)
         db.Base.metadata.create_all(self._engine)
         self._session_factory = db.get_session_factory(engine_url)
 
-def record(
+    def record(
         self,
         event_id: str,
         session_id: str,
@@ -46,14 +44,10 @@ def record(
         response_text: str,
         utility: float,
         reward: Optional[float] = None,
-        metadata: Optional[dict] = None, ) -> None:
-            pass
+        metadata: Optional[dict] = None,
+    ) -> None:
         session: Session = self._session_factory()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             rec = FeedbackEvent(
                 id=event_id,
                 session_id=session_id,
@@ -62,7 +56,8 @@ def record(
                 response_text=response_text,
                 utility=utility,
                 reward=reward,
-                metadata_json=json.dumps(metadata or {}), )
+                metadata_json=json.dumps(metadata or {}),
+            )
             session.merge(rec)
             session.commit()
         except SQLAlchemyError:
@@ -71,18 +66,14 @@ def record(
         finally:
             session.close()
 
-def list_for_session(self, session_id: str):
+    def list_for_session(self, session_id: str):
         session: Session = self._session_factory()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return session.query(FeedbackEvent).filter_by(session_id=session_id).all()
         finally:
             session.close()
 
-def total_count(self) -> int:
+    def total_count(self) -> int:
         """Return total number of recorded feedback events.
 
         Provides a lightweight aggregate used by observability endpoints to
@@ -92,17 +83,11 @@ def total_count(self) -> int:
 
         session: Session = self._session_factory()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return int(session.query(FeedbackEvent).count())
         except SQLAlchemyError:
             session.rollback()
             return 0
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return 0
         finally:
             session.close()

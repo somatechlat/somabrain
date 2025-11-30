@@ -1,15 +1,3 @@
-from __future__ import annotations
-import os
-from typing import Optional, Any
-from common.logging import logger
-import pydantic_settings as _ps  # type: ignore
-from pydantic import Field
-from somabrain.mode import get_mode_config
-from somabrain.mode import get_mode_config
-from somabrain.mode import get_mode_config
-from somabrain.mode import get_mode_config
-from somabrain.mode import get_mode_config
-
 """Centralised configuration for SomaBrain and shared infra.
 
 This module mirrors the pattern used by other services in the SomaStack.
@@ -22,21 +10,21 @@ reads environment variables will continue to work because the default values
 default to the current variables.
 """
 
+from __future__ import annotations
 
+import os
+from typing import Optional, Any
 
 BaseSettings: Any  # forward-declare for mypy
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
+    import pydantic_settings as _ps  # type: ignore
+    from pydantic import Field
 
     BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+except Exception:  # pragma: no cover - alternative for older envs
+    from pydantic import BaseSettings as _BS, Field
 
     BaseSettings = _BS  # type: ignore[assignment]
 
@@ -55,14 +43,8 @@ def _int_env(name: str, default: int) -> int:
     # Remove anything after a comment marker
     raw = raw.split("#", 1)[0].strip()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return int(raw)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return default
 
 
@@ -76,14 +58,8 @@ def _bool_env(name: str, default: bool) -> bool:
         return default
     raw = raw.split("#", 1)[0].strip()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return raw.lower() in _TRUE_VALUES
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return default
 
 
@@ -92,14 +68,8 @@ def _float_env(name: str, default: float) -> float:
     raw = os.getenv(name, str(default))
     raw = raw.split("#", 1)[0].strip()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return float(raw)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return default
 
 
@@ -220,11 +190,10 @@ class Settings(BaseSettings):
     milvus_port: Optional[int] = Field(
         default=_int_env(
             "MILVUS_PORT",
-            _int_env("SOMABRAIN_MILVUS_PORT", 19530), )
+            _int_env("SOMABRAIN_MILVUS_PORT", 19530),
+        )
     )
-    milvus_collection: str = Field(
-        default=_str_env("MILVUS_COLLECTION", "oak_options")
-    )
+    milvus_collection: str = Field(default=_str_env("MILVUS_COLLECTION", "oak_options"))
     # Convenience full URL – used by the Milvus client when both host and
     # port are present. This keeps the client implementation free of
     # environment‑lookup logic, satisfying the VIBE “single source of truth”.
@@ -249,10 +218,14 @@ class Settings(BaseSettings):
     # Default similarity threshold for option similarity search. Lowered to 0.8
     # to align with unit‑test expectations (a hit with distance 0.2 yields a
     # similarity of ~0.833, which should be accepted).
-    OAK_SIMILARITY_THRESHOLD: float = Field(default=_float_env("OAK_SIMILARITY_THRESHOLD", 0.8))
+    OAK_SIMILARITY_THRESHOLD: float = Field(
+        default=_float_env("OAK_SIMILARITY_THRESHOLD", 0.8)
+    )
     # Salience / reward thresholds for option creation
     OAK_REWARD_THRESHOLD: float = Field(default=_float_env("OAK_REWARD_THRESHOLD", 0.5))
-    OAK_NOVELTY_THRESHOLD: float = Field(default=_float_env("OAK_NOVELTY_THRESHOLD", 0.2))
+    OAK_NOVELTY_THRESHOLD: float = Field(
+        default=_float_env("OAK_NOVELTY_THRESHOLD", 0.2)
+    )
     # Discount factor for environment reward (γ)
     OAK_GAMMA: float = Field(default=_float_env("OAK_GAMMA", 0.99))
     # EMA update factor (α)
@@ -276,20 +249,6 @@ class Settings(BaseSettings):
     host_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
     )
-    # Public API host/port configuration used for constructing the base URL.
-    # These map to SOMABRAIN_PUBLIC_HOST and SOMABRAIN_PUBLIC_PORT environment
-    # variables. Defaults mirror the historic host_port values for backward
-    # compatibility.
-    public_host: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_PUBLIC_HOST") or "localhost"
-    )
-    public_port: Optional[int] = Field(
-        default=_int_env("SOMABRAIN_PUBLIC_PORT", 9696)
-    )
-    # API scheme (http/https) – used when constructing the base URL.
-    api_scheme: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_API_SCHEME") or "http"
-    )
     providers_path: Optional[str] = Field(default=_str_env("PROVIDERS_PATH"))
     spectral_cache_dir: Optional[str] = Field(
         default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
@@ -300,7 +259,9 @@ class Settings(BaseSettings):
     # It defaults to ``False`` for local development (mirroring ``config.yaml``).
     # ``api_token`` holds the static token value when ``auth_required`` is True.
     # Both values can be overridden via environment variables for production.
-    auth_required: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False))
+    auth_required: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False)
+    )
     api_token: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_TOKEN", ""))
     learner_dlq_path: str = Field(
         default=_str_env("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
@@ -367,28 +328,8 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
     )
     # OPA bundle path (optional)
-    opa_bundle_path: Optional[str] = Field(default=_str_env("OPA_BUNDLE_PATH") or "./opa")
-
-    # -----------------------------------------------------------------
-    # Outbox worker configuration (environment variables used by
-    # ``somabrain.workers.outbox_publisher``). These defaults mirror the
-    # historic hard‑coded values and provide typed access for the worker.
-    # -----------------------------------------------------------------
-    outbox_batch_size: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_BATCH_SIZE", 100)
-    )
-    outbox_max_retries: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_MAX_RETRIES", 5)
-    )
-    outbox_poll_interval: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_OUTBOX_POLL_INTERVAL", 1.0)
-    )
-    outbox_producer_retry_ms: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", 1000)
-    )
-    # Interval (seconds) for replaying journal events to the database.
-    journal_replay_interval: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_REPLAY_INTERVAL", 300)
+    opa_bundle_path: Optional[str] = Field(
+        default=_str_env("OPA_BUNDLE_PATH") or "./opa"
     )
     # Additional configuration fields needed for full removal of settings.getenv usage
     heat_method: str = Field(default=_str_env("SOMA_HEAT_METHOD", "chebyshev"))
@@ -457,21 +398,12 @@ class Settings(BaseSettings):
 
     # Feature flags --------------------------------------------------------
     # ``require_external_backends`` is the canonical flag that replaces the
+    # legacy ``force_full_stack``. It controls whether external services (Redis,
     # Kafka, etc.) must be available. The default mirrors the historic behaviour
     # of ``SOMABRAIN_FORCE_FULL_STACK`` (True) but can be overridden via the
     # ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` environment variable.
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
-    )
-    # Global infra requirement flag – used by workers to optionally bypass
-    # infra readiness checks (e.g., during unit tests). The original code
-    # accessed ``settings.require_infra`` but the field was never defined,
-    # causing an ``AttributeError`` in the outbox publisher and other workers.
-    # We expose it here with the same semantics: a truthy value (default ``True``)
-    # means infra must be ready; setting ``SOMABRAIN_REQUIRE_INFRA=0`` disables
-    # the check.
-    require_infra: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_INFRA", True)
     )
     require_memory: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
@@ -479,6 +411,7 @@ class Settings(BaseSettings):
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
+    # Auth is always-on in strict mode; legacy auth toggle removed.
     mode: str = Field(default=_str_env("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
@@ -498,6 +431,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_TINY_EMBEDDER", False)
     )
 
+    # Kafka aliases / topics (keep compatibility with legacy env names)
     kafka_bootstrap: str = Field(
         default_factory=lambda: _str_env("SOMA_KAFKA_BOOTSTRAP", "")
     )
@@ -557,7 +491,11 @@ class Settings(BaseSettings):
     api_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_URL", ""))
     # Base URL used for local development and fallback when no explicit URL is provided.
     # Defaults to ``http://localhost:9696`` which matches historic hard‑coded values.
-    default_base_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"))
+    default_base_url: str = Field(
+        default_factory=lambda: _str_env(
+            "SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"
+        )
+    )
 
     # OPA service URL (policy engine)
     opa_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", ""))
@@ -680,10 +618,14 @@ class Settings(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
     # Calibration
-    calibration_enabled: bool = Field(default=False, description="Enable predictor calibration service")
+    calibration_enabled: bool = Field(
+        default=False, description="Enable predictor calibration service"
+    )
 
     # Feature Flags
-    enable_cog_threads: bool = Field(default=False, description="Enable Cognitive Threads v2")
+    enable_cog_threads: bool = Field(
+        default=False, description="Enable Cognitive Threads v2"
+    )
 
     # Predictor timeout (ms) – used when constructing the budgeted predictor.
     # The historic default was 1000 ms; we keep that value here.
@@ -714,9 +656,7 @@ class Settings(BaseSettings):
     wm_alpha: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_ALPHA", 0.6)
     )
-    wm_beta: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3)
-    )
+    wm_beta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3))
     wm_gamma: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_GAMMA", 0.1)
     )
@@ -799,6 +739,7 @@ class Settings(BaseSettings):
     segment_health_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
     )
+    # Enable flag for segmentation health endpoint (legacy env var).
     # Historically defaulted to "1" (enabled).  Stored as a bool.
     segment_health_enable: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_SEGMENT_HEALTH_ENABLE", True)
@@ -821,6 +762,7 @@ class Settings(BaseSettings):
     learning_tenants_file: Optional[str] = Field(
         default=_str_env("SOMABRAIN_LEARNING_TENANTS_FILE")
     )
+    # Alternate name used by some legacy code (same purpose).
     learning_tenants_config: Optional[str] = Field(
         default=_str_env("LEARNING_TENANTS_CONFIG")
     )
@@ -1342,13 +1284,15 @@ class Settings(BaseSettings):
     integrator_health_url: str = Field(
         default_factory=lambda: _str_env(
             "SOMABRAIN_INTEGRATOR_HEALTH_URL",
-            "http://somabrain_integrator_triplet:9015/health", )
+            "http://somabrain_integrator_triplet:9015/health",
+        )
         or "http://somabrain_integrator_triplet:9015/health"
     )
     segmentation_health_url: str = Field(
         default_factory=lambda: _str_env(
             "SOMABRAIN_SEGMENTATION_HEALTH_URL",
-            "http://somabrain_cog:9016/health", )
+            "http://somabrain_cog:9016/health",
+        )
         or "http://somabrain_cog:9016/health"
     )
     # Tiered memory cleanup configuration
@@ -1411,23 +1355,20 @@ class Settings(BaseSettings):
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
+    # by SOMABRAIN_MODE without mutating legacy flags. Existing code continues
+    # to read legacy auth settings/require_external_backends until migrated in Sprint 2.
 
-@property
-def mode_normalized(self) -> str:
+    @property
+    def mode_normalized(self) -> str:
         """Normalized mode name in {dev, staging, prod}. Unknown maps to prod.
 
         Historically, the default was "enterprise"; we treat that as prod.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.mode import get_mode_config
 
             return get_mode_config().mode.value
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             m = (self.mode or "").strip().lower()
             if m in ("dev", "development"):
                 return "dev"
@@ -1435,46 +1376,36 @@ def mode_normalized(self) -> str:
                 return "staging"
             return "prod"
 
-@property
-def mode_api_auth_enabled(self) -> bool:
+    @property
+    def mode_api_auth_enabled(self) -> bool:
         """Whether API auth should be enabled under the current mode.
 
         Strict: Always True across all modes.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.mode import get_mode_config
 
             # Even if mode declares dev relaxations, enforce auth in strict mode
             _ = get_mode_config()
             return True
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return True
 
-@property
-def mode_require_external_backends(self) -> bool:
+    @property
+    def mode_require_external_backends(self) -> bool:
         """Require real backends (no stubs) across all modes by policy.
 
         This mirrors the "no mocks" requirement and prevents silent alternatives.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.mode import get_mode_config
 
             return get_mode_config().profile.require_external_backends
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return True
 
-@property
-def mode_memory_auth_required(self) -> bool:
+    @property
+    def mode_memory_auth_required(self) -> bool:
         """Whether memory-service HTTP calls must carry a token.
 
         - dev: True (dev token or approved proxy)
@@ -1483,8 +1414,8 @@ def mode_memory_auth_required(self) -> bool:
         """
         return True
 
-@property
-def mode_opa_fail_closed(self) -> bool:
+    @property
+    def mode_opa_fail_closed(self) -> bool:
         """Whether OPA evaluation should fail-closed by mode.
 
         - dev: False (allow-dev bundle; permissive)
@@ -1492,30 +1423,20 @@ def mode_opa_fail_closed(self) -> bool:
         - prod: True
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.mode import get_mode_config
 
             return get_mode_config().profile.opa_fail_closed
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return self.mode_normalized != "dev"
 
-@property
-def mode_log_level(self) -> str:
+    @property
+    def mode_log_level(self) -> str:
         """Recommended root log level by mode."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.mode import get_mode_config
 
             return get_mode_config().profile.log_level
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             m = self.mode_normalized
             if m == "dev":
                 return "DEBUG"
@@ -1523,8 +1444,8 @@ def mode_log_level(self) -> str:
                 return "INFO"
             return "WARNING"
 
-@property
-def mode_opa_policy_bundle(self) -> str:
+    @property
+    def mode_opa_policy_bundle(self) -> str:
         """Policy bundle name to use by mode."""
         m = self.mode_normalized
         if m == "dev":
@@ -1533,43 +1454,45 @@ def mode_opa_policy_bundle(self) -> str:
             return "staging"
         return "prod"
 
-@property
-def deprecation_notices(self) -> list[str]:
-        """Collect deprecation notices from environment variables.
+    @property
+    def deprecation_notices(self) -> list[str]:
+        """List of deprecation notices derived from env usage.
 
-        VIBE Rule 4 requires real logic instead of empty ``except`` blocks.
-        The implementation now performs the checks directly without ``try/except``
-        wrappers because the helper ``_str_env`` already returns ``None`` when the
-        variable is missing. This eliminates the need for placeholder error
-        handling and provides a deterministic list of notices.
+        We do not mutate legacy flags here; we only surface guidance so logs
+        can point developers to SOMABRAIN_MODE as the source of truth.
         """
         notes: list[str] = []
-
-        # Check for the deprecated full‑stack flag.
-        if _str_env("SOMABRAIN_FORCE_FULL_STACK") is not None:
-            notes.append(
-                "SOMABRAIN_FORCE_FULL_STACK is deprecated; use SOMABRAIN_MODE with mode_require_external_backends policy."
-            )
-
-        if _str_env("SOMABRAIN_AUTH_LEGACY") is not None:
-            notes.append(
-                "Legacy auth environment variable is deprecated; auth is always required in strict mode."
-            )
-
-        # Warn on unknown modes.
-        raw = (self.mode or "").strip().lower()
-        if raw and raw not in (
-            "dev",
-            "development",
-            "stage",
-            "staging",
-            "prod",
-            "enterprise", ):
-                pass
-            notes.append(
-                f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
-            )
-
+        try:
+            if _str_env("SOMABRAIN_FORCE_FULL_STACK") is not None:
+                notes.append(
+                    "SOMABRAIN_FORCE_FULL_STACK is deprecated; use SOMABRAIN_MODE with mode_require_external_backends policy."
+                )
+        except Exception:
+            pass
+        try:
+            legacy_auth_env = _str_env("SOMABRAIN_AUTH_LEGACY")
+            if legacy_auth_env is not None:
+                notes.append(
+                    "Legacy auth environment variable is deprecated; auth is always required in strict mode."
+                )
+        except Exception:
+            pass
+        # Warn on unknown modes
+        try:
+            raw = (self.mode or "").strip().lower()
+            if raw and raw not in (
+                "dev",
+                "development",
+                "stage",
+                "staging",
+                "prod",
+                "enterprise",
+            ):
+                notes.append(
+                    f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
+                )
+        except Exception:
+            pass
         return notes
 
     # Pydantic v2 uses `model_config` (a dict) for configuration. Make the
@@ -1582,11 +1505,13 @@ def deprecation_notices(self) -> list[str]:
     }
 
     # -----------------------------------------------------------------
+    # Helpers for legacy call sites
     # -----------------------------------------------------------------
-def _env_to_attr(self, name: str) -> str:
+    def _env_to_attr(self, name: str) -> str:
         """Best-effort mapping from env var name to Settings attribute.
 
         Strips common prefixes (SOMABRAIN_, SOMA_, OPA_) and lowercases /
+        converts to snake_case to align with field names. This keeps legacy
         ``settings.getenv("SOMABRAIN_X")`` call sites functional while the code
         base is migrated to direct attribute access.
         """
@@ -1598,9 +1523,10 @@ def _env_to_attr(self, name: str) -> str:
         key = key.replace("-", "_")
         return key
 
+    # Hard block legacy access: all call sites must be updated to use typed
     # Settings attributes. This will raise immediately wherever getenv is still
     # called.
-def getenv(
+    def getenv(
         self, name: str, default: Optional[str] = None
     ) -> Optional[str]:  # pragma: no cover
         raise RuntimeError(

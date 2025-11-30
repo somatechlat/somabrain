@@ -3,19 +3,13 @@
 from __future__ import annotations
 
 from typing import Dict, List, Optional
-from common.logging import logger
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-from pydantic import BaseModel, Field
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from pydantic import BaseModel, Field
+except Exception:  # pragma: no cover
+    BaseModel = object  # type: ignore
 
-def Field(*a, **k):  # type: ignore
+    def Field(*a, **k):  # type: ignore
         return None
 
 

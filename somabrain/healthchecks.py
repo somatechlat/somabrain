@@ -1,10 +1,3 @@
-from __future__ import annotations
-from typing import Optional
-from common.config.settings import settings
-from common.logging import logger
-from confluent_kafka import Consumer  # type: ignore
-import psycopg  # type: ignore
-
 """Backend connectivity health checks for SomaBrain.
 
 These helpers perform real connectivity checks to core backends used by the
@@ -16,23 +9,20 @@ that a minimal control-plane operation (TCP connect and metadata/SELECT 1) is
 possible. This provides a truthful readiness signal for a real server.
 """
 
+from __future__ import annotations
 
+from typing import Optional
 
+from common.config.settings import settings
 
 
 def _strip_scheme(url: str) -> str:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         u = str(url or "").strip()
         if "://" in u:
             return u.split("://", 1)[1]
         return u
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return str(url or "").strip()
 
 
@@ -46,10 +36,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
         return False
     servers = _strip_scheme(bootstrap)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from confluent_kafka import Consumer  # type: ignore
 
         c = Consumer(
             {
@@ -60,27 +47,16 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
             }
         )
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # metadata() without args returns cluster metadata
             md = c.list_topics(timeout=timeout_s)
             ok = bool(md and md.brokers)
         finally:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 c.close()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         return ok
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return False
 
 
@@ -92,35 +68,21 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
     if not dsn:
         return False
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        import psycopg  # type: ignore
 
         # psycopg.connect supports connect_timeout as kwarg (seconds)
         conn = psycopg.connect(dsn, connect_timeout=max(1, int(timeout_s)))
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
                 row = cur.fetchone()
                 return bool(row and row[0] == 1)
         finally:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 conn.close()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+            except Exception:
+                pass
+    except Exception:
         return False
 
 

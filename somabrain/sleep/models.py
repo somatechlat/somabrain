@@ -1,10 +1,3 @@
-from __future__ import annotations
-import json
-from typing import Any, Optional
-from sqlalchemy import Column, String, DateTime, Text, func
-from somabrain.storage.db import Base
-from common.logging import logger
-
 """SQLAlchemy model for per‑tenant sleep state persistence.
 
 The migration ``20251112_create_sleep_states`` creates the corresponding table.
@@ -12,9 +5,14 @@ This model is used by the Sleep System endpoints to store the current and
 target sleep states, optional TTL for auto‑wake, and additional parameters.
 """
 
+from __future__ import annotations
 
+import json
+from typing import Any, Optional
 
+from sqlalchemy import Column, String, DateTime, Text, func
 
+from somabrain.storage.db import Base
 
 
 class TenantSleepState(Base):
@@ -46,9 +44,10 @@ class TenantSleepState(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False, )
+        nullable=False,
+    )
 
-def set_parameters(self, params: dict[str, Any] | None) -> None:
+    def set_parameters(self, params: dict[str, Any] | None) -> None:
         """Store a JSON representation of sleep parameters.
 
         ``params`` may be ``None`` – in that case the column is cleared.
@@ -57,32 +56,21 @@ def set_parameters(self, params: dict[str, Any] | None) -> None:
             self.parameters_json = None
         else:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self.parameters_json = json.dumps(params, sort_keys=True)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                # Fallback to string representation if JSON fails.
                 self.parameters_json = str(params)
 
-def get_parameters(self) -> Optional[dict[str, Any]]:
+    def get_parameters(self) -> Optional[dict[str, Any]]:
         """Return the stored parameters as a dict, or ``None`` if missing."""
         if not self.parameters_json:
             return None
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return json.loads(self.parameters_json)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
 
-def __repr__(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<TenantSleepState(tenant_id={self.tenant_id}, current={self.current_state}, "
             f"target={self.target_state}, ttl={self.ttl}, scheduled_wake={self.scheduled_wake})>"

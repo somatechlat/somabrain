@@ -1,22 +1,3 @@
-import redis
-from somabrain.context.builder import RetrievalWeights as RetrievalWeights
-from somabrain import runtime_config as _rt
-from somabrain.metrics import tau_gauge
-from somabrain.context.builder import RetrievalWeights as _RW
-from somabrain.neuromodulators import PerTenantNeuromodulators
-from somabrain import runtime_config as _rt
-from somabrain import runtime_config as _rt
-from somabrain import metrics as _metrics
-from somabrain import metrics as _metrics
-from somabrain import runtime_config as _rt
-import math
-from somabrain import metrics as _metrics
-from somabrain import metrics as _metrics
-from somabrain import runtime_config as _rt
-from somabrain import metrics as _metrics
-from somabrain.neuromodulators import PerTenantNeuromodulators
-from somabrain.context.builder import (
-
 """Lightweight adaptation engine for utility/retrieval weights."""
 
 from __future__ import annotations
@@ -27,8 +8,7 @@ from dataclasses import asdict, dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    pass
-from somabrain.feedback import Feedback
+    from somabrain.feedback import Feedback
 
 
 @dataclass
@@ -40,17 +20,11 @@ class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in
 
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-from common.config.settings import settings as settings
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from common.config.settings import settings as settings
+except Exception:  # pragma: no cover - optional dependency
+    settings = None  # type: ignore
 
 from somabrain.infrastructure import get_redis_url
-from common.logging import logger
 
 # Module-level cache for per-tenant overrides and path used to load them
 _TENANT_OVERRIDES: dict[str, dict] | None = None
@@ -67,11 +41,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
     # Attempt to load from YAML if available
     if path and os.path.exists(path):
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-import yaml  # type: ignore
+            import yaml  # type: ignore
 
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
@@ -79,15 +49,10 @@ import yaml  # type: ignore
                 overrides = {
                     str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                 }
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            # Fallback to JSON parse if YAML not available or fails
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-import json as _json
+                import json as _json
 
                 with open(path, "r", encoding="utf-8") as f:
                     data = _json.load(f)
@@ -97,20 +62,14 @@ import json as _json
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 overrides = {}
     # Optional: overrides via env JSON string
     if not overrides:
         raw = settings.learning_tenants_overrides.strip()
         if raw:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-import json as _json
+                import json as _json
 
                 data = _json.loads(raw)
                 if isinstance(data, dict):
@@ -119,9 +78,7 @@ import json as _json
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 overrides = {}
     _TENANT_OVERRIDES = overrides
     _TENANT_OVERRIDES_PATH = path
@@ -130,15 +87,9 @@ import json as _json
 
 def _get_tenant_override(tenant_id: str) -> dict:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         ov = _load_tenant_overrides()
         return ov.get(str(tenant_id), {})
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return {}
 
 
@@ -160,13 +111,10 @@ def _get_redis():
 
     if require_backends:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             redis_url = get_redis_url()
             if redis_url:
                 redis_url = redis_url.strip()
+            import redis
 
             if redis_url:
                 return redis.from_url(redis_url)
@@ -176,10 +124,8 @@ def _get_redis():
             redis_db = settings.redis_db or settings.redis_db
             if redis_host and redis_port:
                 return redis.from_url(f"redis://{redis_host}:{redis_port}/{redis_db}")
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
     return None
 
 
@@ -189,18 +135,21 @@ class UtilityWeights:
     mu: float = float(getattr(settings, "utility_mu", 0.1))
     nu: float = float(getattr(settings, "utility_nu", 0.05))
 
-def clamp(
+    def clamp(
         self,
         lambda_bounds: tuple[float, float] = (
             float(getattr(settings, "utility_lambda_min", 0.0)),
-            float(getattr(settings, "utility_lambda_max", 5.0)), ),
+            float(getattr(settings, "utility_lambda_max", 5.0)),
+        ),
         mu_bounds: tuple[float, float] = (
             float(getattr(settings, "utility_mu_min", 0.0)),
-            float(getattr(settings, "utility_mu_max", 5.0)), ),
+            float(getattr(settings, "utility_mu_max", 5.0)),
+        ),
         nu_bounds: tuple[float, float] = (
             float(getattr(settings, "utility_nu_min", 0.0)),
-            float(getattr(settings, "utility_nu_max", 5.0)), ), ) -> None:
-                pass
+            float(getattr(settings, "utility_nu_max", 5.0)),
+        ),
+    ) -> None:
         self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
         self.mu = min(max(self.mu, mu_bounds[0]), mu_bounds[1])
         self.nu = min(max(self.nu, nu_bounds[0]), nu_bounds[1])
@@ -216,15 +165,16 @@ class AdaptationGains:
     mu: float = float(getattr(settings, "adaptation_gain_mu", -0.25))
     nu: float = float(getattr(settings, "adaptation_gain_nu", -0.25))
 
-@classmethod
-def from_settings(cls) -> "AdaptationGains":
+    @classmethod
+    def from_settings(cls) -> "AdaptationGains":
         """Construct gains from centralized settings only."""
         base = cls(
             alpha=float(getattr(settings, "adaptation_gain_alpha", 1.0)),
             gamma=float(getattr(settings, "adaptation_gain_gamma", -0.5)),
             lambda_=float(getattr(settings, "adaptation_gain_lambda", 1.0)),
             mu=float(getattr(settings, "adaptation_gain_mu", -0.25)),
-            nu=float(getattr(settings, "adaptation_gain_nu", -0.25)), )
+            nu=float(getattr(settings, "adaptation_gain_nu", -0.25)),
+        )
         return base
 
 
@@ -241,8 +191,8 @@ class AdaptationConstraints:
     nu_min: float = float(getattr(settings, "adaptation_nu_min", 0.01))
     nu_max: float = float(getattr(settings, "adaptation_nu_max", 5.0))
 
-@classmethod
-def from_settings(cls) -> "AdaptationConstraints":
+    @classmethod
+    def from_settings(cls) -> "AdaptationConstraints":
         """Construct constraints from centralized settings only."""
         base = cls(
             alpha_min=float(getattr(settings, "adaptation_alpha_min", 0.1)),
@@ -254,7 +204,8 @@ def from_settings(cls) -> "AdaptationConstraints":
             mu_min=float(getattr(settings, "adaptation_mu_min", 0.01)),
             mu_max=float(getattr(settings, "adaptation_mu_max", 5.0)),
             nu_min=float(getattr(settings, "adaptation_nu_min", 0.01)),
-            nu_max=float(getattr(settings, "adaptation_nu_max", 5.0)), )
+            nu_max=float(getattr(settings, "adaptation_nu_max", 5.0)),
+        )
         return base
 
 
@@ -262,13 +213,12 @@ class AdaptationEngine:
     """
     Applies simple online updates to retrieval/utility weights.
     Now supports:
-        pass
     - Per-tenant state persistence to Redis
     - Dynamic learning rate driven by neuromodulators
     - Rollback and explicit constraint enforcement
     """
 
-def __init__(
+    def __init__(
         self,
         retrieval: "RetrievalWeights" | None = None,
         utility: Optional[UtilityWeights] = None,
@@ -277,21 +227,22 @@ def __init__(
         constraints: AdaptationConstraints | dict | None = None,
         tenant_id: Optional[str] = None,
         enable_dynamic_lr: bool = False,
-        gains: Optional[AdaptationGains] = None, ) -> None:
-            pass
+        gains: Optional[AdaptationGains] = None,
+    ) -> None:
         if settings and not getattr(settings, "enable_advanced_learning", True):
             raise RuntimeError(
                 "Advanced learning is disabled; set SOMABRAIN_ENABLE_ADVANCED_LEARNING=1 to enable adaptation."
             )
         # Lazy import to avoid circular dependency at module load time
         if retrieval is None:
-            pass
+            from somabrain.context.builder import RetrievalWeights as RetrievalWeights
 
             retrieval = RetrievalWeights(
                 getattr(settings, "retrieval_alpha", 1.0),
                 getattr(settings, "retrieval_beta", 0.2),
                 getattr(settings, "retrieval_gamma", 0.1),
-                getattr(settings, "retrieval_tau", 0.7), )
+                getattr(settings, "retrieval_tau", 0.7),
+            )
         self._retrieval = retrieval
         self._utility = utility or UtilityWeights()
         lr = (
@@ -325,7 +276,8 @@ def __init__(
                         **{
                             attr_map[key][0]: float(lower),
                             attr_map[key][1]: float(upper),
-                        }, )
+                        },
+                    )
         else:
             constraint_bounds = AdaptationConstraints.from_settings()
         self._constraint_bounds = constraint_bounds
@@ -346,44 +298,33 @@ def __init__(
         dyn_lr = bool(enable_dynamic_lr)
         if settings is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 dyn_lr = dyn_lr or bool(
                     getattr(settings, "learning_rate_dynamic", False)
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         else:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from somabrain import runtime_config as _rt
 
                 dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         self._enable_dynamic_lr = dyn_lr
         self._gains = gains or AdaptationGains.from_settings()
 
         # Initialize per-tenant tau gauge with a small deterministic offset
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.metrics import tau_gauge
 
             offset = (hash(self._tenant_id) % 100) / 1000.0  # 0.0‑0.099
             tau_gauge.labels(tenant_id=self._tenant_id).set(
                 self._retrieval.tau + offset
             )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
+
+        # Load state from Redis only when explicitly enabled (test isolation by default)
         if (
             self._redis
             and self._tenant_id
@@ -395,7 +336,7 @@ def __init__(
     # ---------------------------------------------------------------------
     # Configuration and lifecycle controls
     # ---------------------------------------------------------------------
-def set_constraints(self, constraints: AdaptationConstraints) -> None:
+    def set_constraints(self, constraints: AdaptationConstraints) -> None:
         """Replace constraint bounds at runtime and rebuild internal map."""
         self._constraint_bounds = constraints
         self._constraints = {
@@ -406,31 +347,25 @@ def set_constraints(self, constraints: AdaptationConstraints) -> None:
             "nu": (constraints.nu_min, constraints.nu_max),
         }
 
-def set_gains(self, gains: AdaptationGains) -> None:
+    def set_gains(self, gains: AdaptationGains) -> None:
         """Replace per-parameter gains at runtime."""
         self._gains = gains
 
-def set_base_learning_rate(self, base_lr: float) -> None:
+    def set_base_learning_rate(self, base_lr: float) -> None:
         """Update base learning rate and reset effective LR to base."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._base_lr = float(base_lr)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return
         self._lr = self._base_lr
 
-def reset(
+    def reset(
         self,
         retrieval_defaults: Optional["RetrievalWeights"] = None,
         utility_defaults: Optional[UtilityWeights] = None,
         base_lr: Optional[float] = None,
-        clear_history: bool = True, ) -> None:
-            pass
+        clear_history: bool = True,
+    ) -> None:
         """Reset weights and counters to defaults for a clean run.
 
         Args:
@@ -448,19 +383,14 @@ def reset(
         else:
             # Sensible defaults aligning with ContextBuilder defaults
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from somabrain.context.builder import RetrievalWeights as _RW
 
                 rw = _RW()
                 self._retrieval.alpha = float(rw.alpha)
                 self._retrieval.beta = float(rw.beta)
                 self._retrieval.gamma = float(rw.gamma)
                 self._retrieval.tau = float(rw.tau)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 self._retrieval.alpha = 1.0
                 self._retrieval.beta = 0.2
                 self._retrieval.gamma = 0.1
@@ -489,7 +419,7 @@ def reset(
     # ---------------------------------------------------------------------
     # Public helpers for tests / external callers
     # ---------------------------------------------------------------------
-def save_state(self) -> None:
+    def save_state(self) -> None:
         """Persist the current adaptation state to Redis.
 
         The internal ``_persist_state`` method already performs the write, but
@@ -497,7 +427,7 @@ def save_state(self) -> None:
         """
         self._persist_state()
 
-def load_state(self) -> dict:
+    def load_state(self) -> dict:
         """Load the persisted state from Redis and return it.
 
         Returns the same dictionary structure that ``_persist_state`` writes.
@@ -505,8 +435,8 @@ def load_state(self) -> dict:
         self._load_state()
         return self._state
 
-@property
-def _state(self) -> dict:
+    @property
+    def _state(self) -> dict:
         """Current adaptation state as a dictionary.
 
         Includes retrieval and utility weights, feedback count, learning rate
@@ -529,42 +459,37 @@ def _state(self) -> dict:
             "learning_rate": getattr(self, "_lr", self._base_lr),
         }
 
-def _get_neuromod_state(self):
+    def _get_neuromod_state(self):
         """Fetch the full neuromodulator state for this tenant.
 
         Returns the object provided by ``PerTenantNeuromodulators.get_state``
         or ``None`` if the module cannot be imported.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.neuromodulators import PerTenantNeuromodulators
 
             neuromod = PerTenantNeuromodulators()
             return neuromod.get_state(self._tenant_id)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
 
-@property
-def retrieval_weights(self) -> RetrievalWeights:
+    @property
+    def retrieval_weights(self) -> RetrievalWeights:
         return self._retrieval
 
-@property
-def utility_weights(self) -> UtilityWeights:
+    @property
+    def utility_weights(self) -> UtilityWeights:
         return self._utility
 
-@property
-def tenant_id(self) -> str:
+    @property
+    def tenant_id(self) -> str:
         return self._tenant_id
 
-def apply_feedback(
+    def apply_feedback(
         self,
         utility: float | Feedback,
-        reward: Optional[float] = None, ) -> bool:
-            pass
+        reward: Optional[float] = None,
+    ) -> bool:
         """
         Adjust weights based on observed utility/reward.
         Returns True when an update is applied, False otherwise.
@@ -626,15 +551,14 @@ def apply_feedback(
         self._utility.clamp(
             lambda_bounds=self._constraints["lambda_"],
             mu_bounds=self._constraints["mu"],
-            nu_bounds=self._constraints["nu"], )
+            nu_bounds=self._constraints["nu"],
+        )
 
         # Optional Phase‑1 adaptive knobs (tau decay + entropy cap), gated by env flags.
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import runtime_config as _rt
 
+            # Env alternative for legacy tests
             env_enable = settings.tau_decay_enabled
             env_rate = settings.tau_decay_rate
             enable_tau_decay = (
@@ -657,16 +581,12 @@ def apply_feedback(
             ov = getattr(self, "_tenant_override", {})
             if isinstance(ov.get("tau_decay_rate"), (int, float)):
                 tau_decay_rate = float(ov["tau_decay_rate"])  # override rate
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             enable_tau_decay = False
             tau_decay_rate = 0.0
+        # Annealing schedule supersedes legacy decay if enabled
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import runtime_config as _rt
 
             # Env alternatives for tests
             env_mode = settings.tau_anneal_mode
@@ -707,9 +627,7 @@ def apply_feedback(
                 anneal_step_interval = int(
                     ov.get("tau_step_interval", anneal_step_interval)
                 )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             anneal_mode = ""
             anneal_rate = 0.0
             anneal_step_interval = 10
@@ -735,34 +653,26 @@ def apply_feedback(
             if applied_anneal:
                 self._retrieval.tau = max(tau_min, new_tau)
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                    from somabrain import metrics as _metrics
 
                     _metrics.tau_anneal_events.labels(tenant_id=self._tenant_id).inc()
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
+        # Legacy tau decay path only if no annealing applied
         if not applied_anneal and enable_tau_decay and tau_decay_rate > 0.0:
             old_tau = float(self._retrieval.tau)
             new_tau = old_tau * (1.0 - tau_decay_rate)
             self._retrieval.tau = max(new_tau, 0.05)
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from somabrain import metrics as _metrics
 
                 _metrics.tau_decay_events.labels(tenant_id=self._tenant_id).inc()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
+
+        # Entropy cap: treat (alpha, beta, gamma, tau) as a positive vector; if entropy > cap, sharpen by scaling non‑max components.
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import runtime_config as _rt
 
             env_enable = getattr(settings, "entropy_cap_enabled", None)
             env_cap = getattr(settings, "entropy_cap", None)
@@ -780,15 +690,13 @@ def apply_feedback(
             ov = _get_tenant_override(self._tenant_id)
             if isinstance(ov.get("entropy_cap"), (int, float)):
                 entropy_cap = float(ov["entropy_cap"])  # override cap
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             enable_entropy_cap = False
             entropy_cap = 0.0
         # Apply entropy cap whenever a positive cap is configured, regardless of the enable flag.
         # The strict-mode tests set the cap via runtime overrides; we enforce it here.
         if entropy_cap > 0.0:
-            pass
+            import math
 
             vec = [
                 max(1e-9, float(self._retrieval.alpha)),
@@ -801,28 +709,21 @@ def apply_feedback(
             entropy = -sum(p * math.log(p) for p in probs)
             # Update entropy metric regardless of capping
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from somabrain import metrics as _metrics
 
                 _metrics.update_learning_retrieval_entropy(self._tenant_id, entropy)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
             if entropy_cap > 0.0 and entropy > entropy_cap:
                 # Increment the cap‑hit metric before aborting – this satisfies the VIBE rule
                 # that every observable side‑effect must happen prior to raising.
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                    from somabrain import metrics as _metrics
 
                     _metrics.entropy_cap_events.labels(tenant_id=self._tenant_id).inc()
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
+                # Raise an explicit error to signal a policy violation. The calling
                 # code (feedback processing) will treat this as a failure and the
                 # health endpoint will still report the current metric values.
                 raise RuntimeError(
@@ -831,24 +732,16 @@ def apply_feedback(
 
         # Track that a feedback event was applied
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._feedback_count = getattr(self, "_feedback_count", 0) + 1
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-        try:
+        except Exception:
             pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+
+        # Persist state only if enabled via env flag
+        try:
+            from somabrain import runtime_config as _rt
 
             _persist_enabled = _rt.get_bool("learning_state_persistence", False)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             _persist_enabled = False
         if _persist_enabled:
             if not self._redis:
@@ -856,44 +749,40 @@ def apply_feedback(
             self._persist_state()
         # Update shared metrics for this tenant (import inside to allow monkeypatching)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import metrics as _metrics
 
             _metrics.update_learning_retrieval_weights(
                 tenant_id=self._tenant_id,
                 alpha=self._retrieval.alpha,
                 beta=self._retrieval.beta,
                 gamma=self._retrieval.gamma,
-                tau=self._retrieval.tau, )
+                tau=self._retrieval.tau,
+            )
             _metrics.update_learning_utility_weights(
                 tenant_id=self._tenant_id,
                 lambda_=self._utility.lambda_,
                 mu=self._utility.mu,
-                nu=self._utility.nu, )
+                nu=self._utility.nu,
+            )
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 _metrics.update_learning_gains(
                     tenant_id=self._tenant_id,
-                    **asdict(self._gains), )
+                    **asdict(self._gains),
+                )
                 _metrics.update_learning_bounds(
                     tenant_id=self._tenant_id,
-                    **asdict(self._constraint_bounds), )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                    **asdict(self._constraint_bounds),
+                )
+            except Exception:
+                pass
+        except Exception:
+            pass
+        # Ensure state persisted even if metric update fails (duplicate call is safe) when enabled
         if _persist_enabled:
             self._persist_state()
         return True
 
-def rollback(self) -> bool:
+    def rollback(self) -> bool:
         """
         Roll back to the previous set of weights, if available.
         Returns True if rollback succeeded, False otherwise.
@@ -911,15 +800,15 @@ def rollback(self) -> bool:
         return True
 
     # --- Convenience properties and helpers expected by tests ---
-@property
-def learning_rate(self) -> float:
+    @property
+    def learning_rate(self) -> float:
         return float(getattr(self, "_lr", self._base_lr))
 
-@property
-def tau(self) -> float:
+    @property
+    def tau(self) -> float:
         return float(self._retrieval.tau)
 
-def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
+    def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
         """Exponential tau annealing used by tests.
 
         The test suite expects ``tau_0 * gamma ** steps`` after ``steps``
@@ -929,7 +818,7 @@ def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
         """
         return float(tau_0) * (float(gamma) ** (int(t) + 1))
 
-def linear_decay(self, tau_0: float, alpha: float, tau_min: float, t: int) -> float:
+    def linear_decay(self, tau_0: float, alpha: float, tau_min: float, t: int) -> float:
         """Linear tau annealing used by tests.
 
         Similar to ``exponential_decay`` the test expects the decay to be
@@ -938,124 +827,72 @@ def linear_decay(self, tau_0: float, alpha: float, tau_min: float, t: int) -> fl
         """
         return max(float(tau_min), float(tau_0) - float(alpha) * (int(t) + 1))
 
-def update_parameters(self, feedback: dict) -> None:
+    def update_parameters(self, feedback: dict) -> None:
         reward = 0.0
         error = 0.0
         if isinstance(feedback, dict):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 reward = float(feedback.get("reward", 0.0))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 reward = 0.0
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 error = float(feedback.get("error", 0.0))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 error = 0.0
         # Drive adaptation via existing feedback path
         self.apply_feedback(utility=reward, reward=reward)
         # Simple tau adjustment responsive to error
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._retrieval.tau = _clamp(
                 self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
             )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
-def update_from_experience(self, exp: dict) -> None:
+    def update_from_experience(self, exp: dict) -> None:
         # Track experiences for tests; optionally route reward to apply_feedback
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self.total_experiences = int(getattr(self, "total_experiences", 0)) + 1
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             self.total_experiences = 1
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             reward = float(exp.get("reward", 0.0)) if isinstance(exp, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
-@property
-def alpha(self) -> float:  # expose retrieval alpha for bounds test
+    @property
+    def alpha(self) -> float:  # expose retrieval alpha for bounds test
         return float(self._retrieval.alpha)
 
-def initialize_from_prior(self, prior_params: dict) -> None:
+    def initialize_from_prior(self, prior_params: dict) -> None:
         if not isinstance(prior_params, dict):
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._lr = float(prior_params.get("learning_rate", self._lr))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-        try:
+        except Exception:
             pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        try:
             self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
-def monitor_performance(self, metrics: dict) -> None:
+    def monitor_performance(self, metrics: dict) -> None:
         # Record metrics and use reward (if present) to trigger adaptation
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self.performance_history = getattr(self, "performance_history", [])
             self.performance_history.append(dict(metrics))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-        try:
+        except Exception:
             pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        try:
             reward = (
                 float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
             )
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
-def set_curriculum_stage(self, stage: str) -> None:
+    def set_curriculum_stage(self, stage: str) -> None:
         key = str(stage).strip().lower()
         base = float(self._base_lr)
         if key == "easy":
@@ -1065,17 +902,17 @@ def set_curriculum_stage(self, stage: str) -> None:
         else:
             self._lr = _clamp(base, 0.001, 1.0)
 
-def transfer_parameters(self, source_task: str, target_task: str) -> None:
+    def transfer_parameters(self, source_task: str, target_task: str) -> None:
         # Record target task for tests
         self.task_type = str(target_task)
 
-def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
+    def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
         lr_opts = list(search_space.get("learning_rate", [self._base_lr]))
         tau_opts = list(search_space.get("tau", [self._retrieval.tau]))
         # Deterministic choice for test determinism: pick the first option
         return {"learning_rate": float(lr_opts[0]), "tau": float(tau_opts[0])}
 
-def _save_history(self):
+    def _save_history(self):
         # Save a shallow copy of current weights for rollback
         if len(self._history) >= self._max_history:
             self._history.pop(0)
@@ -1091,10 +928,11 @@ def _save_history(self):
                     "lambda_": self._utility.lambda_,
                     "mu": self._utility.mu,
                     "nu": self._utility.nu,
-                }, )
+                },
+            )
         )
 
-def _constrain(self, name: str, value: float) -> float:
+    def _constrain(self, name: str, value: float) -> float:
         lower, upper = self._constraints.get(name, (None, None))
         if lower is not None and value < lower:
             return lower
@@ -1102,23 +940,18 @@ def _constrain(self, name: str, value: float) -> float:
             return upper
         return value
 
-def _get_dopamine_level(self) -> float:
+    def _get_dopamine_level(self) -> float:
         """Fetch dopamine level from neuromodulator state for this tenant."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.neuromodulators import PerTenantNeuromodulators
 
             neuromod = PerTenantNeuromodulators()
             state = neuromod.get_state(self._tenant_id)
             return state.dopamine
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return 0.0  # Neutral if unavailable
 
-def _persist_state(self):
+    def _persist_state(self):
         """Save current adaptation state to Redis with tenant prefix."""
         if not self._redis:
             return
@@ -1144,15 +977,11 @@ def _persist_state(self):
         # Persist with 7‑day TTL to prevent stale state accumulation.
         self._redis.setex(state_key, 7 * 24 * 3600, state_data)
 
-def _load_state(self):
+    def _load_state(self):
         """Load adaptation state from Redis if present."""
         if not self._redis:
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             state_key = f"adaptation:state:{self._tenant_id}"
             state_data = self._redis.get(state_key)
             if not state_data:
@@ -1177,19 +1006,17 @@ def _load_state(self):
             # Restore counters
             self._feedback_count = state.get("feedback_count", 0)
             self._lr = state.get("learning_rate", self._base_lr)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass  # Continue with defaults if load fails
+
+
+# Re-export RetrievalWeights for external imports (tests expect it here)
 try:
+    from somabrain.context.builder import (
+        RetrievalWeights as RetrievalWeights,
+    )  # noqa: F401
+except Exception:
     pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-        RetrievalWeights as RetrievalWeights, )  # noqa: F401
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
 
 
 def _clamp(value: float, lower: float, upper: float) -> float:

@@ -1,8 +1,3 @@
-import pathlib
-import re
-import sys
-import yaml
-
 #!/usr/bin/env python3
 """Generate a Kubernetes ConfigMap from docs/operations/configuration.md.
 
@@ -12,6 +7,10 @@ block and writes a ``ConfigMap`` YAML file under ``k8s/base`` which can be
 included in the Kustomize overlay.
 """
 
+import pathlib
+import re
+import sys
+import yaml
 
 CONFIG_MD = pathlib.Path("docs/operations/configuration.md")
 OUTPUT = pathlib.Path("k8s/base/somabrain-configmap.yaml")

@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 from typing import Any, Dict, Optional
 import requests
-from common.logging import logger
 
 
 class SomaBrainClient:
@@ -15,7 +14,7 @@ class SomaBrainClient:
     and an optional ``api_token`` for bearer‑token authentication.
     """
 
-def __init__(self, base_url: str, api_token: Optional[str] = None) -> None:
+    def __init__(self, base_url: str, api_token: Optional[str] = None) -> None:
         """Create a new :class:`SomaBrainClient`.
 
         Parameters
@@ -33,7 +32,7 @@ def __init__(self, base_url: str, api_token: Optional[str] = None) -> None:
             self.session.headers["Authorization"] = f"Bearer {api_token}"
         self._load_ports()
 
-def _load_ports(self) -> None:
+    def _load_ports(self) -> None:
         """Override ``base_url`` if a ``ports.json`` file is present.
 
         Some local development setups expose a ``ports.json`` artifact that maps
@@ -47,20 +46,17 @@ def _load_ports(self) -> None:
         if not ports_path.exists():
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             ports = json.loads(ports_path.read_text())
             context_port = ports.get("SOMABRAIN_HOST_PORT")
             if context_port:
                 self.base_url = f"http://localhost:{context_port}/context"
         except Exception as exc:  # pragma: no cover
             # Import the logger lazily to avoid circular imports at module load.
+            from common.logging import logger
 
-                raise RuntimeError("Failed to load ports from ports.json: %s", exc)
+            logger.exception("Failed to load ports from ports.json: %s", exc)
 
-def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any]:
+    def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any]:
         """Send an evaluation request to the SomaBrain service.
 
         Parameters
@@ -77,7 +73,7 @@ def evaluate(self, session_id: str, query: str, top_k: int = 5) -> Dict[str, Any
         resp.raise_for_status()
         return resp.json()
 
-def feedback(
+    def feedback(
         self,
         session_id: str,
         query: str,
@@ -85,8 +81,8 @@ def feedback(
         response_text: str,
         utility: float,
         reward: Optional[float] = None,
-        metadata: Optional[Dict[str, Any]] = None, ) -> Dict[str, Any]:
-            pass
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         """Submit feedback about a previous prediction.
 
         Parameters

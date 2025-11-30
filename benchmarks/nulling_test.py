@@ -1,13 +1,12 @@
-import numpy as np
-from somabrain.numerics import irfft_norm, rfft_norm
-from somabrain.quantum import HRRConfig, QuantumLayer
-
 """Targeted spectral nulling test to exercise unbind fragility.
 
 Run under the project's venv with PYTHONPATH=. to validate imports and API.
 """
 
+import numpy as np
 
+from somabrain.numerics import irfft_norm, rfft_norm
+from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def run_once(seed: int = 1234, D: int = 1024, null_frac: float = 0.2):
@@ -32,7 +31,7 @@ def run_once(seed: int = 1234, D: int = 1024, null_frac: float = 0.2):
     est_robust = q.unbind(bound, b_null)
     est_wiener = q.unbind_wiener(bound, b_null)
 
-def cosine(x, y):
+    def cosine(x, y):
         return float(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
 
     print("cosine_exact", cosine(a, est_exact))

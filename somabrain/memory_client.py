@@ -1,6 +1,17 @@
+"""Memory Client Module for SomaBrain.
+
+The client speaks to the external HTTP memory service used by SomaBrain. When
+the service is unavailable it mirrors writes locally and records them in an
+outbox for replay. This module is the single gateway for storing, retrieving,
+and linking memories; other packages must call into it rather than integrating
+with the memory service directly.
+"""
+
 from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone
+
 import hashlib
 import json
 import logging
@@ -12,46 +23,21 @@ import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+
 from .config import Config
+
 from common.config.settings import settings
+
 from somabrain.infrastructure import get_memory_http_endpoint
 from somabrain.interfaces.memory import MemoryBackend
-from common.logging import logger
-import httpx  # type: ignore
-from common.config.settings import settings as _settings
-import uuid
-from common.config.settings import settings as _rt
-import uuid
-import uuid
-import uuid as _uuid
-
-"""Memory Client Module for SomaBrain.
-
-The client speaks to the external HTTP memory service used by SomaBrain. When
-the service is unavailable it mirrors writes locally and records them in an
-outbox for replay. This module is the single gateway for storing, retrieving,
-and linking memories; other packages must call into it rather than integrating
-with the memory service directly.
-"""
-
-
-
-
-
-
 
 # logger for diagnostic output during tests
+logger = logging.getLogger(__name__)
 debug_memory_client = False
 if settings is not None:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         debug_memory_client = bool(getattr(settings, "debug_memory_client", False))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         debug_memory_client = False
 if debug_memory_client:
     # ensure a stderr handler exists for quick interactive debugging
@@ -71,18 +57,12 @@ def _http_setting(attr: str, default_val: int) -> int:
 
     if settings is not None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             value = getattr(settings, attr)
             if value is None:
                 return default_val
             return int(value)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-            return default_val
+        except Exception:
+            pass
     return default_val
 
 
@@ -98,16 +78,10 @@ def _stable_coord(key: str) -> Tuple[float, float, float]:
 
 def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         parts = [float(x.strip()) for x in str(s).split(",")]
         if len(parts) >= 3:
             return (parts[0], parts[1], parts[2])
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
     return None
 
@@ -138,8 +112,8 @@ def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[d
 
 def _extract_memory_coord(
     resp: Any,
-    idempotency_key: str | None = None, ) -> Tuple[float, float, float] | None:
-        pass
+    idempotency_key: str | None = None,
+) -> Tuple[float, float, float] | None:
     """Try to derive a coordinate tuple from the memory-service response."""
 
     if not resp:
@@ -149,10 +123,6 @@ def _extract_memory_coord(
     json_attr = getattr(resp, "json", None)
     if callable(json_attr):
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             data = json_attr()
         except (ValueError, TypeError):
             data = resp
@@ -167,10 +137,6 @@ def _extract_memory_coord(
                 parsed = _parse_coord_string(value)
             elif isinstance(value, (list, tuple)) and len(value) >= 3:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     parsed = (float(value[0]), float(value[1]), float(value[2]))
                 except (TypeError, ValueError):
                     parsed = None
@@ -186,10 +152,6 @@ def _extract_memory_coord(
                     parsed = _parse_coord_string(value)
                 elif isinstance(value, (list, tuple)) and len(value) >= 3:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         parsed = (float(value[0]), float(value[1]), float(value[2]))
                     except (TypeError, ValueError):
                         parsed = None
@@ -199,10 +161,6 @@ def _extract_memory_coord(
             mid = mem_section.get("id") or mem_section.get("memory_id")
             if mid is not None:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     return _stable_coord(str(mid))
                 except (TypeError, ValueError):
                     pass
@@ -210,20 +168,12 @@ def _extract_memory_coord(
         mid = data_dict.get("id") or data_dict.get("memory_id")
         if mid is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return _stable_coord(str(mid))
             except (TypeError, ValueError):
                 pass
 
     if idempotency_key:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return _stable_coord(f"idempotency:{idempotency_key}")
         except (TypeError, ValueError):
             return None
@@ -257,7 +207,6 @@ class MemoryClient:
     each memory payload. These are fully optional and *never* required by the
     base system. When provided they can influence ranking via a light‑weight
     weighting hook (disabled by default):
-        pass
 
         phase            : str   (e.g., "bootstrap", "general", "specialized")
         quality_score    : float (bounded recommendation: [0, 1])
@@ -290,7 +239,7 @@ class MemoryClient:
     to preserve determinism and test invariants.
     """
 
-def __init__(
+    def __init__(
         self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None
     ):
         self.cfg = cfg
@@ -311,32 +260,22 @@ def __init__(
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if settings is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 db_path = str(getattr(settings, "memory_db_path", "./data/memory.db"))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 db_path = "./data/memory.db"
         else:
             db_path = "./data/memory.db"
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
+        # Store for potential future use (e.g., passing to the local backend)
         self._memory_db_path = db_path
         # Initialize HTTP client (primary runtime path). Local/redis
         # initialization is intentionally not attempted here.
         self._init_http()
 
-def _init_local(self) -> None:
+    def _init_local(self) -> None:
         # Local in-process backend initialization has been removed. Running a
         # memory service must be done as a separate HTTP process.
         # If a developer needs an opt-in local backend, use an explicit
@@ -344,8 +283,8 @@ def _init_local(self) -> None:
         # code separately in a developer-only helper.
         return
 
-def _init_http(self) -> None:
-    pass
+    def _init_http(self) -> None:
+        import httpx  # type: ignore
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
@@ -360,63 +299,36 @@ def _init_http(self) -> None:
         if ns:
             headers["X-Soma-Namespace"] = ns
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 tenant_guess = ns.split(":")[-1] if ":" in ns else ns
                 headers["X-Soma-Tenant"] = tenant_guess
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
+
+        # Allow tuning via environment variables for production/dev use
         default_max = _http_setting("http_max_connections", 64)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             max_conns = int(getattr(settings, "http_max_connections", default_max))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             max_conns = default_max
         default_keepalive = _http_setting("http_keepalive_connections", 32)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             keepalive = int(
                 getattr(settings, "http_keepalive_connections", default_keepalive)
             )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             keepalive = default_keepalive
         default_retries = _http_setting("http_retries", 1)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             retries = int(getattr(settings, "http_retries", default_retries))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             retries = default_retries
 
         limits = None
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             limits = httpx.Limits(
                 max_connections=max_conns, max_keepalive_connections=keepalive
             )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             limits = None
 
         # Allow overriding the HTTP memory endpoint via environment variable
@@ -431,10 +343,6 @@ def _init_http(self) -> None:
             env_base = candidate_base
         if env_base:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 env_base = str(env_base).strip()
                 if "://" not in env_base and env_base.startswith("/"):
                     pass
@@ -442,9 +350,7 @@ def _init_http(self) -> None:
                     env_base = f"http://{env_base}"
                 if env_base.endswith("/openapi.json"):
                     env_base = env_base[: -len("/openapi.json")]
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 env_base = None
         base_url = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
         if not base_url and env_base:
@@ -464,65 +370,38 @@ def _init_http(self) -> None:
         }
         # Diagnostic: record chosen endpoint for debugging in tests
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             logger.debug("MemoryClient HTTP base_url=%r", base_url)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
         if limits is not None:
             client_kwargs["limits"] = limits
 
         # Create sync client
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self._http = httpx.Client(**client_kwargs)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             self._http = None
 
         # Create async client with configurable transport retries
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             transport = httpx.AsyncHTTPTransport(retries=retries)
             async_kwargs = dict(client_kwargs)
             async_kwargs["transport"] = transport
             self._http_async = httpx.AsyncClient(**async_kwargs)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self._http_async = httpx.AsyncClient(**client_kwargs)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 self._http_async = None
 
         # If endpoint is empty, treat HTTP client as unavailable
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             if not base_url:
                 self._http = None
                 self._http_async = None
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
+        # Strict mode: memory is always required
         if self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED but not reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
@@ -537,90 +416,61 @@ def _init_http(self) -> None:
         # start even without authentication.
         if self._http is not None and not token_value:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 logger.warning(
                     "Memory HTTP client initialized without token; proceeding without auth."
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
-def _init_redis(self) -> None:
+    def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
         # HTTP memory service if required.
         return
 
-def health(self) -> dict:
+    def health(self) -> dict:
         """Best-effort backend health signal for local or http mode."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             if self._http:
                 # Try common health endpoints in order of preference.
                 for path in ("/health", "/healthz", "/readyz"):
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         r = self._http.get(path)
                         if int(getattr(r, "status_code", 0) or 0) == 200:
                             return {"http": True}
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
+                        # Try next path
                         continue
                 return {"http": False}
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return {"ok": False}
         return {"ok": True}
 
     # --- HTTP helpers ---------------------------------------------------------
-@staticmethod
-def _response_json(resp: Any) -> Any:
+    @staticmethod
+    def _response_json(resp: Any) -> Any:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             if hasattr(resp, "json") and callable(resp.json):
                 return resp.json()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
         return None
 
-def _http_post_with_retries_sync(
+    def _http_post_with_retries_sync(
         self,
         endpoint: str,
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2, ) -> tuple[bool, int, Any]:
-            pass
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
         if self._http is None:
             return False, 0, None
         status = 0
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 resp = self._http.post(endpoint, json=body, headers=headers)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 if attempt < max_retries:
                     time.sleep(0.01 + random.random() * 0.02)
                 continue
@@ -641,22 +491,16 @@ def _http_post_with_retries_sync(
         body: dict,
         headers: dict,
         *,
-        max_retries: int = 2, ) -> tuple[bool, int, Any]:
-            pass
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
         if self._http_async is None:
             return False, 0, None
         status = 0
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 resp = await self._http_async.post(endpoint, json=body, headers=headers)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)
                 continue
@@ -671,7 +515,7 @@ def _http_post_with_retries_sync(
             return status < 300, status, data
         return False, status, data
 
-def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
+    def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         if self._http is None:
             return False, None
 
@@ -715,7 +559,7 @@ def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
 
         return False, data
 
-def _store_bulk_http_sync(
+    def _store_bulk_http_sync(
         self, items: List[dict], headers: dict
     ) -> tuple[bool, int, Any]:
         if self._http is None:
@@ -741,7 +585,7 @@ def _store_bulk_http_sync(
             responses.append(resp)
         return all_ok, 200 if all_ok else 207, responses
 
-def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
+    def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
         hits: List[RecallHit] = []
         if isinstance(data, dict):
             items = None
@@ -771,15 +615,12 @@ def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
                                 "coord",
                                 "coordinate",
                                 "distance",
-                                "vector", )
+                                "vector",
+                            )
                         }
                     payload = dict(payload or {})
                     score = None
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         score_val = item.get("score")
                         if score_val is None:
                             score_val = item.get("similarity")
@@ -788,9 +629,7 @@ def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
                         if score_val is not None:
                             score = float(score_val)
                             payload.setdefault("_score", score)
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
                         score = None
                     coord = _extract_memory_coord(item)
                     if coord and "coordinate" not in payload:
@@ -800,7 +639,8 @@ def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
                             payload=payload,
                             score=score,
                             coordinate=coord,
-                            raw=item, )
+                            raw=item,
+                        )
                     )
                 return hits
         if isinstance(data, list):
@@ -816,24 +656,20 @@ def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
                         payload=payload,
                         score=None,
                         coordinate=coord,
-                        raw=item, )
+                        raw=item,
+                    )
                 )
         return hits
 
-def _hit_identity(self, hit: RecallHit) -> str:
+    def _hit_identity(self, hit: RecallHit) -> str:
         coord = hit.coordinate
         if coord is None:
             coord = _extract_memory_coord(hit.payload) or _extract_memory_coord(hit.raw)
         if coord:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         if isinstance(payload, dict):
             for key in ("id", "memory_id", "key", "coord_key"):
@@ -845,20 +681,14 @@ def _hit_identity(self, hit: RecallHit) -> str:
                 if isinstance(value, str) and value.strip():
                     return f"text:{value.strip().lower()}"
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             raw = hit.raw or hit.payload
             serial = json.dumps(raw, sort_keys=True, default=str)
             digest = hashlib.blake2s(serial.encode("utf-8"), digest_size=16).hexdigest()
             return f"hash:{digest}"
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return f"obj:{id(hit)}"
 
-def _hit_score(self, hit: RecallHit) -> float | None:
+    def _hit_score(self, hit: RecallHit) -> float | None:
         score = hit.score
         if isinstance(score, (int, float)) and not math.isnan(score):
             return float(score)
@@ -869,20 +699,14 @@ def _hit_score(self, hit: RecallHit) -> float | None:
                 return float(alt)
         return None
 
-def _coerce_timestamp_value(self, value: Any) -> float | None:
+    def _coerce_timestamp_value(self, value: Any) -> float | None:
         if value is None:
             return None
         if isinstance(value, (int, float)):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 if math.isnan(float(value)):
                     return None
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return None
             return float(value)
         if isinstance(value, str):
@@ -890,28 +714,16 @@ def _coerce_timestamp_value(self, value: Any) -> float | None:
             if not text:
                 return None
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 # ISO8601 handling; account for trailing Z
                 if text.endswith("Z"):
                     dt = datetime.fromisoformat(text[:-1] + "+00:00")
                 else:
                     dt = datetime.fromisoformat(text)
                 return dt.timestamp()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     return float(text)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     return None
         if isinstance(value, datetime):
             if value.tzinfo is None:
@@ -919,14 +731,15 @@ def _coerce_timestamp_value(self, value: Any) -> float | None:
             return value.timestamp()
         return None
 
-def _hit_timestamp(self, hit: RecallHit) -> float | None:
+    def _hit_timestamp(self, hit: RecallHit) -> float | None:
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         candidate_keys = (
             "timestamp",
             "created_at",
             "updated_at",
             "ts",
-            "time", )
+            "time",
+        )
         if isinstance(payload, dict):
             for key in candidate_keys:
                 value = payload.get(key)
@@ -943,7 +756,7 @@ def _hit_timestamp(self, hit: RecallHit) -> float | None:
                         return ts
         return None
 
-def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> bool:
+    def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> bool:
         curr_score = self._hit_score(current)
         cand_score = self._hit_score(candidate)
         if cand_score is not None or curr_score is not None:
@@ -964,7 +777,7 @@ def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> boo
             return True
         return False
 
-def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
+    def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
         winners: dict[str, RecallHit] = {}
         order: List[str] = []
         for hit in hits:
@@ -978,7 +791,7 @@ def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
                 winners[ident] = hit
         return [winners[idx] for idx in order]
 
-def _lexical_bonus(self, payload: dict, query: str) -> float:
+    def _lexical_bonus(self, payload: dict, query: str) -> float:
         q = str(query or "").strip()
         if not q or not isinstance(payload, dict):
             return 0.0
@@ -1007,7 +820,7 @@ def _lexical_bonus(self, payload: dict, query: str) -> float:
             bonus += min(0.25 * token_matches, 1.0)
         return bonus
 
-def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+    def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
         ranked: List[tuple[float, float, float, int, RecallHit]] = []
         for idx, hit in enumerate(hits):
             payload = hit.payload if isinstance(hit.payload, dict) else {}
@@ -1015,54 +828,37 @@ def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
             base = 0.0
             if hit.score is not None:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     base = float(hit.score)
                     if abs(base) > 1.0:
                         base = math.copysign(math.log1p(abs(base)), base)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     base = 0.0
             weight = 1.0
             if isinstance(payload, dict):
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     wf = payload.get("_weight_factor")
                     if isinstance(wf, (int, float)):
                         weight = float(wf)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     weight = 1.0
             final_score = (base * weight) + lex_bonus
             if hit.score is None and lex_bonus > 0:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     hit.score = lex_bonus
                     payload.setdefault("_score", hit.score)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             ranked.append((final_score, lex_bonus, weight, -idx, hit))
         ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
         return [item[-1] for item in ranked]
 
-def _memories_search_sync(
+    def _memories_search_sync(
         self,
         query: str,
         top_k: int,
         universe: str,
-        request_id: str, ) -> List[RecallHit]:
-            pass
+        request_id: str,
+    ) -> List[RecallHit]:
         if self._http is None:
             raise RuntimeError("HTTP memory service required but not configured")
 
@@ -1123,8 +919,8 @@ def _memories_search_sync(
         query: str,
         top_k: int,
         universe: str,
-        request_id: str, ) -> List[RecallHit]:
-            pass
+        request_id: str,
+    ) -> List[RecallHit]:
         if self._http_async is None:
             raise RuntimeError("Async HTTP memory service required but not configured")
 
@@ -1180,13 +976,13 @@ def _memories_search_sync(
 
         return []
 
-def _http_recall_aggregate_sync(
+    def _http_recall_aggregate_sync(
         self,
         query: str,
         top_k: int,
         universe: str,
-        request_id: str, ) -> List[RecallHit]:
-            pass
+        request_id: str,
+    ) -> List[RecallHit]:
         return self._memories_search_sync(query, top_k, universe, request_id)
 
     async def _http_recall_aggregate_async(
@@ -1194,11 +990,11 @@ def _http_recall_aggregate_sync(
         query: str,
         top_k: int,
         universe: str,
-        request_id: str, ) -> List[RecallHit]:
-            pass
+        request_id: str,
+    ) -> List[RecallHit]:
         return await self._memories_search_async(query, top_k, universe, request_id)
 
-def _filter_hits_by_keyword(
+    def _filter_hits_by_keyword(
         self, hits: List[RecallHit], keyword: str
     ) -> List[RecallHit]:
         if not hits:
@@ -1212,7 +1008,7 @@ def _filter_hits_by_keyword(
                 return narrowed
         return hits
 
-def _recency_normalisation(self) -> tuple[float, float]:
+    def _recency_normalisation(self) -> tuple[float, float]:
         scale = getattr(self.cfg, "recall_recency_time_scale", 60.0)
         if (
             not isinstance(scale, (int, float))
@@ -1225,31 +1021,19 @@ def _recency_normalisation(self) -> tuple[float, float]:
             cap = 4096.0
         return float(scale), float(cap)
 
-def _recency_profile(self) -> tuple[float, float, float, float]:
+    def _recency_profile(self) -> tuple[float, float, float, float]:
         scale, cap = self._recency_normalisation()
         sharpness = getattr(self.cfg, "recall_recency_sharpness", 1.2)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             sharpness = float(sharpness)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             sharpness = 1.2
         if not math.isfinite(sharpness) or sharpness <= 0:
             sharpness = 1.0
         floor = getattr(self.cfg, "recall_recency_floor", 0.05)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             floor = float(floor)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             floor = 0.05
         if not math.isfinite(floor) or floor < 0:
             floor = 0.0
@@ -1257,7 +1041,7 @@ def _recency_profile(self) -> tuple[float, float, float, float]:
             floor = 0.99
         return scale, cap, sharpness, floor
 
-def _recency_features(
+    def _recency_features(
         self, ts_epoch: float | None, now_ts: float
     ) -> tuple[float | None, float]:
         if ts_epoch is None:
@@ -1270,45 +1054,29 @@ def _recency_features(
         damp_steps = math.log1p(normalised) * sharpness
         recency_steps = min(damp_steps, cap)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             damp = math.exp(-(normalised**sharpness))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             damp = 0.0
         boost = max(floor, min(1.0, damp))
         return recency_steps, boost
 
-@staticmethod
-def _coerce_float(value: Any) -> float | None:
+    @staticmethod
+    def _coerce_float(value: Any) -> float | None:
         if value is None:
             return None
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             numeric = float(value)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
         if not math.isfinite(numeric):
             return None
         return numeric
 
-@staticmethod
-def _parse_payload_timestamp(raw: Any) -> float | None:
+    @staticmethod
+    def _parse_payload_timestamp(raw: Any) -> float | None:
         if raw is None:
             return None
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             if isinstance(raw, (int, float)):
                 value = float(raw)
             elif isinstance(raw, str):
@@ -1316,17 +1084,9 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
                 if not txt:
                     return None
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     value = float(txt)
                 except ValueError:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         txt_norm = (
                             txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
                         )
@@ -1336,15 +1096,11 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
                         else:
                             dt = dt.astimezone(timezone.utc)
                         return float(dt.timestamp())
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
                         return None
             else:
                 return None
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
         if not math.isfinite(value):
             return None
@@ -1353,7 +1109,7 @@ def _parse_payload_timestamp(raw: Any) -> float | None:
             value /= 1000.0
         return value
 
-def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
+    def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
         payload = hit.payload if isinstance(hit.payload, dict) else {}
         margin = None
         if isinstance(payload, dict):
@@ -1366,47 +1122,29 @@ def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
                 margin = metadata.get("cleanup_margin")
         return self._coerce_float(margin)
 
-def _density_factor(self, margin: float | None) -> float:
+    def _density_factor(self, margin: float | None) -> float:
         if margin is None:
             return 1.0
         target = getattr(self.cfg, "recall_density_margin_target", 0.2)
         floor = getattr(self.cfg, "recall_density_margin_floor", 0.6)
         weight = getattr(self.cfg, "recall_density_margin_weight", 0.35)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             target = float(target)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             target = 0.2
         if not math.isfinite(target) or target <= 0:
             target = 0.2
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             floor = float(floor)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             floor = 0.6
         if not math.isfinite(floor) or floor < 0:
             floor = 0.0
         if floor > 1.0:
             floor = 1.0
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             weight = float(weight)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             weight = 0.35
         if not math.isfinite(weight) or weight < 0:
             weight = 0.0
@@ -1416,7 +1154,7 @@ def _density_factor(self, margin: float | None) -> float:
         penalty = 1.0 - (weight * deficit)
         return max(floor, min(1.0, penalty))
 
-def _rescore_and_rank_hits(
+    def _rescore_and_rank_hits(
         self, hits: List[RecallHit], query: str
     ) -> List[RecallHit]:
         if not self._scorer or not self._embedder:
@@ -1427,7 +1165,7 @@ def _rescore_and_rank_hits(
         query_vec = self._embedder.embed(query)
         now_ts = datetime.now(timezone.utc).timestamp()
 
-def _text_of(p: dict) -> str:
+        def _text_of(p: dict) -> str:
             return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
 
         scored_hits = []
@@ -1462,30 +1200,19 @@ def _text_of(p: dict) -> str:
                 )
                 new_score *= recency_boost
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     payload.setdefault("_recency_steps", recency_steps)
                     payload.setdefault("_recency_boost", recency_boost)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
-    raise
+                except Exception:
+                    pass
 
             margin = self._extract_cleanup_margin(hit)
             density_factor = self._density_factor(margin)
             new_score *= density_factor
             if density_factor != 1.0:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     payload.setdefault("_density_factor", density_factor)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             new_score = max(0.0, min(1.0, float(new_score)))
 
             hit.score = new_score
@@ -1495,7 +1222,7 @@ def _text_of(p: dict) -> str:
         scored_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
         return scored_hits
 
-def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
+    def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
         if not hits:
             return
         weighting_enabled = False
@@ -1503,25 +1230,17 @@ def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
         quality_exp = 1.0
         if settings is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 weighting_enabled = bool(
                     getattr(settings, "memory_enable_weighting", False)
                 )
                 priors_env = getattr(settings, "memory_phase_priors", "") or ""
                 quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 weighting_enabled = False
         else:
+            # Fallback to unified settings when legacy runtime is unavailable
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from common.config.settings import settings as _settings
 
                 weighting_enabled = bool(
                     getattr(_settings, "memory_enable_weighting", False)
@@ -1530,17 +1249,11 @@ def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
                 quality_exp = float(
                     getattr(_settings, "memory_quality_exp", 1.0) or 1.0
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 weighting_enabled = False
         if not weighting_enabled:
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             priors: dict[str, float] = {}
             if priors_env:
                 for part in priors_env.split(","):
@@ -1548,35 +1261,20 @@ def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
                         continue
                     k, v = part.split(":", 1)
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         priors[k.strip().lower()] = float(v)
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
+                        pass
             for hit in hits:
                 payload = hit.payload
                 phase_factor = 1.0
                 quality_factor = 1.0
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     phase = payload.get("phase") if isinstance(payload, dict) else None
                     if phase and priors:
                         phase_factor = float(priors.get(str(phase).lower(), 1.0))
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     phase_factor = 1.0
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     if isinstance(payload, dict) and "quality_score" in payload:
                         qs = float(payload.get("quality_score") or 0.0)
                         if qs < 0:
@@ -1584,26 +1282,17 @@ def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
                         if qs > 1:
                             qs = 1.0
                         quality_factor = (qs**quality_exp) if qs > 0 else 0.0
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     quality_factor = 1.0
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     payload.setdefault("_weight_factor", phase_factor * quality_factor)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                except Exception:
+                    pass
+        except Exception:
             return
 
     # --- HTTP compatibility helpers -------------------------------------------------
-def _compat_enrich_payload(
+    def _compat_enrich_payload(
         self, payload: dict, coord_key: str
     ) -> tuple[dict, str, dict]:
         """Return an enriched (payload_copy, universe, extra_headers).
@@ -1635,20 +1324,16 @@ def _compat_enrich_payload(
         p.setdefault("universe", universe)
         # Namespace (best-effort) – some services record this for tenancy
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             ns = getattr(self.cfg, "namespace", None)
             if ns and not p.get("namespace"):
                 p["namespace"] = ns
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
+        # Extra headers for HTTP calls
         headers = {"X-Universe": universe}
         return p, universe, headers
 
-def remember(
+    def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> Tuple[float, float, float]:
         """Store a memory using a stable coordinate derived from coord_key.
@@ -1674,29 +1359,19 @@ def remember(
 
         # --- Normalize optional metadata fields (light-touch) ---
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # phase
             if "phase" in payload and isinstance(payload["phase"], str):
                 payload["phase"] = payload["phase"].strip().lower() or None
             # quality_score
             if "quality_score" in payload:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     qs = float(payload["quality_score"])  # type: ignore[arg-type]
                     if qs < 0:
                         qs = 0.0
                     if qs > 1:
                         qs = 1.0
                     payload["quality_score"] = qs
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     payload.pop("quality_score", None)
             # domains
             if "domains" in payload:
@@ -1726,124 +1401,78 @@ def remember(
                     payload["reasoning_chain"] = [rc]
                 else:
                     payload.pop("reasoning_chain", None)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            # Never fail store because of metadata normalization
+            pass
 
         # Detect async context: if present, schedule background persistence
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             loop = asyncio.get_running_loop()
             in_async = True
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             in_async = False
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             payload.setdefault("coordinate", coord)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
+        import uuid
 
         rid = request_id or str(uuid.uuid4())
 
         # If we're in an async loop, schedule an async background persist (non-blocking)
         if in_async:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 loop = asyncio.get_running_loop()
                 if self._http_async is not None:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         loop.create_task(
                             self._aremember_background(coord_key, payload, rid)
                         )
                     except Exception as e:
-                        logger.exception("Exception caught: %s", e)
-                        raise
+                        logger.debug("_aremember_background scheduling failed: %r", e)
+                        loop.run_in_executor(
+                            None, self._remember_sync_persist, coord_key, payload, rid
+                        )
                 else:
                     loop.run_in_executor(
                         None, self._remember_sync_persist, coord_key, payload, rid
                     )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     self._remember_sync_persist(coord_key, payload, rid)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             return coord
 
         # Synchronous callers: default is blocking persist, but allow an opt-in
         # fast-ack mode schedules persistence on a background executor so we don't block.
         if settings is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 fast_ack = bool(getattr(settings, "memory_fast_ack", False))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 fast_ack = False
         else:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from common.config.settings import settings as _rt
 
                 fast_ack = _rt.get_bool("memory_fast_ack", False)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 fast_ack = False
         if fast_ack:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 loop = asyncio.get_event_loop()
                 # schedule background sync persist in the executor so we don't block
                 loop.run_in_executor(
                     None, self._remember_sync_persist, coord_key, payload, rid
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                # last resort: run sync persist (best-effort)
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     self._remember_sync_persist(coord_key, payload, rid)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             return coord
 
         # Default (no fast-ack): perform the persist synchronously (blocking)
@@ -1853,21 +1482,16 @@ def remember(
         if server_coord:
             coord = server_coord
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 payload["coordinate"] = server_coord
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         return coord
 
-def remember_bulk(
+    def remember_bulk(
         self,
         items: Iterable[tuple[str, dict[str, Any]]],
-        request_id: str | None = None, ) -> List[Tuple[float, float, float]]:
-            pass
+        request_id: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
         """Store multiple memories in a single HTTP round-trip when supported.
 
         Each element in *items* is a ``(coord_key, payload)`` pair. The method
@@ -1943,14 +1567,9 @@ def remember_bulk(
                 if server_coord:
                     coords[idx] = server_coord
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
+                        pass
             return coords
 
         if status in (404, 405):
@@ -1983,10 +1602,6 @@ def remember_bulk(
         p2: dict[str, Any] | None = None
         if self._http_async is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 enriched, universe, compat_hdr = self._compat_enrich_payload(
                     payload, coord_key
                 )
@@ -2002,6 +1617,7 @@ def remember_bulk(
                     "memory_type": memory_type,
                     "type": memory_type,
                 }
+                import uuid
 
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
@@ -2013,39 +1629,29 @@ def remember_bulk(
                     )
                     if server_coord:
                         try:
-                            pass
-                        except Exception as exc:
-                            logger.exception("Exception caught: %s", exc)
-                            raise
                             enriched["coordinate"] = server_coord
-                        except Exception as exc:
-                            logger.exception("Exception caught: %s", exc)
-                            raise
+                        except Exception:
+                            pass
                         if p2 is not None:
                             try:
-                                pass
-                            except Exception as exc:
-                                logger.exception("Exception caught: %s", exc)
-                                raise
                                 p2["coordinate"] = server_coord
-                            except Exception as exc:
-                                logger.exception("Exception caught: %s", exc)
-                                raise
+                            except Exception:
+                                pass
                         if getattr(self.cfg, "prefer_server_coords_for_links", False):
                             return server_coord
                         return server_coord
                 return coord
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
+        # Alternative: run the synchronous remember in a thread executor
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self.remember, coord_key, payload)
 
     async def aremember_bulk(
         self,
         items: Iterable[tuple[str, dict[str, Any]]],
-        request_id: str | None = None, ) -> List[Tuple[float, float, float]]:
-            pass
+        request_id: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
         """Async companion to :meth:`remember_bulk` using the async HTTP client."""
 
         records = list(items)
@@ -2106,14 +1712,9 @@ def remember_bulk(
                 if server_coord:
                     coords[idx] = server_coord
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         prepared[idx]["body"]["payload"]["coordinate"] = server_coord
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
+                        pass
             return coords
 
         if status in (404, 405):
@@ -2131,13 +1732,13 @@ def remember_bulk(
 
         raise RuntimeError("Memory service unavailable (async bulk remember failed)")
 
-def recall(
+    def recall(
         self,
         query: str,
         top_k: int = 3,
         universe: str | None = None,
-        request_id: str | None = None, ) -> List[RecallHit]:
-            pass
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
         """Retrieve memories relevant to the query using the HTTP memory service."""
         # Strict mode: memory service is ALWAYS required
         if self._http is None:
@@ -2147,13 +1748,13 @@ def recall(
         rid = request_id or str(uuid.uuid4())
         return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
 
-def recall_with_scores(
+    def recall_with_scores(
         self,
         query: str,
         top_k: int = 3,
         universe: str | None = None,
-        request_id: str | None = None, ) -> List[RecallHit]:
-            pass
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
         """Recall memories including similarity scores via the `/memories/search` endpoint."""
 
         if self._http is not None:
@@ -2170,8 +1771,8 @@ def recall_with_scores(
         query: str,
         top_k: int = 3,
         universe: str | None = None,
-        request_id: str | None = None, ) -> List[RecallHit]:
-            pass
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
         """Async recall for HTTP mode; falls back to sync execution when needed."""
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
@@ -2188,8 +1789,8 @@ def recall_with_scores(
         query: str,
         top_k: int = 3,
         universe: str | None = None,
-        request_id: str | None = None, ) -> List[RecallHit]:
-            pass
+        request_id: str | None = None,
+    ) -> List[RecallHit]:
         """Async companion to :meth:`recall_with_scores`."""
 
         if self._http_async is not None:
@@ -2201,24 +1802,21 @@ def recall_with_scores(
                 return hits
         return await self.arecall(query, top_k, universe, request_id)
 
-def link(
+    def link(
         self,
         from_coord: tuple[float, float, float],
         to_coord: tuple[float, float, float],
         link_type: str = "related",
         weight: float = 1.0,
-        request_id: str | None = None, ) -> None:
-            pass
+        request_id: str | None = None,
+    ) -> None:
         """Create or strengthen a typed edge in the memory graph."""
         if self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE UNAVAILABLE: link requires an HTTP memory backend."
             )
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            import uuid
 
             rid = request_id or str(uuid.uuid4())
             rid_hdr = {"X-Request-ID": rid}
@@ -2230,10 +1828,10 @@ def link(
                     "type": link_type,
                     "weight": weight,
                 },
-                headers=rid_hdr, )
+                headers=rid_hdr,
+            )
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            logger.debug("link request failed: %r", exc)
 
     async def alink(
         self,
@@ -2241,17 +1839,13 @@ def link(
         to_coord: tuple[float, float, float],
         link_type: str = "related",
         weight: float = 1.0,
-        request_id: str | None = None, ) -> None:
-            pass
+        request_id: str | None = None,
+    ) -> None:
         """Async helper mirroring :meth:`link` behaviour."""
         if self._http_async is not None:
             rid = request_id or str(uuid.uuid4())
             headers = {"X-Request-ID": rid}
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 await self._http_async.post(
                     "/link",
                     json={
@@ -2260,11 +1854,11 @@ def link(
                         "type": link_type,
                         "weight": weight,
                     },
-                    headers=headers, )
+                    headers=headers,
+                )
                 return
             except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                logger.debug("async link request failed: %r", exc)
 
         loop = asyncio.get_running_loop()
         await loop.run_in_executor(
@@ -2274,14 +1868,16 @@ def link(
                 to_coord,
                 link_type=link_type,
                 weight=weight,
-                request_id=request_id, ), )
+                request_id=request_id,
+            ),
+        )
 
-def links_from(
+    def links_from(
         self,
         start: Tuple[float, float, float],
         type_filter: str | None = None,
-        limit: int = 50, ) -> List[dict]:
-            pass
+        limit: int = 50,
+    ) -> List[dict]:
         """List outgoing edges with metadata from the memory service."""
 
         if self._http is None:
@@ -2293,10 +1889,6 @@ def links_from(
         max_items = None if unlimited else int(limit)
         out: List[dict] = []
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             body = {
                 "from_coord": [float(start[0]), float(start[1]), float(start[2])],
                 "type": str(type_filter) if type_filter else None,
@@ -2310,32 +1902,32 @@ def links_from(
                 edges = []
             for edge in edges:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     raw_from = edge.get("from") or start
                     raw_to = edge.get("to") or start
                     if isinstance(raw_from, (list, tuple)) and len(raw_from) >= 3:
                         from_vec = (
                             float(raw_from[0]),
                             float(raw_from[1]),
-                            float(raw_from[2]), )
+                            float(raw_from[2]),
+                        )
                     else:
                         from_vec = (
                             float(start[0]),
                             float(start[1]),
-                            float(start[2]), )
+                            float(start[2]),
+                        )
                     if isinstance(raw_to, (list, tuple)) and len(raw_to) >= 3:
                         to_vec = (
                             float(raw_to[0]),
                             float(raw_to[1]),
-                            float(raw_to[2]), )
+                            float(raw_to[2]),
+                        )
                     else:
                         to_vec = (
                             float(start[0]),
                             float(start[1]),
-                            float(start[2]), )
+                            float(start[2]),
+                        )
                     if type_filter and edge.get("type") != type_filter:
                         continue
                     out.append(
@@ -2352,23 +1944,21 @@ def links_from(
                         and len(out) >= max_items
                     ):
                         break
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     continue
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            logger.debug("links_from request failed: %r", exc)
+            return []
 
         return out if unlimited else out[:max_items]
 
-def unlink(
+    def unlink(
         self,
         from_coord: tuple[float, float, float],
         to_coord: tuple[float, float, float],
         link_type: str | None = None,
-        request_id: str | None = None, ) -> bool:
-            pass
+        request_id: str | None = None,
+    ) -> bool:
         """Remove a directed edge from the memory graph."""
 
         if self._http is None:
@@ -2402,8 +1992,8 @@ def unlink(
         from_coord: tuple[float, float, float],
         to_coord: tuple[float, float, float],
         link_type: str | None = None,
-        request_id: str | None = None, ) -> bool:
-            pass
+        request_id: str | None = None,
+    ) -> bool:
         """Async companion to :meth:`unlink`."""
 
         if self._http_async is not None:
@@ -2435,17 +2025,19 @@ def unlink(
                 from_coord,
                 to_coord,
                 link_type=link_type,
-                request_id=request_id, ), )
+                request_id=request_id,
+            ),
+        )
 
-def prune_links(
+    def prune_links(
         self,
         coord: tuple[float, float, float],
         *,
         weight_below: float | None = None,
         max_degree: int | None = None,
         type_filter: str | None = None,
-        request_id: str | None = None, ) -> int:
-            pass
+        request_id: str | None = None,
+    ) -> int:
         """Prune outgoing edges using the remote memory service."""
 
         if self._http is None:
@@ -2464,14 +2056,8 @@ def prune_links(
         success, _, data = self._http_post_with_retries_sync("/prune", body, headers)
         if success and isinstance(data, dict):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 removed = int(data.get("removed") or data.get("count") or 0)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 removed = 0
             return removed
 
@@ -2484,8 +2070,8 @@ def prune_links(
         weight_below: float | None = None,
         max_degree: int | None = None,
         type_filter: str | None = None,
-        request_id: str | None = None, ) -> int:
-            pass
+        request_id: str | None = None,
+    ) -> int:
         """Async helper matching :meth:`prune_links`."""
 
         if self._http_async is not None:
@@ -2502,14 +2088,8 @@ def prune_links(
             )
             if success and isinstance(data, dict):
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     return int(data.get("removed") or data.get("count") or 0)
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
                     return 0
 
         loop = asyncio.get_running_loop()
@@ -2520,32 +2100,24 @@ def prune_links(
                 weight_below=weight_below,
                 max_degree=max_degree,
                 type_filter=type_filter,
-                request_id=request_id, ), )
+                request_id=request_id,
+            ),
+        )
 
     # --- Graph Analytics Helpers ---
-def degree(self, node: Tuple[float, float, float]) -> int:
+    def degree(self, node: Tuple[float, float, float]) -> int:
         """Return the number of outgoing edges from *node* via the remote service."""
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             neighbors = self.links_from(node, limit=1024)
             return len(neighbors)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return 0
 
-def centrality(self, node: Tuple[float, float, float]) -> float:
+    def centrality(self, node: Tuple[float, float, float]) -> float:
         """Approximate degree centrality using remote neighbors only."""
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             neighbors = self.links_from(node, limit=1024)
             if not neighbors:
                 return 0.0
@@ -2560,19 +2132,18 @@ def centrality(self, node: Tuple[float, float, float]) -> float:
                         (
                             float(to_coord[0]),
                             float(to_coord[1]),
-                            float(to_coord[2]), )
+                            float(to_coord[2]),
+                        )
                     )
             total = len(unique_nodes)
             if total <= 1:
                 return 0.0
             return deg / float(total - 1)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return 0.0
 
     # --- Compatibility helper methods expected by migration and other code ---
-def coord_for_key(
+    def coord_for_key(
         self, key: str, universe: str | None = None
     ) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*.
@@ -2588,19 +2159,15 @@ def coord_for_key(
         uni = universe or "real"
         return _stable_coord(f"{uni}::{key}")
 
-def k_hop(
+    def k_hop(
         self,
         starts: List[Tuple[float, float, float]],
         depth: int = 1,
         limit: int = 50,
-        type_filter: str | None = None, ) -> List[Tuple[float, float, float]]:
-            pass
+        type_filter: str | None = None,
+    ) -> List[Tuple[float, float, float]]:
         """Return a list of coordinates reachable from *starts* within *depth* hops."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             if not starts:
                 return []
             seen: set[Tuple[float, float, float]] = set()
@@ -2615,16 +2182,10 @@ def k_hop(
                     seen.add(node)
                     # gather neighbors
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         neigh = self.links_from(
                             node, type_filter=type_filter, limit=limit
                         )
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
                         neigh = []
                     for e in neigh:
                         to_coord = e.get("to")
@@ -2632,7 +2193,8 @@ def k_hop(
                             t = (
                                 float(to_coord[0]),
                                 float(to_coord[1]),
-                                float(to_coord[2]), )
+                                float(to_coord[2]),
+                            )
                             if t not in seen and t not in out:
                                 out.append(t)
                                 new_frontier.append(t)
@@ -2642,12 +2204,10 @@ def k_hop(
                 if not frontier:
                     break
             return out
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return []
 
-def payloads_for_coords(
+    def payloads_for_coords(
         self, coords: List[Tuple[float, float, float]], universe: str | None = None
     ) -> List[dict]:
         """Bulk retrieval of payloads for the given coordinates.
@@ -2675,15 +2235,11 @@ def payloads_for_coords(
             body["universe"] = universe
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             resp = self._http.post("/payloads", json=body)
             data = self._response_json(resp)
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            logger.debug("payloads_for_coords request failed: %r", exc)
+            return []
 
         out: List[dict] = []
         if isinstance(data, dict):
@@ -2705,24 +2261,19 @@ def payloads_for_coords(
                         isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3
                     ):
                         try:
-                            pass
-                        except Exception as exc:
-                            logger.exception("Exception caught: %s", exc)
-                            raise
                             parsed_coord = (
                                 float(coord_value[0]),
                                 float(coord_value[1]),
-                                float(coord_value[2]), )
-                        except Exception as exc:
-                            logger.exception("Exception caught: %s", exc)
-                            raise
+                                float(coord_value[2]),
+                            )
+                        except Exception:
                             parsed_coord = None
                     if parsed_coord is not None:
                         payload["coordinate"] = parsed_coord
                     out.append(payload)
         return out
 
-def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
+    def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
         """Compatibility helper: store a payload dict into the memory backend.
 
         Tests and migration scripts call this helper. If the payload contains a
@@ -2732,24 +2283,15 @@ def store_from_payload(self, payload: dict, request_id: str | None = None) -> bo
         """
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             coord = payload.get("coordinate")
             if coord is not None:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     c = (
                         float(coord[0]),
                         float(coord[1]),
-                        float(coord[2]), )
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                        float(coord[2]),
+                    )
+                except Exception:
                     return False
                 rid = request_id or str(uuid.uuid4())
                 headers = {"X-Request-ID": rid}
@@ -2773,18 +2315,17 @@ def store_from_payload(self, payload: dict, request_id: str | None = None) -> bo
             )
             self.remember(str(key), payload, request_id=request_id)
             return True
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return False
 
-def _remember_sync_persist(
+    def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> Tuple[float, float, float] | None:
         """Synchronous persistence implementation used by both sync callers and run_in_executor.
 
         This mirrors the original HTTP remember logic but centralizes retries and outbox alternative.
         """
+        import uuid as _uuid
 
         if self._http is None:
             raise RuntimeError("HTTP memory service required for persistence")
@@ -2810,28 +2351,16 @@ def _remember_sync_persist(
         response_payload: Any = None
         if self._http is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 stored, response_payload = self._store_http_sync(body, rid_hdr)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 stored = False
         server_coord: Tuple[float, float, float] | None = None
         if stored and response_payload is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 server_coord = _extract_memory_coord(
                     response_payload, idempotency_key=rid
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 server_coord = None
 
         if not stored:
@@ -2866,27 +2395,16 @@ def _remember_sync_persist(
             "type": memory_type,
         }
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             ok, response_data = await self._store_http_async(body, rid_hdr)
             if ok and response_data is not None:
                 server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
                 if server_coord:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         payload["coordinate"] = server_coord
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-            raise RuntimeError("Background memory persist failed")
+                    except Exception:
+                        pass
+        except Exception:
+            logger.exception("Background memory persist failed")
 
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.

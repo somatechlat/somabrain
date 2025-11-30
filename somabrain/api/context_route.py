@@ -1,12 +1,3 @@
-import json
-import json
-from somabrain.constitution import ConstitutionEngine
-from common.config.settings import settings as _shared
-from somabrain.learning.adaptation import AdaptationConstraints
-from somabrain.learning.adaptation import AdaptationGains
-from somabrain.context.builder import RetrievalWeights
-from somabrain.learning.adaptation import UtilityWeights
-
 """Evaluate/Feedback endpoints for SomaBrain."""
 
 from __future__ import annotations
@@ -24,7 +15,8 @@ from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import (
     auth_guard,
     get_allowed_tenants,
-    get_default_tenant, )
+    get_default_tenant,
+)
 from somabrain.api.schemas.context import (
     EvaluateRequest,
     EvaluateResponse,
@@ -35,7 +27,8 @@ from somabrain.api.schemas.context import (
     AdaptationGainsState,
     AdaptationConstraintsState,
     RetrievalWeightsState,
-    UtilityWeightsState, )
+    UtilityWeightsState,
+)
 from somabrain.context import ContextPlanner
 from somabrain.context.factory import get_context_builder, get_context_planner
 from somabrain import audit
@@ -49,13 +42,13 @@ from somabrain.metrics import (
     record_learning_feedback_applied,
     record_learning_feedback_rejected,
     record_learning_feedback_latency,
-    update_learning_effective_lr, )
+    update_learning_effective_lr,
+)
 import math
 
 # Import central feature flag view and metrics utilities
 from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
-from common.logging import logger
 
 
 # Register Prometheus gauges for each feature flag so they are exposed via
@@ -68,7 +61,8 @@ def _register_flag_gauges() -> None:
         gauge = _metrics.get_gauge(
             "somabrain_feature_flag",
             "Feature flag status (1=enabled, 0=disabled)",
-            labelnames=["flag"], )
+            labelnames=["flag"],
+        )
         gauge.labels(flag=name).set(1 if enabled else 0)
 
 
@@ -92,7 +86,8 @@ def _enforce_feedback_rate_limit(tenant_id: str) -> None:
     if len(window) >= limit:
         raise HTTPException(
             status_code=429,
-            detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.", )
+            detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
+        )
     window.append(now)
 
 
@@ -145,8 +140,8 @@ async def evaluate_endpoint(
     payload: EvaluateRequest,
     request: Request,
     _guard=Depends(utility_guard),
-    auth=Depends(auth_guard), ):
-        pass
+    auth=Depends(auth_guard),
+):
     builder = get_context_builder()
     planner = get_context_planner()
     default_tenant = get_default_tenant()
@@ -158,18 +153,13 @@ async def evaluate_endpoint(
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         bundle = builder.build(
             query=payload.query,
             top_k=payload.top_k,
-            session_id=payload.session_id, )
+            session_id=payload.session_id,
+        )
     except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise HTTPException(status_code=500, detail=f"context build failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"context build failed: {exc}")
 
     plan = planner.plan(bundle)
     # Enforce payload size/length limits
@@ -185,6 +175,7 @@ async def evaluate_endpoint(
         )
     if len(bundle.working_memory_snapshot) > 10:
         raise HTTPException(status_code=400, detail="working memory exceeds 10 items")
+    import json
 
     resp_obj = EvaluateResponse(
         query=bundle.query,
@@ -194,7 +185,8 @@ async def evaluate_endpoint(
         weights=bundle.weights,
         residual_vector=bundle.residual_vector,
         working_memory=bundle.working_memory_snapshot,
-        constitution_checksum=_constitution_checksum(), )
+        constitution_checksum=_constitution_checksum(),
+    )
     if len(json.dumps(resp_obj.dict())) > 128 * 1024:
         raise HTTPException(status_code=400, detail="response size exceeds 128 KB")
     return resp_obj
@@ -205,8 +197,8 @@ async def feedback_endpoint(
     payload: FeedbackRequest,
     request: Request,
     _guard=Depends(utility_guard),
-    auth=Depends(auth_guard), ):
-        pass
+    auth=Depends(auth_guard),
+):
     start_time = time.perf_counter()
     planner = get_context_planner()
     builder = get_context_builder()
@@ -230,17 +222,12 @@ async def feedback_endpoint(
             raise HTTPException(
                 status_code=400, detail="input field exceeds 1024 characters"
             )
+    import json
 
     if payload.metadata is not None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             encoded_metadata = json.dumps(payload.metadata)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             raise HTTPException(status_code=400, detail="invalid metadata encoding")
         if len(encoded_metadata) > 8 * 1024:
             raise HTTPException(status_code=400, detail="metadata exceeds 8 KB")
@@ -249,26 +236,14 @@ async def feedback_endpoint(
     if payload.reward is None or payload.utility is None:
         raise HTTPException(status_code=400, detail="reward and utility are required")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         reward_val = float(payload.reward)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         raise HTTPException(status_code=400, detail="reward must be numeric")
     if not math.isfinite(reward_val) or reward_val < -10_000 or reward_val > 10_000:
         raise HTTPException(status_code=400, detail="reward out of bounds")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         util_val = float(payload.utility)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         raise HTTPException(status_code=400, detail="utility must be numeric")
     if not math.isfinite(util_val) or util_val < -10_000 or util_val > 10_000:
         raise HTTPException(status_code=400, detail="utility out of bounds")
@@ -305,12 +280,14 @@ async def feedback_endpoint(
             alpha=adapter.retrieval_weights.alpha,
             beta=adapter.retrieval_weights.beta,
             gamma=adapter.retrieval_weights.gamma,
-            tau=adapter.retrieval_weights.tau, )
+            tau=adapter.retrieval_weights.tau,
+        )
         update_learning_utility_weights(
             tenant_id,
             lambda_=adapter.utility_weights.lambda_,
             mu=adapter.utility_weights.mu,
-            nu=adapter.utility_weights.nu, )
+            nu=adapter.utility_weights.nu,
+        )
 
         # Update effective learning rate metric
         lr_eff = getattr(adapter, "_lr", 0.0)
@@ -347,10 +324,6 @@ async def feedback_endpoint(
     }
     event_id = _make_event_id(payload.session_id)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         store = _get_feedback_store()
         store.record(
             event_id=event_id,
@@ -360,7 +333,8 @@ async def feedback_endpoint(
             response_text=payload.response_text,
             utility=payload.utility,
             reward=payload.reward,
-            metadata=payload.metadata, )
+            metadata=payload.metadata,
+        )
         tokens = None
         if isinstance(payload.metadata, dict):
             tokens = payload.metadata.get("tokens") or payload.metadata.get(
@@ -377,7 +351,8 @@ async def feedback_endpoint(
                     payload.metadata.get("model")
                     if isinstance(payload.metadata, dict)
                     else None
-                ), )
+                ),
+            )
         audit.publish_event(
             {
                 "action": "context.feedback",
@@ -396,9 +371,7 @@ async def feedback_endpoint(
             }
         )
     except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"feedback persist failed: {exc}")
     if applied:
         store = _get_feedback_store()
         store_total = store.total_count()
@@ -413,7 +386,7 @@ async def feedback_endpoint(
 
 
 def _constitution_checksum() -> Optional[str]:
-    pass
+    from somabrain.constitution import ConstitutionEngine
 
     engine = ConstitutionEngine()
     engine.load()
@@ -470,11 +443,13 @@ async def adaptation_state_endpoint(
         alpha=adapter.retrieval_weights.alpha,
         beta=adapter.retrieval_weights.beta,
         gamma=adapter.retrieval_weights.gamma,
-        tau=adapter.retrieval_weights.tau, )
+        tau=adapter.retrieval_weights.tau,
+    )
     utility_state = UtilityWeightsState(
         lambda_=adapter.utility_weights.lambda_,
         mu=adapter.utility_weights.mu,
-        nu=adapter.utility_weights.nu, )
+        nu=adapter.utility_weights.nu,
+    )
     gains_state = AdaptationGainsState(**asdict(adapter._gains))
     constraints_state = AdaptationConstraintsState(**asdict(adapter._constraint_bounds))
     # Access protected members for observability (history length, lr)
@@ -491,7 +466,8 @@ async def adaptation_state_endpoint(
         history_len=history_len,
         learning_rate=learning_rate,
         gains=gains_state,
-        constraints=constraints_state, )
+        constraints=constraints_state,
+    )
 
 
 class ResetAdaptationRequest(BaseModel):  # type: ignore[misc]
@@ -508,8 +484,8 @@ class ResetAdaptationRequest(BaseModel):  # type: ignore[misc]
 async def adaptation_reset_endpoint(
     payload: ResetAdaptationRequest,
     request: Request,
-    auth=Depends(auth_guard), ):
-        pass
+    auth=Depends(auth_guard),
+):
     """Reset the per-tenant adaptation engine to defaults for clean benchmarks.
 
     This endpoint is intended for operator/benchmark use. It does not return
@@ -517,10 +493,7 @@ async def adaptation_reset_endpoint(
     """
     # Gate reset to dev mode only to avoid misuse in staging/prod.
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from common.config.settings import settings as _shared
 
         if getattr(_shared, "mode_normalized", "prod") != "dev":
             raise HTTPException(
@@ -528,21 +501,16 @@ async def adaptation_reset_endpoint(
             )
     except HTTPException:
         raise
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
+        # If settings cannot be imported, remain conservative and allow only when legacy auth is disabled
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
 
+            if not _legacy_auth_disabled():
                 raise HTTPException(
                     status_code=403, detail="adaptation reset blocked (no mode info)"
                 )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             raise HTTPException(
                 status_code=403, detail="adaptation reset blocked (no mode info)"
             )
@@ -554,7 +522,7 @@ async def adaptation_reset_endpoint(
 
     # Optionally replace constraints/gains/base_lr
     if payload.constraints is not None:
-        pass
+        from somabrain.learning.adaptation import AdaptationConstraints
 
         c = payload.constraints
         adapter.set_constraints(
@@ -568,10 +536,11 @@ async def adaptation_reset_endpoint(
                 mu_min=c.mu_min,
                 mu_max=c.mu_max,
                 nu_min=c.nu_min,
-                nu_max=c.nu_max, )
+                nu_max=c.nu_max,
+            )
         )
     if payload.gains is not None:
-        pass
+        from somabrain.learning.adaptation import AdaptationGains
 
         g = payload.gains
         adapter.set_gains(
@@ -585,7 +554,7 @@ async def adaptation_reset_endpoint(
     # Build optional defaults structures
     retrieval_defaults = None
     if payload.retrieval_defaults is not None:
-        pass
+        from somabrain.context.builder import RetrievalWeights
 
         rd = payload.retrieval_defaults
         retrieval_defaults = RetrievalWeights(
@@ -593,7 +562,7 @@ async def adaptation_reset_endpoint(
         )
     utility_defaults = None
     if payload.utility_defaults is not None:
-        pass
+        from somabrain.learning.adaptation import UtilityWeights
 
         ud = payload.utility_defaults
         utility_defaults = UtilityWeights(lambda_=ud.lambda_, mu=ud.mu, nu=ud.nu)
@@ -602,7 +571,8 @@ async def adaptation_reset_endpoint(
         retrieval_defaults=retrieval_defaults,
         utility_defaults=utility_defaults,
         base_lr=payload.base_lr,
-        clear_history=bool(payload.reset_history), )
+        clear_history=bool(payload.reset_history),
+    )
 
     # Reset global counter view as well so state.history_len starts at 0
     global _feedback_counter

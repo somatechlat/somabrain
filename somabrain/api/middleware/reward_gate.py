@@ -1,11 +1,9 @@
 import logging
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+
 import somabrain.metrics as app_metrics
-from common.logging import logger
-from starlette.responses import JSONResponse
-
-
 
 LOGGER = logging.getLogger("somabrain.api.middleware.reward_gate")
 
@@ -26,24 +24,14 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
         failures) will be logged and the request will be allowed to proceed.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # Try to obtain utility from request state (set by earlier middleware) or header.
             utility = getattr(request.state, "utility_value", None)
             if utility is None:
                 hdr = request.headers.get("X-Utility-Value")
                 if hdr is not None:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         utility = float(hdr)
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
                         utility = None
 
             # Proceed with request handling first.
@@ -56,8 +44,15 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
                 app_metrics.REWARD_DENY_TOTAL.inc()
             return response
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            # Log the error but do not block the request.
+            LOGGER.error("RewardGateMiddleware error (fail‑open): %s", exc)
+            # Increment allow metric as we are allowing the request.
+            try:
+                app_metrics.REWARD_ALLOW_TOTAL.inc()
+            except Exception:
+                pass
+            # Continue with request processing.
+            from starlette.responses import JSONResponse
 
             return JSONResponse(
                 status_code=500, content={"message": "Internal Server Error"}

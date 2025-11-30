@@ -1,14 +1,9 @@
 from __future__ import annotations
+
 from typing import List, Optional
+
 from ..planner import plan_from_graph as _bfs, plan_from_graph as bfs_plan
 from ..planner_rwr import rwr_plan as _rwr
-from common.logging import logger
-import time
-from .. import metrics as M  # lazy to avoid import cycles in tests
-import time
-from .. import metrics as M
-
-
 
 
 def make_plan(
@@ -16,42 +11,29 @@ def make_plan(
     mem_client,
     max_steps: int,
     rel_types: List[str],
-    universe: Optional[str] = None, ) -> List[str]:
-        pass
+    universe: Optional[str] = None,
+) -> List[str]:
+    import time
 
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from .. import metrics as M  # lazy to avoid import cycles in tests
+    except Exception:
         M = None
     t0 = time.perf_counter()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return bfs_plan(
             task_key,
             mem_client,
             max_steps=max_steps,
             rel_types=rel_types,
-            universe=universe, )
+            universe=universe,
+        )
     finally:
         if "t0" in locals() and M is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
 
 def make_plan_auto(
@@ -59,22 +41,14 @@ def make_plan_auto(
 ) -> List[str]:
     backend = str(getattr(cfg, "planner_backend", "bfs") or "bfs").lower()
     max_steps = int(getattr(cfg, "plan_max_steps", 5) or 5)
+    import time
 
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from .. import metrics as M
+    except Exception:
         M = None
     t0 = time.perf_counter()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if backend == "rwr":
             return _rwr(
                 task_key,
@@ -82,22 +56,18 @@ def make_plan_auto(
                 steps=int(getattr(cfg, "rwr_steps", 20) or 20),
                 restart=float(getattr(cfg, "rwr_restart", 0.15) or 0.15),
                 universe=universe,
-                max_items=max_steps, )
+                max_items=max_steps,
+            )
         return _bfs(
             task_key,
             mem_client,
             max_steps=max_steps,
             rel_types=rel_types,
-            universe=universe, )
+            universe=universe,
+        )
     finally:
         if "t0" in locals() and M is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass

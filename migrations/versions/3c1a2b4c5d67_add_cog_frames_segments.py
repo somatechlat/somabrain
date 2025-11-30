@@ -12,9 +12,6 @@ Create Date: 2025-10-26 12:00:00.000000
 """
 
 
-
-
-
 # revision identifiers, used by Alembic.
 revision: str = "3c1a2b4c5d67"
 down_revision: str | None = "cf8b36c30d81"
@@ -37,12 +34,15 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False, ), )
+            nullable=False,
+        ),
+    )
     op.create_index(
         "ix_cog_global_frames_tenant_ts",
         "cog_global_frames",
         ["tenant", "ts"],
-        unique=False, )
+        unique=False,
+    )
 
     # Segments: boundary events
     op.create_table(
@@ -56,12 +56,15 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False, ), )
+            nullable=False,
+        ),
+    )
     op.create_index(
         "ix_cog_segments_boundary_ts",
         "cog_segments",
         ["boundary_ts"],
-        unique=False, )
+        unique=False,
+    )
 
 
 def downgrade() -> None:

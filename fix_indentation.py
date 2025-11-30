@@ -12,18 +12,17 @@ def fix_file(path):
         line = lines[i]
         stripped = line.lstrip()
         # match except Exception as exc: or except Exception:
-            pass
-        if re.match(r'except\s+Exception(\s+as\s+\w+)?\s*:\s*$', stripped):
-            base_indent = line[:len(line)-len(stripped)]
+        if re.match(r"except\s+Exception(\s+as\s+\w+)?\s*:\s*$", stripped):
+            base_indent = line[: len(line) - len(stripped)]
             # look ahead to next non-blank line
-            j = i+1
-            while j < len(lines) and lines[j].strip() == '':
+            j = i + 1
+            while j < len(lines) and lines[j].strip() == "":
                 j += 1
             if j < len(lines):
                 next_line = lines[j]
                 next_stripped = next_line.lstrip()
-                if next_stripped.startswith('logger.exception') or next_stripped.startswith('raise'):
-                    desired_indent = base_indent + '    '
+                if next_stripped.startswith("logger.exception") or next_stripped.startswith("raise"):
+                    desired_indent = base_indent + "    "
                     if not next_line.startswith(desired_indent):
                         lines[j] = desired_indent + next_stripped
                         changed = True

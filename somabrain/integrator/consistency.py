@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import Dict, Optional
-from common.logging import logger
 
+from typing import Dict, Optional
 
 
 # Simple feasibility table mapping agent intent -> allowed next actions
@@ -14,8 +13,8 @@ _ALLOWED: Dict[str, set[str]] = {
 
 def consistency_score(
     agent_posterior: Dict[str, object] | None,
-    action_posterior: Dict[str, object] | None, ) -> Optional[float]:
-        pass
+    action_posterior: Dict[str, object] | None,
+) -> Optional[float]:
     """Return 1.0 if action is feasible for intent, 0.0 if infeasible, None if unknown.
 
     - agent_posterior is expected to contain key "intent" (str)
@@ -25,15 +24,9 @@ def consistency_score(
     if not isinstance(agent_posterior, dict) or not isinstance(action_posterior, dict):
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         intent = str(agent_posterior.get("intent") or "").strip().lower()
         action = str(action_posterior.get("next_action") or "").strip().lower()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
     if not intent or not action:
         return None

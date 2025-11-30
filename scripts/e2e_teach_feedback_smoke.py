@@ -1,46 +1,35 @@
-from __future__ import annotations
-import json
-from common.config.settings import settings
-import sys
-import time
-from typing import Any, Dict, Optional
-from common.logging import logger
-from kafka import KafkaProducer, KafkaConsumer  # type: ignore
-from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-from libs.kafka_cog.serde import AvroSerde  # type: ignore
-
 #!/usr/bin/env python3
 """
 E2E smoke: TeachFeedback -> RewardEvent
 
 Procedure:
-    pass
 - Produce a TeachFeedback JSON record to topic cog.teach.feedback
 - Consume from cog.reward.events and verify a RewardEvent appears with the same frame_id
 
 Notes:
-    pass
 - The processor may emit Avro-schemaless or JSON; we try Avro first (if fastavro available)
+  using the legacy reward_event schema, then use JSON alternative.
 """
+from __future__ import annotations
 
-
-try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+import json
+from common.config.settings import settings
+import sys
+import time
+from typing import Any, Dict, Optional
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from kafka import KafkaProducer, KafkaConsumer  # type: ignore
+except Exception:
+    print("kafka-python not installed", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+except Exception:
+    load_schema = None  # type: ignore
+    AvroSerde = None  # type: ignore
 
 
 TEACH_TOPIC = "cog.teach.feedback"
@@ -56,14 +45,8 @@ def _avro_reward_serde() -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
 
 
@@ -72,26 +55,15 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
     serde = _avro_reward_serde()
     if serde is not None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             out = serde.deserialize(value)  # type: ignore[arg-type]
             if isinstance(out, dict):
                 return out
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
+    # Use JSON alternative
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return json.loads(value.decode("utf-8"))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
 
 
@@ -141,23 +113,13 @@ def main() -> None:
 
     prod = KafkaProducer(bootstrap_servers=bootstrap, value_serializer=lambda v: v)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         produce_teach_feedback(prod, frame_id)
     finally:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             prod.flush(5)
             prod.close()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
     cons = KafkaConsumer(
         REWARD_TOPIC,
@@ -166,24 +128,15 @@ def main() -> None:
         auto_offset_reset="latest",
         enable_auto_commit=False,
         group_id=f"teach-smoke-{int(time.time())}",
-        consumer_timeout_ms=1000, )
+        consumer_timeout_ms=1000,
+    )
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         ok = consume_reward_for_frame(cons, frame_id, timeout_s=90)
     finally:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             cons.close()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
     if not ok:
         print(

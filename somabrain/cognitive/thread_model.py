@@ -1,11 +1,3 @@
-from __future__ import annotations
-import json
-from typing import Any, List, Optional
-from sqlalchemy import Column, Integer, String, Text, DateTime, func
-from somabrain.storage.db import Base
-from common.config.settings import settings
-from common.logging import logger
-
 """SQLAlchemy model for Cognitive Threads (Phase 5).
 
 Each tenant can have a single active thread that stores a list of option IDs
@@ -18,9 +10,16 @@ The table is created by a migration (not included here) and is used by the
 FastAPI router in ``somabrain.cognitive.thread_router``.
 """
 
+from __future__ import annotations
 
+import json
+from datetime import datetime
+from typing import Any, List, Optional
 
+from sqlalchemy import Column, Integer, String, Text, DateTime, func
 
+from somabrain.storage.db import Base
+from common.config.settings import settings
 
 
 class CognitiveThread(Base):
@@ -43,9 +42,10 @@ class CognitiveThread(Base):
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False, )
+        nullable=False,
+    )
 
-def __init__(self, *args, **kwargs):  # noqa: D401
+    def __init__(self, *args, **kwargs):  # noqa: D401
         """Initialize with a safe default cursor.
 
         SQLAlchemy column defaults are applied only after a flush, so when the
@@ -59,7 +59,7 @@ def __init__(self, *args, **kwargs):  # noqa: D401
             self.cursor = settings.COGNITIVE_THREAD_DEFAULT_CURSOR
 
     # Helper methods -----------------------------------------------------
-def get_options(self) -> List[str]:
+    def get_options(self) -> List[str]:
         """Return the stored options as a list of strings.
 
         The column may be ``None`` – in that case an empty list is returned.
@@ -67,36 +67,25 @@ def get_options(self) -> List[str]:
         if not self.options_json:
             return []
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             data = json.loads(self.options_json)
             if isinstance(data, list):
                 return [str(item) for item in data]
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
         return []
 
-def set_options(self, options: List[Any]) -> None:
+    def set_options(self, options: List[Any]) -> None:
         """Store ``options`` as JSON.
 
         ``options`` may contain any JSON‑serialisable values; they are coerced to
         strings because the planner deals with option identifiers.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             self.options_json = json.dumps([str(o) for o in options])
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             self.options_json = None
 
-def next_option(self) -> Optional[str]:
+    def next_option(self) -> Optional[str]:
         """Return the next option according to ``cursor`` and advance it.
 
         If the cursor is beyond the list length ``None`` is returned and the
@@ -110,12 +99,12 @@ def next_option(self) -> Optional[str]:
         self.cursor += 1
         return opt
 
-def reset(self) -> None:
+    def reset(self) -> None:
         """Reset the thread – clear options and cursor."""
         self.options_json = None
         self.cursor = 0
 
-def __repr__(self) -> str:
+    def __repr__(self) -> str:
         return (
             f"<CognitiveThread tenant_id={self.tenant_id} "
             f"options={len(self.get_options())} cursor={self.cursor}>"

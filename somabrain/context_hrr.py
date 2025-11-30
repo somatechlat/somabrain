@@ -1,20 +1,8 @@
-from __future__ import annotations
-import math
-import time
-from collections import OrderedDict
-from dataclasses import dataclass
-from typing import Callable, Tuple
-import numpy as np
-from .quantum import QuantumLayer
-from somabrain.metrics_extra.context_metrics import ContextMetrics
-from common.logging import logger
-
 """High-fidelity HRR context handling for SomaBrain.
 
 This module manages tenant-scoped HRR contexts with mathematically grounded
 recency weighting, cleanup gating, and observability. It preserves truthful
 hyperdimensional behaviour by:
-    pass
 
 * Maintaining anchor vectors under an exponential decay model
 * Enforcing configurable confidence thresholds during cleanup
@@ -25,9 +13,18 @@ applies the exact decay specified by :class:`HRRContextConfig.decay_lambda`
 and updates Prometheus-backed metrics for downstream verification.
 """
 
+from __future__ import annotations
 
+import math
+import time
+from collections import OrderedDict
+from dataclasses import dataclass
+from typing import Callable, Tuple
 
+import numpy as np
 
+from .quantum import QuantumLayer
+from somabrain.metrics_extra.context_metrics import ContextMetrics
 
 
 @dataclass
@@ -38,11 +35,12 @@ class CleanupResult:
     best_score: float
     second_score: float
 
+    def __iter__(self):  # allow tuple unpacking for legacy callers
         yield self.best_id
         yield self.best_score
 
-@property
-def margin(self) -> float:
+    @property
+    def margin(self) -> float:
         return max(0.0, float(self.best_score) - float(self.second_score))
 
 
@@ -62,14 +60,14 @@ class HRRContext:
     - anchors: limited-size dict of id->vector for cleanup/nearest neighbor
     """
 
-def __init__(
+    def __init__(
         self,
         q: QuantumLayer,
         cfg: HRRContextConfig,
         *,
         context_id: str | None = None,
-        now_fn: Callable[[], float] | None = None, ):
-            pass
+        now_fn: Callable[[], float] | None = None,
+    ):
         self.q = q
         self.cfg = cfg
         self.context = np.zeros((q.cfg.dim,), dtype="float32")
@@ -84,7 +82,7 @@ def __init__(
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-def _apply_decay(self, target_time: float) -> None:
+    def _apply_decay(self, target_time: float) -> None:
         """Bring the context forward in time under exponential decay."""
 
         if self._decay_lambda <= 0.0:
@@ -99,7 +97,7 @@ def _apply_decay(self, target_time: float) -> None:
         self.context = (self.context * decay).astype("float32", copy=False)
         self._context_timestamp = target_time
 
-def _record_state_metrics(self) -> None:
+    def _record_state_metrics(self) -> None:
         anchor_count = len(self._anchors)
         capacity = (
             0.0
@@ -120,7 +118,7 @@ def _record_state_metrics(self) -> None:
 
         ContextMetrics.observe_state(self._context_id, anchor_count, capacity, snr_db)
 
-def _normalize(self, vec: np.ndarray) -> np.ndarray:
+    def _normalize(self, vec: np.ndarray) -> np.ndarray:
         norm = float(np.linalg.norm(vec))
         if norm <= 1e-12:
             return np.zeros_like(vec)
@@ -129,7 +127,7 @@ def _normalize(self, vec: np.ndarray) -> np.ndarray:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-def admit(
+    def admit(
         self, anchor_id: str, vec: np.ndarray, *, timestamp: float | None = None
     ) -> None:
         """Admit a new anchor vector and update the context state."""
@@ -152,11 +150,11 @@ def admit(
 
         self._record_state_metrics()
 
-def novelty(self, vec: np.ndarray) -> float:
+    def novelty(self, vec: np.ndarray) -> float:
         self._apply_decay(self._now())
         return max(0.0, 1.0 - self.q.cosine(vec, self.context))
 
-def _evaluate_cleanup(self, query_vec: np.ndarray, now: float) -> CleanupResult:
+    def _evaluate_cleanup(self, query_vec: np.ndarray, now: float) -> CleanupResult:
         best_id = ""
         best_score = -1.0
         second_score = -1.0
@@ -184,7 +182,7 @@ def _evaluate_cleanup(self, query_vec: np.ndarray, now: float) -> CleanupResult:
             second_score = 0.0
         return CleanupResult(best_id, float(best_score), float(second_score))
 
-def analyze(self, query: np.ndarray) -> CleanupResult:
+    def analyze(self, query: np.ndarray) -> CleanupResult:
         now = self._now()
         self._apply_decay(now)
         query_vec = query.astype("float32", copy=False)
@@ -193,16 +191,17 @@ def analyze(self, query: np.ndarray) -> CleanupResult:
             self._context_id,
             result.best_score,
             result.second_score,
-            self._min_confidence, )
+            self._min_confidence,
+        )
         return result
 
-def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
+    def cleanup(self, query: np.ndarray) -> Tuple[str, float]:
         result = self.analyze(query)
         if result.best_score < self._min_confidence:
             return CleanupResult("", 0.0, result.second_score)
         return result
 
-def stats(self) -> tuple[int, int]:
+    def stats(self) -> tuple[int, int]:
         """Return (anchor_count, max_anchors)."""
         self._apply_decay(self._now())
         self._record_state_metrics()

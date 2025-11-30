@@ -26,32 +26,28 @@ class TokenUsage(db.Base):
 
 
 class TokenLedger:
-    pass
-def __init__(self, engine_url: Optional[str] = None) -> None:
+    def __init__(self, engine_url: Optional[str] = None) -> None:
         self._engine = db.get_engine(engine_url)
         db.Base.metadata.create_all(self._engine)
         self._session_factory = db.get_session_factory(engine_url)
 
-def record(
+    def record(
         self,
         entry_id: str,
         session_id: str,
         tokens: float,
         tenant_id: Optional[str] = None,
-        model: Optional[str] = None, ) -> None:
-            pass
+        model: Optional[str] = None,
+    ) -> None:
         session: Session = self._session_factory()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             rec = TokenUsage(
                 id=entry_id,
                 session_id=session_id,
                 tokens=tokens,
                 tenant_id=tenant_id,
-                model=model, )
+                model=model,
+            )
             session.merge(rec)
             session.commit()
         except SQLAlchemyError:
@@ -60,13 +56,9 @@ def record(
         finally:
             session.close()
 
-def list_for_session(self, session_id: str):
+    def list_for_session(self, session_id: str):
         session: Session = self._session_factory()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return session.query(TokenUsage).filter_by(session_id=session_id).all()
         finally:
             session.close()

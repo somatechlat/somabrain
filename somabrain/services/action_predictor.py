@@ -1,17 +1,3 @@
-from __future__ import annotations
-import asyncio
-import json
-import time
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
-import numpy as np
-from somabrain.prediction import LLMPredictor, PredictionResult
-from somabrain.common.kafka import encode, make_producer
-from common.logging import logger
-from common.config.settings import settings
-from confluent_kafka import Consumer as CKConsumer, KafkaException
-import hashlib
-
 """Action Predictor Service for SomaBrain.
 
 This service implements the action prediction thread as specified in Phase 1 of the
@@ -19,7 +5,6 @@ AROMADP roadmap. It publishes PredictorUpdate events to the cog.action.updates t
 with error metrics and performance data.
 
 The service:
-    pass
 1. Consumes action vectors from the cognitive processing pipeline
 2. Makes predictions about upcoming actions using configured predictor backend
 3. Computes error metrics by comparing predictions with actual actions
@@ -27,27 +12,32 @@ The service:
 5. Maintains strict fail-fast behavior with no soft alternatives
 """
 
+from __future__ import annotations
 
+import asyncio
+import json
+import logging
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
+import numpy as np
 
+from somabrain.prediction import LLMPredictor, PredictionResult
+from somabrain.common.kafka import encode, make_producer
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from common.config.settings import settings
 except ImportError:
     settings = None
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from confluent_kafka import Consumer as CKConsumer, KafkaException
 except ImportError as e:
     raise RuntimeError(f"Action predictor requires confluent-kafka: {e}")
 
 # Logging setup
+logger = logging.getLogger("somabrain.services.action_predictor")
 
 # Kafka configuration (prod-like defaults, override via env)
 SCHEMA_NAME = "predictor_update"
@@ -59,7 +49,7 @@ PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 class ActionPredictorService:
     """Action prediction service with strict error handling."""
 
-def __init__(self):
+    def __init__(self):
         """Initialize the action predictor service."""
         # Use LLM predictor for action prediction (more suitable for action sequences)
         # Use centralized Settings for LLM endpoint; Settings provides default handling
@@ -75,8 +65,9 @@ def __init__(self):
         # Tenant ID from Settings (fallback to default defined in Settings)
         self.tenant_id = getattr(settings, "tenant_id", "default")
 
-def _create_consumer(self) -> CKConsumer:
+    def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
+        # Prefer Settings' kafka_bootstrap_servers, fallback to legacy env vars for compatibility
         # Use central Settings for Kafka bootstrap; fallback to settings if defined.
         bs = getattr(settings, "kafka_bootstrap_servers", None)
         if not bs:
@@ -91,27 +82,17 @@ def _create_consumer(self) -> CKConsumer:
         }
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             consumer = CKConsumer(config)
             consumer.subscribe([CONSUME_TOPIC])
             return consumer
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
-    raise RuntimeError(f"Failed to create Kafka consumer: {e}")
+            raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-def _extract_action_vector(
+    def _extract_action_vector(
         self, message_data: Dict[str, Any]
     ) -> Optional[np.ndarray]:
         """Extract action vector from next event message."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # Assuming next events contain action-related predictions
             action_data = message_data.get("action_prediction")
 
@@ -137,6 +118,7 @@ def _extract_action_vector(
                 # This is a simplified approach - in practice would use proper embeddings
                 action_bytes = action_data.encode("utf-8")
                 # Create fixed-size vector from hash
+                import hashlib
 
                 hash_obj = hashlib.md5(action_bytes)
                 hash_bytes = hash_obj.digest()
@@ -145,15 +127,15 @@ def _extract_action_vector(
 
             return None
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Failed to extract action vector: {e}")
+            return None
 
-def _create_predictor_update(
+    def _create_predictor_update(
         self,
         prediction_result: PredictionResult,
         latency_ms: float,
-        domain: str = "action", ) -> Dict[str, Any]:
-            pass
+        domain: str = "action",
+    ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
         err = float(prediction_result.error)
         conf = float(np.exp(-PREDICTOR_ALPHA * max(0.0, err)))
@@ -179,17 +161,13 @@ def _create_predictor_update(
         # Make prediction with timing
         start_time = time.perf_counter()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # For action prediction, we predict next actions based on current context
             prediction_result = self.predictor.predict_and_compare(
                 expected_vec=action_vector, actual_vec=action_vector
             )
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Action prediction failed: {e}")
+            raise RuntimeError(f"Action prediction failed: {e}")
 
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
@@ -200,10 +178,6 @@ def _create_predictor_update(
         )
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
@@ -211,24 +185,16 @@ def _create_predictor_update(
                 f"Published action predictor update: error={prediction_result.error:.4f}"
             )
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Failed to publish predictor update: {e}")
+            raise RuntimeError(f"Failed to publish predictor update: {e}")
 
     async def run(self) -> None:
         """Main service loop."""
         logger.info("Starting Action Predictor Service")
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             while True:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     # Poll for messages with timeout
                     msg = self.consumer.poll(timeout=1.0)
                     if msg is None:
@@ -242,10 +208,6 @@ def _create_predictor_update(
 
                     # Decode message (assuming JSON for now, will be Avro when schema ready)
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         message_data = json.loads(msg.value().decode("utf-8"))
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to decode message as JSON: {e}")
@@ -258,7 +220,8 @@ def _create_predictor_update(
                     logger.info("Received shutdown signal")
                     break
                 except Exception as e:
-                    logger.exception("Exception caught: %s", e)
+                    logger.error(f"Error processing message: {e}")
+                    # Strict mode: re-raise errors instead of continuing
                     raise
 
         finally:

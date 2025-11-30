@@ -13,8 +13,6 @@ defaults match the historic behaviour of the project.
 """
 
 
-
-
 def _bool_env(name: str, default: bool = False) -> bool:
     """Read a boolean env var – ``1``, ``true``, ``yes`` and ``on`` are truthy."""
     val = os.getenv(name)
@@ -53,12 +51,16 @@ class MemoryConfig:
 
     # HTTP client tuning knobs
     http_max_connections: int = _int_env("SOMABRAIN_HTTP_MAX_CONNECTIONS", 64)
-    http_keepalive_connections: int = _int_env("SOMABRAIN_HTTP_KEEPALIVE_CONNECTIONS", 32)
+    http_keepalive_connections: int = _int_env(
+        "SOMABRAIN_HTTP_KEEPALIVE_CONNECTIONS", 32
+    )
     http_retries: int = _int_env("SOMABRAIN_HTTP_RETRIES", 1)
 
     # Misc behavioural flags used by the original client
     memory_fast_ack: bool = _bool_env("SOMABRAIN_MEMORY_FAST_ACK", False)
-    memory_enable_weighting: bool = _bool_env("SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False)
+    memory_enable_weighting: bool = _bool_env(
+        "SOMABRAIN_MEMORY_ENABLE_WEIGHTING", False
+    )
 
     # Namespace/tenant – optional but useful for multi‑tenant deployments
     namespace: Optional[str] = os.getenv("SOMABRAIN_NAMESPACE")

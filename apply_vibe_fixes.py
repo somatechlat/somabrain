@@ -45,7 +45,6 @@ py_compile **/*.py`` and ``ruff``/``black`` will run cleanly.
 """
 
 
-
 ROOT = pathlib.Path(__file__).parent
 
 # ---------------------------------------------------------------------
@@ -56,6 +55,7 @@ EXCEPT_OR_FINALLY_RE = re.compile(r"^\s*(except|finally)\b")
 EXCEPT_RE = re.compile(r"^(?P<indent>\s*)except\b.*:\s*$")
 IMPORT_LOGGER_RE = re.compile(r"^\s*from\s+common\.logging\s+import\s+logger\s*$")
 LOGGER_DEF_RE = re.compile(r"^\s*logger\s*=\s*logging\.getLogger\([^\)]+\)\s*$")
+
 
 # ---------------------------------------------------------------------
 # 1. Ensure ``try`` blocks have a body and add generic ``except`` when missing
@@ -84,13 +84,14 @@ def ensure_try_and_generic_except(lines: List[str]) -> List[str]:
                 out.append(line)
                 out.append(f"{indent}    pass")
                 out.append(f"{indent}except Exception as exc:")
-                out.append(f"{indent}    logger.exception(\"Exception caught: %s\", exc)")
+                out.append(f'{indent}    logger.exception("Exception caught: %s", exc)')
                 out.append(f"{indent}    raise")
                 i += 1
                 continue
         out.append(line)
         i += 1
     return out
+
 
 # ---------------------------------------------------------------------
 # 2. Remove stray ``raise`` lines that have no following statement
@@ -110,7 +111,10 @@ def remove_stray_raises(lines: List[str]) -> List[str]:
             # more indented, the raise is stray and can be removed.
             if (
                 nxt_indent == cur_indent
-                and any(nxt_stripped.startswith(k) for k in ("except", "finally", "else", "elif"))
+                and any(
+                    nxt_stripped.startswith(k)
+                    for k in ("except", "finally", "else", "elif")
+                )
                 or (nxt_indent > cur_indent)
             ):
                 i += 1  # skip the stray raise
@@ -118,6 +122,7 @@ def remove_stray_raises(lines: List[str]) -> List[str]:
         out.append(line)
         i += 1
     return out
+
 
 # ---------------------------------------------------------------------
 # 3. Fix broken multiline function signatures (comma‑line + closing parenthesis)
@@ -138,6 +143,7 @@ def fix_broken_signatures(lines: List[str]) -> List[str]:
         i += 1
     return out
 
+
 # ---------------------------------------------------------------------
 # 4. Deduplicate logger imports/definitions
 # ---------------------------------------------------------------------
@@ -153,6 +159,7 @@ def dedup_logger(lines: List[str]) -> List[str]:
             continue
         out.append(line)
     return out
+
 
 # ---------------------------------------------------------------------
 # 5. Add ``pass`` to empty ``except`` blocks (similar to step 1 for ``try``)
@@ -178,6 +185,7 @@ def ensure_except_pass(lines: List[str]) -> List[str]:
         i += 1
     return out
 
+
 # ---------------------------------------------------------------------
 def process_file(path: pathlib.Path) -> bool:
     """Apply all transformations to *path*.
@@ -195,6 +203,7 @@ def process_file(path: pathlib.Path) -> bool:
         path.write_text("\n".join(new) + "\n", encoding="utf-8")
         return True
     return False
+
 
 # ---------------------------------------------------------------------
 def main() -> None:

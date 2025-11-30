@@ -1,16 +1,6 @@
-from fastapi import APIRouter, Request
-from somabrain.schemas import OakOptionCreateRequest, OakPlanSuggestResponse
-from somabrain.auth import require_auth
-from somabrain.oak.option_manager import option_manager
-from somabrain.oak.planner import plan_for_tenant
-from somabrain.milvus_client import MilvusClient
-from common.config.settings import settings
-from somabrain import metrics as M
-
 """FastAPI router that exposes Oak‑specific endpoints backed by Milvus.
 
 The VIBE guidelines are respected:
-    pass
 * **Single source of truth** – all configuration is read from the global
   ``settings`` instance (defined in ``common.config.settings``).
 * **Typed request/response models** – Pydantic models are defined in the
@@ -21,6 +11,15 @@ The VIBE guidelines are respected:
   ``somabrain.metrics`` (the gauge was added in a previous sprint).
 """
 
+from fastapi import APIRouter, Depends, HTTPException, Request
+from somabrain.schemas import OakOptionCreateRequest, OakPlanSuggestResponse
+from somabrain.auth import require_auth
+from somabrain.context_hrr import HRRContextConfig
+from somabrain.oak.option_manager import option_manager
+from somabrain.oak.planner import plan_for_tenant
+from somabrain.milvus_client import MilvusClient
+from common.config.settings import settings
+from somabrain import metrics as M
 
 router = APIRouter()
 
@@ -42,14 +41,17 @@ async def oak_option_create(body: OakOptionCreateRequest, request: Request):
     _milvus.upsert_option(
         tenant_id=opt.tenant_id,
         option_id=opt.option_id,
-        payload=opt.payload, )
+        payload=opt.payload,
+    )
     # Increment per‑tenant option count gauge
     M.OPTION_COUNT.labels(opt.tenant_id).inc()
     return OakPlanSuggestResponse(plan=[opt.option_id])
 
 
 @router.put("/option/{option_id}", response_model=OakPlanSuggestResponse)
-async def oak_option_update(option_id: str, body: OakOptionCreateRequest, request: Request):
+async def oak_option_update(
+    option_id: str, body: OakOptionCreateRequest, request: Request
+):
     """Replace the payload of an existing Oak option.
 
     The update is performed via ``MilvusClient.upsert_option`` which overwrites
@@ -60,7 +62,8 @@ async def oak_option_update(option_id: str, body: OakOptionCreateRequest, reques
     _milvus.upsert_option(
         tenant_id=opt.tenant_id,
         option_id=opt.option_id,
-        payload=opt.payload, )
+        payload=opt.payload,
+    )
     M.OPTION_COUNT.labels(opt.tenant_id).inc()
     return OakPlanSuggestResponse(plan=[opt.option_id])
 

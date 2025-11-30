@@ -1,15 +1,8 @@
-import sys
-import subprocess
-from pathlib import Path
-from common.config.settings import Settings, settings
-from dotenv import load_dotenv  # type: ignore
-
 #!/usr/bin/env python3
 """Verify that all required environment variables for a full‑stack SomaBrain
 deployment are present and non‑empty.
 
 The script performs three main actions:
-    pass
 1. Ensures a ``.env`` file exists – if it is missing the script copies the
    canonical ``config/env.example`` template.
 2. Loads the :class:`common.config.settings.Settings` singleton (which reads the
@@ -23,6 +16,9 @@ that the environment is correctly configured for the **full‑local** mode
 (``SOMABRAIN_MODE=full-local``) required by the ROAMDP implementation.
 """
 
+import sys
+import subprocess
+from pathlib import Path
 
 # ---------------------------------------------------------------------
 # Ensure the repository root is on ``sys.path`` so that ``common`` can be
@@ -34,10 +30,12 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 # Import the Settings class – the singleton ``settings`` will read the .env file.
+from common.config.settings import Settings, settings
 
 # Load environment variables from a .env file. ``python-dotenv`` is a required
 # development dependency for this script.  If it is missing the script will raise
 # an ImportError, which is intentional – we do not provide any fallback.
+from dotenv import load_dotenv  # type: ignore
 
 
 def _load_fresh_settings() -> Settings:

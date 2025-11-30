@@ -1,8 +1,3 @@
-from __future__ import annotations
-import hashlib
-from typing import Optional, Union
-import numpy as np
-
 """Deterministic seeding helpers.
 
 Provides a small utility to convert arbitrary seeds (int/str/bytes/None)
@@ -10,8 +5,12 @@ into a stable uint64 and a NumPy Generator. Uses blake2b for text -> int
 hashing to produce reproducible uint64 seeds.
 """
 
+from __future__ import annotations
 
+import hashlib
+from typing import Optional, Union
 
+import numpy as np
 
 
 def _hash_to_uint64(b: bytes) -> int:

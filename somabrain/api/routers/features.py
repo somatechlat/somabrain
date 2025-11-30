@@ -1,10 +1,10 @@
 from __future__ import annotations
+
 from typing import Dict, List
+
 from fastapi import APIRouter
+
 from config.feature_flags import FeatureFlags
-
-
-
 
 
 router = APIRouter(prefix="/features", tags=["features"])

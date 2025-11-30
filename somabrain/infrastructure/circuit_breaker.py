@@ -1,10 +1,3 @@
-from __future__ import annotations
-import time
-from threading import RLock
-from typing import Dict
-from common.logging import logger
-from . import metrics  # type: ignore
-
 """Centralised per-tenant circuit-breaker implementation.
 
 The original code duplicated circuit‑breaker state inside ``MemoryService`` (class‑level
@@ -18,7 +11,11 @@ Only standard library types are used; the module does **not** depend on Promethe
  Prometheus is not installed.
 """
 
+from __future__ import annotations
 
+import time
+from threading import RLock
+from typing import Dict
 
 __all__ = ["CircuitBreaker"]
 
@@ -34,13 +31,13 @@ class CircuitBreaker:
         Minimum time to wait after the circuit opens before attempting a reset.
     """
 
-def __init__(
+    def __init__(
         self,
         *,
         global_failure_threshold: int = 3,
         global_reset_interval: float = 60.0,
-        global_cooldown_interval: float = 0.0, ) -> None:
-            pass
+        global_cooldown_interval: float = 0.0,
+    ) -> None:
         """Create a circuit‑breaker with optional cooldown interval.
 
         ``global_cooldown_interval`` (seconds) adds an extra wait time after a
@@ -64,7 +61,7 @@ def __init__(
     # ---------------------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------------------
-def _ensure_tenant(self, tenant: str) -> None:
+    def _ensure_tenant(self, tenant: str) -> None:
         """Make sure internal structures exist for *tenant*.
 
         This method must be called while holding ``self._lock``.
@@ -78,7 +75,7 @@ def _ensure_tenant(self, tenant: str) -> None:
             self._reset_interval[tenant] = self._global_reset_interval
             self._cooldown_interval[tenant] = self._global_cooldown_interval
 
-def _set_metrics(self, tenant: str) -> None:
+    def _set_metrics(self, tenant: str) -> None:
         """Emit the current circuit state to Prometheus (if available).
 
         The original implementation referenced a non‑existent ``CIRCUIT_STATE``
@@ -88,33 +85,29 @@ def _set_metrics(self, tenant: str) -> None:
         updates the proper gauge when it exists.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # Local import avoids circular dependencies with ``metrics`` which
             # itself imports many parts of the application.
+            from . import metrics  # type: ignore
 
             gauge = getattr(metrics, "CIRCUIT_BREAKER_STATE", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(
                     1 if self._circuit_open.get(tenant, False) else 0
                 )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            # In environments without Prometheus the import may fail – silently ignore.
+            pass
 
     # ---------------------------------------------------------------------
     # Public API – used by services
     # ---------------------------------------------------------------------
-def is_open(self, tenant: str) -> bool:
+    def is_open(self, tenant: str) -> bool:
         """Return ``True`` if the circuit for *tenant* is currently open."""
         with self._lock:
             self._ensure_tenant(tenant)
             return bool(self._circuit_open.get(tenant, False))
 
-def record_success(self, tenant: str) -> None:
+    def record_success(self, tenant: str) -> None:
         """Reset failure counters and close the circuit for *tenant*.
 
         This should be called after a successful call to the downstream memory
@@ -127,7 +120,7 @@ def record_success(self, tenant: str) -> None:
             self._last_failure_time[tenant] = 0.0
             self._set_metrics(tenant)
 
-def record_failure(self, tenant: str) -> None:
+    def record_failure(self, tenant: str) -> None:
         """Increment the failure counter and open the circuit if the threshold
         is reached.
         """
@@ -143,7 +136,7 @@ def record_failure(self, tenant: str) -> None:
                 self._circuit_open[tenant] = True
             self._set_metrics(tenant)
 
-def should_attempt_reset(self, tenant: str) -> bool:
+    def should_attempt_reset(self, tenant: str) -> bool:
         """Return ``True`` if enough time has elapsed to try a circuit reset.
 
         The logic mirrors the original implementation in ``MemoryService`` but
@@ -164,14 +157,14 @@ def should_attempt_reset(self, tenant: str) -> bool:
             self._last_reset_attempt[tenant] = now
             return True
 
-def configure_tenant(
+    def configure_tenant(
         self,
         tenant: str,
         *,
         failure_threshold: int | None = None,
         reset_interval: float | None = None,
-        cooldown_interval: float | None = None, ) -> None:
-            pass
+        cooldown_interval: float | None = None,
+    ) -> None:
         """Adjust per‑tenant thresholds.
 
         Parameters are optional; if omitted the global defaults are retained.
@@ -186,7 +179,7 @@ def configure_tenant(
                 self._cooldown_interval[tenant] = max(0.0, float(cooldown_interval))
             self._set_metrics(tenant)
 
-def get_state(self, tenant: str) -> dict:
+    def get_state(self, tenant: str) -> dict:
         """Return a snapshot of the circuit‑breaker state for *tenant*.
 
         The dictionary mirrors the structure that ``MemoryService.get_circuit_state``

@@ -1,16 +1,8 @@
-from __future__ import annotations
-import time
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
-import httpx
-from common.logging import logger
-
 """
 Python client for the SomaBrain API with strict health‑aware behaviour.
 
 This client is intended for use by upstream agents (e.g. SomaAgent01) that
 must:
-    pass
 
 * Always talk to real SomaBrain endpoints (no mocks or local fallbacks).
 * Never silently turn connectivity errors into "no results".
@@ -18,19 +10,14 @@ must:
   unavailable or not ready.
 
 Example:
-    pass
 
-from clients.python.somabrain_client import SomaBrainClient, SomaBrainUnavailableError
+    from clients.python.somabrain_client import SomaBrainClient, SomaBrainUnavailableError
 
-from common.config.settings import settings as _settings
+    from common.config.settings import settings as _settings
     api = SomaBrainClient(base_url=_settings.api_url, tenant="public")
 
     # Health-aware recall: only calls SomaBrain when health says "up".
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         api.ensure_ready()  # Optional explicit check
         memories = api.recall("hello", top_k=3)
     except SomaBrainUnavailableError as exc:
@@ -38,8 +25,13 @@ from common.config.settings import settings as _settings
         print("SomaBrain unavailable:", exc.status, exc.reason)
 """
 
+from __future__ import annotations
 
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
+import httpx
 
 
 @dataclass
@@ -62,7 +54,7 @@ class SomaBrainHealth:
 class SomaBrainUnavailableError(RuntimeError):
     """Raised when SomaBrain is not in an "up" state for strict callers."""
 
-def __init__(self, status: str, reason: str, health: Optional[SomaBrainHealth]):
+    def __init__(self, status: str, reason: str, health: Optional[SomaBrainHealth]):
         msg = f"SomaBrain status={status!r}: {reason}"
         super().__init__(msg)
         self.status = status
@@ -78,15 +70,15 @@ class SomaBrainClient:
     callers can use to guard memory-dependent logic.
     """
 
-def __init__(
+    def __init__(
         self,
         base_url: str,
         token: Optional[str] = None,
         tenant: Optional[str] = None,
         *,
         health_ttl_s: float = 5.0,
-        timeout_s: float = 10.0, ):
-            pass
+        timeout_s: float = 10.0,
+    ):
         self.base = base_url.rstrip("/")
         self.headers: Dict[str, str] = {"Content-Type": "application/json"}
         if token:
@@ -103,7 +95,7 @@ def __init__(
     # Health handling
     # ------------------------------------------------------------------
 
-def _classify_health(self, body: Dict[str, Any]) -> SomaBrainHealth:
+    def _classify_health(self, body: Dict[str, Any]) -> SomaBrainHealth:
         """Classify /health response into up/degraded/down from agent POV."""
 
         ok = bool(body.get("ok", False))
@@ -137,9 +129,10 @@ def _classify_health(self, body: Dict[str, Any]) -> SomaBrainHealth:
             status=status,
             last_checked=time.time(),
             reason=reason,
-            raw=body, )
+            raw=body,
+        )
 
-def refresh_health(self, *, force: bool = False) -> SomaBrainHealth:
+    def refresh_health(self, *, force: bool = False) -> SomaBrainHealth:
         """Refresh the cached health snapshot from `/health`.
 
         When `force` is False, uses the cached value if it is recent
@@ -154,41 +147,43 @@ def refresh_health(self, *, force: bool = False) -> SomaBrainHealth:
             return self._health
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             r = self._http.get("/health")
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            self._health = SomaBrainHealth(
+                status="down",
+                last_checked=now,
+                reason=f"http_error:{exc!r}",
+                raw=None,
+            )
+            return self._health
 
         if r.status_code != 200:
             self._health = SomaBrainHealth(
                 status="down",
                 last_checked=now,
                 reason=f"http_status:{r.status_code}",
-                raw=None, )
+                raw=None,
+            )
             return self._health
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             body = r.json()
             self._health = self._classify_health(body)
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            self._health = SomaBrainHealth(
+                status="down",
+                last_checked=now,
+                reason=f"health_parse_error:{exc!r}",
+                raw=None,
+            )
         return self._health
 
-@property
-def health(self) -> SomaBrainHealth:
+    @property
+    def health(self) -> SomaBrainHealth:
         """Return the current cached health snapshot (may be stale)."""
         return self._health
 
-def ensure_ready(self) -> None:
+    def ensure_ready(self) -> None:
         """Raise SomaBrainUnavailableError if SomaBrain is not "up".
 
         Upstream agents should call this before performing critical
@@ -202,7 +197,7 @@ def ensure_ready(self) -> None:
     # Core API methods
     # ------------------------------------------------------------------
 
-def remember(
+    def remember(
         self, payload: Dict[str, Any], coord: Optional[str] = None
     ) -> Dict[str, Any]:
         """Store a memory payload in SomaBrain.
@@ -216,7 +211,7 @@ def remember(
         r.raise_for_status()
         return r.json()
 
-def recall(
+    def recall(
         self, query: str, top_k: int = 3, universe: Optional[str] = None
     ) -> Dict[str, Any]:
         """Recall memories relevant to `query` from SomaBrain.
@@ -232,7 +227,7 @@ def recall(
         r.raise_for_status()
         return r.json()
 
-def link(
+    def link(
         self,
         *,
         from_key: Optional[str] = None,
@@ -241,8 +236,8 @@ def link(
         to_coord: Optional[str] = None,
         type: Optional[str] = None,
         weight: float = 1.0,
-        universe: Optional[str] = None, ) -> Dict[str, Any]:
-            pass
+        universe: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Create a semantic link between memories in SomaBrain."""
         body: Dict[str, Any] = {
             "from_key": from_key,
@@ -257,14 +252,14 @@ def link(
         r.raise_for_status()
         return r.json()
 
-def plan_suggest(
+    def plan_suggest(
         self,
         task_key: str,
         *,
         max_steps: Optional[int] = None,
         rel_types: Optional[List[str]] = None,
-        universe: Optional[str] = None, ) -> Dict[str, Any]:
-            pass
+        universe: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Suggest a plan over semantic links starting from `task_key`."""
         body: Dict[str, Any] = {"task_key": task_key}
         if max_steps is not None:

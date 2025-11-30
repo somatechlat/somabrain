@@ -22,31 +22,23 @@ def ensure_logger_import(content: str) -> str:
     return '\n'.join(lines) + '\n'
 
 def replace_except_raise(content: str) -> str:
-    # Pattern for except Exception as exc:
-        pass
-    logger.exception("Exception caught: %s", exc)
-    raise (optional comment after raise)
+    """Replace bare `except Exception: raise` with logged raise blocks."""
     pattern1 = re.compile(r'except\s+Exception\s*:\s*raise(?:\s*#.*)?')
-    # Pattern for except Exception as exc:
-        pass
-    logger.exception("Exception caught: %s", exc)
-    raise
     pattern2 = re.compile(r'except\s+Exception\s+as\s+(\w+)\s*:\s*raise(?:\s*#.*)?')
-def repl1(match):
-        return 'except Exception as exc:\n    logger.exception("Exception caught: %s", exc)\n    raise'
-def repl2(match):
+
+    def repl1(match):
+        return 'except Exception as exc:\\n    logger.exception("Exception caught: %s", exc)\\n    raise'
+
+    def repl2(match):
         var = match.group(1)
-        return f'except Exception as {var}:\n    logger.exception("Exception caught: %s", {var})\n    raise'
+        return f'except Exception as {var}:\\n    logger.exception("Exception caught: %s", {var})\\n    raise'
+
     content = pattern2.sub(repl2, content)
     content = pattern1.sub(repl1, content)
     return content
 
 for py_path in repo_root.rglob('*.py'):
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         text = py_path.read_text()
     except Exception as exc:
         logger.exception("Exception caught: %s", exc)

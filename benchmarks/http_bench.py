@@ -1,11 +1,3 @@
-import argparse
-from common.config.settings import settings
-import asyncio
-import time
-from statistics import mean, median
-import httpx
-from common.logging import logger
-
 """Simple HTTP benchmark harness using httpx.
 
 Usage:
@@ -14,7 +6,13 @@ Usage:
 This sends POST requests with a simple RetrievalRequest body and prints latency percentiles.
 """
 
+import argparse
+from common.config.settings import settings
+import asyncio
+import time
+from statistics import mean, median
 
+import httpx
 
 DEFAULT_BODY = {
     "query": "What is the capital of France?",
@@ -26,27 +24,15 @@ DEFAULT_BODY = {
 async def worker(client: httpx.AsyncClient, url: str, q: asyncio.Queue, results: list):
     while True:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _ = q.get_nowait()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             break
         t0 = time.perf_counter()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             r = await client.post(url, json=DEFAULT_BODY, timeout=30.0)
             latency = time.perf_counter() - t0
             results.append((r.status_code, latency))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             latency = time.perf_counter() - t0
             results.append((None, latency))
 

@@ -1,8 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from fastapi import Request
-from .tenant_manager import get_tenant_manager
-
 """Tenant helper module.
 
 Provides a thin async wrapper used throughout the codebase to resolve the
@@ -17,8 +12,12 @@ resolved ``tenant_id`` and the configured ``namespace``.  It uses the singleton
 ``TenantManager`` obtained via ``get_tenant_manager``.
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
+from fastapi import Request
 
+from .tenant_manager import get_tenant_manager
 
 
 @dataclass

@@ -3,34 +3,22 @@
 from __future__ import annotations
 
 from typing import Optional
-from common.logging import logger
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
     # Shared settings loader; optional in some runtimes.
-from common.config.settings import settings
+    from common.config.settings import settings
 
     # The Settings singleton is imported above; no need for a redundant alias.
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+except Exception:  # pragma: no cover - optional dependency in lean environments
+    settings = None  # type: ignore
 
 
 def _clean(value: Optional[str]) -> Optional[str]:
     if value is None:
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         text = str(value).strip()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
     return text or None
 
@@ -47,14 +35,8 @@ def _from_settings(attr: str) -> Optional[str]:
     if settings is None:
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return _clean(getattr(settings, attr, None))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
 
 
@@ -66,7 +48,8 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
         # Settings provides redis_host, redis_port, redis_db as fallbacks
         _from_settings("redis_host"),
         _from_settings("redis_port"),
-        _from_settings("redis_db"), )
+        _from_settings("redis_db"),
+    )
     if url:
         return url
 
@@ -89,7 +72,8 @@ def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
         # fallbacks via Settings fields
         _from_settings("memory_http_host"),
         _from_settings("memory_http_port"),
-        _from_settings("memory_http_scheme"), )
+        _from_settings("memory_http_scheme"),
+    )
     if endpoint:
         return endpoint
 
@@ -111,7 +95,8 @@ def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:
         # Settings may provide host/port/scheme as fallbacks
         _from_settings("kafka_host"),
         _from_settings("kafka_port"),
-        _from_settings("kafka_scheme"), )
+        _from_settings("kafka_scheme"),
+    )
     if bootstrap:
         return bootstrap
 
@@ -133,7 +118,8 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
         # Settings fallbacks via host/port/scheme
         _from_settings("opa_host"),
         _from_settings("opa_port"),
-        _from_settings("opa_scheme"), )
+        _from_settings("opa_scheme"),
+    )
     if url:
         return url
 
@@ -155,7 +141,8 @@ def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
         # Settings fallbacks via host/port/scheme
         _from_settings("public_host"),
         _from_settings("public_port"),
-        _from_settings("api_scheme"), )
+        _from_settings("api_scheme"),
+    )
     if url:
         return url
 
@@ -173,7 +160,8 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     """Return the Postgres DSN."""
 
     dsn = _first_non_empty(
-        _from_settings("postgres_dsn"), )
+        _from_settings("postgres_dsn"),
+    )
     if dsn:
         return dsn
 

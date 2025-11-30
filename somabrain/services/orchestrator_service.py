@@ -1,23 +1,3 @@
-from __future__ import annotations
-import json
-import time
-from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
-from confluent_kafka import Consumer as CKConsumer  # type: ignore
-from somabrain.modes import feature_enabled
-from common.config.settings import settings
-from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-from libs.kafka_cog.serde import AvroSerde  # type: ignore
-from somabrain.db.outbox import enqueue_event  # type: ignore
-from somabrain.common.infra import assert_ready
-from common.logging import logger
-from common.config.settings import settings as _settings  # type: ignore
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import threading
-from common.config.settings import settings as _settings  # type: ignore
-import logging
-from somabrain.metrics import get_counter
-
 """
 Cognitive Orchestrator Service
 
@@ -25,7 +5,6 @@ Listens to GlobalFrame and SegmentBoundary topics and, on boundaries, enqueues
 an episodic snapshot into the transactional outbox for downstream persistence.
 
 Design:
-    pass
 - Consume `cog.global.frame` and `cog.segments`.
 - Maintain a small per-tenant context with the last GlobalFrame and a running
   summary for the current segment window.
@@ -36,25 +15,37 @@ Design:
   falls back to JSON parse.
 
 Environment:
-    pass
 - SOMABRAIN_KAFKA_URL: bootstrap servers (from centralized infrastructure)
 - SOMABRAIN_ORCH_NAMESPACE: memory namespace for snapshots (default: "cog")
+Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy env flags removed.
 
 """
 
+from __future__ import annotations
 
+import json
+import time
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 # Strict mode: use confluent-kafka Consumer
+from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from somabrain.modes import feature_enabled
 
 # Central configuration import per VIBE rules
+from common.config.settings import settings
 
 # Optional Avro serde
 try:  # pragma: no cover
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+except Exception:  # pragma: no cover
+    load_schema = None  # type: ignore
+    AvroSerde = None  # type: ignore
 
 # Outbox API (DB-backed) required
+from somabrain.db.outbox import enqueue_event  # type: ignore
+from somabrain.common.infra import assert_ready
 
 
 # Topic configuration constants (centralised settings only)
@@ -86,10 +77,6 @@ def _parse_global_frame(
     raw: bytes, serde: Optional[AvroSerde]
 ) -> Optional[GlobalFrameCtx]:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         data: Dict[str, Any]
         if serde is not None:
             data = serde.deserialize(raw)  # type: ignore[arg-type]
@@ -112,10 +99,9 @@ def _parse_global_frame(
             weights={k: float(v) for k, v in (weights or {}).items()},
             frame=frame_map if isinstance(frame_map, dict) else {},
             rationale=rationale,
-            count=1, )
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+            count=1,
+        )
+    except Exception:
         return None
 
 
@@ -123,84 +109,51 @@ def _parse_segment_boundary(
     raw: bytes, serde: Optional[AvroSerde]
 ) -> Optional[Dict[str, Any]]:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if serde is not None:
             return serde.deserialize(raw)  # type: ignore[arg-type]
         return json.loads(raw.decode("utf-8"))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
 
 
 class OrchestratorService:
-    pass
-def __init__(self) -> None:
+    def __init__(self) -> None:
         self._serde_gf: Optional[AvroSerde] = None
         self._serde_sb: Optional[AvroSerde] = None
         if load_schema is not None and AvroSerde is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self._serde_gf = AvroSerde(load_schema("global_frame"))  # type: ignore[arg-type]
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 self._serde_gf = None
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self._serde_sb = AvroSerde(load_schema("segment_boundary"))  # type: ignore[arg-type]
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 self._serde_sb = None
         self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
         # Minimal leader->tools routing (JSON via env)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             routing_raw = getattr(settings, "orchestrator_routing", "") or ""
             self._routing = json.loads(routing_raw) if routing_raw else {}
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             self._routing = {}
         # per-tenant rolling context for current segment
         self._ctx: Dict[str, GlobalFrameCtx] = {}
         # Optional health / metrics server
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from common.config.settings import settings as _settings  # type: ignore
 
             if _settings.health_port:
                 self._start_health_server()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
-
-def _start_health_server(self) -> None:
-        try:
+        except Exception:
             pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
 
-class _Handler(BaseHTTPRequestHandler):
-    pass
-def do_GET(self):  # type: ignore[override]
+    def _start_health_server(self) -> None:
+        try:
+            from http.server import BaseHTTPRequestHandler, HTTPServer
+            import threading
+
+            class _Handler(BaseHTTPRequestHandler):
+                def do_GET(self):  # type: ignore[override]
                     if self.path not in ("/health", "/healthz", "/ready"):
                         self.send_response(404)
                         self.end_headers()
@@ -211,19 +164,18 @@ def do_GET(self):  # type: ignore[override]
                     payload = {"ok": True, "service": "orchestrator"}
                     self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-def log_message(self, format, *args):  # noqa: N802
+                def log_message(self, format, *args):  # noqa: N802
                     return
 
+            from common.config.settings import settings as _settings  # type: ignore
 
             port = int(_settings.health_port)
             srv = HTTPServer(("", port), _Handler)
             threading.Thread(target=srv.serve_forever, daemon=True).start()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
-def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
+    def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         gf = self._ctx.get(tenant)
         # Compose a minimal episodic payload for memory
         key = f"segment:{boundary.get('boundary_ts') or int(time.time()*1000)}"
@@ -247,16 +199,11 @@ def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
             value["frames_in_segment"] = gf.count
             # Leader-aware routing tags (optional)
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 tools = self._routing.get(gf.leader)
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
@@ -267,21 +214,17 @@ def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
             "policy_tags": ["auto:segment"],
         }
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             enqueue_event(
                 topic="memory.episodic.snapshot",
                 payload=payload,
                 dedupe_key=f"{tenant}:{key}",
-                tenant_id=tenant, )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+                tenant_id=tenant,
+            )
+        except Exception:
+            # best-effort enqueue; drop on error
+            pass
 
-def run_forever(self) -> None:  # pragma: no cover - integration loop
+    def run_forever(self) -> None:  # pragma: no cover - integration loop
         consumer = CKConsumer(
             {
                 "bootstrap.servers": _bootstrap(),
@@ -293,10 +236,6 @@ def run_forever(self) -> None:  # pragma: no cover - integration loop
         )
         consumer.subscribe([GLOBAL_FRAME_TOPIC, SEGMENTS_TOPIC])  # Avro-only topics
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             while True:
                 msg = consumer.poll(timeout=1.0)
                 if msg is None or msg.error():
@@ -325,41 +264,33 @@ def run_forever(self) -> None:  # pragma: no cover - integration loop
                     self._remember_snapshot(tenant, sb)
         finally:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 consumer.close()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
 
 def main() -> None:  # pragma: no cover - entrypoint
     if not feature_enabled("orchestrator"):
-        pass
+        import logging
+        from somabrain.metrics import get_counter
 
         logging.info("orchestrator_service: feature flag disabled; exiting")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _MX_ORCH_DISABLED = get_counter(
                 "somabrain_orchestrator_disabled_total",
-                "Count of orchestrator disabled exits", )
+                "Count of orchestrator disabled exits",
+            )
             _MX_ORCH_DISABLED.inc()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
         return
     # Ensure Kafka and Postgres (for outbox) are reachable before starting
     assert_ready(
         require_kafka=True,
         require_redis=False,
         require_postgres=True,
-        require_opa=False, )
+        require_opa=False,
+    )
     OrchestratorService().run_forever()
 
 

@@ -1,21 +1,19 @@
-from __future__ import annotations
-from pathlib import Path
-from typing import Optional
-import jwt
-from fastapi import HTTPException, Request
-from jwt.exceptions import PyJWTError
-from .config import Config
-from common.logging import logger
-
 """
 Authentication Module for SomaBrain.
 
 Extends bearer token checks with optional JWT validation.
 """
 
+from __future__ import annotations
 
+from pathlib import Path
+from typing import Optional
 
+import jwt
+from fastapi import HTTPException, Request
+from jwt.exceptions import PyJWTError
 
+from .config import Config
 
 # Import the canonical settings object directly.
 
@@ -33,16 +31,10 @@ def _get_jwt_key(cfg: Config) -> Optional[str]:
     if cfg.jwt_public_key_path:
         if _JWT_PUBLIC_CACHE is None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(
                     encoding="utf-8"
                 )
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return None
         return _JWT_PUBLIC_CACHE
     if cfg.jwt_secret:
@@ -73,16 +65,13 @@ def require_auth(request: Request, cfg: Config) -> None:
         if cfg.jwt_issuer:
             kwargs["issuer"] = cfg.jwt_issuer
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             jwt.decode(
                 token,
                 jwt_key,
                 algorithms=_jwt_algorithms(cfg),
                 options=options,
-                **kwargs, )
+                **kwargs,
+            )
         except PyJWTError as exc:
             raise HTTPException(status_code=403, detail="invalid token") from exc
         return

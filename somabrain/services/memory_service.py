@@ -1,14 +1,3 @@
-from __future__ import annotations
-import uuid
-from typing import Any, Iterable
-from somabrain.infrastructure.cb_registry import get_cb
-from ..infrastructure.tenant import tenant_label, resolve_namespace
-from common.config.settings import settings
-from somabrain.journal import get_journal, JournalEvent
-from common.logging import logger
-from somabrain import metrics
-from somabrain import metrics
-
 """Memory Service Module for SomaBrain.
 
 Provides a high‑level ``MemoryService`` class that wraps a backend client and
@@ -16,10 +5,17 @@ delegates circuit‑breaker logic to the shared :class:`~somabrain.infrastructur
  circuit_breaker.CircuitBreaker` implementation.
 """
 
+from __future__ import annotations
 
+import uuid
+from typing import Any, Iterable
 
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
+from somabrain.infrastructure.cb_registry import get_cb
+from ..infrastructure.tenant import tenant_label, resolve_namespace
+from common.config.settings import settings
+from somabrain.journal import get_journal, JournalEvent
 
 
 class MemoryService:
@@ -36,7 +32,7 @@ class MemoryService:
 
     _circuit_breaker = get_cb()
 
-def __init__(self, backend: Any, namespace: str | None = None) -> None:
+    def __init__(self, backend: Any, namespace: str | None = None) -> None:
         self._backend = backend
         self.namespace = namespace or ""
         self._cb = get_cb()
@@ -51,7 +47,7 @@ def __init__(self, backend: Any, namespace: str | None = None) -> None:
     # ---------------------------------------------------------------------
     # Backend accessor helpers
     # ---------------------------------------------------------------------
-def client(self) -> Any:
+    def client(self) -> Any:
         """Return a client scoped to this instance's namespace.
 
         The backend is expected to provide a ``for_namespace`` method that
@@ -63,44 +59,40 @@ def client(self) -> Any:
     # ---------------------------------------------------------------------
     # Circuit‑breaker delegation helpers
     # ---------------------------------------------------------------------
-def _is_circuit_open(self) -> bool:
+    def _is_circuit_open(self) -> bool:
         return self._cb.is_open(self.tenant_id)
 
-def _mark_success(self) -> None:
+    def _mark_success(self) -> None:
         self._cb.record_success(self.tenant_id)
 
-def _mark_failure(self) -> None:
+    def _mark_failure(self) -> None:
         self._cb.record_failure(self.tenant_id)
 
     # ---------------------------------------------------------------------
     # Degradation helpers
     # ---------------------------------------------------------------------
-def _queue_degraded(self, action: str, payload: dict) -> None:
+    def _queue_degraded(self, action: str, payload: dict) -> None:
         """Persist a degraded write to the local journal."""
         if not self._degrade_queue:
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             journal = get_journal()
             ev = JournalEvent(
                 id=str(uuid.uuid4()),
                 topic=self._degrade_topic,
                 payload={"action": action, "payload": payload},
                 tenant_id=self.tenant_id,
-                timestamp=None, )
+                timestamp=None,
+            )
             journal.append_event(ev)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            # Journal is best-effort; do not raise.
             return
 
     # ---------------------------------------------------------------------
     # Public API used by the application and tests
     # ---------------------------------------------------------------------
-def remember(self, key: str, payload: dict, universe: str | None = None):
+    def remember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
             payload["universe"] = universe
         if self._is_circuit_open():
@@ -110,16 +102,12 @@ def remember(self, key: str, payload: dict, universe: str | None = None):
                 raise RuntimeError(message)
             raise RuntimeError(f"{message}; queued locally for replay")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             result = self.client().remember(key, payload)
             self._mark_success()
             return result
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
 
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
@@ -131,22 +119,18 @@ def remember(self, key: str, payload: dict, universe: str | None = None):
                 raise RuntimeError(message)
             raise RuntimeError(f"{message}; queued locally for replay")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             result = await self.client().aremember(key, payload)
             self._mark_success()
             return result
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
 
     async def aremember_bulk(
         self,
         items: Iterable[tuple[str, dict]],
-        universe: str | None = None, ) -> list[tuple[float, float, float]]:
-            pass
+        universe: str | None = None,
+    ) -> list[tuple[float, float, float]]:
         prepared: list[tuple[str, dict]] = []
         for key, payload in items:
             body = dict(payload)
@@ -163,18 +147,14 @@ def remember(self, key: str, payload: dict, universe: str | None = None):
                 raise RuntimeError(message)
             raise RuntimeError(f"{message}; queued locally for replay")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             coords = await self.client().aremember_bulk(prepared)
             self._mark_success()
             return list(coords)
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
 
-def link(
+    def link(
         self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
     ):
         if self._is_circuit_open():
@@ -185,22 +165,19 @@ def link(
                     "to": to_coord,
                     "type": link_type,
                     "weight": weight,
-                }, )
+                },
+            )
             message = "Memory service unavailable (circuit open)"
             if self._degrade_readonly:
                 raise RuntimeError(message)
             raise RuntimeError(f"{message}; queued locally for replay")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             result = self.client().link(from_coord, to_coord, link_type, weight)
             self._mark_success()
             return result
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
 
     async def alink(
         self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
@@ -213,36 +190,27 @@ def link(
                     "to": to_coord,
                     "type": link_type,
                     "weight": weight,
-                }, )
+                },
+            )
             message = "Memory service unavailable (circuit open)"
             if self._degrade_readonly:
                 raise RuntimeError(message)
             raise RuntimeError(f"{message}; queued locally for replay")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             result = await self.client().alink(from_coord, to_coord, link_type, weight)
             self._mark_success()
             return result
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
 
     # ---------------------------------------------------------------------
     # Miscellaneous helper methods (mostly no‑ops for metrics)
     # ---------------------------------------------------------------------
-def _health_check(self) -> bool:
+    def _health_check(self) -> bool:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             health = self.client().health()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return False
         if isinstance(health, dict):
             if "http" in health:
@@ -250,7 +218,7 @@ def _health_check(self) -> bool:
             return bool(health.get("ok"))
         return False
 
-def _reset_circuit_if_needed(self) -> bool:
+    def _reset_circuit_if_needed(self) -> bool:
         if not self._is_circuit_open():
             return False
         tenant = getattr(self, "namespace", "default")
@@ -263,22 +231,22 @@ def _reset_circuit_if_needed(self) -> bool:
         return False
 
     # The following methods simply proxy to the backend client.
-def coord_for_key(self, key: str, universe: str | None = None):
+    def coord_for_key(self, key: str, universe: str | None = None):
         return self.client().coord_for_key(key, universe)
 
-def payloads_for_coords(self, coords, universe: str | None = None):
+    def payloads_for_coords(self, coords, universe: str | None = None):
         return self.client().payloads_for_coords(coords, universe)
 
-def delete(self, coordinate):
+    def delete(self, coordinate):
         return self.client().delete(coordinate)
 
-def links_from(self, start, type_filter: str | None = None, limit: int = 50):
+    def links_from(self, start, type_filter: str | None = None, limit: int = 50):
         return self.client().links_from(start, type_filter, limit)
 
     # ---------------------------------------------------------------------
     # Circuit‑breaker state inspection (used by the test suite)
     # ---------------------------------------------------------------------
-def get_circuit_state(self) -> dict:
+    def get_circuit_state(self) -> dict:
         """Return the circuit‑breaker snapshot for this tenant.
 
         The returned dictionary mirrors the structure produced by
@@ -286,29 +254,31 @@ def get_circuit_state(self) -> dict:
         fields required by the tests.
         """
         state = self.__class__._circuit_breaker.get_state(self.tenant_id)
+        # Add compatibility fields expected by the legacy test suite.
         state.update({"tenant": self.tenant_id, "namespace": self.namespace})
         return state
 
-@classmethod
-def reset_circuit_for_tenant(cls, tenant: str) -> None:
+    @classmethod
+    def reset_circuit_for_tenant(cls, tenant: str) -> None:
         """Close the circuit for *tenant* by recording a successful request."""
         cls._circuit_breaker.record_success(tenant)
 
-@classmethod
-def configure_tenant_thresholds(
+    @classmethod
+    def configure_tenant_thresholds(
         cls,
         tenant: str,
         *,
         failure_threshold: int | None = None,
-        reset_interval: float | None = None, ) -> None:
-            pass
+        reset_interval: float | None = None,
+    ) -> None:
         cls._circuit_breaker.configure_tenant(
             tenant,
             failure_threshold=failure_threshold,
-            reset_interval=reset_interval, )
+            reset_interval=reset_interval,
+        )
 
-@classmethod
-def get_all_tenant_circuit_states(cls) -> dict:
+    @classmethod
+    def get_all_tenant_circuit_states(cls) -> dict:
         """Aggregate circuit states for all known tenants.
 
         ``CircuitBreaker`` stores per‑tenant data in private dictionaries.  For
@@ -319,55 +289,45 @@ def get_all_tenant_circuit_states(cls) -> dict:
         tenants = list(breaker._circuit_open.keys())
         return {t: breaker.get_state(t) for t in tenants}
 
-@classmethod
-def _should_attempt_reset(cls, tenant: str) -> bool:
+    @classmethod
+    def _should_attempt_reset(cls, tenant: str) -> bool:
         return cls._circuit_breaker.should_attempt_reset(tenant)
 
     # ---------------------------------------------------------------------
     # Tenant‑label utilities – thin wrappers around the infrastructure module
     # ---------------------------------------------------------------------
-def _tenant_label(self, namespace: str) -> str:
+    def _tenant_label(self, namespace: str) -> str:
         return tenant_label(namespace)
 
-def _resolve_namespace_for_label(self, label: str) -> str:
+    def _resolve_namespace_for_label(self, label: str) -> str:
         return resolve_namespace(label)
 
-@property
-def tenant_id(self) -> str:
+    @property
+    def tenant_id(self) -> str:
         """Canonical tenant identifier derived from ``self.namespace``."""
         return self._tenant_label(self.namespace)
 
     # ---------------------------------------------------------------------
     # Metric helpers – no‑ops in the CI environment but kept for API stability
     # ---------------------------------------------------------------------
-@staticmethod
-def _update_outbox_metric(tenant: str, count: int) -> None:
+    @staticmethod
+    def _update_outbox_metric(tenant: str, count: int) -> None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import metrics
 
             gauge = getattr(metrics, "OUTBOX_PENDING", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None
 
-@staticmethod
-def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
+    @staticmethod
+    def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from somabrain import metrics
 
             gauge = getattr(metrics, "OUTBOX_PENDING_BY_TENANT", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return None

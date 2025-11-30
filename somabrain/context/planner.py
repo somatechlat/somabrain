@@ -8,7 +8,6 @@ from typing import List
 from somabrain.learning import UtilityWeights
 
 from common.config.settings import settings
-from common.logging import logger
 
 
 @dataclass
@@ -26,8 +25,7 @@ class PlanResult:
 
 
 class ContextPlanner:
-    pass
-def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
+    def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
         self._utility = utility_weights or UtilityWeights()
         self._length_penalty_scale = 1024.0
         self._memory_penalty_scale = 10.0
@@ -43,7 +41,7 @@ def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
             )
         )
 
-def _env_float(name: str, current: float) -> float:
+        def _env_float(name: str, current: float) -> float:
             # ``settings.getenv`` is no longer available. We retrieve the value
             # via ``getattr`` which returns ``None`` when the attribute does not
             # exist, mirroring the previous fallback behaviour.
@@ -51,38 +49,34 @@ def _env_float(name: str, current: float) -> float:
             if value is None:
                 return current
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return float(value)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return current
 
         self._length_penalty_scale = _env_float(
             "SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE",
-            self._length_penalty_scale, )
+            self._length_penalty_scale,
+        )
         self._memory_penalty_scale = _env_float(
             "SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE",
-            self._memory_penalty_scale, )
+            self._memory_penalty_scale,
+        )
         if self._length_penalty_scale <= 0:
             self._length_penalty_scale = 1024.0
         if self._memory_penalty_scale <= 0:
             self._memory_penalty_scale = 10.0
 
-@property
-def utility_weights(self) -> UtilityWeights:
+    @property
+    def utility_weights(self) -> UtilityWeights:
         return self._utility
 
-def plan(self, bundle) -> PlanResult:
+    def plan(self, bundle) -> PlanResult:
         candidates = self._generate_candidates(bundle)
         ranked = sorted(candidates, key=lambda c: c.utility, reverse=True)
         best = ranked[0] if ranked else PlanCandidate(prompt=bundle.prompt, utility=0.0)
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
-def _generate_candidates(self, bundle) -> List[PlanCandidate]:
+    def _generate_candidates(self, bundle) -> List[PlanCandidate]:
         base = PlanCandidate(
             prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt)
         )
@@ -91,7 +85,7 @@ def _generate_candidates(self, bundle) -> List[PlanCandidate]:
         candidates.extend(summaries)
         return candidates
 
-def _memory_highlights(self, bundle) -> List[PlanCandidate]:
+    def _memory_highlights(self, bundle) -> List[PlanCandidate]:
         results: List[PlanCandidate] = []
         for mem, weight in zip(bundle.memories, bundle.weights, strict=False):
             text = mem.metadata.get("text") or mem.metadata.get("content")
@@ -108,7 +102,7 @@ def _memory_highlights(self, bundle) -> List[PlanCandidate]:
             )
         return results
 
-def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:
+    def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:
         length_penalty = len(prompt) / max(self._length_penalty_scale, 1.0)
         context_gain = sum(bundle.weights) * emphasis
         memory_penalty = len(bundle.memories) / max(self._memory_penalty_scale, 1.0)

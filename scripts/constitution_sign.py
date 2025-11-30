@@ -24,22 +24,26 @@ def parse_args() -> argparse.Namespace:
         "--private-key",
         dest="private_key",
         default=settings.constitution_privkey_path,
-        help="PEM private key used for signing (defaults to SOMABRAIN_CONSTITUTION_PRIVKEY_PATH)", )
+        help="PEM private key used for signing (defaults to SOMABRAIN_CONSTITUTION_PRIVKEY_PATH)",
+    )
     parser.add_argument(
         "--signer-id",
         dest="signer_id",
         default=settings.constitution_signer_id,
-        help="Signer identifier recorded alongside the signature", )
+        help="Signer identifier recorded alongside the signature",
+    )
     parser.add_argument(
         "--db-url",
         dest="db_url",
         default=settings.postgres_dsn,
-        help="Override database URL (defaults to SOMABRAIN_POSTGRES_DSN)", )
+        help="Override database URL (defaults to SOMABRAIN_POSTGRES_DSN)",
+    )
     parser.add_argument(
         "--redis-url",
         dest="redis_url",
         default=settings.redis_url,
-        help="Override Redis URL (defaults to SOMA_REDIS_URL)", )
+        help="Override Redis URL (defaults to SOMA_REDIS_URL)",
+    )
     return parser.parse_args()
 
 

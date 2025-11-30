@@ -1,31 +1,30 @@
-from __future__ import annotations
-from typing import Tuple
-import numpy as np
-from somabrain.calibration.temperature_scaling import (
-from common.logging import logger
-
 """Calibration pipeline utilities exposed under runtime namespace.
 
 Thin wrapper around calibration primitives providing a convenient API for tests.
 """
 
+from __future__ import annotations
 
+from typing import Tuple
+import numpy as np
 
+from somabrain.calibration.temperature_scaling import (
     TemperatureScaler,
     compute_ece,
     compute_brier_score,
-    reliability_diagram, )
+    reliability_diagram,
+)
 
 
 class CalibrationPipeline:
     """Minimal calibration pipeline exposing common calibration utilities."""
 
-def __init__(self) -> None:
+    def __init__(self) -> None:
         self._scaler = TemperatureScaler(min_samples=20)
         self.calibration_params: dict = {}
 
     # --- Metrics ---
-def calculate_ece(
+    def calculate_ece(
         self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
     ) -> float:
         p = np.asarray(predictions, dtype=float).reshape(-1)
@@ -33,14 +32,14 @@ def calculate_ece(
         a = np.clip(a, 0.0, 1.0)
         return float(compute_ece(p.tolist(), a.tolist(), n_bins=n_bins))
 
-def calculate_brier(self, predictions: np.ndarray, actual: np.ndarray) -> float:
+    def calculate_brier(self, predictions: np.ndarray, actual: np.ndarray) -> float:
         p = np.asarray(predictions, dtype=float).reshape(-1)
         a = np.asarray(actual, dtype=float).reshape(-1)
         a = np.clip(a, 0.0, 1.0)
         return float(compute_brier_score(p.tolist(), a.tolist()))
 
     # --- Visualization helpers ---
-def generate_reliability_diagram(
+    def generate_reliability_diagram(
         self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         p = np.asarray(predictions, dtype=float).reshape(-1)
@@ -51,14 +50,16 @@ def generate_reliability_diagram(
             return (
                 np.zeros(n_bins, dtype=float),
                 np.zeros(n_bins, dtype=float),
-                np.zeros(n_bins, dtype=int), )
+                np.zeros(n_bins, dtype=int),
+            )
         confs, accs, counts = zip(*data)
         return (
             np.arange(n_bins, dtype=float),  # bin indices
             np.asarray(accs, dtype=float),
-            np.asarray(confs, dtype=float), )
+            np.asarray(confs, dtype=float),
+        )
 
-def calibration_curve(
+    def calibration_curve(
         self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
     ) -> Tuple[np.ndarray, np.ndarray]:
         p = np.asarray(predictions, dtype=float).reshape(-1)
@@ -81,7 +82,7 @@ def calibration_curve(
         return np.asarray(frac_pos, dtype=float), np.asarray(mean_pred, dtype=float)
 
     # --- Fitting/scaling ---
-def temperature_scaling(self, logits: np.ndarray, labels: np.ndarray) -> np.ndarray:
+    def temperature_scaling(self, logits: np.ndarray, labels: np.ndarray) -> np.ndarray:
         z = np.asarray(logits, dtype=float)
         y = np.asarray(labels, dtype=int).reshape(-1)
         # Compute per-sample confidence of the true class
@@ -102,7 +103,7 @@ def temperature_scaling(self, logits: np.ndarray, labels: np.ndarray) -> np.ndar
         return out
 
     # --- Adaptive/online utilities ---
-def detect_calibration_drift(
+    def detect_calibration_drift(
         self,
         p1: np.ndarray,
         y1: np.ndarray,
@@ -110,18 +111,18 @@ def detect_calibration_drift(
         y2: np.ndarray,
         *,
         threshold: float = 0.05,
-        n_bins: int = 10, ) -> bool:
-            pass
+        n_bins: int = 10,
+    ) -> bool:
         e1 = self.calculate_ece(p1, y1, n_bins=n_bins)
         e2 = self.calculate_ece(p2, y2, n_bins=n_bins)
         return abs(e2 - e1) >= float(threshold)
 
-def update_calibration(self, predictions: np.ndarray, actual: np.ndarray) -> None:
+    def update_calibration(self, predictions: np.ndarray, actual: np.ndarray) -> None:
         ece = self.calculate_ece(predictions, actual)
         brier = self.calculate_brier(predictions, actual)
         self.calibration_params.update({"ece": float(ece), "brier": float(brier)})
 
-def multiclass_ece(
+    def multiclass_ece(
         self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
     ) -> float:
         P = np.asarray(predictions, dtype=float)
@@ -135,7 +136,7 @@ def multiclass_ece(
         return float(compute_ece(conf.tolist(), correct.tolist(), n_bins=n_bins))
 
     # --- Confidence intervals (lightweight approximations for tests) ---
-def calculate_ece_confidence_interval(
+    def calculate_ece_confidence_interval(
         self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
     ) -> Tuple[float, float]:
         e = self.calculate_ece(predictions, actual, n_bins=n_bins)
@@ -143,7 +144,7 @@ def calculate_ece_confidence_interval(
         hi = float(min(1.0, e + 0.1))
         return lo, hi
 
-def calculate_brier_confidence_interval(
+    def calculate_brier_confidence_interval(
         self, predictions: np.ndarray, actual: np.ndarray
     ) -> Tuple[float, float]:
         b = self.calculate_brier(predictions, actual)

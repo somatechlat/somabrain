@@ -19,7 +19,6 @@ When run outside CI, exports ``CI=false`` in the metric payload.
 """
 
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UV_LOCK = REPO_ROOT / "uv.lock"
 ARTIFACT_PATH = (

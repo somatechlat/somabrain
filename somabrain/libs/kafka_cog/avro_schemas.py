@@ -1,16 +1,14 @@
-from __future__ import annotations
-import json
-from pathlib import Path
-from typing import Any, Dict
-from common.logging import logger
-
 """Strict Avro schema loader (package-local copy).
 
 Resolves `proto/cog/<name>.avsc` relative to repository root irrespective of
 execution CWD. Raises on missing or invalid schemas.
 """
 
+from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Any, Dict
 
 # Derive repo root by climbing until `proto/cog` exists.
 _here = Path(__file__).resolve()
@@ -31,16 +29,10 @@ def load_schema(name: str) -> Dict[str, Any]:
     if not path.exists():
         raise FileNotFoundError(f"Avro schema not found: {path}")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
-    raise RuntimeError(f"Failed to read schema '{stem}': {e}") from e
+        raise RuntimeError(f"Failed to read schema '{stem}': {e}") from e
     if not isinstance(data, dict):
         raise RuntimeError(f"Invalid schema format for '{stem}' (expected object)")
     return data

@@ -75,8 +75,8 @@ def resolved(k: str) -> bool:
 
         return {k: resolved(k) for k in cls.KEYS}
 
-@classmethod
-def get_overrides(cls) -> List[str]:
+    @classmethod
+    def get_overrides(cls) -> List[str]:
         return cls._load_overrides()
 
 @classmethod

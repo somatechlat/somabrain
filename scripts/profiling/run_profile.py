@@ -1,13 +1,3 @@
-import argparse
-import time
-import httpx
-import cProfile
-import pstats
-import io
-import os
-from common.config.settings import settings as _settings
-from common.logging import logger
-
 """Profiling script for critical paths.
 
 This script runs a simple load against the running SomaBrain API for a given duration
@@ -24,19 +14,22 @@ The generated profile is written to ``profiling_report.txt`` in the repository
 root.
 """
 
+import argparse
+import time
+import httpx
+import cProfile
+import pstats
+import io
+import os
 
 
 def _hit_endpoint(base_url: str, path: str) -> None:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         resp = httpx.get(f"{base_url}{path}", timeout=5.0)
         resp.raise_for_status()
     except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        # In CI we don't fail the profiling run on occasional request errors.
+        print(f"Request to {path} failed: {exc}")
 
 
 def main() -> None:
@@ -47,13 +40,16 @@ def main() -> None:
         "--duration",
         type=int,
         default=30,
-        help="Duration in seconds to run the load loop.", )
+        help="Duration in seconds to run the load loop.",
+    )
+    from common.config.settings import settings as _settings
 
     # Use centralized Settings for environment variable access.
     parser.add_argument(
         "--base-url",
         default=_settings.api_url,
-        help="Base URL of the API.", )
+        help="Base URL of the API.",
+    )
     args = parser.parse_args()
 
     end_time = time.time() + args.duration

@@ -1,13 +1,7 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Iterable, List
-import numpy as np
-
 """BHDC fusion layer utilities.
 
 This module provides a minimal BHDCFusionLayer implementation sufficient for
 tests that validate mathematical formulas and basic behavior. The layer offers:
-    pass
 - A configurable dimensionality (default 2048)
 - An adaptive alpha parameter with clamped bounds
 - A deterministic fuse() method that normalizes and averages inputs
@@ -16,8 +10,12 @@ The implementation avoids external dependencies beyond NumPy and is robust to
 edge cases (e.g., zero vectors, large magnitudes).
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Iterable, List
 
+import numpy as np
 
 
 @dataclass
@@ -36,25 +34,25 @@ class BHDCFusionLayer:
     - bounds: clamping range for the adaptive alpha parameter.
     """
 
-def __init__(
+    def __init__(
         self,
         dim: int = 2048,
         *,
         alpha: float = 1.0,
         epsilon: float = 1e-8,
-        bounds: _AlphaBounds | None = None, ) -> None:
-            pass
+        bounds: _AlphaBounds | None = None,
+    ) -> None:
         self.dim = int(dim)
         self._epsilon = float(epsilon)
         self._bounds = bounds or _AlphaBounds()
         # Clamp initial alpha into bounds
         self._alpha = float(np.clip(alpha, self._bounds.min, self._bounds.max))
 
-@property
-def alpha(self) -> float:
+    @property
+    def alpha(self) -> float:
         return self._alpha
 
-def update_alpha(
+    def update_alpha(
         self, *, performance_score: float, target: float = 0.9, rate: float = 0.2
     ) -> None:
         """Adapt alpha based on a performance signal.
@@ -71,11 +69,10 @@ def update_alpha(
             new_alpha = self._alpha * (1.0 - delta)
         self._alpha = float(np.clip(new_alpha, self._bounds.min, self._bounds.max))
 
-def fuse(self, vectors: Iterable[np.ndarray]) -> np.ndarray:
+    def fuse(self, vectors: Iterable[np.ndarray]) -> np.ndarray:
         """Fuse a collection of vectors into a single vector of length `dim`.
 
         Behavior:
-            pass
         - Each input vector is L2-normalized (safe for zero vectors).
         - The fused result is the mean of normalized inputs, re-normalized.
         - Deterministic for identical inputs across calls.
@@ -90,27 +87,27 @@ def fuse(self, vectors: Iterable[np.ndarray]) -> np.ndarray:
         return self._safe_l2_normalize(mean_vec)
 
     # --- Helpers ---
-def _as_vector(self, v: np.ndarray) -> np.ndarray:
+    def _as_vector(self, v: np.ndarray) -> np.ndarray:
         a = np.asarray(v, dtype=np.float64).reshape(-1)
         if a.size != self.dim:
             raise ValueError(f"Expected vector of dim {self.dim}, got {a.size}")
         return a
 
-def _safe_l2_normalize(self, v: np.ndarray) -> np.ndarray:
+    def _safe_l2_normalize(self, v: np.ndarray) -> np.ndarray:
         n = float(np.linalg.norm(v))
         if n <= self._epsilon:
             return np.zeros_like(v)
         return v / (n + self._epsilon)
 
     # Optional math utilities (not required by current tests)
-def normalized_error(
+    def normalized_error(
         self, errors: np.ndarray, mu: float, sigma: float
     ) -> np.ndarray:
         """Compute e_norm = (errors - mu) / (sigma + eps)."""
         e = np.asarray(errors, dtype=np.float64)
         return (e - float(mu)) / (float(sigma) + self._epsilon)
 
-def softmax_weights(self, e_norm: np.ndarray) -> np.ndarray:
+    def softmax_weights(self, e_norm: np.ndarray) -> np.ndarray:
         """Compute w = softmax(-alpha * e_norm)."""
         x = -self._alpha * np.asarray(e_norm, dtype=np.float64)
         # Stable softmax

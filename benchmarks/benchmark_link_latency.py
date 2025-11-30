@@ -1,11 +1,3 @@
-import copy
-import random
-import time
-from typing import List, Tuple
-from common.config.settings import settings
-from somabrain.memory_pool import MultiTenantMemory
-import sys
-
 # Benchmark for measuring link operation latency and throughput in the in-process memory backend.
 
 """
@@ -19,8 +11,14 @@ Usage:
 If NUM_LINKS is omitted, defaults to 10,000 links.
 """
 
+import copy
+import random
+import time
+from typing import List, Tuple
 
 # Unified configuration – use the central Settings instance
+from common.config.settings import settings
+from somabrain.memory_pool import MultiTenantMemory
 
 
 def _random_coord() -> Tuple[float, float, float]:
@@ -28,7 +26,8 @@ def _random_coord() -> Tuple[float, float, float]:
     return (
         random.uniform(-1.0, 1.0),
         random.uniform(-1.0, 1.0),
-        random.uniform(-1.0, 1.0), )
+        random.uniform(-1.0, 1.0),
+    )
 
 
 def run_benchmark(num_links: int = 10_000) -> None:
@@ -62,13 +61,9 @@ def run_benchmark(num_links: int = 10_000) -> None:
 
 
 if __name__ == "__main__":
-    pass
+    import sys
 
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         n = int(sys.argv[1]) if len(sys.argv) > 1 else 10_000
     except ValueError:
         n = 10_000

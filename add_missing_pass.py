@@ -27,7 +27,6 @@ header).  After the pass is added the file is rewritten in‑place.
 """
 
 
-
 ROOT = pathlib.Path(__file__).parent
 
 TRY_RE = re.compile(r"^(?P<indent>\s*)try:\s*$")

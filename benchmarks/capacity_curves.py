@@ -1,11 +1,3 @@
-from __future__ import annotations
-import json
-from pathlib import Path
-import numpy as np
-from somabrain.quantum import HRRConfig, QuantumLayer
-from common.logging import logger
-import matplotlib.pyplot as plt
-
 """
 Capacity Curves Benchmark
 -------------------------
@@ -14,9 +6,14 @@ Measures recall cosine vs number of superposed items (k) for different D and dty
 Outputs JSON with mean cosine for each (D, dtype, k) and saves plots.
 """
 
+from __future__ import annotations
 
+import json
+from pathlib import Path
 
+import numpy as np
 
+from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def run(
@@ -25,8 +22,8 @@ def run(
     ks=(1, 2, 4, 8, 16, 32, 64),
     trials=64,
     dtype="float32",
-    accuracy_thresholds=(0.7, 0.8, 0.9), ):
-        pass
+    accuracy_thresholds=(0.7, 0.8, 0.9),
+):
     results = {
         "meta": {
             "D": list(Ds),
@@ -77,10 +74,7 @@ def run(
     out.write_text(json.dumps(results, indent=2))
     # Optional plotting
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        import matplotlib.pyplot as plt
 
         for D in Ds:
             xs = [int(k) for k in ks]
@@ -95,10 +89,8 @@ def run(
             plot_dir.mkdir(parents=True, exist_ok=True)
             plt.savefig(plot_dir / f"capacity_D{D}.png", dpi=150)
             plt.close()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

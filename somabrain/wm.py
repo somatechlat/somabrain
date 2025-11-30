@@ -1,13 +1,3 @@
-from __future__ import annotations
-import math
-import time
-from dataclasses import dataclass
-from typing import Callable, List, Tuple, TYPE_CHECKING
-import numpy as np
-from common.config.settings import settings
-from common.logging import logger
-from .scoring import UnifiedScorer
-
 """
 Working Memory Module for SomaBrain.
 
@@ -16,7 +6,6 @@ context storage and retrieval. Working memory serves as a temporary holding area
 currently being processed, with capacity limits and decay mechanisms.
 
 Key Features:
-    pass
 - Vector-based storage with cosine similarity retrieval
 - Fixed capacity with automatic truncation
 - Dimension normalization (padding/truncation)
@@ -28,11 +17,19 @@ Classes:
     WorkingMemory: Main working memory buffer with admission, recall, and novelty detection.
 """
 
+from __future__ import annotations
 
+import math
+import time
+from dataclasses import dataclass
+from typing import Callable, List, Tuple, TYPE_CHECKING
 
+import numpy as np
+from common.config.settings import settings
 
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
+    from .scoring import UnifiedScorer
 
 
 @dataclass
@@ -78,7 +75,6 @@ class WorkingMemory:
         _items (List[WMItem]): Internal list of stored working memory items.
 
     Contract:
-        pass
     - admit(vec, payload): Insert with dimension guard and capacity truncation.
     - recall(query_vec, top_k): Cosine-ranked payloads.
     - novelty(query_vec): 1 - best cosine over current items.
@@ -91,7 +87,7 @@ class WorkingMemory:
         >>> novelty_score = wm.novelty(vector)
     """
 
-def __init__(
+    def __init__(
         self,
         capacity: int,
         dim: int,
@@ -104,8 +100,8 @@ def __init__(
         recency_time_scale: float | None = None,
         recency_max_steps: float | None = None,
         now_fn: Callable[[], float] | None = None,
-        salience_threshold: float | None = None, ):
-            pass
+        salience_threshold: float | None = None,
+    ):
         """
         Initialize working memory with specified capacity and vector dimension.
 
@@ -128,32 +124,38 @@ def __init__(
         self._t = 0  # simple timestep for recency
         self._scorer = scorer
         self._now: Callable[[], float] = now_fn or time.time
-        r_scale = settings.wm_recency_time_scale if recency_time_scale is None else recency_time_scale
-        r_cap = settings.wm_recency_max_steps if recency_max_steps is None else recency_max_steps
-        self._recency_scale = self._validate_scale(r_scale, settings.wm_recency_time_scale)
+        r_scale = (
+            settings.wm_recency_time_scale
+            if recency_time_scale is None
+            else recency_time_scale
+        )
+        r_cap = (
+            settings.wm_recency_max_steps
+            if recency_max_steps is None
+            else recency_max_steps
+        )
+        self._recency_scale = self._validate_scale(
+            r_scale, settings.wm_recency_time_scale
+        )
         self._recency_cap = self._validate_scale(r_cap, settings.wm_recency_max_steps)
         self._default_salience_threshold = float(
-            settings.wm_salience_threshold if salience_threshold is None else salience_threshold
+            settings.wm_salience_threshold
+            if salience_threshold is None
+            else salience_threshold
         )
 
-@staticmethod
-def _validate_scale(value: float, default: float) -> float:
+    @staticmethod
+    def _validate_scale(value: float, default: float) -> float:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             v = float(value)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return float(default)
         if not math.isfinite(v) or v <= 0:
             return float(default)
         return v
 
-@staticmethod
-def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+    @staticmethod
+    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
         """
         Calculate cosine similarity between two vectors.
 
@@ -174,13 +176,13 @@ def _cosine(a: np.ndarray, b: np.ndarray) -> float:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-def admit(
+    def admit(
         self,
         vector: np.ndarray,
         payload: dict,
         *,
-        cleanup_overlap: float | None = None, ) -> None:
-            pass
+        cleanup_overlap: float | None = None,
+    ) -> None:
         """
         Admit a new item into working memory with dimension normalization and unit-norm.
         Enforces global HRR_DIM, HRR_DTYPE, and mathematical invariant: all vectors are unit-norm, reproducible.
@@ -210,14 +212,8 @@ def admit(
         overlap = 0.0
         if cleanup_overlap is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 overlap = float(cleanup_overlap)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 overlap = 0.0
             if not math.isfinite(overlap) or overlap < 0.0:
                 overlap = 0.0
@@ -229,12 +225,13 @@ def admit(
                 payload=dict(payload),
                 tick=self._t,
                 admitted_at=float(now),
-                cleanup_overlap=float(overlap), )
+                cleanup_overlap=float(overlap),
+            )
         )
         if len(self._items) > self.capacity:
             self._items = self._items[-self.capacity :]
 
-def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
+    def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
         """Compute salience = alpha·novelty + beta·reward + gamma·recency.
 
         Recency proxy: 1.0 for empty WM, else 1 - best cosine vs most recent item.
@@ -251,14 +248,14 @@ def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
         )
         return float(max(0.0, min(1.0, s)))
 
-def admit_if_salient(
+    def admit_if_salient(
         self,
         vector: np.ndarray,
         payload: dict,
         threshold: float | None = None,
         reward: float = 0.0,
-        cleanup_overlap: float | None = None, ) -> bool:
-            pass
+        cleanup_overlap: float | None = None,
+    ) -> bool:
         """Admit item only if salience exceeds threshold; adapt capacity slightly.
 
         Returns True if admitted.
@@ -275,7 +272,7 @@ def admit_if_salient(
             return True
         return False
 
-def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
+    def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
         """
         Recall most similar items from working memory using cosine similarity.
 
@@ -294,7 +291,6 @@ def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dic
         Example:
             >>> results = wm.recall(query_vector, top_k=5)
             >>> for score, payload in results:
-                pass
             ...     print(f"Similarity: {score:.3f}, Data: {payload}")
         """
         scored: List[Tuple[float, dict]] = []
@@ -307,7 +303,8 @@ def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dic
                     query_vec,
                     it.vector,
                     recency_steps=steps,
-                    cosine=cos, )
+                    cosine=cos,
+                )
             else:
                 s = cos
 
@@ -318,7 +315,7 @@ def recall(self, query_vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dic
         scored.sort(key=lambda x: x[0], reverse=True)
         return scored[: max(0, int(top_k))]
 
-def novelty(self, query_vec: np.ndarray) -> float:
+    def novelty(self, query_vec: np.ndarray) -> float:
         """
         Calculate novelty score for a query vector relative to working memory contents.
 
@@ -336,7 +333,6 @@ def novelty(self, query_vec: np.ndarray) -> float:
         Example:
             >>> score = wm.novelty(new_vector)
             >>> if score > 0.8:
-                pass
             ...     print("Highly novel information detected!")
         """
         if not self._items:
@@ -346,7 +342,7 @@ def novelty(self, query_vec: np.ndarray) -> float:
             best = max(best, self._cosine(query_vec, it.vector))
         return max(0.0, 1.0 - best)
 
-def _recency_steps(self, now: float, admitted_at: float) -> float:
+    def _recency_steps(self, now: float, admitted_at: float) -> float:
         age = max(0.0, float(now) - float(admitted_at))
         if age <= 0.0:
             return 0.0

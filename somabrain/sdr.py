@@ -1,8 +1,3 @@
-from __future__ import annotations
-import hashlib
-from typing import Dict, List, Set, Tuple
-import re
-
 """
 Sparse Distributed Representations (SDR) Module for SomaBrain.
 
@@ -11,7 +6,6 @@ for efficient similarity search and encoding of high-dimensional data. SDRs prov
 a biologically-inspired approach to representing information with controlled sparsity.
 
 Key Features:
-    pass
 - Deterministic SDR encoding using random hashing
 - Configurable sparsity and dimensionality
 - Locality-sensitive hashing (LSH) for approximate nearest neighbor search
@@ -23,7 +17,10 @@ Classes:
     LSHIndex: Locality-sensitive hashing index for SDR similarity search.
 """
 
+from __future__ import annotations
 
+import hashlib
+from typing import Dict, List, Set, Tuple
 
 
 class SDREncoder:
@@ -45,7 +42,7 @@ class SDREncoder:
         >>> print(f"Active bits: {len(sdr)} out of {encoder.dim}")
     """
 
-def __init__(self, dim: int = 16384, density: float = 0.01):
+    def __init__(self, dim: int = 16384, density: float = 0.01):
         """
         Initialize the SDR encoder with specified parameters.
 
@@ -56,8 +53,8 @@ def __init__(self, dim: int = 16384, density: float = 0.01):
         self.dim = int(dim)
         self.k = max(1, int(self.dim * float(density)))
 
-@staticmethod
-def _tokens(text: str) -> List[str]:
+    @staticmethod
+    def _tokens(text: str) -> List[str]:
         """
         Tokenize text into alphanumeric tokens for encoding.
 
@@ -73,12 +70,13 @@ def _tokens(text: str) -> List[str]:
         Note:
             Uses regex pattern [A-Za-z0-9_]+ to match tokens.
         """
+        import re
 
         return [
             t for t in re.findall(r"[A-Za-z0-9_]+", (text or "").lower()) if len(t) >= 2
         ]
 
-def encode(self, text: str) -> Set[int]:
+    def encode(self, text: str) -> Set[int]:
         """
         Encode text into a sparse distributed representation.
 
@@ -141,7 +139,7 @@ class LSHIndex:
         >>> candidates = index.query(sdr, limit=10)
     """
 
-def __init__(self, bands: int = 8, rows: int = 16, dim: int = 16384):
+    def __init__(self, bands: int = 8, rows: int = 16, dim: int = 16384):
         """
         Initialize the LSH index with banding parameters.
 
@@ -157,7 +155,7 @@ def __init__(self, bands: int = 8, rows: int = 16, dim: int = 16384):
             dict() for _ in range(self.bands)
         ]
 
-def _band_hashes(self, bits: Set[int]) -> List[int]:
+    def _band_hashes(self, bits: Set[int]) -> List[int]:
         """
         Compute band hashes for an SDR using the banding technique.
 
@@ -189,7 +187,7 @@ def _band_hashes(self, bits: Set[int]) -> List[int]:
             hashes.append(acc)
         return hashes
 
-def add(self, coord: Tuple[float, float, float], bits: Set[int]) -> None:
+    def add(self, coord: Tuple[float, float, float], bits: Set[int]) -> None:
         """
         Add a coordinate-SDR pair to the LSH index.
 
@@ -207,7 +205,7 @@ def add(self, coord: Tuple[float, float, float], bits: Set[int]) -> None:
             bucket = self.tables[b].setdefault(hv, set())
             bucket.add(coord)
 
-def query(
+    def query(
         self, bits: Set[int], limit: int = 100
     ) -> List[Tuple[float, float, float]]:
         """

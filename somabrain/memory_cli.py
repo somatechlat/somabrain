@@ -1,10 +1,3 @@
-import argparse
-import json
-from urllib.parse import urljoin
-import requests  # type: ignore
-from somabrain.infrastructure import get_api_base_url, require
-from common.logging import logger
-
 # somabrain/memory_cli.py
 """
 Simple command‑line client for the SomaBrain memory service.
@@ -15,46 +8,45 @@ Usage examples:
     $ python -m somabrain.memory_cli get <key>
 """
 
+import argparse
+import json
+import sys
+from urllib.parse import urljoin
 
+import requests  # type: ignore
 
+from somabrain.infrastructure import get_api_base_url, require
 
 # ----------------------------------------------------------------------
 # Configuration
 # ----------------------------------------------------------------------
 BASE_URL = require(
     get_api_base_url(),
-    message="SOMABRAIN_API_URL is not configured; update your environment (.env).", )
+    message="SOMABRAIN_API_URL is not configured; update your environment (.env).",
+)
 HEADERS = {"Content-Type": "application/json"}
 
 
 def _post(endpoint: str, payload: dict):
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         resp = requests.post(url, headers=HEADERS, data=json.dumps(payload))
         resp.raise_for_status()
         return resp.json()
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        sys.stderr.write(f"❌ POST {url} failed: {e}\n")
+        sys.exit(1)
 
 
 def _get(endpoint: str):
     url = urljoin(BASE_URL + "/", endpoint.lstrip("/"))
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         resp = requests.get(url, headers=HEADERS)
         resp.raise_for_status()
         return resp.json()
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        sys.stderr.write(f"❌ GET {url} failed: {e}\n")
+        sys.exit(1)
 
 
 # ----------------------------------------------------------------------
@@ -89,7 +81,8 @@ def cmd_link(args):
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="memory_cli",
-        description="Interact with SomaBrain memory service from the command line.", )
+        description="Interact with SomaBrain memory service from the command line.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_rem = sub.add_parser("remember", help="Store a free‑form text memory.")

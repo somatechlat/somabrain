@@ -1,16 +1,3 @@
-from __future__ import annotations
-import json
-import logging
-import time
-import uuid
-from pathlib import Path
-from typing import Any, Dict, Optional, Iterable
-from somabrain.db.outbox import enqueue_event
-from fastapi import Request  # type: ignore
-from common.config.settings import settings
-from common.logging import logger
-import jsonschema  # type: ignore
-
 """Audit helpers (Kafka via transactional outbox only).
 
 Fail-fast policy: audit events must be enqueued to the DB outbox for
@@ -18,19 +5,24 @@ publication to Kafka by the outbox publisher. No local journal alternative path,
 no direct‑disk durability shims.
 """
 
+from __future__ import annotations
 
+import json
+import logging
+import time
+import uuid
+from pathlib import Path
+from typing import Any, Dict, Optional, Iterable
 
+from somabrain.db.outbox import enqueue_event
 
 # Import FastAPI Request only if available to avoid hard dependency at import time
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from fastapi import Request  # type: ignore
+except Exception:  # pragma: no cover - optional runtime dependency
+    Request = Any  # type: ignore
 
+from common.config.settings import settings
 
 LOGGER = logging.getLogger("somabrain.audit")
 
@@ -38,10 +30,6 @@ LOGGER = logging.getLogger("somabrain.audit")
 def _schema_path() -> Optional[Path]:
     """Return path to docs audit schema if present (optional)."""
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         here = Path(__file__).resolve().parent.parent
         sp = (
             here.parent
@@ -52,10 +40,8 @@ def _schema_path() -> Optional[Path]:
         )
         if sp.exists():
             return sp
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
     return None
 
 
@@ -78,42 +64,25 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
 
     # Optional: schema validation with no alternative path
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        import jsonschema  # type: ignore
 
         sp = _schema_path()
         if sp is not None:
             with sp.open("r", encoding="utf-8") as sf:
                 schema = json.load(sf)
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 jsonschema.validate(instance=ev, schema=schema)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 LOGGER.debug(
                     "Audit event schema validation failed; continuing (no alternative path)"
                 )
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
 
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         LOGGER.exception(
             "Failed to enqueue audit event to outbox (no alternative path)"
         )
@@ -125,10 +94,6 @@ def log_admin_action(
 ) -> None:
     """Append an admin audit line to the configured audit file; never raises."""
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         # Sanitize user-provided details before writing to disk
         safe_details = _sanitize_event(dict(details) if details else None)
 
@@ -146,9 +111,7 @@ def log_admin_action(
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("a", encoding="utf-8") as f:
             f.write(json.dumps(ev, ensure_ascii=False) + "\n")
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         LOGGER.debug("log_admin_action failed", exc_info=True)
 
 
@@ -179,17 +142,14 @@ _SENSITIVE_KEYS: Iterable[str] = (
     "clientsecret",
     "x-api-key",
     "ssh_key",
-    "ssh-private-key", )
+    "ssh-private-key",
+)
 
 _MASK = "***REDACTED***"
 
 
 def _mask_value(v: Any) -> Any:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if v is None:
             return None
         if isinstance(v, (int, float, bool)):
@@ -203,9 +163,7 @@ def _mask_value(v: Any) -> Any:
         if "token" in ls or "secret" in ls or len(s) >= 16:
             return _MASK
         return s
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return _MASK
 
 
@@ -219,12 +177,8 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     if ev is None:
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
 
-def _walk(obj: Any) -> Any:
+        def _walk(obj: Any) -> Any:
             if isinstance(obj, dict):
                 out: Dict[str, Any] = {}
                 for k, v in obj.items():
@@ -235,8 +189,8 @@ def _walk(obj: Any) -> Any:
                             "authorization",
                             "proxy-authorization",
                             "cookie",
-                            "set-cookie", ):
-                                pass
+                            "set-cookie",
+                        ):
                             out[k] = _mask_value(v)
                         else:
                             # Keys known to be sensitive are always masked regardless of value shape
@@ -254,16 +208,9 @@ def _walk(obj: Any) -> Any:
             return obj
 
         return _walk(ev)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
+        # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}  # type: ignore[return-value]
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return ev

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from somabrain.sleep import SleepState
-from common.logging import logger
 
 
 def map_cb_to_sleep(cb, tenant_id: str, current: SleepState) -> SleepState:
@@ -14,18 +13,12 @@ def map_cb_to_sleep(cb, tenant_id: str, current: SleepState) -> SleepState:
     - Otherwise keep current
     """
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if cb.is_open(tenant_id):
             if cb.should_attempt_reset(tenant_id):
                 return SleepState.LIGHT
             return SleepState.FREEZE
         if cb.should_attempt_reset(tenant_id):
             return SleepState.LIGHT
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
     return current

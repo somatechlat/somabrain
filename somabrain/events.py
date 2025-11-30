@@ -1,7 +1,3 @@
-from __future__ import annotations
-import re
-from typing import Dict
-
 """
 Events Module for SomaBrain.
 
@@ -10,7 +6,6 @@ natural language text. It implements heuristic-based parsing to identify key
 event components following the "who, did, what, where, when, why" framework.
 
 Key Features:
-    pass
 - Lightweight heuristic extraction of event fields
 - Support for temporal, spatial, and causal information
 - Best-effort parsing with graceful degradation
@@ -20,7 +15,10 @@ Functions:
     extract_event_fields: Extract structured event information from text.
 """
 
+from __future__ import annotations
 
+import re
+from typing import Dict
 
 
 def extract_event_fields(text: str) -> Dict[str, str]:

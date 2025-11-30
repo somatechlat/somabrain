@@ -29,7 +29,6 @@ remaining ``E402`` import‑order warnings and a large chunk of the syntax error
 """
 
 
-
 ROOT = pathlib.Path(__file__).parent
 
 # ---------------------------------------------------------------------
@@ -52,7 +51,9 @@ def move_imports_to_top(lines: List[str]) -> List[str]:
         line = lines[i]
         stripped = line.strip()
         # Preserve a leading module docstring (triple‑quoted string).
-        if not docstring_done and (stripped.startswith('"""') or stripped.startswith("'''")):
+        if not docstring_done and (
+            stripped.startswith('"""') or stripped.startswith("'''")
+        ):
             other.append(line)
             i += 1
             while i < len(lines) and not lines[i].strip().endswith(stripped[:3]):

@@ -1,8 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from common.logging import logger
-
 """
 Planner module – Phase 3 Cognitive Capability
 
@@ -12,7 +7,6 @@ extended later with sophisticated search, back‑tracking, and heuristic
 evaluation.
 
 Key concepts:
-    pass
 - **Goal** – a user‑defined target expressed as a string or structured dict.
 - **Context** – current state of the agent (memory snapshot, neuromodulators,
   recent observations).  The Planner receives a dictionary so callers can
@@ -22,7 +16,6 @@ Key concepts:
   validates whether the step can be executed given the current context.
 
 The implementation focuses on:
-    pass
 1. Defining the public API (`Planner.plan`, `Planner.validate_step`,
    `Planner.backtrack`).
 2. Providing a simple *depth‑first* planner with back‑tracking support.
@@ -30,8 +23,13 @@ The implementation focuses on:
    learning module for heuristic scoring).
 """
 
+from __future__ import annotations
 
+import logging
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -53,15 +51,11 @@ class Step:
     params: Dict[str, Any] = field(default_factory=dict)
     precondition: Optional[Callable[[Dict[str, Any]], bool]] = None
 
-def is_applicable(self, context: Dict[str, Any]) -> bool:
+    def is_applicable(self, context: Dict[str, Any]) -> bool:
         """Return ``True`` if the step can run under the supplied *context*."""
         if self.precondition is None:
             return True
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return bool(self.precondition(context))
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Precondition raised an exception: %s", exc)
@@ -77,7 +71,7 @@ class Planner:
     learning loop (e.g., the planner can be re‑trained based on plan success).
     """
 
-def __init__(self, max_depth: int = 5):
+    def __init__(self, max_depth: int = 5):
         self.max_depth = max_depth
         logger.info("Planner created with max_depth=%s", max_depth)
         # Action catalog: name -> (precondition, heuristic cost)
@@ -93,7 +87,7 @@ def __init__(self, max_depth: int = 5):
     # ---------------------------------------------------------------------
     # Public API
     # ---------------------------------------------------------------------
-def plan(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
+    def plan(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
         """Generate a plan for *goal* given the current *context*.
 
         The default implementation performs a simple depth‑first search using
@@ -108,18 +102,18 @@ def plan(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
             plan.append(
                 Step(
                     name="analyze_goal",
-                    params={"goal": goal, "signals": list(context.keys())}, )
+                    params={"goal": goal, "signals": list(context.keys())},
+                )
             )
         return plan
 
     # ---------------------------------------------------------------------
     # Extension points – override in a subclass for richer behaviour
     # ---------------------------------------------------------------------
-def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
+    def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
         """Return candidate steps that advance *goal* using actual context signals.
 
         The catalogue is derived from available resources in ``context``:
-            pass
         - Memory operations if a memory client/service is supplied.
         - Planner-provided action hints (``context.get("planner_actions")``).
         - Communication steps when a downstream channel is present.
@@ -132,7 +126,8 @@ def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
                 Step(
                     name="retrieve_memory",
                     params={"key": goal, "universe": context.get("universe")},
-                    precondition=lambda ctx: bool(ctx.get("query_text") or goal), )
+                    precondition=lambda ctx: bool(ctx.get("query_text") or goal),
+                )
             )
             steps.append(
                 Step(
@@ -142,7 +137,8 @@ def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
                         "payload": {"goal": goal, "context": context.get("snapshot")},
                         "universe": context.get("universe"),
                     },
-                    precondition=lambda ctx: "snapshot" in ctx, )
+                    precondition=lambda ctx: "snapshot" in ctx,
+                )
             )
 
         action_hints = context.get("planner_actions")
@@ -153,7 +149,8 @@ def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
                         Step(
                             name=str(hint["name"]),
                             params=hint.get("params", {}),
-                            precondition=hint.get("precondition"), )
+                            precondition=hint.get("precondition"),
+                        )
                     )
 
         if context.get("communicator") is not None:
@@ -164,27 +161,29 @@ def _expand(self, goal: Any, context: Dict[str, Any]) -> List[Step]:
                         "channel": "default",
                         "message": f"Working on goal: {goal}",
                         "audience": context.get("audience", "ops"),
-                    }, )
+                    },
+                )
             )
 
         # Always include a deterministic analysis step as a final option.
         steps.append(
             Step(
                 name="analyze_goal",
-                params={"goal": goal, "signals": list(context.keys())}, )
+                params={"goal": goal, "signals": list(context.keys())},
+            )
         )
         return steps
 
     # ---------------------------------------------------------------------
     # Internal search algorithm (depth‑first with back‑tracking)
     # ---------------------------------------------------------------------
-def _search(
+    def _search(
         self,
         goal: Any,
         context: Dict[str, Any],
         plan: List[Step],
-        depth: int, ) -> bool:
-            pass
+        depth: int,
+    ) -> bool:
         """Recursive depth‑first search.
 
         Returns ``True`` when a complete plan has been assembled.  The search
@@ -223,17 +222,13 @@ def _search(
 
         return False
 
-def _goal_satisfied(
+    def _goal_satisfied(
         self, goal: Any, context: Dict[str, Any], last_step: Step
     ) -> bool:
         """Determine whether the goal is satisfied given current context and last step."""
         # Explicit callable goal
         if callable(goal):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return bool(goal(context, last_step))
             except Exception as exc:  # pragma: no cover – defensive
                 logger.error("Goal callable raised: %s", exc)
@@ -255,22 +250,22 @@ def _goal_satisfied(
     # ---------------------------------------------------------------------
     # Utility helpers
     # ---------------------------------------------------------------------
-def validate_step(self, step: Step, context: Dict[str, Any]) -> bool:
+    def validate_step(self, step: Step, context: Dict[str, Any]) -> bool:
         """Public wrapper around ``Step.is_applicable`` for external callers."""
         return step.is_applicable(context)
 
-def backtrack(self, plan: List[Step]) -> List[Step]:
+    def backtrack(self, plan: List[Step]) -> List[Step]:
         """Return a new plan with the last step removed (simple back‑track)."""
         if not plan:
             return []
         return plan[:-1]
 
-def _action_cost(self, name: str) -> float:
+    def _action_cost(self, name: str) -> float:
         """Return heuristic cost for action ordering."""
         entry = self._catalog.get(name)
         return entry[1] if entry else 1.0
 
-def execute(
+    def execute(
         self, plan: List[Step], executor: Callable[[Step], bool]
     ) -> List[Dict[str, Any]]:
         """Execute a plan using a provided executor callable.
@@ -281,10 +276,6 @@ def execute(
         results: List[Dict[str, Any]] = []
         for step in plan:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 ok = bool(executor(step))
             except Exception as exc:  # pragma: no cover – defensive
                 logger.error("Executor raised for step %s: %s", step.name, exc)

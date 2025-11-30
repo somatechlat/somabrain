@@ -1,22 +1,20 @@
-from __future__ import annotations
-import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-from somabrain.db.models.outbox import OutboxEvent
-from somabrain.storage.db import get_session_factory
-from somabrain.metrics import report_outbox_replayed
-from somabrain.journal import get_journal, JournalEvent
-from common.logging import logger
-
 """
 API for interacting with the transactional outbox.
 """
 
+from __future__ import annotations
 
+import uuid
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
+from somabrain.db.models.outbox import OutboxEvent
+from somabrain.storage.db import get_session_factory
+from somabrain.metrics import report_outbox_replayed
+from somabrain.journal import get_journal, JournalEvent
 
 VALID_OUTBOX_STATUSES = {"pending", "sent", "failed"}
 
@@ -26,8 +24,8 @@ def enqueue_event(
     payload: Dict[str, Any],
     dedupe_key: Optional[str] = None,
     tenant_id: Optional[str] = None,
-    session: Optional[Session] = None, ) -> None:
-        pass
+    session: Optional[Session] = None,
+) -> None:
     """
     Enqueue a new event to the outbox.
 
@@ -45,7 +43,8 @@ def enqueue_event(
         topic=topic,
         payload=payload,
         dedupe_key=dedupe_key,
-        tenant_id=tenant_id, )
+        tenant_id=tenant_id,
+    )
 
     if session is None:
         session_factory = get_session_factory()
@@ -63,7 +62,8 @@ def enqueue_event(
         payload=payload,
         tenant_id=tenant_id,
         dedupe_key=dedupe_key,
-        status="pending", )
+        status="pending",
+    )
     journal.append_event(journal_event)
 
 
@@ -208,15 +208,9 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
         tenant_label = tenant_id or "default"
         if report_outbox_replayed is not None and count > 0:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 report_outbox_replayed(tenant_label, count)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
         return count
 
@@ -263,15 +257,9 @@ def mark_tenant_events_for_replay(
         # Report metrics
         if report_outbox_replayed is not None and count > 0:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 report_outbox_replayed(tenant_id, count)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
 
         return count
 
@@ -281,8 +269,8 @@ def list_tenant_events(
     status: str = "pending",
     topic_filter: Optional[str] = None,
     limit: int = 50,
-    offset: int = 0, ) -> List[OutboxEvent]:
-        pass
+    offset: int = 0,
+) -> List[OutboxEvent]:
     """List outbox events for a specific tenant with filtering options.
 
     Args:
@@ -365,8 +353,8 @@ def get_journal_events(
     status: Optional[str] = None,
     topic: Optional[str] = None,
     limit: Optional[int] = None,
-    since: Optional[datetime] = None, ) -> List[JournalEvent]:
-        pass
+    since: Optional[datetime] = None,
+) -> List[JournalEvent]:
     """Get events from the local journal with filtering.
 
     Args:
@@ -380,17 +368,12 @@ def get_journal_events(
         List of journal events
     """
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         journal = get_journal()
         return journal.read_events(
             tenant_id=tenant_id, status=status, topic=topic, limit=limit, since=since
         )
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        import logging
 
         logging.getLogger(__name__).error(f"Failed to read from journal: {e}")
         return []
@@ -399,8 +382,8 @@ def get_journal_events(
 def replay_journal_events(
     tenant_id: Optional[str] = None,
     limit: int = 100,
-    mark_processed: bool = True, ) -> int:
-        pass
+    mark_processed: bool = True,
+) -> int:
     """Replay journal events to the database outbox.
 
     This function reads events from the local journal and enqueues them
@@ -428,21 +411,17 @@ def replay_journal_events(
     # Replay events to database outbox
     for event in events:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             enqueue_event(
                 topic=event.topic,
                 payload=event.payload,
                 dedupe_key=event.dedupe_key,
-                tenant_id=event.tenant_id, )
+                tenant_id=event.tenant_id,
+            )
             replayed_count += 1
             event_ids.append(event.id)
 
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            import logging
 
             logging.getLogger(__name__).error(
                 f"Failed to replay journal event {event.id} to database: {e}"
@@ -452,14 +431,9 @@ def replay_journal_events(
     # Mark replayed events as processed in journal
     if mark_processed and event_ids:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             journal.mark_events_sent(event_ids)
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            import logging
 
             logging.getLogger(__name__).warning(
                 f"Failed to mark journal events as processed: {e}"
@@ -475,15 +449,10 @@ def get_journal_stats() -> Dict[str, Any]:
         Dictionary with journal statistics
     """
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         journal = get_journal()
         return journal.get_stats()
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        import logging
 
         logging.getLogger(__name__).error(f"Failed to get journal stats: {e}")
         return {"error": str(e)}
@@ -496,16 +465,11 @@ def cleanup_journal() -> Dict[str, Any]:
         Dictionary with cleanup results
     """
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         journal = get_journal()
         journal._cleanup_old_files()
         return {"success": True, "message": "Journal cleanup completed"}
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        import logging
 
         logging.getLogger(__name__).error(f"Failed to clean up journal: {e}")
         return {"success": False, "error": str(e)}

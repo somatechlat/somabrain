@@ -1,45 +1,36 @@
 from __future__ import annotations
+
 import json
 from common.config.settings import settings
 import sys
 import time
 from typing import Any
-from common.logging import logger
-import requests  # type: ignore
-from kafka import KafkaConsumer  # type: ignore
-from common.config.settings import settings as _settings
-
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    import requests  # type: ignore
+except Exception:
+    import urllib.request as _rq  # type: ignore
 
-class _Resp:
-    pass
-def __init__(self, code: int, data: bytes) -> None:
+    class _Resp:
+        def __init__(self, code: int, data: bytes) -> None:
             self.status_code = code
             self._data = data
 
-def json(self) -> Any:
+        def json(self) -> Any:
             return json.loads(self._data.decode("utf-8"))
 
-def _post(url: str, body: Any) -> _Resp:
+    def _post(url: str, body: Any) -> _Resp:
         req = _rq.Request(
             url,
             data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json"}, )
+            headers={"Content-Type": "application/json"},
+        )
         with _rq.urlopen(req, timeout=10) as resp:  # type: ignore
             return _Resp(getattr(resp, "status", 200), resp.read())
 
 else:
-    pass
 
-def _post(url: str, body: Any):  # type: ignore
+    def _post(url: str, body: Any):  # type: ignore
         return requests.post(url, json=body, timeout=10)
 
 
@@ -50,13 +41,8 @@ def _bootstrap() -> str:
 
 def _consume_one(topic: str, timeout_s: float) -> bool:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from kafka import KafkaConsumer  # type: ignore
+    except Exception:
         return False
     c = KafkaConsumer(
         topic,
@@ -65,27 +51,18 @@ def _consume_one(topic: str, timeout_s: float) -> bool:
         auto_offset_reset="latest",
         enable_auto_commit=False,
         consumer_timeout_ms=int(timeout_s * 1000),
-        group_id=f"learner-smoke-{int(time.time())}", )
+        group_id=f"learner-smoke-{int(time.time())}",
+    )
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         for m in c:
             if getattr(m, "value", None):
                 return True
         return False
     finally:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             c.close()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
 
 def main() -> int:
@@ -94,6 +71,7 @@ def main() -> int:
     # Retrieve the reward producer port as an integer.
     # ``settings.reward_producer_port`` is already an int, but we ensure the type.
     rport = int(settings.reward_producer_port)
+    from common.config.settings import settings as _settings
 
     url = f"{_settings.api_url}/reward/test-frame-learner"
     payload = {
@@ -109,14 +87,8 @@ def main() -> int:
         print(f"reward POST failed: {code}")
         return 2
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         ok = resp.json().get("status") == "ok"
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         ok = False
     if not ok:
         print("reward producer response invalid")

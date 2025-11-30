@@ -1,10 +1,8 @@
 from __future__ import annotations
+
 from common.config.settings import settings
 import sys
 import time
-from common.logging import logger
-from kafka import KafkaConsumer  # type: ignore
-
 
 
 def _bootstrap() -> str:
@@ -14,13 +12,10 @@ def _bootstrap() -> str:
 
 def main() -> int:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from kafka import KafkaConsumer  # type: ignore
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        print(f"kafka-python not available: {e}")
+        return 2
     c = KafkaConsumer(
         "cog.next.events",
         bootstrap_servers=_bootstrap(),
@@ -28,12 +23,9 @@ def main() -> int:
         auto_offset_reset="latest",
         enable_auto_commit=False,
         consumer_timeout_ms=60000,
-        group_id=f"next-smoke-{int(time.time())}", )
+        group_id=f"next-smoke-{int(time.time())}",
+    )
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         for m in c:
             if getattr(m, "value", None):
                 print("next-event smoke ok")
@@ -42,15 +34,9 @@ def main() -> int:
         return 1
     finally:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             c.close()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-    raise
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

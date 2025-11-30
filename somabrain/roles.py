@@ -1,8 +1,3 @@
-from __future__ import annotations
-from typing import Optional, Tuple
-import numpy as np
-from . import numerics as _num, seed as _seed
-
 """Unitary role generation helpers.
 
 Creates unitary (energy-preserving) role vectors whose spectrum has unit
@@ -10,9 +5,13 @@ magnitude, ensuring exact invertibility via conjugate-multiply in frequency
 domain. Deterministic when a seed is provided.
 """
 
+from __future__ import annotations
 
+from typing import Optional, Tuple
 
+import numpy as np
 
+from . import numerics as _num, seed as _seed
 
 
 def make_unitary_role(

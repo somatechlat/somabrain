@@ -1,14 +1,12 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Callable, Optional, Tuple
+
 import numpy as np
+
 from somabrain.math.graph_heat import graph_heat_chebyshev, graph_heat_lanczos
 import json
-from common.logging import logger
-from datetime import datetime, timezone
-
-
-
 
 
 def _select_heat_method() -> str:
@@ -26,7 +24,7 @@ def _select_heat_method() -> str:
 
 
 def _now_ts() -> str:
-    pass
+    from datetime import datetime, timezone
 
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -52,7 +50,7 @@ class PredictorBase:
       - confidence(error) = exp(-alpha * error)
     """
 
-def __init__(
+    def __init__(
         self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
     ):
         self.apply_A = apply_A
@@ -60,19 +58,19 @@ def __init__(
         self.cfg = cfg or PredictorConfig()
         self._method = _select_heat_method()
 
-def salience(self, x0: np.ndarray) -> np.ndarray:
+    def salience(self, x0: np.ndarray) -> np.ndarray:
         t = float(self.cfg.diffusion_t)
         if self._method == "lanczos":
             return graph_heat_lanczos(self.apply_A, x0, t, m=int(self.cfg.lanczos_m))
 
         # default chebyshev
-class _Cfg:
+        class _Cfg:
             truth_chebyshev_K = int(self.cfg.chebyshev_K)
 
         return graph_heat_chebyshev(self.apply_A, x0, t, _Cfg())
 
-@staticmethod
-def mse(a: np.ndarray, b: np.ndarray) -> float:
+    @staticmethod
+    def mse(a: np.ndarray, b: np.ndarray) -> float:
         a = np.asarray(a, dtype=float)
         b = np.asarray(b, dtype=float)
         if a.shape != b.shape:
@@ -80,7 +78,7 @@ def mse(a: np.ndarray, b: np.ndarray) -> float:
         d = a - b
         return float(np.mean(d * d))
 
-def error_and_confidence(
+    def error_and_confidence(
         self, salience: np.ndarray, observed: np.ndarray
     ) -> Tuple[float, float]:
         err = self.mse(salience, observed)
@@ -94,7 +92,7 @@ class HeatDiffusionPredictor(PredictorBase):
     It expects callers to supply a one-hot source vector and an observed vector.
     """
 
-def step(
+    def step(
         self, source_idx: int, observed: np.ndarray
     ) -> Tuple[np.ndarray, float, float]:
         x0 = np.zeros(self.dim, dtype=float)
@@ -127,8 +125,7 @@ def make_line_graph_laplacian(n: int) -> np.ndarray:
 
 
 def matvec_from_matrix(M: np.ndarray) -> ApplyOp:
-    pass
-def _apply(v: np.ndarray) -> np.ndarray:
+    def _apply(v: np.ndarray) -> np.ndarray:
         return M @ v
 
     return _apply
@@ -136,16 +133,10 @@ def _apply(v: np.ndarray) -> np.ndarray:
 
 def _to_ndarray(obj: object) -> Optional[np.ndarray]:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         arr = np.array(obj, dtype=float)
         if arr.ndim == 2 and arr.shape[0] == arr.shape[1]:
             return arr
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
     return None
 
@@ -161,7 +152,6 @@ def load_operator_from_file(path: str) -> Tuple[ApplyOp, int]:
     """Load a graph operator from a JSON file.
 
     Supported formats:
-        pass
     - A 2D array interpreted as adjacency (A); we build Laplacian L=D-A
     - An object {"adjacency": [[...]]}
     - An object {"laplacian": [[...]]}
@@ -206,7 +196,6 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     """Construct a HeatDiffusionPredictor using env configuration.
 
     Env vars consulted (domain-specific preferred):
-        pass
     - SOMABRAIN_GRAPH_FILE_{DOMAIN}: path to JSON graph file
     - SOMABRAIN_GRAPH_FILE: default path if domain-specific not provided
     - SOMABRAIN_PREDICTOR_DIM: used only when no graph file provided
@@ -222,14 +211,9 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
     )
     if graph_path:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             apply_A, dim = load_operator_from_file(graph_path)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            # Use line graph if load fails
             dim = int(settings.predictor_dim or "16")
             L = make_line_graph_laplacian(dim)
             apply_A = matvec_from_matrix(L)
@@ -244,5 +228,7 @@ def build_predictor_from_env(domain: str) -> Tuple["HeatDiffusionPredictor", int
             diffusion_t=float(settings.diffusion_t or "0.5"),
             alpha=float(settings.conf_alpha or "2.0"),
             chebyshev_K=int(settings.cheb_k or "30"),
-            lanczos_m=int(getattr(settings, "lanczos_m", 20)), ), )
+            lanczos_m=int(getattr(settings, "lanczos_m", 20)),
+        ),
+    )
     return pred, dim

@@ -1,17 +1,3 @@
-from __future__ import annotations
-from common.config.settings import settings
-import sys
-import socket
-from dataclasses import dataclass
-from typing import List
-from pathlib import Path
-import subprocess
-import requests  # type: ignore
-import redis  # type: ignore
-import psycopg  # type: ignore
-from common.logging import logger
-from confluent_kafka import AdminClient  # type: ignore
-
 #!/usr/bin/env python3
 """CI Readiness Fail-Fast Script
 
@@ -35,8 +21,19 @@ Environment variables (taken from existing config):
 
 Strict posture: no silent alternatives; if any component is unavailable the script exits 1.
 """
+from __future__ import annotations
+from common.config.settings import settings
+import sys
+import socket
+from dataclasses import dataclass
+from typing import List
+from pathlib import Path
+import subprocess
 
 # External deps (all required in project dependencies)
+import requests  # type: ignore
+import redis  # type: ignore
+import psycopg  # type: ignore
 
 REQUIRED_TOPIC_ENV_VARS = [
     "SOMABRAIN_TOPIC_REWARD_EVENTS",
@@ -56,6 +53,7 @@ class CheckResult:
 def _env(name: str, default: str | None = None) -> str | None:
     """Retrieve a configuration value via the centralized Settings.
 
+    The original implementation used ``settings.getenv`` which is now legacy.
     This helper maps the upper‑case environment variable name to the matching
     Settings attribute (lower‑case) and returns its string representation.
     If the attribute does not exist or is empty, ``default`` is returned.
@@ -78,10 +76,6 @@ def check_postgres() -> CheckResult:
     if not dsn:
         return CheckResult("postgres", False, "SOMABRAIN_POSTGRES_DSN not set")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         with psycopg.connect(dsn, connect_timeout=3) as conn:  # type: ignore[attr-defined]
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
@@ -96,10 +90,6 @@ def check_redis() -> CheckResult:
     if not url:
         return CheckResult("redis", False, "SOMABRAIN_REDIS_URL not set")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         client = redis.Redis.from_url(url, socket_connect_timeout=3, socket_timeout=3)
         pong = client.ping()
         if pong:
@@ -111,15 +101,9 @@ def check_redis() -> CheckResult:
 
 def _socket_connect(host: str, port: int, timeout: float = 3.0) -> bool:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return False
 
 
@@ -131,29 +115,21 @@ def check_kafka() -> List[CheckResult]:
             CheckResult(
                 "kafka",
                 False,
-                "Bootstrap env SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL not set", )
+                "Bootstrap env SOMA_KAFKA_BOOTSTRAP or SOMABRAIN_KAFKA_URL not set",
+            )
         ]
     host_port = bootstrap.split(",")[0].strip()
     host, _, port_str = host_port.partition(":")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         port = int(port_str) if port_str else 9092
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         port = 9092
     if not _socket_connect(host, port):
         return [CheckResult("kafka", False, f"TCP connect failed to {host}:{port}")]
 
     # Try confluent_kafka for metadata if available; otherwise rely on socket connect + topic env presence.
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from confluent_kafka import AdminClient  # type: ignore
 
         admin = AdminClient({"bootstrap.servers": bootstrap})
         md = admin.list_topics(timeout=5)
@@ -201,10 +177,6 @@ def check_opa() -> CheckResult:
         return CheckResult("opa", False, "SOMABRAIN_OPA_URL not set")
     url = base.rstrip("/") + "/health"
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         resp = requests.get(url, timeout=3)
         if resp.status_code != 200:
             return CheckResult("opa", False, f"HTTP {resp.status_code}")
@@ -215,32 +187,20 @@ def check_opa() -> CheckResult:
 
 
 def check_outbox_pending() -> CheckResult:
-    pass
+    from common.config.settings import settings
 
     base = _env("SOMABRAIN_API_URL") or _env("SOMA_API_URL") or settings.api_url
     token = _env("SOMABRAIN_API_TOKEN") or _env("SOMA_API_TOKEN")
     if not token:
         return CheckResult("outbox", False, "SOMABRAIN_API_TOKEN not set")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         max_pending = int(_env("SOMABRAIN_OUTBOX_MAX_PENDING", "100") or 100)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         max_pending = 100
     status = _env("SOMABRAIN_OUTBOX_CHECK_STATUS", "pending") or "pending"
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         page_size = int(_env("SOMABRAIN_OUTBOX_CHECK_PAGE", "500") or 500)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         page_size = 500
 
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "outbox_admin.py"
@@ -260,15 +220,12 @@ def check_outbox_pending() -> CheckResult:
         str(page_size),
     ]
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         proc = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            timeout=60, )
+            timeout=60,
+        )
     except Exception as exc:  # noqa: BLE001
         return CheckResult(
             "outbox", False, f"check failed: {type(exc).__name__}: {exc}"

@@ -1,19 +1,8 @@
-from __future__ import annotations
-import argparse
-import subprocess
-import sys
-from pathlib import Path
-from typing import List, Dict, Any
-import httpx
-from somabrain.config.feature_flags import FeatureFlags
-from common.logging import logger
-
 """Canary rollout CLI for SomaBrain.
 
 This tool reads the current feature‑flag configuration and performs a
 partial deployment (canary) of a new version to a subset of tenants using the
 Helm chart created under ``charts/somabrain``. It follows the VIBE rules:
-    pass
 
 * **Real implementation** – uses ``subprocess`` to invoke ``helm`` and ``httpx``
   for health checks.
@@ -23,7 +12,6 @@ Helm chart created under ``charts/somabrain``. It follows the VIBE rules:
   release.
 
 Typical usage:
-    pass
 
 ```
 python -m somabrain.cli.canary \
@@ -40,43 +28,57 @@ repeated. The tool reports progress and exits with a non‑zero status on fatal
 errors.
 """
 
+from __future__ import annotations
 
+import argparse
+import subprocess
+import sys
+from pathlib import Path
+from typing import List, Dict, Any
 
+import httpx
 
 # Import the internal feature‑flag helper – this provides the source of truth
 # for which flags are currently enabled.
+from somabrain.config.feature_flags import FeatureFlags
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Deploy a canary release of SomaBrain to a subset of tenants",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter, )
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument("--release", required=True, help="Helm release name")
     parser.add_argument("--namespace", required=True, help="Kubernetes namespace")
     parser.add_argument(
         "--chart",
         required=True,
         type=Path,
-        help="Path to the Helm chart directory", )
+        help="Path to the Helm chart directory",
+    )
     parser.add_argument(
         "--tenants",
         required=True,
-        help="Comma‑separated list of tenant identifiers for the canary", )
+        help="Comma‑separated list of tenant identifiers for the canary",
+    )
     parser.add_argument(
         "--set",
         action="append",
         default=[],
         metavar="KEY=VALUE",
-        help="Additional Helm set values (can be repeated)", )
+        help="Additional Helm set values (can be repeated)",
+    )
     parser.add_argument(
         "--rollback-on-failure",
         action="store_true",
-        help="If set, automatically roll back the release when health checks fail", )
+        help="If set, automatically roll back the release when health checks fail",
+    )
     parser.add_argument(
         "--timeout",
         type=int,
         default=120,
-        help="Maximum seconds to wait for each tenant health check", )
+        help="Maximum seconds to wait for each tenant health check",
+    )
     return parser.parse_args()
 
 
@@ -84,8 +86,8 @@ def _helm_upgrade(
     release: str,
     namespace: str,
     chart_path: Path,
-    set_values: List[str], ) -> int:
-        pass
+    set_values: List[str],
+) -> int:
     """Run ``helm upgrade --install``.
 
     Returns the subprocess exit code.
@@ -150,17 +152,13 @@ def _check_tenant_health(tenants: List[str], timeout: int) -> bool:
     for tenant in tenants:
         url = _tenant_health_url(tenant)
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             resp = client.get(url)
             if resp.status_code != 200:
                 print(f"Health check failed for tenant {tenant}: {resp.status_code}")
                 all_ok = False
         except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            print(f"Error contacting tenant {tenant} at {url}: {exc}")
+            all_ok = False
     client.close()
     return all_ok
 
@@ -190,7 +188,8 @@ def main() -> None:
         release=args.release,
         namespace=args.namespace,
         chart_path=args.chart,
-        set_values=set_values, )
+        set_values=set_values,
+    )
     if rc != 0:
         print("Helm upgrade failed – exiting.", file=sys.stderr)
         sys.exit(rc)

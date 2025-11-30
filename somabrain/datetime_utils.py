@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from typing import Any
-from common.logging import logger
 
 ISO_Z_SUFFIX = "Z"
 
@@ -29,18 +28,10 @@ def coerce_to_epoch_seconds(value: Any) -> float:
             raise ValueError("timestamp string cannot be empty")
         # Try fast-path numeric parsing first to avoid datetime parsing cost.
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return float(stripped)
         except ValueError:
             pass
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             dt = datetime.fromisoformat(stripped.replace(ISO_Z_SUFFIX, "+00:00"))
         except ValueError as exc:  # pragma: no cover - message propagated upstream
             raise ValueError(

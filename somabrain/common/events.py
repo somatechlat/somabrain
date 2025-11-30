@@ -1,8 +1,7 @@
 from __future__ import annotations
+
 import time
 from typing import Dict
-from common.logging import logger
-
 
 
 def build_next_event(
@@ -26,12 +25,6 @@ def compute_regret_from_confidence(confidence: float) -> float:
     This is used by drift detection to form a simple regret proxy.
     """
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return max(0.0, min(1.0, 1.0 - float(confidence)))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return 1.0

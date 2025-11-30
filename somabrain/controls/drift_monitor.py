@@ -1,9 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass
-import numpy as np
-from .metrics import DRIFT_ALERT, DRIFT_SCORE
-from common.logging import logger
-
 """
 Drift Monitor Module for SomaBrain
 
@@ -13,7 +7,6 @@ significant drift is detected, which is crucial for maintaining model reliabilit
 in dynamic environments.
 
 Key Features:
-    pass
 - Online mean and variance tracking using Welford's algorithm
 - Z-score based drift scoring
 - Configurable alert thresholds
@@ -21,14 +14,12 @@ Key Features:
 - Metrics collection for monitoring
 
 Drift Detection:
-    pass
 - Score: Euclidean norm of z-scored input vector
 - Alert: Triggered when score exceeds threshold
 - Window: Number of samples for statistics calculation
 - Online: Incremental updates without storing all data
 
 Applications:
-    pass
 - Input data distribution monitoring
 - Model performance degradation detection
 - Data quality assessment
@@ -42,9 +33,13 @@ Functions:
     None (class-based implementation)
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
 
+import numpy as np
 
+from .metrics import DRIFT_ALERT, DRIFT_SCORE
 
 
 @dataclass
@@ -60,14 +55,14 @@ class DriftMonitor:
     Reports a z-distance (Euclidean on z-scored vector) as drift score.
     """
 
-def __init__(self, dim: int, cfg: DriftConfig):
+    def __init__(self, dim: int, cfg: DriftConfig):
         self.dim = int(dim)
         self.cfg = cfg
         self.n = 0
         self.mean = np.zeros((dim,), dtype=np.float64)
         self.M2 = np.zeros((dim,), dtype=np.float64)
 
-def update(self, x: np.ndarray) -> dict:
+    def update(self, x: np.ndarray) -> dict:
         x = np.asarray(x, dtype=np.float64)
         if x.shape[-1] != self.dim:
             x = x[: self.dim]
@@ -81,16 +76,11 @@ def update(self, x: np.ndarray) -> dict:
         z = (x - self.mean) / std
         score = float(np.linalg.norm(z))
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             DRIFT_SCORE.observe(max(0.0, score))
             if score >= float(self.cfg.threshold):
                 DRIFT_ALERT.inc()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
         return {
             "score": score,
             "alert": bool(score >= float(self.cfg.threshold)),

@@ -1,7 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any, Dict
-
 """Prefrontal module for SomaBrain.
 
 This module provides a minimal implementation of the *prefrontal* component
@@ -10,7 +6,6 @@ complex executive‑control system; however, for the purpose of keeping the
 repository import‑compatible during testing we supply a lightweight stub.
 
 The implementation includes:
-    pass
 * ``PrefrontalConfig`` – a simple configuration holder using ``dataclasses``.
 * ``PrefrontalCortex`` – the main class instantiated in ``app.py``. It stores the
   configuration and exposes a ``process`` method that can be extended later.
@@ -20,7 +15,10 @@ future developers can replace them with a full‑featured version without breaki
 existing imports.
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass, field
+from typing import Any, Dict
 
 
 @dataclass
@@ -37,7 +35,7 @@ class PrefrontalConfig:
     # Additional configuration can be stored in a generic dict.
     extra: Dict[str, Any] = field(default_factory=dict)
 
-def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> Dict[str, Any]:
         """Return the configuration as a plain dictionary.
 
         This helper is convenient for logging or passing the config to other
@@ -60,12 +58,12 @@ class PrefrontalCortex:
     placeholder for more sophisticated executive‑function logic.
     """
 
-def __init__(self, config: PrefrontalConfig | None = None) -> None:
+    def __init__(self, config: PrefrontalConfig | None = None) -> None:
         self.config = config or PrefrontalConfig()
         # Internal state can be expanded later; for now we keep it simple.
         self.state: Dict[str, Any] = {}
 
-def process(self, data: Any) -> Any:
+    def process(self, data: Any) -> Any:
         """Process *data* through the prefrontal cortex.
 
         The stub simply returns ``data`` unchanged. Real implementations would
@@ -74,5 +72,5 @@ def process(self, data: Any) -> Any:
         # Placeholder – no transformation performed.
         return data
 
-def __repr__(self) -> str:
+    def __repr__(self) -> str:
         return f"PrefrontalCortex(config={self.config!r})"

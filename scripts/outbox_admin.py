@@ -1,20 +1,7 @@
-from __future__ import annotations
-import argparse
-import json
-from common.config.settings import settings
-from somabrain.infrastructure import get_api_base_url
-import sys
-from typing import Any, Dict, Iterable
-import requests
-import time
-from collections import defaultdict
-from common.config.settings import settings
-
 #!/usr/bin/env python3
 """Administrative helper for SomaBrain outbox endpoints.
 
 Provides multiple subcommands:
-    pass
 
     list   -> fetches /admin/outbox with optional filters
     replay -> POSTs /admin/outbox/replay with a set of event IDs
@@ -26,13 +13,24 @@ Authentication:
   SOMABRAIN_API_TOKEN/SOMA_API_TOKEN in the environment.
 """
 
+from __future__ import annotations
 
+import argparse
+import json
+from common.config.settings import settings
+from somabrain.infrastructure import get_api_base_url
+import sys
+from typing import Any, Dict, Iterable
 
+import requests
+import time
+from collections import defaultdict
 
 
 def _default_base_url() -> str:
     # Use the centralized helper to obtain the API base URL, falling back to the
     # historic default only if the helper returns ``None``.
+    from common.config.settings import settings
 
     return (get_api_base_url() or settings.api_url).rstrip("/")
 
@@ -58,8 +56,8 @@ def _fetch_page(
     status: str,
     tenant: str | None,
     limit: int,
-    offset: int = 0, ) -> Dict[str, Any]:
-        pass
+    offset: int = 0,
+) -> Dict[str, Any]:
     params = {"status": status, "limit": limit, "offset": offset}
     if tenant:
         params["tenant"] = tenant
@@ -67,7 +65,8 @@ def _fetch_page(
         f"{base}/admin/outbox",
         params=params,
         headers=_auth_headers(token),
-        timeout=10, )
+        timeout=10,
+    )
     if resp.status_code != 200:
         raise SystemExit(f"list failed: HTTP {resp.status_code} {resp.text}")
     return resp.json()
@@ -92,7 +91,8 @@ def cmd_list(args: argparse.Namespace) -> None:
         status=args.status,
         tenant=args.tenant,
         limit=args.limit,
-        offset=args.offset, )
+        offset=args.offset,
+    )
     if args.json:
         print(json.dumps(data, indent=2, sort_keys=True))
     else:
@@ -107,7 +107,8 @@ def cmd_replay(args: argparse.Namespace) -> None:
         f"{base}/admin/outbox/replay",
         json=payload,
         headers=_auth_headers(args.token),
-        timeout=10, )
+        timeout=10,
+    )
     if resp.status_code != 200:
         raise SystemExit(f"replay failed: HTTP {resp.status_code} {resp.text}")
     print(json.dumps(resp.json(), indent=2, sort_keys=True))
@@ -116,17 +117,14 @@ def cmd_replay(args: argparse.Namespace) -> None:
 def cmd_tail(args: argparse.Namespace) -> None:
     seen: set[int] = set()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         while True:
             data = _fetch_page(
                 args.url,
                 args.token,
                 status=args.status,
                 tenant=args.tenant,
-                limit=args.limit, )
+                limit=args.limit,
+            )
             events = data.get("events", [])
             new_events = [ev for ev in events if ev.get("id") not in seen]
             if new_events:
@@ -148,8 +146,8 @@ def _iter_events(
     *,
     status: str,
     tenant: str | None,
-    page_size: int, ):
-        pass
+    page_size: int,
+):
     offset = 0
     while True:
         data = _fetch_page(
@@ -158,7 +156,8 @@ def _iter_events(
             status=status,
             tenant=tenant,
             limit=page_size,
-            offset=offset, )
+            offset=offset,
+        )
         events = data.get("events", [])
         if not events:
             break
@@ -177,8 +176,8 @@ def cmd_check(args: argparse.Namespace) -> None:
         args.token,
         status=args.status,
         tenant=args.tenant,
-        page_size=args.page_size, ):
-            pass
+        page_size=args.page_size,
+    ):
         tenant_id = ev.get("tenant_id") or "default"
         counts[tenant_id] += 1
         if counts[tenant_id] > max_pending:
@@ -236,10 +235,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         args.func(args)
         return 0
     except requests.RequestException as exc:  # noqa: BLE001

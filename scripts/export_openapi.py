@@ -18,7 +18,8 @@ openapi_schema = get_openapi(
     title="SomaBrain API",
     version="1.0.0",
     description="SomaBrain context and feedback endpoints",
-    routes=app.routes, )
+    routes=app.routes,
+)
 
 out_path.write_text(json.dumps(openapi_schema, indent=2))
 print(f"OpenAPI schema written to {out_path}")

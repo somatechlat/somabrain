@@ -1,4 +1,12 @@
+"""Tripartite Integrator Hub.
+
+Consumes predictor updates for state/agent/action domains, weights them by
+confidence (exp(-alpha*error)), selects a leader, and emits a GlobalFrame
+record. Uses Kafka + Avro; fails fast on missing dependencies.
+"""
+
 from __future__ import annotations
+
 import json
 import math
 import os
@@ -8,48 +16,28 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, Callable
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from common.config.settings import settings
-import somabrain.runtime_config as runtime_config
-from confluent_kafka import Consumer, Producer, KafkaError
-from fastavro import parse_schema, schemaless_writer
-import somabrain.metrics as metrics
-from somabrain.infrastructure import get_redis_url
-import requests
-from common.logging import logger
-import redis
-import io
-
-"""Tripartite Integrator Hub.
-
-Consumes predictor updates for state/agent/action domains, weights them by
-confidence (exp(-alpha*error)), selects a leader, and emits a GlobalFrame
-record. Uses Kafka + Avro; fails fast on missing dependencies.
-"""
-
-
 
 # Use the canonical settings import as per Vibe coding rules.
+from common.config.settings import settings
+import somabrain.runtime_config as runtime_config
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from confluent_kafka import Consumer, Producer, KafkaError
 except Exception as exc:  # pragma: no cover
     raise RuntimeError(
         "confluent_kafka is required for integrator_hub_triplet; install the dependency."
     ) from exc
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from fastavro import parse_schema, schemaless_writer
 except Exception as exc:  # pragma: no cover
     raise RuntimeError(
         "fastavro is required for integrator_hub_triplet; install the dependency."
     ) from exc
 
+import somabrain.metrics as metrics
+from somabrain.infrastructure import get_redis_url
+import requests
 
 
 def _load_schema(path: str):
@@ -69,26 +57,30 @@ SCHEMA_GLOBAL_FRAME = _load_schema(
 INTEGRATOR_LEADER = metrics.get_counter(
     "somabrain_integrator_leader_total",
     "Integrator leader selections",
-    labelnames=["leader"], )
+    labelnames=["leader"],
+)
 INTEGRATOR_ERROR = metrics.get_histogram(
     "somabrain_integrator_error",
     "Integrator observed predictor error",
     labelnames=["domain"],
-    buckets=[i / 10.0 for i in range(11)], )
+    buckets=[i / 10.0 for i in range(11)],
+)
 INTEGRATOR_OPA_REJECT = metrics.get_counter(
     "somabrain_integrator_opa_reject_total",
     "Integrator leader vetoed by OPA",
-    labelnames=["leader"], )
+    labelnames=["leader"],
+)
 INTEGRATOR_REDIS_CACHE = metrics.get_counter(
     "somabrain_integrator_redis_cache_total",
     "Integrator writes to Redis cache",
-    labelnames=["leader"], )
+    labelnames=["leader"],
+)
 
 
 class IntegratorHub:
     """Consumes predictor updates and emits GlobalFrame."""
 
-def __init__(
+    def __init__(
         self,
         alpha: Optional[float] = None,
         domains=None,
@@ -99,8 +91,8 @@ def __init__(
         redis_client: Optional[object] = None,
         opa_request: Optional[Callable[[str, Dict[str, float]], bool]] = None,
         start_io: bool = True,
-        start_health: bool = True, ):
-            pass
+        start_health: bool = True,
+    ):
         ss = settings
         # Alpha/temperature/flag are re-read at runtime (see _effective_cfg)
         if alpha is None:
@@ -149,18 +141,12 @@ def __init__(
         self._redis_client = redis_client
         if self._redis_client is None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 redis_url = get_redis_url()
                 if redis_url:
-                    pass
+                    import redis
 
                     self._redis_client = redis.from_url(redis_url)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 self._redis_client = None
         self._opa_request = opa_request or self._default_opa_request
         # Health server
@@ -172,12 +158,11 @@ def __init__(
             )
             self._health_thread.start()
 
-def _serve_health(self) -> None:
+    def _serve_health(self) -> None:
         hub_ref = self
 
-class _Handler(BaseHTTPRequestHandler):
-    pass
-def do_GET(self):  # type: ignore[override]
+        class _Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # type: ignore[override]
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
                     self.end_headers()
@@ -193,63 +178,41 @@ def do_GET(self):  # type: ignore[override]
                 }
                 self.wfile.write(json.dumps(payload).encode("utf-8"))
 
-def log_message(self, format, *args):  # noqa: N802
+            def log_message(self, format, *args):  # noqa: N802
                 return
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             server = HTTPServer(("", self._health_port), _Handler)
             server.serve_forever()
         except Exception as exc:  # pragma: no cover
             raise RuntimeError(f"Health server failed: {exc}") from exc
 
-def _encode(self, record: Dict, schema) -> bytes:
-    pass
+    def _encode(self, record: Dict, schema) -> bytes:
+        import io
 
         buf = io.BytesIO()
         schemaless_writer(buf, schema, record)
         return buf.getvalue()
 
-def _effective_cfg(self) -> Dict[str, float | bool | str]:
+    def _effective_cfg(self) -> Dict[str, float | bool | str]:
         """Load current config, allowing runtime overrides via runtime_config."""
 
-def _get_bool(key: str, default: bool) -> bool:
+        def _get_bool(key: str, default: bool) -> bool:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return runtime_config.get_bool(key, default)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return default
 
-def _get_float(key: str, default: float) -> float:
+        def _get_float(key: str, default: float) -> float:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return float(runtime_config.get_float(key, default))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return default
 
-def _get_str(key: str, default: str) -> str:
+        def _get_str(key: str, default: str) -> str:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return str(runtime_config.get_str(key, default))
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 return default
 
         alpha = _get_float(
@@ -260,7 +223,7 @@ def _get_str(key: str, default: str) -> str:
         opa_url = _get_str("opa_url", self._initial_opa_url).strip()
         return {"alpha": alpha, "temperature": temp, "enable": flag, "opa_url": opa_url}
 
-def _select_leader(self) -> Optional[str]:
+    def _select_leader(self) -> Optional[str]:
         if not set(self.domains).issubset(self._latest.keys()):
             return None
         cfg = self._effective_cfg()
@@ -282,7 +245,7 @@ def _select_leader(self) -> Optional[str]:
         probs = {d: v / total for d, v in exps.items()}
         return max(probs.items(), key=lambda kv: kv[1])[0]
 
-def _publish_global(self, leader: str) -> None:
+    def _publish_global(self, leader: str) -> None:
         cfg = self._effective_cfg()
         present = {d: self._latest[d] for d in self.domains if d in self._latest}
         if leader not in present:
@@ -295,28 +258,17 @@ def _publish_global(self, leader: str) -> None:
             if err is not None and math.isfinite(err):
                 w = math.exp(-alpha * float(max(err, 0.0)))
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
             else:
                 w = max(0.0, float(rec.get("confidence", 0.0)))
             weights[d] = w
         total_w = sum(weights.values()) or 1.0
         probs = {d: w / total_w for d, w in weights.items()}
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             entropy = -sum(p * math.log(p) for p in probs.values() if p > 0)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             entropy = 0.0
         now = datetime.now(timezone.utc).isoformat()
         frame = {
@@ -341,51 +293,34 @@ def _publish_global(self, leader: str) -> None:
         payload = self._encode(frame, SCHEMA_GLOBAL_FRAME)
         if self._redis_client:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self._redis_client.setex(f"globalframe:{leader}", 300, payload)
                 INTEGRATOR_REDIS_CACHE.labels(leader=leader).inc()
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 if not self._opa_request(
                     opa_url, {"leader": leader, "weights": weights}
                 ):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                 return
         self.producer.produce(self.topic_global, payload)
         self.producer.flush()
 
-def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
+    def _default_opa_request(self, url: str, context: Dict[str, float]) -> bool:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             resp = requests.post(url, json={"input": context}, timeout=1)
             if not resp.ok:
                 return False
             return bool(resp.json().get("result", False))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return False
 
-def run(self) -> None:  # pragma: no cover (I/O loop)
+    def run(self) -> None:  # pragma: no cover (I/O loop)
         if self.consumer is None:
             return
         while True:
@@ -397,10 +332,6 @@ def run(self) -> None:  # pragma: no cover (I/O loop)
                     continue
                 raise RuntimeError(f"Kafka error: {msg.error()}")
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 record = json.loads(msg.value())
                 domain = record.get("domain")
                 if domain not in self.domains:
@@ -421,9 +352,7 @@ def run(self) -> None:  # pragma: no cover (I/O loop)
                         self._publish_global(leader)
                 self.consumer.commit(msg)
             except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise RuntimeError(f"Failed to process predictor update: {exc}")
+                raise RuntimeError(f"Failed to process predictor update: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -444,12 +373,9 @@ def run(self) -> None:  # pragma: no cover (I/O loop)
 if __name__ == "__main__":  # pragma: no cover
     hub = IntegratorHub(start_io=False)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         # Keep the process running so the health server remains reachable.
         while True:
             time.sleep(60)
     except KeyboardInterrupt:
         # Graceful shutdown on SIGINT / container stop.
+        pass

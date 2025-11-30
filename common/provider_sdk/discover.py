@@ -1,12 +1,3 @@
-from __future__ import annotations
-import json
-import os
-from pathlib import Path
-from typing import Dict, Any
-from common.logging import logger
-import yaml
-from common.config.settings import settings as cfg
-
 """Simple provider discovery helper.
 
 Reads `providers.yaml` or `providers.json` from the repository root or
@@ -14,16 +5,17 @@ from the path indicated by the `PROVIDERS_PATH` environment variable.
 Supports basic environment variable substitution of the form `${VAR}`.
 """
 
+from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+from typing import Dict, Any
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    import yaml
+except Exception:  # pragma: no cover - optional dependency
+    yaml = None
 
 
 def _sub_env_vars(s: str) -> str:
@@ -51,7 +43,6 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
     """Discover and load provider configuration.
 
     Order of resolution:
-        pass
     1. `path` argument if provided
     2. `PROVIDERS_PATH` env var
     3. `providers.yaml` or `providers.json` in the repo root
@@ -59,6 +50,7 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
     candidates = []
     if path:
         candidates.append(Path(path))
+    from common.config.settings import settings as cfg
 
     env_path = cfg.providers_path
     if env_path:
@@ -70,10 +62,6 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
         if p is None:
             continue
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             p = Path(p)
             if not p.exists():
                 continue
@@ -84,18 +72,10 @@ def discover_providers(path: str | None = None) -> Dict[str, Any]:
             # try to guess by content
             txt = p.read_text()
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 return json.loads(txt)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 if yaml is not None:
                     return yaml.safe_load(txt) or {}
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             continue
     return {}

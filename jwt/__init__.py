@@ -13,7 +13,6 @@ site-packages and exposes its symbols. If PyJWT is not installed, import fails.
 """
 
 
-
 _purelib = sysconfig.get_paths().get("purelib") or ""
 _real_init = os.path.join(_purelib, "jwt", "__init__.py")
 

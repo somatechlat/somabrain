@@ -1,11 +1,3 @@
-from __future__ import annotations
-import hashlib
-from typing import Callable, Optional
-import numpy as np
-from common.logging import logger
-from arc_cache import arc_cache  # type: ignore
-from .providers.transformer_embed import TransformerEmbedder  # type: ignore
-
 """
 Embeddings Module for SomaBrain.
 
@@ -14,7 +6,6 @@ deterministic embedders, dimensionality reduction via Johnson-Lindenstrauss proj
 and caching mechanisms for efficient embedding computation.
 
 Key Features:
-    pass
 - Deterministic embedding for reproducible results
 - Johnson-Lindenstrauss projection for dimensionality reduction
 - LRU caching for embedding reuse
@@ -31,17 +22,20 @@ Functions:
     make_embedder: Factory function to create configured embedders.
 """
 
+from __future__ import annotations
 
+import hashlib
+from typing import Callable, Optional
 
+import numpy as np
 
 # Prefer the optional top-level arc_cache helper; if unavailable, caching is disabled
 try:  # pragma: no cover - trivial import guard
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from arc_cache import arc_cache  # type: ignore
+except Exception:  # pragma: no cover
 
-def arc_cache(*args, **kwargs):  # type: ignore
-def _decorator(fn):
+    def arc_cache(*args, **kwargs):  # type: ignore
+        def _decorator(fn):
             return fn
 
         return _decorator
@@ -65,7 +59,7 @@ class TinyDeterministicEmbedder:
         >>> print(f"Vector shape: {vector.shape}, Norm: {np.linalg.norm(vector):.3f}")
     """
 
-def __init__(self, dim: int = 256, seed_salt: int = 1337):
+    def __init__(self, dim: int = 256, seed_salt: int = 1337):
         """
         Initialize the deterministic embedder.
         Enforces global HRR_DIM, HRR_DTYPE, and SEED for reproducibility.
@@ -76,7 +70,7 @@ def __init__(self, dim: int = 256, seed_salt: int = 1337):
         self.dim = int(dim)
         self.seed_salt = int(seed_salt)
 
-def _seed(self, text: str) -> int:
+    def _seed(self, text: str) -> int:
         """
         Generate deterministic seed from text.
 
@@ -92,7 +86,7 @@ def _seed(self, text: str) -> int:
         h = hashlib.blake2b(text.encode("utf-8"), digest_size=8).digest()
         return int.from_bytes(h, "big") ^ self.seed_salt
 
-def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         """
         Generate embedding vector for input text.
         Produces a unit-norm Gaussian vector using deterministic seeding, global HRR_DTYPE.
@@ -129,13 +123,13 @@ class _JLProjector:
         >>> print(f"Reduced shape: {reduced_vector.shape}")
     """
 
-def __init__(
+    def __init__(
         self,
         base_embed: Callable[[str], np.ndarray],
         base_dim: int,
         target_k: Optional[int],
-        seed: int = 42, ):
-            pass
+        seed: int = 42,
+    ):
         """
         Initialize the JL projector.
 
@@ -151,7 +145,7 @@ def __init__(
         self.seed = int(seed)
         self._P: Optional[np.ndarray] = None
 
-def _ensure_P(self) -> None:
+    def _ensure_P(self) -> None:
         """
         Ensure projection matrix is computed.
         Lazily computes the Gaussian projection matrix with global HRR_DTYPE and seed.
@@ -167,7 +161,7 @@ def _ensure_P(self) -> None:
             P /= np.sqrt(self.k)
             self._P = P
 
-def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         """
         Generate embedding with optional dimensionality reduction.
 
@@ -200,19 +194,19 @@ class _CachedEmbedder:
     for cache hit tracking.
     """
 
-def __init__(
+    def __init__(
         self,
         embed_fn: Callable[[str], np.ndarray],
         cache_size: int = 0,
-        provider_label: str = "unknown", ):
-            pass
+        provider_label: str = "unknown",
+    ):
         # Use arc_cache decorator for memoization if cache_size > 0
         self._embed = (
             arc_cache(max_size=cache_size)(embed_fn) if cache_size > 0 else embed_fn
         )
         self._provider = str(provider_label)
 
-def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str) -> np.ndarray:
         return self._embed(text)
 
 
@@ -241,9 +235,8 @@ def make_embedder(cfg, quantum=None):
 
     # base provider
     if provider == "hrr" and quantum is not None:
-        pass
 
-def _hrr_embed(text: str) -> np.ndarray:
+        def _hrr_embed(text: str) -> np.ndarray:
             hv = quantum.encode_text(text)
             return (
                 hv.astype("float32")
@@ -261,17 +254,12 @@ def _hrr_embed(text: str) -> np.ndarray:
         )
     elif provider == "transformer":
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            from .providers.transformer_embed import TransformerEmbedder  # type: ignore
 
             t = TransformerEmbedder(model_name=getattr(cfg, "embed_model", None))
             base_dim = t.dim
             base_fn = t.embed
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             base = TinyDeterministicEmbedder(
                 dim=int(getattr(cfg, "embed_dim", 256) or 256)
             )
@@ -287,19 +275,15 @@ def _hrr_embed(text: str) -> np.ndarray:
         base_fn,
         base_dim=base_dim,
         target_k=target_k,
-        seed=int(getattr(cfg, "hrr_seed", 42) or 42), )
+        seed=int(getattr(cfg, "hrr_seed", 42) or 42),
+    )
     # Provider label override for FDE (MUVERA) experiments
     plabel = provider
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if bool(getattr(cfg, "fde_enabled", False)):
             plabel = "fde"
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
+    # Optional cache wrapper
     cached = _CachedEmbedder(jl.embed, cache_size=cache_size, provider_label=plabel)
     return cached

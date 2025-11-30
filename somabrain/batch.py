@@ -1,17 +1,16 @@
-from __future__ import annotations
-from typing import Tuple
-import numpy as np
-from . import numerics as _num
-
 """Batching helpers for HRR numeric kernels.
 
 Small helpers to reshape, stack, and perform batched rfft/irfft with unitary
 normalization to ensure efficient, low-allocation bindings.
 """
 
+from __future__ import annotations
 
+from typing import Tuple
 
+import numpy as np
 
+from . import numerics as _num
 
 
 def ensure_batch(x: np.ndarray) -> Tuple[np.ndarray, bool]:

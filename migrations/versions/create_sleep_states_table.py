@@ -33,7 +33,8 @@ def upgrade():
         sa.Column("updated_at", sa.DateTime, nullable=False, default=sa.func.now()),
         sa.Index("idx_sleep_tenant_ttl", "tenant_id", "ttl"),
         sa.Index("idx_sleep_scheduled_wake", "scheduled_wake"),
-        sa.Index("idx_sleep_updated", "updated_at"), )
+        sa.Index("idx_sleep_updated", "updated_at"),
+    )
 
 
 def downgrade():

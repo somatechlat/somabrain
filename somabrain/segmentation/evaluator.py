@@ -1,9 +1,3 @@
-from __future__ import annotations
-from typing import List, Tuple, Dict, Iterable
-import random
-from common.logging import logger
-from somabrain import metrics  # type: ignore
-
 """Segmentation Evaluator Harness
 
 Computes acceptance KPIs for segmentation boundaries:
@@ -15,16 +9,15 @@ Provides synthetic generation helpers for local CI tests and exposes
 Prometheus metrics for dashboards.
 """
 
+from __future__ import annotations
 
+from typing import List, Tuple, Dict, Iterable
+import random
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from somabrain import metrics  # type: ignore
+except Exception:  # pragma: no cover
+    metrics = None  # type: ignore
 
 
 # Metrics (lazy init on first update)
@@ -39,45 +32,30 @@ def _ensure_metrics() -> None:
         return
     if _mx_f1 is None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _mx_f1 = metrics.get_gauge(
                 "somabrain_segmentation_boundary_f1",
                 "Segmentation boundary F1 score",
-                labelnames=["tenant"], )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                labelnames=["tenant"],
+            )
+        except Exception:
             _mx_f1 = None
     if _mx_false_rate is None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _mx_false_rate = metrics.get_gauge(
                 "somabrain_segmentation_false_boundary_rate",
                 "Rate of false emitted boundaries (FP / emitted)",
-                labelnames=["tenant"], )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                labelnames=["tenant"],
+            )
+        except Exception:
             _mx_false_rate = None
     if _mx_latency is None:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _mx_latency = metrics.get_histogram(
                 "somabrain_segmentation_latency_ticks",
                 "Average dwell latency between true changes (ticks)",
-                buckets=(1, 2, 3, 4, 5, 8, 13, 21, 34, 55), )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+                buckets=(1, 2, 3, 4, 5, 8, 13, 21, 34, 55),
+            )
+        except Exception:
             _mx_latency = None
 
 
@@ -85,8 +63,8 @@ def generate_synthetic_sequence(
     length: int = 200,
     change_prob: float = 0.05,
     domains: Iterable[str] | None = None,
-    seed: int | None = None, ) -> List[str]:
-        pass
+    seed: int | None = None,
+) -> List[str]:
     """Generate synthetic leader domain sequence with random changes.
 
     Args:
@@ -125,8 +103,8 @@ def true_boundaries(sequence: List[str]) -> List[int]:
 def evaluate_boundaries(
     emitted: List[int],
     true: List[int],
-    tolerance: int = 0, ) -> Tuple[float, float, float]:
-        pass
+    tolerance: int = 0,
+) -> Tuple[float, float, float]:
     """Compute F1, false boundary rate, mean dwell latency.
 
     A predicted boundary is a TP if there exists a true boundary within
@@ -174,20 +152,14 @@ def update_metrics(
     _ensure_metrics()
     t = (tenant or "public").strip() or "public"
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if _mx_f1 is not None:
             _mx_f1.labels(tenant=t).set(f1)
         if _mx_false_rate is not None:
             _mx_false_rate.labels(tenant=t).set(false_rate)
         if _mx_latency is not None:
             _mx_latency.observe(max(0.0, mean_latency))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
 
 
 def evaluate_sequence(

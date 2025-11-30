@@ -1,8 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from .neuromodulators import NeuromodState
-from somabrain.stats import EWMA
-
 """
 Supervisor Module for SomaBrain.
 
@@ -11,7 +6,6 @@ neuromodulator state adjustment. The supervisor monitors prediction errors and n
 to modulate neuromodulator levels, implementing active inference principles for cognitive control.
 
 Key Features:
-    pass
 - Free energy calculation based on prediction error and novelty
 - Proportional neuromodulator adjustments within bounds
 - Active inference-inspired cognitive control
@@ -22,8 +16,11 @@ Classes:
     Supervisor: Main supervisor class for free energy minimization and neuromodulation.
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
 
+from .neuromodulators import NeuromodState
 
 
 @dataclass
@@ -72,7 +69,7 @@ class Supervisor:
         >>> new_nm, free_energy, magnitude = supervisor.adjust(neuromod, 0.3, 0.1)
     """
 
-def __init__(self, cfg: SupervisorConfig):
+    def __init__(self, cfg: SupervisorConfig):
         """
         Initialize the Supervisor with configuration.
 
@@ -82,12 +79,13 @@ def __init__(self, cfg: SupervisorConfig):
         self.cfg = cfg
         # EWMA instances for smoothing neuromodulator adjustments
         # Separate EWMA per neuromodulator to smooth deltas over time
+        from somabrain.stats import EWMA
 
         self._ewma_da = EWMA(alpha=0.1)  # dopamine delta smoothing
         self._ewma_ach = EWMA(alpha=0.1)  # acetylcholine delta smoothing
         self._ewma_ne = EWMA(alpha=0.1)  # noradrenaline delta smoothing
 
-def free_energy(self, novelty: float, pred_error: float) -> float:
+    def free_energy(self, novelty: float, pred_error: float) -> float:
         """
         Calculate free energy from novelty and prediction error signals.
 
@@ -111,7 +109,7 @@ def free_energy(self, novelty: float, pred_error: float) -> float:
         e = float(max(0.0, min(1.0, pred_error)))
         return float(self.cfg.alpha_err * e + self.cfg.beta_nov * n)
 
-def adjust(
+    def adjust(
         self, nm: NeuromodState, novelty: float, pred_error: float
     ) -> tuple[NeuromodState, float, float]:
         """
@@ -156,6 +154,7 @@ def adjust(
             serotonin=max(0.0, min(1.0, nm.serotonin)),
             noradrenaline=max(0.0, min(0.1, nm.noradrenaline + d_ne)),
             acetylcholine=max(0.0, min(0.1, nm.acetylcholine + d_ach)),
-            timestamp=nm.timestamp, )
+            timestamp=nm.timestamp,
+        )
         mag = abs(d_da) + abs(d_ach) + abs(d_ne)
         return new, F, mag

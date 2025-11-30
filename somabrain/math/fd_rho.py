@@ -1,6 +1,3 @@
-import numpy as np
-from typing import Optional
-
 """Frequent-Directions sketch for online covariance approximation.
 
 This implementation provides the minimal FD sketch to maintain a small
@@ -8,6 +5,8 @@ matrix S such that S^T S approximates the covariance of streamed vectors.
 It supports inserting vectors and extracting a low-rank approximation.
 """
 
+import numpy as np
+from typing import Optional
 
 
 class FrequentDirections:
@@ -18,19 +17,19 @@ class FrequentDirections:
         ell: sketch size (rows)
     """
 
-def __init__(self, d: int, ell: int):
+    def __init__(self, d: int, ell: int):
         self.d = int(d)
         self.ell = int(ell)
         # S matrix stores at most ell rows
         self.S = np.zeros((0, d), dtype=float)
 
-def insert(self, v: np.ndarray):
+    def insert(self, v: np.ndarray):
         v = np.asarray(v, dtype=float).reshape(1, -1)
         self.S = np.vstack([self.S, v])
         if self.S.shape[0] > self.ell:
             self._compress()
 
-def _compress(self):
+    def _compress(self):
         # compute SVD of current S, shrink singular values
         U, s, Vt = np.linalg.svd(self.S, full_matrices=False)
         # shrink by smallest singular value s[-1]
@@ -41,11 +40,11 @@ def _compress(self):
         Snew = np.diag(s2[:k]) @ Vt[:k, :]
         self.S = Snew
 
-def approx_cov(self) -> np.ndarray:
+    def approx_cov(self) -> np.ndarray:
         """Return S^T S as the FD covariance approximation."""
         return self.S.T @ self.S
 
-def top_components(self, r: Optional[int] = None):
+    def top_components(self, r: Optional[int] = None):
         C = self.approx_cov()
         U, s, Vt = np.linalg.svd(C)
         if r is None:

@@ -1,8 +1,3 @@
-from __future__ import annotations
-import math
-from dataclasses import dataclass
-from typing import Dict, Optional
-
 """
 Attention Module with Bandit-based Source Selection.
 
@@ -10,13 +5,16 @@ Implements a simple UCB1 multi-armed bandit for selecting context sources
 (e.g., WM, LTM, HRR, SDR). Lightweight and dependency-free.
 
 Contracts:
-    pass
 - UCB1Bandit.add_arm(name)
 - UCB1Bandit.select() -> str (arm name)
 - UCB1Bandit.update(name, reward: float)
 """
 
+from __future__ import annotations
 
+import math
+from dataclasses import dataclass
+from typing import Dict, Optional
 
 
 @dataclass
@@ -27,16 +25,15 @@ class Arm:
 
 
 class UCB1Bandit:
-    pass
-def __init__(self):
+    def __init__(self):
         self._arms: Dict[str, Arm] = {}
         self._n: int = 0
 
-def add_arm(self, name: str) -> None:
+    def add_arm(self, name: str) -> None:
         if name not in self._arms:
             self._arms[name] = Arm(name)
 
-def select(self) -> Optional[str]:
+    def select(self) -> Optional[str]:
         if not self._arms:
             return None
         # Ensure all arms are tried at least once
@@ -54,7 +51,7 @@ def select(self) -> Optional[str]:
                 best_name = arm.name
         return best_name
 
-def update(self, name: str, reward: float) -> None:
+    def update(self, name: str, reward: float) -> None:
         arm = self._arms.get(name)
         if arm is None:
             return

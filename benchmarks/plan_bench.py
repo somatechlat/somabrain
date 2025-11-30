@@ -1,8 +1,3 @@
-from __future__ import annotations
-from typing import List
-from fastapi.testclient import TestClient
-from somabrain.app import app
-
 """
 Planning Benchmark: Post-Persist Improvement
 -------------------------------------------
@@ -13,16 +8,21 @@ query->session and session->doc edges). The planning phase includes the
 relation type 'retrieved_with' to leverage the new edges.
 """
 
+from __future__ import annotations
 
+from typing import List
 
+from fastapi.testclient import TestClient
 
+from somabrain.app import app
 
 
 def _remember(client: TestClient, task: str, headers: dict):
     r = client.post(
         "/remember",
         json={"payload": {"task": task, "memory_type": "episodic", "importance": 1}},
-        headers=headers, )
+        headers=headers,
+    )
     assert r.status_code == 200, r.text
 
 
@@ -32,12 +32,13 @@ def _link(
     to_key: str,
     typ: str,
     headers: dict,
-    weight: float = 1.0, ):
-        pass
+    weight: float = 1.0,
+):
     r = client.post(
         "/link",
         json={"from_key": from_key, "to_key": to_key, "type": typ, "weight": weight},
-        headers=headers, )
+        headers=headers,
+    )
     assert r.status_code == 200, r.text
 
 
@@ -46,12 +47,13 @@ def _plan(
     task_key: str,
     rel_types: List[str],
     headers: dict,
-    max_steps: int = 5, ) -> List[str]:
-        pass
+    max_steps: int = 5,
+) -> List[str]:
     r = client.post(
         "/plan/suggest",
         json={"task_key": task_key, "max_steps": max_steps, "rel_types": rel_types},
-        headers=headers, )
+        headers=headers,
+    )
     assert r.status_code == 200, r.text
     return r.json().get("plan", [])
 
@@ -82,7 +84,8 @@ def run():
         "design solar array layout",
         "choose inverter size",
         "depends_on",
-        headers, )
+        headers,
+    )
     _link(
         client, "estimate battery capacity", "choose inverter size", "related", headers
     )
@@ -94,7 +97,8 @@ def run():
         client,
         query,
         rel_types=["depends_on", "causes", "part_of", "motivates", "related"],
-        headers=headers, )
+        headers=headers,
+    )
     base_hr = _hit_rate(base_plan, goal_docs)
 
     # Persist a recall session (vector + wm) to create query-linked edges
@@ -106,7 +110,8 @@ def run():
             "top_k": 5,
             "retrievers": ["vector", "wm"],
             "persist": True,
-        }, )
+        },
+    )
     assert r.status_code == 200, r.text
 
     # Plan again including 'retrieved_with' to leverage recall-created edges
@@ -114,7 +119,8 @@ def run():
         client,
         query,
         rel_types=["retrieved_with", "depends_on", "related"],
-        headers=headers, )
+        headers=headers,
+    )
     rich_hr = _hit_rate(rich_plan, goal_docs)
 
     print("Plan Bench Results")

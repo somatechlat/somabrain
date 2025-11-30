@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Feedback data model used in tests.
 
 The production code may have a richer implementation, but for the unit
@@ -8,6 +6,7 @@ and a numeric ``score``.  Implement ``__float__`` so a ``Feedback`` instance
 can be used wherever a float utility value is expected.
 """
 
+from __future__ import annotations
 
 
 class Feedback:
@@ -21,10 +20,10 @@ class Feedback:
         Numeric score representing utility or reward.
     """
 
-def __init__(self, event: str, score: float):
+    def __init__(self, event: str, score: float):
         self.event = event
         self.score = float(score)
 
-def __float__(self) -> float:
+    def __float__(self) -> float:
         """Allow ``float(feedback)`` to return the score."""
         return self.score

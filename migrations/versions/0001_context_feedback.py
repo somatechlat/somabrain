@@ -30,7 +30,8 @@ def upgrade() -> None:
         sa.Column("utility", sa.Float(), nullable=False),
         sa.Column("reward", sa.Float(), nullable=True),
         sa.Column("metadata_json", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False), )
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+    )
     op.create_index(
         "ix_feedback_events_session_id", "feedback_events", ["session_id"], unique=False
     )
@@ -41,7 +42,8 @@ def upgrade() -> None:
         sa.Column("tenant_id", sa.String(length=128), nullable=True),
         sa.Column("tokens", sa.Float(), nullable=False),
         sa.Column("model", sa.String(length=128), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False), )
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+    )
     op.create_index(
         "ix_token_usage_session_id", "token_usage", ["session_id"], unique=False
     )

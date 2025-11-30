@@ -1,25 +1,20 @@
-from __future__ import annotations
-from collections import defaultdict, deque
-from dataclasses import dataclass
-from typing import Deque, Dict, Optional
-from . import consolidation
-from common.logging import logger
-from . import runtime as _rt  # type: ignore
-from importlib import import_module
-
 """
 Hippocampal consolidation shim that actually writes to the real memory backend.
 
 This module provides:
-    pass
 - ``ConsolidationConfig``: tunable parameters for buffering and consolidation.
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the
   existing consolidation routines (no stubs, no fallbacks).
 """
 
+from __future__ import annotations
 
+from collections import defaultdict, deque
+from dataclasses import dataclass
+from typing import Deque, Dict, Optional
 
+from . import consolidation
 
 # The runtime module (somabrain/runtime.py) already wires mt_wm/mt_memory
 # singletons. We import lazily to avoid circular imports during app boot.
@@ -39,13 +34,13 @@ class ConsolidationConfig:
 class Hippocampus:
     """Real consolidation buffer that talks to the live memory backend."""
 
-def __init__(
+    def __init__(
         self,
         cfg: ConsolidationConfig,
         *,
         mt_memory=None,
-        mt_wm=None, ) -> None:
-            pass
+        mt_wm=None,
+    ) -> None:
         self.cfg = cfg
         self._buffers: Dict[str, Deque[dict]] = defaultdict(
             lambda: deque(maxlen=cfg.buffer_max)
@@ -53,13 +48,9 @@ def __init__(
         # Lazy bind to runtime singletons if not provided
         if mt_memory is None or mt_wm is None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from . import runtime as _rt  # type: ignore
+            except Exception:
+                from importlib import import_module
 
                 _rt = import_module("somabrain.runtime_module")  # loaded by app
             mt_memory = (
@@ -69,7 +60,7 @@ def __init__(
         self._mt_memory = mt_memory
         self._mt_wm = mt_wm
 
-def add_memory(self, payload: dict, tenant_id: Optional[str] = None) -> None:
+    def add_memory(self, payload: dict, tenant_id: Optional[str] = None) -> None:
         """Store an episodic payload and persist it immediately to memory service."""
         tenant = tenant_id or self.cfg.tenant
         p = dict(payload)
@@ -83,20 +74,15 @@ def add_memory(self, payload: dict, tenant_id: Optional[str] = None) -> None:
         # Mirror into working memory if available (keeps consolidation inputs real)
         if self._mt_wm is not None and hasattr(self._mt_wm, "items"):
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 # WorkingMemory expects vectors; if absent, skip WM admit and rely on buffer
                 vec = p.get("vector")
                 if vec is not None:
                     self._mt_wm.admit(tenant, vec, p)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                # Do not swallow silently; raise so caller can see real failure
                 raise
 
-def consolidate(self, tenant_id: Optional[str] = None) -> dict:
+    def consolidate(self, tenant_id: Optional[str] = None) -> dict:
         """Run NREM+REM style consolidation using real working/long-term memory."""
         tenant = tenant_id or self.cfg.tenant
         if self._mt_memory is None or self._mt_wm is None:
@@ -110,7 +96,8 @@ def consolidate(self, tenant_id: Optional[str] = None) -> dict:
                 self._mt_wm,
                 self._mt_memory,  # type: ignore[arg-type]
                 top_k=self.cfg.nrem_top_k,
-                max_summaries=self.cfg.max_summaries, )
+                max_summaries=self.cfg.max_summaries,
+            )
         if self.cfg.enable_rem:
             stats["rem"] = consolidation.run_rem(
                 tenant,
@@ -118,5 +105,6 @@ def consolidate(self, tenant_id: Optional[str] = None) -> dict:
                 self._mt_wm,
                 self._mt_memory,  # type: ignore[arg-type]
                 recomb_rate=self.cfg.rem_recomb_rate,
-                max_summaries=self.cfg.max_summaries, )
+                max_summaries=self.cfg.max_summaries,
+            )
         return stats

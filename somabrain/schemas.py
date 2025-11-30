@@ -1,13 +1,3 @@
-from __future__ import annotations
-from typing import Any, Dict, List, Optional, Union
-from datetime import datetime
-import numpy as np
-from pydantic import BaseModel, Field, model_validator, ConfigDict
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
-from somabrain.datetime_utils import coerce_to_epoch_seconds
-from common.logging import logger
-from somabrain.numerics import normalize_array
-
 """
 API Schemas Module for SomaBrain.
 
@@ -16,7 +6,6 @@ the SomaBrain system. These schemas provide type validation, serialization, and
 documentation for the REST API endpoints.
 
 Key Features:
-    pass
 - Pydantic-based data validation and serialization
 - Comprehensive API request/response models
 - Memory and cognitive operation schemas
@@ -38,10 +27,17 @@ Classes:
     NeuromodStateModel: Schema for neuromodulator state representation.
 """
 
+from __future__ import annotations
 
+from typing import Any, Dict, List, Optional, Union
 
+from datetime import datetime
 
+import numpy as np
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 
+from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
+from somabrain.datetime_utils import coerce_to_epoch_seconds
 
 
 def normalize_vector(vec_like, dim: int = HRR_DIM):
@@ -50,6 +46,7 @@ def normalize_vector(vec_like, dim: int = HRR_DIM):
     Raises ValueError on invalid inputs.
     """
     # Delegate to the canonical numeric helper for consistent behavior
+    from somabrain.numerics import normalize_array
 
     # Ensure we have a 1-D numpy array, pad or truncate to `dim` as needed
     arr = np.asarray(vec_like, dtype=HRR_DTYPE)
@@ -79,8 +76,8 @@ class Observation(BaseModel):
     tags: List[str] = []
     traceId: str
 
-@model_validator(mode="after")
-def _validate_embeddings(self):
+    @model_validator(mode="after")
+    def _validate_embeddings(self):
         self.embeddings = normalize_vector(self.embeddings, dim=HRR_DIM)
         return self
 
@@ -94,8 +91,8 @@ class Thought(BaseModel):
     citations: List[str] = []
     policyState: Dict[str, Any] = {}
 
-@model_validator(mode="after")
-def _validate_vector(self):
+    @model_validator(mode="after")
+    def _validate_vector(self):
         self.vector = normalize_vector(self.vector, dim=HRR_DIM)
         return self
 
@@ -108,8 +105,8 @@ class Memory(BaseModel):
     payload: Dict[str, Any] = {}
     strength: float = 1.0
 
-@model_validator(mode="after")
-def _validate_memory_vector(self):
+    @model_validator(mode="after")
+    def _validate_memory_vector(self):
         self.vector = normalize_vector(self.vector, dim=HRR_DIM)
         return self
 
@@ -147,20 +144,20 @@ class Feedback(BaseModel):
     reason: str
     metrics: Dict[str, Any] = {}
 
-class Observation(BaseModel):
+    class Observation(BaseModel):
         data: dict
         timestamp: float
 
-class Thought(BaseModel):
+    class Thought(BaseModel):
         query: str
         context: dict = {}
 
-class Memory(BaseModel):
+    class Memory(BaseModel):
         data: dict
         timestamp: float
 
-@classmethod
-def from_observation(cls, obs: Any):
+        @classmethod
+        def from_observation(cls, obs: Any):
             # Accept top-level Observation, nested Observation, or dict-like
             if hasattr(obs, "embeddings"):
                 vec = getattr(obs, "embeddings", [])
@@ -176,7 +173,7 @@ def from_observation(cls, obs: Any):
             normalized = normalize_vector(vec)
             return cls(data={"vector": normalized}, timestamp=ts)
 
-def matches(self, thought: Any) -> bool:
+        def matches(self, thought: Any) -> bool:
             # Accept top-level Thought, nested Thought, or dict-like
             if hasattr(thought, "vector"):
                 query_vec = np.array(getattr(thought, "vector", []), dtype=np.float32)
@@ -184,7 +181,8 @@ def matches(self, thought: Any) -> bool:
                 d = dict(thought) if not isinstance(thought, dict) else thought
                 query_vec = np.array(
                     d.get("vector", d.get("context", {}).get("vector", [])),
-                    dtype=np.float32, )
+                    dtype=np.float32,
+                )
             query_vec = query_vec / (np.linalg.norm(query_vec) + 1e-8)
             mem_vec = np.array(self.data.get("vector", []), dtype=np.float32)
             mem_vec = mem_vec / (np.linalg.norm(mem_vec) + 1e-8)
@@ -279,14 +277,10 @@ class MemoryPayload(BaseModel):
     when: Optional[str] = None
     why: Optional[str] = None
 
-@model_validator(mode="after")
-def _normalize_timestamp(self):
+    @model_validator(mode="after")
+    def _normalize_timestamp(self):
         if self.timestamp is not None:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 self.timestamp = coerce_to_epoch_seconds(self.timestamp)
             except ValueError as exc:
                 raise ValueError(f"Invalid timestamp format: {exc}")
@@ -358,7 +352,6 @@ class RetrievalRequest(BaseModel):
     persist: bool = True
     universe: Optional[str] = None
     # Advanced targeting (optional):
-        pass
     # mode: auto|id|key|coord|vector|wm|graph (auto by default)
     mode: Optional[str] = None
     # Direct lookup hints; when provided, exact matches are boosted to the top
@@ -414,9 +407,11 @@ class PlanSuggestRequest(BaseModel):
 class PlanSuggestResponse(BaseModel):
     plan: List[str]
 
+
 # ---------------------------------------------------------------------------
 # Oak (ROAMDP) specific schemas
 # ---------------------------------------------------------------------------
+
 
 class OakOptionCreateRequest(BaseModel):
     """Request body for creating a new Oak option.
@@ -709,20 +704,14 @@ class PersonalityState(BaseModel):
 
     traits: Dict[str, float] = Field(default_factory=dict)
 
-@model_validator(mode="after")
-def _validate_traits(self):
+    @model_validator(mode="after")
+    def _validate_traits(self):
         validated: Dict[str, float] = {}
         for k, v in (self.traits or {}).items():
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 fv = float(v)
             except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise ValueError(f"Trait '{k}' must be numeric") from exc
+                raise ValueError(f"Trait '{k}' must be numeric") from exc
             if not 0.0 <= fv <= 1.0:
                 raise ValueError(f"Trait '{k}' must be in [0,1]")
             validated[k] = fv

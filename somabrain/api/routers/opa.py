@@ -1,14 +1,3 @@
-from __future__ import annotations
-import logging
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import JSONResponse
-import somabrain.opa.policy_manager as policy_manager
-import somabrain.opa.signature as opa_signature
-from somabrain.auth import require_admin_auth
-from somabrain.opa.client import opa_client
-from somabrain.opa.policy_builder import build_policy
-from common.logging import logger
-
 """OPA policy management API.
 
 Provides endpoints to retrieve the current OPA policy and signature, and to
@@ -16,9 +5,18 @@ update the policy based on a new constitution. Updating triggers a signature
 generation, stores the policy and signature in Redis, and reloads OPA.
 """
 
+from __future__ import annotations
 
+import logging
 
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import JSONResponse
 
+import somabrain.opa.policy_manager as policy_manager
+import somabrain.opa.signature as opa_signature
+from somabrain.auth import require_admin_auth
+from somabrain.opa.client import opa_client
+from somabrain.opa.policy_builder import build_policy
 
 router = APIRouter()
 
@@ -51,7 +49,8 @@ async def update_policy(request: Request):
     if engine is None or not getattr(engine, "get_constitution", None):
         raise HTTPException(
             status_code=500,
-            detail="Constitution engine unavailable; cannot build policy", )
+            detail="Constitution engine unavailable; cannot build policy",
+        )
     constitution = engine.get_constitution()
     if not constitution:
         raise HTTPException(
@@ -75,18 +74,13 @@ async def update_policy(request: Request):
         )
     # Reload OPA (optional – ignore failures in test environments)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         if not opa_client.reload_policy():
             # Log a warning; OPA may be unavailable during unit tests.
             logging.getLogger("somabrain.opa").warning(
                 "OPA reload failed – continuing without error"
             )
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
+        # Defensive: ensure any unexpected error does not abort the request.
         logging.getLogger("somabrain.opa").exception(
             "Exception during OPA reload – ignoring"
         )

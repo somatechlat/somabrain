@@ -1,13 +1,3 @@
-import json
-import time
-import requests
-from typing import Dict
-import numpy as np
-import math
-from collections import defaultdict
-from common.config.settings import settings
-from common.logging import logger
-
 #!/usr/bin/env python3
 """
 Roadmap Compliance Verification Script
@@ -16,18 +6,26 @@ This script verifies that all roadmap features are operational and mathematicall
 It performs end-to-end testing of the mathematical foundations and feature implementations.
 """
 
+import json
+import time
+import requests
+from typing import Dict
+import numpy as np
+import math
+from collections import defaultdict
 
 
 class RoadmapComplianceVerifier:
     """Comprehensive verification of roadmap implementation."""
 
+    from common.config.settings import settings
 
-def __init__(self, base_url: str = None):
+    def __init__(self, base_url: str = None):
         # Use configured API URL if not explicitly provided
         self.base_url = base_url or settings.api_url
         self.metrics_url = f"{settings.api_url}/metrics"
 
-def verify_bhdc_foundation(self) -> bool:
+    def verify_bhdc_foundation(self) -> bool:
         """Verify BHDC mathematical foundations."""
         print("🔬 Verifying BHDC mathematical foundations...")
 
@@ -44,7 +42,7 @@ def verify_bhdc_foundation(self) -> bool:
         print("✅ BHDC foundations verified")
         return True
 
-def verify_fusion_normalization(self) -> bool:
+    def verify_fusion_normalization(self) -> bool:
         """Verify fusion normalization formula implementation."""
         print("⚖️ Verifying fusion normalization...")
 
@@ -75,7 +73,7 @@ def verify_fusion_normalization(self) -> bool:
         print("✅ Fusion normalization verified")
         return True
 
-def verify_calibration_pipeline(self) -> bool:
+    def verify_calibration_pipeline(self) -> bool:
         """Verify calibration pipeline ECE/Brier calculations."""
         print("📊 Verifying calibration pipeline...")
 
@@ -111,7 +109,7 @@ def verify_calibration_pipeline(self) -> bool:
         print("✅ Calibration pipeline verified")
         return True
 
-def verify_tau_annealing(self) -> bool:
+    def verify_tau_annealing(self) -> bool:
         """Verify tau annealing mathematics."""
         print("📉 Verifying tau annealing...")
 
@@ -128,7 +126,7 @@ def verify_tau_annealing(self) -> bool:
         print("✅ Tau annealing verified")
         return True
 
-def verify_hmm_segmentation(self) -> bool:
+    def verify_hmm_segmentation(self) -> bool:
         """Verify 2-state HMM segmentation."""
         print("🔍 Verifying HMM segmentation...")
 
@@ -144,7 +142,7 @@ def verify_hmm_segmentation(self) -> bool:
         print("✅ HMM segmentation verified")
         return True
 
-def verify_consistency_kappa(self) -> bool:
+    def verify_consistency_kappa(self) -> bool:
         """Verify consistency kappa = 1 - JSD formula."""
         print("🔗 Verifying consistency kappa...")
 
@@ -157,7 +155,7 @@ def verify_consistency_kappa(self) -> bool:
             k: 0.5 * (p.get(k, 0) + q.get(k, 0)) for k in set(p.keys()) | set(q.keys())
         }
 
-def kl_divergence(d1, d2):
+        def kl_divergence(d1, d2):
             total = 0.0
             for k in d1.keys():
                 pk = max(d1[k], 1e-12)
@@ -177,7 +175,7 @@ def kl_divergence(d1, d2):
         print("✅ Consistency kappa verified")
         return True
 
-def verify_drift_detection(self) -> bool:
+    def verify_drift_detection(self) -> bool:
         """Verify drift detection entropy calculations."""
         print("🚨 Verifying drift detection...")
 
@@ -196,7 +194,7 @@ def verify_drift_detection(self) -> bool:
         print("✅ Drift detection verified")
         return True
 
-def verify_avro_strict_mode(self) -> bool:
+    def verify_avro_strict_mode(self) -> bool:
         """Verify Avro-only strict mode compliance."""
         print("📋 Verifying Avro strict mode...")
 
@@ -211,7 +209,7 @@ def verify_avro_strict_mode(self) -> bool:
         print("✅ Avro strict mode verified")
         return True
 
-def test_end_to_end_integration(self) -> bool:
+    def test_end_to_end_integration(self) -> bool:
         """Test complete end-to-end integration."""
         print("🔄 Testing end-to-end integration...")
 
@@ -226,10 +224,6 @@ def test_end_to_end_integration(self) -> bool:
 
         for endpoint in endpoints:
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 response = requests.get(f"{self.base_url}{endpoint}")
                 assert response.status_code == 200, f"Endpoint {endpoint} failed"
             except requests.RequestException as e:
@@ -238,7 +232,7 @@ def test_end_to_end_integration(self) -> bool:
         print("✅ End-to-end integration verified")
         return True
 
-def run_full_verification(self) -> Dict[str, bool]:
+    def run_full_verification(self) -> Dict[str, bool]:
         """Run complete roadmap verification."""
         print("🎯 Starting comprehensive roadmap compliance verification...")
         print("=" * 60)
@@ -259,14 +253,10 @@ def run_full_verification(self) -> Dict[str, bool]:
 
         for test_name, test_func in tests.items():
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 results[test_name] = test_func()
             except Exception as e:
-                logger.exception("Exception caught: %s", e)
-                raise
+                print(f"❌ {test_name} failed: {e}")
+                results[test_name] = False
 
         print("=" * 60)
         print("📊 Roadmap Compliance Summary:")
@@ -302,7 +292,8 @@ def main():
                 "compliant": all(results.values()),
             },
             f,
-            indent=2, )
+            indent=2,
+        )
 
     return all(results.values())
 

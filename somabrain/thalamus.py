@@ -1,6 +1,3 @@
-from __future__ import annotations
-from typing import Any, Callable, List, Tuple
-
 """Simplified Thalamus router stub used by :mod:`somabrain.app`.
 
 The production implementation provides a full HTTP routing layer.  For the unit‑test
@@ -11,7 +8,9 @@ docstrings into a single, correct module docstring and places the ``__future__``
 import at the proper location.
 """
 
+from __future__ import annotations
 
+from typing import Any, Callable, List, Tuple
 
 
 class ThalamusRouter:
@@ -21,11 +20,11 @@ class ThalamusRouter:
     the real router without performing any network operations.
     """
 
-def __init__(self) -> None:
+    def __init__(self) -> None:
         # Store tuples of (path, handler) for potential inspection in tests.
         self.routes: List[Tuple[str, Callable[..., Any]]] = []
 
-def register(self, path: str, handler: Callable[..., Any]) -> None:
+    def register(self, path: str, handler: Callable[..., Any]) -> None:
         """Record a route registration.
 
         The real router would configure a FastAPI or Flask endpoint. Here we
@@ -34,5 +33,5 @@ def register(self, path: str, handler: Callable[..., Any]) -> None:
         """
         self.routes.append((path, handler))
 
-def __repr__(self) -> str:  # pragma: no cover
+    def __repr__(self) -> str:  # pragma: no cover
         return f"<ThalamusRouter routes={len(self.routes)}>"

@@ -1,8 +1,3 @@
-from __future__ import annotations
-from typing import Any, Dict, Optional
-from common.config.settings import Settings as Config
-from .memory_client import MemoryClient
-
 """Multi-tenant memory pool for SomaBrain.
 
 The pool hands out one `MemoryClient` instance per namespace. There is no
@@ -10,26 +5,30 @@ local journal replay or stub mirror. All operations are HTTP-first via the
 external memory service.
 """
 
+from __future__ import annotations
 
+from typing import Any, Dict, Optional
 
 # Use the unified Settings singleton for configuration.
+from common.config.settings import Settings as Config
+from typing import Tuple
 
+from .memory_client import MemoryClient, _stable_coord
 
 
 class MultiTenantMemory:
-    pass
-def __init__(
+    def __init__(
         self,
         cfg: Config,
         scorer: Optional[Any] = None,
-        embedder: Optional[Any] = None, ):
-            pass
+        embedder: Optional[Any] = None,
+    ):
         self.cfg = cfg
         self._pool: Dict[str, MemoryClient] = {}
         self._scorer = scorer
         self._embedder = embedder
 
-def for_namespace(self, namespace: str) -> MemoryClient:
+    def for_namespace(self, namespace: str) -> MemoryClient:
         ns = str(namespace)
         if ns not in self._pool:
             # clone config with namespace override

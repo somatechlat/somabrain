@@ -5,7 +5,6 @@ from typing import Any, Dict
 from common.logging import logger
 
 
-
 def _repo_root() -> Path:
     """Resolve repository root strictly.
 

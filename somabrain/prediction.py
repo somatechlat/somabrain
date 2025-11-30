@@ -1,15 +1,3 @@
-from __future__ import annotations
-import asyncio
-import threading
-import time
-from dataclasses import dataclass
-from typing import Optional, Protocol
-import numpy as np
-from common.logging import logger
-from common.config.settings import settings
-from common.config.settings import settings
-import httpx  # type: ignore
-
 """
 Prediction Module for SomaBrain.
 
@@ -18,7 +6,6 @@ SomaBrain system. It includes multiple predictor implementations ranging from si
 cosine similarity to sophisticated anomaly detection and LLM-based prediction.
 
 Key Features:
-    pass
 - Multiple predictor implementations (budgeted, Mahalanobis, LLM)
 - Error calculation using cosine similarity and statistical methods
 - Time-bounded prediction with timeout handling
@@ -26,14 +13,12 @@ Key Features:
 - Online learning for statistical predictors
 
 Predictor Types:
-    pass
 - SlowPredictor: Test predictor with configurable latency
 - BudgetedPredictor: Time-bounded wrapper for any predictor
 - MahalanobisPredictor: Statistical anomaly detection using online mean/variance
 - LLMPredictor: LLM-based prediction with HTTP endpoint integration
 
 Error Metrics:
-    pass
 - Cosine error: 1 - cosine_similarity (bounded [0,1])
 - Mahalanobis distance: Statistical distance normalized to [0,1]
 - Combined error: Weighted blend of multiple error metrics
@@ -47,8 +32,15 @@ Classes:
     LLMPredictor: LLM-based predictor with HTTP integration.
 """
 
+from __future__ import annotations
 
+import asyncio
+import threading
+import time
+from dataclasses import dataclass
+from typing import Optional, Protocol
 
+import numpy as np
 
 
 @dataclass
@@ -79,7 +71,7 @@ class BasePredictor(Protocol):
     that takes expected and actual vectors and returns a PredictionResult.
     """
 
-def predict_and_compare(
+    def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
@@ -132,18 +124,19 @@ class SlowPredictor:
         delay_ms (int): Delay in milliseconds before making prediction.
     """
 
-def __init__(self, delay_ms: int | None = None):
+    def __init__(self, delay_ms: int | None = None):
         """
         Initialize slow predictor with delay.
 
         Args:
             delay_ms (int): Delay in milliseconds. Default read from settings.
         """
+        from common.config.settings import settings
 
         default_delay = getattr(settings, "slow_predictor_delay_ms", 1000)
         self.delay_ms = int(default_delay if delay_ms is None else delay_ms)
 
-def predict_and_compare(
+    def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
@@ -179,7 +172,7 @@ class BudgetedPredictor:
         timeout_ms (int): Timeout in milliseconds.
     """
 
-def __init__(self, inner: BasePredictor, timeout_ms: int | None = None):
+    def __init__(self, inner: BasePredictor, timeout_ms: int | None = None):
         """
         Initialize budgeted predictor.
 
@@ -187,12 +180,13 @@ def __init__(self, inner: BasePredictor, timeout_ms: int | None = None):
             inner (BasePredictor): Predictor to wrap with timeout.
             timeout_ms (int): Timeout in milliseconds. Default: 250
         """
+        from common.config.settings import settings
 
         self.inner = inner
         default_timeout = getattr(settings, "predictor_timeout_ms", 1000)
         self.timeout_ms = int(default_timeout if timeout_ms is None else timeout_ms)
 
-def predict_and_compare(
+    def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
@@ -215,13 +209,9 @@ def predict_and_compare(
         result: Optional[PredictionResult] = None
         exc: Optional[BaseException] = None
 
-def _run():
+        def _run():
             nonlocal result, exc
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 result = self.inner.predict_and_compare(expected_vec, actual_vec)
             except BaseException as e:
                 exc = e
@@ -256,15 +246,12 @@ def _run():
         """
         loop = asyncio.get_event_loop()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             return await asyncio.wait_for(
                 loop.run_in_executor(
                     None, self.predict_and_compare, expected_vec, actual_vec
                 ),
-                timeout=self.timeout_ms / 1000.0, )
+                timeout=self.timeout_ms / 1000.0,
+            )
         except asyncio.TimeoutError as e:
             raise TimeoutError("predictor timed out") from e
 
@@ -286,7 +273,7 @@ class MahalanobisPredictor:
         _var (Optional[np.ndarray]): Online variance vector (diagonal).
     """
 
-def __init__(self, alpha: float = 0.01):
+    def __init__(self, alpha: float = 0.01):
         """
         Initialize Mahalanobis predictor.
 
@@ -297,7 +284,7 @@ def __init__(self, alpha: float = 0.01):
         self._mean: Optional[np.ndarray] = None
         self._var: Optional[np.ndarray] = None  # diagonal variance
 
-def _update_stats(self, x: np.ndarray) -> None:
+    def _update_stats(self, x: np.ndarray) -> None:
         """
         Update online mean and variance statistics.
 
@@ -321,7 +308,7 @@ def _update_stats(self, x: np.ndarray) -> None:
         self._mean = mu_new.astype("float32")
         self._var = np.maximum(var_new.astype("float32"), 1e-6)
 
-def _mahal_bounded(self, x: np.ndarray) -> float:
+    def _mahal_bounded(self, x: np.ndarray) -> float:
         """
         Compute bounded Mahalanobis distance.
 
@@ -342,7 +329,7 @@ def _mahal_bounded(self, x: np.ndarray) -> float:
         # map to [0,1] smoothly; saturates for large distances
         return float(d2 / (d2 + dim))
 
-def predict_and_compare(
+    def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
@@ -385,12 +372,12 @@ class LLMPredictor:
         timeout_ms (int): Request timeout in milliseconds.
     """
 
-def __init__(
+    def __init__(
         self,
         endpoint: Optional[str] = None,
         token: Optional[str] = None,
-        timeout_ms: int = 250, ):
-            pass
+        timeout_ms: int = 250,
+    ):
         """
         Initialize LLM predictor.
 
@@ -403,7 +390,7 @@ def __init__(
         self.token = token
         self.timeout_ms = int(timeout_ms)
 
-def predict_and_compare(
+    def predict_and_compare(
         self, expected_vec: np.ndarray, actual_vec: np.ndarray
     ) -> PredictionResult:
         """
@@ -425,10 +412,7 @@ def predict_and_compare(
                 predicted_vec=expected_vec, actual_vec=actual_vec, error=base_err
             )
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+            import httpx  # type: ignore
 
             headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
             with httpx.Client(timeout=self.timeout_ms / 1000.0) as client:
@@ -445,9 +429,7 @@ def predict_and_compare(
                 return PredictionResult(
                     predicted_vec=expected_vec, actual_vec=actual_vec, error=err
                 )
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return PredictionResult(
                 predicted_vec=expected_vec, actual_vec=actual_vec, error=base_err
             )

@@ -1,6 +1,3 @@
-from .version import PACKAGE_VERSION as __version__
-from common.logging import logger
-
 """
 SomaBrain: Brain-Inspired Cognitive AI System
 =============================================
@@ -10,7 +7,6 @@ It implements advanced memory systems, neural processing, and cognitive function
 modeled after biological brain structures and processes.
 
 This package provides the core functionality for:
-    pass
 
 - Multi-modal memory systems (episodic, semantic, working memory)
 - Brain-inspired neural processing (thalamus, amygdala, prefrontal cortex)
@@ -24,13 +20,13 @@ The system is designed to provide human-like cognitive capabilities to AI agents
 with particular emphasis on memory, learning, and adaptive behavior.
 
 Usage:
-    pass
-from somabrain import *
+    from somabrain import *
     # Access version information
     print(__version__)
 
 See the documentation for detailed API usage and configuration options.
 """
 
+from .version import PACKAGE_VERSION as __version__
 
 __all__ = ["__version__"]

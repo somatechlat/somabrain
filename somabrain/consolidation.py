@@ -1,17 +1,3 @@
-from __future__ import annotations
-import argparse
-import copy
-import random
-from typing import List, Tuple
-import time as _time
-from .config import Config
-from .memory_client import MemoryClient
-from .memory_pool import MultiTenantMemory
-from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH
-from .mt_wm import MultiTenantWM
-from .reflect import top_keywords
-from common.logging import logger
-
 """
 Sleep-Inspired Memory Consolidation Module for SomaBrain
 
@@ -21,7 +7,6 @@ short-term memories are transformed into long-term memories through neural repla
 and reorganization.
 
 Key Features:
-    pass
 - NREM (Non-Rapid Eye Movement) consolidation: Summarization and reinforcement of episodic memories
 - REM (Rapid Eye Movement) consolidation: Recombination of memories into novel semantic associations
 - Memory replay and strengthening mechanisms
@@ -30,7 +15,6 @@ Key Features:
 - Optional memory decay and pruning
 
 Biological Inspiration:
-    pass
 - NREM sleep: Slow-wave sleep associated with memory replay and synaptic consolidation
 - REM sleep: Associated with emotional processing and creative recombination of memories
 - Hippocampal-neocortical dialogue: Transfer of memories from hippocampus to neocortex
@@ -43,15 +27,26 @@ Functions:
 
 Usage:
     The consolidation system runs periodically (like sleep cycles) to:
-        pass
     1. Extract recent episodic memories from working memory
     2. Generate semantic summaries and store them
     3. Strengthen connections between related memories
     4. Optionally decay old or irrelevant memories
 """
 
+from __future__ import annotations
 
+import argparse
+import copy
+import random
+from typing import List, Tuple
+import time as _time
 
+from .config import Config
+from .memory_client import MemoryClient
+from .memory_pool import MultiTenantMemory
+from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH
+from .mt_wm import MultiTenantWM
+from .reflect import top_keywords
 
 
 def _episodics_from_wm(
@@ -81,8 +76,8 @@ def run_nrem(
     mtwm: MultiTenantWM,
     mtmem: MultiTenantMemory,
     top_k: int = 16,
-    max_summaries: int = 3, ) -> dict:
-        pass
+    max_summaries: int = 3,
+) -> dict:
     mem = mtmem.for_namespace(f"{cfg.namespace}:{tenant_id}")
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if not episodics:
@@ -118,18 +113,13 @@ def run_nrem(
             reinforced += 1
     # Decay/prune weak links to prevent unbounded growth
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         pruned = 0
         if hasattr(mem, "decay_links"):
             pruned = mem.decay_links(
                 factor=float(getattr(cfg, "link_decay_factor", 0.98) or 0.98),
-                min_weight=float(getattr(cfg, "link_min_weight", 0.05) or 0.05), )
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+                min_weight=float(getattr(cfg, "link_min_weight", 0.05) or 0.05),
+            )
+    except Exception:
         pruned = 0
     return {"created": 1, "reinforced": reinforced, "pruned": pruned}
 
@@ -140,8 +130,8 @@ def run_rem(
     mtwm: MultiTenantWM,
     mtmem: MultiTenantMemory,
     recomb_rate: float = 0.2,
-    max_summaries: int = 2, ) -> dict:
-        pass
+    max_summaries: int = 2,
+) -> dict:
     mem = mtmem.for_namespace(f"{cfg.namespace}:{tenant_id}")
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if len(episodics) < 2:
@@ -187,7 +177,8 @@ def main():
             mtwm,
             mtmem,
             top_k=cfg.nrem_batch_size,
-            max_summaries=cfg.max_summaries_per_cycle, )
+            max_summaries=cfg.max_summaries_per_cycle,
+        )
         print("NREM:", stats)
     if args.rem:
         stats = run_rem(
@@ -196,7 +187,8 @@ def main():
             mtwm,
             mtmem,
             recomb_rate=cfg.rem_recomb_rate,
-            max_summaries=cfg.max_summaries_per_cycle, )
+            max_summaries=cfg.max_summaries_per_cycle,
+        )
         print("REM:", stats)
 
 

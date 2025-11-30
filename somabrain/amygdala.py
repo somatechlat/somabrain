@@ -1,21 +1,17 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Optional
-import numpy as np
-from .neuromodulators import NeuromodState
-from .salience import FDSalienceSketch
-from common.logging import logger
-from . import metrics as M
-import math
-
 """Amygdala-like salience: compute novelty/error-driven gates.
 
 Scores inputs with neuromod modulation and emits store/act gates (hard/soft).
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Optional
 
+import numpy as np
 
+from .neuromodulators import NeuromodState
+from .salience import FDSalienceSketch
 
 
 @dataclass
@@ -67,11 +63,11 @@ class AmygdalaSalience:
     Provides hard or soft gating for store and act decisions.
     """
 
-def __init__(
+    def __init__(
         self,
         cfg: SalienceConfig,
-        fd_backend: Optional[FDSalienceSketch] = None, ):
-            pass
+        fd_backend: Optional[FDSalienceSketch] = None,
+    ):
         """
         Initialize the AmygdalaSalience component.
 
@@ -95,13 +91,13 @@ def __init__(
         self._last_fd_residual = 0.0
         self._last_fd_capture = 1.0
 
-def score(
+    def score(
         self,
         novelty: float,
         pred_error: float,
         neuromod: NeuromodState,
-        wm_vector: Optional[np.ndarray] = None, ) -> float:
-            pass
+        wm_vector: Optional[np.ndarray] = None,
+    ) -> float:
         """
         Compute salience score from novelty and prediction error.
 
@@ -139,15 +135,15 @@ def score(
             if capture_ratio < self.cfg.fd_energy_floor:
                 fd_boost += self.cfg.w_fd * (self.cfg.fd_energy_floor - capture_ratio)
             try:  # metrics are optional at import time
+                from . import metrics as M
 
                 M.FD_ENERGY_CAPTURE.set(capture_ratio)
                 M.FD_RESIDUAL.observe(residual_ratio)
                 stats = self._fd.stats()
                 M.FD_TRACE_ERROR.set(stats["trace_norm_error"])
                 M.FD_PSD_INVARIANT.set(1.0 if stats["psd_ok"] else 0.0)
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
+                pass
         else:
             self._last_fd_residual = 0.0
             self._last_fd_capture = 1.0
@@ -157,7 +153,7 @@ def score(
         # bound
         return max(0.0, min(1.0, s))
 
-def gates(self, s: float, neuromod: NeuromodState) -> tuple[bool, bool]:
+    def gates(self, s: float, neuromod: NeuromodState) -> tuple[bool, bool]:
         """
         Compute store and act gates from salience score.
 
@@ -185,15 +181,15 @@ def gates(self, s: float, neuromod: NeuromodState) -> tuple[bool, bool]:
         self._last_act = do_act
         return do_store, do_act
 
-@property
-def last_fd_residual(self) -> float:
+    @property
+    def last_fd_residual(self) -> float:
         return float(self._last_fd_residual)
 
-@property
-def last_fd_capture(self) -> float:
+    @property
+    def last_fd_capture(self) -> float:
         return float(self._last_fd_capture)
 
-def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
+    def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
         """
         Compute soft gate probabilities via sigmoid around thresholds.
 
@@ -214,8 +210,9 @@ def gate_probs(self, s: float, neuromod: NeuromodState) -> tuple[float, float]:
             return (1.0 if s >= th_store else 0.0, 1.0 if s >= th_act else 0.0)
         T = max(1e-4, float(self.cfg.soft_temperature))
 
-def _sig(x: float) -> float:
+        def _sig(x: float) -> float:
             # numerically stable sigmoid
+            import math
 
             x = max(-20.0, min(20.0, x))
             return 1.0 / (1.0 + math.exp(-x))
@@ -224,7 +221,7 @@ def _sig(x: float) -> float:
         pa = _sig((s - th_act) / T)
         return ps, pa
 
-def _thresholds(self, neuromod: NeuromodState) -> tuple[float, float]:
+    def _thresholds(self, neuromod: NeuromodState) -> tuple[float, float]:
         # NE raises thresholds under urgency
         th_store = self.cfg.threshold_store + float(neuromod.noradrenaline)
         th_act = self.cfg.threshold_act + float(neuromod.noradrenaline)

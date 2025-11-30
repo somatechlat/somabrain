@@ -1,16 +1,14 @@
-import glob
-import json
-import os
-from datetime import datetime
-import httpx
-from common.logging import logger
-
 """Evaluate retrieval precision@K using the latest seed manifest.
 
 Produces `artifacts/benchmarks/retrieval_precision_{timestamp}.json` with precision@k and recall@k.
 """
 
+import glob
+import json
+import os
+from datetime import datetime
 
+import httpx
 
 
 def load_manifest():
@@ -29,10 +27,6 @@ def eval_precision_recall(base_url: str, items, k=5):
         query = f"Who wrote Book{it['i']}?"
         body = {"query": query, "top_k": k}
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             r = client.post(url, json=body)
             if r.status_code != 200:
                 results.append({"i": it["i"], "status": r.status_code})
@@ -47,8 +41,7 @@ def eval_precision_recall(base_url: str, items, k=5):
                 {"i": it["i"], "precision@k": found_k / max(1, k), "found": found_k}
             )
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            results.append({"i": it["i"], "status": "error", "error": str(e)})
     return results
 
 

@@ -27,7 +27,6 @@ dramatically, allowing ``ruff`` and ``black`` to run cleanly.
 """
 
 
-
 ROOT = pathlib.Path(__file__).parent
 
 # ---------------------------------------------------------------------
@@ -69,13 +68,14 @@ def add_generic_except(lines: List[str]) -> List[str]:
                 out.append(line)
                 out.append(f"{indent}    pass")
                 out.append(f"{indent}except Exception as exc:")
-                out.append(f"{indent}    logger.exception(\"Exception caught: %s\", exc)")
+                out.append(f'{indent}    logger.exception("Exception caught: %s", exc)')
                 out.append(f"{indent}    raise")
                 i += 1
                 continue
         out.append(line)
         i += 1
     return out
+
 
 # ---------------------------------------------------------------------
 # 2. Fix broken multiline function signatures
@@ -100,6 +100,7 @@ def fix_broken_signature(lines: List[str]) -> List[str]:
         out.append(line)
     return out
 
+
 # ---------------------------------------------------------------------
 # 3. Remove duplicate logger imports / definitions
 # ---------------------------------------------------------------------
@@ -108,8 +109,7 @@ LOGGER_DEF_RE = re.compile(r"^\s*logger\s*=\s*logging\.getLogger\([^\)]+\)\s*$")
 
 
 def clean_logger_defs(lines: List[str]) -> List[str]:
-    """Keep a single import or definition of ``logger`` per module.
-    """
+    """Keep a single import or definition of ``logger`` per module."""
     out: List[str] = []
     logger_seen = False
     for line in lines:
@@ -121,6 +121,7 @@ def clean_logger_defs(lines: List[str]) -> List[str]:
             continue
         out.append(line)
     return out
+
 
 # ---------------------------------------------------------------------
 def process_file(path: pathlib.Path) -> bool:

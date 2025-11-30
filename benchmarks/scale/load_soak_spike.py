@@ -1,16 +1,14 @@
-import time
-import threading
-import statistics
-from fastapi.testclient import TestClient
-from somabrain.app import app
-from common.logging import logger
-
 """
 Load, Soak, and Spike Test Harness for SomaBrain (S9)
 -----------------------------------------------------
 Simulates different traffic patterns to stress the system and record bottlenecks.
 """
 
+import time
+import threading
+import statistics
+from fastapi.testclient import TestClient
+from somabrain.app import app
 
 ENDPOINT = "/recall"
 REQUEST_BODY = {"query": "benchmark", "top_k": 1}
@@ -26,14 +24,10 @@ def run_pattern(pattern, duration_s, concurrency, rps=None):
     client = TestClient(app)
     stop_time = time.time() + duration_s
 
-def worker():
+    def worker():
         while time.time() < stop_time:
             t0 = time.time()
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 r = client.post(ENDPOINT, json=REQUEST_BODY, headers=HEADERS)
                 latency = time.time() - t0
                 with lock:
@@ -41,9 +35,7 @@ def worker():
                 if r.status_code != 200:
                     with lock:
                         errors += 1
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+            except Exception:
                 with lock:
                     errors += 1
             if rps:

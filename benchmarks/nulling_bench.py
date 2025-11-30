@@ -1,28 +1,25 @@
-import argparse
-import json
-from pathlib import Path
-import numpy as np
-from somabrain.numerics import irfft_norm, rfft_norm
-from somabrain.quantum import HRRConfig, QuantumLayer
-from common.logging import logger
-import matplotlib.pyplot as plt
-
 """Nulling bench: zero a fraction of frequency bins in role vector and measure
 reconstruction quality for exact, robust, and wiener unbinds.
 
 Produces JSON results and a PNG plot (if matplotlib is available).
 """
 
+import argparse
+import json
+from pathlib import Path
 
+import numpy as np
 
+from somabrain.numerics import irfft_norm, rfft_norm
+from somabrain.quantum import HRRConfig, QuantumLayer
 
 
 def run_bench(
     out_path: Path,
     D_list=(512, 1024),
     null_fracs=(0.0, 0.1, 0.2, 0.3, 0.5),
-    seeds=(0, 1, 2), ):
-        pass
+    seeds=(0, 1, 2),
+):
     results = {
         "meta": {
             "D_list": list(D_list),
@@ -52,10 +49,10 @@ def run_bench(
                 est_robust = q.unbind(bound, b_null)
                 est_wiener = q.unbind_wiener(bound, b_null)
 
-def cosine(x, y):
+                def cosine(x, y):
                     return float(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
 
-def mse(x, y):
+                def mse(x, y):
                     return float(np.mean((x - y) ** 2))
 
                 entry = {
@@ -76,10 +73,7 @@ def mse(x, y):
 
     # Try to plot if matplotlib is available
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        import matplotlib.pyplot as plt
 
         # aggregate mean cosine per null_frac and method for each D
         for D in D_list:
@@ -109,10 +103,8 @@ def mse(x, y):
             out_png = out_path.parent / f"nulling_D{D}.png"
             plt.savefig(out_png, dpi=150)
             plt.close()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-    raise
+    except Exception:
+        pass
 
 
 def main():

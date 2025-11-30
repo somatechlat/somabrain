@@ -1,10 +1,3 @@
-from __future__ import annotations
-import argparse
-import json
-import sys
-from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
-
 #!/usr/bin/env python3
 """CLI to assert SomaBrain governance upgrades improve core metrics.
 
@@ -13,7 +6,6 @@ and enforces non-regression on accuracy and latency figures. It is intentionally
 simple so it can run in CI without additional dependencies.
 
 Expected JSON shape::
-    pass
 
     {
         "metrics": {
@@ -25,14 +17,12 @@ Expected JSON shape::
 
 Keys can appear at any nesting level; the loader searches recursively for the
 following metric aliases:
-    pass
 
 - top-1 accuracy: ``top1_accuracy``, ``top1``, ``recall_top1``
 - cosine margin: ``cosine_margin``, ``margin``
 - recall latency: ``recall_latency_p95``, ``latency_p95``, ``recall_latency``
 
 Usage::
-    pass
 
     python scripts/prove_enhancement.py \
         --baseline benchmarks/results_baseline.json \
@@ -43,7 +33,13 @@ exceed the baseline on accuracy/margin, or when latency regresses beyond the
 configured tolerance.
 """
 
+from __future__ import annotations
 
+import argparse
+import json
+import sys
+from pathlib import Path
+from typing import Any, Dict, Iterable, Optional
 
 TOP1_KEYS = ("top1_accuracy", "top1", "recall_top1")
 MARGIN_KEYS = ("cosine_margin", "margin", "margin_mean")
@@ -52,10 +48,6 @@ LATENCY_KEYS = ("recall_latency_p95", "latency_p95", "recall_latency")
 
 def _load_json(path: Path) -> Dict[str, Any]:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         with path.open("r", encoding="utf-8") as fh:
             return json.load(fh)
     except FileNotFoundError as exc:  # pragma: no cover - CLI guard
@@ -105,17 +97,20 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--accuracy-tolerance",
         type=float,
         default=0.0,
-        help="allowed drop in top-1 accuracy before failing (default: 0)", )
+        help="allowed drop in top-1 accuracy before failing (default: 0)",
+    )
     parser.add_argument(
         "--margin-tolerance",
         type=float,
         default=0.0,
-        help="allowed drop in cosine margin before failing (default: 0)", )
+        help="allowed drop in cosine margin before failing (default: 0)",
+    )
     parser.add_argument(
         "--latency-regression",
         type=float,
         default=0.0,
-        help="allowed fractional increase in p95 recall latency (0.05 => +5%)", )
+        help="allowed fractional increase in p95 recall latency (0.05 => +5%)",
+    )
     return parser.parse_args(argv)
 
 

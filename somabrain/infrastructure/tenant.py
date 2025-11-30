@@ -1,6 +1,3 @@
-from __future__ import annotations
-from typing import Optional
-
 """somabrain.infrastructure.tenant
 ===================================
 
@@ -17,7 +14,9 @@ early without side effects.  It is also fully type‑annotated and includes a
 fallback for empty or ``None`` values.
 """
 
+from __future__ import annotations
 
+from typing import Optional
 
 __all__ = ["tenant_label", "resolve_namespace"]
 
@@ -26,7 +25,6 @@ def tenant_label(namespace: Optional[str]) -> str:
     """Return a stable, human‑readable tenant identifier.
 
     The function follows the historic behaviour used in ``MemoryService``:
-        pass
 
     * If *namespace* is falsy, ``"default"`` is returned.
     * If the string contains a colon (`:`) the suffix after the last colon

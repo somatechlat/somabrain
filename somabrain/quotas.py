@@ -1,12 +1,3 @@
-from __future__ import annotations
-import time
-from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Tuple, List, Optional
-from .tenant_manager import get_tenant_manager
-import asyncio
-from common.logging import logger
-
 """
 Quota Management Module for SomaBrain
 
@@ -15,7 +6,6 @@ resource allocation. It provides daily write limits with automatic reset and
 remaining quota tracking, now integrated with centralized tenant management.
 
 Key Features:
-    pass
 - Daily write quotas per tenant
 - Automatic quota reset at day boundaries
 - In-memory quota tracking (not persistent)
@@ -26,7 +16,6 @@ Key Features:
 - Dynamic tenant-specific quota limits
 
 Quota Types:
-    pass
 - Daily writes: Maximum number of write operations per tenant per day
 - Automatic reset: Quotas reset at midnight UTC
 - Tenant-specific limits: Configurable per-tenant quotas
@@ -40,8 +29,15 @@ Functions:
     None (class-based implementation)
 """
 
+from __future__ import annotations
 
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone, timedelta
+from typing import Dict, Tuple, List, Optional
 
+from .tenant_manager import get_tenant_manager
+import asyncio
 
 
 @dataclass
@@ -68,19 +64,19 @@ class QuotaManager:
     Now integrates with TenantManager for dynamic tenant-specific quota management.
     """
 
-def __init__(self, cfg: QuotaConfig):
+    def __init__(self, cfg: QuotaConfig):
         self.cfg = cfg
         # key -> (date_key, count)
         self._counts: Dict[str, Tuple[int, int]] = {}
         self._tenant_manager = None  # Lazy initialization
 
-@staticmethod
-def _day_key(ts: float | None = None) -> int:
+    @staticmethod
+    def _day_key(ts: float | None = None) -> int:
         if ts is None:
             ts = time.time()
         return int(ts // 86400)
 
-def _get_tenant_manager(self):
+    def _get_tenant_manager(self):
         """Synchronously obtain the tenant manager instance.
 
         The original implementation was async, but the test suite expects
@@ -90,10 +86,6 @@ def _get_tenant_manager(self):
         if self._tenant_manager is None:
             # get_tenant_manager returns a coroutine; run it synchronously.
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
@@ -101,34 +93,25 @@ def _get_tenant_manager(self):
             self._tenant_manager = loop.run_until_complete(get_tenant_manager())
         return self._tenant_manager
 
-def _is_exempt(self, tenant_id: str) -> bool:
+    def _is_exempt(self, tenant_id: str) -> bool:
         """Return True if the tenant should bypass quota checks.
 
+        Uses the (now synchronous) tenant manager. Falls back to legacy
         behaviour for exempt tenants such as ``AGENT_ZERO``.
         """
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             tenant_manager = self._get_tenant_manager()
             # ``is_exempt_tenant`` is async; run it synchronously.
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
             return loop.run_until_complete(tenant_manager.is_exempt_tenant(tenant_id))
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return "agent_zero" in tenant_id.lower()
 
-def allow_write(self, tenant_id: str, n: int = 1) -> bool:
+    def allow_write(self, tenant_id: str, n: int = 1) -> bool:
         if self._is_exempt(tenant_id):
             return True
         tenant_limit = self._get_tenant_quota_limit(tenant_id)
@@ -143,7 +126,7 @@ def allow_write(self, tenant_id: str, n: int = 1) -> bool:
         self._counts[tenant_id] = (cur_day, cnt + n)
         return True
 
-def remaining(self, tenant_id: str) -> int:
+    def remaining(self, tenant_id: str) -> int:
         if self._is_exempt(tenant_id):
             return float("inf")
         tenant_limit = self._get_tenant_quota_limit(tenant_id)
@@ -153,13 +136,13 @@ def remaining(self, tenant_id: str) -> int:
             cnt = 0
         return max(0, tenant_limit - cnt)
 
-def tenant_exists(self, tenant_id: str) -> bool:
+    def tenant_exists(self, tenant_id: str) -> bool:
         """Check if a tenant has any quota records or is exempt."""
         if self._is_exempt(tenant_id):
             return True
         return tenant_id in self._counts
 
-def get_quota_info(self, tenant_id: str) -> QuotaInfo:
+    def get_quota_info(self, tenant_id: str) -> QuotaInfo:
         """Get detailed quota information for a tenant."""
         is_exempt = self._is_exempt(tenant_id)
         tenant_limit = self._get_tenant_quota_limit(tenant_id)
@@ -179,16 +162,17 @@ def get_quota_info(self, tenant_id: str) -> QuotaInfo:
             remaining=float("inf") if is_exempt else max(0, tenant_limit - cnt),
             used_today=cnt,
             reset_at=reset_time,
-            is_exempt=is_exempt, )
+            is_exempt=is_exempt,
+        )
 
-def get_all_quotas(self) -> List[QuotaInfo]:
+    def get_all_quotas(self) -> List[QuotaInfo]:
         """Get quota information for all tenants."""
         quotas: List[QuotaInfo] = []
         for tenant_id in list(self._counts.keys()):
             quotas.append(self.get_quota_info(tenant_id))
         return quotas
 
-def reset_quota(self, tenant_id: str) -> bool:
+    def reset_quota(self, tenant_id: str) -> bool:
         tenant_exists = self.tenant_exists(tenant_id)
         is_exempt = self._is_exempt(tenant_id)
         if not tenant_exists and not is_exempt:
@@ -197,7 +181,7 @@ def reset_quota(self, tenant_id: str) -> bool:
         self._counts[tenant_id] = (day, 0)
         return True
 
-def adjust_quota_limit(self, tenant_id: str, new_limit: int) -> bool:
+    def adjust_quota_limit(self, tenant_id: str, new_limit: int) -> bool:
         """Adjust the daily quota limit.
 
         For the purposes of the unit tests we treat quota limits as a global
@@ -211,19 +195,11 @@ def adjust_quota_limit(self, tenant_id: str, new_limit: int) -> bool:
         self.cfg.daily_writes = new_limit
         return True
 
-def _get_tenant_quota_limit(self, tenant_id: str) -> int:
+    def _get_tenant_quota_limit(self, tenant_id: str) -> int:
         """Get tenant-specific quota limit, falling back to global config."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             tenant_manager = self._get_tenant_manager()
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
                 loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
@@ -232,7 +208,5 @@ def _get_tenant_quota_limit(self, tenant_id: str) -> int:
                 tenant_manager.get_tenant_quota_config(tenant_id)
             )
             return quota_config.get("daily_quota", self.cfg.daily_writes)
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
             return self.cfg.daily_writes

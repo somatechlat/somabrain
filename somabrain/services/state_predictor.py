@@ -1,17 +1,3 @@
-from __future__ import annotations
-import asyncio
-import json
-import time
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
-import numpy as np
-from somabrain.prediction import MahalanobisPredictor, PredictionResult
-from somabrain.common.kafka import encode, make_producer
-from common.config.settings import settings
-from common.logging import logger
-from confluent_kafka import Consumer as CKConsumer, KafkaException
-from common.config.settings import settings
-
 """State Predictor Service for SomaBrain.
 
 This service implements the state prediction thread as specified in Phase 1 of the
@@ -19,7 +5,6 @@ AROMADP roadmap. It publishes PredictorUpdate events to the cog.state.updates to
 with error metrics and performance data.
 
 The service:
-    pass
 1. Consumes state vectors from the cognitive processing pipeline
 2. Makes predictions using the configured predictor backend
 3. Computes error metrics by comparing predictions with actual vectors
@@ -27,27 +12,33 @@ The service:
 5. Maintains strict fail-fast behavior with no soft alternatives
 """
 
+from __future__ import annotations
 
+import asyncio
+import json
+import logging
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
+import numpy as np
 
+from somabrain.prediction import MahalanobisPredictor, PredictionResult
+from somabrain.common.kafka import encode, make_producer
+from common.config.settings import settings
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from confluent_kafka import Consumer as CKConsumer, KafkaException
 except ImportError as e:
     raise RuntimeError(f"State predictor requires confluent-kafka: {e}")
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
+    from common.config.settings import settings
 except ImportError:
     settings = None
 
 # Logging setup
+logger = logging.getLogger("somabrain.services.state_predictor")
 
 # Kafka configuration (prod-like defaults, override via env/settings)
 SCHEMA_NAME = "predictor_update"
@@ -59,7 +50,7 @@ PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 class StatePredictorService:
     """State prediction service with strict error handling."""
 
-def __init__(self):
+    def __init__(self):
         """Initialize the state predictor service."""
         self.predictor = MahalanobisPredictor()
         self.producer = make_producer()
@@ -67,7 +58,7 @@ def __init__(self):
         # Tenant identifier from centralized Settings (default defined there).
         self.tenant_id = getattr(settings, "tenant_id", "default")
 
-def _create_consumer(self) -> CKConsumer:
+    def _create_consumer(self) -> CKConsumer:
         """Create Kafka consumer with strict configuration."""
         # Use centralized Settings for Kafka bootstrap servers.
         bs = getattr(settings, "kafka_bootstrap_servers", None)
@@ -83,27 +74,17 @@ def _create_consumer(self) -> CKConsumer:
         }
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             consumer = CKConsumer(config)
             consumer.subscribe([CONSUME_TOPIC])
             return consumer
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
-    raise RuntimeError(f"Failed to create Kafka consumer: {e}")
+            raise RuntimeError(f"Failed to create Kafka consumer: {e}")
 
-def _extract_state_vector(
+    def _extract_state_vector(
         self, message_data: Dict[str, Any]
     ) -> Optional[np.ndarray]:
         """Extract state vector from global frame message."""
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # Assuming global frame contains a 'state_vector' field
             vector_data = message_data.get("state_vector")
             if vector_data is None:
@@ -118,15 +99,15 @@ def _extract_state_vector(
 
             return None
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Failed to extract state vector: {e}")
+            return None
 
-def _create_predictor_update(
+    def _create_predictor_update(
         self,
         prediction_result: PredictionResult,
         latency_ms: float,
-        domain: str = "state", ) -> Dict[str, Any]:
-            pass
+        domain: str = "state",
+    ) -> Dict[str, Any]:
         """Create PredictorUpdate event from prediction result."""
         err = float(prediction_result.error)
         conf = float(np.exp(-PREDICTOR_ALPHA * max(0.0, err)))
@@ -152,18 +133,14 @@ def _create_predictor_update(
         # Make prediction with timing
         start_time = time.perf_counter()
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             # For state prediction, we predict the next state based on current state
             # Using the same vector as both expected and actual for error calculation
             prediction_result = self.predictor.predict_and_compare(
                 expected_vec=state_vector, actual_vec=state_vector
             )
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Prediction failed: {e}")
+            raise RuntimeError(f"State prediction failed: {e}")
 
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
@@ -174,10 +151,6 @@ def _create_predictor_update(
         )
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             encoded_message = encode(update_event, SCHEMA_NAME)
             future = self.producer.send(PUBLISH_TOPIC, encoded_message)
             future.get(timeout=5.0)  # Strict: fail if publish times out
@@ -185,24 +158,16 @@ def _create_predictor_update(
                 f"Published state predictor update: error={prediction_result.error:.4f}"
             )
         except Exception as e:
-            logger.exception("Exception caught: %s", e)
-            raise
+            logger.error(f"Failed to publish predictor update: {e}")
+            raise RuntimeError(f"Failed to publish predictor update: {e}")
 
     async def run(self) -> None:
         """Main service loop."""
         logger.info("Starting State Predictor Service")
 
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             while True:
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
                     # Poll for messages with timeout
                     msg = self.consumer.poll(timeout=1.0)
                     if msg is None:
@@ -216,10 +181,6 @@ def _create_predictor_update(
 
                     # Decode message (assuming JSON for now, will be Avro when schema ready)
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         message_data = json.loads(msg.value().decode("utf-8"))
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to decode message as JSON: {e}")
@@ -232,7 +193,8 @@ def _create_predictor_update(
                     logger.info("Received shutdown signal")
                     break
                 except Exception as e:
-                    logger.exception("Exception caught: %s", e)
+                    logger.error(f"Error processing message: {e}")
+                    # Strict mode: re-raise errors instead of continuing
                     raise
 
         finally:

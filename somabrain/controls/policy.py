@@ -1,9 +1,3 @@
-from __future__ import annotations
-import re
-from dataclasses import dataclass
-from typing import Any, Dict
-from common.config.settings import settings
-
 """
 Policy Engine Module for SomaBrain
 
@@ -12,7 +6,6 @@ It provides security controls, provenance verification, and operational safety
 measures to ensure secure and reliable operation.
 
 Key Features:
-    pass
 - Kill switch for emergency shutdown
 - Human override for manual review
 - Provenance validation for write operations
@@ -20,14 +13,12 @@ Key Features:
 - Policy decision making with detailed reasoning
 
 Security Policies:
-    pass
 - Kill Switch: Environment-based emergency stop
 - Human Review: Header-triggered manual oversight
 - Provenance: HMAC-based request validation
 - Path-based rules: Different policies for different endpoints
 
 Policy Decisions:
-    pass
 - Allow: Request permitted to proceed
 - Deny: Request blocked with error response
 - Review: Request flagged for human review
@@ -40,8 +31,13 @@ Functions:
     None (class-based implementation)
 """
 
+from __future__ import annotations
 
+import re
+from dataclasses import dataclass
+from typing import Any, Dict
 
+from common.config.settings import settings
 
 
 @dataclass
@@ -52,28 +48,27 @@ class PolicyDecision:
 
 
 class PolicyEngine:
-    pass
-def __init__(self, safety_threshold: float = 0.9):
+    def __init__(self, safety_threshold: float = 0.9):
         self.safety_threshold = float(safety_threshold)
         pat = getattr(settings, "block_ua_regex", "").strip()
         self._block_ua = re.compile(pat) if pat else None
 
-def _kill_switch(self) -> bool:
+    def _kill_switch(self) -> bool:
         # Disable kill switch during test runs to prevent unintended denial of requests.
         # Pytest sets the PYTEST_CURRENT_TEST environment variable for each test.
         if getattr(settings, "pytest_current_test", None):
             return False
         return bool(getattr(settings, "kill_switch", False))
 
-def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
+    def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
         # Global kill switch
         if self._kill_switch():
             return PolicyDecision("deny", "kill_switch", {"operator_pause": True})
         # Human override header triggers review
         if str(ctx.get("headers", {}).get("x-soma-review", "")).lower() in (
             "1",
-            "true", ):
-                pass
+            "true",
+        ):
             return PolicyDecision("review", "human_review", {"require_human": True})
         # Simple safety gate: deny high-risk writes to memory unless provenance present
         path = str(ctx.get("path", ""))
@@ -100,10 +95,12 @@ def evaluate(self, ctx: Dict[str, Any]) -> PolicyDecision:
                     return PolicyDecision(
                         "deny" if prov_strict else "review",
                         "invalid_provenance",
-                        {"require_provenance": True}, )
+                        {"require_provenance": True},
+                    )
                 if prov_valid is None and not provenance:
                     return PolicyDecision(
                         "deny" if prov_strict else "review",
                         "missing_provenance",
-                        {"require_provenance": True}, )
+                        {"require_provenance": True},
+                    )
         return PolicyDecision("allow", "ok", {})

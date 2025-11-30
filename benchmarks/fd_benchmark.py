@@ -1,12 +1,11 @@
-import numpy as np
-from somabrain.math.fd_rho import sketch_from_matrix, topk_eigenvalues_from_sketch
-
 """Micro-benchmark for Frequent-Directions sketch accuracy.
 
 Run from the repo root with the project's venv:
     python benchmarks/fd_benchmark.py
 """
 
+import numpy as np
+from somabrain.math.fd_rho import sketch_from_matrix, topk_eigenvalues_from_sketch
 
 
 def main():

@@ -1,6 +1,3 @@
-from typing import Dict, Iterable, Tuple, Optional
-from common.config.settings import settings
-
 """Approximate Personalized PageRank (APPR) push algorithm.
 
 Provides a simple, memory-efficient implementation of APPR used for local
@@ -8,17 +5,19 @@ graph diffusion and seed-set expansion. This is a small deterministic push-based
 algorithm suitable for unit tests and small graphs.
 """
 
+from typing import Dict, Iterable, Tuple, Optional
 
 # lazy import of runtime config to avoid circular imports
 # Unified configuration – use central Settings instance
+from common.config.settings import settings
 
 
 def appr_push(
     adj: Dict[int, Iterable[Tuple[int, float]]],
     seed: int,
     alpha: float = 0.85,
-    eps: Optional[float] = None, ) -> Dict[int, float]:
-        pass
+    eps: Optional[float] = None,
+) -> Dict[int, float]:
     """Compute APPR vector for a single seed node.
 
     adj: adjacency list mapping node -> iterable of (neighbor, weight)

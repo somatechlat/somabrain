@@ -1,25 +1,21 @@
-from __future__ import annotations
-from common.config.settings import settings
-from pathlib import Path
-from typing import List, Optional
-from fastapi import Request
-from somabrain.auth import require_auth
-from common.config.settings import Settings as Config
-from common.logging import logger
-import yaml
-from somabrain.tenant_manager import get_tenant_manager
-
 """Auth dependency wiring for FastAPI routes.
 
 This module now integrates with the centralized tenant management system
 to provide dynamic tenant resolution and validation.
 """
 
+from __future__ import annotations
 
+from common.config.settings import settings
+from pathlib import Path
+from typing import List, Optional
 
+from fastapi import Request
 
+from somabrain.auth import require_auth
 
 # Legacy Config model replaced by unified Settings
+from common.config.settings import Settings as Config
 
 _current_config: Optional[Config] = None
 _allowed_tenants: List[str] = []
@@ -57,10 +53,7 @@ def _resolve_tenants(cfg: Config) -> List[str]:
         p = Path(file_path)
         if p.exists():
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                import yaml
 
                 data = yaml.safe_load(p.read_text())
                 if isinstance(data, dict):
@@ -69,10 +62,8 @@ def _resolve_tenants(cfg: Config) -> List[str]:
                         tenants.extend(str(t).strip() for t in vals if str(t).strip())
                 elif isinstance(data, list):
                     tenants.extend(str(t).strip() for t in data if str(t).strip())
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-    raise
+            except Exception:
+                pass
     return sorted(set(t for t in tenants if t))
 
 
@@ -111,27 +102,20 @@ async def auth_guard(request: Request) -> None:
 async def get_allowed_tenants_async() -> List[str]:
     """Get list of allowed tenants using centralized tenant management."""
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from somabrain.tenant_manager import get_tenant_manager
 
         tenant_manager = await get_tenant_manager()
         tenants = await tenant_manager.list_tenants()
         return [t.tenant_id for t in tenants if t.status.value == "active"]
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
+        # Fallback to legacy method
         return get_allowed_tenants()
 
 
 async def get_default_tenant_async() -> str:
     """Get default tenant ID using centralized tenant management."""
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from somabrain.tenant_manager import get_tenant_manager
 
         tenant_manager = await get_tenant_manager()
 
@@ -140,8 +124,7 @@ async def get_default_tenant_async() -> str:
         if public_tenant_id:
             return public_tenant_id
 
+        # Fallback to legacy method
         return get_default_tenant()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return get_default_tenant()

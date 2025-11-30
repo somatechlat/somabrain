@@ -1,31 +1,23 @@
-from __future__ import annotations
-import argparse
-import json
-from pathlib import Path
-from typing import Any, List
-from common.logging import logger
-
 #!/usr/bin/env python3
 """Render a Markdown report for a live benchmark run folder.
 
 Usage:
   python benchmarks/render_run_report.py --run-dir benchmarks/outputs/live_runs/<timestamp>
 """
+from __future__ import annotations
 
+import argparse
+import json
+from pathlib import Path
+from typing import Any, List
 
 
 def _read_json(p: Path) -> Any:
     if not p.exists():
         return None
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return json.loads(p.read_text())
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return None
 
 

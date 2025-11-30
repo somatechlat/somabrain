@@ -1,7 +1,3 @@
-from __future__ import annotations
-from enum import Enum
-from common.logging import logger
-
 """
 Semantic Graph Module for SomaBrain.
 
@@ -10,7 +6,6 @@ representation and semantic relationships in the SomaBrain system. It provides a
 of relationship types and utilities for normalizing relation specifications.
 
 Key Features:
-    pass
 - Enumerated relation types for semantic relationships
 - Normalization utilities for relation type strings
 - Support for causal, hierarchical, and associative relations
@@ -23,7 +18,9 @@ Functions:
     normalize_relation: Normalize relation type strings to valid RelationType values.
 """
 
+from __future__ import annotations
 
+from enum import Enum
 
 
 class RelationType(str, Enum):
@@ -84,12 +81,7 @@ def normalize_relation(t: str | None) -> str:
     if not t:
         return RelationType.related.value
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return RelationType(t).value
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
+        # alternative to generic
         return RelationType.related.value

@@ -1,19 +1,8 @@
-from __future__ import annotations
-import argparse
-from somabrain.infrastructure import get_api_base_url
-import sys
-import time
-from typing import Any, Dict
-import requests
-from common.logging import logger
-from common.config.settings import settings
-
 #!/usr/bin/env python3
 """
 Dev-Prod Smoke Test
 
 Verifies live learning behavior against a running Somabrain API by:
-    pass
 1) POST /remember to write a memory
 2) POST /recall to retrieve it
 
@@ -25,22 +14,23 @@ Exit codes:
   0 on success, non-zero on failure
 """
 
+from __future__ import annotations
 
+import argparse
+from somabrain.infrastructure import get_api_base_url
+import sys
+import time
+from typing import Any, Dict
 
+import requests
 
 
 def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     r = requests.post(url, json=payload, timeout=10)
     r.raise_for_status()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         return r.json()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         raise RuntimeError(f"Non-JSON response from {url}: {r.text[:200]}")
 
 
@@ -97,18 +87,15 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=get_api_base_url())
+    from common.config.settings import settings
 
     ap.add_argument("--universe", default=settings.universe)
     args = ap.parse_args()
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         run_smoke(args.url.rstrip("/"), args.universe)
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        print(f"ERROR: {e}")
+        sys.exit(2)
 
     sys.exit(0)
 

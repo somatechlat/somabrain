@@ -12,9 +12,6 @@ Create Date: 2025-10-26 14:20:00.000000
 """
 
 
-
-
-
 # revision identifiers, used by Alembic.
 revision: str = "7f1a2b3c4d89"
 down_revision: str | None = "cf8b36c30d81"
@@ -30,18 +27,21 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False, ),
+            nullable=False,
+        ),
         sa.Column("tenant_id", sa.String(length=128), nullable=True),
         sa.Column("namespace", sa.String(length=64), nullable=True),
         sa.Column("key", sa.String(length=256), nullable=False),
         sa.Column("value", sa.JSON(), nullable=False),
         sa.Column("tags", sa.JSON(), nullable=True),
-        sa.Column("policy_tags", sa.JSON(), nullable=True), )
+        sa.Column("policy_tags", sa.JSON(), nullable=True),
+    )
     op.create_index(
         "ix_episodic_snapshots_tenant_created",
         "episodic_snapshots",
         ["tenant_id", "created_at"],
-        unique=False, )
+        unique=False,
+    )
 
 
 def downgrade() -> None:

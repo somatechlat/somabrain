@@ -1,14 +1,8 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
-import numpy as np
-from .math import FrequentDirections
-
 """Salience computation utilities and FD-backed sketching helpers.
 
 Two pathways are exposed:
-    pass
 
+* Dense weighting (legacy): salience := clamp(w_novelty·novelty + w_error·error).
 * FD sketching (new): maintains a low-rank Frequent-Directions sketch of the
   incoming working-memory vectors and exposes residual energy as an additional
   salience feature.
@@ -18,9 +12,14 @@ still capturing \u226590% spectral energy, allowing downstream modules to boost
 salience when a vector lies outside the dominant subspace.
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple
 
+import numpy as np
 
+from .math import FrequentDirections
 
 EPS = 1e-12
 
@@ -44,12 +43,12 @@ def compute_salience(novelty: float, error: float, w: SalienceWeights) -> float:
 class FDSalienceSketch:
     """Maintain an FD sketch and expose residual/capture energy metrics."""
 
-def __init__(
+    def __init__(
         self,
         dim: int,
         rank: int,
-        decay: float = 1.0, ):
-            pass
+        decay: float = 1.0,
+    ):
         if dim <= 0:
             raise ValueError("dim must be positive")
         if rank <= 0:
@@ -68,7 +67,7 @@ def __init__(
         self._trace_norm_error: float = 0.0
         self._psd_ok: bool = True
 
-def observe(self, vector: np.ndarray) -> Tuple[float, float]:
+    def observe(self, vector: np.ndarray) -> Tuple[float, float]:
         """Stream ``vector`` and return (residual_ratio, capture_ratio)."""
 
         v = np.asarray(vector, dtype=float).reshape(-1)
@@ -89,7 +88,7 @@ def observe(self, vector: np.ndarray) -> Tuple[float, float]:
         self._refresh_low_rank()
         return residual_ratio, self.capture_ratio
 
-def _apply_decay(self) -> None:
+    def _apply_decay(self) -> None:
         if self.decay >= 0.9999:
             return
         if self._fd.S.size:
@@ -97,7 +96,7 @@ def _apply_decay(self) -> None:
         self._captured_energy *= self.decay
         self._total_energy *= self.decay
 
-def _residual_energy(self, vector: np.ndarray) -> float:
+    def _residual_energy(self, vector: np.ndarray) -> float:
         if self._basis is None or self._alpha is None:
             return float(np.dot(vector, vector))
         if self._basis.size == 0:
@@ -107,7 +106,7 @@ def _residual_energy(self, vector: np.ndarray) -> float:
         total = float(np.dot(vector, vector))
         return max(0.0, total - captured)
 
-def _refresh_low_rank(self) -> None:
+    def _refresh_low_rank(self) -> None:
         if self._fd.S.size == 0:
             self._basis = None
             self._alpha = None
@@ -116,10 +115,6 @@ def _refresh_low_rank(self) -> None:
             self._psd_ok = True
             return
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             _, s, Vt = np.linalg.svd(self._fd.S, full_matrices=False)
         except np.linalg.LinAlgError:
             self._basis = None
@@ -156,14 +151,14 @@ def _refresh_low_rank(self) -> None:
         self._trace_norm_error = trace_error
         self._psd_ok = bool(np.all(alpha_norm >= -1e-12))
 
-@property
-def capture_ratio(self) -> float:
+    @property
+    def capture_ratio(self) -> float:
         if self._total_energy <= EPS:
             return 1.0
         ratio = self._captured_energy / max(self._total_energy, EPS)
         return max(0.0, min(1.0, float(ratio)))
 
-def covariance(self) -> np.ndarray:
+    def covariance(self) -> np.ndarray:
         """Return the FD covariance approximation built from the sketch."""
 
         if self._basis is None or self._alpha is None:
@@ -171,7 +166,7 @@ def covariance(self) -> np.ndarray:
         diag = np.diag(self._alpha)
         return self._basis @ diag @ self._basis.T
 
-def project(self, vector: np.ndarray) -> np.ndarray:
+    def project(self, vector: np.ndarray) -> np.ndarray:
         """Project ``vector`` into the FD subspace via the low-rank factor."""
 
         v = np.asarray(vector, dtype=float).reshape(-1)
@@ -183,23 +178,23 @@ def project(self, vector: np.ndarray) -> np.ndarray:
         weights = np.sqrt(np.maximum(self._alpha, 0.0))
         return weights * coords
 
-@property
-def total_energy(self) -> float:
+    @property
+    def total_energy(self) -> float:
         return float(self._total_energy)
 
-@property
-def captured_energy(self) -> float:
+    @property
+    def captured_energy(self) -> float:
         return float(self._captured_energy)
 
-@property
-def trace_norm_error(self) -> float:
+    @property
+    def trace_norm_error(self) -> float:
         return float(self._trace_norm_error)
 
-@property
-def psd_ok(self) -> bool:
+    @property
+    def psd_ok(self) -> bool:
         return bool(self._psd_ok)
 
-def stats(self) -> Dict[str, float | bool]:
+    def stats(self) -> Dict[str, float | bool]:
         """Return a dict of sketch health stats for diagnostics."""
 
         return {

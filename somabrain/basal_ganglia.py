@@ -1,6 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass
-
 """
 Basal Ganglia Policy Module for SomaBrain
 
@@ -10,7 +7,6 @@ and habit formation. In SomaBrain, it serves as the final decision-making compon
 that translates salience signals into concrete actions.
 
 Key Features:
-    pass
 - Policy decision making based on store/act gates
 - Action selection and motor control simulation
 - Integration with salience and neuromodulator systems
@@ -24,7 +20,9 @@ Classes:
     BasalGangliaPolicy: Main policy decision maker
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
 
 
 @dataclass
@@ -51,7 +49,7 @@ class BasalGangliaPolicy:
     Makes decisions based on store and act gates.
     """
 
-def decide(self, store_gate: bool, act_gate: bool) -> PolicyDecision:
+    def decide(self, store_gate: bool, act_gate: bool) -> PolicyDecision:
         """
         Decide on store and act based on gates.
 

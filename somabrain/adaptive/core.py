@@ -1,8 +1,3 @@
-from __future__ import annotations
-from dataclasses import dataclass
-from common.logging import logger
-from .integration import AdaptiveIntegrator
-
 """Adaptive core primitives for SomaBrain.
 
 Provides a minimal but functional adaptive parameter and performance metrics
@@ -10,7 +5,9 @@ structure used by neuromodulators and any learning components that want
 bounded, incremental updates.
 """
 
+from __future__ import annotations
 
+from dataclasses import dataclass
 
 
 @dataclass
@@ -29,7 +26,7 @@ class PerformanceMetrics:
     latency: float = 1.0
     accuracy: float = 0.0
 
-def clamp(self) -> "PerformanceMetrics":
+    def clamp(self) -> "PerformanceMetrics":
         self.success_rate = min(max(self.success_rate, 0.0), 1.0)
         self.error_rate = min(max(self.error_rate, 0.0), 1.0)
         self.latency = max(self.latency, 1e-6)
@@ -40,14 +37,14 @@ def clamp(self) -> "PerformanceMetrics":
 class AdaptiveParameter:
     """Bounded parameter with simple incremental updates."""
 
-def __init__(
+    def __init__(
         self,
         name: str,
         initial_value: float,
         min_value: float,
         max_value: float,
-        learning_rate: float = 0.01, ) -> None:
-            pass
+        learning_rate: float = 0.01,
+    ) -> None:
         self.name = name
         self.min_value = float(min_value)
         self.max_value = float(max_value)
@@ -55,19 +52,19 @@ def __init__(
         self.current_value = float(initial_value)
         self._clamp()
 
-def _clamp(self) -> None:
+    def _clamp(self) -> None:
         self.current_value = min(
             max(self.current_value, self.min_value), self.max_value
         )
 
-def update(self, perf: PerformanceMetrics, delta: float) -> float:
+    def update(self, perf: PerformanceMetrics, delta: float) -> float:
         """Apply an update scaled by learning_rate; returns new value."""
         perf.clamp()
         self.current_value += self.learning_rate * float(delta)
         self._clamp()
         return self.current_value
 
-def stats(self) -> dict:
+    def stats(self) -> dict:
         return {
             "name": self.name,
             "value": self.current_value,
@@ -87,7 +84,7 @@ def stats(self) -> dict:
 
 
 class AdaptiveCore:
-    pass
+    """Compatibility shim for the legacy ``AdaptiveCore`` API.
 
     The original ``AdaptiveCore`` coordinated multiple adaptive parameters and
     exposed ``observe``/``get_system_stats``/``get_scorer`` methods.  The new
@@ -95,17 +92,18 @@ class AdaptiveCore:
     simply delegates to an internal ``AdaptiveIntegrator`` instance.
     """
 
-def __init__(self) -> None:
+    def __init__(self) -> None:
         # Lazy import to avoid circular dependencies.
+        from .integration import AdaptiveIntegrator
 
         self._integrator = AdaptiveIntegrator()
 
-def observe(self, perf, delta: float = 0.0) -> None:  # pragma: no cover
+    def observe(self, perf, delta: float = 0.0) -> None:  # pragma: no cover
         """Delegate to the underlying integrator's ``observe`` method."""
         self._integrator.observe(perf, delta)
 
-def get_system_stats(self) -> dict:  # pragma: no cover
+    def get_system_stats(self) -> dict:  # pragma: no cover
         return self._integrator.get_system_stats()
 
-def get_scorer(self):  # pragma: no cover
+    def get_scorer(self):  # pragma: no cover
         return self._integrator.get_scorer()

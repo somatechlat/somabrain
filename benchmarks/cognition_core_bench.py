@@ -1,4 +1,23 @@
+#!/usr/bin/env python3
+"""Cognition Core Benchmark: quality and latency gates.
+
+Measures cosine recovery under superposition and unbinding latency.
+Outputs CSV and optional PNG plots (if matplotlib is installed).
+
+Scenarios:
+- Unitary + Exact: bind with unitary role, exact unbind; k in {1,4,16}
+- Gaussian + Wiener vs Tikhonov: random gaussian roles; compare recovery quality
+  at k in {1,4,16}; SNR=40 dB for Wiener; expect >= +0.03 absolute cosine.
+
+Latency:
+- Measure per-trial unbind latency and report p99 (ms); target <= 1.0 ms
+
+Usage:
+    PYTHONPATH=. python benchmarks/cognition_core_bench.py --dim 8192 --dtype float32
+"""
+
 from __future__ import annotations
+
 import csv
 import statistics
 import time
@@ -11,35 +30,10 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from typing import Dict, List
+
 import numpy as np
+
 from somabrain.quantum import HRRConfig, QuantumLayer
-from common.logging import logger
-import os
-import matplotlib.pyplot as plt  # type: ignore
-
-#!/usr/bin/env python3
-"""Cognition Core Benchmark: quality and latency gates.
-
-Measures cosine recovery under superposition and unbinding latency.
-Outputs CSV and optional PNG plots (if matplotlib is installed).
-
-Scenarios:
-    pass
-- Unitary + Exact: bind with unitary role, exact unbind; k in {1,4,16}
-- Gaussian + Wiener vs Tikhonov: random gaussian roles; compare recovery quality
-  at k in {1,4,16}; SNR=40 dB for Wiener; expect >= +0.03 absolute cosine.
-
-Latency:
-    pass
-- Measure per-trial unbind latency and report p99 (ms); target <= 1.0 ms
-
-Usage:
-    PYTHONPATH=. python benchmarks/cognition_core_bench.py --dim 8192 --dtype float32
-"""
-
-
-
-
 
 
 def percentiles(vals: List[float], ps: List[float]) -> Dict[float, float]:
@@ -117,7 +111,7 @@ def run_quality_bench(
                 )
 
             # Naive Tikhonov (ridge) with fixed lambda for baseline comparison
-def _tikhonov_naive(
+            def _tikhonov_naive(
                 sig: np.ndarray, role: np.ndarray, lam: float = 5e-2
             ) -> np.ndarray:
                 fc = np.fft.rfft(sig).astype(np.complex128)
@@ -136,7 +130,7 @@ def _tikhonov_naive(
             a_t = _tikhonov_naive(s, b_list[0], lam=lam)
 
             # cosines against original a0
-def _cos(u, v):
+            def _cos(u, v):
                 return float(
                     np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
                 )
@@ -273,19 +267,13 @@ def write_csv(rows: List[Dict[str, object]], path: Path) -> None:
 
 def _git_sha() -> str:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         root = Path(__file__).resolve().parents[1]
         return (
             subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=str(root))
             .decode()
             .strip()
         )
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         return "unknown"
 
 
@@ -307,10 +295,7 @@ def try_plots(
     quality: List[Dict[str, object]], latency: List[Dict[str, object]], out_dir: Path
 ) -> None:
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        import os
 
         os.environ.setdefault("MPLBACKEND", "Agg")
         # ensure Matplotlib config/cache are writable within repo
@@ -318,6 +303,7 @@ def try_plots(
         cfg_dir.mkdir(parents=True, exist_ok=True)
         os.environ.setdefault("MPLCONFIGDIR", str(cfg_dir))
         os.environ.setdefault("XDG_CACHE_HOME", str(cfg_dir))
+        import matplotlib.pyplot as plt  # type: ignore
 
         # Cosine vs k for three modes
         ks = sorted(
@@ -372,8 +358,7 @@ def try_plots(
         plt.savefig(out_dir / "cognition_unbind_p99.png", dpi=150)
         plt.close()
     except Exception as e:
-        logger.exception("Exception caught: %s", e)
-        raise
+        print("Plotting skipped:", e)
 
 
 def main(dim: int = 8192, dtype: str = "float32") -> None:
@@ -387,7 +372,8 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
     (out_dir / "cognition_provenance.json").write_text(
         json.dumps(
             _provenance({"phase": "cognition_core", "dim": dim, "dtype": dtype}),
-            indent=2, )
+            indent=2,
+        )
     )
 
     # Print gates
@@ -397,7 +383,8 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
     print(
         "Gate1 (unitary+exact k=1 >=0.70):",
         "PASS" if gate1 else "FAIL",
-        f"(mean={ue1['cos_mean']:.3f})", )
+        f"(mean={ue1['cos_mean']:.3f})",
+    )
 
     # Gate 2: Gaussian+Wiener better than Tikhonov by >= 0.03 at k in {1,4,16} (raw cosine)
     gate2 = True
@@ -412,7 +399,8 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
         print(
             f"Gate2 (Wiener-Tikhonov @k={k} >= 0.03):",
             "PASS" if ok else "FAIL",
-            f"(Δ={float(w) - float(t):.3f})", )
+            f"(Δ={float(w) - float(t):.3f})",
+        )
         gate2 = gate2 and ok
 
     # Gate 3: p99 unbind <= 1 ms for unitary exact
@@ -421,7 +409,8 @@ def main(dim: int = 8192, dtype: str = "float32") -> None:
     print(
         "Gate3 (unitary exact p99 <= 1ms):",
         "PASS" if gate3 else "WARN",
-        f"(p99={ue_lat['p99_ms']:.3f} ms)", )
+        f"(p99={ue_lat['p99_ms']:.3f} ms)",
+    )
 
     try_plots(quality, latency, out_dir)
 

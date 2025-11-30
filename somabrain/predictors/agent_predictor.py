@@ -1,9 +1,3 @@
-from __future__ import annotations
-from typing import Tuple
-import numpy as np
-from common.config.settings import settings as settings
-from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
-
 """Agent predictor service implementation.
 
 Provides a concrete predictor for the *agent* domain built on the generic
@@ -12,15 +6,19 @@ read from the global ``settings`` object (``common.config.settings``) via the
 ``PredictorConfig`` dataclass, ensuring a single source of truth.
 
 VIBE compliance:
-    pass
 * No hard‑coded constants – every tunable comes from ``settings``.
 * Fail‑fast: missing configuration or graph files raise ``RuntimeError``.
 * Full type hints and docstrings for clarity.
 """
 
+from __future__ import annotations
 
+from typing import Tuple
 
+import numpy as np
 
+from common.config.settings import settings as settings
+from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 
 def _load_agent_operator() -> Tuple[callable, int]:
@@ -51,16 +49,17 @@ class AgentPredictor(HeatDiffusionPredictor):
     derived from the global ``settings``.
     """
 
-def __init__(self) -> None:
+    def __init__(self) -> None:
         apply_A, dim = _load_agent_operator()
         cfg = PredictorConfig(
             diffusion_t=getattr(settings, "diffusion_t", 0.5),
             alpha=getattr(settings, "predictor_alpha", 2.0),
             chebyshev_K=getattr(settings, "chebyshev_K", 30),
-            lanczos_m=getattr(settings, "lanczos_m", 20), )
+            lanczos_m=getattr(settings, "lanczos_m", 20),
+        )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 
-def predict(
+    def predict(
         self, source_idx: int, observed: np.ndarray
     ) -> Tuple[np.ndarray, float, float]:
         """Run a single prediction step for the agent domain.
