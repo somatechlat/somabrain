@@ -157,7 +157,7 @@ class Settings(BaseSettings):
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or _str_env("MEMORY_SERVICE_URL")
-        or "http://localhost:9595"
+        or "http://localhost:9696"
     )
     memory_http_token: Optional[str] = Field(
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
@@ -405,9 +405,8 @@ class Settings(BaseSettings):
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
-    require_memory: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
-    )
+    # Memory is always required; ignore any attempt to disable via env.
+    require_memory: bool = Field(default=True)
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))

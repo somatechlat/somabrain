@@ -25,7 +25,7 @@ def _service_available() -> bool:
     A ``HEAD`` request is sufficient and inexpensive. If the request raises an
     exception we treat the service as unavailable and skip the test.
     """
-    endpoint = getattr(settings, "memory_http_endpoint", "http://localhost:9595")
+    endpoint = getattr(settings, "memory_http_endpoint", "http://localhost:9696")
     try:
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.head("/")
@@ -36,9 +36,6 @@ def _service_available() -> bool:
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not _service_available(), reason="Memory HTTP service not reachable"
-)
 def test_memory_remember_and_recall() -> None:
     """Store a payload and verify it can be recalled.
 
@@ -50,6 +47,9 @@ def test_memory_remember_and_recall() -> None:
        stored content and asserts that the payload appears in the results.
     """
     client = MemoryClient(cfg=settings)
+    # Ensure the external memory service is fully healthy before proceeding.
+    health = client.health()
+    assert health.get("healthy"), f"Memory service unhealthy: {health}"
 
     test_key = "e2e-test-key"
     payload = {"key": test_key, "content": "hello world"}

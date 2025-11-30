@@ -4181,10 +4181,28 @@ async def _health_watchdog_coroutine():
                         health = client.health()
 
                         # If healthy, reset the circuit breaker
-                        if health and (
-                            (isinstance(health, dict) and health.get("http", False))
-                            or (isinstance(health, dict) and health.get("ok", False))
-                        ):
+                        # The memory client health payload uses a "healthy" boolean flag
+                        # (and component‑specific flags) rather than the older "http"/"ok"
+                        # fields that the watchdog originally checked. Adjust the logic
+                        # to consider the service healthy when the "healthy" key is true.
+                        # The memory client health payload can be either a flat dict
+                        # with a top‑level ``healthy`` flag (legacy) or the newer
+                        # structure returned by the ``/health`` endpoint, where the
+                        # flag lives under ``components['memory']['healthy']``.
+                        # Detect both forms before resetting the circuit.
+                        healthy = False
+                        if isinstance(health, dict):
+                            # Legacy flat format
+                            healthy = health.get("healthy", False)
+                            # New nested format
+                            if not healthy:
+                                comps = health.get("components", {})
+                                mem = comps.get("memory", {})
+                                healthy = mem.get("healthy", False)
+                            # Fallback older boolean fields
+                            if not healthy:
+                                healthy = health.get("http", False) or health.get("ok", False)
+                        if healthy:
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
                             logger.info(
                                 f"Circuit breaker reset for tenant {memsvc.tenant_id}"
@@ -4365,6 +4383,28 @@ async def _init_tenant_manager():
     except Exception as e:
         logger.error(f"Failed to initialize tenant manager: {e}")
         # Don't fail startup - tenant management can be initialized lazily
+
+
+@app.on_event("startup")
+async def _start_outbox_sync():
+    """Launch the background outbox synchronization worker.
+
+    The worker runs forever, polling the ``outbox_events`` table and attempting
+    to forward pending rows to the external memory service. It respects the
+    ``outbox_sync_interval`` setting (seconds) and emits Prometheus metrics.
+    """
+    try:
+        # ``Config`` loads the same settings used elsewhere in the app.
+        from somabrain.config import Config
+        from somabrain.services.outbox_sync import outbox_sync_loop
+
+        cfg = Config()
+        interval = float(getattr(settings, "outbox_sync_interval", 10.0))
+        # fire‑and‑forget – FastAPI will keep the task alive as long as the app runs.
+        asyncio.create_task(outbox_sync_loop(cfg, poll_interval=interval))
+        logger.info("Outbox sync background task started (interval=%s s)", interval)
+    except Exception as exc:  # pragma: no cover – startup failures are logged
+        logger.error("Failed to start outbox sync task: %s", exc, exc_info=True)
 
 
 @app.on_event("shutdown")

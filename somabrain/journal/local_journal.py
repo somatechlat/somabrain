@@ -33,6 +33,21 @@ from typing import Any, Dict, List, Optional, Sequence
 from dataclasses import dataclass, asdict
 import logging
 
+# NOTE: The journal configuration pulls values from the global ``settings``
+# object defined in ``common.config.settings``. The original implementation
+# referenced ``settings`` without importing it, which caused a ``NameError``
+# when the journal was first used (e.g., during degradation mode). The
+# exception was silently swallowed in ``_queue_degraded`` leading to the
+# appearance that events were queued, while in reality nothing was persisted.
+# Importing the settings module fixes the issue and ensures the journal
+# directory (default ``/tmp/somabrain_journal``) is created correctly.
+# Import the concrete ``settings`` instance used throughout the project.
+# Individual modules typically import ``settings`` via
+# ``from common.config.settings import settings``.  Using the same import
+# here guarantees the environment‑variable defaults (e.g. ``SOMABRAIN_JOURNAL_DIR``)
+# are respected and avoids a ``NameError`` during journal initialisation.
+from common.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 

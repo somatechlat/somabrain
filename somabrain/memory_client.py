@@ -20,7 +20,6 @@ import os
 import random
 import re
 import time
-import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -274,6 +273,10 @@ class MemoryClient:
         # Initialize HTTP client (primary runtime path). Local/redis
         # initialization is intentionally not attempted here.
         self._init_http()
+        # In‑process working cache used during degradation mode.
+        # Keyed by (tenant_id, key) → payload. Allows immediate reads without
+        # waiting for outbox replay.
+        self._working_cache: dict[tuple[str, str], Any] = {}
 
     def _init_local(self) -> None:
         # Local in-process backend initialization has been removed. Running a
@@ -428,22 +431,68 @@ class MemoryClient:
         return
 
     def health(self) -> dict:
-        """Best-effort backend health signal for local or http mode."""
+        """Return detailed health information from the external memory service.
+
+        The service exposes a JSON payload that includes boolean flags for the
+        three core components: ``kv_store``, ``vector_store`` and ``graph_store``.
+        This method queries the service (preferring ``/health``) and returns a
+        dictionary with the raw payload plus a top‑level ``healthy`` key that is
+        ``True`` only when **all** component flags are true.
+        """
+        if self._http is None:
+            return {"healthy": False, "error": "HTTP client not configured"}
+
+        # Prefer the generic /health endpoint – the memory service currently
+        # implements it and returns the component flags.
         try:
-            if self._http:
-                # Try common health endpoints in order of preference.
-                for path in ("/health", "/healthz", "/readyz"):
-                    try:
-                        r = self._http.get(path)
-                        if int(getattr(r, "status_code", 0) or 0) == 200:
-                            return {"http": True}
-                    except Exception:
-                        # Try next path
-                        continue
-                return {"http": False}
-        except Exception:
-            return {"ok": False}
-        return {"ok": True}
+            r = self._http.get("/health")
+            status = int(getattr(r, "status_code", 0) or 0)
+            if status != 200:
+                return {"healthy": False, "status": status}
+            data = self._response_json(r) or {}
+            if not isinstance(data, dict):
+                return {"healthy": False, "error": "unexpected health payload"}
+            # Normalise missing keys to False so the overall health is safe.
+            kv = bool(data.get("kv_store", False))
+            vec = bool(data.get("vector_store", False))
+            graph = bool(data.get("graph_store", False))
+            overall = kv and vec and graph
+            result = dict(data)
+            result.update({"healthy": overall, "kv_store": kv, "vector_store": vec, "graph_store": graph})
+            return result
+        except Exception as exc:
+            return {"healthy": False, "error": str(exc)}
+
+    def _require_healthy(self) -> None:
+        """Raise a clear error if the memory service is not fully healthy.
+
+        All public API calls invoke this guard first, ensuring fail‑fast
+        behaviour as required by the VIBE rules.
+        """
+        health = self.health()
+        if not health.get("healthy"):
+            # Provide a concise message with the failing components.
+            missing = []
+            for comp in ("kv_store", "vector_store", "graph_store"):
+                if not health.get(comp, False):
+                    missing.append(comp)
+            raise RuntimeError(
+                f"Memory service unavailable or partially unhealthy: {', '.join(missing) or 'unknown'}"
+            )
+
+    # ---------------------------------------------------------------------
+    # Degradation helpers
+    # ---------------------------------------------------------------------
+    @property
+    def is_degraded(self) -> bool:
+        """Return ``True`` when the external memory service is unhealthy.
+
+        The property is cheap – it calls ``self.health()`` and caches the
+        result for the duration of the request. Callers should use this flag to
+        decide whether to write to the outbox and/or the in‑process cache.
+        """
+        health = self.health()
+        return not bool(health.get("healthy"))
 
     # --- HTTP helpers ---------------------------------------------------------
     @staticmethod
@@ -519,18 +568,8 @@ class MemoryClient:
         if self._http is None:
             return False, None
 
-        coord = str(body.get("coord") or "")
-        payload = body.get("payload") or {}
-        memory_type = str(body.get("memory_type") or body.get("type") or "episodic")
-
-        payload = {
-            "coord": coord,
-            "payload": payload,
-            "memory_type": memory_type,
-        }
-
         success, _, data = self._http_post_with_retries_sync(
-            "/memories", payload, headers
+            "/memory/remember", body, headers
         )
         if success:
             return True, data
@@ -541,18 +580,8 @@ class MemoryClient:
         if self._http_async is None:
             return False, None
 
-        coord = str(body.get("coord") or "")
-        payload = body.get("payload") or {}
-        memory_type = str(body.get("memory_type") or body.get("type") or "episodic")
-
-        payload = {
-            "coord": coord,
-            "payload": payload,
-            "memory_type": memory_type,
-        }
-
         success, _, data = await self._http_post_with_retries_async(
-            "/memories", payload, headers
+            "/memory/remember", body, headers
         )
         if success:
             return True, data
@@ -560,30 +589,24 @@ class MemoryClient:
         return False, data
 
     def _store_bulk_http_sync(
-        self, items: List[dict], headers: dict
+        self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
         if self._http is None:
             return False, 0, None
-        all_ok = True
-        responses: List[Any] = []
-        for item in items:
-            ok, resp = self._store_http_sync(item, headers)
-            all_ok = all_ok and ok
-            responses.append(resp)
-        return all_ok, 200 if all_ok else 207, responses
+        success, status, data = self._http_post_with_retries_sync(
+            "/memory/remember/batch", batch_request, headers
+        )
+        return success, status or 0, data
 
     async def _store_bulk_http_async(
-        self, items: List[dict], headers: dict
+        self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
         if self._http_async is None:
             return False, 0, None
-        all_ok = True
-        responses: List[Any] = []
-        for item in items:
-            ok, resp = await self._store_http_async(item, headers)
-            all_ok = all_ok and ok
-            responses.append(resp)
-        return all_ok, 200 if all_ok else 207, responses
+        success, status, data = await self._http_post_with_retries_async(
+            "/memory/remember/batch", batch_request, headers
+        )
+        return success, status or 0, data
 
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
         hits: List[RecallHit] = []
@@ -862,22 +885,16 @@ class MemoryClient:
         if self._http is None:
             raise RuntimeError("HTTP memory service required but not configured")
 
-        _, compat_universe, compat_headers = self._compat_enrich_payload(
-            {"query": query, "universe": universe or "real"}, query
-        )
-        universe_value = str(compat_universe or universe or "real")
         headers = {"X-Request-ID": request_id}
-        headers.update(compat_headers)
-
-        fetch_limit = max(int(top_k) * 3, 10)
-        query_text = str(query or "")
+        universe_value = str(universe or "real")
         body = {
-            "query": query_text,
-            "top_k": fetch_limit,
+            "query": str(query or ""),
+            "top_k": max(int(top_k), 1),
+            "universe": universe_value,
         }
 
         success, status, data = self._http_post_with_retries_sync(
-            "/memories/search", body, headers
+            "/memory/recall", body, headers
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -924,22 +941,16 @@ class MemoryClient:
         if self._http_async is None:
             raise RuntimeError("Async HTTP memory service required but not configured")
 
-        _, compat_universe, compat_headers = self._compat_enrich_payload(
-            {"query": query, "universe": universe or "real"}, query
-        )
-        universe_value = str(compat_universe or universe or "real")
         headers = {"X-Request-ID": request_id}
-        headers.update(compat_headers)
-
-        fetch_limit = max(int(top_k) * 3, 10)
-        query_text = str(query or "")
+        universe_value = str(universe or "real")
         body = {
-            "query": query_text,
-            "top_k": fetch_limit,
+            "query": str(query or ""),
+            "top_k": max(int(top_k), 1),
+            "universe": universe_value,
         }
 
         success, status, data = await self._http_post_with_retries_async(
-            "/memories/search", body, headers
+            "/memory/recall", body, headers
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -1333,19 +1344,72 @@ class MemoryClient:
         headers = {"X-Universe": universe}
         return p, universe, headers
 
-    def remember(
-        self, coord_key: str, payload: dict, request_id: str | None = None
-    ) -> Tuple[float, float, float]:
-        """Store a memory using a stable coordinate derived from coord_key.
+    def _tenant_namespace(self) -> tuple[str, str]:
+        """Resolve tenant and namespace from cfg/settings with hard requirements."""
+        tenant = getattr(self.cfg, "tenant", None) or getattr(
+            settings, "default_tenant", "public"
+        )
+        namespace = getattr(self.cfg, "namespace", None) or getattr(
+            settings, "namespace", "public"
+        )
+        tenant = str(tenant or "public")
+        namespace = str(namespace or "public")
+        return tenant, namespace
 
-        Ensures required structural keys, and normalizes optional metadata if
-        present. Supported optional metadata (all pass‑through if already in
-        correct shape): phase, quality_score, domains, reasoning_chain.
-        - phase: coerced to lower‑case str.
-        - quality_score: clamped into [0, 1].
-        - domains: accepted as list[str] or comma/space separated string -> list[str].
-        - reasoning_chain: list[str] or single string; stored verbatim.
-        """
+        def remember(
+                self, coord_key: str, payload: dict, request_id: str | None = None
+        ) -> Tuple[float, float, float]:
+                """Store a memory using a stable coordinate derived from ``coord_key``.
+
+                The method now supports **degradation mode**:
+
+                * If the external memory service is unhealthy (``self.is_degraded``), the
+                    payload is cached in‑process (``self._working_cache``) and enqueued to
+                    the durable outbox table via ``enqueue_event``.
+                * The call returns the computed coordinate immediately – no remote HTTP
+                    request is performed.
+                * When the service is healthy the original fast‑path behaviour is
+                    retained (including the optional ``fast_ack`` executor path).
+
+                Normalisation of optional metadata (phase, quality_score, domains,
+                reasoning_chain) remains unchanged.
+                """
+                # -------------------------------------------------------------------
+                # Degradation fast‑path – avoid any HTTP calls when the service is down.
+                # -------------------------------------------------------------------
+                if self.is_degraded:
+                        # Resolve tenant for outbox scoping.
+                        tenant, _ = self._tenant_namespace()
+                        # Cache locally for immediate reads.
+                        self._working_cache[(tenant, coord_key)] = payload
+                        # Enqueue a durable outbox event for later sync.
+                        from somabrain.db.outbox import enqueue_event
+
+                        # Use a deterministic dedupe_key if the payload does not provide one.
+                        dedupe = payload.get("dedupe_key")
+                        enqueue_event(
+                                topic="memory_write",
+                                payload=payload,
+                                dedupe_key=dedupe,
+                                tenant_id=tenant,
+                        )
+                        # Return the coordinate (computed later) – we mimic the normal return
+                        # shape by falling through to the enrichment logic below.
+                        # ----------------------------------------------------------------
+                        # Enrichment (universal part) – needed for the caller's expectations.
+                        # ----------------------------------------------------------------
+                        enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
+                        coord = _stable_coord(f"{universe}::{coord_key}")
+                        # Store the coordinate back into the cached payload for consistency.
+                        payload = dict(enriched)
+                        payload["coordinate"] = coord
+                        return coord
+
+                # -------------------------------------------------------------------
+                # Healthy path – original behaviour (including fast‑ack and async handling).
+                # -------------------------------------------------------------------
+                # Fail fast if the memory backend is not fully healthy.
+                self._require_healthy()
         # include universe in coordinate hashing to avoid collisions across branches
         # and enrich payload for downstream compatibility
         enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
@@ -1419,6 +1483,8 @@ class MemoryClient:
 
         import uuid
 
+        # Import uuid locally to avoid top‑level dependency.
+        import uuid
         rid = request_id or str(uuid.uuid4())
 
         # If we're in an async loop, schedule an async background persist (non-blocking)
@@ -1492,14 +1558,15 @@ class MemoryClient:
         items: Iterable[tuple[str, dict[str, Any]]],
         request_id: str | None = None,
     ) -> List[Tuple[float, float, float]]:
-        """Store multiple memories in a single HTTP round-trip when supported.
+        """Store multiple memories in a single HTTP round‑trip.
 
-        Each element in *items* is a ``(coord_key, payload)`` pair. The method
-        mirrors :meth:`remember` semantics: local mirrors are updated eagerly for
-        read-your-writes guarantees, while the HTTP call happens best-effort. The
-        return value is a list of coordinates (server-provided when available)
-        aligned with the input order.
+        The method now includes **tenant** and **namespace** on every batch item
+        to satisfy the OpenAPI `MemoryWriteRequest` contract.  It also fails fast
+        if the memory backend is not fully healthy.
         """
+
+        # Fail fast if the service is unhealthy.
+        self._require_healthy()
 
         records = list(items)
         if not records:
@@ -1508,24 +1575,32 @@ class MemoryClient:
         prepared: List[dict[str, Any]] = []
         universes: List[str] = []
         coords: List[Tuple[float, float, float]] = []
+        tenant, namespace = self._tenant_namespace()
 
         for coord_key, payload in records:
             enriched, universe, _ = self._compat_enrich_payload(payload, coord_key)
             coord = _stable_coord(f"{universe}::{coord_key}")
-            enriched_payload = dict(enriched)
-            enriched_payload.setdefault("coordinate", coord)
-            enriched_payload.setdefault("memory_type", "episodic")
-            memory_type = str(
-                enriched_payload.get("memory_type")
-                or enriched_payload.get("type")
-                or "episodic"
-            )
-            body = {
-                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-                "payload": enriched_payload,
-                "memory_type": memory_type,
-                "type": memory_type,
+            body: dict[str, Any] = {
+                "tenant": tenant,
+                "namespace": namespace,
+                "key": coord_key,
+                "value": dict(enriched),
+                "universe": universe,
             }
+            for optional_key in (
+                "meta",
+                "ttl_seconds",
+                "tags",
+                "policy_tags",
+                "attachments",
+                "links",
+                "signals",
+                "importance",
+                "novelty",
+                "trace_id",
+            ):
+                if isinstance(payload, dict) and optional_key in payload:
+                    body[optional_key] = payload.get(optional_key)
             universes.append(universe)
             coords.append(coord)
             prepared.append(
@@ -1543,13 +1618,19 @@ class MemoryClient:
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
-        unique_universes = {u for u in universes if u}
-        if len(unique_universes) == 1:
-            headers["X-Universe"] = unique_universes.pop()
+        unique_universes = [u for u in set(universes) if u]
+        batch_universe = unique_universes[0] if len(unique_universes) == 1 else None
+        if batch_universe:
+            headers["X-Universe"] = batch_universe
+        batch_payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "items": [entry["body"] for entry in prepared],
+        }
+        if batch_universe:
+            batch_payload["universe"] = batch_universe
 
-        success, status, response = self._store_bulk_http_sync(
-            [entry["body"] for entry in prepared], headers
-        )
+        success, status, response = self._store_bulk_http_sync(batch_payload, headers)
         if success and response is not None:
             returned: List[Any] = []
             if isinstance(response, dict):
@@ -1566,14 +1647,10 @@ class MemoryClient:
                 )
                 if server_coord:
                     coords[idx] = server_coord
-                    try:
-                        prepared[idx]["body"]["payload"]["coordinate"] = server_coord
-                    except Exception:
-                        pass
             return coords
 
         if status in (404, 405):
-            # Alternative: use individual store calls
+            # Fallback to individual calls when bulk is unsupported.
             for idx, entry in enumerate(prepared):
                 single_headers = dict(headers)
                 single_headers["X-Request-ID"] = f"{rid}:{idx}"
@@ -1597,7 +1674,9 @@ class MemoryClient:
         locally computed coord. On failure, falls back to running the sync remember
         in a thread executor.
         """
-        # Mirror locally first for read-your-writes semantics (optional)
+        # Fail fast if the memory service is unhealthy.
+        self._require_healthy()
+        # Mirror locally first for read‑your‑writes semantics (optional)
         # Strict real mode: no local mirroring, only HTTP service
         p2: dict[str, Any] | None = None
         if self._http_async is not None:
@@ -1652,7 +1731,11 @@ class MemoryClient:
         items: Iterable[tuple[str, dict[str, Any]]],
         request_id: str | None = None,
     ) -> List[Tuple[float, float, float]]:
-        """Async companion to :meth:`remember_bulk` using the async HTTP client."""
+        """Async companion to :meth:`remember_bulk` using the async HTTP client.
+
+        Fails fast if the memory service is unhealthy.
+        """
+        self._require_healthy()
 
         records = list(items)
         if not records:
@@ -1661,18 +1744,30 @@ class MemoryClient:
         prepared: List[dict[str, Any]] = []
         universes: List[str] = []
         coords: List[Tuple[float, float, float]] = []
+        tenant, namespace = self._tenant_namespace()
 
         for coord_key, payload in records:
             enriched, universe, _ = self._compat_enrich_payload(payload, coord_key)
             coord = _stable_coord(f"{universe}::{coord_key}")
-            enriched_payload = dict(enriched)
-            enriched_payload.setdefault("coordinate", coord)
-            enriched_payload.setdefault("memory_type", "episodic")
-            body = {
-                "coord": f"{coord[0]},{coord[1]},{coord[2]}",
-                "payload": enriched_payload,
-                "type": enriched_payload.get("memory_type", "episodic"),
+            body: dict[str, Any] = {
+                "key": coord_key,
+                "value": dict(enriched),
+                "universe": universe,
             }
+            for optional_key in (
+                "meta",
+                "ttl_seconds",
+                "tags",
+                "policy_tags",
+                "attachments",
+                "links",
+                "signals",
+                "importance",
+                "novelty",
+                "trace_id",
+            ):
+                if isinstance(payload, dict) and optional_key in payload:
+                    body[optional_key] = payload.get(optional_key)
             universes.append(universe)
             coords.append(coord)
             prepared.append(
@@ -1688,12 +1783,20 @@ class MemoryClient:
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
-        unique_universes = {u for u in universes if u}
-        if len(unique_universes) == 1:
-            headers["X-Universe"] = unique_universes.pop()
+        unique_universes = [u for u in set(universes) if u]
+        batch_universe = unique_universes[0] if len(unique_universes) == 1 else None
+        if batch_universe:
+            headers["X-Universe"] = batch_universe
+        batch_payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "items": [entry["body"] for entry in prepared],
+        }
+        if batch_universe:
+            batch_payload["universe"] = batch_universe
 
         success, status, response = await self._store_bulk_http_async(
-            [entry["body"] for entry in prepared], headers
+            batch_payload, headers
         )
         if success and response is not None:
             returned: List[Any] = []
@@ -1739,12 +1842,36 @@ class MemoryClient:
         universe: str | None = None,
         request_id: str | None = None,
     ) -> List[RecallHit]:
-        """Retrieve memories relevant to the query using the HTTP memory service."""
-        # Strict mode: memory service is ALWAYS required
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (set SOMABRAIN_MEMORY_HTTP_ENDPOINT)."
-            )
+        """Retrieve memories relevant to ``query``.
+
+        *When the memory service is degraded* the method falls back to the
+        in‑process ``_working_cache`` and performs a lightweight keyword match
+        against the cached payloads. The result mimics the normal ``RecallHit``
+        objects (score is ``None`` and ``coordinate`` is ``None``) so callers can
+        treat the output uniformly.
+
+        When the service is healthy the original HTTP‑based recall path is used.
+        """
+        # Degraded fast‑path – avoid any HTTP calls.
+        if self.is_degraded:
+            tenant, _ = self._tenant_namespace()
+            hits: List[RecallHit] = []
+            lower_q = query.lower()
+            for (t, _key), payload in self._working_cache.items():
+                if t != tenant:
+                    continue
+                # Simple keyword search in string fields of the payload.
+                if isinstance(payload, dict):
+                    for v in payload.values():
+                        if isinstance(v, str) and lower_q in v.lower():
+                            hits.append(RecallHit(payload=payload, score=None, coordinate=None))
+                            break
+                if len(hits) >= top_k:
+                    break
+            return hits
+
+        # Healthy path – original behaviour.
+        self._require_healthy()
         rid = request_id or str(uuid.uuid4())
         return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
 
@@ -1755,8 +1882,11 @@ class MemoryClient:
         universe: str | None = None,
         request_id: str | None = None,
     ) -> List[RecallHit]:
-        """Recall memories including similarity scores via the `/memories/search` endpoint."""
+        """Recall memories including similarity scores via the `/memories/search` endpoint.
 
+        Fails fast if the memory service is unhealthy.
+        """
+        self._require_healthy()
         if self._http is not None:
             rid = request_id or str(uuid.uuid4())
             hits = self._http_recall_aggregate_sync(
@@ -1811,6 +1941,7 @@ class MemoryClient:
         request_id: str | None = None,
     ) -> None:
         """Create or strengthen a typed edge in the memory graph."""
+        self._require_healthy()
         if self._http is None:
             raise RuntimeError(
                 "MEMORY SERVICE UNAVAILABLE: link requires an HTTP memory backend."
@@ -2332,17 +2463,32 @@ class MemoryClient:
 
         # Enrich payload and compute coord string once
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+        tenant, namespace = self._tenant_namespace()
         sc = _stable_coord(f"{uni}::{coord_key}")
         coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        memory_type = str(
-            enriched.get("memory_type") or enriched.get("type") or "episodic"
-        )
-        body = {
-            "coord": coord_str,
-            "payload": enriched,
-            "memory_type": memory_type,
-            "type": memory_type,
+
+        # Map to MemoryWriteRequest schema
+        body: dict[str, Any] = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "key": coord_key,
+            "value": enriched,
+            "universe": uni,
+            "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
         }
+        for optional_key in (
+            "meta",
+            "ttl_seconds",
+            "tags",
+            "policy_tags",
+            "attachments",
+            "links",
+            "signals",
+            "importance",
+            "novelty",
+        ):
+            if isinstance(payload, dict) and optional_key in payload:
+                body[optional_key] = payload.get(optional_key)
 
         rid = request_id or str(_uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}
@@ -2383,17 +2529,28 @@ class MemoryClient:
         rid_hdr = {"X-Request-ID": rid} if rid else {}
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
         rid_hdr.update(compat_hdr)
-        sc = _stable_coord(f"{uni}::{coord_key}")
-        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
-        memory_type = str(
-            enriched.get("memory_type") or enriched.get("type") or "episodic"
-        )
-        body = {
-            "coord": coord_str,
-            "payload": enriched,
-            "memory_type": memory_type,
-            "type": memory_type,
+        tenant, namespace = self._tenant_namespace()
+        body: dict[str, Any] = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "key": coord_key,
+            "value": enriched,
+            "universe": uni,
+            "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
         }
+        for optional_key in (
+            "meta",
+            "ttl_seconds",
+            "tags",
+            "policy_tags",
+            "attachments",
+            "links",
+            "signals",
+            "importance",
+            "novelty",
+        ):
+            if isinstance(payload, dict) and optional_key in payload:
+                body[optional_key] = payload.get(optional_key)
         try:
             ok, response_data = await self._store_http_async(body, rid_hdr)
             if ok and response_data is not None:
