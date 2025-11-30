@@ -27,7 +27,6 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 import asyncio
 import logging
-from somabrain.metrics import get_counter
 from somabrain.api.dependencies.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M

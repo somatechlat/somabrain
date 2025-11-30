@@ -6,7 +6,6 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-from common.logging import logger
 
 """OpenTelemetry tracing provider for SomaBrain (strict mode).
 

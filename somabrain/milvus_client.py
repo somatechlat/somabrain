@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from common.config.settings import settings
 

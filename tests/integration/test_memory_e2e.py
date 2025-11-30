@@ -27,17 +27,11 @@ def _service_available() -> bool:
     """
     endpoint = getattr(settings, "memory_http_endpoint", "http://localhost:9595")
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.head("/")
             return resp.status_code < 500
     except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        logger.warning("Memory service not reachable at %s: %s", endpoint, exc)
         return False
 
 
@@ -49,7 +43,6 @@ def test_memory_remember_and_recall() -> None:
     """Store a payload and verify it can be recalled.
 
     The test performs the following steps:
-        pass
     1. Creates a ``MemoryClient`` using the global ``settings`` instance.
     2. Calls :meth:`MemoryClient.remember` with a deterministic key and payload.
     3. Sleeps briefly to allow the asynchronous backend to index the new memory.

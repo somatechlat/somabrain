@@ -37,18 +37,13 @@ def fix_file(path):
                     next_line = lines[k]
                     # if next line is 'raise' and then a return, remove raise
                     if re.match(r"\s*raise\s*$", next_line):
-                        # check following line for return
-                        l = k + 1
-                        while l < len(lines) and lines[l].strip() == "":
-                            l += 1
-                        if l < len(lines) and re.match(r"\s*return\b", lines[l]):
-                            # skip the raise line
-                            i = k  # will increment later to l-1
-                            # add the return line later normally
-                            i = l - 1
-                        else:
-                            # keep raise line as is
-                            pass
+                        next_idx = k + 1
+                        while next_idx < len(lines) and lines[next_idx].strip() == "":
+                            next_idx += 1
+                        if next_idx < len(lines) and re.match(
+                            r"\s*return\b", lines[next_idx]
+                        ):
+                            i = next_idx - 1
                     # if next line is a return without raise, ensure indentation
                     elif re.match(r"\s*return\b", next_line):
                         # ensure proper indent

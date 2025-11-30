@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 
 from common.config.settings import settings
-from common.logging import logger
 from somabrain.calibration.calibration_metrics import CalibrationTracker
 
 

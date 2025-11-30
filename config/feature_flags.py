@@ -1,10 +1,3 @@
-import json
-from pathlib import Path
-from typing import Dict, Any, List
-from somabrain.modes import mode_config, feature_enabled
-from common.config.settings import settings
-from common.logging import logger
-
 """
 Feature flags view derived from central modes.
 
@@ -14,16 +7,16 @@ flags are removed; optional local overrides are persisted in a JSON file and
 applied only in `full-local` mode.
 """
 
+import json
+import os
+from pathlib import Path
+from typing import Any, Dict, List
 
+from somabrain.modes import feature_enabled, mode_config
 
 
 class FeatureFlags:
-    """Computed feature flag status.
-
-    Source of truth: `somabrain.modes`. Optional local overrides are stored in
-    ``SOMABRAIN_FEATURE_OVERRIDES`` JSON with shape {"disabled": [keys...]}
-    and are effective only in `full-local` mode.
-    """
+    """Computed feature flag status."""
 
     KEYS: List[str] = [
         "hmm_segmentation",
@@ -34,14 +27,10 @@ class FeatureFlags:
         "auto_rollback",
     ]
 
-@staticmethod
-def _load_overrides() -> List[str]:
-        path = settings.feature_overrides_path
+    @staticmethod
+    def _load_overrides() -> List[str]:
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             p = Path(path)
             if not p.exists():
                 return []
@@ -49,18 +38,16 @@ def _load_overrides() -> List[str]:
             disabled = data.get("disabled")
             if isinstance(disabled, list):
                 return [str(x).strip().lower() for x in disabled]
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
+        except Exception:
+            pass
         return []
 
-@classmethod
-def get_status(cls) -> Dict[str, Any]:
+    @classmethod
+    def get_status(cls) -> Dict[str, Any]:
         cfg = mode_config()
         disabled = cls._load_overrides() if cfg.name == "full-local" else []
 
-def resolved(k: str) -> bool:
-            # map UI keys -> feature_enabled keys
+        def resolved(k: str) -> bool:
             mapping = {
                 "hmm_segmentation": "hmm_segmentation",
                 "fusion_normalization": "fusion_normalization",
@@ -76,32 +63,17 @@ def resolved(k: str) -> bool:
         return {k: resolved(k) for k in cls.KEYS}
 
     @classmethod
-    def get_overrides(cls) -> List[str]:
-        return cls._load_overrides()
-
-@classmethod
-def set_overrides(cls, disabled: List[str]) -> bool:
-        """Persist disabled keys to overrides file (full-local only).
-
-        Returns True when overrides were written, False when ignored.
-        """
+    def set_overrides(cls, disabled: List[str]) -> None:
+        """Persist disabled keys to overrides file (full-local only)."""
         cfg = mode_config()
         if cfg.name != "full-local":
-            # ignore in prod
-            return False
-        path = settings.feature_overrides_path or "./data/feature_overrides.json"
+            return
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(
                 json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
             )
-            return True
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-            return False
+        except Exception:
+            pass

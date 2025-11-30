@@ -23,8 +23,6 @@ from somabrain.api.dependencies.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M
 from common.config.settings import settings
-import logging
-from somabrain.metrics import get_counter
 from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.opa.client import opa_client
 from somabrain.sleep import SleepState, SleepStateManager

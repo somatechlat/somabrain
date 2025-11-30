@@ -1,4 +1,5 @@
-import re, sys, pathlib
+import re
+import pathlib
 
 repo_root = pathlib.Path(__file__).parent
 

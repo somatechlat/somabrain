@@ -11,9 +11,8 @@ from typing import Any, Dict, Optional
 
 # Use the unified Settings singleton for configuration.
 from common.config.settings import Settings as Config
-from typing import Tuple
 
-from .memory_client import MemoryClient, _stable_coord
+from .memory_client import MemoryClient
 
 
 class MultiTenantMemory:

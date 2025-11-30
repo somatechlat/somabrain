@@ -1,16 +1,6 @@
-"""Simple health‑check utility.
+from __future__ import annotations
 
-Provides a tiny wrapper around ``requests.get`` that returns ``True`` when the
-target URL responds with a successful (2xx) HTTP status code and ``False``
-otherwise.  The function is deliberately lightweight – it catches any
-exception (network error, timeout, etc.) and treats it as an unhealthy result.
-
-This helper is used by services that expose a ``/health`` endpoint (e.g.
-``somabrain.services.integrator_hub_triplet``) to perform a quick liveness
-probe without pulling in the full FastAPI machinery.
-"""
-
-"""Utility module for simple health‑check HTTP calls.
+"""Utility module for simple health-check HTTP calls.
 
 The project contains a number of ad‑hoc ``requests`` calls scattered throughout
 scripts and services to verify that external services are reachable. The VIBE
@@ -28,8 +18,6 @@ to avoid hanging the caller. ``requests`` is optional – if it cannot be
 imported the implementation falls back to ``urllib.request`` from the standard
 library.
 """
-
-from __future__ import annotations
 
 import urllib.request
 from typing import Optional

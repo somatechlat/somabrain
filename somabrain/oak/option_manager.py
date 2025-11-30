@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from common.config.settings import settings
+from common.config.settings import settings
 from somabrain.memory_client import MemoryClient
 from somabrain.milvus_client import MilvusClient
 
@@ -82,7 +83,7 @@ class OptionManager:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
-        self._client = MemoryClient()
+        self._client = MemoryClient(cfg=settings)
         # Initialize Milvus client for vector persistence.
         self._milvus = MilvusClient()
         # Initialize metrics (will be imported lazily to avoid circular imports)

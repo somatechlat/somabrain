@@ -77,7 +77,7 @@ def fix_file(path: pathlib.Path) -> None:
     """Apply the two heuristics to *path* in‑place."""
     original = path.read_text(encoding="utf-8")
     lines = original.splitlines()
-    lines = [dedent_line(l) for l in lines]
+    lines = [dedent_line(line) for line in lines]
     lines = insert_pass_if_needed(lines)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 

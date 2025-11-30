@@ -1,39 +1,24 @@
 from __future__ import annotations
-from common.config.settings import settings
-from common.logging import logger
+
+import os
 import random
-import time
 import threading
+import time
+
 import numpy as np
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
-from somabrain import metrics as _metrics  # type: ignore
-from somabrain.common.kafka import make_producer, encode, TOPICS
+
 from somabrain.common.events import build_next_event
-from somabrain.services.calibration_service import calibration_service
+from somabrain.common.kafka import TOPICS, encode, make_producer
+from somabrain.observability.provider import get_tracer, init_tracing  # type: ignore
 from somabrain.predictors.base import (
-from fastapi import FastAPI
-import uvicorn  # type: ignore
-from somabrain import metrics as _M  # type: ignore
-from somabrain.modes import feature_enabled
-from somabrain import runtime_config as _rt
-from somabrain import runtime_config as _rt
-from somabrain.calibration.calibration_metrics import (
-
-
+    build_predictor_from_env,
+)
+from somabrain.services.calibration_service import calibration_service
 
 try:
-    pass
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-except Exception as exc:
-    logger.exception("Exception caught: %s", exc)
-    raise
-
-
-# Diffusion predictor
-    build_predictor_from_env, )
-
+    from somabrain import metrics as _metrics  # type: ignore
+except Exception:  # pragma: no cover
+    _metrics = None  # type: ignore
 
 TOPIC = TOPICS["state"]
 NEXT_TOPIC = TOPICS["next"]
@@ -43,11 +28,11 @@ SOMA_TOPIC = TOPICS["soma_state"]
 def run_forever() -> None:  # pragma: no cover
     init_tracing()
     tracer = get_tracer("somabrain.predictor.state")
-    # Metrics (lazy and optional)
     _EMITTED = (
         _metrics.get_counter(
             "somabrain_predictor_state_emitted_total",
-            "BeliefUpdate records emitted (state)", )
+            "BeliefUpdate records emitted (state)",
+        )
         if _metrics
         else None
     )
@@ -62,119 +47,94 @@ def run_forever() -> None:  # pragma: no cover
         _metrics.get_histogram(
             "somabrain_predictor_error",
             "Per-update prediction error (MSE)",
-            labelnames=["domain"], )
+            labelnames=["domain"],
+        )
         if _metrics
         else None
     )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-        if settings.health_port:
-            pass
+        if os.getenv("HEALTH_PORT"):
+            from fastapi import FastAPI
+            import uvicorn  # type: ignore
 
             app = FastAPI(title="Predictor-State Health")
 
-@app.get("/healthz")
+            @app.get("/healthz")
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "predictor_state"}
 
-            # Prometheus metrics endpoint (optional)
             try:
-                pass
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
+                from somabrain import metrics as _M  # type: ignore
 
-@app.get("/metrics")
+                @app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception as exc:
-                logger.exception("Exception caught: %s", exc)
-                raise
-                raise RuntimeError("Failed to set up metrics endpoint for health server")
+            except Exception:
+                pass
 
-            port = int(settings.health_port)
+            port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-        raise RuntimeError("Health server startup failed")
-    # Default ON to ensure predictor is always available unless explicitly disabled
+    except Exception:
+        pass
+
+    from somabrain.modes import feature_enabled
 
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+        from somabrain import runtime_config as _rt
 
         composite = _rt.get_bool("cog_composite", True)
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
+    except Exception:
         composite = True
     if not (composite or feature_enabled("learner")):
         print("predictor-state: disabled by mode; exiting.")
         return
+
     prod = make_producer()
     if prod is None:
         print("predictor-state: Kafka not available; exiting.")
         return
-    # Schema names used by encoder utility
+
     belief_schema = "belief_update"
     next_schema = "next_event"
     soma_schema = "belief_update_soma"
+    from somabrain import runtime_config as _rt
 
-    tenant = settings.default_tenant  # tenancy from centralized Settings
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = _rt.get_str("state_model_ver", "v1")
     period = _rt.get_float("state_update_period", 0.5)
     soma_compat = _rt.get_bool("soma_compat", False)
-    # Diffusion-backed predictor setup (supports production graph via env)
+
     predictor, dim = build_predictor_from_env("state")
     source_idx = 0
     try:
-        pass
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
         while True:
-            # Simple synthetic delta_error stream (bounded noise + slow wave)
             with tracer.start_as_current_span("predictor_state_emit"):
-                # Build observed vector as next one-hot (simple deterministic proxy)
                 observed = np.zeros(dim, dtype=float)
                 observed[(source_idx + 1) % dim] = 1.0
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
-                # Apply calibration temperature scaling if available
                 try:
-                    pass
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
-                        calibration_tracker as _calib, )  # type: ignore
+                    from somabrain.calibration.calibration_metrics import (
+                        calibration_tracker as _calib,
+                    )  # type: ignore
 
                     scaler = _calib.temperature_scalers["state"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception as exc:
-                    logger.exception("Exception caught: %s", exc)
-                    raise
+                except Exception:
+                    pass
 
-                # Calibration tracking
                 if calibration_service.enabled:
-                    # In production, this would use actual accuracy from feedback
-                    # For now, use confidence as a proxy for demo purposes
                     calibration_service.record_prediction(
                         domain="state",
                         tenant=tenant,
                         confidence=float(confidence),
-                        accuracy=float(1.0 - delta_error),  # Proxy for actual accuracy
+                        accuracy=float(1.0 - delta_error),
                     )
 
                 rec = {
@@ -200,33 +160,16 @@ def run_forever() -> None:  # pragma: no cover
                 prod.send(TOPIC, value=encode(rec, belief_schema))
                 if _EMITTED is not None:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         _EMITTED.inc()
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
-                        raise RuntimeError("Failed to increment emitted metric")
+                    except Exception:
+                        pass
                 if _ERR_HIST is not None:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         _ERR_HIST.labels(domain="state").observe(float(delta_error))
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
-                        raise RuntimeError("Failed to record error histogram")
-                if soma_compat:
-                    # Map to soma-compatible BeliefUpdate
-                    try:
+                    except Exception:
                         pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                if soma_compat:
+                    try:
                         ts_ms = int(time.time() * 1000)
                         soma_rec = {
                             "stream": "STATE",
@@ -240,11 +183,8 @@ def run_forever() -> None:  # pragma: no cover
                         }
                         payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
-                        raise RuntimeError("Failed to emit soma-compatible belief update")
-                # NextEvent emission (derived): predicted_state based on stability
+                    except Exception:
+                        pass
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
                 next_ev = build_next_event(
                     "state", tenant, float(confidence), predicted_state
@@ -252,28 +192,17 @@ def run_forever() -> None:  # pragma: no cover
                 prod.send(NEXT_TOPIC, value=encode(next_ev, next_schema))
                 if _NEXT_EMITTED is not None:
                     try:
-                        pass
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
                         _NEXT_EMITTED.inc()
-                    except Exception as exc:
-                        logger.exception("Exception caught: %s", exc)
-                        raise
+                    except Exception:
+                        pass
                 source_idx = (source_idx + 1) % dim
                 time.sleep(period)
     finally:
         try:
-            pass
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
             prod.flush(2)
             prod.close()
-        except Exception as exc:
-            logger.exception("Exception caught: %s", exc)
-            raise
-            raise RuntimeError("Failed during producer cleanup")
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":  # pragma: no cover

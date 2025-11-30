@@ -3,7 +3,6 @@ import abc
 from typing import Iterable, List, Tuple, Optional
 from .memory_client import RecallHit  # type: ignore
 import asyncio
-import asyncio
 
 """Abstract interface for memory back‑ends.
 
