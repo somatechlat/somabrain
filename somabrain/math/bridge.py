@@ -1,14 +1,15 @@
+import numpy as np
+from somabrain.math.sinkhorn import sinkhorn_log_stabilized
+from common.config.settings import settings
+
 """High-level Sinkhorn bridge wrapper for two distributions using graph kernels.
 
 This module provides a convenience function to build cost matrices from kernel
 vectors (or pairwise distances) and compute an OT plan using sinkhorn.
 """
 
-import numpy as np
-from somabrain.math.sinkhorn import sinkhorn_log_stabilized
 
 # Use unified settings for configuration defaults
-from common.config.settings import settings
 
 
 def sinkhorn_bridge_from_embeddings(

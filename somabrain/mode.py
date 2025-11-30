@@ -1,13 +1,14 @@
+from __future__ import annotations
+from enum import Enum
+from dataclasses import dataclass
+from common.config.settings import settings
+
 """Centralized mode configuration for SomaBrain.
 
 Single source of truth for deployment modes and derived policies.
 """
 
-from __future__ import annotations
 
-from enum import Enum
-from dataclasses import dataclass
-from common.config.settings import settings
 
 
 class DeploymentMode(str, Enum):
@@ -42,8 +43,7 @@ class ModeConfig:
             require_memory=True,
             log_level="DEBUG",
             min_replicas=1,
-            persistence_enabled=False,
-        ),
+            persistence_enabled=False, ),
         DeploymentMode.STAGING: DeploymentProfile(
             mode=DeploymentMode.STAGING,
             auth_enabled=True,
@@ -52,8 +52,7 @@ class ModeConfig:
             require_memory=True,
             log_level="INFO",
             min_replicas=2,
-            persistence_enabled=True,
-        ),
+            persistence_enabled=True, ),
         DeploymentMode.PRODUCTION: DeploymentProfile(
             mode=DeploymentMode.PRODUCTION,
             auth_enabled=True,
@@ -62,17 +61,16 @@ class ModeConfig:
             require_memory=True,
             log_level="WARNING",
             min_replicas=3,
-            persistence_enabled=True,
-        ),
+            persistence_enabled=True, ),
     }
 
-    def __init__(self, mode_str: str | None = None):
+def __init__(self, mode_str: str | None = None):
         mode_str = mode_str or settings.mode
         self.mode = self._parse_mode(mode_str)
         self.profile = self.PROFILES[self.mode]
         self._validate()
 
-    def _parse_mode(self, mode: str | None) -> DeploymentMode:
+def _parse_mode(self, mode: str | None) -> DeploymentMode:
         m = (mode or "").strip().lower()
         if m in ("dev", "development"):
             return DeploymentMode.DEV
@@ -82,7 +80,7 @@ class ModeConfig:
             return DeploymentMode.PRODUCTION
         raise ValueError(f"Invalid mode: {mode}. Use dev, staging, or production")
 
-    def _validate(self):
+def _validate(self):
         if self.mode == DeploymentMode.PRODUCTION and not self.profile.auth_enabled:
             raise ValueError("CRITICAL: Auth cannot be disabled in production")
         if not self.profile.require_external_backends:

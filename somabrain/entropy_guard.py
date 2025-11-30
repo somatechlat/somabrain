@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Optional
+from common.config.settings import settings
+from common.logging import logger
+
 """Entropy guard utility.
 
 The guard enforces the ``entropy_cap`` configuration defined in the global
@@ -6,19 +11,15 @@ candidate leader exceeds the cap, the guard signals that a leader change is
 required.
 
 VIBE compliance:
+    pass
 * No hard‑coded thresholds – the cap is read from ``settings``.
 * Fail‑fast – if the configuration is missing the guard raises a clear error.
 * Simple, pure‑Python implementation – easy to test and reason about.
 """
 
-from __future__ import annotations
 
-import logging
-from typing import Optional
 
-from common.config.settings import settings
 
-logger = logging.getLogger(__name__)
 
 
 def get_entropy_cap() -> float:
@@ -34,9 +35,15 @@ def get_entropy_cap() -> float:
             "Entropy cap is not configured. Set 'entropy_cap' in the settings."
         )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return float(cap)
     except Exception as exc:
-        raise RuntimeError(f"Invalid entropy_cap value: {cap}") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise RuntimeError(f"Invalid entropy_cap value: {cap}") from exc
 
 
 def should_switch_leader(
@@ -62,8 +69,7 @@ def should_switch_leader(
         logger.info(
             "Entropy %s exceeds cap %s – leader switch required.",
             current_entropy,
-            cap,
-        )
+            cap, )
         return True
     logger.debug("Entropy %s within cap %s – no leader change.", current_entropy, cap)
     return False

@@ -1,3 +1,11 @@
+from __future__ import annotations
+from collections import deque
+from dataclasses import dataclass
+from typing import Deque, Dict, Optional, Tuple
+from common.logging import logger
+import random
+from . import metrics as _mx  # type: ignore
+
 """
 Executive Controller Module for SomaBrain
 
@@ -7,6 +15,7 @@ allocation, conflict resolution, and exploration strategies. It acts as the brai
 and cognitive resources.
 
 Key Features:
+    pass
 - Conflict-aware policy generation
 - Exploration vs exploitation balancing
 - Multi-armed bandit for strategy optimization
@@ -15,6 +24,7 @@ Key Features:
 - Graph augmentation exploration
 
 The executive controller monitors system performance and makes meta-decisions about:
+    pass
 - How many memories to retrieve (top-k adjustment)
 - Whether to use graph-based reasoning
 - When to inhibit storage or action
@@ -26,17 +36,14 @@ Classes:
     ExecutiveController: Main executive control system
 
 Biological Inspiration:
+    pass
 - Prefrontal cortex executive functions
 - Anterior cingulate cortex conflict monitoring
 - Basal ganglia action selection
 - Dopamine system reward prediction and exploration
 """
 
-from __future__ import annotations
 
-from collections import deque
-from dataclasses import dataclass
-from typing import Deque, Dict, Optional, Tuple
 
 
 @dataclass
@@ -67,14 +74,14 @@ class ExecutiveController:
     - Optional epsilon-greedy bandit to explore graph augmentation.
     """
 
-    def __init__(self, cfg: ExecConfig):
+def __init__(self, cfg: ExecConfig):
         self.cfg = cfg
         self._recall_strength: Dict[str, Deque[float]] = {}
         # Two-armed bandit per tenant: 0=baseline, 1=explore (use_graph+boost_k)
         self._bandit_counts: Dict[str, Tuple[int, int]] = {}
         self._bandit_rewards: Dict[str, Tuple[float, float]] = {}
 
-    def _window(self, tenant: str) -> Deque[float]:
+def _window(self, tenant: str) -> Deque[float]:
         """Get or create the per-tenant sliding window of recall strengths."""
         w = self._recall_strength.get(tenant)
         if w is None:
@@ -82,12 +89,12 @@ class ExecutiveController:
             self._recall_strength[tenant] = w
         return w
 
-    def observe(self, tenant: str, recall_strength: float) -> None:
+def observe(self, tenant: str, recall_strength: float) -> None:
         """Record a bounded recall strength [0,1] into the tenant window."""
         self._window(tenant).append(float(max(0.0, min(1.0, recall_strength))))
         # Update bandit reward with latest strength for last chosen arm if any
 
-    def _bandit_state(self, tenant: str) -> Tuple[Tuple[int, int], Tuple[float, float]]:
+def _bandit_state(self, tenant: str) -> Tuple[Tuple[int, int], Tuple[float, float]]:
         """Return (counts, rewards) tuples for the 2-armed bandit, initializing if missing."""
         c = self._bandit_counts.get(tenant)
         r = self._bandit_rewards.get(tenant)
@@ -99,11 +106,10 @@ class ExecutiveController:
             self._bandit_rewards[tenant] = r
         return c, r
 
-    def choose_arm(self, tenant: str) -> int:
+def choose_arm(self, tenant: str) -> int:
         """Pick an arm using epsilon-greedy over average reward. Returns 0 (baseline) or 1 (explore)."""
         # epsilon-greedy on average reward
         c, r = self._bandit_state(tenant)
-        import random
 
         if random.random() < max(0.0, min(1.0, float(self.cfg.bandit_eps))):
             return random.choice([0, 1])
@@ -111,7 +117,7 @@ class ExecutiveController:
         avg1 = 0.0 if c[1] <= 0 else r[1] / c[1]
         return 1 if avg1 >= avg0 else 0
 
-    def update_bandit(self, tenant: str, arm: int, reward: float) -> None:
+def update_bandit(self, tenant: str, arm: int, reward: float) -> None:
         """Update counts and cumulative rewards for the chosen arm."""
         arm = 1 if arm else 0
         c, r = self._bandit_state(tenant)
@@ -122,7 +128,7 @@ class ExecutiveController:
             self._bandit_counts[tenant] = (c[0], c[1] + 1)
             self._bandit_rewards[tenant] = (r[0], r[1] + float(reward))
 
-    def conflict(self, tenant: str) -> float:
+def conflict(self, tenant: str) -> float:
         """Return conflict proxy in [0,1] as 1 - mean(recall_strength)."""
         w = self._window(tenant)
         if not w:
@@ -130,13 +136,13 @@ class ExecutiveController:
         # conflict proxy: 1 - mean recall strength
         return float(max(0.0, min(1.0, 1.0 - (sum(w) / len(w)))))
 
-    def policy(
+def policy(
         self,
         tenant: str,
         base_top_k: int,
         switch_threshold: float = 0.85,
-        switch_universe: str = "cf:alt",
-    ) -> Policy:
+        switch_universe: str = "cf:alt", ) -> Policy:
+            pass
         """Compute a Policy using conflict and optional bandit exploration.
 
         - Adjusts top_k when exploring graph augmentation
@@ -150,12 +156,17 @@ class ExecutiveController:
             arm = self.choose_arm(tenant)
             use_graph = bool(arm == 1)
             try:
-                from . import metrics as _mx  # type: ignore
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 _mx.EXEC_BANDIT_ARM.labels(
                     arm=("explore" if use_graph else "baseline")
                 ).inc()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))
         inhibit_act = False
         inhibit_store = False
@@ -170,5 +181,4 @@ class ExecutiveController:
             use_graph=use_graph,
             inhibit_store=inhibit_store,
             inhibit_act=inhibit_act,
-            target_universe=target_universe,
-        )
+            target_universe=target_universe, )

@@ -1,17 +1,21 @@
-"""
-Calibration metrics tracking for SomaBrain predictors.
-
-Tracks calibration performance over time for each predictor domain.
-"""
-
 import time
 from typing import Dict
 from dataclasses import dataclass
 from collections import defaultdict, deque
 import threading
 import json
-
 from .temperature_scaling import TemperatureScaler, compute_ece, compute_brier_score
+from common.logging import logger
+import os
+from .temperature_scaling import reliability_diagram
+
+"""
+Calibration metrics tracking for SomaBrain predictors.
+
+Tracks calibration performance over time for each predictor domain.
+"""
+
+
 
 
 @dataclass
@@ -30,12 +34,13 @@ class CalibrationTracker:
     Tracks calibration metrics for predictors across domains and tenants.
 
     Maintains rolling windows of calibration data and computes:
+        pass
     - ECE (Expected Calibration Error)
     - Brier Score
     - Temperature scaling parameters
     """
 
-    def __init__(self, window_size: int = 1000):
+def __init__(self, window_size: int = 1000):
         self.window_size = window_size
         self.calibration_data: Dict[str, Dict[str, deque]] = defaultdict(
             lambda: defaultdict(lambda: deque(maxlen=window_size))
@@ -45,7 +50,7 @@ class CalibrationTracker:
         )
         self.lock = threading.RLock()
 
-    def add_observation(
+def add_observation(
         self, domain: str, tenant: str, confidence: float, accuracy: float
     ) -> None:
         """
@@ -63,13 +68,12 @@ class CalibrationTracker:
                 confidence=confidence,
                 accuracy=accuracy,
                 domain=domain,
-                tenant=tenant,
-            )
+                tenant=tenant, )
             key = f"{domain}:{tenant}"
             self.calibration_data[key]["confidences"].append(confidence)
             self.calibration_data[key]["accuracies"].append(accuracy)
 
-    def get_calibration_metrics(self, domain: str, tenant: str) -> Dict[str, float]:
+def get_calibration_metrics(self, domain: str, tenant: str) -> Dict[str, float]:
         """
         Get current calibration metrics for a domain and tenant.
 
@@ -107,7 +111,7 @@ class CalibrationTracker:
                 "samples": len(confidences),
             }
 
-    def get_all_metrics(self) -> Dict[str, Dict[str, float]]:
+def get_all_metrics(self) -> Dict[str, Dict[str, float]]:
         """Get calibration metrics for all domains and tenants."""
         with self.lock:
             result = {}
@@ -117,14 +121,13 @@ class CalibrationTracker:
             return result
 
     # Persistence helpers -------------------------------------------------
-    def persist(self, path: str) -> None:
+def persist(self, path: str) -> None:
         """Persist fitted temperature parameters and sample counts.
 
         Only lightweight scalar data are stored; raw observation windows are
         not persisted (to keep file small). This allows warm restarts with
         previously learned temperatures while new observations accumulate.
         """
-        import os
 
         data: Dict[str, Dict[str, float]] = {}
         with self.lock:
@@ -138,21 +141,39 @@ class CalibrationTracker:
                     "samples": int(metrics.get("samples", 0)),
                 }
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             os.makedirs(os.path.dirname(path), exist_ok=True)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with open(path, "w", encoding="utf-8") as f:
                 json.dump({"version": 1, "calibration": data}, f, indent=2)
-        except Exception as exc: raise
-            # Fail-open: persistence is best-effort
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
-    def load(self, path: str) -> None:
+def load(self, path: str) -> None:
         """Load persisted temperature parameters if available."""
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with open(path, "r", encoding="utf-8") as f:
                 payload = json.load(f)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return
         if not isinstance(payload, dict):
             return
@@ -166,14 +187,20 @@ class CalibrationTracker:
                 domain, tenant = key.split(":", 1)
                 scaler = self.temperature_scalers[domain][tenant]
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     temp = float(meta.get("temperature", scaler.temperature))
                     fitted = bool(meta.get("is_fitted", False))
                     scaler.temperature = temp
                     scaler.is_fitted = fitted
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     continue
 
-    def should_calibrate(
+def should_calibrate(
         self, domain: str, tenant: str, ece_threshold: float = 0.1
     ) -> bool:
         """
@@ -190,7 +217,7 @@ class CalibrationTracker:
         metrics = self.get_calibration_metrics(domain, tenant)
         return metrics["ece"] > ece_threshold and metrics["samples"] >= 100
 
-    def export_reliability_data(self, domain: str, tenant: str) -> Dict:
+def export_reliability_data(self, domain: str, tenant: str) -> Dict:
         """
         Export reliability diagram data for visualization.
 
@@ -203,7 +230,6 @@ class CalibrationTracker:
             if key not in self.calibration_data:
                 return {"reliability": [], "samples": 0}
 
-            from .temperature_scaling import reliability_diagram
 
             confidences = list(self.calibration_data[key]["confidences"])
             accuracies = list(self.calibration_data[key]["accuracies"])

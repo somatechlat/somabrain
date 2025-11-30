@@ -5,9 +5,9 @@ from somabrain.numerics import (
     normalize_array,
     compute_tiny_floor,
     rfft_norm,
-    spectral_floor_from_tiny,
-)
+    spectral_floor_from_tiny, )
 import numpy as np
+from common.logging import logger
 
 
 def approx_equal(a, b, tol=1e-6):
@@ -35,11 +35,16 @@ def run():
     tiny = np.zeros((cfg.dim,), dtype=cfg.dtype)
     tiny[0] = 1e-50
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         normed = normalize_array(tiny, axis=-1, dtype=cfg.dtype)
         nrm = float(np.linalg.norm(normed))
         print("normalize tiny norm:", nrm)
     except Exception as e:
-        print("normalize raised:", e)
+        logger.exception("Exception caught: %s", e)
+        raise
     # tiny floor values
     tf = compute_tiny_floor(cfg.dim, dtype=np.dtype(cfg.dtype))
     print("tiny_floor:", tf)

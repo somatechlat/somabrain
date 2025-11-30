@@ -1,22 +1,31 @@
+from __future__ import annotations
+import math
+import os
+import time
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, List, Optional
+import numpy as np
+from common.config.settings import settings
+from somabrain.memory_client import MemoryClient, RecallHit
+from common.logging import logger
+import math as _m
+from somabrain.metrics import (
+from somabrain.metrics import LEARNING_TAU, LEARNING_ENTROPY_CAP_HITS
+import yaml  # type: ignore
+import json as _json
+import json as _json
+from somabrain.runtime.working_memory import WorkingMemoryBuffer
+
 """Context bundle construction for SomaBrain.
 
 Builds multi-view retrieval results (semantic, graph, temporal) and produces
 structured bundles that the agent can feed into its SLM.
 """
 
-from __future__ import annotations
 
-import math
-import os
-import time
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional
 
-import numpy as np
 
 # Unified configuration – use the central Settings instance
-from common.config.settings import settings
-from somabrain.memory_client import MemoryClient, RecallHit
 
 
 @dataclass
@@ -48,21 +57,20 @@ class ContextBundle:
 class ContextBuilder:
     """Construct multi-view context bundles for agent requests."""
 
-    def __init__(
+def __init__(
         self,
         embed_fn: Callable[[str], Iterable[float]],
         memory: Optional[object] = None,
         weights: Optional[RetrievalWeights] = None,
-        working_memory: Optional["WorkingMemoryBuffer"] = None,
-    ) -> None:
+        working_memory: Optional["WorkingMemoryBuffer"] = None, ) -> None:
+            pass
         self._embed_fn = embed_fn
         self._memory = memory or MemoryClient(cfg=settings)
         self._weights = weights or RetrievalWeights(
             settings.retrieval_alpha,
             settings.retrieval_beta,
             settings.retrieval_gamma,
-            settings.retrieval_tau,
-        )
+            settings.retrieval_tau, )
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default value)
         self._tenant_id: str = "default"
@@ -81,7 +89,7 @@ class ContextBuilder:
         # Per-tenant overrides cache (learning.tenants.yaml)
         self._tenant_overrides_cache: Dict[str, Dict] = {}
 
-        def _env_float(name: str, current: float) -> float:
+def _env_float(name: str, current: float) -> float:
             # Use Settings attribute if available; fall back to None.
             # Environment variable names are uppercase; Settings uses snake_case.
             attr_name = name.lower()
@@ -89,8 +97,14 @@ class ContextBuilder:
             if value is None:
                 return current
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return float(value)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return current
 
         # Environment overrides for tau tuning
@@ -104,8 +118,7 @@ class ContextBuilder:
         )
         self._dup_ratio_threshold = _env_float(
             "SOMABRAIN_RECALL_TAU_DUP_RATIO_THRESHOLD",
-            self._dup_ratio_threshold,
-        )
+            self._dup_ratio_threshold, )
         # Clamp derived parameters into safe ranges to avoid pathological curves
         if not math.isfinite(self._recency_half_life) or self._recency_half_life <= 0:
             self._recency_half_life = 60.0
@@ -136,17 +149,17 @@ class ContextBuilder:
         self._dup_ratio_threshold = min(max(self._dup_ratio_threshold, 0.0), 1.0)
 
     # New method to set the tenant for the current request
-    def set_tenant(self, tenant_id: str) -> None:
+def set_tenant(self, tenant_id: str) -> None:
         """Store the tenant ID so weight updates can be attributed correctly."""
         if tenant_id:
             self._tenant_id = tenant_id
 
-    def build(  # noqa: PLR0914
+def build(  # noqa: PLR0914
         self,
         query: str,
         top_k: int = 5,
-        session_id: Optional[str] = None,
-    ) -> ContextBundle:
+        session_id: Optional[str] = None, ) -> ContextBundle:
+            pass
         embedding = self._embed(query)
         results = self._search(query, embedding, top_k)
         memories: List[MemoryRecord] = [
@@ -154,8 +167,7 @@ class ContextBuilder:
                 id=r.get("id", ""),
                 score=float(r.get("score", 0.0)),
                 metadata=r.get("metadata", {}) or {},
-                embedding=r.get("embedding"),
-            )
+                embedding=r.get("embedding"), )
             for r in results
         ]
         weights = self._compute_weights(embedding, memories)
@@ -177,30 +189,35 @@ class ContextBuilder:
             memories=memories,
             weights=weights,
             residual_vector=residual,
-            working_memory_snapshot=wm_snapshot,
-        )
+            working_memory_snapshot=wm_snapshot, )
 
-    @property
-    def weights(self) -> RetrievalWeights:
+@property
+def weights(self) -> RetrievalWeights:
         return self._weights
 
     # ------------------------------------------------------------------
-    def _embed(self, text: str) -> List[float]:
+def _embed(self, text: str) -> List[float]:
         raw = list(self._embed_fn(text))
         if not raw:
             raise RuntimeError("embedding function returned empty vector")
         return [float(v) for v in raw]
 
-    def _search(
+def _search(
         self, query_text: str, embedding: List[float], top_k: int
     ) -> List[Dict[str, Any]]:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             hits = self._memory.recall_with_scores(query_text, top_k=top_k)
             return self._hits_to_results(hits)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return []
 
-    def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
+def _hits_to_results(self, hits: Iterable[RecallHit]) -> List[Dict[str, Any]]:
         tenant = getattr(self, "_tenant_id", None) or None
         results: List[Dict[str, Any]] = []
         for idx, hit in enumerate(hits):
@@ -219,17 +236,16 @@ class ContextBuilder:
             )
         return results
 
-    def _compute_weights(
+def _compute_weights(
         self,
         query_vec: List[float],
-        memories: List[MemoryRecord],
-    ) -> List[float]:
+        memories: List[MemoryRecord], ) -> List[float]:
+            pass
         alpha, beta, gamma, tau = (
             self._weights.alpha,
             self._weights.beta,
             self._weights.gamma,
-            self._weights.tau,
-        )
+            self._weights.tau, )
         query = np.array(query_vec, dtype="float32")
         if np.linalg.norm(query) == 0:
             query = np.ones_like(query)
@@ -246,8 +262,14 @@ class ContextBuilder:
             ) * density_factor
             if density_factor != 1.0:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     mem.metadata.setdefault("_density_factor", density_factor)
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
             raw_scores.append(combined)
         if not raw_scores:
             return []
@@ -263,10 +285,16 @@ class ContextBuilder:
         # Simple heuristic: increase tau when many duplicate memory IDs are returned.
         # This encourages a higher temperature (more exploration) when diversity is low.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ids = [m.id for m in memories]
             unique = len(set(ids))
             dup_ratio = 1.0 - (unique / max(len(ids), 1))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             dup_ratio = 0.0
         # Adjust tau within the configured range.
         if dup_ratio > self._dup_ratio_threshold:
@@ -281,13 +309,22 @@ class ContextBuilder:
 
         # ==== Apply per-tenant entropy cap on retrieval parameter vector (alpha,beta,gamma,tau) ====
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             cap = self._get_entropy_cap_for_tenant(self._tenant_id)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             cap = None
         entropy_exceeded = False
         if isinstance(cap, (int, float)) and cap > 0.0:
             try:
-                import math as _m
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 vec = [
                     max(1e-9, float(self._weights.alpha)),
@@ -328,28 +365,27 @@ class ContextBuilder:
                         self._weights.alpha,
                         self._weights.beta,
                         self._weights.gamma,
-                        self._weights.tau,
-                    ) = (
+                        self._weights.tau, ) = (
                         float(vec[0]),
                         float(vec[1]),
                         float(vec[2]),
-                        float(vec[3]),
-                    )
-            except Exception as exc: raise
-        # Emit metric for the current tenant (import inside to respect monkeypatch)
-        from somabrain.metrics import (
-            update_learning_retrieval_weights as _update_metric,
-        )
+                        float(vec[3]), )
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+            update_learning_retrieval_weights as _update_metric, )
 
         _update_metric(
             tenant_id=self._tenant_id,
             alpha=self._weights.alpha,
             beta=self._weights.beta,
             gamma=self._weights.gamma,
-            tau=self._weights.tau,
-        )
+            tau=self._weights.tau, )
         try:
-            from somabrain.metrics import LEARNING_TAU, LEARNING_ENTROPY_CAP_HITS
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             if hasattr(LEARNING_TAU, "labels"):
                 LEARNING_TAU.labels(tenant_id=self._tenant_id).set(self._weights.tau)
@@ -357,11 +393,13 @@ class ContextBuilder:
                 LEARNING_TAU.set(self._weights.tau)
             if entropy_exceeded:
                 LEARNING_ENTROPY_CAP_HITS.labels(tenant_id=self._tenant_id).inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         return normalized.tolist()
 
     # ---------------- Tenant overrides helpers ----------------
-    def _get_entropy_cap_for_tenant(self, tenant_id: str) -> Optional[float]:
+def _get_entropy_cap_for_tenant(self, tenant_id: str) -> Optional[float]:
         """Read entropy_cap from SOMABRAIN_LEARNING_TENANTS_FILE or env overrides."""
         t = tenant_id or "default"
         ov = self._tenant_overrides_cache.get(t)
@@ -370,17 +408,26 @@ class ContextBuilder:
             self._tenant_overrides_cache[t] = ov
         cap = ov.get("entropy_cap") if isinstance(ov, dict) else None
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return float(cap) if cap is not None else None
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
 
-    def _load_tenant_overrides(self) -> Dict[str, Dict]:
+def _load_tenant_overrides(self) -> Dict[str, Dict]:
         """Load per-tenant overrides from YAML/JSON or env JSON string."""
         path = settings.learning_tenants_file
         overrides: Dict[str, Dict] = {}
         if path and os.path.exists(path):
             try:
-                import yaml  # type: ignore
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
@@ -390,9 +437,14 @@ class ContextBuilder:
                         for k, v in data.items()
                         if isinstance(v, dict)
                     }
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 try:
-                    import json as _json
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
 
                     with open(path, "r", encoding="utf-8") as f:
                         data = _json.load(f)
@@ -402,13 +454,18 @@ class ContextBuilder:
                             for k, v in data.items()
                             if isinstance(v, dict)
                         }
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     overrides = {}
         if not overrides:
             raw = settings.learning_tenants_overrides.strip()
             if raw:
                 try:
-                    import json as _json
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
 
                     data = _json.loads(raw)
                     if isinstance(data, dict):
@@ -417,11 +474,13 @@ class ContextBuilder:
                             for k, v in data.items()
                             if isinstance(v, dict)
                         }
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     overrides = {}
         return overrides
 
-    def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
+def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
         context_blocks: List[str] = []
         for mem in memories:
             meta = mem.metadata or {}
@@ -434,11 +493,11 @@ class ContextBuilder:
             return f"Context:\n{context_section}\n\nQuery:\n{query}"
         return query
 
-    def _build_residual(
+def _build_residual(
         self,
         weights: List[float],
-        memories: List[MemoryRecord],
-    ) -> List[float]:
+        memories: List[MemoryRecord], ) -> List[float]:
+            pass
         if not weights or not memories:
             return []
         dim = len(memories[0].embedding or [])
@@ -453,8 +512,8 @@ class ContextBuilder:
             accum /= norm
         return accum.tolist()
 
-    @staticmethod
-    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+@staticmethod
+def _cosine(a: np.ndarray, b: np.ndarray) -> float:
         if b.size == 0:
             return 0.0
         if a.shape != b.shape:
@@ -468,29 +527,41 @@ class ContextBuilder:
             return 0.0
         return float(np.dot(a, b) / denom)
 
-    def _temporal_decay(self, ts: float) -> float:
+def _temporal_decay(self, ts: float) -> float:
         if ts <= 0:
             return max(self._recency_floor, 0.0)
         age = max(time.time() - ts, 0.0)
         half_life = max(self._recency_half_life, 1e-6)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             normalised = age / half_life
             if normalised <= 0:
                 return 1.0
             damp = math.exp(-(normalised ** max(self._recency_sharpness, 1e-3)))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             damp = 0.0
         return float(max(self._recency_floor, min(1.0, damp)))
 
-    def _density_factor(self, metadata: Dict) -> float:
+def _density_factor(self, metadata: Dict) -> float:
         if not isinstance(metadata, dict):
             return 1.0
         margin = metadata.get("_cleanup_margin")
         if margin is None:
             margin = metadata.get("cleanup_margin")
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             margin_val = float(margin)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return 1.0
         if not math.isfinite(margin_val) or margin_val < 0:
             return 1.0
@@ -505,6 +576,6 @@ class ContextBuilder:
 
 
 try:  # circular import guard
-    from somabrain.runtime.working_memory import WorkingMemoryBuffer
-except Exception as exc: raise  # pragma: no cover - runtime optional during static analysis
-    WorkingMemoryBuffer = None  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise

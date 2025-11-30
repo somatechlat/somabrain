@@ -1,21 +1,22 @@
 from __future__ import annotations
-
 import json
 from common.config.settings import settings
 from functools import lru_cache
 from typing import Any, Dict, Optional
+from common.logging import logger
+from confluent_kafka import Producer as CKProducer  # type: ignore
+from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+from libs.kafka_cog.serde import AvroSerde  # type: ignore
+
 
 try:  # Strict mode: use confluent-kafka only
-    from confluent_kafka import Producer as CKProducer  # type: ignore
 except Exception as e:  # pragma: no cover
     raise RuntimeError(f"common.kafka: confluent-kafka required: {e}")
 
 try:  # Avro serde utilities (optional)
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 def _bootstrap_url() -> str:
@@ -36,10 +37,10 @@ def _bootstrap_url() -> str:
 class _ProducerShim:
     """Shim to emulate kafka-python Producer.send API on top of confluent-kafka."""
 
-    def __init__(self, ck: CKProducer) -> None:
+def __init__(self, ck: CKProducer) -> None:
         self._ck = ck
 
-    def send(self, topic: str, value: bytes):  # mimic kafka-python
+def send(self, topic: str, value: bytes):  # mimic kafka-python
         if isinstance(value, (bytes, bytearray)):
             payload = value
         else:
@@ -48,8 +49,9 @@ class _ProducerShim:
         self._ck.produce(topic, value=payload)
 
         # return an object with get(timeout) to mimic Future
-        class _Fut:
-            def get(self, timeout: float | int = 5):
+class _Fut:
+    pass
+def get(self, timeout: float | int = 5):
                 self_inner = self
                 remaining = ck.flush(timeout)
                 if remaining != 0:
@@ -59,13 +61,20 @@ class _ProducerShim:
         ck = self._ck
         return _Fut()
 
-    def flush(self, timeout: float | int = 5):
+def flush(self, timeout: float | int = 5):
         return self._ck.flush(timeout)
 
-    def close(self):
+def close(self):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self._ck.flush(5)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 def make_producer() -> _ProducerShim:  # pragma: no cover - integration path
@@ -80,8 +89,14 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return AvroSerde(load_schema(schema_name))  # type: ignore[arg-type]
-    except Exception as exc: raise  # pragma: no cover
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 

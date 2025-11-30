@@ -1,3 +1,13 @@
+from __future__ import annotations
+import asyncio
+import time as _t
+from typing import Callable, List, Optional, Tuple
+import re
+from .. import metrics as M
+from ..sdr import LSHIndex
+from common.logging import logger
+import numpy as np  # local import to avoid hard dep here
+
 """
 Recall Service Module for SomaBrain
 
@@ -6,6 +16,7 @@ features like SDR prefiltering and graph augmentation. It provides efficient
 memory retrieval with multiple optimization strategies.
 
 Key Features:
+    pass
 - SDR-based prefiltering for fast candidate selection
 - Graph-augmented recall with link traversal
 - Universe filtering for context-specific retrieval
@@ -13,12 +24,14 @@ Key Features:
 - Alternative mechanisms for robustness
 
 Recall Strategies:
+    pass
 - SDR Prefilter: Uses Sparse Distributed Representations for fast candidate selection
 - Direct Recall: Standard similarity-based retrieval
 - Graph Augmentation: Expands recall through memory links
 - Universe Filtering: Context-specific memory retrieval
 
 Performance Optimizations:
+    pass
 - LSH indexing for efficient similarity search
 - Configurable candidate limits
 - Latency monitoring and metrics
@@ -32,19 +45,10 @@ Classes:
     None (utility function-based implementation)
 """
 
-from __future__ import annotations
 
-import asyncio
-import time as _t
-from typing import Callable, List, Optional, Tuple
-import re
 
-import logging
-from .. import metrics as M
-from ..sdr import LSHIndex
 
 # VIBE compliance: provide a module‑level logger for real error handling
-logger = logging.getLogger(__name__)
 
 def _log_and_raise(exc: Exception, context_msg: str) -> None:
     """Log the exception with context and re‑raise a RuntimeError.
@@ -67,8 +71,8 @@ def recall_ltm(
     sdr_enc,
     sdr_idx_map: dict,
     graph_hops: int,
-    graph_limit: int,
-) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+    graph_limit: int, ) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+        pass
     """LTM recall with optional SDR prefilter and graph augmentation.
 
     Returns (payloads, mem_hits) where mem_hits are provider-specific hits if available.
@@ -78,14 +82,16 @@ def recall_ltm(
     did_sdr = False
     if use_sdr and sdr_enc is not None and hasattr(mem_client, "all_memories"):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             idx = sdr_idx_map.setdefault(
                 getattr(mem_client.cfg, "namespace", "default"),
                 LSHIndex(
                     bands=sdr_enc.cfg.bands if hasattr(sdr_enc, "cfg") else 8,
                     rows=sdr_enc.cfg.rows if hasattr(sdr_enc, "cfg") else 16,
-                    dim=sdr_enc.dim if hasattr(sdr_enc, "dim") else 16384,
-                ),
-            )
+                    dim=sdr_enc.dim if hasattr(sdr_enc, "dim") else 16384, ), )
             qbits = sdr_enc.encode(text)
             t2 = _t.perf_counter()
             cand_coords = idx.query(qbits, limit=graph_limit)
@@ -97,22 +103,34 @@ def recall_ltm(
             if cand_coords:
                 mem_payloads = mem_client.payloads_for_coords(cand_coords)
                 did_sdr = True
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             did_sdr = False
     if not did_sdr:
         hits = getattr(mem_client, "recall")(text, top_k=top_k)
         # hits may be RecallHit wrappers
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             mem_payloads = [h.payload for h in hits]
             mem_hits = hits  # type: ignore
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             mem_payloads = []
         # If recall returned items but none lexically match the query, inject
         # a deterministic read-your-writes result derived from the query key.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ql = str(text or "").strip().lower()
 
-            def _lex_match(p: dict) -> bool:
+def _lex_match(p: dict) -> bool:
                 for k in ("task", "text", "content", "what", "fact"):
                     v = p.get(k)
                     if (
@@ -132,7 +150,7 @@ def recall_ltm(
                     seen = set()
                     out: list[dict] = []
 
-                    def _key(p: dict) -> str:
+def _key(p: dict) -> str:
                         return str(
                             p.get("task") or p.get("fact") or p.get("text") or ""
                         )
@@ -147,15 +165,20 @@ def recall_ltm(
                         seen.add(kp)
                     mem_payloads = out
         except Exception as exc:
-            _log_and_raise(exc, "Error during direct hit injection")
+            logger.exception("Exception caught: %s", exc)
+            raise
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         q = str(text or "").strip()
         ql = q.lower()
 
-        def _is_token_like(s: str) -> bool:
+def _is_token_like(s: str) -> bool:
             # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
             if not s or len(s) < 6 or len(s) > 64:
                 return False
@@ -165,7 +188,7 @@ def recall_ltm(
             has_digit = any(c.isdigit() for c in s)
             return has_alpha and has_digit
 
-        def _lexical_score(p: dict) -> int:
+def _lexical_score(p: dict) -> int:
             # Score by exact contains in common fields; higher for exact token-like
             score = 0
             fields = ("task", "text", "content", "what", "fact")
@@ -187,18 +210,25 @@ def recall_ltm(
                     p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
                 ]
     except Exception as exc:
-        _log_and_raise(exc, "Error during lexical/token-aware boost")
+        logger.exception("Exception caught: %s", exc)
+        raise
     # Deterministic read-your-writes alternative:
+        pass
     # If no payloads were returned via SDR/recall, derive the coordinate
     # from the query text (used as key on store) and fetch directly.
     if not mem_payloads:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             coord = mem_client.coord_for_key(text, universe=universe)
             direct = mem_client.payloads_for_coords([coord], universe=universe)
             if direct:
                 mem_payloads = direct
         except Exception as exc:
-            _log_and_raise(exc, "Error during deterministic read‑your‑writes fallback")
+            logger.exception("Exception caught: %s", exc)
+            raise
     # Filter by universe if any
     if universe:
         mem_payloads = [
@@ -218,8 +248,8 @@ def diversify_payloads(
     payloads: List[dict],
     method: str = "mmr",
     k: Optional[int] = None,
-    lam: float = 0.5,
-) -> List[dict]:
+    lam: float = 0.5, ) -> List[dict]:
+        pass
     """Apply diversity over payloads (MMR only).
 
     - embed: function mapping text -> vector (unit norm preferred)
@@ -234,11 +264,13 @@ def diversify_payloads(
         # Log the unsupported request and return the original payload list unchanged.
         logger.warning(
             "diversify_payloads called with unsupported method '%s'; returning payloads unchanged",
-            method,
-        )
+            method, )
         return payloads
     try:
-        import numpy as np  # local import to avoid hard dep here
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         texts = [_text_of(p) for p in payloads]
         k = len(payloads) if k is None or k <= 0 else min(k, len(payloads))
@@ -248,7 +280,7 @@ def diversify_payloads(
         vs = [embed(t) if t else qv for t in texts]
 
         # cosine similarities to query as relevance
-        def cos(a, b):
+def cos(a, b):
             na = float(np.linalg.norm(a)) or 1.0
             nb = float(np.linalg.norm(b)) or 1.0
             return float(np.dot(a, b) / (na * nb))
@@ -277,7 +309,9 @@ def diversify_payloads(
             payloads[i] for i in range(len(payloads)) if i not in selected
         ]
         return ordered
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return payloads
 
 
@@ -291,8 +325,8 @@ async def recall_ltm_async(
     sdr_enc,
     sdr_idx_map: dict,
     graph_hops: int,
-    graph_limit: int,
-) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+    graph_limit: int, ) -> Tuple[List[dict], List[Tuple[float, dict]]]:
+        pass
     # Avoid blocking the event loop: run the synchronous recall_ltm in a
     # thread executor so heavy sync operations (including sync HTTP calls)
     # don't stall the async worker under high concurrency.
@@ -309,16 +343,20 @@ async def recall_ltm_async(
         sdr_enc,
         sdr_idx_map,
         graph_hops,
-        graph_limit,
-    )
+        graph_limit, )
     if payloads:
         return payloads, hits
     # If no SDR candidates, perform async recall for HTTP mode
     if hasattr(mem_client, "arecall"):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ahits = await mem_client.arecall(text, top_k=top_k)
             payloads = [h.payload for h in ahits]
             hits = ahits
         except Exception as exc:
-            _log_and_raise(exc, "Error during async recall fallback")
+            logger.exception("Exception caught: %s", exc)
+            raise
     return payloads, hits

@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, Body, HTTPException, Query, Request
+from pydantic import BaseModel
+from somabrain.runtime.config_runtime import (
+from somabrain.services.config_service import ConfigMergeError
+from somabrain.services.cutover_controller import CutoverError, CutoverPlan
+
 """Config API (No-Kong edition).
 
 Exposes effective config reads and patch endpoints backed by the in-process
@@ -5,20 +13,12 @@ ConfigService. This is a minimal, real implementation to unblock end-to-end
 tests without introducing external dependencies.
 """
 
-from __future__ import annotations
 
-from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
-from pydantic import BaseModel
 
-from somabrain.runtime.config_runtime import (
     ensure_config_dispatcher,
     get_config_service,
-    get_cutover_controller,
-)
-from somabrain.services.config_service import ConfigMergeError
-from somabrain.services.cutover_controller import CutoverError, CutoverPlan
+    get_cutover_controller, )
 
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -57,8 +57,8 @@ class CutoverTenantRequest(BaseModel):
 @router.get("/memory", response_model=EffectiveConfigResponse)
 async def get_memory_config(
     tenant: str = Query("", description="Tenant id"),
-    namespace: str = Query("", description="Namespace (e.g., wm, ltm)"),
-):
+    namespace: str = Query("", description="Namespace (e.g., wm, ltm)"), ):
+        pass
     await ensure_config_dispatcher()
     cfg = _config_service.effective_config(tenant, namespace)
     return EffectiveConfigResponse(tenant=tenant, namespace=namespace, config=cfg)
@@ -69,10 +69,14 @@ async def patch_memory_config(
     request: Request,
     tenant: str = Query(..., description="Tenant id"),
     namespace: str = Query(..., description="Namespace"),
-    payload: Dict[str, Any] = Body(..., description="Partial config patch"),
-):
+    payload: Dict[str, Any] = Body(..., description="Partial config patch"), ):
+        pass
     actor = request.headers.get("X-Actor") or "api"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         await _config_service.patch_namespace(tenant, namespace, payload, actor=actor)
     except ConfigMergeError as exc:
@@ -86,12 +90,15 @@ async def patch_memory_config(
 @router.post("/cutover/open")
 async def open_cutover(payload: CutoverOpenRequest):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         plan = await _cutover_controller.open_plan(
             payload.tenant,
             payload.from_namespace,
-            payload.to_namespace,
-        )
+            payload.to_namespace, )
     except CutoverError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"ok": True, "plan": _plan_to_dict(plan)}
@@ -100,14 +107,17 @@ async def open_cutover(payload: CutoverOpenRequest):
 @router.post("/cutover/metrics")
 async def record_cutover_metrics(payload: CutoverMetricsRequest):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         plan = await _cutover_controller.record_shadow_metrics(
             payload.tenant,
             payload.namespace,
             top1_accuracy=payload.top1_accuracy,
             margin=payload.margin,
-            latency_p95_ms=payload.latency_p95_ms,
-        )
+            latency_p95_ms=payload.latency_p95_ms, )
     except CutoverError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return {"ok": True, "plan": _plan_to_dict(plan)}
@@ -116,6 +126,10 @@ async def record_cutover_metrics(payload: CutoverMetricsRequest):
 @router.post("/cutover/approve")
 async def approve_cutover(payload: CutoverTenantRequest):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         plan = await _cutover_controller.approve(payload.tenant)
     except CutoverError as exc:
@@ -126,6 +140,10 @@ async def approve_cutover(payload: CutoverTenantRequest):
 @router.post("/cutover/execute")
 async def execute_cutover(payload: CutoverTenantRequest):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         plan = await _cutover_controller.execute(payload.tenant)
     except CutoverError as exc:
@@ -136,6 +154,10 @@ async def execute_cutover(payload: CutoverTenantRequest):
 @router.post("/cutover/cancel")
 async def cancel_cutover(payload: CutoverTenantRequest):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await ensure_config_dispatcher()
         await _cutover_controller.cancel(payload.tenant, reason=payload.reason or "")
     except CutoverError as exc:

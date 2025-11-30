@@ -1,3 +1,10 @@
+from __future__ import annotations
+import re
+from collections import Counter
+from typing import Dict, List, Tuple
+import numpy as np
+from task descriptions in the memory payloads.
+
 """
 Reflection Module for SomaBrain.
 
@@ -6,6 +13,7 @@ and memory consolidation. It includes keyword extraction, clustering of similar 
 and automatic summarization of episodic content.
 
 Key Features:
+    pass
 - Stop word filtering for meaningful keyword extraction
 - TF-IDF style vectorization for text similarity
 - Cosine similarity-based clustering of memories
@@ -19,13 +27,8 @@ Functions:
     summarize_cluster: Create keyword-based summary for a memory cluster.
 """
 
-from __future__ import annotations
 
-import re
-from collections import Counter
-from typing import Dict, List, Tuple
 
-import numpy as np
 
 STOP = set(
     "the a an and or of to in on for with at from by as is are was were be been it this that these those i you he she we they do did does not".split()
@@ -71,7 +74,6 @@ def summarize_episodics(payloads: List[dict]) -> Tuple[str, List[dict]]:
     Generate a simple heuristic summary of recent episodic memories.
 
     Creates a keyword-based summary by extracting the most common keywords
-    from task descriptions in the memory payloads.
 
     Args:
         payloads (List[dict]): List of memory payload dictionaries containing task information.

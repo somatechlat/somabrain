@@ -11,13 +11,18 @@ from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
 
 try:
-    from somabrain.services.cutover_controller import CutoverController
-except Exception as exc: raise  # pragma: no cover - optional
-    CutoverController = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+from somabrain.services.cutover_controller import CutoverController
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 from somabrain.services.parameter_supervisor import (
+from common.logging import logger
     MetricsSnapshot,
-    ParameterSupervisor,
-)
+    ParameterSupervisor, )
 
 _logger = logging.getLogger(__name__)
 
@@ -48,8 +53,8 @@ def get_parameter_supervisor() -> ParameterSupervisor:
 
 
 def register_config_listener(
-    callback: Callable[[ConfigEvent], Optional[Awaitable[None]]],
-) -> None:
+    callback: Callable[[ConfigEvent], Optional[Awaitable[None]]], ) -> None:
+        pass
     if callback not in _listeners:
         _listeners.append(callback)
 
@@ -70,10 +75,16 @@ async def _dispatch_events() -> None:
         event = await _event_queue.get()
         for callback in list(_listeners):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 result = callback(event)
                 if asyncio.iscoroutine(result):
                     await result
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 _raise RuntimeError("Config listener failed")
 
 
@@ -97,13 +108,18 @@ async def _run_supervisor() -> None:
     while True:
         snapshot = await _supervisor_queue.get()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             await _supervisor.evaluate(snapshot)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             _logger.exception(
                 "ParameterSupervisor evaluation failed for %s/%s",
                 snapshot.tenant,
-                snapshot.namespace,
-            )
+                snapshot.namespace, )
 
 
 __all__ = [

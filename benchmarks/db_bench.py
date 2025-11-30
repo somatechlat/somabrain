@@ -1,3 +1,9 @@
+import argparse
+import time
+from somabrain.storage.db import get_session_factory, Base, get_engine
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import Session
+
 """Simple DB benchmark using SQLAlchemy session factory from the project.
 
 Usage:
@@ -6,12 +12,7 @@ Usage:
 This will open sessions and perform simple insert/select cycles against the configured DB.
 """
 
-import argparse
-import time
 
-from somabrain.storage.db import get_session_factory, Base, get_engine
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Session
 
 
 # Minimal test table model declared here to avoid touching application models

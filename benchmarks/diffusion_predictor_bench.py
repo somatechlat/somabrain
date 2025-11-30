@@ -1,9 +1,22 @@
 from __future__ import annotations
+import json
+import os
+import time
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Dict, List, Tuple
+import numpy as np
+from numpy.typing import NDArray
+from scipy.linalg import expm
+import matplotlib.pyplot as plt
+from somabrain.predictors.base import (
+from common.logging import logger
 
 """
 Benchmark diffusion-backed predictors (Chebyshev/Lanczos) for accuracy and performance.
 
 Artifacts are written under:
+    pass
 - benchmarks/results/diffusion_predictors/<timestamp>/
 - benchmarks/plots/diffusion_predictors/<timestamp>/
 
@@ -11,30 +24,21 @@ Run:
   python benchmarks/diffusion_predictor_bench.py
 """
 
-import json
-import os
-import time
-from dataclasses import asdict, dataclass
-from pathlib import Path
-from typing import Dict, List, Tuple
 
-import numpy as np
-from numpy.typing import NDArray
-from scipy.linalg import expm
 
 try:
-    import matplotlib.pyplot as plt
-except Exception as exc: raise  # pragma: no cover
-    raise SystemExit(
-        "matplotlib is required to run this benchmark. Install it and retry."
-    )
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
-from somabrain.predictors.base import (
     HeatDiffusionPredictor,
     PredictorConfig,
     make_line_graph_laplacian,
-    matvec_from_matrix,
-)
+    matvec_from_matrix, )
 
 
 @dataclass

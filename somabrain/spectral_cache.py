@@ -1,3 +1,12 @@
+from __future__ import annotations
+import hashlib
+import os
+from common.config.settings import settings
+from pathlib import Path
+from typing import Optional, Tuple
+import numpy as np
+from common.logging import logger
+
 """Simple file-backed spectral cache for role spectra and time-domain vectors.
 
 API:
@@ -13,15 +22,8 @@ Implementation notes:
      surface small and deterministic.
 """
 
-from __future__ import annotations
 
-import hashlib
-import os
-from common.config.settings import settings
-from pathlib import Path
-from typing import Optional, Tuple
 
-import numpy as np
 
 
 def _default_cache_dir() -> Path:
@@ -55,14 +57,19 @@ def get_role(token: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
     if not fn.exists():
         return None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         with np.load(fn, allow_pickle=False) as data:
             role_time = data["role_time"]
             role_fft = data["role_fft"]
             # ensure expected dtypes
             role_fft = role_fft.astype(np.complex128, copy=False)
             return role_time, role_fft
-    except Exception as exc: raise
-        # If reading fails for any reason, act as cache miss
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 
@@ -77,6 +84,10 @@ def set_role(token: str, role_time: np.ndarray, role_fft: np.ndarray) -> None:
     fn.parent.mkdir(parents=True, exist_ok=True)
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # np.savez will write the exact filename when the path ends with
         # .npz; using tmp that ends with .tmp.npz ensures the created
         # temporary file is tmp, and we can atomically replace it into
@@ -88,5 +99,12 @@ def set_role(token: str, role_time: np.ndarray, role_fft: np.ndarray) -> None:
         # best-effort cleanup
         if tmp.exists():
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 tmp.unlink()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise

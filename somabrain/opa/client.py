@@ -1,14 +1,19 @@
 import logging
 from typing import Any, Dict
-
 import requests
-
 from somabrain.infrastructure import get_opa_url
+from common.logging import logger
+from common.config.settings import settings
+
+
 
 LOGGER = logging.getLogger("somabrain.opa")
 
 try:
-    from common.config.settings import settings
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     settings = None  # type: ignore
 
 
@@ -21,8 +26,14 @@ def _policy_path_for_mode() -> str:
     bundle = None
     if settings is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             bundle = str(getattr(settings, "mode_opa_policy_bundle", "") or "")
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             bundle = None
     bundle = (bundle or "").strip().lower()
     if bundle == "allow-dev" or bundle == "dev":
@@ -39,15 +50,21 @@ class OPAClient:
     ``SOMABRAIN_OPA_ALLOW_ON_ERROR=1`` is explicitly set (temporary escape hatch).
     """
 
-    def __init__(self, policy_path: str | None = None) -> None:
+def __init__(self, policy_path: str | None = None) -> None:
         # Use the canonical Settings field for the OPA request timeout.
         # If the Settings instance is unavailable (unlikely), fall back to 2 seconds.
         if settings is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self.timeout = float(
                     getattr(settings, "opa_timeout_seconds", 2.0) or 2.0
                 )
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self.timeout = 2.0
         else:
             self.timeout = 2.0
@@ -68,7 +85,7 @@ class OPAClient:
             "OPA client initialized: %s (policy %s)", self.base_url, self.policy_path
         )
 
-    def evaluate(self, input_data: Dict[str, Any]) -> bool:
+def evaluate(self, input_data: Dict[str, Any]) -> bool:
         """Evaluate policy with ``input_data``.
 
         Returns True if allowed, False otherwise. Failure denies unless
@@ -77,6 +94,10 @@ class OPAClient:
         url = f"{self.base_url}/v1/data/{self.policy_path}"
         payload = {"input": input_data}
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = self.session.post(url, json=payload, timeout=self.timeout)
             resp.raise_for_status()
             data = resp.json()
@@ -87,23 +108,28 @@ class OPAClient:
             # If OPA returns a primitive (e.g., true/false), interpret directly
             return bool(result)
         except Exception as e:
-            # VIBE rule: on evaluation failure, deny the request (fail‑closed).
-            LOGGER.error("OPA evaluation failed (deny): %s", e)
-            return False
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    def is_ready(self) -> bool:
+def is_ready(self) -> bool:
         """Check OPA readiness via its /health endpoint.
 
         Returns True if OPA responds with HTTP 200 within the configured timeout.
         """
         health_url = f"{self.base_url}/health"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = self.session.get(health_url, timeout=self.timeout)
             return resp.status_code == 200
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
 
-    def reload_policy(self) -> bool:
+def reload_policy(self) -> bool:
         """Trigger OPA to reload its policies.
 
         OPA provides an admin endpoint ``/-/reload`` that forces the policy
@@ -112,12 +138,16 @@ class OPAClient:
         """
         reload_url = f"{self.base_url}/-/reload"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = self.session.post(reload_url, timeout=self.timeout)
             resp.raise_for_status()
             return True
         except Exception as e:
-            LOGGER.warning("OPA reload failed: %s", e)
-            return False
+            logger.exception("Exception caught: %s", e)
+            raise
 
 
 # Export a singleton for easy import elsewhere if desired

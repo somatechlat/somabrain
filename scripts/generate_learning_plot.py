@@ -33,8 +33,7 @@ def _post(
         f"{BASE_URL}/{path.lstrip('/')}",
         json=payload,
         headers=headers,
-        timeout=10,
-    )
+        timeout=10, )
     resp.raise_for_status()
     return resp
 
@@ -68,7 +67,7 @@ def run_learning_iterations(iterations: int = 6) -> dict:
     alpha_vals: List[float] = []
     history: List[int] = []
 
-    def record_state(state: dict) -> None:
+def record_state(state: dict) -> None:
         lambda_vals.append(state["utility"]["lambda_"])
         alpha_vals.append(state["retrieval"]["alpha"])
         history.append(state.get("history_len", 0))
@@ -109,8 +108,7 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
         label="Utility lambda",
         color="blue",
         linestyle="-",
-        linewidth=2.5,
-    )
+        linewidth=2.5, )
     ax1.set_xlabel("Feedback Iteration")
     ax1.set_ylabel("Utility lambda", color="blue")
     ax1.tick_params(axis="y", labelcolor="blue")
@@ -124,8 +122,7 @@ def plot_learning_curves(data: dict) -> pathlib.Path:
         label="Retrieval alpha",
         color="orange",
         linestyle="--",
-        linewidth=2.5,
-    )
+        linewidth=2.5, )
     ax2.set_ylabel("Retrieval alpha", color="orange")
     ax2.tick_params(axis="y", labelcolor="orange")
 

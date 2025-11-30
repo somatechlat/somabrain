@@ -1,3 +1,6 @@
+from .base import (
+from common.logging import logger
+
 """Predictors package for SomaBrain.
 
 This package provides concrete predictor services for the three cognitive
@@ -11,12 +14,10 @@ settings``) via the ``PredictorConfig`` dataclass, ensuring a single source of
 truth for diffusion parameters.
 """
 
-from .base import (
     HeatDiffusionPredictor,
     PredictorConfig,
     load_operator_from_file,
-    build_predictor_from_env,
-)
+    build_predictor_from_env, )
 
 __all__ = [
     "HeatDiffusionPredictor",

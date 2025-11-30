@@ -1,3 +1,10 @@
+from common.health import check_health
+from __future__ import annotations
+import urllib.request
+from typing import Optional
+from common.logging import logger
+import requests  # type: ignore
+
 """Simple health‑check utility.
 
 Provides a tiny wrapper around ``requests.get`` that returns ``True`` when the
@@ -17,8 +24,8 @@ scripts and services to verify that external services are reachable. The VIBE
 coding rules require a single, reusable helper for this purpose.
 
 Usage::
+    pass
 
-    from common.health import check_health
     if check_health(settings.memory_http_endpoint):
         ...
 
@@ -29,15 +36,16 @@ imported the implementation falls back to ``urllib.request`` from the standard
 library.
 """
 
-from __future__ import annotations
 
-import urllib.request
-from typing import Optional
 
 try:
-    import requests  # type: ignore
-except Exception as exc: raise  # pragma: no cover – ``requests`` may be unavailable in minimal envs.
-    requests = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 def _http_get(url: str, timeout: float) -> Optional[int]:
@@ -51,17 +59,29 @@ def _http_get(url: str, timeout: float) -> Optional[int]:
         return None
     if requests is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = requests.get(url, timeout=timeout)
             return resp.status_code
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
     # Fallback to urllib
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         with urllib.request.urlopen(
             url, timeout=timeout
         ) as resp:  # noqa: S310 – URL is provided by caller.
             return resp.getcode()
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 

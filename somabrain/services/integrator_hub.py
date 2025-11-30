@@ -1,3 +1,9 @@
+from __future__ import annotations
+import time
+from dataclasses import dataclass
+from typing import Dict, Tuple
+from .integrator_hub_triplet import IntegratorHub  # noqa: F401
+
 """Integrator hub compatibility module.
 
 Provides the real ``IntegratorHub`` implementation (re‑exported from
@@ -5,14 +11,9 @@ Provides the real ``IntegratorHub`` implementation (re‑exported from
 ``DomainObs`` classes required by the test suite.
 """
 
-from __future__ import annotations
 
-import time
-from dataclasses import dataclass
-from typing import Dict, Tuple
 
 # Re‑export the main hub implementation
-from .integrator_hub_triplet import IntegratorHub  # noqa: F401
 
 __all__ = ["IntegratorHub", "SoftmaxIntegrator", "DomainObs"]
 
@@ -45,19 +46,19 @@ class SoftmaxIntegrator:
     mapping and the raw observations.
     """
 
-    def __init__(self, tau: float = 1.0, stale_seconds: float = 5.0):
+def __init__(self, tau: float = 1.0, stale_seconds: float = 5.0):
         self.tau = max(tau, 1e-9)  # avoid division by zero
         self.stale_seconds = stale_seconds
         self._data: Dict[str, Dict[str, DomainObs]] = {}
 
-    def update(self, tenant: str, domain: str, obs: DomainObs) -> None:
+def update(self, tenant: str, domain: str, obs: DomainObs) -> None:
         """Record an observation for *tenant*/*domain*.
 
         Observations are overwritten if a newer timestamp is provided.
         """
         self._data.setdefault(tenant, {})[domain] = obs
 
-    def _evict_stale(self, tenant: str, now: float) -> None:
+def _evict_stale(self, tenant: str, now: float) -> None:
         """Remove observations older than ``stale_seconds`` for *tenant*."""
         recent: Dict[str, DomainObs] = {}
         for dom, obs in self._data.get(tenant, {}).items():
@@ -65,7 +66,7 @@ class SoftmaxIntegrator:
                 recent[dom] = obs
         self._data[tenant] = recent
 
-    def snapshot(
+def snapshot(
         self, tenant: str
     ) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
         """Return ``(leader, weights, raw)`` for *tenant*.

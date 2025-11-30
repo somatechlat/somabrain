@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import Optional
+
 """Somabrain error hierarchy.
 
 All production code should raise one of the concrete subclasses defined here
@@ -6,9 +9,7 @@ designed to be explicit (VIBE *Error‑first*) and to carry optional ``cause``
 information for debugging.
 """
 
-from __future__ import annotations
 
-from typing import Optional
 
 
 class SomabrainError(RuntimeError):
@@ -19,13 +20,13 @@ class SomabrainError(RuntimeError):
     traces.
     """
 
-    def __init__(
+def __init__(
         self,
         message: str,
         *,
         code: Optional[str] = None,
-        cause: Optional[BaseException] = None,
-    ) -> None:
+        cause: Optional[BaseException] = None, ) -> None:
+            pass
         super().__init__(message)
         self.code = code
         self.__cause__ = cause

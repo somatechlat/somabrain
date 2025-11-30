@@ -1,9 +1,16 @@
+import argparse
+import time
+from somabrain.schemas import RetrievalRequest
+from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
+import asyncio
+
 """Worker-side synthetic retrieval pipeline benchmark.
 
 Usage:
     python benchmarks/worker_bench.py --iterations 100
 
 Notes:
+    pass
 - This is a synthetic micro-benchmark that exercises lightweight in-process retrieval
     and fusion code paths only. It does NOT perform any network IO or call live services
     (API, Kafka, Postgres). Therefore it is NOT an end-to-end benchmark and should
@@ -12,19 +19,14 @@ Notes:
     `benchmarks/http_bench.py` against a running stack for live measurements.
 """
 
-import argparse
-import time
 
-from somabrain.schemas import RetrievalRequest
-from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
-import asyncio
 
 
 async def _run_async(iterations: int):
     req = RetrievalRequest(query="benchmark test", top_k=10)
 
     # Minimal context object used by the pipeline
-    class Ctx:
+class Ctx:
         namespace = "bench"
         tenant_id = "bench"
 

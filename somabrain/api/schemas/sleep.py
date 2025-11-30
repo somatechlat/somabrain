@@ -1,3 +1,9 @@
+from __future__ import annotations
+from enum import Enum
+from typing import Optional
+from pydantic import BaseModel, Field, validator
+from somabrain.sleep import SleepState
+
 """Pydantic schemas for the Sleep System endpoints.
 
 Both the utility and cognitive sleep APIs share a minimal request model that
@@ -6,14 +12,9 @@ wake. The response models are defined directly in the endpoint functions to
 avoid circular imports.
 """
 
-from __future__ import annotations
 
-from enum import Enum
-from typing import Optional
 
-from pydantic import BaseModel, Field, validator
 
-from somabrain.sleep import SleepState
 
 
 class SleepTargetState(str, Enum):
@@ -37,22 +38,19 @@ class SleepRequest(BaseModel):
     ttl_seconds: Optional[int] = Field(
       None,
       ge=1,
-      description="Optional TTL in seconds after which the state auto‑resets to ACTIVE",
-    )
+      description="Optional TTL in seconds after which the state auto‑resets to ACTIVE", )
     # ``async`` flag – when true the endpoint returns immediately and the actual
     # sleep is performed in the background. This satisfies SRS requirement U‑3.
     async_mode: bool = Field(
       False,
-      description="If true, perform the sleep asynchronously (non‑blocking)",
-    )
+      description="If true, perform the sleep asynchronously (non‑blocking)", )
     # Optional trace identifier for observability pipelines (SRS U‑1).
     trace_id: Optional[str] = Field(
       None,
-      description="Arbitrary trace identifier propagated to logs/metrics",
-    )
+      description="Arbitrary trace identifier propagated to logs/metrics", )
 
-    @validator("target_state")
-    def _validate_target(cls, v: SleepTargetState) -> SleepTargetState:
+@validator("target_state")
+def _validate_target(cls, v: SleepTargetState) -> SleepTargetState:
         # Ensure the value maps to the internal SleepState enum.
         if v.value not in {s.value for s in SleepState}:
             raise ValueError(f"Invalid sleep state: {v}")

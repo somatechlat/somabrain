@@ -1,3 +1,6 @@
+from alembic import op
+import sqlalchemy as sa
+
 """Create tenant sleep states table.
 
 Revision ID: 20251112_create_sleep_states
@@ -6,8 +9,6 @@ Create Date: 2025-11-12 14:00:00.000000
 
 """
 
-from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "20251112_create_sleep_states"
@@ -32,8 +33,7 @@ def upgrade():
         sa.Column("updated_at", sa.DateTime, nullable=False, default=sa.func.now()),
         sa.Index("idx_sleep_tenant_ttl", "tenant_id", "ttl"),
         sa.Index("idx_sleep_scheduled_wake", "scheduled_wake"),
-        sa.Index("idx_sleep_updated", "updated_at"),
-    )
+        sa.Index("idx_sleep_updated", "updated_at"), )
 
 
 def downgrade():

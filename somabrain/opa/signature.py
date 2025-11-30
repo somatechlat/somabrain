@@ -1,27 +1,30 @@
+from __future__ import annotations
+import base64
+import pathlib
+from common.logging import logger
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
 """Utilities for signing and verifying OPA policies.
 
 The policy is signed with a PEM private key and verified against a PEM
 public key. Signatures are returned as hex strings for storage in Redis.
 """
 
-from __future__ import annotations
 
-import base64
-import pathlib
 
 # Cryptography is an optional dependency; import lazily with alternative.
 try:
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.asymmetric import padding
-    from cryptography.hazmat.primitives.serialization import (
-        load_pem_private_key,
-        load_pem_public_key,
-    )
-except Exception as exc: raise  # pragma: no cover
-    hashes = None
-    padding = None
-    load_pem_private_key = None
-    load_pem_public_key = None
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 def sign_policy(policy: str, private_key_path: str) -> str:
@@ -37,11 +40,14 @@ def sign_policy(policy: str, private_key_path: str) -> str:
         raise ValueError("private_key_path is required for OPA policy signing")
     # Import lazily – raise if missing.
     try:
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.asymmetric import padding
-        from cryptography.hazmat.primitives.serialization import load_pem_private_key
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     except Exception as e:
-        raise ImportError(
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise ImportError(
             "cryptography library required for signing OPA policies"
         ) from e
 
@@ -51,8 +57,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     signature = private_key.sign(
         policy.encode("utf-8"),
         padding.PKCS1v15(),
-        hashes.SHA256(),
-    )
+        hashes.SHA256(), )
     return signature.hex()
 
 
@@ -63,11 +68,14 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
     Returns ``True`` on successful verification, ``False`` otherwise.
     """
     try:
-        from cryptography.hazmat.primitives import hashes
-        from cryptography.hazmat.primitives.asymmetric import padding
-        from cryptography.hazmat.primitives.serialization import load_pem_public_key
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     except Exception as e:
-        raise ImportError(
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise ImportError(
             "cryptography library required for verifying OPA policies"
         ) from e
 
@@ -75,22 +83,38 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
     with key_path.open("rb") as f:
         public_key = load_pem_public_key(f.read())
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         signature = bytes.fromhex(signature_hex)
-    except Exception as exc: raise
-        # try base64 alternative
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             signature = base64.b64decode(signature_hex)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         public_key.verify(
             signature,
             policy.encode("utf-8"),
             padding.PKCS1v15(),
-            hashes.SHA256(),
-        )
+            hashes.SHA256(), )
         return True
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 

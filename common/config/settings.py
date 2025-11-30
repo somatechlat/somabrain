@@ -1,3 +1,15 @@
+from __future__ import annotations
+import os
+from typing import Optional, Any
+from common.logging import logger
+import pydantic_settings as _ps  # type: ignore
+from pydantic import Field
+from somabrain.mode import get_mode_config
+from somabrain.mode import get_mode_config
+from somabrain.mode import get_mode_config
+from somabrain.mode import get_mode_config
+from somabrain.mode import get_mode_config
+
 """Centralised configuration for SomaBrain and shared infra.
 
 This module mirrors the pattern used by other services in the SomaStack.
@@ -10,21 +22,21 @@ reads environment variables will continue to work because the default values
 default to the current variables.
 """
 
-from __future__ import annotations
 
-import os
-from typing import Optional, Any
 
 BaseSettings: Any  # forward-declare for mypy
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
-    import pydantic_settings as _ps  # type: ignore
-    from pydantic import Field
 
     BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
-except Exception as exc: raise  # pragma: no cover - alternative for older envs
-    from pydantic import BaseSettings as _BS, Field
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     BaseSettings = _BS  # type: ignore[assignment]
 
@@ -43,8 +55,14 @@ def _int_env(name: str, default: int) -> int:
     # Remove anything after a comment marker
     raw = raw.split("#", 1)[0].strip()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return int(raw)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default
 
 
@@ -58,8 +76,14 @@ def _bool_env(name: str, default: bool) -> bool:
         return default
     raw = raw.split("#", 1)[0].strip()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return raw.lower() in _TRUE_VALUES
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default
 
 
@@ -68,8 +92,14 @@ def _float_env(name: str, default: float) -> float:
     raw = os.getenv(name, str(default))
     raw = raw.split("#", 1)[0].strip()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return float(raw)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default
 
 
@@ -190,8 +220,7 @@ class Settings(BaseSettings):
     milvus_port: Optional[int] = Field(
         default=_int_env(
             "MILVUS_PORT",
-            _int_env("SOMABRAIN_MILVUS_PORT", 19530),
-        )
+            _int_env("SOMABRAIN_MILVUS_PORT", 19530), )
     )
     milvus_collection: str = Field(
         default=_str_env("MILVUS_COLLECTION", "oak_options")
@@ -1313,15 +1342,13 @@ class Settings(BaseSettings):
     integrator_health_url: str = Field(
         default_factory=lambda: _str_env(
             "SOMABRAIN_INTEGRATOR_HEALTH_URL",
-            "http://somabrain_integrator_triplet:9015/health",
-        )
+            "http://somabrain_integrator_triplet:9015/health", )
         or "http://somabrain_integrator_triplet:9015/health"
     )
     segmentation_health_url: str = Field(
         default_factory=lambda: _str_env(
             "SOMABRAIN_SEGMENTATION_HEALTH_URL",
-            "http://somabrain_cog:9016/health",
-        )
+            "http://somabrain_cog:9016/health", )
         or "http://somabrain_cog:9016/health"
     )
     # Tiered memory cleanup configuration
@@ -1385,17 +1412,22 @@ class Settings(BaseSettings):
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
 
-    @property
-    def mode_normalized(self) -> str:
+@property
+def mode_normalized(self) -> str:
         """Normalized mode name in {dev, staging, prod}. Unknown maps to prod.
 
         Historically, the default was "enterprise"; we treat that as prod.
         """
         try:
-            from somabrain.mode import get_mode_config
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             return get_mode_config().mode.value
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             m = (self.mode or "").strip().lower()
             if m in ("dev", "development"):
                 return "dev"
@@ -1403,36 +1435,46 @@ class Settings(BaseSettings):
                 return "staging"
             return "prod"
 
-    @property
-    def mode_api_auth_enabled(self) -> bool:
+@property
+def mode_api_auth_enabled(self) -> bool:
         """Whether API auth should be enabled under the current mode.
 
         Strict: Always True across all modes.
         """
         try:
-            from somabrain.mode import get_mode_config
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             # Even if mode declares dev relaxations, enforce auth in strict mode
             _ = get_mode_config()
             return True
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return True
 
-    @property
-    def mode_require_external_backends(self) -> bool:
+@property
+def mode_require_external_backends(self) -> bool:
         """Require real backends (no stubs) across all modes by policy.
 
         This mirrors the "no mocks" requirement and prevents silent alternatives.
         """
         try:
-            from somabrain.mode import get_mode_config
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             return get_mode_config().profile.require_external_backends
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return True
 
-    @property
-    def mode_memory_auth_required(self) -> bool:
+@property
+def mode_memory_auth_required(self) -> bool:
         """Whether memory-service HTTP calls must carry a token.
 
         - dev: True (dev token or approved proxy)
@@ -1441,8 +1483,8 @@ class Settings(BaseSettings):
         """
         return True
 
-    @property
-    def mode_opa_fail_closed(self) -> bool:
+@property
+def mode_opa_fail_closed(self) -> bool:
         """Whether OPA evaluation should fail-closed by mode.
 
         - dev: False (allow-dev bundle; permissive)
@@ -1450,20 +1492,30 @@ class Settings(BaseSettings):
         - prod: True
         """
         try:
-            from somabrain.mode import get_mode_config
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             return get_mode_config().profile.opa_fail_closed
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return self.mode_normalized != "dev"
 
-    @property
-    def mode_log_level(self) -> str:
+@property
+def mode_log_level(self) -> str:
         """Recommended root log level by mode."""
         try:
-            from somabrain.mode import get_mode_config
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             return get_mode_config().profile.log_level
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             m = self.mode_normalized
             if m == "dev":
                 return "DEBUG"
@@ -1471,8 +1523,8 @@ class Settings(BaseSettings):
                 return "INFO"
             return "WARNING"
 
-    @property
-    def mode_opa_policy_bundle(self) -> str:
+@property
+def mode_opa_policy_bundle(self) -> str:
         """Policy bundle name to use by mode."""
         m = self.mode_normalized
         if m == "dev":
@@ -1481,8 +1533,8 @@ class Settings(BaseSettings):
             return "staging"
         return "prod"
 
-    @property
-    def deprecation_notices(self) -> list[str]:
+@property
+def deprecation_notices(self) -> list[str]:
         """Collect deprecation notices from environment variables.
 
         VIBE Rule 4 requires real logic instead of empty ``except`` blocks.
@@ -1512,8 +1564,8 @@ class Settings(BaseSettings):
             "stage",
             "staging",
             "prod",
-            "enterprise",
-        ):
+            "enterprise", ):
+                pass
             notes.append(
                 f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
             )
@@ -1531,7 +1583,7 @@ class Settings(BaseSettings):
 
     # -----------------------------------------------------------------
     # -----------------------------------------------------------------
-    def _env_to_attr(self, name: str) -> str:
+def _env_to_attr(self, name: str) -> str:
         """Best-effort mapping from env var name to Settings attribute.
 
         Strips common prefixes (SOMABRAIN_, SOMA_, OPA_) and lowercases /
@@ -1548,7 +1600,7 @@ class Settings(BaseSettings):
 
     # Settings attributes. This will raise immediately wherever getenv is still
     # called.
-    def getenv(
+def getenv(
         self, name: str, default: Optional[str] = None
     ) -> Optional[str]:  # pragma: no cover
         raise RuntimeError(

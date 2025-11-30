@@ -1,3 +1,12 @@
+from __future__ import annotations
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+from typing import Optional
+from common.config.settings import settings
+from common.logging import logger
+
 """Observability provider.
 
 This module provides a thin wrapper around OpenTelemetry tracing for production
@@ -6,22 +15,19 @@ If OpenTelemetry is not available or tracing cannot be initialized, initializati
 raises an explicit error so missing instrumentation is addressed during deploy.
 """
 
-from __future__ import annotations
 
 
 try:
-    from opentelemetry import trace
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 except Exception as exc:  # pragma: no cover - intentionally strict
     raise RuntimeError(
         "OpenTelemetry packages are required for observability. Install 'opentelemetry-sdk' and related packages."
     ) from exc
 
 
-from typing import Optional
-from common.config.settings import settings
 
 
 def init_tracing(
@@ -45,6 +51,10 @@ def init_tracing(
         RuntimeError: if tracer cannot be initialized.
     """
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Resolve a sane default when the caller does not provide a name.
         effective_name = service_name or getattr(settings, "service_name", "somabrain")
         resource = Resource.create({"service.name": effective_name})
@@ -63,6 +73,12 @@ def get_tracer(name: str | None = None):
     not silently run without instrumentation.
     """
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return trace.get_tracer(name or __name__)
     except Exception as e:
-        raise RuntimeError("Tracer not available; call init_tracing first") from e
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise RuntimeError("Tracer not available; call init_tracing first") from e

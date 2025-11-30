@@ -1,3 +1,8 @@
+from __future__ import annotations
+from collections import deque
+from typing import Dict, List, Set, Tuple
+from .memory_client import MemoryClient
+
 """
 Graph-Informed Planner Module.
 
@@ -6,6 +11,7 @@ in the memory graph around a task key. It extracts ordered lists of related task
 and facts to create suggested plans based on semantic relationships.
 
 Key Features:
+    pass
 - Graph traversal-based planning using memory relationships
 - Support for multiple relation types (depends_on, causes, part_of, etc.)
 - Cost-based prioritization of relationships and paths
@@ -13,6 +19,7 @@ Key Features:
 - Integration with MemoryClient for graph access
 
 Planning Algorithm:
+    pass
 1. Start from the coordinate of the given task key
 2. Traverse outward following allowed relation types
 3. Use cost function combining depth, relation priority, and link weights
@@ -20,6 +27,7 @@ Planning Algorithm:
 5. Return ordered plan limited to max_steps
 
 Relation Types (in priority order):
+    pass
 - depends_on: Task dependencies
 - causes: Causal relationships
 - part_of: Hierarchical composition
@@ -30,12 +38,8 @@ Functions:
     plan_from_graph: Main planning function using graph traversal.
 """
 
-from __future__ import annotations
 
-from collections import deque
-from typing import Dict, List, Set, Tuple
 
-from .memory_client import MemoryClient
 
 
 def plan_from_graph(
@@ -43,8 +47,8 @@ def plan_from_graph(
     mem: MemoryClient,
     max_steps: int = 5,
     rel_types: List[str] | None = None,
-    universe: str | None = None,
-) -> List[str]:
+    universe: str | None = None, ) -> List[str]:
+        pass
     """
     Extract a best-effort plan from typed relations around a task key.
 

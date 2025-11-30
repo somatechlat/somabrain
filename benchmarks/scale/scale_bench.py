@@ -1,14 +1,16 @@
+import time
+import threading
+import statistics
+from fastapi.testclient import TestClient
+from somabrain.app import app
+from common.logging import logger
+
 """
 Scale Benchmark Suite for SomaBrain (S9)
 ----------------------------------------
 Simulates high request volume to API endpoints, captures SLO metrics (latency, error rate), and outputs results for analysis.
 """
 
-import time
-import threading
-import statistics
-from fastapi.testclient import TestClient
-from somabrain.app import app
 
 TARGET_REQUESTS = 1000000  # 1M requests
 CONCURRENCY = 32  # Number of concurrent threads
@@ -27,6 +29,10 @@ def worker(n):
     for _ in range(n):
         t0 = time.time()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             r = client.post(ENDPOINT, json=REQUEST_BODY, headers=HEADERS)
             latency = time.time() - t0
             with lock:
@@ -34,7 +40,9 @@ def worker(n):
             if r.status_code != 200:
                 with lock:
                     errors += 1
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with lock:
                 errors += 1
 

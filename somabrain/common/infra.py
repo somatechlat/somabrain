@@ -1,7 +1,12 @@
 from __future__ import annotations
-
 from typing import Optional
 from common.config.settings import settings
+from common.logging import logger
+from confluent_kafka import Consumer  # type: ignore
+import redis  # type: ignore
+import psycopg  # type: ignore
+import requests  # type: ignore
+
 
 
 def _strip(url: Optional[str]) -> str:
@@ -14,7 +19,10 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
     if not bs:
         return False
     try:
-        from confluent_kafka import Consumer  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         c = Consumer(
             {
@@ -25,13 +33,25 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
             }
         )
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             md = c.list_topics(timeout=timeout_s)
             return bool(md and md.brokers)
         finally:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 c.close()
-            except Exception as exc: raise
-    except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -48,11 +68,16 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
     if not url:
         return False
     try:
-        import redis  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         r = redis.from_url(url, socket_timeout=timeout_s)
         return bool(r.ping())
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -68,19 +93,34 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
     if not dsn:
         return False
     try:
-        import psycopg  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         conn = psycopg.connect(dsn, connect_timeout=max(1, int(timeout_s)))
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
                 row = cur.fetchone()
                 return bool(row and row[0] == 1)
         finally:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 conn.close()
-            except Exception as exc: raise
-    except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -96,18 +136,29 @@ def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
         # Treat missing OPA as not configured rather than down
         return True
     try:
-        import requests  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         # Try a cheap GET on /health (if available), else root
         for path in ("/health", "/v1/policies"):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 resp = requests.get(url + path, timeout=timeout_s)
                 if resp.status_code < 500:
                     return True
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 continue
         return False
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -117,8 +168,8 @@ def assert_ready(
     require_redis: bool = True,
     require_postgres: bool = True,
     require_opa: bool = False,
-    timeout_s: float = 2.0,
-) -> None:
+    timeout_s: float = 2.0, ) -> None:
+        pass
     """Fail fast if required backends are not ready.
 
     Requirements can be tuned via function args. Environment also supports
@@ -135,26 +186,26 @@ def assert_ready(
     if require_kafka:
         if not check_kafka(
             getattr(settings, "kafka_bootstrap_servers", None),
-            timeout_s=timeout_s,
-        ):
+            timeout_s=timeout_s, ):
+                pass
             errors.append("Kafka")
     if require_redis:
         if not check_redis(
             getattr(settings, "redis_url", None),
-            timeout_s=timeout_s,
-        ):
+            timeout_s=timeout_s, ):
+                pass
             errors.append("Redis")
     if require_postgres:
         if not check_postgres(
             getattr(settings, "postgres_dsn", None),
-            timeout_s=timeout_s,
-        ):
+            timeout_s=timeout_s, ):
+                pass
             errors.append("Postgres")
     if require_opa:
         if not check_opa(
             getattr(settings, "opa_url", None),
-            timeout_s=timeout_s,
-        ):
+            timeout_s=timeout_s, ):
+                pass
             errors.append("OPA")
     if errors:
         raise RuntimeError(f"Infra not ready: {', '.join(errors)}")

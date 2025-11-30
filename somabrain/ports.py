@@ -5,17 +5,24 @@ from __future__ import annotations
 from common.config.settings import settings
 import socket
 from typing import Dict
+from common.logging import logger
 
 
 def _env_port(name: str, default_val: int) -> int:
     """Get port from environment or return default value."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Retrieve the setting via attribute lookup; fallback to None if missing.
         raw = getattr(settings, name.lower(), None)
         if not raw:
             return default_val
         return int(raw)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default_val
 
 
@@ -36,6 +43,10 @@ def is_port_free(port: int, host: str = "127.0.0.1") -> bool:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 sock.bind((entry, port))
             except OSError:
                 return False

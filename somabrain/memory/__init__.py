@@ -2,6 +2,7 @@
 
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .superposed_trace import SuperposedTrace, TraceConfig
+from common.logging import logger
 
 __all__ = [
     "LayerPolicy",

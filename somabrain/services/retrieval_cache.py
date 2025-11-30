@@ -1,3 +1,9 @@
+from __future__ import annotations
+from threading import Lock
+import logging
+from typing import Any, Dict, Iterable, List, Tuple
+from common.logging import logger
+
 """Lightweight in-process cache for recently persisted retrieval candidates.
 
 This module keeps a per-namespace, per-query record of the most recent
@@ -11,11 +17,7 @@ of dictionaries that describe candidates (payload, coordinate, score, retriever)
 Subsequent readers receive a defensive copy to avoid accidental mutation.
 """
 
-from __future__ import annotations
 
-from threading import Lock
-import logging
-from typing import Any, Dict, Iterable, List, Tuple
 
 _CacheKey = Tuple[str, str]
 _CandidateRecord = Dict[str, Any]
@@ -34,21 +36,27 @@ def _normalize(namespace: str | None, query: str | None) -> _CacheKey:
 def store_candidates(
     namespace: str | None,
     query: str | None,
-    candidates: Iterable[_CandidateRecord],
-) -> None:
+    candidates: Iterable[_CandidateRecord], ) -> None:
+        pass
     """Persist a snapshot of candidates for *(namespace, query)*."""
 
     key = _normalize(namespace, query)
     with _lock:
         _cache[key] = [dict(c) for c in candidates]
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _log.info(
             "retrieval_cache.store: ns=%r query=%r count=%d",
             key[0],
             key[1],
-            len(_cache.get(key, [])),
-        )
-    except Exception as exc: raise
+            len(_cache.get(key, [])), )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateRecord]:
@@ -59,13 +67,19 @@ def get_candidates(namespace: str | None, query: str | None) -> List[_CandidateR
         stored = _cache.get(key, [])
         out = [dict(c) for c in stored]
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _log.debug(
             "retrieval_cache.get: ns=%r query=%r hit=%d",
             key[0],
             key[1],
-            len(out),
-        )
-    except Exception as exc: raise
+            len(out), )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return out
 
 
@@ -81,6 +95,13 @@ def get_candidates_any(namespace: str | None) -> List[_CandidateRecord]:
             if n == ns and entries:
                 out.extend([dict(c) for c in entries])
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _log.debug("retrieval_cache.get_any: ns=%r total=%d", ns, len(out))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return out

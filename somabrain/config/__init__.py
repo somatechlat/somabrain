@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import Any
+from types import SimpleNamespace
+from common.config.settings import settings as _settings, Settings as _Settings
+from common.logging import logger
+
 """Legacy config compatibility layer.
 
 The original code expected a ``Config`` dataclass providing attribute access to
@@ -12,12 +18,8 @@ code that accesses attributes on the returned object will continue to work becau
 the ``Settings`` instance provides attribute access.
 """
 
-from __future__ import annotations
 
-from typing import Any
-from types import SimpleNamespace
 
-from common.config.settings import settings as _settings, Settings as _Settings
 
 
 def load_config() -> _Settings:
@@ -40,9 +42,14 @@ def get_config() -> Config:
     # ``dict`` respects any validation and defaults, then we instantiate ``Config``
     # which inherits from ``Settings`` and therefore retains the same fields.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         data = _settings.dict()
-    except Exception as exc: raise
-        # Fallback: use ``model_dump`` for pydantic v2 compatibility.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         data = getattr(_settings, "model_dump", lambda: dict(_settings))()
     return Config(**data)
 
@@ -73,8 +80,8 @@ class Config(_Settings):
     exposing the expected attribute names.
     """
 
-    @property
-    def http(self) -> SimpleNamespace:
+@property
+def http(self) -> SimpleNamespace:
         """Return an object mimicking the old ``http`` config.
 
         The original implementation accessed ``cfg.http.token`` and
@@ -85,5 +92,4 @@ class Config(_Settings):
 
         return SimpleNamespace(
             token=getattr(self, "memory_http_token", None),
-            endpoint=getattr(self, "memory_http_endpoint", ""),
-        )
+            endpoint=getattr(self, "memory_http_endpoint", ""), )

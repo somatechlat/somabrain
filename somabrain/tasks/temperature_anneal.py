@@ -1,3 +1,9 @@
+from __future__ import annotations
+import asyncio
+from typing import Any
+from common.config.settings import settings
+from common.logging import logger
+
 """Temperature annealing background task.
 
 The task periodically decays the ``tau`` (softmax temperature) used by the
@@ -10,39 +16,41 @@ configured ``tau_anneal_interval`` (seconds) and then multiplies the current
 ``tau`` by ``tau_decay_factor`` while respecting ``tau_min_floor``.
 
 Usage example::
+    pass
 
-    from somabrain.tasks.temperature_anneal import run_anneal_task
+from somabrain.tasks.temperature_anneal import run_anneal_task
     asyncio.create_task(run_anneal_task())
 
 The function returns when cancelled; any configuration error raises a
 ``RuntimeError`` immediately (fail‑fast).
 """
 
-from __future__ import annotations
 
-import asyncio
-import logging
-from typing import Any
 
-from common.config.settings import settings
 
-logger = logging.getLogger(__name__)
 
 
 def _load_config() -> dict[str, Any]:
     """Load annealing configuration from ``settings``.
 
     Expected keys:
+        pass
     * ``tau_decay_factor`` – multiplicative factor (e.g., 0.95).
     * ``tau_min_floor`` – lower bound for ``tau``.
     * ``tau_anneal_interval`` – interval in seconds between decays.
     """
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         factor = float(getattr(settings, "tau_decay_factor", 0.95))
         floor = float(getattr(settings, "tau_min_floor", 0.1))
         interval = float(getattr(settings, "tau_anneal_interval", 60.0))
     except Exception as exc:
-        raise RuntimeError("Invalid temperature annealing configuration") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise RuntimeError("Invalid temperature annealing configuration") from exc
     if factor <= 0 or factor >= 1:
         raise RuntimeError("tau_decay_factor must be in (0, 1)")
     if floor <= 0:
@@ -69,9 +77,12 @@ async def run_anneal_task(
         "Starting temperature annealing: factor=%s floor=%s interval=%s",
         cfg["factor"],
         cfg["floor"],
-        cfg["interval"],
-    )
+        cfg["interval"], )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         while True:
             await asyncio.sleep(cfg["interval"])
             current = get_current_tau()
@@ -83,5 +94,5 @@ async def run_anneal_task(
         logger.info("Temperature annealing task cancelled")
         raise
     except Exception as exc:
-        logger.error("Temperature annealing failed: %s", exc)
+        logger.exception("Exception caught: %s", exc)
         raise

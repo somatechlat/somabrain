@@ -1,3 +1,6 @@
+from __future__ import annotations
+from dataclasses import dataclass
+
 """
 Statistics Module for SomaBrain.
 
@@ -6,6 +9,7 @@ system performance metrics. It includes implementations of exponentially weighte
 averages and related statistical computations for real-time performance tracking.
 
 Key Features:
+    pass
 - Exponentially Weighted Moving Average (EWMA) for smooth statistics
 - Online variance and standard deviation calculation
 - Z-score computation for anomaly detection
@@ -15,9 +19,7 @@ Classes:
     EWMA: Exponentially weighted moving average calculator with variance tracking.
 """
 
-from __future__ import annotations
 
-from dataclasses import dataclass
 
 
 @dataclass
@@ -49,7 +51,7 @@ class EWMA:
     m2: float = 0.0
     n: int = 0
 
-    def update(self, x: float) -> dict:
+def update(self, x: float) -> dict:
         """
         Update the EWMA with a new observation and return current statistics.
 

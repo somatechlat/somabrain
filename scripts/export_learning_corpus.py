@@ -15,34 +15,47 @@ from dataclasses import asdict
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
 from somabrain.learning.dataset import build_examples, iter_jsonl, export_examples
+from common.logging import logger
 
 
 def _git_metadata() -> Dict[str, Any]:
     meta: Dict[str, Any] = {}
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         commit = subprocess.run(
             ["git", "rev-parse", "HEAD"],
             check=False,
             capture_output=True,
-            text=True,
-        ).stdout.strip()
+            text=True, ).stdout.strip()
         if commit:
             meta["commit"] = commit
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         status = subprocess.run(
             ["git", "status", "--short"],
             check=False,
             capture_output=True,
-            text=True,
-        ).stdout.strip()
+            text=True, ).stdout.strip()
         if status:
             meta["dirty"] = True
             meta["status"] = status.splitlines()
         elif meta:
             meta["dirty"] = False
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return meta
 
 
@@ -50,6 +63,10 @@ def _config_snapshot() -> Dict[str, Any]:
     cfg = settings
     snapshot: Dict[str, Any] = {}
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         cfg_dict = asdict(cfg)
         snapshot["learning_loop_enabled"] = cfg_dict.get("learning_loop_enabled")
         snapshot["namespace"] = cfg_dict.get("namespace")
@@ -60,17 +77,25 @@ def _config_snapshot() -> Dict[str, Any]:
         snapshot["targets"] = cfg_dict.get("targets")
         # Generate deterministic digest for the full config to aid audits
         snapshot["digest"] = _digest_dict(cfg_dict)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         snapshot["error"] = "failed_to_serialize_config"
     return snapshot
 
 
 def _digest_dict(payload: Dict[str, Any]) -> Optional[str]:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
-    import hashlib
+import hashlib
 
     return hashlib.sha256(blob).hexdigest()
 
@@ -83,17 +108,14 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         "--limit",
         type=int,
         default=None,
-        help="Optional limit on number of records processed",
-    )
+        help="Optional limit on number of records processed", )
     parser.add_argument(
         "--force",
         action="store_true",
-        help="Bypass learning_loop_enabled guard",
-    )
+        help="Bypass learning_loop_enabled guard", )
     parser.add_argument(
         "--metadata-out",
-        help="Optional path to store run metadata as JSON",
-    )
+        help="Optional path to store run metadata as JSON", )
     args = parser.parse_args(argv)
 
     input_path = Path(args.input)

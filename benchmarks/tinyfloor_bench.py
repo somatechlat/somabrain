@@ -1,22 +1,25 @@
+import json
+import math
+import time
+from pathlib import Path
+import numpy as np
+from somabrain import numerics
+from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.quantum_pure import PureQuantumLayer
+from common.logging import logger
+
 """Tiny-floor and HRR unbind benchmark.
 
 Compares current compute_tiny_floor (linear) vs sqrt(D) strategy by:
+    pass
 - measuring fraction of vectors zeroed by normalization (robust mode)
 - measuring unbind reconstruction MSE and cosine vs PureQuantumLayer oracle
 
 Writes results to docs/benchmarks/results_tinyfloor.json and .md
 """
 
-import json
-import math
-import time
-from pathlib import Path
 
-import numpy as np
 
-from somabrain import numerics
-from somabrain.quantum import HRRConfig, QuantumLayer
-from somabrain.quantum_pure import PureQuantumLayer
 
 
 def tiny_floor_sqrt(dtype, dim):
@@ -56,8 +59,7 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         dim=dim,
         seed=42,
         dtype=np.dtype(dtype).name,
-        renorm=True,
-    )
+        renorm=True, )
     q = QuantumLayer(cfg)
     p = PureQuantumLayer(cfg)
 
@@ -66,17 +68,23 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
     if strategy == "sqrt":
         # Patch only for the duration of this benchmark: accept any
         # positional/keyword form and forward to the local tiny_floor_sqrt.
-        def _patched_compute_tiny_floor(*args, **kwargs):
+def _patched_compute_tiny_floor(*args, **kwargs):
             # Determine dim and dtype regardless of positional ordering
             dim = None
             dtype = kwargs.get("dtype", None)
             if len(args) >= 2:
                 a0, a1 = args[0], args[1]
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     # if first arg looks like a dtype and second an int, swap
                     np.dtype(a0)
                     is_dtype_like = True
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     is_dtype_like = False
                 if is_dtype_like and isinstance(a1, (int, np.integer)):
                     dtype = a0
@@ -93,9 +101,14 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
             if dtype is None:
                 dtype = kwargs.get("dtype", np.float32)
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return tiny_floor_sqrt(dtype, int(dim))
-            except Exception as exc: raise
-                # As a last resort, coerce and retry
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return tiny_floor_sqrt(np.dtype(dtype), int(dim))
 
         numerics.compute_tiny_floor = _patched_compute_tiny_floor
@@ -110,10 +123,14 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
         rec = q.unbind(c, b)
         # oracle (pure) unbind may raise; we skip oracle errors
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             _ = p.unbind(c, b)
-        except Exception as exc: raise
-
-        # compare rec to original a
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         mse = float(np.mean((a - rec) ** 2))
         cos = float(np.dot(a, rec) / (np.linalg.norm(a) * np.linalg.norm(rec) + 1e-12))
         mses.append(mse)
@@ -143,8 +160,7 @@ def run_all():
                 dtype,
                 n=800 if D == 2048 else 200,
                 kind="gaussian",
-                strategy="linear",
-            )
+                strategy="linear", )
             gs = simulate_zeroed_fraction(
                 D, dtype, n=800 if D == 2048 else 200, kind="gaussian", strategy="sqrt"
             )

@@ -1,8 +1,8 @@
 from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 from typing import Iterable, List, Sequence, Tuple
+
 
 
 @dataclass
@@ -32,8 +32,8 @@ def _log_norm_pdf(x: float, mu: float, sigma: float) -> float:
 def online_viterbi_probs(
     obs_seq: Iterable[float],
     params: HMMParams,
-    prior: Tuple[float, float] = (0.9, 0.1),
-) -> List[Tuple[float, float]]:
+    prior: Tuple[float, float] = (0.9, 0.1), ) -> List[Tuple[float, float]]:
+        pass
     """Compute online Viterbi log-probabilities for a stream of observations.
 
     Returns a list of per-step normalized probabilities over states (stable, transition).
@@ -68,8 +68,8 @@ def online_viterbi_probs(
 
 def detect_boundaries(
     probs: Sequence[Tuple[float, float]],
-    threshold: float = 0.6,
-) -> List[int]:
+    threshold: float = 0.6, ) -> List[int]:
+        pass
     """Return indices where TRANSITION probability crosses threshold from below.
 
     threshold is applied to P(TRANSITION) (index 1).

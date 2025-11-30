@@ -1,3 +1,8 @@
+import time
+import requests
+from common.config.settings import settings
+from common.logging import logger
+
 """
 Chaos Experiment Scaffold for SomaBrain (S9)
 --------------------------------------------
@@ -6,13 +11,14 @@ Simulates failure scenarios (broker, Redis, agent SLM outage) and verifies auto-
 NOTE: Actual process/container kill/restart must be orchestrated externally (e.g., via Docker Compose, Kubernetes, or manual intervention). This script coordinates the test and checks system health before, during, and after the chaos event.
 """
 
-import time
-import requests
 
 
 def check_health():
     try:
-        from common.config.settings import settings
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         r = requests.get(f"http://localhost:{settings.public_port}/health")
         if r.status_code == 200 and r.json().get("ok"):
@@ -22,8 +28,8 @@ def check_health():
             print("Health check failed.")
             return False
     except Exception as e:
-        print(f"Health check error: {e}")
-        return False
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 def run_chaos_scenario(description, chaos_action, recovery_action=None, wait=10):
@@ -56,8 +62,7 @@ def main():
         recovery_action=lambda: print(
             "[ACTION] Please restart the Kafka broker container now."
         ),
-        wait=15,
-    )
+        wait=15, )
     # Example: Redis node loss (manual)
     run_chaos_scenario(
         "Redis node failure (simulate by stopping Redis container)",
@@ -65,8 +70,7 @@ def main():
         recovery_action=lambda: print(
             "[ACTION] Please restart the Redis container now."
         ),
-        wait=15,
-    )
+        wait=15, )
     # Example: Agent SLM outage (manual)
     run_chaos_scenario(
         "Agent SLM outage (simulate by stopping agent SLM container)",
@@ -74,8 +78,7 @@ def main():
         recovery_action=lambda: print(
             "[ACTION] Please restart the agent SLM container now."
         ),
-        wait=15,
-    )
+        wait=15, )
 
 
 if __name__ == "__main__":

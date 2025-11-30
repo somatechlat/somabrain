@@ -1,3 +1,17 @@
+from __future__ import annotations
+import signal
+import threading
+import time
+from typing import Callable
+from common.logging import logger
+from .integrator_hub import IntegratorHub
+from .segmentation_service import SegmentationService
+from somabrain.monitoring.drift_detector import drift_service
+from .calibration_service import CalibrationService
+from .learner_online import LearnerService
+from somabrain.modes import feature_enabled
+from common.config.settings import settings
+
 """
 Runtime Orchestrator for SomaBrain cognitive services.
 
@@ -13,12 +27,7 @@ Usage:
     python -m somabrain.services.entry
 """
 
-from __future__ import annotations
 
-import signal
-import threading
-import time
-from typing import Callable
 
 
 def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
@@ -30,7 +39,10 @@ def _start_thread(target: Callable[[], None], name: str) -> threading.Thread:
 
 def _run_integrator() -> None:
     try:
-        from .integrator_hub import IntegratorHub
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         hub = IntegratorHub()
         hub.run_forever()
@@ -40,7 +52,10 @@ def _run_integrator() -> None:
 
 def _run_segmentation() -> None:
     try:
-        from .segmentation_service import SegmentationService
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         svc = SegmentationService()
         svc.run()
@@ -50,7 +65,10 @@ def _run_segmentation() -> None:
 
 def _run_drift_monitor() -> None:
     try:
-        from somabrain.monitoring.drift_detector import drift_service
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         drift_service.run_forever()
     except Exception as e:  # pragma: no cover
@@ -59,7 +77,10 @@ def _run_drift_monitor() -> None:
 
 def _run_calibration() -> None:
     try:
-        from .calibration_service import CalibrationService
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         svc = CalibrationService()
         svc.run_forever()
@@ -69,8 +90,11 @@ def _run_calibration() -> None:
 
 def _run_learner() -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Import directly and create a fresh service instance
-        from .learner_online import LearnerService
 
         svc = LearnerService()
         svc.run()
@@ -81,8 +105,6 @@ def _run_learner() -> None:
 def main() -> None:  # pragma: no cover
     # Legacy composite flag ENABLE_COG_THREADS removed – rely on central feature flags.
     # The orchestrator now starts services solely based on `feature_enabled`.
-    from somabrain.modes import feature_enabled
-    from common.config.settings import settings
 
     threads: list[threading.Thread] = []
 
@@ -121,17 +143,26 @@ def main() -> None:  # pragma: no cover
     # Handle SIGTERM/SIGINT gracefully by exiting the main loop
     stop = threading.Event()
 
-    def _sig_handler(signum, frame):  # type: ignore
+def _sig_handler(signum, frame):  # type: ignore
         print(f"orchestrator: received signal {signum}; shutting down...")
         stop.set()
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         signal.signal(signal.SIGINT, _sig_handler)
         signal.signal(signal.SIGTERM, _sig_handler)
-    except Exception as exc: raise
-
-    # Keep the main thread alive while workers run
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         while not stop.is_set():
             time.sleep(1.0)
     finally:

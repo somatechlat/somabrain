@@ -1,3 +1,16 @@
+from __future__ import annotations
+import time
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
+from common.config.settings import settings
+from somabrain.memory_client import MemoryClient
+from somabrain.milvus_client import MilvusClient
+from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+from libs.kafka_cog.serde import AvroSerde  # type: ignore
+import json
+from common.logging import logger
+from somabrain import metrics as M
+
 """Oak Option Manager
 ======================
 
@@ -21,22 +34,10 @@ All configuration values are read from the global ``settings`` instance; no
 hard‑coded numbers are used, satisfying the VIBE rule *no hard‑coded values*.
 """
 
-from __future__ import annotations
 
-import logging
-import time
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
-from common.config.settings import settings
-from somabrain.memory_client import MemoryClient
-from somabrain.milvus_client import MilvusClient
 # Use the generic Avro schema loader and serde to encode events.
-from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-from libs.kafka_cog.serde import AvroSerde  # type: ignore
-import json
 
-logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -55,7 +56,7 @@ class Option:
     tau: float = field(init=False)
     created_ts: float = field(default_factory=lambda: time.time())
 
-    def __post_init__(self) -> None:
+def __post_init__(self) -> None:
         # Compute utility and tau using configuration values.
         # ``settings`` provides the base values; they may be overridden via env.
         base_utility = getattr(settings, "OAK_BASE_UTILITY", 1.0)
@@ -79,7 +80,7 @@ class OptionManager:
     all paths are concrete and exercised by unit tests (not shown here).
     """
 
-    def __init__(self) -> None:
+def __init__(self) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
         # Initialise MemoryClient with the global settings configuration.
         # Other components (e.g., context factories) instantiate MemoryClient
@@ -91,13 +92,12 @@ class OptionManager:
         # Initialize Milvus client for vector persistence.
         self._milvus = MilvusClient()
         # Initialize metrics (will be imported lazily to avoid circular imports)
-        from somabrain import metrics as M
         self._metrics = M
 
     # ---------------------------------------------------------------------
     # Public API
     # ---------------------------------------------------------------------
-    def create_option(self, tenant_id: str, option_id: str, payload: bytes) -> Option:
+def create_option(self, tenant_id: str, option_id: str, payload: bytes) -> Option:
         """Create a new ``Option`` and persist it.
 
         Raises ``ValueError`` if an option with the same ``option_id`` already
@@ -111,6 +111,10 @@ class OptionManager:
         tenant_opts[option_id] = opt
         # Persist to Milvus for similarity search.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self._milvus.upsert_option(tenant_id, option_id, payload)
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Milvus upsert failed for option %s: %s", option_id, exc)
@@ -119,6 +123,10 @@ class OptionManager:
         logger.debug("Created Oak option %s for tenant %s", option_id, tenant_id)
         # Update Oak observability metrics
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Increment option count per tenant
             self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id).inc()
             # Recompute average utility (simple incremental avg)
@@ -130,18 +138,18 @@ class OptionManager:
             logger.error("Failed to update Oak metrics for %s: %s", option_id, exc)
         return opt
 
-    def get_option(self, tenant_id: str, option_id: str) -> Optional[Option]:
+def get_option(self, tenant_id: str, option_id: str) -> Optional[Option]:
         """Retrieve an option by ``option_id`` for the given tenant."""
         return self._store.get(tenant_id, {}).get(option_id)
 
-    def list_options(self, tenant_id: str) -> List[Option]:
+def list_options(self, tenant_id: str) -> List[Option]:
         """Return all options for a tenant, sorted by creation time."""
         return sorted(self._store.get(tenant_id, {}).values(), key=lambda o: o.created_ts)
 
     # ---------------------------------------------------------------------
     # Update API – modifies an existing option payload and recomputes utility.
     # ---------------------------------------------------------------------
-    def update_option(self, tenant_id: str, option_id: str, payload: bytes) -> Option:
+def update_option(self, tenant_id: str, option_id: str, payload: bytes) -> Option:
         """Replace the payload of an existing option and recompute its utility.
 
         Raises ``ValueError`` if the option does not exist.
@@ -160,6 +168,10 @@ class OptionManager:
         opt.tau = min(max(min_tau, opt.utility * 10.0), max_tau)
         # Persist updated vector to Milvus
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self._milvus.upsert_option(tenant_id, option_id, payload)
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Milvus upsert failed for option %s: %s", option_id, exc)
@@ -167,6 +179,10 @@ class OptionManager:
         self._publish_update(opt)
         # Update metrics (same logic as creation)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
             prev_avg = self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id)._value.get() or 0.0
             new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
@@ -178,7 +194,7 @@ class OptionManager:
     # ---------------------------------------------------------------------
     # Persistence of the full OptionModel as JSON (SB‑FR‑108)
     # ---------------------------------------------------------------------
-    def _persist_model(self, tenant_id: str) -> None:
+def _persist_model(self, tenant_id: str) -> None:
         """Serialize the complete option model for a tenant to JSON.
 
         The JSON document is stored via ``MemoryClient.remember`` under the topic
@@ -200,24 +216,31 @@ class OptionManager:
             ]
         }
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self._client.remember(
                 topic="oak.option.model",
                 key=tenant_id,
-                value=json.dumps(model).encode("utf-8"),
-            )
+                value=json.dumps(model).encode("utf-8"), )
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc)
 
     # ---------------------------------------------------------------------
     # Internal helpers
     # ---------------------------------------------------------------------
-    def _publish_creation(self, opt: Option) -> None:
+def _publish_creation(self, opt: Option) -> None:
         """Publish an ``option_created`` event using the Avro schema.
 
         The payload is the raw ``bytes`` stored in the option; the Avro schema
         expects ``payload`` as ``bytes``.
         """
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Load the Avro schema for the option_created event.
             schema_dict = load_schema("option_created")
             serde = AvroSerde(schema_dict)
@@ -232,12 +255,11 @@ class OptionManager:
             self._client.remember(
                 topic="oak.option.created",
                 key=opt.option_id,
-                value=encoded,
-            )
+                value=encoded, )
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Failed to publish option_created event for %s: %s", opt.option_id, exc)
 
-    def _publish_update(self, opt: Option) -> None:
+def _publish_update(self, opt: Option) -> None:
         """Publish an ``option_updated`` Avro event.
 
         The schema expects the same fields as ``option_created`` but is a distinct
@@ -245,6 +267,10 @@ class OptionManager:
         ``option_updated`` schema.
         """
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             schema_dict = load_schema("option_updated")
             serde = AvroSerde(schema_dict)
             record = {
@@ -257,8 +283,7 @@ class OptionManager:
             self._client.remember(
                 topic="oak.option.updated",
                 key=opt.option_id,
-                value=encoded,
-            )
+                value=encoded, )
         except Exception as exc:  # pragma: no cover – defensive
             logger.error("Failed to publish option_updated event for %s: %s", opt.option_id, exc)
 

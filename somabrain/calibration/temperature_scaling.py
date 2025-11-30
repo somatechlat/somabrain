@@ -1,13 +1,14 @@
+import numpy as np
+from typing import List, Tuple
+from dataclasses import dataclass
+import math
+
 """
 Temperature scaling for predictor calibration.
 
 Implements Platt scaling and temperature scaling for confidence calibration.
 """
 
-import numpy as np
-from typing import List, Tuple
-from dataclasses import dataclass
-import math
 
 
 @dataclass
@@ -23,12 +24,12 @@ class CalibrationResult:
 class TemperatureScaler:
     """Temperature scaling for confidence calibration."""
 
-    def __init__(self, min_samples: int = 50):
+def __init__(self, min_samples: int = 50):
         self.min_samples = min_samples
         self.temperature = 1.0
         self.is_fitted = False
 
-    def fit(self, confidences: List[float], accuracies: List[float]) -> float:
+def fit(self, confidences: List[float], accuracies: List[float]) -> float:
         """
         Fit temperature using bounded NLL minimization (golden-section).
 
@@ -47,7 +48,7 @@ class TemperatureScaler:
 
         logits = np.log(p / (1 - p))
 
-        def nll(temp: float) -> float:
+def nll(temp: float) -> float:
             t = max(1e-6, float(temp))
             z = logits / t
             # Numerically stable sigmoid
@@ -82,7 +83,7 @@ class TemperatureScaler:
         self.is_fitted = True
         return self.temperature
 
-    def scale(self, confidence: float) -> float:
+def scale(self, confidence: float) -> float:
         """Apply temperature scaling to confidence."""
         if not self.is_fitted or confidence <= 0 or confidence >= 1:
             return confidence

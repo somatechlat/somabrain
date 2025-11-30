@@ -1,3 +1,9 @@
+from __future__ import annotations
+import sys
+import os
+from pathlib import Path
+from common.logging import logger
+
 #!/usr/bin/env python3
 """Strict-mode invariant scanner.
 
@@ -5,6 +11,7 @@ Scans the repository for banned patterns that violate strict-mode principles.
 Exits non-zero if any violations are found. Intended for CI usage.
 
 Banned tokens (case-insensitive substring match):
+    pass
 
 - fakeredis
 - sqlite://
@@ -13,15 +20,12 @@ Banned tokens (case-insensitive substring match):
 - KafkaProducer (from kafka-python)
 
 Notes:
+    pass
 - Allowlist selected directories: .git, .venv, somabrain.egg-info, artifacts, docs, migrations/versions.
 - Only scans text files up to 1 MB to keep CI fast.
 """
 
-from __future__ import annotations
 
-import sys
-import os
-from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,13 +51,19 @@ MAX_SIZE = 1_000_000
 
 def is_text(path: Path) -> bool:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         with open(path, "rb") as f:
             chunk = f.read(4096)
         if not chunk:
             return True
         # Heuristic: no NUL bytes
         return b"\x00" not in chunk
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -67,15 +77,27 @@ def main() -> int:
         for fn in filenames:
             path = Path(dirpath) / fn
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if path.stat().st_size > MAX_SIZE:
                     continue
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 continue
             if not is_text(path):
                 continue
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 text = path.read_text(encoding="utf-8", errors="ignore")
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 continue
             lower = text.lower()
             for token in BAN_TOKENS:

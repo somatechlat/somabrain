@@ -1,3 +1,14 @@
+from __future__ import annotations
+import hashlib
+import logging
+from typing import Optional, List, Dict, Any, Union
+from datetime import datetime, timedelta
+from fastapi import Request, HTTPException
+from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
+from .config import get_config
+from common.config.settings import settings
+from common.logging import logger
+
 """
 Tenant Manager Service for SomaBrain
 
@@ -5,28 +16,18 @@ High-level tenant management interface that integrates with the TenantRegistry
 and provides centralized tenant operations for all SomaBrain components.
 """
 
-from __future__ import annotations
 
-import hashlib
-import logging
-from typing import Optional, List, Dict, Any, Union
-from datetime import datetime, timedelta
-from fastapi import Request, HTTPException
 
-from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
 
-from .config import get_config
 
 # Unified Settings instance (still used elsewhere)
-from common.config.settings import settings
 
-logger = logging.getLogger(__name__)
 
 
 class TenantManager:
     """Centralized tenant management for all SomaBrain operations."""
 
-    def __init__(self, tenant_registry: TenantRegistry):
+def __init__(self, tenant_registry: TenantRegistry):
         self.registry = tenant_registry
         self._default_tenant_id: Optional[str] = None
         self._system_tenant_ids: Dict[str, str] = {}
@@ -88,15 +89,14 @@ class TenantManager:
         if not getattr(settings, "allow_anonymous_tenants", False):
             raise HTTPException(
                 status_code=401,
-                detail="Anonymous tenant access is disabled. Configure a default tenant or enable SOMABRAIN_ALLOW_ANONYMOUS_TENANTS=1 explicitly.",
-            )
+                detail="Anonymous tenant access is disabled. Configure a default tenant or enable SOMABRAIN_ALLOW_ANONYMOUS_TENANTS=1 explicitly.", )
 
         # Fallback: Create temporary tenant (only when allowed)
         temp_tenant_id = await self.create_temporary_tenant()
         await self.registry.update_tenant_activity(temp_tenant_id)
         return temp_tenant_id
 
-    def _hash_token(self, token: str) -> str:
+def _hash_token(self, token: str) -> str:
         """Generate consistent hash from bearer token."""
         return f"token_{hashlib.sha256(token.encode()).hexdigest()[:16]}"
 
@@ -123,8 +123,7 @@ class TenantManager:
                 "expires_in": f"{expiry_hours}h",
                 "auto_created": True,
             },
-            expires_at=expires_at,
-        )
+            expires_at=expires_at, )
 
     async def get_system_tenant_id(self, name: str) -> Optional[str]:
         """Get system tenant ID by name (e.g., 'agent_zero')."""
@@ -162,8 +161,8 @@ class TenantManager:
         exempt_reason: Optional[str] = None,
         created_by: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
-        expires_at: Optional[datetime] = None,
-    ) -> str:
+        expires_at: Optional[datetime] = None, ) -> str:
+            pass
         """Create a new tenant with validation."""
         if not self._initialized:
             await self.initialize()
@@ -183,8 +182,7 @@ class TenantManager:
             exempt_reason=exempt_reason,
             created_by=created_by,
             config=config or {},
-            expires_at=expires_at,
-        )
+            expires_at=expires_at, )
 
     async def update_tenant_config(
         self, tenant_id: str, config: Dict[str, Any]
@@ -245,8 +243,8 @@ class TenantManager:
         self,
         tier: Optional[Union[TenantTier, str]] = None,
         status: Optional[Union[TenantStatus, str]] = None,
-        exempt_only: bool = False,
-    ) -> List[TenantMetadata]:
+        exempt_only: bool = False, ) -> List[TenantMetadata]:
+            pass
         """List tenants with optional filtering."""
         if not self._initialized:
             await self.initialize()
@@ -342,10 +340,18 @@ class TenantManager:
         if tenant_id and await self.registry.tenant_exists(tenant_id):
             return tenant_id
 
+_tmp_dict = {
             "agent_zero": "agent_zero",
+}
+_tmp_dict = {
             "public": "public",
+}
+_tmp_dict = {
             "sandbox": "sandbox",
+}
+_tmp_dict = {
             "default": "public",
+}
         }
 
                 system_tenant_id = await self.get_system_tenant_id(system_name)

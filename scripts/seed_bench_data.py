@@ -1,3 +1,11 @@
+import argparse
+from common.config.settings import settings
+import json
+import os
+from datetime import datetime
+import httpx
+from common.logging import logger
+
 """Seed the memory backend via HTTP /remember for benchmark datasets.
 
 Usage:
@@ -8,13 +16,7 @@ and calls the `/remember` API to persist them. The script writes a JSON manifest
 to `artifacts/benchmarks/seed_manifest_{timestamp}.json` with the inserted keys.
 """
 
-import argparse
-from common.config.settings import settings
-import json
-import os
-from datetime import datetime
 
-import httpx
 
 
 def main(count: int, base_url: str, namespace: str | None = None):
@@ -36,13 +38,17 @@ def main(count: int, base_url: str, namespace: str | None = None):
         else:
             headers = {}
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             r = client.post(remember_url, json=payload, headers=headers)
             if r.status_code >= 400:
                 print(f"WARN: seed {i} returned status {r.status_code}: {r.text}")
             out.append({"key": key, "i": i, "status": r.status_code})
         except Exception as e:
-            print(f"ERROR: seed {i} exception: {e}")
-            out.append({"key": key, "i": i, "status": "error", "error": str(e)})
+            logger.exception("Exception caught: %s", e)
+            raise
     ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     os.makedirs("artifacts/benchmarks", exist_ok=True)
     fname = f"artifacts/benchmarks/seed_manifest_{ts}.json"

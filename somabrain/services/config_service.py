@@ -1,3 +1,13 @@
+from __future__ import annotations
+import asyncio
+import copy
+import time
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from dataclasses import asdict
+from common.config.settings import Settings as Config
+from common.logging import logger
+
 """Dynamic configuration service for SomaBrain.
 
 This module provides an in-memory configuration service that merges global,
@@ -7,18 +17,10 @@ synchronous for ease of testing; the subscriber interface uses asyncio queues
 so workers can await new configuration versions.
 """
 
-from __future__ import annotations
 
-import asyncio
-import copy
-import time
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from dataclasses import asdict
 
 # The original Config model was removed; use the unified Settings for type hints.
-from common.config.settings import Settings as Config
 
 
 @dataclass(frozen=True)
@@ -53,12 +55,12 @@ class ConfigMergeError(RuntimeError):
 class ConfigService:
     """Manage layered configuration with auditing and hot reload events."""
 
-    def __init__(
+def __init__(
         self,
         base_supplier: Callable[[], Config],
         *,
-        clock: Callable[[], float] | None = None,
-    ) -> None:
+        clock: Callable[[], float] | None = None, ) -> None:
+            pass
         self._base_supplier = base_supplier
         self._clock = clock or time.time
         self._global_layer: Dict[str, Any] = {}
@@ -88,23 +90,23 @@ class ConfigService:
         namespace: str,
         patch: Dict[str, Any],
         *,
-        actor: str,
-    ) -> ConfigEvent:
+        actor: str, ) -> ConfigEvent:
+            pass
         if not tenant or not namespace:
             raise ConfigMergeError("tenant and namespace must be provided")
         return await self._apply_patch("namespace", patch, actor, tenant, namespace)
 
-    def subscribe(self, *, max_queue: int = 128) -> asyncio.Queue[ConfigEvent]:
+def subscribe(self, *, max_queue: int = 128) -> asyncio.Queue[ConfigEvent]:
         queue: asyncio.Queue[ConfigEvent] = asyncio.Queue(max_queue)
         self._subscribers.append(queue)
         return queue
 
-    def audit_log(self, limit: Optional[int] = None) -> List[AuditRecord]:
+def audit_log(self, limit: Optional[int] = None) -> List[AuditRecord]:
         if limit is None or limit >= len(self._audit_log):
             return list(self._audit_log)
         return self._audit_log[-limit:]
 
-    def effective_config(self, tenant: str, namespace: str) -> Dict[str, Any]:
+def effective_config(self, tenant: str, namespace: str) -> Dict[str, Any]:
         base_cfg = self._config_to_dict(self._base_supplier())
         merged = self._deep_merge(copy.deepcopy(base_cfg), self._global_layer)
         if tenant:
@@ -127,8 +129,8 @@ class ConfigService:
         patch: Dict[str, Any],
         actor: str,
         tenant: str,
-        namespace: str,
-    ) -> ConfigEvent:
+        namespace: str, ) -> ConfigEvent:
+            pass
         async with self._lock:
             target_dict, before = self._target_and_before(scope, tenant, namespace)
             after = self._deep_merge(copy.deepcopy(before), patch)
@@ -139,8 +141,7 @@ class ConfigService:
                 version=self._version,
                 tenant=tenant,
                 namespace=namespace,
-                payload=self.effective_config(tenant, namespace),
-            )
+                payload=self.effective_config(tenant, namespace), )
             record = AuditRecord(
                 version=self._version,
                 scope=scope,
@@ -150,11 +151,14 @@ class ConfigService:
                 timestamp=self._clock(),
                 patch=copy.deepcopy(patch),
                 before=before,
-                after=after,
-            )
+                after=after, )
             self._audit_log.append(record)
             for queue in list(self._subscribers):
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     queue.put_nowait(event)
                 except asyncio.QueueFull:
                     # drop oldest subscriber queue entry to avoid blocking
@@ -162,7 +166,7 @@ class ConfigService:
                     queue.put_nowait(event)
             return event
 
-    def _target_and_before(
+def _target_and_before(
         self, scope: str, tenant: str, namespace: str
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         if scope == "global":
@@ -176,7 +180,7 @@ class ConfigService:
             return layer, copy.deepcopy(layer)
         raise ConfigMergeError(f"unknown scope: {scope}")
 
-    def _set_layer(
+def _set_layer(
         self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]
     ) -> None:
         if scope == "global":
@@ -186,8 +190,8 @@ class ConfigService:
         else:
             self._namespace_layer[(tenant, namespace)] = data
 
-    @staticmethod
-    def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
+@staticmethod
+def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
         for key, value in patch.items():
             if isinstance(value, dict) and isinstance(base.get(key), dict):
                 base[key] = ConfigService._deep_merge(
@@ -197,17 +201,23 @@ class ConfigService:
                 base[key] = copy.deepcopy(value)
         return base
 
-    @staticmethod
-    def _config_to_dict(cfg: Config) -> Dict[str, Any]:
+@staticmethod
+def _config_to_dict(cfg: Config) -> Dict[str, Any]:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return asdict(cfg)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return copy.deepcopy(cfg.__dict__)
 
-    @staticmethod
-    def _validate(data: Dict[str, Any]) -> None:
+@staticmethod
+def _validate(data: Dict[str, Any]) -> None:
         # Minimal validation: ensure numeric values are finite when present.
-        def _walk(obj: Any, path: str = "") -> None:
+def _walk(obj: Any, path: str = "") -> None:
             if isinstance(obj, dict):
                 for k, v in obj.items():
                     _walk(v, f"{path}.{k}" if path else str(k))

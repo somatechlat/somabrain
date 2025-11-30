@@ -1,19 +1,19 @@
+from __future__ import annotations
+import threading
+from dataclasses import dataclass, field
+from typing import Dict, Tuple
+from common.config.settings import settings
+from somabrain.calibration.calibration_metrics import CalibrationTracker
+
 """Lightweight prediction calibration tracker.
 
 Provides a minimal yet real implementation used by predictor_state/agent/action
 to record prediction outcomes and surface basic calibration telemetry.
 """
 
-from __future__ import annotations
-
-import threading
-from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
 
 
-from common.config.settings import settings
-from common.logging import logger
-from somabrain.calibration.calibration_metrics import CalibrationTracker
+
 
 
 @dataclass
@@ -28,7 +28,7 @@ class CalibrationService:
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
     _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)
 
-    def record_prediction(
+def record_prediction(
         self, domain: str, tenant: str, confidence: float, correct: bool
     ) -> None:
         if not self.enabled:
@@ -41,7 +41,7 @@ class CalibrationService:
             prev = self._temperature.get(key, 1.0)
             self._temperature[key] = 0.9 * prev + 0.1 * tgt
 
-    def get_calibration_status(self, domain: str, tenant: str) -> dict:
+def get_calibration_status(self, domain: str, tenant: str) -> dict:
         key = (domain, tenant)
         with self._lock:
             return {
@@ -50,7 +50,7 @@ class CalibrationService:
                 "temperature": self._temperature.get(key, 1.0),
             }
 
-    def get_all_calibration_status(self) -> dict:
+def get_all_calibration_status(self) -> dict:
         with self._lock:
             return {
                 f"{d}:{t}": {
@@ -60,7 +60,7 @@ class CalibrationService:
                 for (d, t), c in self._counts.items()
             }
 
-    def export_reliability_data(self, domain: str, tenant: str) -> dict:
+def export_reliability_data(self, domain: str, tenant: str) -> dict:
         # Placeholder for a real export; returns current stats.
         return self.get_calibration_status(domain, tenant)
 

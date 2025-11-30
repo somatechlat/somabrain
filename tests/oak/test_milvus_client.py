@@ -1,13 +1,14 @@
 import unittest
 from unittest.mock import patch, MagicMock
-
 from somabrain.milvus_client import MilvusClient
 
+
 class TestMilvusClient(unittest.TestCase):
-    @patch('somabrain.milvus_client.connections')
-    @patch('somabrain.milvus_client.utility')
-    @patch('somabrain.milvus_client.Collection')
-    def test_init_creates_collection_if_missing(self, mock_collection, mock_utility, mock_connections):
+    pass
+@patch('somabrain.milvus_client.connections')
+@patch('somabrain.milvus_client.utility')
+@patch('somabrain.milvus_client.Collection')
+def test_init_creates_collection_if_missing(self, mock_collection, mock_utility, mock_connections):
         # Setup mocks
         mock_utility.has_collection.return_value = False
         mock_conn = MagicMock()
@@ -21,9 +22,9 @@ class TestMilvusClient(unittest.TestCase):
         self.assertTrue(mock_utility.has_collection.called)
         self.assertTrue(mock_collection.called)
 
-    @patch('somabrain.milvus_client._vector_from_payload')
-    @patch('somabrain.milvus_client.MilvusClient.collection')
-    def test_upsert_option_calls_insert(self, mock_collection, mock_vector):
+@patch('somabrain.milvus_client._vector_from_payload')
+@patch('somabrain.milvus_client.MilvusClient.collection')
+def test_upsert_option_calls_insert(self, mock_collection, mock_vector):
         mock_vector.return_value = [0.0] * 128
         client = MilvusClient()
         client.collection = mock_collection
@@ -31,9 +32,9 @@ class TestMilvusClient(unittest.TestCase):
         mock_collection.insert.assert_called()
         mock_collection.flush.assert_called()
 
-    @patch('somabrain.milvus_client._vector_from_payload')
-    @patch('somabrain.milvus_client.MilvusClient.collection')
-    def test_search_similar_uses_settings_defaults(self, mock_collection, mock_vector):
+@patch('somabrain.milvus_client._vector_from_payload')
+@patch('somabrain.milvus_client.MilvusClient.collection')
+def test_search_similar_uses_settings_defaults(self, mock_collection, mock_vector):
         mock_vector.return_value = [0.0] * 128
         mock_search_result = MagicMock()
         hit = MagicMock()

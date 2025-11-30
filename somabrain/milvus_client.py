@@ -1,6 +1,15 @@
+from __future__ import annotations
+import hashlib
+from typing import List, Tuple
+from common.config.settings import settings
+from common.logging import logger
+from pymilvus import (
+from pymilvus.exceptions import MilvusException
+
 """Thin wrapper around the official Milvus SDK.
 
 The VIBE rules require:
+    pass
 * **Single source of truth** – all connection parameters come from
   ``common.config.settings``.
 * **No magic numbers** – defaults are defined in ``Settings`` and referenced
@@ -13,39 +22,27 @@ manager.  All heavy‑lifting (index creation, vector conversion) lives inside t
 class so callers stay simple.
 """
 
-from __future__ import annotations
 
-import hashlib
-import logging
-from typing import List, Tuple, Optional
 
-from common.config.settings import settings
 # ``pymilvus`` is an optional heavy dependency. Import it lazily and provide
 # fall‑backs for the test environment where the library is not installed.
 # ``pymilvus`` is an optional heavy dependency. Import it lazily and provide
 # fall‑backs for the test environment where the library is not installed.
 try:
-    from pymilvus import (
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
         Collection,
         connections,
         utility,
         FieldSchema,
         CollectionSchema,
-        DataType,
-    )
-    from pymilvus.exceptions import MilvusException
+        DataType, )
     _PYMILVUS_AVAILABLE = True
-except Exception as exc: raise  # pragma: no cover – exercised only when pymilvus missing
-    _PYMILVUS_AVAILABLE = False
-    # Minimal stand‑ins that satisfy type checking and allow the module to be
-    # imported. The real functionality is mocked in the test suite.
-    # Provide a dummy class that can be instantiated with arbitrary arguments
-    # (the real ``Collection`` expects a name and schema). This satisfies the
-    # unit‑test which patches ``Collection`` with a ``MagicMock`` and asserts
-    # that it was called.
-    class _DummyCollection:
-        def __init__(self, *_, **__):  # noqa: D401
-            """Accept any arguments and do nothing."""
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     Collection = _DummyCollection  # type: ignore[misc]
     connections = type("_Conn", (), {"connect": staticmethod(lambda *_, **__: None)})()  # type: ignore[misc]
@@ -55,7 +52,6 @@ except Exception as exc: raise  # pragma: no cover – exercised only when pymil
     DataType = type("_DT", (), {"VARCHAR": None, "FLOAT_VECTOR": None})  # type: ignore[misc]
     MilvusException = Exception
 
-logger = logging.getLogger(__name__)
 
 
 def _vector_from_payload(payload: bytes, dim: int = 128) -> List[float]:
@@ -93,7 +89,7 @@ class MilvusClient:
     # or a mock in tests.
     collection: "Collection" = None  # type: ignore
 
-    def __init__(self) -> None:
+def __init__(self) -> None:
         # Resolve host/port from Settings; ``milvus_url`` is a convenience that
         # already concatenates host and port.
         host = settings.milvus_host or "localhost"
@@ -108,6 +104,10 @@ class MilvusClient:
         # collection. The tests replace ``MilvusClient.collection`` with a mock
         # after instantiation, so a ``None`` placeholder is acceptable.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             connections.connect("default", host=host, port=port)
             logger.debug("Connected to Milvus at %s:%s", host, port)
 
@@ -132,7 +132,7 @@ class MilvusClient:
     # ---------------------------------------------------------------------
     # Private helpers
     # ---------------------------------------------------------------------
-    def _create_collection(self) -> None:
+def _create_collection(self) -> None:
         fields = [
             FieldSchema(name="option_id", dtype=DataType.VARCHAR, max_length=256, is_primary=True),
             FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=256),
@@ -147,15 +147,14 @@ class MilvusClient:
                 "index_type": "BIN_IVF_FLAT",
                 "metric_type": "HAMMING",
                 "params": {"nlist": 128},
-            },
-        )
+            }, )
         coll.load()
         logger.info("Created Milvus collection %s", self.collection_name)
 
     # ---------------------------------------------------------------------
     # Public API used by Oak option manager and FastAPI routes
     # ---------------------------------------------------------------------
-    def upsert_option(self, tenant_id: str, option_id: str, payload: bytes) -> None:
+def upsert_option(self, tenant_id: str, option_id: str, payload: bytes) -> None:
         """Insert or replace an option record for a tenant.
 
         Milvus has no native UPSERT, but inserting a row with an existing primary
@@ -168,13 +167,13 @@ class MilvusClient:
         self.collection.flush()
         logger.debug("Upserted option %s for tenant %s", option_id, tenant_id)
 
-    def search_similar(
+def search_similar(
         self,
         tenant_id: str,
         payload: bytes,
         top_k: int | None = None,
-        similarity_threshold: float | None = None,
-    ) -> List[Tuple[str, float]]:
+        similarity_threshold: float | None = None, ) -> List[Tuple[str, float]]:
+            pass
         """Return a list of ``(option_id, similarity)`` tuples.
 
         The defaults are sourced from ``common.config.settings`` to avoid magic
@@ -198,8 +197,7 @@ class MilvusClient:
             param=search_params,
             limit=top_k,
             expr=f"tenant_id == '{tenant_id}'",
-            output_fields=["option_id"],
-        )
+            output_fields=["option_id"], )
         out: List[Tuple[str, float]] = []
         for hit in results[0]:
             sim = 1.0 / (1.0 + hit.distance)

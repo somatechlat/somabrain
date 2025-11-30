@@ -1,3 +1,25 @@
+from __future__ import annotations
+import asyncio
+import datetime
+from typing import Any, Dict
+from fastapi import APIRouter, HTTPException, Request
+from somabrain.api.dependencies.auth import require_auth
+from somabrain.app import cfg
+from somabrain import metrics as M
+from common.config.settings import settings
+from somabrain.tenant import get_tenant as get_tenant_async
+from somabrain.opa.client import opa_client
+from somabrain.sleep import SleepState, SleepStateManager
+from somabrain.sleep.models import TenantSleepState
+from somabrain.storage.db import get_session_factory
+from somabrain.metrics import get_gauge
+from somabrain.api.schemas.sleep import SleepRequest
+from somabrain.infrastructure.cb_registry import get_cb
+from somabrain.sleep.cb_adapter import map_cb_to_sleep
+from common.logging import logger
+from somabrain.app import rate_limiter as global_rate_limiter
+import logging
+
 """Cognitive Sleep API router and TTL auto‑wake background task.
 
 Provides ``POST /api/brain/sleep_mode`` for explicit state transitions that
@@ -10,33 +32,11 @@ All operations respect the existing authentication/authorization flow and the
 OPA policy client. Metrics are updated via the ``somabrain_sleep_state`` gauge.
 """
 
-from __future__ import annotations
 
-import asyncio
-import datetime
-from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException, Request
-import logging
 
-from somabrain.api.dependencies.auth import require_auth
-from somabrain.app import cfg
-from somabrain import metrics as M
-from common.config.settings import settings
-import logging
-from somabrain.metrics import get_counter
-from somabrain.tenant import get_tenant as get_tenant_async
-from somabrain.opa.client import opa_client
-from somabrain.sleep import SleepState, SleepStateManager
-from somabrain.sleep.models import TenantSleepState
-from somabrain.storage.db import get_session_factory
-from somabrain.metrics import get_gauge
-from somabrain.api.schemas.sleep import SleepRequest
-from somabrain.infrastructure.cb_registry import get_cb
-from somabrain.sleep.cb_adapter import map_cb_to_sleep
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
 
 _STATE_TO_INT: Dict[str, int] = {
     "active": 0,
@@ -48,8 +48,7 @@ _STATE_TO_INT: Dict[str, int] = {
 _sleep_state_gauge = get_gauge(
     "somabrain_sleep_state",
     "Current sleep state per tenant (0=active,1=light,2=deep,3=freeze)",
-    labelnames=["tenant", "state"],
-)
+    labelnames=["tenant", "state"], )
 
 # ---------------------------------------------------------------------------
 # Metrics & rate‑limiting for the brain endpoint
@@ -57,13 +56,11 @@ _sleep_state_gauge = get_gauge(
 _sleep_calls_counter = M.get_counter(
     "somabrain_sleep_calls_total",
     "Total calls to any sleep endpoint",
-    labelnames=["tenant", "mode"],
-)
+    labelnames=["tenant", "mode"], )
 _sleep_toggle_counter = M.get_counter(
     "somabrain_brain_sleep_mode_toggles_total",
     "Number of successful brain sleep mode toggles",
-    labelnames=["tenant", "new_state"],
-)
+    labelnames=["tenant", "new_state"], )
 _RATE_LIMIT_PATH = "/api/brain/sleep_mode"
 _rate_limiter: Any | None = None
 
@@ -74,7 +71,7 @@ def _get_rate_limiter() -> Any:
     """
     global _rate_limiter
     if _rate_limiter is None:
-        from somabrain.app import rate_limiter as global_rate_limiter
+        pass
 
         _rate_limiter = global_rate_limiter
     return _rate_limiter
@@ -99,8 +96,14 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         rate_limiter = _get_rate_limiter()
         if not rate_limiter.allow(tenant_id):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 M.RATE_LIMITED_TOTAL.labels(path=_RATE_LIMIT_PATH).inc()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             raise HTTPException(status_code=429, detail="rate limit exceeded")
 
         # OPA policy enforcement – include the same payload shape and max_seconds.
@@ -127,8 +130,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 ss = TenantSleepState(
                     tenant_id=tenant_id,
                     current_state=SleepState.ACTIVE.value,
-                    target_state=SleepState.ACTIVE.value,
-                )
+                    target_state=SleepState.ACTIVE.value, )
                 session.add(ss)
                 session.commit()
             current_state = SleepState(ss.current_state.upper())
@@ -137,8 +139,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             if not manager.can_transition(current_state, target_state):
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Invalid transition from {current_state.value} to {target_state.value}",
-                )
+                    detail=f"Invalid transition from {current_state.value} to {target_state.value}", )
             # Persist state
             ss.current_state = target_state.value
             ss.target_state = target_state.value
@@ -147,8 +148,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 if body.ttl_seconds > settings.sleep_max_seconds:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"ttl_seconds exceeds maximum of {settings.sleep_max_seconds} seconds",
-                    )
+                        detail=f"ttl_seconds exceeds maximum of {settings.sleep_max_seconds} seconds", )
                 ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
                     seconds=body.ttl_seconds
                 )
@@ -173,8 +173,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 "Brain sleep request trace_id=%s tenant=%s state=%s",
                 body.trace_id,
                 tenant_id,
-                target_state.value,
-            )
+                target_state.value, )
         return {"ok": True, "tenant": tenant_id, "new_state": target_state.value}
 
     # Async mode handling – if requested, schedule background task.
@@ -200,6 +199,10 @@ async def _ttl_watcher_loop(poll_seconds: float = 30.0) -> None:
     Session = get_session_factory()
     while True:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             now = datetime.datetime.utcnow()
             with Session() as session:
                 # Find rows where ttl is set and <= now.
@@ -221,7 +224,6 @@ async def _ttl_watcher_loop(poll_seconds: float = 30.0) -> None:
                     session.commit()
         except Exception as exc:  # pragma: no cover – defensive logging
             # Log but continue loop.
-            import logging
 
             logging.getLogger(__name__).error("Error in TTL watcher: %s", exc)
         await asyncio.sleep(poll_seconds)

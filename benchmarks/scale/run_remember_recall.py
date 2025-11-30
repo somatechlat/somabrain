@@ -1,3 +1,12 @@
+from __future__ import annotations
+import asyncio
+import statistics
+import time
+import httpx
+import uuid
+from common.config.settings import settings
+from common.logging import logger
+
 """Small harness: POST 100 /remember concurrently, then /recall.
 
 Usage (from repo root):
@@ -7,16 +16,10 @@ It reads SOMABRAIN_HOST_PORT from .env if present, otherwise defaults to 9696.
 Sends minimal valid RememberRequest bodies and then queries /recall.
 """
 
-from __future__ import annotations
 
-import asyncio
 
 # Removed direct os import; using centralized settings for environment variables.
-import statistics
-import time
 
-import httpx
-import uuid
 
 # Config
 ENV_FILE = ".env"
@@ -31,12 +34,18 @@ def read_env_port() -> int:
                 if line.strip().startswith("SOMABRAIN_HOST_PORT="):
                     _, v = line.strip().split("=", 1)
                     try:
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         port = int(v)
-                    except Exception as exc: raise
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
+    raise
     return port or DEFAULT_PORT
 
 
-from common.config.settings import settings
 
 API_PORT = read_env_port()
 BASE = settings.api_url
@@ -73,14 +82,18 @@ async def post_remember(client: httpx.AsyncClient, i: int):
     hdrs = dict(HEADERS)
     hdrs["X-Request-ID"] = rid
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         r = await client.post(
             "/remember", json=body, headers=hdrs, timeout=bench_timeout
         )
         elapsed = (time.perf_counter() - start) * 1000.0
         return (i, rid, r.status_code, r.text[:200], elapsed)
     except Exception as e:
-        elapsed = (time.perf_counter() - start) * 1000.0
-        return (i, rid, 0, repr(e), elapsed)
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 async def run():
@@ -108,12 +121,15 @@ async def run():
         await asyncio.sleep(0.5)
         qstart = time.perf_counter()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             r = await client.post(
                 "/recall",
                 json={"query": "scale-memory", "top_k": 10},
                 headers=HEADERS,
-                timeout=20.0,
-            )
+                timeout=20.0, )
             qtime = (time.perf_counter() - qstart) * 1000.0
             print(f"Recall status={r.status_code} time_ms={qtime:.1f}")
             if r.status_code == 200:
@@ -124,7 +140,8 @@ async def run():
             else:
                 print(r.text)
         except Exception as e:
-            print("Recall failed:", e)
+            logger.exception("Exception caught: %s", e)
+            raise
 
 
 if __name__ == "__main__":

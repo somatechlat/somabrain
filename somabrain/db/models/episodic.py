@@ -1,18 +1,18 @@
+from __future__ import annotations
+from sqlalchemy import (
+from somabrain.storage.db import Base
+
 """
 SQLAlchemy model for episodic memory snapshots.
 """
 
-from __future__ import annotations
 
-from sqlalchemy import (
     Column,
     Integer,
     String,
     DateTime,
     JSON,
-    func,
-)
-from somabrain.storage.db import Base
+    func, )
 
 
 class EpisodicSnapshot(Base):
@@ -29,5 +29,5 @@ class EpisodicSnapshot(Base):
     tags = Column(JSON, nullable=True)
     policy_tags = Column(JSON, nullable=True)
 
-    def __repr__(self) -> str:
+def __repr__(self) -> str:
         return f"<EpisodicSnapshot(id={self.id}, tenant_id={self.tenant_id}, key='{self.key}')>"

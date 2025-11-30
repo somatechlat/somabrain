@@ -1,16 +1,19 @@
 from __future__ import annotations
-
-# Removed direct import of os; environment variables are accessed via Settings where needed.
 import time as _t
 import datetime
 from typing import Any, Dict, Optional
-
 import numpy as np
-
 from somabrain.modes import feature_enabled  # central flag resolution
 from somabrain.sleep import SleepState, SleepStateManager
 from somabrain.sleep.models import TenantSleepState
 from somabrain.storage.db import get_session_factory
+from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+from common.logging import logger
+from typing import Any, cast
+
+# Removed direct import of os; environment variables are accessed via Settings where needed.
+
+
 
 # Publish BeliefUpdate events only when centralized gating enables integrator context.
 _FF_COG_UPDATES = feature_enabled("integrator")
@@ -18,12 +21,17 @@ _FF_COG_UPDATES = feature_enabled("integrator")
 _BU_PUBLISHER = None
 if _FF_COG_UPDATES:
     try:
-        from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         _BU_PUBLISHER = BeliefUpdatePublisher()
         if not getattr(_BU_PUBLISHER, "enabled", False):
             _BU_PUBLISHER = None
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _BU_PUBLISHER = None
 
 
@@ -42,6 +50,10 @@ def _get_sleep_state(tenant_id: str) -> SleepState:
 
     # Fallback / Cache Miss
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         Session = get_session_factory()
         with Session() as session:
             ss = session.get(TenantSleepState, tenant_id)
@@ -50,12 +62,8 @@ def _get_sleep_state(tenant_id: str) -> SleepState:
             else:
                 state = SleepState.ACTIVE
     except Exception as exc:
-        # Default to ACTIVE on DB error to fail open (or safe?)
-        # SRS implies safety, but failing to ACTIVE might be risky if we need to freeze.
-        # However, for resilience, we default to ACTIVE.
-        from common.logging import logger
-        raise RuntimeError("Failed to retrieve sleep state from DB: %s", exc)
-        state = SleepState.ACTIVE
+        logger.exception("Exception caught: %s", exc)
+        raise
 
     _SLEEP_STATE_CACHE[tenant_id] = (state, now)
     return state
@@ -70,11 +78,12 @@ def eval_step(
     personality_store,
     supervisor: Optional[object],
     amygdala,
-    tenant_id: str,
-) -> Dict[str, Any]:
+    tenant_id: str, ) -> Dict[str, Any]:
+        pass
     """Evaluate one /act step: predictor, neuromod modulation, salience, gates.
 
     Returns a dict with keys:
+        pass
     - pred_error: float in [0,1]
     - pred_latency: float seconds
     - neuromod: adjusted neuromod state (after supervisor/personality)
@@ -110,18 +119,22 @@ def eval_step(
     # Predictor (time-budgeted)
     t0 = _t.perf_counter()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         pred = predictor.predict_and_compare(wm_vec, wm_vec)
     except Exception as exc:
-        # degrade: zero error if predictor fails (BudgetedPredictor may timeout)
-        try:
-            from .. import metrics as M  # local import to avoid cycles in tests
+        logger.exception("Exception caught: %s", exc)
+        raise
 
             M.PREDICTOR_ALTERNATIVE.inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         pred = type(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
-        from common.logging import logger
             raise RuntimeError("Predictor failed, falling back to zero-error placeholder: %s", exc)
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
@@ -130,20 +143,29 @@ def eval_step(
     # Fetch traits per tenant (default to 'public' if missing)
     traits = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if hasattr(personality_store, "get"):
             tkey = tenant_id or "public"
             traits = personality_store.get(tkey)
             if not traits:
                 traits = personality_store.get("public")
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         traits = None
     nm = personality_store.modulate_neuromods(base_nm, traits) if traits else base_nm
     F = None
     mag = None
     if supervisor is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # supervisor is an optional pluggable object; guard attribute access
-            from typing import Any, cast
 
             if hasattr(supervisor, "adjust"):
                 # Pass eta to supervisor if it accepts it?
@@ -153,20 +175,27 @@ def eval_step(
                     nm, float(novelty), float(pred.error)
                 )
         except Exception as exc:
-            from common.logging import logger
-            raise RuntimeError("Supervisor adjustment failed: %s", exc)
+            logger.exception("Exception caught: %s", exc)
+            raise
 
     # Salience and gates (raw, before executive inhibition)
     s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
     # Trait-driven uplift: high curiosity and risk_tolerance should not reduce salience.
     # Provide a small, deterministic boost so post-personality salience is >= baseline in tests.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if traits:
             # When personality traits are set, override salience to maximum.
             # This deterministic behavior guarantees that the post‑personality
             # salience is not lower than the baseline used in the test suite.
             s = 1.0
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     store_gate, act_gate = amygdala.gates(s, nm)
 
     # Enforce Sleep Constraints (DEEP/FREEZE => eta=0 => No Storage)
@@ -178,6 +207,10 @@ def eval_step(
 
     # Publish a state-domain BeliefUpdate (best-effort, feature-flagged)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if _BU_PUBLISHER is not None:
             conf = max(0.0, min(1.0, 1.0 - float(pred.error)))
             latency_ms = int(1000.0 * float(pred_latency))
@@ -195,12 +228,10 @@ def eval_step(
                 evidence=evidence,
                 posterior={},
                 model_ver=str(model_ver),
-                latency_ms=latency_ms,
-            )
+                latency_ms=latency_ms, )
     except Exception as exc:
-        # Never fail the cognitive loop due to telemetry
-        from common.logging import logger
-        raise RuntimeError("Telemetry publishing failed: %s", exc)
+        logger.exception("Exception caught: %s", exc)
+        raise
 
     return {
         "pred_error": float(pred.error),

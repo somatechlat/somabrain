@@ -1,3 +1,12 @@
+from __future__ import annotations
+from pathlib import Path
+from common.config.settings import settings
+from somabrain.microcircuits import MCConfig
+from somabrain.mt_wm import MTWMConfig
+from somabrain.wm import WorkingMemory
+from somabrain.prediction import BudgetedPredictor, SlowPredictor
+from somabrain.planner_rwr import rwr_plan
+
 """Invariant tests ensuring config defaults are centralized in settings.
 
 These tests guard against regressions where modules reintroduce hard-coded
@@ -5,16 +14,8 @@ defaults or new direct ``os.getenv`` calls outside ``common/config/settings.py``
 They intentionally avoid mocks/shims and exercise lightweight code paths only.
 """
 
-from __future__ import annotations
 
-from pathlib import Path
 
-from common.config.settings import settings
-from somabrain.microcircuits import MCConfig
-from somabrain.mt_wm import MTWMConfig
-from somabrain.wm import WorkingMemory
-from somabrain.prediction import BudgetedPredictor, SlowPredictor
-from somabrain.planner_rwr import rwr_plan
 
 
 def test_mcconfig_defaults_follow_settings() -> None:
@@ -49,19 +50,21 @@ def test_budgeted_predictor_uses_settings_timeout() -> None:
 
 
 def test_rwr_plan_respects_settings_limits() -> None:
-    class _Mem:
-        def __init__(self):
+    pass
+class _Mem:
+    pass
+def __init__(self):
             self.calls = 0
 
-        def coord_for_key(self, task_key, universe=None):
+def coord_for_key(self, task_key, universe=None):
             return (0.0, 0.0, 0.0)
 
-        def links_from(self, coord, type_filter=None, limit=None):
+def links_from(self, coord, type_filter=None, limit=None):
             # ensure limit is what planner passes from settings
             assert limit == max(1, int(settings.planner_rwr_edges_per_node))
             return []
 
-        def payloads_for_coords(self, coords, universe=None):
+def payloads_for_coords(self, coords, universe=None):
             self.calls += 1
             return []
 

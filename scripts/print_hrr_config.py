@@ -1,14 +1,15 @@
+import json
+from common.config.settings import settings
+from somabrain.quantum import HRRConfig
+
 #!/usr/bin/env python
 """Print current HRR/quantum configuration for operational inspection.
 
 Usage:
     python -m scripts.print_hrr_config
 """
-import json
 
 # Unified configuration – use the central Settings instance
-from common.config.settings import settings
-from somabrain.quantum import HRRConfig
 
 cfg = settings
 if not getattr(cfg, "use_hrr", False):
@@ -28,6 +29,5 @@ else:
                 "mix": qcfg.mix,
                 "roles_unitary": qcfg.roles_unitary,
             },
-            indent=2,
-        )
+            indent=2, )
     )

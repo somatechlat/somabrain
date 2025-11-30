@@ -1,6 +1,10 @@
+from fastapi import FastAPI, Request
+from typing import Any, Dict
+
 """Simple in‑process mock memory HTTP service used for end‑to‑end demos.
 
 It implements two minimal endpoints:
+    pass
 * POST /remember – stores the JSON payload keyed by ``key`` (or ``content`` if ``key`` not provided).
 * GET  /memory/get/{key} – retrieves the stored payload.
 
@@ -8,8 +12,6 @@ The service runs with ``uvicorn`` on port 9999 and is included in the
 docker‑compose stack as the ``mock_memory`` service.
 """
 
-from fastapi import FastAPI, Request
-from typing import Any, Dict
 
 app = FastAPI()
 _store: Dict[str, Any] = {}

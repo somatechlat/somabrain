@@ -1,3 +1,12 @@
+from __future__ import annotations
+from typing import List
+from common.config.settings import settings
+from somabrain.cognitive.thread_model import CognitiveThread
+from common.logging import logger
+from ``settings.OAK_PLAN_MAX_OPTIONS`` (default ``10``).
+from somabrain.storage.db import get_session_factory  # pylint: disable=import-outside-toplevel
+from .option_manager import option_manager  # pylint: disable=import-outside-toplevel
+
 """Oak Planner Module
 =======================
 
@@ -15,12 +24,8 @@ read from the global ``settings`` instance, ensuring there are no hard‑coded
 magic numbers, in line with the VIBE coding rules.
 """
 
-from __future__ import annotations
 
-from typing import List
 
-from common.config.settings import settings
-from somabrain.cognitive.thread_model import CognitiveThread
 
 __all__ = ["plan_for_tenant"]
 
@@ -34,7 +39,6 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
         Tenant whose options should be considered.
     max_options: int | None, optional
         Upper bound on the number of IDs returned. If ``None`` the value is read
-        from ``settings.OAK_PLAN_MAX_OPTIONS`` (default ``10``).
 
     Returns
     -------
@@ -51,7 +55,10 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     # ignored. By importing inside the function we ensure the latest attribute
     # value from ``somabrain.storage.db`` is used.
     try:
-        from somabrain.storage.db import get_session_factory  # pylint: disable=import-outside-toplevel
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         Session = get_session_factory()
         with Session() as session:
@@ -62,16 +69,22 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
                     # Persist cursor advancement.
                     session.commit()
                     return [nxt]
-    except Exception as exc: raise
-        # Any failure (e.g., missing table) falls back to utility ranking.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     # Retrieve only the tenant's options and sort by utility (high → low).
     # Import lazily to avoid side‑effects during module import (MemoryClient init).
     try:
-        from .option_manager import option_manager  # pylint: disable=import-outside-toplevel
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         options = option_manager.list_options(tenant_id)
-    except Exception as exc: raise
-        # If the option manager cannot be imported (e.g., missing cfg), fallback to empty list.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         options = []
     sorted_opts = sorted(options, key=lambda o: getattr(o, "utility", 0.0), reverse=True)
     return [opt.option_id for opt in sorted_opts[:limit]]

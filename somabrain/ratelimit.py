@@ -1,3 +1,8 @@
+from __future__ import annotations
+import time
+from dataclasses import dataclass
+from typing import Dict
+
 """
 Rate Limiting Module for SomaBrain
 
@@ -6,6 +11,7 @@ and prevent system overload. It provides per-key rate limiting with configurable
 rates and burst capacities.
 
 Key Features:
+    pass
 - Token bucket algorithm for smooth rate limiting
 - Per-key rate limiting (tenant, IP, etc.)
 - Configurable rates per second and burst capacity
@@ -14,6 +20,7 @@ Key Features:
 - Memory-efficient with lazy bucket creation
 
 Rate Limiting:
+    pass
 - RPS (requests per second): Sustained rate limit
 - Burst: Maximum burst capacity before throttling
 - Token replenishment: Continuous token addition based on time
@@ -28,11 +35,7 @@ Functions:
     None (class-based implementation)
 """
 
-from __future__ import annotations
 
-import time
-from dataclasses import dataclass
-from typing import Dict
 
 
 @dataclass
@@ -42,13 +45,14 @@ class RateConfig:
 
 
 class TokenBucket:
-    def __init__(self, rps: float, burst: int):
+    pass
+def __init__(self, rps: float, burst: int):
         self.rate = float(rps)
         self.capacity = int(burst)
         self.tokens = float(burst)
         self.ts = time.monotonic()
 
-    def allow(self) -> bool:
+def allow(self) -> bool:
         now = time.monotonic()
         dt = now - self.ts
         self.ts = now
@@ -60,11 +64,12 @@ class TokenBucket:
 
 
 class RateLimiter:
-    def __init__(self, cfg: RateConfig):
+    pass
+def __init__(self, cfg: RateConfig):
         self.cfg = cfg
         self._buckets: Dict[str, TokenBucket] = {}
 
-    def allow(self, key: str) -> bool:
+def allow(self, key: str) -> bool:
         b = self._buckets.get(key)
         if b is None:
             b = TokenBucket(self.cfg.rps, self.cfg.burst)

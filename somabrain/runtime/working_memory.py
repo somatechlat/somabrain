@@ -1,22 +1,25 @@
+from __future__ import annotations
+import collections
+import json
+from typing import Deque, Dict, List, Optional
+import redis  # type: ignore
+from somabrain.infrastructure import get_redis_url
+from common.config.settings import settings
+from common.logging import logger
+
 """Redis-backed working memory ring buffer.
 
 Strict mode: requires Redis. Local in-process buffer alternative is removed.
 """
 
-from __future__ import annotations
 
-import collections
-import json
 
-from typing import Deque, Dict, List, Optional
 
 try:  # pragma: no cover - optional dependency
-    import redis  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    redis = None  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
-from somabrain.infrastructure import get_redis_url
-from common.config.settings import settings
 
 
 def _env_true(name: str, default: bool = False) -> bool:
@@ -25,19 +28,26 @@ def _env_true(name: str, default: bool = False) -> bool:
     if v is None:
         return default
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return v.strip().lower() in ("1", "true", "yes", "on")
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default
 
 
 class WorkingMemoryBuffer:
-    def __init__(
+    pass
+def __init__(
         self,
         redis_url: Optional[str] = None,
         prefix: str = "somabrain:wm",
         ttl_seconds: int = 60,
-        max_items: int = 32,
-    ) -> None:
+        max_items: int = 32, ) -> None:
+            pass
         self._prefix = prefix
         self._ttl = ttl_seconds
         self._max_items = max_items
@@ -49,6 +59,10 @@ class WorkingMemoryBuffer:
         if redis is not None:
             url = redis_url or get_redis_url()
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if url:
                     self._redis = redis.from_url(url)
                     # lightweight ping to ensure connectivity
@@ -56,7 +70,9 @@ class WorkingMemoryBuffer:
                     self._use_redis = True
                 else:
                     self._redis = None
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self._redis = None
         else:
             self._redis = None
@@ -65,7 +81,7 @@ class WorkingMemoryBuffer:
                 "WorkingMemoryBuffer requires Redis connectivity (strict mode)."
             )
 
-    def record(self, session_id: str, item: Dict) -> None:
+def record(self, session_id: str, item: Dict) -> None:
         if self._use_redis and self._redis is not None:
             key = self._redis_key(session_id)
             payload = json.dumps(item)
@@ -81,30 +97,36 @@ class WorkingMemoryBuffer:
             )
             dq.append(item)
 
-    def snapshot(self, session_id: str) -> List[Dict]:
+def snapshot(self, session_id: str) -> List[Dict]:
         if self._use_redis and self._redis is not None:
             key = self._redis_key(session_id)
             raw_items = self._redis.lrange(key, 0, self._max_items - 1)
             snapshot: List[Dict] = []
             for raw in raw_items:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     data = json.loads(raw)
                     snapshot.append(data)
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     continue
             return list(reversed(snapshot))
         # In‑process fallback
         dq: Deque[Dict] = self._local.get(session_id, collections.deque())
         return list(dq)
 
-    def clear(self, session_id: str) -> None:
+def clear(self, session_id: str) -> None:
         if self._use_redis and self._redis is not None:
             self._redis.delete(self._redis_key(session_id))
         else:
             # Clear in‑process buffer if present.
             self._local.pop(session_id, None)
 
-    def _redis_key(self, session_id: str) -> str:
+def _redis_key(self, session_id: str) -> str:
         return f"{self._prefix}:{session_id}"
 
 

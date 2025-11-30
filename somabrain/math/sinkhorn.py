@@ -1,3 +1,6 @@
+import numpy as np
+from typing import Tuple
+
 """Entropy-regularized Sinkhorn transport (log-domain stabilized).
 
 This module provides a compact, robust Sinkhorn solver for small-to-moderate
@@ -5,8 +8,6 @@ cost matrices. It returns a transport matrix P that approximately minimizes
 <P, C> - eps * H(P) subject to marginals a,b.
 """
 
-import numpy as np
-from typing import Tuple
 
 
 def sinkhorn_log_stabilized(
@@ -15,8 +16,8 @@ def sinkhorn_log_stabilized(
     b: np.ndarray,
     eps: float = 1e-2,
     niter: int = 1000,
-    tol: float = 1e-6,
-) -> Tuple[np.ndarray, float]:
+    tol: float = 1e-6, ) -> Tuple[np.ndarray, float]:
+        pass
     """Return transport matrix P and final error.
 
     C: cost matrix (n, m)
@@ -35,14 +36,14 @@ def sinkhorn_log_stabilized(
     u = np.zeros(n)
     v = np.zeros(m)
 
-    def _lse_rows(v_vec: np.ndarray) -> np.ndarray:
+def _lse_rows(v_vec: np.ndarray) -> np.ndarray:
         """Compute log-sum-exp over columns for each row: returns shape (n,)"""
         A = K + v_vec[None, :]
         M = np.max(A, axis=1)
         # subtract max for numerical stability
         return M + np.log(np.exp(A - M[:, None]).sum(axis=1))
 
-    def _lse_cols(u_vec: np.ndarray) -> np.ndarray:
+def _lse_cols(u_vec: np.ndarray) -> np.ndarray:
         """Compute log-sum-exp over rows for each column: returns shape (m,)"""
         A = K + u_vec[:, None]
         M = np.max(A, axis=0)

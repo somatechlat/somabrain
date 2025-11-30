@@ -1,3 +1,8 @@
+from __future__ import annotations
+import pathlib
+from typing import Dict
+from common.logging import logger
+
 """OPA policy builder utilities.
 
 This module provides a simple function to generate an OPA Rego policy
@@ -7,10 +12,7 @@ Future versions may render dynamic rules based on the constitution
 contents.
 """
 
-from __future__ import annotations
 
-import pathlib
-from typing import Dict
 
 
 def build_policy(constitution: Dict) -> str:
@@ -31,9 +33,15 @@ def build_policy(constitution: Dict) -> str:
         / "constitution.rego"
     )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return template_path.read_text(encoding="utf-8")
     except Exception as e:
-        raise RuntimeError(
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise RuntimeError(
             f"Failed to read OPA policy template at {template_path}: {e}"
         )
 

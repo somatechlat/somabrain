@@ -1,3 +1,12 @@
+from __future__ import annotations
+from typing import Any, List, Optional
+from somabrain.schemas import RetrievalRequest, RetrievalResponse, RetrievalCandidate
+from somabrain.services.memory_service import MemoryService
+from somabrain import runtime as _rt
+from somabrain.scoring import UnifiedScorer
+from somabrain.embeddings import make_embedder
+from common.logging import logger
+
 """Lightweight retrieval pipeline used by the recall API and tests.
 
 This implementation focuses on the behaviours exercised by the in-repo
@@ -12,15 +21,8 @@ the optional local in-process memory backend enabled by
 while allowing tests to run without external services.
 """
 
-from __future__ import annotations
 
-from typing import Any, List, Optional
 
-from somabrain.schemas import RetrievalRequest, RetrievalResponse, RetrievalCandidate
-from somabrain.services.memory_service import MemoryService
-from somabrain import runtime as _rt
-from somabrain.scoring import UnifiedScorer
-from somabrain.embeddings import make_embedder
 
 
 def _as_namespace(ctx: Any) -> str:
@@ -33,15 +35,14 @@ def _candidate_from_payload(
     retriever: str,
     key: Optional[str] = None,
     coord: Optional[str] = None,
-    score: float = 1.0,
-) -> RetrievalCandidate:
+    score: float = 1.0, ) -> RetrievalCandidate:
+        pass
     return RetrievalCandidate(
         coord=coord,
         key=key,
         score=float(score),
         retriever=retriever,
-        payload=payload,
-    )
+        payload=payload, )
 
 
 def _heuristic_is_key(query: str) -> bool:
@@ -53,10 +54,16 @@ def _safe_coord_from_str(coord_str: str) -> Optional[str]:
     if not coord_str:
         return None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         parts = [float(x) for x in coord_str.split(",") if x.strip()]
         if len(parts) >= 3:
             return ",".join(str(float(x)) for x in parts[:3])
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
     return None
 
@@ -66,8 +73,8 @@ async def run_retrieval_pipeline(
     *,
     ctx: Any,
     universe: Optional[str],
-    trace_id: str,
-) -> RetrievalResponse:
+    trace_id: str, ) -> RetrievalResponse:
+        pass
     namespace = _as_namespace(ctx)
     memsvc = MemoryService(_rt.mt_memory, namespace)
 
@@ -89,6 +96,10 @@ async def run_retrieval_pipeline(
     payload: dict = {}
     if key:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             hits = memsvc.client().recall(key, top_k=1, universe=universe)
             if hits:
                 hit = hits[0]
@@ -96,7 +107,9 @@ async def run_retrieval_pipeline(
                 score = float(hit.get("score", 1.0))
             else:
                 score = 1.0
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             score = 1.0
         if not payload:
             payload = {"task": key}
@@ -106,8 +119,7 @@ async def run_retrieval_pipeline(
                 retriever="exact",
                 key=key,
                 coord=_safe_coord_from_str(coord) or None,
-                score=score,
-            )
+                score=score, )
         )
     elif coord:
         candidates.append(
@@ -115,8 +127,7 @@ async def run_retrieval_pipeline(
                 {"coord": coord, "query": req.query},
                 retriever="exact",
                 coord=_safe_coord_from_str(coord),
-                score=1.0,
-            )
+                score=1.0, )
         )
 
     # 2) Vector-ish candidate using embedder + scorer when available
@@ -124,6 +135,10 @@ async def run_retrieval_pipeline(
         score = 0.0
         if scorer and embedder:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 q_vec = embedder.embed(req.query)
                 # Compare against any memory we can fetch
                 hits = memsvc.client().recall(
@@ -137,24 +152,23 @@ async def run_retrieval_pipeline(
                             h.get("payload") or {},
                             retriever="cosine",
                             coord=None,
-                            score=float(score),
-                        )
+                            score=float(score), )
                     )
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 candidates.append(
                     _candidate_from_payload(
                         {"task": req.query},
                         retriever="cosine",
-                        score=0.3,
-                    )
+                        score=0.3, )
                 )
         else:
             candidates.append(
                 _candidate_from_payload(
                     {"task": req.query},
                     retriever="cosine",
-                    score=0.3,
-                )
+                    score=0.3, )
             )
 
     metrics = {"reranker_used": req.rerank or "auto"}
@@ -164,5 +178,4 @@ async def run_retrieval_pipeline(
         session_coord=None,
         namespace=namespace,
         trace_id=trace_id,
-        metrics=metrics,
-    )
+        metrics=metrics, )

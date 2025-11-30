@@ -1,3 +1,13 @@
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Iterable, Iterator
+from urllib.parse import urlparse
+import requests
+from somabrain.infrastructure import (
+from common.config.settings import settings as _settings
+from common.logging import logger
+import redis
+
 """Helpers for selecting and probing SomaBrain test targets.
 
 This module centralises the logic for running live-stack regression tests against
@@ -7,32 +17,24 @@ all targets discovered from the environment. Tests can parametrize over these
 configs and skip gracefully when a target is unavailable.
 """
 
-from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Iterable, Iterator
-from urllib.parse import urlparse
 
-import requests
 
-from somabrain.infrastructure import (
     get_api_base_url,
     get_memory_http_endpoint,
     get_redis_url,
-    require,
-)
+    require, )
 
 # Default endpoints used when environment variables are absent.
-from common.config.settings import settings as _settings
 
 DEFAULT_API_URL = _settings.api_url
 DEFAULT_MEMORY_HTTP_ENDPOINT = _settings.memory_http_endpoint
 DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
 
 try:  # Optional dependency in some environments.
-    import redis
-except Exception as exc: raise  # pragma: no cover - redis not always installed.
-    redis = None  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 @dataclass(frozen=True)
@@ -71,14 +73,18 @@ class TargetConfig:
     postgres_dsn: str | None = None
     bypass_lock_checks: bool = False
 
-    def id(self) -> str:
+def id(self) -> str:
         return self.label
 
     # ---- Probing helpers -------------------------------------------------
 
-    def _probe_api(self) -> tuple[bool, str | None]:
+def _probe_api(self) -> tuple[bool, str | None]:
         url = f"{self.api_base.rstrip('/')}/health"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = requests.get(url, timeout=3)
         except Exception as exc:  # pragma: no cover - network dependent
             return False, f"API unreachable at {url}: {exc}"
@@ -88,9 +94,13 @@ class TargetConfig:
             return False, f"API health check not OK for {self.label}"
         return True, None
 
-    def _probe_memory(self) -> tuple[bool, str | None]:
+def _probe_memory(self) -> tuple[bool, str | None]:
         url = f"{self.memory_base.rstrip('/')}/health"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             resp = requests.get(url, timeout=3)
         except Exception as exc:  # pragma: no cover - network dependent
             return False, f"Memory unreachable at {url}: {exc}"
@@ -98,8 +108,14 @@ class TargetConfig:
             return False, f"Memory health returned {resp.status_code} for {url}"
         # Tolerate alternate health schemas (kv_store/vector_store/graph_store booleans)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             body = resp.json()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False, f"Memory health returned non-JSON body for {url}"
 
         # If an explicit 'ok' is provided, require it to be True
@@ -121,7 +137,7 @@ class TargetConfig:
 
         return False, f"Memory health ambiguous schema at {url}: {body!r}"
 
-    def _probe_redis(self) -> tuple[bool, str | None]:
+def _probe_redis(self) -> tuple[bool, str | None]:
         if not self.redis_url:
             return True, None
         if redis is None:  # pragma: no cover - redis client missing
@@ -131,13 +147,17 @@ class TargetConfig:
         port = parsed.port or 6379
         db = int(parsed.path[1:] or 0)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             client = redis.Redis(host=host, port=port, db=db, socket_connect_timeout=1)
             client.ping()
         except Exception as exc:  # pragma: no cover - network dependent
             return False, f"Redis unreachable at {self.redis_url}: {exc}"
         return True, None
 
-    def probe(self) -> tuple[bool, list[str]]:
+def probe(self) -> tuple[bool, list[str]]:
         """Return reachability status plus failure reasons."""
 
         if self.bypass_lock_checks:
@@ -163,14 +183,12 @@ def _env_truthy(value: str | None) -> bool:
 def _default_target() -> TargetConfig:
     api_base = require(
         get_api_base_url(DEFAULT_API_URL) or settings.api_url or DEFAULT_API_URL,
-        message="Set SOMABRAIN_API_URL (see .env) before running tests.",
-    )
+        message="Set SOMABRAIN_API_URL (see .env) before running tests.", )
     memory_base = require(
         get_memory_http_endpoint(DEFAULT_MEMORY_HTTP_ENDPOINT)
         or settings.memory_http_endpoint
         or settings.memory_http_endpoint,
-        message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.",
-    )
+        message="Set SOMABRAIN_MEMORY_HTTP_ENDPOINT (see .env) before running tests.", )
     redis_url = (
         get_redis_url(DEFAULT_REDIS_URL)
         or settings.redis_url
@@ -184,8 +202,7 @@ def _default_target() -> TargetConfig:
         redis_url=redis_url,
         tenant=settings.default_tenant,
         postgres_dsn=settings.postgres_dsn,
-        bypass_lock_checks=_env_truthy(settings.api_url_lock_bypass),
-    )
+        bypass_lock_checks=_env_truthy(settings.api_url_lock_bypass), )
 
 
 def _live_target_from_env() -> TargetConfig | None:
@@ -204,8 +221,7 @@ def _live_target_from_env() -> TargetConfig | None:
         redis_url=redis_url,
         tenant=tenant,
         postgres_dsn=postgres,
-        bypass_lock_checks=bypass,
-    )
+        bypass_lock_checks=bypass, )
 
 
 def iter_test_targets() -> Iterator[TargetConfig]:

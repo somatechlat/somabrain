@@ -1,3 +1,10 @@
+import time
+import pytest
+from somabrain.memory_client import MemoryClient, RecallHit
+from common.config.settings import settings
+from common.logging import logger
+import httpx
+
 """Integration test for the real memory service.
 
 This test exercises the :class:`~somabrain.memory_client.MemoryClient` against a
@@ -11,11 +18,7 @@ to point at a running memory service (default ``http://localhost:9595``). If the
 service is unavailable the test will be skipped.
 """
 
-import time
-import pytest
 
-from somabrain.memory_client import MemoryClient, RecallHit
-from common.config.settings import settings
 
 
 def _service_available() -> bool:
@@ -26,12 +29,17 @@ def _service_available() -> bool:
     """
     endpoint = getattr(settings, "memory_http_endpoint", "http://localhost:9595")
     try:
-        import httpx
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         with httpx.Client(base_url=endpoint, timeout=2.0) as client:
             resp = client.head("/")
             return resp.status_code < 500
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
 
 
@@ -41,6 +49,7 @@ def test_memory_remember_and_recall() -> None:
     """Store a payload and verify it can be recalled.
 
     The test performs the following steps:
+        pass
     1. Creates a ``MemoryClient`` using the global ``settings`` instance.
     2. Calls :meth:`MemoryClient.remember` with a deterministic key and payload.
     3. Sleeps briefly to allow the asynchronous backend to index the new memory.

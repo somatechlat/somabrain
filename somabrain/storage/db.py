@@ -1,3 +1,12 @@
+from __future__ import annotations
+import json
+from typing import Optional
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+from common.logging import logger
+from common.config.settings import settings as settings
+
 """Database helpers for SomaBrain.
 
 Provides a lazily-initialized SQLAlchemy engine/session factory that requires a
@@ -6,20 +15,18 @@ alternative; attempts to start without a Postgres URL now raise immediately. Thi
 prevents silent divergence between dev/test and production storage behaviour.
 """
 
-from __future__ import annotations
 
-import json
-from typing import Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 try:
-    from common.config.settings import settings as settings
-except Exception as exc: raise  # pragma: no cover - optional dependency during migration
-    settings = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 Base = declarative_base()
 _ENGINE: Optional[Engine] = None
@@ -36,9 +43,15 @@ def get_default_db_url() -> str:
     url: Optional[str] = None
     if settings is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             raw = str(getattr(settings, "postgres_dsn", "") or "").strip()
             url = raw or None
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             url = None
     if not url:
         url = (settings.postgres_dsn or "").strip() or None
@@ -70,8 +83,7 @@ def get_engine(url: Optional[str] = None) -> Engine:
             db_url,
             future=True,
             json_serializer=lambda obj: json.dumps(obj, sort_keys=True),
-            json_deserializer=json.loads,
-        )
+            json_deserializer=json.loads, )
     return _ENGINE
 
 

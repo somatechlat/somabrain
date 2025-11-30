@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Add cog_global_frames and cog_segments tables
 
 Revision ID: 3c1a2b4c5d67
@@ -6,12 +11,8 @@ Create Date: 2025-10-26 12:00:00.000000
 
 """
 
-from __future__ import annotations
 
-from typing import Sequence
 
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -36,15 +37,12 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False,
-        ),
-    )
+            nullable=False, ), )
     op.create_index(
         "ix_cog_global_frames_tenant_ts",
         "cog_global_frames",
         ["tenant", "ts"],
-        unique=False,
-    )
+        unique=False, )
 
     # Segments: boundary events
     op.create_table(
@@ -58,15 +56,12 @@ def upgrade() -> None:
             "created_at",
             sa.DateTime(timezone=True),
             server_default=sa.func.now(),
-            nullable=False,
-        ),
-    )
+            nullable=False, ), )
     op.create_index(
         "ix_cog_segments_boundary_ts",
         "cog_segments",
         ["boundary_ts"],
-        unique=False,
-    )
+        unique=False, )
 
 
 def downgrade() -> None:

@@ -1,18 +1,20 @@
 import json
 import logging
 from typing import Any, Awaitable, Callable
-
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
-
 import somabrain.metrics as app_metrics
 from somabrain.opa.client import opa_client, _policy_path_for_mode
+from common.config.settings import settings
+from common.logging import logger
+import httpx
+
+
 
 # Import shared configuration; let import errors propagate if settings module is unavailable.
-from common.config.settings import settings
 
 LOGGER = logging.getLogger("somabrain.api.middleware.opa")
 
@@ -27,8 +29,14 @@ class OpaMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             opa_url = getattr(settings, "opa_url", None)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             opa_url = None
         # If ``opa_url`` is empty, the middleware will treat OPA as unavailable.
         # Build minimal input payload for OPA – include request method, path and JSON body if any
@@ -38,12 +46,21 @@ class OpaMiddleware(BaseHTTPMiddleware):
         }
         # Try to read JSON body without consuming it for downstream handlers
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             body_bytes = await request.body()
             if body_bytes:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     input_payload["json"] = json.loads(body_bytes)
-                except Exception as exc: raise
-                    # Non‑JSON body – ignore but keep raw bytes for debugging
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     input_payload["raw_body"] = body_bytes.decode(errors="ignore")
 
             # Re‑inject the body for downstream processing
@@ -51,12 +68,18 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 return {"type": "http.request", "body": body_bytes}
 
             request._receive = receive  # type: ignore[attr-defined]
-        except Exception as exc: raise
-            # If reading the body fails we continue with method/path only
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
         # If OPA URL is not configured, fall back to local opa_client evaluation
         if not opa_url:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 allowed = opa_client.evaluate(input_payload)
                 if not allowed:
                     # Increment deny metric using app_metrics
@@ -64,35 +87,37 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     return Response(
                         content=json.dumps({"detail": "OPA policy denied request"}),
                         status_code=403,
-                        media_type="application/json",
-                    )
+                        media_type="application/json", )
                 else:
                     # Increment allow metric using app_metrics
                     app_metrics.OPA_ALLOW_TOTAL.inc()
                     return await call_next(request)
             except Exception as exc:
-                # Strict mode: always fail-closed when OPA evaluation fails
-                LOGGER.error("OPA evaluation error (fail-closed deny): %s", exc)
-                app_metrics.OPA_DENY_TOTAL.inc()
-                return Response(
-                    content=json.dumps({"detail": "OPA policy unavailable"}),
-                    status_code=403,
-                    media_type="application/json",
-                )
+                logger.exception("Exception caught: %s", exc)
+                raise
 
         # OPA is configured – call external OPA service
         policy_path = _policy_path_for_mode()
         query_url = f"{opa_url.rstrip('/')}/v1/data/{policy_path}"
         try:
-            import httpx
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             timeout_seconds = 2.0
             if settings is not None:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     timeout_seconds = float(
                         getattr(settings, "opa_timeout_seconds", 2.0)
                     )
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     timeout_seconds = 2.0
             async with httpx.AsyncClient(timeout=timeout_seconds) as client:
                 resp = await client.post(query_url, json={"input": input_payload})
@@ -110,8 +135,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
                     return Response(
                         content=json.dumps({"detail": "OPA policy denied request"}),
                         status_code=403,
-                        media_type="application/json",
-                    )
+                        media_type="application/json", )
                 else:
                     app_metrics.OPA_ALLOW_TOTAL.inc()
             else:
@@ -121,17 +145,10 @@ class OpaMiddleware(BaseHTTPMiddleware):
                 return Response(
                     content=json.dumps({"detail": "OPA policy service error"}),
                     status_code=403,
-                    media_type="application/json",
-                )
+                    media_type="application/json", )
         except Exception as exc:
-            # Strict mode: always fail-closed when OPA is unreachable
-            LOGGER.error("OPA request failed (fail-closed deny): %s", exc)
-            app_metrics.OPA_DENY_TOTAL.inc()
-            return Response(
-                content=json.dumps({"detail": "OPA policy unavailable"}),
-                status_code=403,
-                media_type="application/json",
-            )
+            logger.exception("Exception caught: %s", exc)
+            raise
 
         # If we reach here OPA allowed the request (or alternative allowed)
         return await call_next(request)
@@ -143,6 +160,7 @@ async def opa_enforcement(
     """FastAPI middleware that sends request data to OPA for allow/deny.
 
     The input payload includes:
+        pass
     - ``path``: request URL path
     - ``method``: HTTP method
     - ``headers``: dict of request headers (lower‑cased keys)
@@ -154,12 +172,22 @@ async def opa_enforcement(
     ``OPAClient.evaluate`` implementation).
     """
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Build a lightweight input for OPA – avoid reading large bodies.
         body = None
         if request.headers.get("content-type", "").startswith("application/json"):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 body = await request.json()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 body = None
         input_payload = {
             "path": request.url.path,
@@ -183,9 +211,7 @@ async def opa_enforcement(
     except HTTPException:
         raise
     except Exception as e:
-        # Strict mode: fail-closed on unexpected middleware error
-        LOGGER.error("OPA middleware error, denying request: %s", e)
-        app_metrics.OPA_DENY_TOTAL.inc()
-        return JSONResponse(status_code=403, content={"detail": "OPA middleware error"})
+        logger.exception("Exception caught: %s", e)
+        raise
     response = await call_next(request)
     return response

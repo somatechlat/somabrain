@@ -1,15 +1,38 @@
+from __future__ import annotations
+from common.config.settings import settings
+from common.logging import logger
+import random
+import threading
+import time
+from typing import Dict, Any, Tuple
+import numpy as np
+from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.common.kafka import make_producer, encode, TOPICS
+from somabrain.common.events import build_next_event
+from somabrain import metrics as _metrics  # type: ignore
+from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
+from somabrain.predictors.base import build_predictor_from_env  # type: ignore
+from fastapi import FastAPI
+import uvicorn  # type: ignore
+from somabrain import metrics as _M  # type: ignore
+import fails, preventing silent fallback to default values.
+from somabrain import runtime_config as _rt  # type: ignore
+from somabrain.modes import feature_enabled  # type: ignore
+
 """Unified Predictor Service
 
 Consolidates state / agent / action predictor loops into a single process
 with shared bootstrap, tracing, calibration scaling, and metrics.
 
 Goals:
+    pass
 - Remove duplicated health server + tracing code across three separate mains.
 - Apply calibration temperature scaling uniformly.
 - Preserve existing per-domain topics and schema usage.
 - Maintain SOMA compatibility emission when enabled via runtime config.
 
 Strict mode assumptions:
+    pass
 - Avro encode via `somabrain.common.kafka.encode` with schema names: belief_update,
   belief_update_soma (optional), next_event.
 - Confluent Kafka producer from `somabrain.common.kafka.make_producer`.
@@ -19,34 +42,34 @@ Strict mode assumptions:
 - soma_compat flag to emit SOMA-compatible belief updates
 """
 
-from __future__ import annotations
 
-from common.config.settings import settings
-from common.logging import logger
-import random
-import threading
-import time
-from typing import Dict, Any, Tuple
 
-import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
 
-from somabrain.common.kafka import make_producer, encode, TOPICS
-from somabrain.common.events import build_next_event
 
 try:
-    from somabrain import metrics as _metrics  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    _metrics = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    _calib = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.predictors.base import build_predictor_from_env  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 except Exception as e:  # pragma: no cover
     raise RuntimeError(f"predictor.unified: predictor base unavailable: {e}")
 
@@ -89,43 +112,56 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
     if _calib is None:
         return confidence
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         scaler = _calib.temperature_scalers[domain][tenant]
         if getattr(scaler, "is_fitted", False):
             return float(scaler.scale(float(confidence)))
-    except Exception as exc: raise
-        return confidence
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     return confidence
 
 
 def _maybe_health_server():  # pragma: no cover
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if settings.health_port:
-            from fastapi import FastAPI
-            import uvicorn  # type: ignore
+            pass
 
             app = FastAPI(title="Predictor Unified Health")
 
-            @app.get("/healthz")
+@app.get("/healthz")
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "predictor_unified"}
 
             try:
-                from somabrain import metrics as _M  # type: ignore
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
-                @app.get("/metrics")
+@app.get("/metrics")
                 async def _metrics_ep():  # type: ignore
                     return await _M.metrics_endpoint()
 
-            except Exception as exc: raise
-                raise RuntimeError("Failed to set up metrics endpoint for health server")
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
             port = int(settings.health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
             threading.Thread(target=server.run, daemon=True).start()
-    except Exception as exc: raise
-        raise RuntimeError("Health server startup failed")
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
 
 def _get_runtime():
@@ -136,10 +172,12 @@ def _get_runtime():
     predictor to run without the config, but the project now enforces strict
     external‑backend usage (see ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS``). The
     stub is therefore removed and a clear ``RuntimeError`` is raised if the
-    import fails, preventing silent fallback to default values.
     """
     try:
-        from somabrain import runtime_config as _rt  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         return _rt
     except Exception as exc:  # pragma: no cover
@@ -156,8 +194,7 @@ def _metrics_handles():  # pragma: no cover
     counters = {
         d: _metrics.get_counter(
             f"somabrain_predictor_{d}_emitted_total",
-            f"BeliefUpdate records emitted ({d})",
-        )
+            f"BeliefUpdate records emitted ({d})", )
         for d in DOMAIN_CONFIG.keys()
     }
     next_counter = _metrics.get_counter(
@@ -166,8 +203,7 @@ def _metrics_handles():  # pragma: no cover
     err_hist = _metrics.get_histogram(
         "somabrain_predictor_error",
         "Per-update prediction error (MSE)",
-        labelnames=["domain"],
-    )
+        labelnames=["domain"], )
     return counters, next_counter, err_hist
 
 
@@ -176,12 +212,16 @@ def run_forever() -> None:  # pragma: no cover
     tracer = get_tracer("somabrain.predictor.unified")
     _maybe_health_server()
     rt = _get_runtime()
-    from somabrain.modes import feature_enabled  # type: ignore
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         composite = rt.get_bool("cog_composite", True)
-    except Exception as exc: raise
-        composite = True
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     if not (composite or feature_enabled("learner")):
         print("predictor-unified: disabled by mode; exiting.")
         return
@@ -208,6 +248,10 @@ def run_forever() -> None:  # pragma: no cover
         periods[d] = rt.get_float(cfg["period_key"], cfg["default_period"])
         model_versions[d] = rt.get_str(cfg["model_ver_key"], "v1")
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         while True:
             now = time.time()
             for domain, (predictor, dim) in predictors.items():
@@ -246,20 +290,30 @@ def run_forever() -> None:  # pragma: no cover
                     )
                     if counters.get(domain):
                         try:
+                            pass
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                             counters[domain].inc()
-                        except Exception as exc: raise
-                            logger.exception(
-                                "Failed to increment emitted metric for %s", domain
-                            )
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                     if err_hist is not None:
                         try:
+                            pass
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                             err_hist.labels(domain=domain).observe(float(delta_error))
-                        except Exception as exc: raise
-                            logger.exception(
-                                "Failed to record error histogram for %s", domain
-                            )
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                     if soma_compat:
                         try:
+                            pass
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                             soma_rec = {
                                 "stream": domain.upper(),
                                 "timestamp": int(time.time() * 1000),
@@ -269,29 +323,36 @@ def run_forever() -> None:  # pragma: no cover
                             }
                             prod.send(
                                 TOPICS[f"soma_{domain}"],
-                                value=encode(soma_rec, soma_schema),
-                            )
-                        except Exception as exc: raise
-                            logger.exception(
-                                "Failed to emit soma-compatible belief update for %s",
-                                domain,
-                            )
+                                value=encode(soma_rec, soma_schema), )
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                     next_ev = build_next_event(
                         domain, tenant, float(confidence), next_state
                     )
                     prod.send(TOPICS["next"], value=encode(next_ev, next_schema))
                     if next_counter is not None:
                         try:
+                            pass
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
                             next_counter.inc()
-                        except Exception as exc: raise
-                            raise RuntimeError("Failed to increment next event metric")
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
             time.sleep(0.05)
     finally:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             prod.flush(2)
             prod.close()
-        except Exception as exc: raise
-            raise RuntimeError("Failed during producer cleanup in unified predictor")
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -1,8 +1,17 @@
+from __future__ import annotations
+import json
+import time
+from typing import Dict, List
+import httpx
+from common.config.settings import settings
+import argparse
+
 """
 Agent Coding Benchmark (Synthetic, Real HTTP)
 --------------------------------------------
 
 Simulates an agent learning to build a tiny FastAPI app by:
+    pass
 - Seeding relevant "tool" documents
 - Running a baseline retrieval (vector-only)
 - Persisting a recall session (vector+wm)
@@ -12,13 +21,8 @@ Simulates an agent learning to build a tiny FastAPI app by:
 Outputs a JSON summary and prints a concise table.
 """
 
-from __future__ import annotations
 
-import json
-import time
-from typing import Dict, List
 
-import httpx
 
 
 def hit_rate(cands: List[dict], truths: List[str]) -> float:
@@ -36,7 +40,6 @@ def plan_hit_rate(items: List[str], truths: List[str]) -> float:
     return sum(1 for t in truths if t in s) / float(len(truths))
 
 
-from common.config.settings import settings
 
 
 def run(base: str = None, tenant: str = "benchdev") -> Dict:
@@ -56,8 +59,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
         client.post(
             f"{base}/remember",
             headers=headers,
-            json={"payload": {"task": d, "memory_type": "episodic", "importance": 1}},
-        )
+            json={"payload": {"task": d, "memory_type": "episodic", "importance": 1}}, )
 
     query = "build a tiny FastAPI app exposing /hello"
     truths = [
@@ -71,8 +73,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     r0 = client.post(
         f"{base}/recall",
         headers=headers,
-        json={"query": query, "top_k": 5, "retrievers": ["vector"], "persist": False},
-    ).json()
+        json={"query": query, "top_k": 5, "retrievers": ["vector"], "persist": False}, ).json()
     dt0 = time.perf_counter() - t0
     hr0 = hit_rate(r0.get("results", []), truths)
 
@@ -86,8 +87,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
             "top_k": 5,
             "retrievers": ["vector", "wm"],
             "persist": True,
-        },
-    ).json()
+        }, ).json()
     dt1 = time.perf_counter() - t1
     sess = r1.get("session_coord")
 
@@ -96,8 +96,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     r2 = client.post(
         f"{base}/recall",
         headers=headers,
-        json={"query": query, "top_k": 5, "retrievers": ["graph"], "persist": False},
-    ).json()
+        json={"query": query, "top_k": 5, "retrievers": ["graph"], "persist": False}, ).json()
     dt2 = time.perf_counter() - t2
     hr2 = hit_rate(r2.get("results", []), truths)
 
@@ -109,8 +108,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
             "task_key": query,
             "max_steps": 5,
             "rel_types": ["depends_on", "related"],
-        },
-    ).json()
+        }, ).json()
     phr0 = plan_hit_rate(p0.get("plan", []), truths)
 
     # Planning after persist (include recall edges)
@@ -121,8 +119,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
             "task_key": query,
             "max_steps": 5,
             "rel_types": ["recall_session", "retrieved_with", "depends_on", "related"],
-        },
-    ).json()
+        }, ).json()
     phr1 = plan_hit_rate(p1.get("plan", []), truths)
 
     out = {
@@ -154,7 +151,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
 
 
 def main():
-    import argparse
+    pass
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", default=settings.api_url)
@@ -175,8 +172,7 @@ def main():
                 "plan_baseline_hit_rate": res["plan"]["baseline_hit_rate"],
                 "plan_post_persist_hit_rate": res["plan"]["post_persist_hit_rate"],
             },
-            indent=2,
-        )
+            indent=2, )
     )
 
 

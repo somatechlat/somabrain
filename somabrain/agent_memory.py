@@ -1,17 +1,19 @@
+from __future__ import annotations
+from typing import Any, List, Optional, Tuple, cast
+import numpy as np
+from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
+from somabrain.schemas import Memory, Observation, Thought
+from common.logging import logger
+
 """
 Agent Memory Core
 Contract-first encode, recall, and consolidate logic for the agent brain using canonical schemas.
 Implements: unit-norm validation, cosine recall, and weighted merge with simple SNR reporting.
 """
 
-from __future__ import annotations
 
-from typing import Any, List, Optional, Tuple, cast
 
-import numpy as np
 
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
-from somabrain.schemas import Memory, Observation, Thought
 
 # In-memory store for demonstration (replace with DB/service in production)
 MEMORY_STORE: List[Memory] = []
@@ -63,8 +65,7 @@ def encode_memory(obs: Observation, thought: Optional[Thought] = None) -> Memory
         vector=vec.tolist(),
         graphRefs=[],
         payload=payload,
-        strength=1.0,
-    )
+        strength=1.0, )
     MEMORY_STORE.append(mem)
     return mem
 
@@ -75,8 +76,14 @@ def recall_memory(query_vector: List[float], top_k: int = 3) -> List[Memory]:
     if top_k is None:
         top_k = 3
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         top_k = max(0, int(top_k))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         top_k = 3
     if not MEMORY_STORE or top_k == 0:
         return []
@@ -108,8 +115,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
             vector=avg.tolist(),
             graphRefs=[],
             payload={"mem_0": m.payload},
-            strength=float(max(1e-6, float(m.strength))),
-        )
+            strength=float(max(1e-6, float(m.strength))), )
         MEMORY_STORE.append(consolidated)
         return consolidated
     weights = np.asarray(
@@ -136,8 +142,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
         vector=avg.tolist(),
         graphRefs=[],
         payload=merged_payload,
-        strength=float(weights.mean()),
-    )
+        strength=float(weights.mean()), )
     MEMORY_STORE.append(consolidated)
     return consolidated
 

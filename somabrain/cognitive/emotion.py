@@ -1,3 +1,8 @@
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Dict, Tuple
+from common.logging import logger
+
 """
 Emotion modelling – Phase 3 Cognitive Capability
 
@@ -5,6 +10,7 @@ This module provides a **lightweight emotional state model** that can be
 integrated with the autonomous learning loop.  The design follows a simple
 *dimensional* approach (valence, arousal, dominance) and exposes a small
 public API:
+    pass
 
 * ``EmotionModel`` – holds the current emotional vector.
 * ``update`` – adjusts the vector based on a stimulus (e.g., success/failure
@@ -18,13 +24,8 @@ future research or for tying emotions to neuromodulators in ``somabrain.
 neuromodulators``.
 """
 
-from __future__ import annotations
 
-import logging
-from dataclasses import dataclass
-from typing import Dict, Tuple
 
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -40,7 +41,7 @@ class EmotionVector:
     arousal: float = 0.0
     dominance: float = 0.0
 
-    def clamp(self) -> None:
+def clamp(self) -> None:
         """Clamp each dimension to its allowed range."""
         self.valence = max(min(self.valence, 1.0), -1.0)
         self.arousal = max(min(self.arousal, 1.0), 0.0)
@@ -56,7 +57,7 @@ class EmotionModel:
     vector toward neutral (0, 0, 0).
     """
 
-    def __init__(self, decay_rate: float = 0.01):
+def __init__(self, decay_rate: float = 0.01):
         self.state = EmotionVector()
         self.decay_rate = max(min(decay_rate, 1.0), 0.0)
         logger.info("EmotionModel initialised with decay_rate=%s", self.decay_rate)
@@ -64,7 +65,7 @@ class EmotionModel:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def update(self, stimulus: Tuple[float, float, float]) -> None:
+def update(self, stimulus: Tuple[float, float, float]) -> None:
         """Apply a stimulus to the current emotional vector.
 
         ``stimulus`` is a ``(valence, arousal, dominance)`` tuple where each
@@ -79,7 +80,7 @@ class EmotionModel:
         self.state.clamp()
         logger.debug("Emotion update – after: %s", self.state)
 
-    def decay(self) -> None:
+def decay(self) -> None:
         """Apply exponential decay towards the neutral baseline.
 
         Each dimension moves a fraction ``self.decay_rate`` of the distance to
@@ -98,7 +99,7 @@ class EmotionModel:
             self.state.dominance = 0.0
         logger.debug("Emotion decay – after: %s", self.state)
 
-    def as_dict(self) -> Dict[str, float]:
+def as_dict(self) -> Dict[str, float]:
         """Return the current state as a serialisable ``dict``."""
         return {
             "valence": self.state.valence,
@@ -109,5 +110,5 @@ class EmotionModel:
     # ------------------------------------------------------------------
     # Helper utilities – useful for debugging or logging
     # ------------------------------------------------------------------
-    def __repr__(self) -> str:  # pragma: no cover – trivial
+def __repr__(self) -> str:  # pragma: no cover – trivial
         return f"EmotionModel(state={self.state}, decay_rate={self.decay_rate})"

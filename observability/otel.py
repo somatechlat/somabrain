@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 from opentelemetry import trace  # type: ignore
+from common.logging import logger
 
 
 @contextmanager
@@ -19,6 +20,12 @@ def span(name: str, **attrs):
     with tracer.start_as_current_span(name) as s:
         for k, v in attrs.items():
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 s.set_attribute(k, v)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         yield s

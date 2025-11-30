@@ -1,9 +1,9 @@
 from __future__ import annotations
-
 from datetime import datetime, timezone
 from typing import Dict, Optional
-
 from somabrain.common.kafka import make_producer, encode
+
+
 
 
 def _bootstrap_from_env() -> Optional[str]:
@@ -20,7 +20,7 @@ class BeliefUpdatePublisher:
     Requires Kafka to be configured and reachable; does not silently degrade.
     """
 
-    def __init__(self) -> None:
+def __init__(self) -> None:
         self.enabled = False
         self._producer = None
         bootstrap = _bootstrap_from_env()
@@ -32,18 +32,18 @@ class BeliefUpdatePublisher:
         self._producer = make_producer()
         self.enabled = True
 
-    @staticmethod
-    def _topic(domain: str) -> str:
+@staticmethod
+def _topic(domain: str) -> str:
         d = (domain or "").strip().lower()
         if d not in ("state", "agent", "action"):
             d = "state"
         return f"cog.{d}.updates"
 
-    @staticmethod
-    def _now_iso() -> str:
+@staticmethod
+def _now_iso() -> str:
         return datetime.now(timezone.utc).isoformat()
 
-    def publish(
+def publish(
         self,
         *,
         domain: str,
@@ -53,8 +53,8 @@ class BeliefUpdatePublisher:
         posterior: Optional[Dict[str, str]] = None,
         model_ver: str = "unknown",
         latency_ms: int = 0,
-        ts: Optional[str] = None,
-    ) -> None:
+        ts: Optional[str] = None, ) -> None:
+            pass
         if not self.enabled or not self._producer:
             raise RuntimeError("BeliefUpdatePublisher not initialized")
         record = {

@@ -2,6 +2,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 from somabrain.storage import db
+from common.config.settings import settings
+
 # Import the application settings to obtain the PostgreSQL DSN. This resolves a
 # NameError that occurs during migration execution because ``settings`` was not
 # defined in this module.
@@ -25,7 +27,6 @@ def _get_url() -> str:
     """
     # Lazy import to prevent NameError during module import when settings
     # depends on other runtime components.
-    from common.config.settings import settings
 
     return settings.postgres_dsn or db.get_default_db_url()
 

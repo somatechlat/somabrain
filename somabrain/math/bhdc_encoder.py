@@ -1,3 +1,10 @@
+from __future__ import annotations
+import math
+from dataclasses import dataclass
+from typing import Dict, Iterable, Tuple, Union
+import numpy as np
+from somabrain.seed import seed_to_uint64
+
 """Binary Hyperdimensional Computing (BHDC) primitives.
 
 Provides deterministic binary/sparse hypervector generation alongside a
@@ -5,15 +12,9 @@ permutation-based binder/unbinder. This replaces prior FFT or mask-based
 composers with hardware-friendly elementwise products.
 """
 
-from __future__ import annotations
 
-import math
-from dataclasses import dataclass
-from typing import Dict, Iterable, Tuple, Union
 
-import numpy as np
 
-from somabrain.seed import seed_to_uint64
 
 
 _SeedLike = Union[int, str, None]
@@ -31,8 +32,8 @@ def _build_seed_bundle(
     base_seed: int,
     extra_seed: _SeedLike,
     tenant_id: _SeedLike,
-    model_version: _SeedLike,
-) -> _SeedBundle:
+    model_version: _SeedLike, ) -> _SeedBundle:
+        pass
     parts = [
         label,
         str(base_seed),
@@ -78,7 +79,7 @@ def _fwht(vec: np.ndarray) -> np.ndarray:
 class BHDCEncoder:
     """Generate deterministic binary/sparse hypervectors."""
 
-    def __init__(
+def __init__(
         self,
         *,
         dim: int,
@@ -88,8 +89,8 @@ class BHDCEncoder:
         extra_seed: _SeedLike = None,
         tenant_id: _SeedLike = None,
         model_version: _SeedLike = None,
-        binary_mode: str = "pm_one",
-    ) -> None:
+        binary_mode: str = "pm_one", ) -> None:
+            pass
         self._dim = int(dim)
         if self._dim <= 0:
             raise ValueError("dimension must be positive")
@@ -104,25 +105,24 @@ class BHDCEncoder:
             base_seed=base_seed,
             extra_seed=extra_seed,
             tenant_id=tenant_id,
-            model_version=model_version,
-        )
+            model_version=model_version, )
         self._rng = np.random.default_rng(self._seeds.base_seed)
         self._cache: Dict[int, np.ndarray] = {}
 
     # ------------------------------------------------------------------
     # Vector generation
     # ------------------------------------------------------------------
-    def random_vector(self) -> np.ndarray:
+def random_vector(self) -> np.ndarray:
         return self._vector_from_rng(self._rng)
 
-    def vector_for_key(self, key: str) -> np.ndarray:
+def vector_for_key(self, key: str) -> np.ndarray:
         seed = seed_to_uint64(self._seeds.prefix + key.encode("utf-8"))
         return self._vector_from_seed(np.uint64(seed))
 
-    def vector_for_token(self, token: str) -> np.ndarray:
+def vector_for_token(self, token: str) -> np.ndarray:
         return self.vector_for_key(f"role::{token}")
 
-    def _vector_from_seed(self, seed: np.uint64) -> np.ndarray:
+def _vector_from_seed(self, seed: np.uint64) -> np.ndarray:
         cached = self._cache.get(int(seed))
         if cached is not None:
             return cached
@@ -132,7 +132,7 @@ class BHDCEncoder:
         self._cache[int(seed)] = vec
         return vec
 
-    def _vector_from_rng(self, rng: np.random.Generator) -> np.ndarray:
+def _vector_from_rng(self, rng: np.random.Generator) -> np.ndarray:
         indices = rng.choice(self._dim, size=self._active, replace=False)
         if self._mode == "pm_one":
             vec = np.full(self._dim, -1.0, dtype=self._dtype)
@@ -148,14 +148,14 @@ class BHDCEncoder:
 class PermutationBinder:
     """Permutation + elementwise-product binder with optional mixing."""
 
-    def __init__(
+def __init__(
         self,
         *,
         dim: int,
         seed: int,
         dtype: Union[str, np.dtype] = "float32",
-        mix: str = "none",
-    ) -> None:
+        mix: str = "none", ) -> None:
+            pass
         self._dim = int(dim)
         if self._dim <= 0:
             raise ValueError("dimension must be positive")
@@ -170,12 +170,12 @@ class PermutationBinder:
         self._eps = 1e-8
 
     # ------------------------------------------------------------------
-    def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_arr = np.asarray(a, dtype=self._dtype)
         b_arr = np.asarray(b, dtype=self._dtype)
         return a_arr * b_arr
 
-    def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         c_arr = np.asarray(c, dtype=self._dtype)
         b_arr = np.asarray(b, dtype=self._dtype)
         denom_abs = np.abs(b_arr)
@@ -186,12 +186,12 @@ class PermutationBinder:
         return c_arr / b_arr
 
     # ------------------------------------------------------------------
-    def permute(self, vec: np.ndarray, times: int = 1) -> np.ndarray:
+def permute(self, vec: np.ndarray, times: int = 1) -> np.ndarray:
         arr = np.asarray(vec, dtype=self._dtype)
         return np.roll(arr, times)
 
     # ------------------------------------------------------------------
-    def _permute_operand(
+def _permute_operand(
         self, operand: np.ndarray, *, expected_shape: Tuple[int, ...]
     ) -> np.ndarray:
         b_arr = np.asarray(operand, dtype=self._dtype)
@@ -202,12 +202,12 @@ class PermutationBinder:
         perm_b = b_arr[self._perm]
         return perm_b
 
-    @property
-    def permutation(self) -> np.ndarray:
+@property
+def permutation(self) -> np.ndarray:
         return self._perm
 
-    @property
-    def inverse_permutation(self) -> np.ndarray:
+@property
+def inverse_permutation(self) -> np.ndarray:
         return self._perm_inv
 
 

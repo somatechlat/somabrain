@@ -1,3 +1,11 @@
+from __future__ import annotations
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+
 #!/usr/bin/env python3
 """Capture dependency install metrics for SomaBrain CI.
 
@@ -10,14 +18,7 @@ The script is idempotent and can be invoked locally to reproduce CI metrics.
 When run outside CI, exports ``CI=false`` in the metric payload.
 """
 
-from __future__ import annotations
 
-import json
-import os
-import subprocess
-import sys
-import time
-from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UV_LOCK = REPO_ROOT / "uv.lock"
@@ -67,6 +68,10 @@ def write_metrics(duration: float, package_count: int) -> None:
     existing: list[dict] = []
     if ARTIFACT_PATH.exists():
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             existing = json.loads(ARTIFACT_PATH.read_text(encoding="utf-8"))
             if not isinstance(existing, list):
                 existing = []

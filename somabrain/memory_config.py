@@ -1,3 +1,9 @@
+from __future__ import annotations
+import os
+from dataclasses import dataclass
+from typing import Optional
+from common.logging import logger
+
 """Configuration dataclass for the memory client/adapter.
 
 The original code accessed many environment variables directly via the global
@@ -6,11 +12,7 @@ the values that the adapter actually needs via a small ``@dataclass``.  The
 defaults match the historic behaviour of the project.
 """
 
-from __future__ import annotations
 
-import os
-from dataclasses import dataclass
-from typing import Optional
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -23,8 +25,14 @@ def _bool_env(name: str, default: bool = False) -> bool:
 
 def _int_env(name: str, default: int) -> int:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return int(os.getenv(name, str(default)))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return default
 
 

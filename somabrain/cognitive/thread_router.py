@@ -1,3 +1,13 @@
+from __future__ import annotations
+from typing import List
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
+from somabrain.auth import require_auth
+from somabrain.storage.db import get_session_factory
+from somabrain.cognitive.thread_model import CognitiveThread
+from common.config.settings import settings
+from somabrain import metrics as M
+
 """FastAPI router for Cognitive Threads (Phase 5).
 
 Provides CRUD‑style endpoints to manage a per‑tenant thread of option IDs.
@@ -13,6 +23,7 @@ Endpoints
 * ``PUT /thread/reset`` – clear the thread (options and cursor).
 
 Metrics are emitted via ``somabrain.metrics``:
+    pass
 * ``somabrain_thread_created_total`` – incremented on thread creation.
 * ``somabrain_thread_next_total`` – incremented on each ``next`` call.
 * ``somabrain_thread_reset_total`` – incremented on reset.
@@ -20,19 +31,9 @@ Metrics are emitted via ``somabrain.metrics``:
   per tenant.
 """
 
-from __future__ import annotations
 
-import json
-from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
 
-from somabrain.auth import require_auth
-from somabrain.storage.db import get_session_factory
-from somabrain.cognitive.thread_model import CognitiveThread
-from common.config.settings import settings
-from somabrain import metrics as M
 
 router = APIRouter()
 
@@ -40,23 +41,19 @@ router = APIRouter()
 THREAD_CREATED = M.get_counter(
     "somabrain_thread_created_total",
     "Number of cognitive threads created",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 THREAD_NEXT = M.get_counter(
     "somabrain_thread_next_total",
     "Number of next‑option requests",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 THREAD_RESET = M.get_counter(
     "somabrain_thread_reset_total",
     "Number of thread reset operations",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 THREAD_ACTIVE = M.get_gauge(
     "somabrain_thread_active",
     "Current number of options stored in a thread",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 
 class ThreadCreateRequest(BaseModel):

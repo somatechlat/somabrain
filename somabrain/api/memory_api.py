@@ -1,3 +1,33 @@
+from __future__ import annotations
+import copy
+import time
+import uuid
+from threading import RLock
+from typing import Any, Dict, List, Optional, Tuple, Annotated
+import numpy as np
+from fastapi import APIRouter, HTTPException, Query, Request, Body
+from pydantic import BaseModel, Field
+from somabrain.metrics import (
+from somabrain.services.memory_service import MemoryService
+from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
+from somabrain.services.parameter_supervisor import MetricsSnapshot
+from somabrain.runtime.config_runtime import (
+from common.config.settings import settings
+from somabrain.auth import require_auth, require_admin_auth
+from somabrain.schemas import RetrievalRequest
+from somabrain.db import outbox as outbox_db
+from common.logging import logger
+from somabrain.modes import feature_enabled
+import sys
+from somabrain import runtime as rt  # type: ignore
+from somabrain import runtime as rt  # type: ignore
+from somabrain import metrics as M
+from somabrain import metrics as M
+from somabrain.infrastructure.cb_registry import get_cb
+import time as _time
+from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
+from somabrain import metrics as M
+
 """Memory API (No-Kong edition).
 
 Provides FastAPI endpoints for governed memory read/write operations against the
@@ -6,40 +36,20 @@ endpoints are thin wrappers that keep all logic inside the production services
 so they stay in sync with the main application surface.
 """
 
-from __future__ import annotations
 
-import copy
-import time
-import uuid
-from threading import RLock
-from typing import Any, Dict, List, Optional, Tuple, Annotated
 
-import numpy as np
-from fastapi import APIRouter, HTTPException, Query, Request, Body
-from pydantic import BaseModel, Field
 
-from somabrain.metrics import (
     observe_recall_latency,
-    record_memory_snapshot,
-)
-from somabrain.services.memory_service import MemoryService
-from somabrain.services.tiered_memory_registry import TieredMemoryRegistry
-from somabrain.services.parameter_supervisor import MetricsSnapshot
-from somabrain.runtime.config_runtime import (
+    record_memory_snapshot, )
     ensure_config_dispatcher,
     ensure_supervisor_worker,
     register_config_listener,
     submit_metrics_snapshot,
-    get_cutover_controller,
-)
+    get_cutover_controller, )
 
 # Unified configuration: use the central Settings instance from common.config.settings.
-from common.config.settings import settings
 
 # Use the new TenantManager for tenant resolution.
-from somabrain.auth import require_auth, require_admin_auth
-from somabrain.schemas import RetrievalRequest
-from somabrain.db import outbox as outbox_db
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -57,14 +67,20 @@ def _handle_config_event(event) -> None:
     tenant = event.tenant or "unknown"
     namespace = event.namespace or "default"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         record_memory_snapshot(
             tenant,
             namespace,
             eta=metrics.get("eta"),
             sparsity=metrics.get("sparsity"),
-            config_version=event.version,
-        )
-    except Exception as exc: raise
+            config_version=event.version, )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 register_config_listener(_handle_config_event)
@@ -86,8 +102,7 @@ class MemoryAttachment(BaseModel):
     )
     data: Optional[str] = Field(
         None,
-        description="Inline base64-encoded payload; use sparingly for small blobs",
-    )
+        description="Inline base64-encoded payload; use sparingly for small blobs", )
     meta: Optional[Dict[str, Any]] = Field(
         None, description="Attachment metadata annotations"
     )
@@ -207,12 +222,10 @@ class MemoryRecallRequest(BaseModel):
     max_age_seconds: Optional[int] = Field(
         None,
         ge=0,
-        description="Exclude hits older than the specified age when payload timestamps exist",
-    )
+        description="Exclude hits older than the specified age when payload timestamps exist", )
     scoring_mode: Optional[str] = Field(
         None,
-        description="Preferred scoring strategy (explore, exploit, blended, recency, etc.)",
-    )
+        description="Preferred scoring strategy (explore, exploit, blended, recency, etc.)", )
     session_id: Optional[str] = Field(
         None, description="Attach to existing recall session to accumulate context"
     )
@@ -221,19 +234,16 @@ class MemoryRecallRequest(BaseModel):
     )
     pin_results: bool = Field(
         False,
-        description="If true, persist results in the session registry for follow-up queries",
-    )
+        description="If true, persist results in the session registry for follow-up queries", )
     chunk_size: Optional[int] = Field(
         None,
         ge=1,
         le=50,
-        description="Limit number of hits returned per call for streaming",
-    )
+        description="Limit number of hits returned per call for streaming", )
     chunk_index: int = Field(
         0,
         ge=0,
-        description="Chunk index when requesting paged/streamed recall segments",
-    )
+        description="Chunk index when requesting paged/streamed recall segments", )
 
 
 class MemoryRecallItem(BaseModel):
@@ -296,7 +306,7 @@ class CutoverPlanResponse(BaseModel):
 
 
 def _tiered_enabled() -> bool:
-    from somabrain.modes import feature_enabled
+    pass
 
     return feature_enabled("tiered_memory")
 
@@ -334,8 +344,7 @@ class MemoryBatchWriteRequest(BaseModel):
     )
     universe: Optional[str] = Field(
         None,
-        description="Default universe applied when items omit universe; item value wins",
-    )
+        description="Default universe applied when items omit universe; item value wins", )
 
 
 class MemoryBatchWriteResult(BaseModel):
@@ -396,27 +405,36 @@ def _runtime_module():
     package module ("somabrain.runtime"). As a final guard, scan `sys.modules` for any
     module whose file path points to `somabrain/runtime.py` and return that instance.
     """
-    import sys
 
     # Prefer the explicit initializer alias if available
     m = sys.modules.get("somabrain.runtime_module")
     if m is not None:
         return m
     try:
-        from somabrain import runtime as rt  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         return rt
-    except Exception as exc: raise
-    # Last resort: find a loaded module referencing runtime.py by filepath
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     for mod in list(sys.modules.values()):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             mf = getattr(mod, "__file__", "") or ""
             if mf.endswith("somabrain/runtime.py"):
                 return mod
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             continue
     # If nothing found, import the package module now
-    from somabrain import runtime as rt  # type: ignore
 
     return rt
 
@@ -463,8 +481,14 @@ def _get_memory_pool():
 def _serialize_coord(coord: Any) -> Optional[List[float]]:
     if isinstance(coord, (list, tuple)) and len(coord) == 3:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return [float(coord[0]), float(coord[1]), float(coord[2])]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
     return None
 
@@ -501,8 +525,8 @@ def _compose_memory_payload(
     novelty: Optional[float],
     ttl_seconds: Optional[int],
     trace_id: Optional[str],
-    actor: str,
-) -> tuple[Dict[str, Any], Dict[str, Any], str]:
+    actor: str, ) -> tuple[Dict[str, Any], Dict[str, Any], str]:
+        pass
     stored_payload: Dict[str, Any] = dict(value)
     stored_payload.setdefault("task", stored_payload.get("text") or key)
     stored_payload.setdefault("tenant_id", tenant)
@@ -566,8 +590,8 @@ def _store_recall_session(
     namespace: str,
     conversation_id: Optional[str],
     scoring_mode: Optional[str],
-    results: List[MemoryRecallItem],
-) -> None:
+    results: List[MemoryRecallItem], ) -> None:
+        pass
     payload = {
         "session_id": session_id,
         "tenant": tenant,
@@ -610,20 +634,25 @@ async def remember_memory(
         novelty=payload.novelty,
         ttl_seconds=payload.ttl_seconds,
         trace_id=payload.trace_id,
-        actor=actor,
-    )
+        actor=actor, )
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     persisted_to_ltm = False
     breaker_state = memsvc._is_circuit_open()
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         coord = await memsvc.aremember(payload.key, stored_payload)
         persisted_to_ltm = True
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
     coordinate_list = _serialize_coord(coord)
     if coordinate_list is not None:
@@ -633,20 +662,38 @@ async def remember_memory(
     warnings: List[str] = []
     tiered_vector: Optional[np.ndarray] = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         vec = np.asarray(embedder.embed(seed_text), dtype=np.float32)
         wm.admit(payload.tenant, vec, stored_payload)
         promoted_to_wm = True
         tiered_vector = vec
     except Exception as exc:
-        warnings.append(f"working-memory-admit-failed:{exc}")
+        logger.exception("Exception caught: %s", exc)
+        raise
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         items = len(wm.items(payload.tenant))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         items = 0
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     signal_feedback = MemorySignalFeedback(
         importance=signal_data.get("importance"),
@@ -655,8 +702,7 @@ async def remember_memory(
         reinforcement=signal_data.get("reinforcement"),
         recall_bias=signal_data.get("recall_bias"),
         promoted_to_wm=promoted_to_wm,
-        persisted_to_ltm=persisted_to_ltm,
-    )
+        persisted_to_ltm=persisted_to_ltm, )
 
     anchor_id = payload.key or request_id
     if tiered_vector is not None:
@@ -668,8 +714,7 @@ async def remember_memory(
             key_vector=tiered_vector,
             value_vector=tiered_vector,
             payload=snapshot,
-            coordinate=coordinate_list,
-        )
+            coordinate=coordinate_list, )
 
     return MemoryWriteResponse(
         ok=True,
@@ -685,8 +730,7 @@ async def remember_memory(
         trace_id=payload.trace_id,
         request_id=request_id,
         warnings=warnings,
-        signals=signal_feedback,
-    )
+        signals=signal_feedback, )
 
 
 @router.post("/remember/batch", response_model=MemoryBatchWriteResponse)
@@ -723,15 +767,19 @@ async def remember_memory_batch(
             novelty=item.novelty,
             ttl_seconds=item.ttl_seconds,
             trace_id=item.trace_id,
-            actor=actor,
-        )
+            actor=actor, )
 
         vector = None
         warnings: List[str] = []
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             vector = np.asarray(embedder.embed(seed_text), dtype=np.float32)
         except Exception as exc:
-            warnings.append(f"working-memory-embed-failed:{exc}")
+            logger.exception("Exception caught: %s", exc)
+            raise
 
         item_contexts.append(
             {
@@ -750,19 +798,23 @@ async def remember_memory_batch(
             ok=True,
             tenant=payload.tenant,
             namespace=payload.namespace,
-            results=[],
-        )
+            results=[], )
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         coords = await memsvc.aremember_bulk(
             [(ctx["key"], ctx["payload"]) for ctx in item_contexts],
-            universe=None,
-        )
+            universe=None, )
         persisted_to_ltm = True
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
     results: List[MemoryBatchWriteResult] = []
     persisted_to_ltm = True
@@ -771,16 +823,28 @@ async def remember_memory_batch(
         coordinate = _serialize_coord(raw_coord)
         if coordinate is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ctx["payload"]["coordinate"] = coordinate
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise
 
         promoted_to_wm = False
         if ctx["vector"] is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 wm.admit(payload.tenant, ctx["vector"], ctx["payload"])
                 promoted_to_wm = True
             except Exception as exc:
-                ctx["warnings"].append(f"working-memory-admit-failed:{exc}")
+                logger.exception("Exception caught: %s", exc)
+                raise
 
         if ctx["vector"] is not None:
             snapshot = copy.deepcopy(ctx["payload"])
@@ -791,8 +855,7 @@ async def remember_memory_batch(
                 key_vector=ctx["vector"],
                 value_vector=ctx["vector"],
                 payload=snapshot,
-                coordinate=coordinate,
-            )
+                coordinate=coordinate, )
 
         signal_feedback = MemorySignalFeedback(
             importance=ctx["signal_data"].get("importance"),
@@ -801,8 +864,7 @@ async def remember_memory_batch(
             reinforcement=ctx["signal_data"].get("reinforcement"),
             recall_bias=ctx["signal_data"].get("recall_bias"),
             promoted_to_wm=promoted_to_wm,
-            persisted_to_ltm=persisted_to_ltm,
-        )
+            persisted_to_ltm=persisted_to_ltm, )
 
         results.append(
             MemoryBatchWriteResult(
@@ -817,24 +879,35 @@ async def remember_memory_batch(
                 trace_id=ctx["trace_id"],
                 request_id=f"{request_id}:{idx}",
                 warnings=ctx["warnings"],
-                signals=signal_feedback,
-            )
+                signals=signal_feedback, )
         )
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         items = len(wm.items(payload.tenant))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         items = 0
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     return MemoryBatchWriteResponse(
         ok=True,
         tenant=payload.tenant,
         namespace=payload.namespace,
-        results=results,
-    )
+        results=results, )
 
 
 async def _perform_recall(
@@ -855,16 +928,22 @@ async def _perform_recall(
     embedder = None
     query_vec: Optional[np.ndarray] = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         embedder = _get_embedder()
         query_vec = np.asarray(embedder.embed(payload.query), dtype=np.float32)
     except HTTPException:
         if layer in {"wm", "all"}:
             raise
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         embedder = None
         query_vec = None
 
-    def _match_tags(candidate: Dict[str, Any]) -> bool:
+def _match_tags(candidate: Dict[str, Any]) -> bool:
         if not payload.tags:
             return True
         candidate_tags = set()
@@ -879,7 +958,7 @@ async def _perform_recall(
                 candidate_tags.update(str(v) for v in meta_tags)
         return all(tag in candidate_tags for tag in payload.tags)
 
-    def _within_age(candidate: Dict[str, Any]) -> bool:
+def _within_age(candidate: Dict[str, Any]) -> bool:
         if payload.max_age_seconds is None:
             return True
         ts_keys = ("ts", "timestamp", "created_at", "time", "datetime")
@@ -890,6 +969,10 @@ async def _perform_recall(
             if value is None:
                 continue
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if isinstance(value, (int, float)):
                     ts = float(value)
                 elif isinstance(value, str):
@@ -897,17 +980,19 @@ async def _perform_recall(
                 else:
                     continue
                 return time.time() - ts <= payload.max_age_seconds
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 continue
         return False
 
-    def _decorated_item(
+def _decorated_item(
         layer_name: str,
         source: str,
         score_val: Optional[float],
         candidate_payload: Dict[str, Any],
-        coord_obj: Any,
-    ) -> Optional[MemoryRecallItem]:
+        coord_obj: Any, ) -> Optional[MemoryRecallItem]:
+            pass
         if not _match_tags(candidate_payload):
             return None
         if not _within_age(candidate_payload):
@@ -938,20 +1023,28 @@ async def _perform_recall(
             source=source,
             confidence=confidence,
             novelty=novelty,
-            affinity=affinity if affinity is not None else importance,
-        )
+            affinity=affinity if affinity is not None else importance, )
 
     if layer in {"wm", "all"} and query_vec is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             wm = _get_wm()
             stage_start = time.perf_counter()
             hits = wm.recall(payload.tenant, query_vec, top_k=payload.top_k)
             stage_dur = time.perf_counter() - stage_start
             try:
-                from somabrain import metrics as M
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 M.RECALL_WM_LAT.labels(cohort="memory_api").observe(stage_dur)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             for score, item_payload in hits:
                 if not isinstance(item_payload, dict):
                     continue
@@ -960,13 +1053,15 @@ async def _perform_recall(
                     "working_memory",
                     float(score) if score is not None else None,
                     item_payload,
-                    item_payload.get("coordinate"),
-                )
+                    item_payload.get("coordinate"), )
                 if item is not None:
                     wm_hits.append(item)
         except HTTPException:
             raise
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
     if layer in {"ltm", "all"}:
         pool = _get_memory_pool()
@@ -976,23 +1071,33 @@ async def _perform_recall(
         client = memsvc.client()
         stage_start = time.perf_counter()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             hits = await client.arecall(
                 payload.query,
                 top_k=payload.top_k,
-                universe=payload.universe or "real",
-            )
+                universe=payload.universe or "real", )
         except RuntimeError as exc:
             raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
         except Exception as exc:
-            raise HTTPException(
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise HTTPException(
                 status_code=502, detail=f"recall failed: {exc}"
             ) from exc
         stage_dur = time.perf_counter() - stage_start
         try:
-            from somabrain import metrics as M
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             M.RECALL_LTM_LAT.labels(cohort="memory_api").observe(stage_dur)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         for hit in hits:
             payload_obj = getattr(hit, "payload", None)
             if not isinstance(payload_obj, dict):
@@ -1004,8 +1109,7 @@ async def _perform_recall(
                 "long_term_memory",
                 float(score_val) if score_val is not None else None,
                 payload_obj,
-                coord,
-            )
+                coord, )
             if item is not None:
                 ltm_hits.append(item)
 
@@ -1015,12 +1119,17 @@ async def _perform_recall(
     tiered_sparsity_value: Optional[float] = None
     if _tiered_enabled() and query_vec is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             tiered_hit = _TIERED_REGISTRY.recall(
                 payload.tenant,
                 payload.namespace,
-                query_vector=query_vec,
-            )
-        except Exception as exc: raise
+                query_vector=query_vec, )
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             tiered_hit = None
         if tiered_hit is not None and tiered_hit.payload is not None:
             payload_copy = copy.deepcopy(tiered_hit.payload)
@@ -1032,8 +1141,7 @@ async def _perform_recall(
                 "tiered_memory",
                 tiered_hit.context.score,
                 payload_copy,
-                coord_obj,
-            )
+                coord_obj, )
             if item is not None:
                 tiered_item = item
                 tiered_margin_value = tiered_hit.context.margin
@@ -1043,7 +1151,7 @@ async def _perform_recall(
     all_results: List[MemoryRecallItem] = []
     seen: set[Tuple[Optional[Tuple[float, ...]], str, str]] = set()
 
-    def _append(item: Optional[MemoryRecallItem]) -> None:
+def _append(item: Optional[MemoryRecallItem]) -> None:
         if item is None:
             return
         coord_key: Optional[Tuple[float, ...]]
@@ -1075,8 +1183,15 @@ async def _perform_recall(
 
     duration = time.perf_counter() - start
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         observe_recall_latency(payload.namespace, duration)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()
@@ -1087,52 +1202,72 @@ async def _perform_recall(
             payload.namespace,
             payload.conversation_id,
             payload.scoring_mode,
-            all_results,
-        )
+            all_results, )
     if tiered_margin_value is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             record_memory_snapshot(
                 payload.tenant,
                 payload.namespace,
                 margin=tiered_margin_value,
                 eta=tiered_eta_value,
-                sparsity=tiered_sparsity_value,
-            )
-        except Exception as exc: raise
+                sparsity=tiered_sparsity_value, )
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
     top_confidence = 0.0
     if all_results:
         confidence = all_results[0].confidence
         if confidence is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 top_confidence = float(confidence)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 top_confidence = 0.0
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await submit_metrics_snapshot(
             MetricsSnapshot(
                 tenant=payload.tenant,
                 namespace=payload.namespace,
                 top1_accuracy=top_confidence,
                 margin=float(tiered_margin_value or 0.0),
-                latency_p95_ms=duration * 1000.0,
-            )
+                latency_p95_ms=duration * 1000.0, )
         )
-    except Exception as exc: raise
-
-    # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         controller = get_cutover_controller()
         await controller.record_shadow_metrics(
             payload.tenant,
             payload.namespace,
             top1_accuracy=top_confidence,
             margin=float(tiered_margin_value or 0.0),
-            latency_p95_ms=duration * 1000.0,
-        )
-    except Exception as exc: raise
-        # Best-effort: ignore when no plan is open or namespaces do not match.
+            latency_p95_ms=duration * 1000.0, )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -1147,22 +1282,33 @@ async def _perform_recall(
         has_more=has_more,
         total_results=total_results,
         chunk_size=chunk_size,
-        conversation_id=payload.conversation_id,
-    )
+        conversation_id=payload.conversation_id, )
 
 
 def _as_float_list(coord: object) -> Optional[List[float]]:
     if isinstance(coord, (list, tuple)) and len(coord) >= 3:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return [float(coord[0]), float(coord[1]), float(coord[2])]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
     if isinstance(coord, str):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             parts = [float(x.strip()) for x in coord.split(",")]
             if len(parts) >= 3:
                 return [parts[0], parts[1], parts[2]]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
     return None
 
@@ -1183,8 +1329,7 @@ def _map_retrieval_to_memory_items(candidates: List[dict]) -> List["MemoryRecall
                 payload=payload,
                 coordinate=coord,
                 source=retr,
-                confidence=float(score) if isinstance(score, (int, float)) else None,
-            )
+                confidence=float(score) if isinstance(score, (int, float)) else None, )
         )
     return items
 
@@ -1193,15 +1338,21 @@ def _coerce_to_retrieval_request(
     obj: object, default_top_k: int = 10
 ) -> RetrievalRequest:
     # Resolve environment-backed defaults for full-power behavior with safe rollback
-    def _env(name: str, default: str | None = None) -> str | None:
+def _env(name: str, default: str | None = None) -> str | None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Retrieve configuration via attribute lookup; fallback to None.
             v = getattr(settings, name.lower(), None)
             return v if v is not None and v != "" else default
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return default
 
-    def _env_bool(name: str, default: bool) -> bool:
+def _env_bool(name: str, default: bool) -> bool:
         v = _env(name)
         if v is None:
             return default
@@ -1244,8 +1395,7 @@ def _coerce_to_retrieval_request(
         req = RetrievalRequest(
             query=obj.query,
             top_k=int(obj.top_k or default_top_k),
-            universe=obj.universe,
-        )
+            universe=obj.universe, )
         # Apply env-backed defaults when not provided by caller
         req.rerank = eff_rerank or req.rerank
         req.persist = (
@@ -1284,8 +1434,7 @@ def _coerce_to_retrieval_request(
             mode=str(mode) if isinstance(mode, str) else None,
             id=str(idv) if isinstance(idv, str) else None,
             key=str(keyv) if isinstance(keyv, str) else None,
-            coord=str(coord) if isinstance(coord, str) else None,
-        )
+            coord=str(coord) if isinstance(coord, str) else None, )
         # If caller omitted fields, enforce env-backed defaults
         if not isinstance(retr, list) or not retr:
             req.retrievers = eff_retrievers or req.retrievers
@@ -1319,7 +1468,6 @@ async def recall_memory(
     cfg = settings
     ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
-    from somabrain.infrastructure.cb_registry import get_cb
 
     cb = get_cb()
     degrade_readonly = bool(getattr(cfg, "memory_degrade_readonly", False))
@@ -1340,18 +1488,15 @@ async def recall_memory(
             ret_req.retrievers = ["wm"]
 
     # Run pipeline
-    import time as _time
 
     t0 = _time.perf_counter()
-    from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
 
     ret_resp = await run_retrieval_pipeline(
         ret_req,
         ctx=ctx,
         cfg=cfg,
         universe=ret_req.universe,
-        trace_id=request.headers.get("X-Request-ID"),
-    )
+        trace_id=request.headers.get("X-Request-ID"), )
     dt_ms = round((_time.perf_counter() - t0) * 1000.0, 3)
 
     # Map candidates to MemoryRecallItems
@@ -1366,12 +1511,16 @@ async def recall_memory(
 
     # Metric: count recall requests (retrieval-backed)
     try:
-        from somabrain import metrics as M
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
-    except Exception as exc: raise
-
-    # Prepare response
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return MemoryRecallResponse(
         tenant=ctx.tenant_id,
         namespace=ctx.namespace,
@@ -1386,8 +1535,7 @@ async def recall_memory(
         total_results=len(items),
         chunk_size=None,
         conversation_id=None,
-        degraded=degraded,
-    )
+        degraded=degraded, )
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
@@ -1425,15 +1573,14 @@ async def get_recall_session(session_id: str) -> MemoryRecallSessionResponse:
         scoring_mode=state.get("scoring_mode"),
         conversation_id=state.get("conversation_id"),
         created_at=state.get("created_at", 0.0),
-        results=results,
-    )
+        results=results, )
 
 
 @router.get("/metrics", response_model=MemoryMetricsResponse)
 async def memory_metrics(
     tenant: str = Query(..., min_length=1),
-    namespace: str = Query(..., min_length=1),
-) -> MemoryMetricsResponse:
+    namespace: str = Query(..., min_length=1), ) -> MemoryMetricsResponse:
+        pass
     await _ensure_config_runtime_started()
     pool = _get_memory_pool()
     wm = _get_wm()
@@ -1442,21 +1589,33 @@ async def memory_metrics(
     memsvc._reset_circuit_if_needed()
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         wm_items = len(wm.items(tenant))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         wm_items = 0
 
     # No local outbox/journal; fail-fast semantics only
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         record_memory_snapshot(tenant, namespace, items=wm_items)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     return MemoryMetricsResponse(
         tenant=tenant,
         namespace=namespace,
         wm_items=wm_items,
-        circuit_open=memsvc._is_circuit_open(),
-    )
+        circuit_open=memsvc._is_circuit_open(), )
 
 
 @router.post("/admin/rebuild-ann")
@@ -1471,8 +1630,7 @@ async def list_outbox_events(
     request: Request,
     status: str = Query(
         "failed",
-        description="Outbox status filter (pending|failed|sent); defaults to 'failed'.",
-    ),
+        description="Outbox status filter (pending|failed|sent); defaults to 'failed'.", ),
     tenant: Optional[str] = Query(
         None, description="Optional tenant filter for outbox events."
     ),
@@ -1481,8 +1639,8 @@ async def list_outbox_events(
     ),
     offset: int = Query(
         0, ge=0, description="Offset into the result set for pagination."
-    ),
-) -> List[OutboxEventSummary]:
+    ), ) -> List[OutboxEventSummary]:
+        pass
     """Admin-only listing of transactional outbox events.
 
     Uses the real DB outbox; there is no fake journal. This is intended for
@@ -1491,6 +1649,10 @@ async def list_outbox_events(
     cfg = getattr(request.app.state, "cfg", None)
     require_admin_auth(request, cfg)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         events = outbox_db.list_events_by_status(
             status=status, tenant_id=tenant, limit=limit, offset=offset
         )
@@ -1501,9 +1663,15 @@ async def list_outbox_events(
     for ev in events:
         created_ts = None
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if ev.created_at is not None:
                 created_ts = ev.created_at.timestamp()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             created_ts = 0.0
         summaries.append(
             OutboxEventSummary(
@@ -1515,8 +1683,7 @@ async def list_outbox_events(
                 created_at=float(created_ts or 0.0),
                 dedupe_key=str(ev.dedupe_key),
                 last_error=ev.last_error,
-                payload=ev.payload if isinstance(ev.payload, dict) else {},
-            )
+                payload=ev.payload if isinstance(ev.payload, dict) else {}, )
         )
     return summaries
 
@@ -1534,9 +1701,15 @@ async def replay_outbox_events(
     cfg = getattr(request.app.state, "cfg", None)
     require_admin_auth(request, cfg)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         updated = outbox_db.mark_events_for_replay(payload.ids)
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Replay failed: {exc}") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(status_code=500, detail=f"Replay failed: {exc}") from exc
     return {"ok": True, "updated": int(updated)}
 
 
@@ -1558,8 +1731,7 @@ def _plan_to_response(plan) -> CutoverPlanResponse:
         notes=list(plan.notes or []),
         last_top1_accuracy=(last.top1_accuracy if last else None),
         last_margin=(last.margin if last else None),
-        last_latency_p95_ms=(last.latency_p95_ms if last else None),
-    )
+        last_latency_p95_ms=(last.latency_p95_ms if last else None), )
 
 
 @router.post("/cutover/open", response_model=CutoverPlanResponse)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import argparse
 from somabrain_client import SomaBrainClient
+from common.config.settings import settings
 
 
 def main() -> None:
@@ -15,13 +16,11 @@ def main() -> None:
     parser.add_argument("query", help="Query text to evaluate")
     parser.add_argument("--session", default="cli-session", help="Session identifier")
     # Use the centralized default base URL from Settings; append the context path.
-    from common.config.settings import settings
 
     parser.add_argument(
         "--base-url",
         default=f"{settings.default_base_url}/context",
-        help="Base URL",
-    )
+        help="Base URL", )
     parser.add_argument("--token", help="Bearer token")
     args = parser.parse_args()
     client = SomaBrainClient(base_url=args.base_url, api_token=args.token)

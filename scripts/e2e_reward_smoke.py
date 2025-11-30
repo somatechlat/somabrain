@@ -1,37 +1,46 @@
 from __future__ import annotations
-
 import json
 from common.config.settings import settings
 import sys
 import time
 from typing import Any
+from common.logging import logger
+import requests  # type: ignore
+from kafka import KafkaConsumer  # type: ignore
+from confluent_kafka import Consumer  # type: ignore
+from kafka import KafkaConsumer  # type: ignore
+
 
 try:
-    import requests  # type: ignore
-except Exception as exc: raise
-    # requests may not be installed in CI uv env; use stdlib alternative
-    import urllib.request as _rq  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
-    class _Resp:
-        def __init__(self, code: int, data: bytes):
+class _Resp:
+    pass
+def __init__(self, code: int, data: bytes):
             self.status_code = code
             self._data = data
 
-        def json(self) -> Any:
+def json(self) -> Any:
             return json.loads(self._data.decode("utf-8"))
 
-    def _post(url: str, json_body: Any) -> _Resp:
+def _post(url: str, json_body: Any) -> _Resp:
         req = _rq.Request(
             url,
             data=json.dumps(json_body).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
+            headers={"Content-Type": "application/json"}, )
         with _rq.urlopen(req, timeout=10) as resp:  # type: ignore
             return _Resp(getattr(resp, "status", 200), resp.read())
 
 else:
+    pass
 
-    def _post(url: str, json_body: Any):  # type: ignore
+def _post(url: str, json_body: Any):  # type: ignore
         return requests.post(url, json=json_body, timeout=10)
 
 
@@ -42,8 +51,13 @@ def _bootstrap() -> str:
 
 def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
     try:
-        from kafka import KafkaConsumer  # type: ignore
-    except Exception as exc: raise
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
     c = KafkaConsumer(
         topic,
@@ -52,23 +66,38 @@ def _consume_one(topic: str, timeout_s: float = 30.0) -> bool:
         auto_offset_reset="latest",
         enable_auto_commit=False,
         consumer_timeout_ms=int(timeout_s * 1000),
-        group_id=f"reward-smoke-{int(time.time())}",
-    )
+        group_id=f"reward-smoke-{int(time.time())}", )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         for m in c:
             if getattr(m, "value", None):
                 return True
         return False
     finally:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             c.close()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
     try:
-        from confluent_kafka import Consumer  # type: ignore
-    except Exception as exc: raise
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return False
     conf = {
         "bootstrap.servers": _bootstrap(),
@@ -78,6 +107,10 @@ def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
     }
     c = Consumer(conf)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         c.subscribe([topic])
         deadline = time.time() + timeout_s
         while time.time() < deadline:
@@ -91,8 +124,15 @@ def _consume_one_ck(topic: str, timeout_s: float = 30.0) -> bool:
         return False
     finally:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             c.close()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 def main() -> int:
@@ -100,17 +140,32 @@ def main() -> int:
     # Prefer confluent-kafka path if available; otherwise prepare a kafka-python consumer pre-POST
     use_ck = False
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         use_ck = True
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         use_ck = False
     consumer = None
     if not use_ck:
         try:
-            from kafka import KafkaConsumer  # type: ignore
-        except Exception as exc: raise
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             KafkaConsumer = None  # type: ignore
         if KafkaConsumer is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 consumer = KafkaConsumer(
                     "cog.reward.events",
                     bootstrap_servers=_bootstrap(),
@@ -118,9 +173,10 @@ def main() -> int:
                     auto_offset_reset="latest",
                     enable_auto_commit=False,
                     consumer_timeout_ms=int(45.0 * 1000),
-                    group_id=f"reward-smoke-{int(time.time())}",
-                )
-            except Exception as exc: raise
+                    group_id=f"reward-smoke-{int(time.time())}", )
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 consumer = None
 
     # 1) POST a reward to the reward_producer
@@ -142,24 +198,37 @@ def main() -> int:
         print(f"reward POST failed: {code}")
         if consumer is not None:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 consumer.close()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         return 2
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         data = resp.json()
         if data.get("status") != "ok":
             print(f"unexpected response: {data}")
             if consumer is not None:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     consumer.close()
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
             return 3
     except Exception as e:
-        print(f"invalid response: {e}")
-        if consumer is not None:
-            try:
-                consumer.close()
-            except Exception as exc: raise
+        logger.exception("Exception caught: %s", e)
+        raise
         return 4
 
     # 2) Consume one record from cog.reward.events
@@ -172,6 +241,10 @@ def main() -> int:
         ok = False
         start = time.time()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             while time.time() - start < 45.0:
                 for m in consumer:
                     if getattr(m, "value", None):
@@ -181,8 +254,15 @@ def main() -> int:
                     break
         finally:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 consumer.close()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise
     if not ok:
         print(
             "no reward event observed on Kafka topic cog.reward.events within timeout"

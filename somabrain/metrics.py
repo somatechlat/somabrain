@@ -1,3 +1,12 @@
+from __future__ import annotations
+import time
+from threading import Lock
+from typing import Any, Awaitable, Callable, Iterable
+import builtins as _builtins
+from common.logging import logger
+from prometheus_client import (
+from fastapi import Response  # type: ignore
+
 """
 Metrics Module for SomaBrain.
 
@@ -6,6 +15,7 @@ using Prometheus client library. It includes HTTP request metrics, cognitive per
 and system health monitoring with automatic FastAPI integration.
 
 Key Features:
+    pass
 - Prometheus-compatible metrics collection
 - HTTP request latency and count tracking
 - Cognitive metrics (salience, novelty, prediction error)
@@ -15,6 +25,7 @@ Key Features:
 - Automatic middleware integration for request timing
 
 Metrics Categories:
+    pass
 - HTTP Metrics: Request counts, latency, status codes
 - Working Memory: Hit/miss rates, latency
 - Salience: Score distributions, threshold tracking
@@ -32,15 +43,13 @@ Functions:
     timing_middleware: FastAPI middleware for automatic request timing.
 """
 
-from __future__ import annotations
 
-import time
-from threading import Lock
-from typing import Any, Awaitable, Callable, Iterable
-import builtins as _builtins
 
 try:
-    from prometheus_client import (
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
         CONTENT_TYPE_LATEST,
         REGISTRY,
         CollectorRegistry,
@@ -48,8 +57,7 @@ try:
         Gauge as _PromGauge,
         Histogram as _PromHistogram,
         Summary as _PromSummary,
-        generate_latest,
-    )
+        generate_latest, )
 except Exception as e:  # pragma: no cover
     # Strict mode: metrics are mandatory. No noop shims permitted.
     raise ImportError(
@@ -61,25 +69,49 @@ except Exception as e:  # pragma: no cover
 
 # Share a single registry across module reloads/process components.
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     _reg = getattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY")
-except Exception as exc: raise
-    _reg = None
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 if not _reg:
     _reg = CollectorRegistry()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 registry = _reg
 
 
 def _get_existing(name: str):
     # Prefer the app registry mapping if present; fall back to global REGISTRY
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return registry._names_to_collectors.get(name)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return REGISTRY._names_to_collectors.get(name)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
 
 
@@ -165,8 +197,7 @@ _DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
 LEARNER_LAG_SECONDS = get_gauge(
     "somabrain_learner_lag_seconds",
     "Time since last next-event processed per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 
 # Rebind public constructors to safe wrappers for in-module usage.
@@ -186,19 +217,16 @@ HTTP_COUNT = Counter(
     "somabrain_http_requests_total",
     "HTTP requests",
     ["method", "path", "status"],
-    registry=registry,
-)
+    registry=registry, )
 HTTP_LATENCY = Histogram(
     "somabrain_http_latency_seconds",
     "HTTP request latency",
     ["method", "path"],
-    registry=registry,
-)
+    registry=registry, )
 # OPA enforcement metrics – count allow and deny decisions
 OPA_ALLOW_TOTAL = get_counter(
     "somabrain_opa_allow_total",
-    "Number of requests allowed by OPA",
-)
+    "Number of requests allowed by OPA", )
 
 # ---------------------------------------------------------------------------
 # Oak‑specific observability (ROAMDP)
@@ -207,62 +235,51 @@ OPA_ALLOW_TOTAL = get_counter(
 OPTION_UTILITY_AVG = get_gauge(
     "somabrain_option_utility_avg",
     "Average utility of created Oak options per tenant",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 
 # Total number of Oak options stored per tenant.
 OPTION_COUNT = get_gauge(
     "somabrain_option_count",
     "Total number of Oak options stored per tenant",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 OPA_DENY_TOTAL = get_counter(
     "somabrain_opa_deny_total",
-    "Number of requests denied by OPA",
-)
+    "Number of requests denied by OPA", )
 
 # Learning loop metrics (tau/entropy/feedback)
 LEARNING_TAU = get_gauge(
     "somabrain_learning_tau",
     "Current retrieval temperature per tenant",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 LEARNING_ENTROPY_CAP_HITS = get_counter(
     "somabrain_learning_entropy_cap_hits_total",
     "Count of retrieval weight vectors that exceeded entropy cap",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 # Reward Gate metrics – count allow and deny decisions
 REWARD_ALLOW_TOTAL = get_counter(
     "somabrain_reward_allow_total",
-    "Number of requests allowed by Reward Gate",
-)
+    "Number of requests allowed by Reward Gate", )
 REWARD_DENY_TOTAL = get_counter(
     "somabrain_reward_deny_total",
-    "Number of requests denied by Reward Gate",
-)
+    "Number of requests denied by Reward Gate", )
 # Constitution metrics (baseline)
 CONSTITUTION_VERIFIED = Gauge(
     "somabrain_constitution_verified",
     "Constitution verification status (1=verified, 0=unverified)",
-    registry=registry,
-)
+    registry=registry, )
 CONSTITUTION_VERIFY_LATENCY = Histogram(
     "somabrain_constitution_verify_latency_seconds",
     "Time spent verifying constitution signatures on startup",
-    registry=registry,
-)
+    registry=registry, )
 # Utility metrics (Phase A)
 UTILITY_NEGATIVE = Counter(
     "somabrain_utility_negative_total",
     "Times utility guard rejected a request (U < 0)",
-    registry=registry,
-)
+    registry=registry, )
 UTILITY_VALUE = Gauge(
     "somabrain_utility_value",
     "Last computed utility value (per process)",
-    registry=registry,
-)
+    registry=registry, )
 WM_HITS = Counter("somabrain_wm_hits_total", "WM recall hits", registry=registry)
 WM_MISSES = Counter("somabrain_wm_misses_total", "WM recall misses", registry=registry)
 SALIENCE_STORE = Counter(
@@ -273,154 +290,128 @@ SALIENCE_HIST = _Hist(
     "somabrain_salience_score",
     "Salience score distribution",
     buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+    registry=registry, )
 FD_ENERGY_CAPTURE = Gauge(
     "somabrain_fd_energy_capture_ratio",
     "FD salience sketch energy capture ratio",
-    registry=registry,
-)
+    registry=registry, )
 FD_RESIDUAL = _Hist(
     "somabrain_fd_residual_ratio",
     "Residual energy ratio per vector for FD salience",
     buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+    registry=registry, )
 FD_TRACE_ERROR = Gauge(
     "somabrain_fd_trace_norm_error",
     "Trace normalization error for FD sketch",
-    registry=registry,
-)
+    registry=registry, )
 FD_PSD_INVARIANT = Gauge(
     "somabrain_fd_psd_invariant",
     "PSD invariant flag for FD sketch (1=ok, 0=violation)",
-    registry=registry,
-)
+    registry=registry, )
 SCORER_COMPONENT = _Hist(
     "somabrain_scorer_component",
     "Unified scorer component values",
     ["component"],
     buckets=[i / 10.0 for i in range(-10, 11)],
-    registry=registry,
-)
+    registry=registry, )
 SCORER_FINAL = _Hist(
     "somabrain_scorer_final",
     "Unified scorer combined score",
     buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+    registry=registry, )
 SCORER_WEIGHT_CLAMPED = Counter(
     "somabrain_scorer_weight_clamped_total",
     "Unified scorer weight clamp events",
     ["component", "bound"],
-    registry=registry,
-)
+    registry=registry, )
 
 EXTERNAL_METRICS_SCRAPE_STATUS = get_gauge(
     "somabrain_external_metrics_scraped",
     "Flag indicating that an external exporter has been scraped at least once",
-    ["source"],
-)
+    ["source"], )
 
 # WM admissions and attention level
 WM_ADMIT = Counter(
     "somabrain_wm_admit_total",
     "Working Memory admissions",
     ["source"],
-    registry=registry,
-)
+    registry=registry, )
 ATTENTION_LEVEL = Gauge(
     "somabrain_attention_level",
     "Current attention level as tracked by thalamus (0..1)",
-    registry=registry,
-)
+    registry=registry, )
 
 # HRR cleanup metrics
 HRR_CLEANUP_USED = Counter(
     "somabrain_hrr_cleanup_used_total",
     "Times HRR cleanup was applied",
-    registry=registry,
-)
+    registry=registry, )
 HRR_CLEANUP_SCORE = _Hist(
     "somabrain_hrr_cleanup_score",
     "HRR cleanup top-1 cosine score",
     buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+    registry=registry, )
 
 HRR_CLEANUP_CALLS = _PC(
     "somabrain_hrr_cleanup_calls_total",
     "Count of HRR cleanup invocations",
-    registry=registry,
-)
+    registry=registry, )
 HRR_ANCHOR_SIZE = _Hist(
     "somabrain_hrr_anchor_size",
     "Number of HRR anchors observed per tenant",
     buckets=[1, 10, 100, 1_000, 10_000],
-    registry=registry,
-)
+    registry=registry, )
 HRR_CONTEXT_SAT = _Hist(
     "somabrain_hrr_context_saturation",
     "HRR context saturation (anchors/max_anchors)",
     buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+    registry=registry, )
 
 # Governance metrics (Sprint E1)
 MEMORY_ITEMS = get_gauge(
     "somabrain_memory_items",
     "Active items tracked per tenant/namespace",
-    ["tenant", "namespace"],
-)
+    ["tenant", "namespace"], )
 ETA_GAUGE = get_gauge(
     "somabrain_eta",
     "Effective learning rate per tenant/namespace",
-    ["tenant", "namespace"],
-)
+    ["tenant", "namespace"], )
 SPARSITY_GAUGE = get_gauge(
     "somabrain_sparsity",
     "Configured sparsity per tenant/namespace",
-    ["tenant", "namespace"],
-)
+    ["tenant", "namespace"], )
 MARGIN_MEAN = get_gauge(
     "somabrain_cosine_margin_mean",
     "Rolling cosine margin per tenant/namespace",
-    ["tenant", "namespace"],
-)
+    ["tenant", "namespace"], )
 CONFIG_VERSION = get_gauge(
     "somabrain_config_version",
     "Latest applied configuration version",
-    ["tenant", "namespace"],
-)
+    ["tenant", "namespace"], )
 CONTROLLER_CHANGES = get_counter(
     "somabrain_controller_changes_total",
     "Supervisor parameter adjustments",
-    ["parameter"],
-)
+    ["parameter"], )
 RECALL_LATENCY = get_histogram(
     "somabrain_recall_latency_seconds",
     "End-to-end recall latency",
     ["namespace"],
-    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
+    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0), )
 ANN_LATENCY = get_histogram(
     "somabrain_ann_latency_seconds",
     "ANN lookup latency",
     ["namespace"],
-    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5),
-)
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5), )
 
 ANN_REBUILD_TOTAL = get_counter(
     "somabrain_ann_rebuild_total",
     "Number of ANN rebuild operations",
-    ["tenant", "namespace", "backend"],
-)
+    ["tenant", "namespace", "backend"], )
 ANN_REBUILD_SECONDS = get_histogram(
     "somabrain_ann_rebuild_seconds",
     "Duration of ANN rebuild operations",
     ["tenant", "namespace"],
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0), )
 
 # Phase 0 — A/B + stage metrics
 
@@ -428,195 +419,163 @@ RECALL_WM_LAT = _PHist(
     "somabrain_recall_wm_latency_seconds",
     "Recall WM stage latency",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 RECALL_LTM_LAT = _PHist(
     "somabrain_recall_ltm_latency_seconds",
     "Recall LTM stage latency",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 
 RECALL_CACHE_HIT = _PCounter(
     "somabrain_recall_cache_hit_total",
     "Recall cache hits",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 RECALL_CACHE_MISS = _PCounter(
     "somabrain_recall_cache_miss_total",
     "Recall cache misses",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 NOVELTY_RAW = _Hist(
     "somabrain_novelty_raw",
     "Novelty raw distribution",
     buckets=[i / 20.0 for i in range(0, 21)],
     labelnames=["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 ERROR_RAW = _Hist(
     "somabrain_error_raw",
     "Prediction error raw distribution",
     buckets=[i / 20.0 for i in range(0, 21)],
     labelnames=["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 NOVELTY_NORM = _Hist(
     "somabrain_novelty_norm",
     "Novelty normalized (z-score) distribution",
     buckets=[-5 + i * 0.5 for i in range(0, 21)],
     labelnames=["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 ERROR_NORM = _Hist(
     "somabrain_error_norm",
     "Prediction error normalized (z-score) distribution",
     buckets=[-5 + i * 0.5 for i in range(0, 21)],
     labelnames=["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 SDR_PREFILTER_LAT = _PHist(
     "somabrain_sdr_prefilter_latency_seconds",
     "SDR prefilter latency",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 SDR_CANDIDATES = _PCounter(
     "somabrain_sdr_candidates_total",
     "SDR candidate coords selected",
     ["cohort"],
-    registry=registry,
-)
+    registry=registry, )
 HRR_RERANK_APPLIED = Counter(
     "somabrain_hrr_rerank_applied_total",
     "Times HRR-first re-ranking was applied",
-    registry=registry,
-)
+    registry=registry, )
 HRR_RERANK_LTM_APPLIED = Counter(
     "somabrain_hrr_rerank_ltm_applied_total",
     "Times HRR-first LTM re-ranking was applied",
-    registry=registry,
-)
+    registry=registry, )
 HRR_RERANK_WM_SKIPPED = Counter(
     "somabrain_hrr_rerank_wm_skipped_total",
     "Times HRR WM rerank was skipped due to large margin",
-    registry=registry,
-)
+    registry=registry, )
 
 # Unbinding path + parameters
 UNBIND_PATH = Counter(
     "somabrain_unbind_path_total",
     "Unbind path selection counts",
     ["path"],
-    registry=registry,
-)
+    registry=registry, )
 UNBIND_WIENER_FLOOR = Gauge(
     "somabrain_unbind_wiener_floor",
     "Wiener/MAP floor value used in denominator",
-    registry=registry,
-)
+    registry=registry, )
 UNBIND_K_EST = Gauge(
     "somabrain_unbind_k_est",
     "Estimated number of superposed items (k_est)",
-    registry=registry,
-)
+    registry=registry, )
 
 # --- Retrieval metrics ---
 RECALL_REQUESTS = get_counter(
     "somabrain_recall_requests_total",
     "Number of /memory/recall requests",
-    labelnames=["namespace"],
-)
+    labelnames=["namespace"], )
 RETRIEVAL_REQUESTS = get_counter(
     "somabrain_retrieval_requests",
     "Retrieval requests",
-    labelnames=["namespace", "retrievers"],
-)
+    labelnames=["namespace", "retrievers"], )
 RETRIEVAL_LATENCY = get_histogram(
     "somabrain_retrieval_latency_seconds",
-    "Retrieval pipeline latency",
-)
+    "Retrieval pipeline latency", )
 RETRIEVAL_CANDIDATES = get_histogram(
     "somabrain_retrieval_candidates_total",
     "Retrieval candidate count after dedupe/rerank",
-    buckets=[1, 3, 5, 10, 20, 50],
-)
+    buckets=[1, 3, 5, 10, 20, 50], )
 RETRIEVAL_PERSIST = get_counter(
     "somabrain_retrieval_persist_total",
     "Retrieval session persistence outcomes",
-    labelnames=["status"],
-)
+    labelnames=["status"], )
 RETRIEVAL_EMPTY = get_counter(
     "somabrain_retrieval_empty_total",
     "Retrieval requests returning zero candidates",
-    labelnames=["namespace", "retrievers"],
-)
+    labelnames=["namespace", "retrievers"], )
 RETRIEVER_HITS = get_counter(
     "somabrain_retriever_hits_total",
     "Per-retriever non-empty candidate lists",
-    labelnames=["namespace", "retriever"],
-)
+    labelnames=["namespace", "retriever"], )
 
 # Per-retriever latency (adapter execution time)
 RETRIEVER_LATENCY = get_histogram(
     "somabrain_retriever_latency_seconds",
     "Latency of individual retriever adapters",
     labelnames=["namespace", "retriever"],
-    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0),
-)
+    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0), )
 
 # Fusion metrics (retrieval enhancements)
 RETRIEVAL_FUSION_APPLIED = Counter(
     "somabrain_retrieval_fusion_applied_total",
     "Times rank fusion was applied",
     ["method"],
-    registry=registry,
-)
+    registry=registry, )
 RETRIEVAL_FUSION_SOURCES = Histogram(
     "somabrain_retrieval_fusion_sources",
     "Number of retriever sources fused",
     buckets=[1, 2, 3, 4, 5, 6],
-    registry=registry,
-)
+    registry=registry, )
 
 # Additional unbind observability
 UNBIND_SPECTRAL_BINS_CLAMPED = Counter(
     "somabrain_spectral_bins_clamped_total",
     "Number of spectral bins clamped/nudged to avoid division by near-zero",
-    registry=registry,
-)
+    registry=registry, )
 
 UNBIND_EPS_USED = Gauge(
     "somabrain_unbind_eps_used",
     "Effective epsilon (power units) used in spectral denominator",
-    registry=registry,
-)
+    registry=registry, )
 
 RECONSTRUCTION_COSINE = Histogram(
     "somabrain_reconstruction_cosine",
     "Cosine similarity between original and reconstructed vector after unbind",
-    registry=registry,
-)
+    registry=registry, )
 
 # Predictor metrics
 PREDICTOR_LATENCY = Histogram(
     "somabrain_predictor_latency_seconds",
     "Predictor call latency",
-    registry=registry,
-)
+    registry=registry, )
 PREDICTOR_LATENCY_BY = Histogram(
     "somabrain_predictor_latency_seconds_by",
     "Predictor call latency by provider",
     ["provider"],
-    registry=registry,
-)
+    registry=registry, )
 PREDICTOR_ALTERNATIVE = Counter(
     "somabrain_predictor_alternative_total",
     "Count of predictor timeouts/errors causing degrade",
-    registry=registry,
-)
+    registry=registry, )
 
 # --- Planning KPIs ---
 PLANNING_LATENCY = Histogram(
@@ -624,13 +583,11 @@ PLANNING_LATENCY = Histogram(
     "Planning generation latency seconds",
     ["backend"],
     buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.075, 0.1, 0.2, 0.3, 0.5, 1.0),
-    registry=registry,
-)
+    registry=registry, )
 PLANNING_LATENCY_P99 = Gauge(
     "somabrain_planning_latency_p99",
     "Approximate p99 planning latency seconds (rolling)",
-    registry=registry,
-)
+    registry=registry, )
 
 _planning_samples: list[float] = []
 _MAX_PLANNING_SAMPLES = 1000
@@ -638,6 +595,10 @@ _MAX_PLANNING_SAMPLES = 1000
 
 def record_planning_latency(backend: str, latency_seconds: float) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         PLANNING_LATENCY.labels(backend=str(backend)).observe(float(latency_seconds))
         _planning_samples.append(float(latency_seconds))
         if len(_planning_samples) > _MAX_PLANNING_SAMPLES:
@@ -646,83 +607,70 @@ def record_planning_latency(backend: str, latency_seconds: float) -> None:
             ordered = sorted(_planning_samples)
             idx = max(0, int(0.99 * (len(ordered) - 1)))
             PLANNING_LATENCY_P99.set(ordered[idx])
-    except Exception as exc: raise
-
-
-# Decision attribution / recall quality
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 RECALL_MARGIN_TOP12 = Histogram(
     "somabrain_recall_margin_top1_top2",
     "Margin between top1 and top2 recall scores",
-    registry=registry,
-)
+    registry=registry, )
 RECALL_SIM_TOP1 = Histogram(
     "somabrain_recall_sim_top1",
     "Top-1 recall score/similarity",
-    registry=registry,
-)
+    registry=registry, )
 RECALL_SIM_TOPK_MEAN = Histogram(
     "somabrain_recall_sim_topk_mean",
     "Mean similarity of returned WM top-k",
-    registry=registry,
-)
+    registry=registry, )
 RERANK_CONTRIB = Histogram(
     "somabrain_rerank_contrib",
     "Approx. contribution of re-ranking to final score",
-    registry=registry,
-)
+    registry=registry, )
 DIVERSITY_PAIRWISE_MEAN = Histogram(
     "somabrain_diversity_pairwise_mean",
     "Mean pairwise cosine distance among returned set",
-    registry=registry,
-)
+    registry=registry, )
 
 # Storage efficiency KPI: ratio of post-compression bytes to pre-compression bytes
 STORAGE_REDUCTION_RATIO = Gauge(
     "somabrain_storage_reduction_ratio",
     "Observed storage reduction ratio (post/pre). Higher is better if defined as retained fraction; dashboards invert to show savings.",
-    registry=registry,
-)
+    registry=registry, )
 
 # Capacity / backpressure
 WM_UTILIZATION = Gauge(
     "somabrain_wm_utilization",
     "Working Memory utilization (items/capacity)",
-    registry=registry,
-)
+    registry=registry, )
 WM_EVICTIONS = Counter(
     "somabrain_wm_evictions_total",
     "Working Memory evictions (best-effort)",
-    registry=registry,
-)
+    registry=registry, )
 RATE_LIMITED_TOTAL = Counter(
     "somabrain_rate_limited_total",
     "Requests rejected by rate limiting",
     ["path"],
-    registry=registry,
-)
+    registry=registry, )
 QUOTA_DENIED_TOTAL = Counter(
     "somabrain_quota_denied_total",
     "Write requests rejected by quota",
     ["reason"],
-    registry=registry,
-)
+    registry=registry, )
 QUOTA_RESETS = Counter(
     "somabrain_quota_resets_total",
     "Admin quota reset operations",
     ["tenant_id"],
-    registry=registry,
-)
+    registry=registry, )
 QUOTA_ADJUSTMENTS = Counter(
     "somabrain_quota_adjustments_total",
     "Admin quota adjustment operations",
     ["tenant_id"],
-    registry=registry,
-)
+    registry=registry, )
 LTM_STORE_LAT = Histogram(
     "somabrain_ltm_store_latency_seconds",
     "Latency of LTM store operations",
-    registry=registry,
-)
+    registry=registry, )
 # Removed queued write semantics (fail-fast); metric deprecated.
 # (Previously: somabrain_ltm_store_queued_total)
 
@@ -730,116 +678,97 @@ LTM_STORE_LAT = Histogram(
 EXEC_K_SELECTED = Histogram(
     "somabrain_exec_k_selected",
     "Final top_k selected by executive/policy",
-    registry=registry,
-)
+    registry=registry, )
 
 # Consolidation / Sleep metrics
 CONSOLIDATION_RUNS = Counter(
     "somabrain_consolidation_runs_total",
     "Consolidation runs by phase",
     ["phase"],
-    registry=registry,
-)
+    registry=registry, )
 REPLAY_STRENGTH = Histogram(
     "somabrain_consolidation_replay_strength",
     "Distribution of replay reinforcement weights",
-    registry=registry,
-)
+    registry=registry, )
 REM_SYNTHESIZED = Counter(
     "somabrain_consolidation_rem_synthesized_total",
     "Count of REM synthesized semantic memories",
-    registry=registry,
-)
+    registry=registry, )
 
 # Supervisor / Energy metrics
 FREE_ENERGY = Histogram(
     "somabrain_free_energy",
     "Free-energy proxy values",
-    registry=registry,
-)
+    registry=registry, )
 SUPERVISOR_MODULATION = Histogram(
     "somabrain_supervisor_modulation",
     "Magnitude of neuromodulator adjustments",
-    registry=registry,
-)
+    registry=registry, )
 
 # Executive Controller metrics
 EXEC_CONFLICT = Histogram(
     "somabrain_exec_conflict",
     "Executive conflict proxy (1-mean recall strength)",
-    registry=registry,
-)
+    registry=registry, )
 EXEC_USE_GRAPH = Counter(
     "somabrain_exec_use_graph_total",
     "Times executive controller enabled graph augmentation",
-    registry=registry,
-)
+    registry=registry, )
 EXEC_BANDIT_ARM = Counter(
     "somabrain_exec_bandit_arm_total",
     "Executive bandit arm selection counts",
     ["arm"],
-    registry=registry,
-)
+    registry=registry, )
 EXEC_BANDIT_REWARD = Histogram(
     "somabrain_exec_bandit_reward",
     "Executive bandit observed rewards",
-    registry=registry,
-)
+    registry=registry, )
 
 # Microcircuits
 MICRO_VOTE_ENTROPY = Histogram(
     "somabrain_micro_vote_entropy",
     "Entropy of column vote distribution",
-    registry=registry,
-)
+    registry=registry, )
 MICRO_COLUMN_ADMIT = Counter(
     "somabrain_micro_column_admit_total",
     "Admissions per microcircuit column",
     ["column"],
-    registry=registry,
-)
+    registry=registry, )
 MICRO_COLUMN_BEST = Counter(
     "somabrain_micro_column_best_total",
     "Recall best-column selection counts",
     ["column"],
-    registry=registry,
-)
+    registry=registry, )
 
 # Adaptive salience gauges
 SALIENCE_THRESH_STORE = Gauge(
     "somabrain_salience_threshold_store",
     "Current store threshold",
-    registry=registry,
-)
+    registry=registry, )
 SALIENCE_THRESH_ACT = Gauge(
     "somabrain_salience_threshold_act",
     "Current act threshold",
-    registry=registry,
-)
+    registry=registry, )
 SALIENCE_STORE_RATE_OBS = Gauge(
     "somabrain_salience_store_rate_obs",
     "Observed EWMA store rate",
-    registry=registry,
-)
+    registry=registry, )
 SALIENCE_ACT_RATE_OBS = Gauge(
     "somabrain_salience_act_rate_obs",
     "Observed EWMA act rate",
-    registry=registry,
-)
+    registry=registry, )
 
 # Embeddings
 EMBED_LAT = Histogram(
     "somabrain_embed_latency_seconds",
     "Embedding call latency",
     ["provider"],
-    registry=registry,
-)
+    registry=registry, )
 EMBED_CACHE_HIT = Counter(
     "somabrain_embed_cache_hit_total",
     "Embedding cache hits",
     ["provider"],
-    registry=registry,
-)
+    registry=registry, )
 
 # Index/Compression configuration usage (ablation labels kept small & numeric)
 INDEX_PROFILE_USE = Counter(
@@ -855,23 +784,20 @@ INDEX_PROFILE_USE = Counter(
         "hnsw_M",
         "hnsw_efs",
     ],
-    registry=registry,
-)
+    registry=registry, )
 
 # Graph/link maintenance
 LINK_DECAY_PRUNED = Counter(
     "somabrain_link_decay_pruned_total",
     "Count of graph links pruned by decay threshold",
-    registry=registry,
-)
+    registry=registry, )
 
 
 # Audit pipeline metrics: Kafka publish path only (no local alternatives)
 AUDIT_KAFKA_PUBLISH = Counter(
     "somabrain_audit_kafka_publish_total",
     "Audit events successfully published to Kafka (best-effort)",
-    registry=registry,
-)
+    registry=registry, )
 
 # New metrics for outbox and circuit breaker (per-tenant labeled gauges)
 DEFAULT_TENANT_LABEL = "default"
@@ -886,86 +812,102 @@ def _normalize_tenant_label(tenant_id: str | None) -> str:
 OUTBOX_PENDING = _gauge(
     "memory_outbox_pending",
     "Number of pending messages in the out-box queue",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 
 CIRCUIT_STATE = _gauge(
     "memory_circuit_state",
     "Circuit breaker state for external memory service: 0=closed, 1=open",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 
 OUTBOX_REPLAY_TRIGGERED = _counter(
     "memory_outbox_replay_total",
     "Admin-triggered outbox replays partitioned by outcome.",
-    ["result"],
-)
+    ["result"], )
 
 OUTBOX_FAILED_TOTAL = _counter(
     "memory_outbox_failed_seen_total",
     "Count of failed outbox events observed via admin API endpoints.",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 
 FEATURE_FLAG_TOGGLE_TOTAL = _counter(
     "somabrain_feature_flag_toggle_total",
     "Number of feature flag toggles grouped by action.",
-    ["action"],
-)
+    ["action"], )
 
 OUTBOX_PROCESSED_TOTAL = _counter(
     "somabrain_outbox_processed_total",
     "Total number of outbox events successfully published to Kafka",
-    ["tenant_id", "topic"],
-)
+    ["tenant_id", "topic"], )
 
 OUTBOX_REPLAYED_TOTAL = _counter(
     "somabrain_outbox_replayed_total",
     "Total number of outbox events marked for replay",
-    ["tenant_id"],
-)
+    ["tenant_id"], )
 
 
 def report_outbox_pending(tenant_id: str | None, count: int) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         OUTBOX_PENDING.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(count)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(
             1 if is_open else 0
         )
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         OUTBOX_PROCESSED_TOTAL.labels(
             tenant_id=_normalize_tenant_label(tenant_id),
-            topic=str(topic),
-        ).inc(max(0, int(count)))
-    except Exception as exc: raise
+            topic=str(topic), ).inc(max(0, int(count)))
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         OUTBOX_REPLAYED_TOTAL.labels(tenant_id=_normalize_tenant_label(tenant_id)).inc(
             max(0, int(count))
         )
-    except Exception as exc: raise
-
-
-# Ensure HTTP_FAILURES counter is only created once per process.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 if "memory_http_failures_total" in REGISTRY._names_to_collectors:
     HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]
 else:
     HTTP_FAILURES = Counter(
         "memory_http_failures_total",
         "Total number of failed HTTP calls to the external memory service",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 
 
 # Neuromodulator value gauges (ensure single registration)
@@ -975,40 +917,35 @@ else:
     NEUROMOD_DOPAMINE = Gauge(
         "neuromod_dopamine",
         "Current dopamine level",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 if "neuromod_serotonin" in REGISTRY._names_to_collectors:
     NEUROMOD_SEROTONIN = REGISTRY._names_to_collectors["neuromod_serotonin"]
 else:
     NEUROMOD_SEROTONIN = Gauge(
         "neuromod_serotonin",
         "Current serotonin level",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 if "neuromod_noradrenaline" in REGISTRY._names_to_collectors:
     NEUROMOD_NORADRENALINE = REGISTRY._names_to_collectors["neuromod_noradrenaline"]
 else:
     NEUROMOD_NORADRENALINE = Gauge(
         "neuromod_noradrenaline",
         "Current noradrenaline level",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 if "neuromod_acetylcholine" in REGISTRY._names_to_collectors:
     NEUROMOD_ACETYLCHOLINE = REGISTRY._names_to_collectors["neuromod_acetylcholine"]
 else:
     NEUROMOD_ACETYLCHOLINE = Gauge(
         "neuromod_acetylcholine",
         "Current acetylcholine level",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 if "neuromod_updates_total" in REGISTRY._names_to_collectors:
     NEUROMOD_UPDATE_COUNT = REGISTRY._names_to_collectors["neuromod_updates_total"]
 else:
     NEUROMOD_UPDATE_COUNT = Counter(
         "neuromod_updates_total",
         "Total number of neuromodulator updates",
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 
 # ==============================
 # Learning & Adaptation Metrics (Per-Tenant)
@@ -1018,127 +955,105 @@ else:
 LEARNING_RETRIEVAL_ALPHA = get_gauge(
     "somabrain_learning_retrieval_alpha",
     "Semantic weight in retrieval (α) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_RETRIEVAL_BETA = get_gauge(
     "somabrain_learning_retrieval_beta",
     "Graph weight in retrieval (β) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_RETRIEVAL_GAMMA = get_gauge(
     "somabrain_learning_retrieval_gamma",
     "Recent weight in retrieval (γ) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_RETRIEVAL_TAU = get_gauge(
     "somabrain_learning_retrieval_tau",
     "Temperature for diversity (τ) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 # Utility weights (per-tenant adaptation state)
 LEARNING_UTILITY_LAMBDA = get_gauge(
     "somabrain_learning_utility_lambda",
     "Semantic utility weight (λ) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_UTILITY_MU = get_gauge(
     "somabrain_learning_utility_mu",
     "Graph utility weight (μ) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_UTILITY_NU = get_gauge(
     "somabrain_learning_utility_nu",
     "Recent utility weight (ν) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_GAIN = get_gauge(
     "somabrain_learning_gain",
     "Configured adaptation gain per component",
-    labelnames=["tenant_id", "component"],
-)
+    labelnames=["tenant_id", "component"], )
 LEARNING_BOUND = get_gauge(
     "somabrain_learning_bound",
     "Adaptation bounds per component and side",
-    labelnames=["tenant_id", "component", "bound"],
-)
+    labelnames=["tenant_id", "component", "bound"], )
 
 # Feedback loop metrics
 LEARNING_FEEDBACK_APPLIED = get_counter(
     "somabrain_learning_feedback_applied_total",
     "Total feedback applications (success) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_FEEDBACK_REJECTED = get_counter(
     "somabrain_learning_feedback_rejected_total",
     "Feedback rejected due to outliers or bounds per tenant",
-    labelnames=["tenant_id", "reason"],
-)
+    labelnames=["tenant_id", "reason"], )
 LEARNING_FEEDBACK_LATENCY = get_histogram(
     "somabrain_learning_feedback_latency_seconds",
     "Latency of feedback application (end-to-end) per tenant",
     labelnames=["tenant_id"],
-    buckets=[0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0],
-)
+    buckets=[0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0], )
 
 # Learner (next-event) metrics
 LEARNER_EVENTS_CONSUMED = get_counter(
     "somabrain_learner_events_consumed_total",
     "Next-event messages consumed",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNER_EVENTS_PRODUCED = get_counter(
     "somabrain_learner_events_produced_total",
     "Config updates produced by learner",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNER_EVENTS_FAILED = get_counter(
     "somabrain_learner_events_failed_total",
     "Next-event processing failures",
-    labelnames=["tenant_id", "phase"],
-)
+    labelnames=["tenant_id", "phase"], )
 LEARNER_EVENT_LATENCY = get_histogram(
     "somabrain_learner_event_latency_seconds",
     "End-to-end processing latency for next-event messages",
     labelnames=["tenant_id"],
-    buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
+    buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0), )
 LEARNER_DLQ_TOTAL = get_counter(
     "somabrain_learner_dlq_total",
     "Learner DLQ writes",
-    labelnames=["tenant_id", "reason"],
-)
+    labelnames=["tenant_id", "reason"], )
 
 # Adaptation dynamics
 LEARNING_EFFECTIVE_LR = get_gauge(
     "somabrain_learning_effective_lr",
     "Effective learning rate (lr_eff) per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 LEARNING_ROLLBACKS = get_counter(
     "somabrain_learning_rollbacks_total",
     "Number of weight rollbacks triggered per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 # Working memory growth
 LEARNING_WM_LENGTH = get_gauge(
     "somabrain_learning_wm_length",
     "Working memory length per session/tenant",
-    labelnames=["session_id", "tenant_id"],
-)
+    labelnames=["session_id", "tenant_id"], )
 
 # Autonomous experiments
 LEARNING_EXPERIMENT_ACTIVE = get_gauge(
     "somabrain_learning_experiment_active",
     "Number of active A/B experiments",
-    labelnames=["experiment_name"],
-)
+    labelnames=["experiment_name"], )
 LEARNING_EXPERIMENT_PROMOTIONS = get_counter(
     "somabrain_learning_experiment_promotions_total",
     "Number of successful canary promotions",
-    labelnames=["experiment_name"],
-)
+    labelnames=["experiment_name"], )
 
 
 # ==============================
@@ -1212,44 +1127,37 @@ def update_learning_effective_lr(tenant_id: str, lr_eff: float):
 tau_decay_events = get_counter(
     "somabrain_tau_decay_events_total",
     "Tau decay applications per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 tau_anneal_events = get_counter(
     "somabrain_tau_anneal_events_total",
     "Tau annealing applications per tenant (any schedule)",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 entropy_cap_events = get_counter(
     "somabrain_entropy_cap_events_total",
     "Entropy cap sharpen events per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 # Retrieval entropy gauge per tenant
 LEARNING_RETRIEVAL_ENTROPY = get_gauge(
     "somabrain_learning_retrieval_entropy",
     "Entropy of retrieval weight distribution per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 # Regret KPIs (next-event + policy)
 LEARNING_REGRET = get_histogram(
     "somabrain_learning_regret",
     "Regret distribution per tenant",
     labelnames=["tenant_id"],
-    buckets=[i / 20.0 for i in range(0, 21)],
-)
+    buckets=[i / 20.0 for i in range(0, 21)], )
 LEARNING_REGRET_EWMA = get_gauge(
     "somabrain_learning_regret_ewma",
     "EWMA regret per tenant",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 soma_next_event_regret = get_gauge(
     "soma_next_event_regret",
     "Instantaneous next-event regret (0-1)",
-    labelnames=["tenant_id"],
-)
+    labelnames=["tenant_id"], )
 
 _regret_ema: dict[str, float] = {}
 _REGRET_ALPHA = 0.15
@@ -1257,6 +1165,10 @@ _REGRET_ALPHA = 0.15
 
 def record_regret(tenant_id: str, regret: float) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         t = tenant_id or "public"
         r = max(0.0, min(1.0, float(regret)))
         LEARNING_REGRET.labels(tenant_id=t).observe(r)
@@ -1267,13 +1179,23 @@ def record_regret(tenant_id: str, regret: float) -> None:
             ema = _REGRET_ALPHA * r + (1.0 - _REGRET_ALPHA) * prev
         _regret_ema[t] = ema
         LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def record_learning_rollback(tenant_id: str):
@@ -1294,8 +1216,7 @@ else:
         "soma_context_builder_tau",
         "Current tau value for diversity adaptation",
         ["tenant_id"],
-        registry=REGISTRY,
-    )
+        registry=REGISTRY, )
 
 
 def mark_external_metric_scraped(source: str) -> None:
@@ -1310,8 +1231,15 @@ def mark_external_metric_scraped(source: str) -> None:
     with _external_metrics_lock:
         _external_metrics_scraped[label] = now
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(1)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def external_metrics_ready(
@@ -1354,8 +1282,15 @@ def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
         if not label:
             continue
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 def record_memory_snapshot(
@@ -1366,14 +1301,18 @@ def record_memory_snapshot(
     eta: float | None = None,
     sparsity: float | None = None,
     margin: float | None = None,
-    config_version: float | int | None = None,
-) -> None:
+    config_version: float | int | None = None, ) -> None:
+        pass
     """Update governance metrics for a tenant/namespace pair."""
 
     t = str(tenant or "").strip() or "unknown"
     ns = str(namespace or "").strip() or "default"
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if items is not None:
             MEMORY_ITEMS.labels(tenant=t, namespace=ns).set(float(items))
         if eta is not None:
@@ -1384,7 +1323,10 @@ def record_memory_snapshot(
             MARGIN_MEAN.labels(tenant=t, namespace=ns).set(float(margin))
         if config_version is not None:
             CONFIG_VERSION.labels(tenant=t, namespace=ns).set(float(config_version))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
@@ -1392,8 +1334,15 @@ def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
 
     ns = str(namespace or "").strip() or "default"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
@@ -1401,8 +1350,15 @@ def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
 
     ns = str(namespace or "").strip() or "default"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 def mark_controller_change(parameter: str) -> None:
@@ -1410,8 +1366,15 @@ def mark_controller_change(parameter: str) -> None:
 
     name = str(parameter or "unknown").strip() or "unknown"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         CONTROLLER_CHANGES.labels(parameter=name).inc()
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 async def metrics_endpoint() -> Any:
@@ -1431,18 +1394,35 @@ async def metrics_endpoint() -> Any:
     """
     # import Response locally to avoid hard dependency at module import time
     try:
-        from fastapi import Response  # type: ignore
-    except Exception as exc: raise  # pragma: no cover - optional runtime dependency
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # If FastAPI isn't present, return raw bytes from the shared registry
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return generate_latest(registry)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return b""
 
     # Export only real counters from the shared registry – no synthetic increments.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         data = generate_latest(registry)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         data = b""
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
@@ -1470,6 +1450,10 @@ async def timing_middleware(
     start = time.perf_counter()
     response: Any | None = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         response = await call_next(request)
         return response
     finally:
@@ -1486,56 +1470,47 @@ async def timing_middleware(
 CIRCUIT_BREAKER_STATE = Gauge(
     "somabrain_memory_circuit_breaker_state",
     "The state of the memory service circuit breaker (1=open, 0=closed).",
-    registry=registry,
-)
+    registry=registry, )
 MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     "somabrain_memory_outbox_sync_total",
     ["status"],
-    registry=registry,
-)
+    registry=registry, )
 
 # --- Segmentation HMM Metrics (Roadmap Completion) ---
 SEGMENTATION_BOUNDARIES_PER_HOUR = Gauge(
     "somabrain_segmentation_boundaries_per_hour",
     "Segmentation boundaries emitted per hour by tenant:domain",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )
 SEGMENTATION_DUPLICATE_RATIO = Gauge(
     "somabrain_segmentation_duplicate_ratio",
     "Ratio of duplicate boundaries to total boundaries by tenant:domain",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )
 SEGMENTATION_HMM_STATE_VOLATILE = Gauge(
     "somabrain_segmentation_hmm_state_volatile",
     "Current HMM state probability for VOLATILE (1=fully volatile, 0=fully stable)",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )
 SEGMENTATION_MAX_DWELL_EXCEEDED = Counter(
     "somabrain_segmentation_max_dwell_exceeded_total",
     "Count of boundaries forced by max dwell threshold",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )
 
 # --- Fusion Normalization Metrics (Roadmap Completion) ---
 FUSION_WEIGHT_NORM_ERROR = Gauge(
     "somabrain_fusion_weight_norm_error",
     "Normalized error per domain for fusion weighting",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )
 FUSION_ALPHA_ADAPTIVE = Gauge(
     "somabrain_fusion_alpha_adaptive",
     "Current adaptive alpha parameter for fusion normalization",
     labelnames=["tenant"],
-    registry=registry,
-)
+    registry=registry, )
 FUSION_SOFTMAX_WEIGHT = Gauge(
     "somabrain_fusion_softmax_weight",
     "Final softmax weight assigned to each domain",
     labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    registry=registry, )

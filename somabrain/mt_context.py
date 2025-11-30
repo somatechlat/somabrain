@@ -1,3 +1,12 @@
+from __future__ import annotations
+from __future__ import annotations
+from collections import OrderedDict
+from typing import Tuple
+import numpy as np
+from .context_hrr import CleanupResult, HRRContext, HRRContextConfig
+from common.config.settings import settings
+from .quantum import QuantumLayer
+
 """
  Multi-Tenant HRR Context Module for SomaBrain
 
@@ -6,6 +15,7 @@ management. It maintains separate HRR contexts for different tenants with LRU
 eviction, enabling efficient context tracking and novelty detection.
 
 Key Features:
+    pass
 - Tenant-isolated HRR contexts
 - LRU-based context eviction for memory efficiency
 - Superposition-based context accumulation
@@ -14,6 +24,7 @@ Key Features:
 - Statistical tracking of context usage
 
 HRR Operations:
+    pass
 - Admit: Add vectors to context via superposition
 - Novelty: Compute novelty as 1 - context similarity
 - Cleanup: Find nearest anchors using cosine similarity
@@ -26,22 +37,15 @@ Functions:
     None (class-based implementation)
 """
 
-from __future__ import annotations
 
-from __future__ import annotations
 
-from collections import OrderedDict
-from typing import Tuple
 
-import numpy as np
 
-from .context_hrr import CleanupResult, HRRContext, HRRContextConfig
-from common.config.settings import settings
-from .quantum import QuantumLayer
 
 
 class MultiTenantHRRContext:
-    def __init__(
+    pass
+def __init__(
         self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None
     ):
         self.q = q
@@ -51,7 +55,7 @@ class MultiTenantHRRContext:
         )
         self._ctxs: OrderedDict[str, HRRContext] = OrderedDict()
 
-    def _ensure(self, tenant_id: str) -> HRRContext:
+def _ensure(self, tenant_id: str) -> HRRContext:
         ctx = self._ctxs.get(tenant_id)
         if ctx is None:
             ctx = HRRContext(self.q, self.cfg, context_id=tenant_id)
@@ -61,18 +65,18 @@ class MultiTenantHRRContext:
             self._ctxs.popitem(last=False)
         return ctx
 
-    def admit(self, tenant_id: str, anchor_id: str, vec: np.ndarray) -> None:
+def admit(self, tenant_id: str, anchor_id: str, vec: np.ndarray) -> None:
         self._ensure(tenant_id).admit(anchor_id, vec)
 
-    def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
         return self._ensure(tenant_id).novelty(vec)
 
-    def cleanup(self, tenant_id: str, query: np.ndarray) -> Tuple[str, float]:
+def cleanup(self, tenant_id: str, query: np.ndarray) -> Tuple[str, float]:
         return self._ensure(tenant_id).cleanup(query)
 
-    def analyze(self, tenant_id: str, query: np.ndarray) -> CleanupResult:
+def analyze(self, tenant_id: str, query: np.ndarray) -> CleanupResult:
         """Return cleanup scores (best, second, margin) without thresholding."""
         return self._ensure(tenant_id).analyze(query)
 
-    def stats(self, tenant_id: str) -> tuple[int, int]:
+def stats(self, tenant_id: str) -> tuple[int, int]:
         return self._ensure(tenant_id).stats()

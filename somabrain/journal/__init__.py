@@ -1,3 +1,6 @@
+from .local_journal import (
+from common.logging import logger
+
 """
 Journal Module for SomaBrain
 
@@ -6,6 +9,7 @@ The journal serves as a durable local storage mechanism for events when the data
 is unavailable or for debugging/troubleshooting purposes.
 
 Features:
+    pass
 - Optional local file-based journaling
 - Configurable rotation and retention policies
 - Thread-safe operations
@@ -13,7 +17,8 @@ Features:
 - JSON-based event serialization
 
 Usage:
-    from somabrain.journal import get_journal, init_journal
+    pass
+from somabrain.journal import get_journal, init_journal
 
     # Get the global journal instance
     journal = get_journal()
@@ -35,13 +40,11 @@ Usage:
     events = journal.read_events(tenant_id="tenant-789", status="pending")
 """
 
-from .local_journal import (
     JournalConfig,
     JournalEvent,
     LocalJournal,
     get_journal,
-    init_journal,
-)
+    init_journal, )
 
 __all__ = [
     "JournalConfig",

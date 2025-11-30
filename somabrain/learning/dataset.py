@@ -23,7 +23,7 @@ class TrainingExample:
     namespace: str
     metadata: dict
 
-    def tokens(self, tokenizer: Callable[[str], Sequence[int]]) -> dict:
+def tokens(self, tokenizer: Callable[[str], Sequence[int]]) -> dict:
         return {
             "prompt_tokens": list(tokenizer(self.prompt)),
             "response_tokens": list(tokenizer(self.response)),
@@ -76,8 +76,7 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
                 namespace=namespace,
                 metadata={
                     k: v for k, v in payload.items() if k not in {"conversation"}
-                },
-            )
+                }, )
 
     prompt = payload.get("prompt")
     response = payload.get("response")
@@ -89,8 +88,7 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
             namespace=namespace,
             metadata={
                 k: v for k, v in payload.items() if k not in {"prompt", "response"}
-            },
-        )
+            }, )
 
     # alternative: treat current text as response and use previous text as prompt
     response_text = _extract_text(payload)
@@ -105,8 +103,7 @@ def _build_example(record: dict) -> Optional[TrainingExample]:
                         response=response_text,
                         tenant=tenant,
                         namespace=namespace,
-                        metadata={"source": "history"},
-                    )
+                        metadata={"source": "history"}, )
 
     return None
 
@@ -122,8 +119,8 @@ def build_examples(records: Iterable[dict]) -> List[TrainingExample]:
 
 def tokenize_examples(
     examples: Iterable[TrainingExample],
-    tokenizer: Callable[[str], Sequence[int]],
-) -> List[dict]:
+    tokenizer: Callable[[str], Sequence[int]], ) -> List[dict]:
+        pass
     return [example.tokens(tokenizer) for example in examples]
 
 

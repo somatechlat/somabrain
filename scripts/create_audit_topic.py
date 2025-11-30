@@ -1,10 +1,12 @@
+import argparse
+from kafka import KafkaAdminClient, NewTopic
+from common.logging import logger
+
 #!/usr/bin/env python3
 """Create soma.audit topic using kafka-python. Intended for CI and local setup.
 Usage: python scripts/create_audit_topic.py --bootstrap-server 127.0.0.1:9092 --partitions 6 --replication 1
 """
-import argparse
 
-from kafka import KafkaAdminClient, NewTopic
 
 
 def main():
@@ -25,15 +27,15 @@ def main():
     backoff = 0.5
     for attempt in range(1, 9):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             admin = KafkaAdminClient(bootstrap_servers=bs, request_timeout_ms=2000)
             break
         except Exception as e:
-            last_exc = e
-            print(
-                f"Attempt {attempt}: Kafka bootstrap not ready at {bs}, retrying in {backoff}s...",
-                flush=True,
-            )
-            import time
+            logger.exception("Exception caught: %s", e)
+            raise
 
             time.sleep(backoff)
             backoff = min(backoff * 2, 5.0)
@@ -47,14 +49,17 @@ def main():
     topic = NewTopic(
         name=args.topic,
         num_partitions=args.partitions,
-        replication_factor=args.replication,
-    )
+        replication_factor=args.replication, )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         admin.create_topics([topic], timeout_ms=10000)
         print(f"Created topic {args.topic}")
     except Exception as e:
-        # idempotent create: if topic exists concurrently, the admin may raise
-        print(f"Failed to create topic {args.topic}: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 if __name__ == "__main__":

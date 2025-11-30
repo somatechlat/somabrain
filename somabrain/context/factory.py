@@ -13,20 +13,27 @@ from somabrain.runtime.working_memory import WorkingMemoryBuffer
 from common.config.settings import settings
 from somabrain.embeddings import make_embedder
 from somabrain.memory_client import MemoryClient
+from common.logging import logger
 
 
 _embedder = None
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     # Use production embedder by default; allow tiny embedder only when explicitly enabled.
     # Use Settings attribute "allow_tiny_embedder" (bool) instead of getenv.
     if getattr(settings, "allow_tiny_embedder", False):
-        from somabrain.embeddings import TinyDeterministicEmbedder
+        pass
+from somabrain.embeddings import TinyDeterministicEmbedder
 
         _embedder = TinyDeterministicEmbedder(dim=256)
     else:
         _embedder = make_embedder(settings, quantum=None)
-except Exception as exc: raise
-    from somabrain.embeddings import TinyDeterministicEmbedder
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     _embedder = TinyDeterministicEmbedder(dim=256)
 _working_memory = WorkingMemoryBuffer()
@@ -34,8 +41,7 @@ _retrieval_weights = RetrievalWeights(
     alpha=float(getattr(settings, "retrieval_alpha", 1.0)),
     beta=float(getattr(settings, "retrieval_beta", 0.3)),
     gamma=float(getattr(settings, "retrieval_gamma", 0.1)),
-    tau=float(getattr(settings, "retrieval_tau", 0.8)),
-)
+    tau=float(getattr(settings, "retrieval_tau", 0.8)), )
 _utility_weights = UtilityWeights()
 
 
@@ -46,8 +52,7 @@ def get_context_builder() -> ContextBuilder:
         embed_fn=_embedder.embed,
         memory=memory,
         weights=_retrieval_weights,
-        working_memory=_working_memory,
-    )
+        working_memory=_working_memory, )
 
 
 @lru_cache(maxsize=1)

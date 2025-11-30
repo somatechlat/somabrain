@@ -1,3 +1,10 @@
+import cProfile
+import pstats
+import io
+import tracemalloc
+import time
+import importlib
+
 """
 Profiling Harness for SomaBrain (S9)
 ------------------------------------
@@ -5,12 +12,6 @@ Profiles CPU and memory usage for any benchmark or API endpoint under load.
 Outputs bottleneck analysis and optimization suggestions.
 """
 
-import cProfile
-import pstats
-import io
-import tracemalloc
-import time
-import importlib
 
 BENCHMARK_MODULE = "benchmarks.benchmark_link_latency"
 BENCHMARK_FUNC = "run_benchmark"

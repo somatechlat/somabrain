@@ -10,6 +10,7 @@ Only known environment variable names are replaced – any unknown ``getenv``
 calls are left untouched so that developers can manually address them.
 
 Run the script from the repository root:
+    pass
 
 ```
 python scripts/convert_env.py
@@ -23,6 +24,7 @@ from __future__ import annotations
 import pathlib
 import re
 from typing import Dict, List
+from common.logging import logger
 
 ENV_TO_ATTR: Dict[str, str] = {
     "SOMABRAIN_POSTGRES_DSN": "postgres_dsn",
@@ -130,7 +132,7 @@ def replace_getenv_calls(content: str) -> str:
 
     pattern = re.compile(r"settings\.getenv\(\s*['\"]([^'\"]+)['\"](?:\s*,\s*[^)]+)?\)")
 
-    def repl(match: re.Match) -> str:
+def repl(match: re.Match) -> str:
         env_name = match.group(1)
         attr = ENV_TO_ATTR.get(env_name)
         if attr:

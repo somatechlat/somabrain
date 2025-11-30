@@ -1,3 +1,7 @@
+import json
+import datetime as dt
+import boto3
+
 """Redis + Postgres backed constitution storage helpers."""
 
 from __future__ import annotations
@@ -20,17 +24,18 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     select,
-    update,
-)
+    update, )
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from somabrain.storage import db as storage_db
+from common.logging import logger
 
 try:  # pragma: no cover - redis is optional during unit tests
-    import redis  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    redis = None  # type: ignore[assignment]
+import redis  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 LOGGER = logging.getLogger("somabrain.constitution.storage")
 
@@ -63,8 +68,7 @@ class ConstitutionVersion(storage_db.Base):
 class ConstitutionSignature(storage_db.Base):
     __tablename__ = "constitution_signatures"
     __table_args__ = (
-        UniqueConstraint("checksum", "signer_id", name="uq_constitution_signature"),
-    )
+        UniqueConstraint("checksum", "signer_id", name="uq_constitution_signature"), )
 
     id = Column(String(256), primary_key=True)
     checksum = Column(String(128), nullable=False, index=True)
@@ -78,14 +82,14 @@ class ConstitutionSignature(storage_db.Base):
 class ConstitutionStorage:
     """Persist constitutions to Redis (hot) and Postgres/SQLite (historical)."""
 
-    def __init__(
+def __init__(
         self,
         redis_url: Optional[str] = None,
         redis_client: Optional[Any] = None,
         redis_key: str = "soma:constitution",
         redis_sig_key: str = "soma:constitution:signatures",
-        db_url: Optional[str] = None,
-    ) -> None:
+        db_url: Optional[str] = None, ) -> None:
+            pass
         self._redis_client = redis_client
         self._redis_url = redis_url or settings.redis_url
         self._redis_key = redis_key
@@ -96,7 +100,7 @@ class ConstitutionStorage:
         self._ensure_schema()
 
     # ------------------------------------------------------------------
-    def save_new(
+def save_new(
         self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
     ) -> str:
         checksum = self._compute_checksum(document)
@@ -119,8 +123,12 @@ class ConstitutionStorage:
         self._write_redis_metadata(metadata, now)
         return checksum
 
-    def load_active(self) -> ConstitutionRecord:
+def load_active(self) -> ConstitutionRecord:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with self._session_scope(readonly=True) as session:
                 version = (
                     session.execute(
@@ -148,8 +156,7 @@ class ConstitutionStorage:
                         checksum=version.checksum,
                         metadata=version.meta or {},
                         created_at=self._ensure_datetime(version.created_at),
-                        signatures=signatures or None,
-                    )
+                        signatures=signatures or None, )
         except SQLAlchemyError as exc:
             LOGGER.debug("DB load failed, falling back to Redis: %s", exc)
 
@@ -158,10 +165,14 @@ class ConstitutionStorage:
             return record
         raise ConstitutionStorageError("No constitution document available")
 
-    def record_signature(self, checksum: str, signer_id: str, signature: str) -> None:
+def record_signature(self, checksum: str, signer_id: str, signature: str) -> None:
         now = dt.datetime.now(dt.timezone.utc)
         sig_id = f"{checksum}:{signer_id}"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with self._session_scope() as session:
                 session.merge(
                     ConstitutionSignature(
@@ -169,14 +180,13 @@ class ConstitutionStorage:
                         checksum=checksum,
                         signer_id=signer_id,
                         signature=signature,
-                        created_at=now,
-                    )
+                        created_at=now, )
                 )
         except SQLAlchemyError as exc:
             LOGGER.warning("Failed to persist constitution signature: %s", exc)
         self._sync_redis_signatures(checksum)
 
-    def get_signatures(
+def get_signatures(
         self, checksum: str, session: Optional[Session] = None
     ) -> List[Dict[str, str]]:
         owns_session = session is None
@@ -184,6 +194,10 @@ class ConstitutionStorage:
             session_factory = storage_db.get_session_factory(self._db_url)
             session = session_factory()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             rows = (
                 session.execute(
                     select(ConstitutionSignature)
@@ -215,26 +229,30 @@ class ConstitutionStorage:
         if not raw:
             return []
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             data = json.loads(raw)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LOGGER.debug("Unable to decode redis signature cache")
             return []
         if isinstance(data, list):
             return [x for x in data if isinstance(x, dict)]
         return []
 
-    def snapshot(
+def snapshot(
         self,
         document: Dict[str, Any],
         checksum: str,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        metadata: Optional[Dict[str, Any]] = None, ) -> Optional[str]:
+            pass
         """
         Write a constitution snapshot to local dir (if set) and/or S3 (if configured).
         Returns the local file path or S3 URI, whichever is used/preferred.
         """
-        import json
-        import datetime as dt
 
         timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         payload = {
@@ -258,7 +276,10 @@ class ConstitutionStorage:
         s3_uri = None
         if s3_bucket:
             try:
-                import boto3
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 s3 = boto3.client("s3")
                 s3_key = f"constitution/constitution_{timestamp}_{checksum[:12]}.json"
@@ -266,93 +287,116 @@ class ConstitutionStorage:
                     Bucket=s3_bucket,
                     Key=s3_key,
                     Body=json.dumps(payload, indent=2, sort_keys=True).encode("utf-8"),
-                    ContentType="application/json",
-                )
+                    ContentType="application/json", )
                 s3_uri = f"s3://{s3_bucket}/{s3_key}"
                 LOGGER.info("uploaded constitution snapshot to %s", s3_uri)
             except Exception as exc:
-                LOGGER.warning("S3 snapshot upload failed: %s", exc)
+                logger.exception("Exception caught: %s", exc)
+                raise
         return s3_uri or local_path
 
     # ------------------------------------------------------------------
-    @contextmanager
-    def _session_scope(self, readonly: bool = False) -> Generator[Session, None, None]:
+@contextmanager
+def _session_scope(self, readonly: bool = False) -> Generator[Session, None, None]:
         session_factory = storage_db.get_session_factory(self._db_url)
         session = session_factory()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             yield session
             if readonly:
                 session.rollback()
             else:
                 session.commit()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             session.rollback()
             raise
         finally:
             session.close()
 
-    def _ensure_schema(self) -> None:
+def _ensure_schema(self) -> None:
         engine = storage_db.get_engine(self._db_url)
         storage_db.Base.metadata.create_all(engine)
 
-    def _connect_redis(self):  # type: ignore[override]
+def _connect_redis(self):  # type: ignore[override]
         if self._redis_client is not None:
             return self._redis_client
         if not self._redis_url or redis is None:
             return None
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self._redis_client = redis.from_url(self._redis_url)
         except Exception as exc:
-            LOGGER.debug("Redis connection failed: %s", exc)
-            self._redis_client = None
+            logger.exception("Exception caught: %s", exc)
+            raise
         return self._redis_client
 
-    def _write_redis(
+def _write_redis(
         self,
         document: Dict[str, Any],
         checksum: str,
-        signatures: Optional[List[Dict[str, str]]] = None,
-    ) -> None:
+        signatures: Optional[List[Dict[str, str]]] = None, ) -> None:
+            pass
         client = self._connect_redis()
         if client is None:
             return
         payload = json.dumps(document, sort_keys=True)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             client.set(self._redis_key, payload)
             client.set(self._redis_checksum_key, checksum)
             if signatures is not None:
                 client.set(self._redis_sig_key, json.dumps(signatures))
         except Exception as exc:
-            LOGGER.debug("Failed to write constitution cache to redis: %s", exc)
+            logger.exception("Exception caught: %s", exc)
+            raise
 
-    def _write_redis_metadata(
+def _write_redis_metadata(
         self, metadata: Dict[str, Any], created_at: dt.datetime
     ) -> None:
         client = self._connect_redis()
         if client is None:
             return
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             client.set(
                 self._redis_meta_key,
                 json.dumps(
                     {"metadata": metadata, "created_at": created_at.isoformat()}
-                ),
-            )
+                ), )
         except Exception as exc:
-            LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
+            logger.exception("Exception caught: %s", exc)
+            raise
 
-    def _load_from_redis(self) -> Optional[ConstitutionRecord]:
+def _load_from_redis(self) -> Optional[ConstitutionRecord]:
         client = self._connect_redis()
         if client is None:
             return None
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             raw_doc = client.get(self._redis_key)
             if not raw_doc:
                 return None
             document = json.loads(raw_doc)
         except Exception as exc:
-            LOGGER.debug("Redis constitution payload invalid: %s", exc)
-            return None
+            logger.exception("Exception caught: %s", exc)
+            raise
         checksum_raw = client.get(self._redis_checksum_key)
         checksum = (
             checksum_raw.decode("utf-8")
@@ -364,12 +408,18 @@ class ConstitutionStorage:
         created_at = dt.datetime.now(dt.timezone.utc)
         if raw_meta:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 meta_payload = json.loads(raw_meta)
                 metadata = meta_payload.get("metadata")
                 ts = meta_payload.get("created_at")
                 if ts:
                     created_at = self._ensure_datetime(ts)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 LOGGER.debug("Unable to parse redis constitution metadata")
         signatures = self.get_signatures(checksum)
         return ConstitutionRecord(
@@ -377,10 +427,9 @@ class ConstitutionStorage:
             checksum=checksum,
             metadata=metadata,
             created_at=created_at,
-            signatures=signatures or None,
-        )
+            signatures=signatures or None, )
 
-    def _sync_redis_signatures(self, checksum: str) -> None:
+def _sync_redis_signatures(self, checksum: str) -> None:
         client = self._connect_redis()
         if client is None:
             return
@@ -388,30 +437,40 @@ class ConstitutionStorage:
         if not signatures:
             return
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             client.set(self._redis_sig_key, json.dumps(signatures))
         except Exception as exc:
-            LOGGER.debug("Failed to sync signatures to redis: %s", exc)
+            logger.exception("Exception caught: %s", exc)
+            raise
 
-    @staticmethod
-    def _compute_checksum(document: Dict[str, Any]) -> str:
+@staticmethod
+def _compute_checksum(document: Dict[str, Any]) -> str:
         payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
             "utf-8"
         )
         return hashlib.sha3_512(payload).hexdigest()
 
-    @staticmethod
-    def _ensure_datetime(value: Any) -> dt.datetime:
+@staticmethod
+def _ensure_datetime(value: Any) -> dt.datetime:
         if isinstance(value, dt.datetime):
             if value.tzinfo is None:
                 return value.replace(tzinfo=dt.timezone.utc)
             return value.astimezone(dt.timezone.utc)
         if isinstance(value, str):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 parsed = dt.datetime.fromisoformat(value)
                 if parsed.tzinfo is None:
                     parsed = parsed.replace(tzinfo=dt.timezone.utc)
                 return parsed.astimezone(dt.timezone.utc)
             except ValueError:
+                pass
         return dt.datetime.now(dt.timezone.utc)
 
 

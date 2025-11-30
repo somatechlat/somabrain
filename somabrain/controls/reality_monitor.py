@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Any, Dict, List
+from .metrics import REALITY_LOW, REALITY_OK
+from common.logging import logger
+
 """
 Reality Monitor Module for SomaBrain
 
@@ -6,6 +11,7 @@ operations. It evaluates the reliability and grounding of information based on
 the number of corroborating sources and provides confidence scores.
 
 Key Features:
+    pass
 - Source counting for truthfulness assessment
 - Confidence scoring based on evidence strength
 - Configurable minimum source requirements
@@ -13,11 +19,13 @@ Key Features:
 - Integration with memory retrieval operations
 
 Reality Assessment:
+    pass
 - OK: Sufficient sources meet minimum requirements
 - Low: Insufficient sources for reliable assessment
 - Confidence: Normalized score based on source count vs requirements
 
 Applications:
+    pass
 - Memory recall validation
 - Information reliability assessment
 - Confidence-based decision making
@@ -30,11 +38,8 @@ Classes:
     None (utility function-based implementation)
 """
 
-from __future__ import annotations
 
-from typing import Any, Dict, List
 
-from .metrics import REALITY_LOW, REALITY_OK
 
 
 def assess_reality(
@@ -50,6 +55,13 @@ def assess_reality(
     ok = bool(sources >= max(0, int(min_sources)))
     conf = min(1.0, float(sources) / float(max(1, min_sources * 2)))
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         (REALITY_OK if ok else REALITY_LOW).inc()
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return {"ok": ok, "sources": sources, "confidence": conf}

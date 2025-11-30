@@ -1,3 +1,16 @@
+import importlib.util
+import os
+import sys
+import traceback
+from common.logging import logger
+from common.config.settings import settings as config
+from somabrain.quantum import make_quantum_layer, HRRConfig as _HRRConfig
+from somabrain.quantum import QuantumLayer, HRRConfig
+from somabrain.embeddings import make_embedder
+from somabrain.mt_wm import MTWMConfig, MultiTenantWM
+from somabrain.microcircuits import MCConfig, MultiColumnWM
+from somabrain.memory_pool import MultiTenantMemory
+
 #!/usr/bin/env python3
 """Initialize runtime singletons for SomaBrain.
 
@@ -8,22 +21,24 @@ singletons.
 
 It is safe to run idempotently.
 """
-import importlib.util
-import os
-import sys
-import traceback
 
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     # Ensure the package path includes /app where the copied code lives
     sys.path.insert(0, "/app")
-    from common.config.settings import settings as config
 
     cfg = config
     # Build optional quantum layer if requested
     quantum = None
     if getattr(cfg, "use_hrr", False):
         try:
-            from somabrain.quantum import make_quantum_layer, HRRConfig as _HRRConfig
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             quantum = make_quantum_layer(
                 _HRRConfig(
@@ -37,12 +52,16 @@ try:
                     binding_tenant=getattr(cfg, "default_tenant", None),
                     binding_model_version=getattr(
                         cfg, "math_binding_model_version", None
-                    ),
-                )
+                    ), )
             )
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             try:
-                from somabrain.quantum import QuantumLayer, HRRConfig
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 quantum = QuantumLayer(
                     HRRConfig(
@@ -56,38 +75,49 @@ try:
                         binding_tenant=getattr(cfg, "default_tenant", None),
                         binding_model_version=getattr(
                             cfg, "math_binding_model_version", None
-                        ),
-                    )
+                        ), )
                 )
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 quantum = None
 
     # Create embedder and working memories
-    from somabrain.embeddings import make_embedder
-    from somabrain.mt_wm import MTWMConfig, MultiTenantWM
-    from somabrain.microcircuits import MCConfig, MultiColumnWM
-    from somabrain.memory_pool import MultiTenantMemory
 
     embedder = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         embedder = make_embedder(cfg, quantum)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         embedder = None
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mt_wm = MultiTenantWM(
             dim=cfg.embed_dim,
             cfg=MTWMConfig(
                 per_tenant_capacity=max(64, cfg.wm_size),
                 max_tenants=1000,
                 recency_time_scale=cfg.wm_recency_time_scale,
-                recency_max_steps=cfg.wm_recency_max_steps,
-            ),
-        )
-    except Exception as exc: raise
+                recency_max_steps=cfg.wm_recency_max_steps, ), )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mt_wm = None
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mc_wm = MultiColumnWM(
             dim=cfg.embed_dim,
             cfg=MCConfig(
@@ -97,21 +127,31 @@ try:
                 ),
                 vote_temperature=cfg.micro_vote_temperature,
                 recency_time_scale=cfg.wm_recency_time_scale,
-                recency_max_steps=cfg.wm_recency_max_steps,
-            ),
-        )
-    except Exception as exc: raise
+                recency_max_steps=cfg.wm_recency_max_steps, ), )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mc_wm = None
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mt_memory = MultiTenantMemory(cfg)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mt_memory = None
 
     # App expects the runtime code loaded under the name 'somabrain.runtime_module'
     # (see somabrain.app: spec_from_file_location("somabrain.runtime_module", ...)).
     _rt = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if "somabrain.runtime_module" in sys.modules:
             _rt = sys.modules["somabrain.runtime_module"]
             print(
@@ -136,52 +176,69 @@ try:
             print(
                 f"initialize_runtime: loaded somabrain.runtime_module from file -> {_rt} (id={id(_rt)})"
             )
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         print(
             "initialize_runtime: could not load somabrain.runtime_module; pkg_path=",
-            locals().get("pkg_path", None),
-        )
+            locals().get("pkg_path", None), )
         print(traceback.format_exc())
         _rt = None
 
     if _rt is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # show existing state for diagnostics
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 print(
                     "initialize_runtime: before set_singletons: embedder=",
                     getattr(_rt, "embedder", None),
                     "mt_wm=",
                     getattr(_rt, "mt_wm", None),
                     "mc_wm=",
-                    getattr(_rt, "mc_wm", None),
-                )
-            except Exception as exc: raise
+                    getattr(_rt, "mc_wm", None), )
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             _rt.set_singletons(
                 _embedder=embedder,
                 _quantum=quantum,
                 _mt_wm=mt_wm,
                 _mc_wm=mc_wm,
                 _mt_memory=mt_memory,
-                _cfg=cfg,
-            )
+                _cfg=cfg, )
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 print(
                     "initialize_runtime: after set_singletons: embedder=",
                     getattr(_rt, "embedder", None),
                     "mt_wm=",
                     getattr(_rt, "mt_wm", None),
                     "mc_wm=",
-                    getattr(_rt, "mc_wm", None),
-                )
-            except Exception as exc: raise
+                    getattr(_rt, "mc_wm", None), )
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             print("initialize_runtime: set_singletons executed")
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             print(
                 "initialize_runtime: set_singletons failed:\n", traceback.format_exc()
             )
     else:
         print("initialize_runtime: runtime module not loaded; skipping set_singletons")
 
-except Exception as exc: raise
-    print("initialize_runtime: failed to initialize runtime:\n", traceback.format_exc())
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise

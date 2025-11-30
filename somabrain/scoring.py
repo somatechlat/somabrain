@@ -12,11 +12,17 @@ from .salience import FDSalienceSketch
 _EPS = 1e-12
 
 from common.config.settings import settings
+from common.logging import logger
 
 try:
-    from . import metrics as M
-except Exception as exc: raise
-    M = None
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+from . import metrics as M
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 @dataclass
@@ -46,12 +52,13 @@ class UnifiedScorer:
     """Combine multiple similarity signals.
 
     Components:
+        pass
     - Cosine similarity in the base space
     - FD subspace cosine (projection via Frequent-Directions sketch)
     - Recency boost based on admission age (exponential decay)
     """
 
-    def __init__(
+def __init__(
         self,
         *,
         w_cosine: float,
@@ -60,8 +67,8 @@ class UnifiedScorer:
         weight_min: float,
         weight_max: float,
         recency_tau: float,
-        fd_backend: Optional[FDSalienceSketch] = None,
-    ) -> None:
+        fd_backend: Optional[FDSalienceSketch] = None, ) -> None:
+            pass
         lo, hi = sorted((float(weight_min), float(weight_max)))
         cosine_val = _gain_setting("w_cosine")
         fd_val = _gain_setting("w_fd")
@@ -71,13 +78,12 @@ class UnifiedScorer:
         self._weights = ScorerWeights(
             w_cosine=self._clamp("cosine", cosine_val, lo, hi),
             w_fd=self._clamp("fd", fd_val, lo, hi),
-            w_recency=self._clamp("recency", recency_val, lo, hi),
-        )
+            w_recency=self._clamp("recency", recency_val, lo, hi), )
         self._recency_tau = max(tau_val, _EPS)
         self._fd = fd_backend
         self._weight_bounds = (lo, hi)
 
-    def _clamp(self, component: str, value: float, lo: float, hi: float) -> float:
+def _clamp(self, component: str, value: float, lo: float, hi: float) -> float:
         v = float(value)
         if v < lo:
             if M:
@@ -89,15 +95,15 @@ class UnifiedScorer:
             return hi
         return v
 
-    @staticmethod
-    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+@staticmethod
+def _cosine(a: np.ndarray, b: np.ndarray) -> float:
         na = float(np.linalg.norm(a))
         nb = float(np.linalg.norm(b))
         if na <= _EPS or nb <= _EPS:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-    def _fd_component(self, query: np.ndarray, candidate: np.ndarray) -> float:
+def _fd_component(self, query: np.ndarray, candidate: np.ndarray) -> float:
         if self._fd is None:
             return 0.0
         q_proj = self._fd.project(query)
@@ -108,7 +114,7 @@ class UnifiedScorer:
             return 0.0
         return float(np.dot(q_proj, c_proj) / (nq * nc))
 
-    def _recency_component(self, recency_steps: Optional[int]) -> float:
+def _recency_component(self, recency_steps: Optional[int]) -> float:
         if recency_steps is None:
             return 0.0
         age = max(0.0, float(recency_steps))
@@ -116,14 +122,14 @@ class UnifiedScorer:
         val = float(np.exp(-age / tau))
         return max(0.0, min(1.0, val))
 
-    def score(
+def score(
         self,
         query: np.ndarray,
         candidate: np.ndarray,
         *,
         recency_steps: Optional[int] = None,
-        cosine: Optional[float] = None,
-    ) -> float:
+        cosine: Optional[float] = None, ) -> float:
+            pass
         q = np.asarray(query, dtype=float).reshape(-1)
         c = np.asarray(candidate, dtype=float).reshape(-1)
         cos = float(cosine) if cosine is not None else self._cosine(q, c)
@@ -147,7 +153,7 @@ class UnifiedScorer:
 
         return total_score
 
-    def stats(self) -> dict[str, float | dict[str, float | bool]]:
+def stats(self) -> dict[str, float | dict[str, float | bool]]:
         info: dict[str, float | dict[str, float | bool]] = {
             "w_cosine": self._weights.w_cosine,
             "w_fd": self._weights.w_fd,

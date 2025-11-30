@@ -1,7 +1,18 @@
+from __future__ import annotations
+import json
+from common.config.settings import settings
+import sys
+import time
+from typing import Any, Dict
+from common.logging import logger
+import requests  # type: ignore
+from confluent_kafka import Consumer as CfConsumer  # type: ignore
+
 """Verify that a reward POST results in a config update.
 
 The script is used in CI (the ``smoke-e2e.yml`` workflow) to ensure the
 learning loop works end‑to‑end:
+    pass
 
 1. POST a minimal reward to the ``reward_producer`` HTTP endpoint.
 2. Consume a single record from the ``cog.config.updates`` Kafka topic.
@@ -14,27 +25,25 @@ packages are missing the script will raise an informative exception rather
 than silently succeeding.
 """
 
-from __future__ import annotations
 
-import json
-from common.config.settings import settings
-import sys
-import time
-from typing import Any, Dict
 
 try:
-    import requests  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 except Exception as e:
-    raise RuntimeError(
-        "requests library is required to run verify_config_update.py"
-    ) from e
+    logger.exception("Exception caught: %s", e)
+    raise
 
 try:
-    from confluent_kafka import Consumer as CfConsumer  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 except Exception as e:
-    raise RuntimeError(
-        "confluent_kafka is required to run verify_config_update.py"
-    ) from e
+    logger.exception("Exception caught: %s", e)
+    raise
 
 
 def post_reward() -> None:
@@ -56,11 +65,15 @@ def post_reward() -> None:
         "total": 0.5,
     }
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp = requests.post(url, json=payload, timeout=5)
         resp.raise_for_status()
     except Exception as exc:
-        print(f"POST reward failed: {exc}", file=sys.stderr)
-        sys.exit(1)
+        logger.exception("Exception caught: %s", exc)
+        raise
 
 
 def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
@@ -87,6 +100,10 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
             # ignore errors, continue polling
             continue
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             payload = msg.value()
             if payload is None:
                 continue
@@ -95,7 +112,9 @@ def consume_config_update(timeout: float = 10.0) -> Dict[str, Any] | None:
             # installed.
             data = json.loads(payload.decode("utf-8"))
             return data
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             continue
     return None
 

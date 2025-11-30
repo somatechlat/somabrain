@@ -1,6 +1,22 @@
+from __future__ import annotations
+import json
+from pathlib import Path
+import argparse
+import os
+import platform
+import subprocess
+import sys
+from datetime import datetime, timezone
+import numpy as np
+from somabrain.numerics import (
+from common.logging import logger
+from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.numerics import irfft_norm, rfft_norm
+
 """Numerics workbench: run deterministic numeric experiments and write JSON results.
 
 This script is intended to be runnable in the project venv. It exercises:
+    pass
 - tiny-floor calculation across dtypes and dimensions
 - unitary FFT roundtrips
 - role generation and renormalization
@@ -10,40 +26,33 @@ Outputs a small JSON summary in `benchmarks/workbench_numerics_results.json`.
 Now parameterized via CLI and captures provenance metadata alongside results.
 """
 
-from __future__ import annotations
 
-import json
-from pathlib import Path
-import argparse
-import os
-import platform
-import subprocess
-import sys
-from datetime import datetime, timezone
 
-import numpy as np
 
-from somabrain.numerics import (
     compute_tiny_floor,
     irfft_norm,
     make_unitary_role,
-    rfft_norm,
-)
+    rfft_norm, )
 
 OUT = Path(__file__).resolve().parent / "workbench_numerics_results.json"
 
 
 def _git_sha() -> str:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return (
             subprocess.check_output(
                 ["git", "rev-parse", "HEAD"],
-                cwd=str(Path(__file__).resolve().parent.parent),
-            )
+                cwd=str(Path(__file__).resolve().parent.parent), )
             .decode()
             .strip()
         )
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return "unknown"
 
 
@@ -64,8 +73,8 @@ def _provenance(extra: dict | None = None) -> dict:
 
 def run(
     D_list: tuple[int, ...] = (128, 256, 1024),
-    dtypes: tuple[str, ...] = ("float32", "float64"),
-):
+    dtypes: tuple[str, ...] = ("float32", "float64"), ):
+        pass
     results = {
         "provenance": _provenance(
             {
@@ -122,8 +131,8 @@ def run(
 def extended_snr_capacity_run(
     D_list: tuple[int, ...] = (512, 1024),
     snr_db_list: tuple[float, ...] = (40.0, 20.0, 10.0, 0.0, -10.0),
-    seeds: tuple[int, ...] = (0, 1, 2),
-):
+    seeds: tuple[int, ...] = (0, 1, 2), ):
+        pass
     """Run SNR sweep and capacity experiments and save to a separate JSON file."""
     outp = Path(__file__).resolve().parent / "results_numerics.json"
 
@@ -135,12 +144,10 @@ def extended_snr_capacity_run(
             a = a / (np.linalg.norm(a) + 1e-30)
             role_token = f"bench_role_{D}_{sd}"
             # Use the quantum layer to generate a role and bind
-            from somabrain.quantum import HRRConfig, QuantumLayer
 
             q = QuantumLayer(HRRConfig(dim=D, dtype="float32", renorm=True))
             q.make_unitary_role(role_token)
             c_clean = q.bind_unitary(a, role_token)
-            from somabrain.numerics import irfft_norm, rfft_norm
 
             C = rfft_norm(c_clean)
             S = (C * np.conjugate(C)).real
@@ -163,7 +170,7 @@ def extended_snr_capacity_run(
                 a_exact = q.unbind_exact_unitary(c_noisy, role_token)
                 a_wien = q.unbind_wiener(c_noisy, role_token, snr_db=snr_db)
 
-                def cosine(a1, b1):
+def cosine(a1, b1):
                     a1 = a1.astype(np.float64)
                     b1 = b1.astype(np.float64)
                     na = float(np.linalg.norm(a1))
@@ -202,8 +209,7 @@ def extended_snr_capacity_run(
                 ),
                 "results": all_rows,
             },
-            indent=2,
-        )
+            indent=2, )
     )
     print(f"Wrote extended bench results to {outp}")
 
@@ -218,45 +224,39 @@ if __name__ == "__main__":
         nargs="*",
         type=int,
         default=[128, 256, 1024],
-        help="Dimensions for core workbench",
-    )
+        help="Dimensions for core workbench", )
     parser.add_argument(
         "--dtype",
         dest="dtypes",
         nargs="*",
         default=["float32", "float64"],
         choices=["float32", "float64"],
-        help="Dtypes for core workbench",
-    )
+        help="Dtypes for core workbench", )
     parser.add_argument(
         "--extended-D",
         dest="ext_D_list",
         nargs="*",
         type=int,
         default=[512, 1024],
-        help="Dimensions for extended SNR capacity",
-    )
+        help="Dimensions for extended SNR capacity", )
     parser.add_argument(
         "--snr",
         dest="snr_db_list",
         nargs="*",
         type=float,
         default=[40.0, 20.0, 10.0, 0.0, -10.0],
-        help="SNR values in dB for extended sweep",
-    )
+        help="SNR values in dB for extended sweep", )
     parser.add_argument(
         "--seeds",
         dest="seeds",
         nargs="*",
         type=int,
         default=[0, 1, 2],
-        help="Seeds for extended sweep",
-    )
+        help="Seeds for extended sweep", )
     args = parser.parse_args()
 
     run(D_list=tuple(args.D_list), dtypes=tuple(args.dtypes))
     extended_snr_capacity_run(
         D_list=tuple(args.ext_D_list),
         snr_db_list=tuple(args.snr_db_list),
-        seeds=tuple(args.seeds),
-    )
+        seeds=tuple(args.seeds), )

@@ -1,7 +1,20 @@
+from __future__ import annotations
+import json
+import re
+import uuid
+from dataclasses import dataclass, asdict
+from datetime import datetime
+from typing import Dict, List, Optional, Set, Any, Union
+from enum import Enum
+import redis.asyncio as redis
+from redis.exceptions import RedisError
+from common.logging import logger
+
 """
 Centralized Tenant Registry Service for SomaBrain
 
 Implements a perfect, centralized dynamic tenant management system with:
+    pass
 - UUID-based tenant generation
 - Persistent tenant registry
 - Centralized configuration management
@@ -11,21 +24,9 @@ Implements a perfect, centralized dynamic tenant management system with:
 - Tenant validation and normalization
 """
 
-from __future__ import annotations
 
-import json
-import logging
-import re
-import uuid
-from dataclasses import dataclass, asdict
-from datetime import datetime
-from typing import Dict, List, Optional, Set, Any, Union
-from enum import Enum
 
-import redis.asyncio as redis
-from redis.exceptions import RedisError
 
-logger = logging.getLogger(__name__)
 
 
 class TenantTier(str, Enum):
@@ -62,15 +63,15 @@ class TenantMetadata:
     created_by: Optional[str]
     expires_at: Optional[datetime] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         data = asdict(self)
         data["status"] = self.status.value
         data["tier"] = self.tier.value
         return data
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TenantMetadata:
+@classmethod
+def from_dict(cls, data: Dict[str, Any]) -> TenantMetadata:
         """Create from dictionary."""
         data = data.copy()
         data["status"] = TenantStatus(data["status"])
@@ -85,7 +86,7 @@ class TenantMetadata:
 class TenantRegistry:
     """Centralized tenant management service with perfect architecture."""
 
-    def __init__(self, redis_url: Optional[str] = None):
+def __init__(self, redis_url: Optional[str] = None):
         self.redis_url = redis_url or "redis://localhost:6379/0"
         self._redis: Optional[redis.Redis] = None
         self._tenant_cache: Dict[str, TenantMetadata] = {}
@@ -112,6 +113,10 @@ class TenantRegistry:
             return
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Initialise Redis connection first.
             self._redis = redis.from_url(self.redis_url, decode_responses=True)
             await self._redis.ping()
@@ -157,17 +162,21 @@ class TenantRegistry:
 
         for tenant_config in system_tenants:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 await self.register_tenant(**tenant_config)
             except ValueError as e:
                 # Tenant might already exist, which is fine
                 logger.debug("System tenant creation skipped: %s", e)
 
-    def _generate_system_tenant_id(self, prefix: str) -> str:
+def _generate_system_tenant_id(self, prefix: str) -> str:
         """Generate UUID-based tenant ID with system prefix."""
         uuid_suffix = uuid.uuid4().hex[:12]
         return f"{prefix}_{uuid_suffix}"
 
-    def _generate_dynamic_tenant_id(self) -> str:
+def _generate_dynamic_tenant_id(self) -> str:
         """Generate dynamic UUID-based tenant ID."""
         return f"tenant_{uuid.uuid4().hex}"
 
@@ -180,8 +189,8 @@ class TenantRegistry:
         exempt_reason: Optional[str] = None,
         created_by: Optional[str] = None,
         config: Optional[Dict[str, Any]] = None,
-        expires_at: Optional[datetime] = None,
-    ) -> str:
+        expires_at: Optional[datetime] = None, ) -> str:
+            pass
         """Register a new tenant with validation and audit logging."""
 
         if not self._initialized:
@@ -215,8 +224,7 @@ class TenantRegistry:
             exempt_reason=exempt_reason,
             last_activity=datetime.utcnow(),
             created_by=created_by,
-            expires_at=expires_at,
-        )
+            expires_at=expires_at, )
 
         # Store tenant metadata
         await self._store_tenant_metadata(metadata)
@@ -237,8 +245,7 @@ class TenantRegistry:
                 "tier": tier.value,
                 "is_exempt": is_exempt,
                 "created_by": created_by,
-            },
-        )
+            }, )
 
         logger.info("Tenant registered: %s (%s)", tenant_id, display_name)
         return tenant_id
@@ -267,7 +274,7 @@ class TenantRegistry:
         normalized_id = self._normalize_tenant_id(tenant_id)
         return await self.get_tenant(normalized_id) is not None
 
-    def is_exempt(self, tenant_id: str) -> bool:
+def is_exempt(self, tenant_id: str) -> bool:
         """Check if tenant is exempt with cached performance."""
         normalized_id = self._normalize_tenant_id(tenant_id)
         return normalized_id in self._exempt_cache
@@ -284,6 +291,10 @@ class TenantRegistry:
             await self.initialize()
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Get all tenant keys
             pattern = "tenant:*"
             keys = await self._redis.keys(pattern)
@@ -350,6 +361,10 @@ class TenantRegistry:
             return False
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Delete from Redis
             await self._redis.delete(f"tenant:{normalized_id}")
 
@@ -361,8 +376,7 @@ class TenantRegistry:
             await self._audit_log(
                 "tenant_deleted",
                 normalized_id,
-                {"display_name": metadata.display_name, "tier": metadata.tier.value},
-            )
+                {"display_name": metadata.display_name, "tier": metadata.tier.value}, )
 
             logger.info("Tenant deleted: %s", normalized_id)
             return True
@@ -383,11 +397,11 @@ class TenantRegistry:
             await self._store_tenant_metadata(metadata)
             self._tenant_cache[normalized_id] = metadata
 
-    def _normalize_tenant_id(self, tenant_id: str) -> str:
+def _normalize_tenant_id(self, tenant_id: str) -> str:
         """Normalize tenant ID for consistent comparison."""
         return tenant_id.strip().lower()
 
-    def _validate_tenant_id(self, tenant_id: str) -> bool:
+def _validate_tenant_id(self, tenant_id: str) -> bool:
         """Validate tenant ID format and security."""
         if not tenant_id or len(tenant_id) < 3 or len(tenant_id) > 64:
             return False
@@ -423,6 +437,10 @@ class TenantRegistry:
             raise RuntimeError("Tenant registry not initialized")
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             key = f"tenant:{metadata.tenant_id}"
             data = metadata.to_dict()
 
@@ -452,6 +470,10 @@ class TenantRegistry:
             raise RuntimeError("Tenant registry not initialized")
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             key = f"tenant:{tenant_id}"
             data = await self._redis.get(key)
 
@@ -470,6 +492,10 @@ class TenantRegistry:
             return
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Get all tenant keys
             pattern = "tenant:*"
             keys = await self._redis.keys(pattern)
@@ -500,6 +526,10 @@ class TenantRegistry:
             return
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             audit_key = f"audit:tenant:{datetime.utcnow().strftime('%Y-%m-%d')}"
             audit_entry = {
                 "timestamp": datetime.utcnow().isoformat(),
@@ -556,6 +586,7 @@ class TenantRegistry:
                 and metadata.expires_at <= current_time
                 and metadata.tier != TenantTier.SYSTEM
             ):
+                pass
 
                 if await self.delete_tenant(tenant_id):
                     cleaned_count += 1

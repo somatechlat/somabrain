@@ -1,3 +1,11 @@
+from __future__ import annotations
+import os
+import sys
+from common.config.settings import settings
+from common.logging import logger
+from standard sources.
+import uvicorn  # type: ignore
+
 """
 Command Line Interface Module for SomaBrain.
 
@@ -9,13 +17,9 @@ Functions:
     run_api: Launch the FastAPI API server using uvicorn.
 """
 
-from __future__ import annotations
 
-import os
-import sys
 
 # Direct import of the shared settings object.
-from common.config.settings import settings
 
 
 def get_config():
@@ -36,7 +40,6 @@ def run_api() -> None:
 
     Console entry point for running the SomaBrain API server. Respects environment
     variables for host and port configuration, and loads SomaBrain configuration
-    from standard sources.
 
     Usage:
         somabrain-api [--host 0.0.0.0 --port 8000]
@@ -51,16 +54,23 @@ def run_api() -> None:
 
     Example:
         >>> # From command line:
+            pass
         >>> # somabrain-api --host localhost --port 3000
         >>>
         >>> # Or set environment:
+            pass
         >>> # export HOST=127.0.0.1
         >>> # export PORT=8080
         >>> # somabrain-api
     """
     try:
-        import uvicorn  # type: ignore
-    except Exception as exc: raise
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         print(
             "uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr
         )

@@ -1,3 +1,14 @@
+from __future__ import annotations
+import json
+import os
+import threading
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Sequence
+from dataclasses import dataclass, asdict
+from common.logging import logger
+
 """
 Local Journal Module for SomaBrain
 
@@ -6,6 +17,7 @@ The journal provides reliable local storage for all events with redundant persis
 and comprehensive operational capabilities.
 
 Key Features:
+    pass
 - Local journaling with file-based storage
 - Configurable rotation and retention policies
 - Integration with outbox system for redundant persistence
@@ -21,19 +33,8 @@ Functions:
     get_journal: Get or create the global journal instance
 """
 
-from __future__ import annotations
 
-import json
-import os
-import threading
-import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
-from dataclasses import dataclass, asdict
-import logging
 
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -48,8 +49,8 @@ class JournalConfig:
     compression: bool = True
     sync_writes: bool = True  # fsync for durability
 
-    @classmethod
-    def from_env(cls) -> JournalConfig:
+@classmethod
+def from_env(cls) -> JournalConfig:
         """Create configuration from environment variables safely.
 
         Mirrors the robust helpers used in ``common.config.settings`` –
@@ -57,16 +58,22 @@ class JournalConfig:
         """
 
         # Helper to parse int env vars with comment stripping
-        def _int(name: str, default: int) -> int:
+def _int(name: str, default: int) -> int:
             # Access Settings attribute directly; fallback to provided default.
             raw = getattr(settings, name.lower(), str(default))
             raw = raw.split("#", 1)[0].strip()
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return int(raw)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 return default
 
-        def _bool(name: str, default: bool) -> bool:
+def _bool(name: str, default: bool) -> bool:
             raw = getattr(settings, name.lower(), None)
             if raw is None:
                 return default
@@ -84,8 +91,7 @@ class JournalConfig:
             rotation_interval=_int("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", 86_400),
             retention_days=_int("SOMABRAIN_JOURNAL_RETENTION_DAYS", 7),
             compression=_bool("SOMABRAIN_JOURNAL_COMPRESSION", True),
-            sync_writes=_bool("SOMABRAIN_JOURNAL_SYNC_WRITES", True),
-        )
+            sync_writes=_bool("SOMABRAIN_JOURNAL_SYNC_WRITES", True), )
 
 
 @dataclass
@@ -102,18 +108,18 @@ class JournalEvent:
     retries: int = 0
     last_error: Optional[str] = None
 
-    def __post_init__(self):
+def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.utcnow()
 
-    def to_dict(self) -> Dict[str, Any]:
+def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary for JSON serialization."""
         data = asdict(self)
         data["timestamp"] = self.timestamp.isoformat()
         return data
 
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> JournalEvent:
+@classmethod
+def from_dict(cls, data: Dict[str, Any]) -> JournalEvent:
         """Create event from dictionary."""
         if "timestamp" in data and isinstance(data["timestamp"], str):
             data["timestamp"] = datetime.fromisoformat(data["timestamp"])
@@ -123,7 +129,7 @@ class JournalEvent:
 class LocalJournal:
     """Local file-based journal implementation."""
 
-    def __init__(self, config: JournalConfig):
+def __init__(self, config: JournalConfig):
         self.config = config
         self.journal_dir = Path(config.journal_dir)
         self.current_file: Optional[Path] = None
@@ -135,9 +141,13 @@ class LocalJournal:
 
         self._initialize()
 
-    def _initialize(self) -> None:
+def _initialize(self) -> None:
         """Initialize the journal directory and current file."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Create journal directory if it doesn't exist
             self.journal_dir.mkdir(parents=True, exist_ok=True)
 
@@ -151,10 +161,10 @@ class LocalJournal:
             logger.info(f"Local journal initialized at {self.journal_dir}")
 
         except Exception as e:
-            logger.error(f"Failed to initialize local journal: {e}")
+            logger.exception("Exception caught: %s", e)
             raise
 
-    def _cleanup_old_files(self) -> None:
+def _cleanup_old_files(self) -> None:
         """Clean up journal files older than retention period."""
         if not self.journal_dir.exists():
             return
@@ -163,10 +173,18 @@ class LocalJournal:
 
         for file_path in self.journal_dir.glob("journal_*.json*"):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 # Extract timestamp from filename
                 if file_path.stem.startswith("journal_"):
                     timestamp_str = file_path.stem[8:]  # Remove "journal_" prefix
                     try:
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         file_time = datetime.fromisoformat(
                             timestamp_str.replace("_", ":")
                         )
@@ -177,9 +195,10 @@ class LocalJournal:
                         # If we can't parse the timestamp, keep the file
                         continue
             except Exception as e:
-                logger.warning(f"Failed to clean up journal file {file_path}: {e}")
+                logger.exception("Exception caught: %s", e)
+                raise
 
-    def _rotate_if_needed(self) -> None:
+def _rotate_if_needed(self) -> None:
         """Rotate journal file if needed based on size or time."""
         current_time = time.time()
 
@@ -198,8 +217,14 @@ class LocalJournal:
         # Close current file if open
         if self.current_file_handle:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self.current_file_handle.close()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             self.current_file_handle = None
 
         # Create new journal file
@@ -207,21 +232,29 @@ class LocalJournal:
         new_file = self.journal_dir / f"journal_{timestamp}.json"
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             self.current_file = new_file
             self.current_file_handle = open(new_file, "a", encoding="utf-8")
             self.current_file_size = new_file.stat().st_size if new_file.exists() else 0
             self.last_rotation = current_time
             logger.info(f"Rotated to new journal file: {new_file}")
         except Exception as e:
-            logger.error(f"Failed to create new journal file {new_file}: {e}")
+            logger.exception("Exception caught: %s", e)
             raise
 
-    def _write_event(self, event: JournalEvent) -> bool:
+def _write_event(self, event: JournalEvent) -> bool:
         """Write a single event to the journal file."""
         if not self._initialized:
             return False
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with self._lock:
                 self._rotate_if_needed()
 
@@ -245,14 +278,14 @@ class LocalJournal:
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to write event to journal: {e}")
-            return False
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    def append_event(self, event: JournalEvent) -> bool:
+def append_event(self, event: JournalEvent) -> bool:
         """Append an event to the journal."""
         return self._write_event(event)
 
-    def append_events(self, events: Sequence[JournalEvent]) -> int:
+def append_events(self, events: Sequence[JournalEvent]) -> int:
         """Append multiple events to the journal."""
         written = 0
         for event in events:
@@ -260,28 +293,35 @@ class LocalJournal:
                 written += 1
         return written
 
-    def read_events(
+def read_events(
         self,
         tenant_id: Optional[str] = None,
         status: Optional[str] = None,
         topic: Optional[str] = None,
         limit: Optional[int] = None,
-        since: Optional[datetime] = None,
-    ) -> List[JournalEvent]:
+        since: Optional[datetime] = None, ) -> List[JournalEvent]:
+            pass
         """Read events from journal files with filtering."""
 
         events = []
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Read from all journal files, newest first
             journal_files = sorted(
                 self.journal_dir.glob("journal_*.json*"),
                 key=lambda x: x.stat().st_mtime,
-                reverse=True,
-            )
+                reverse=True, )
 
             for file_path in journal_files:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     with open(file_path, "r", encoding="utf-8") as f:
                         for line in f:
                             line = line.strip()
@@ -289,6 +329,10 @@ class LocalJournal:
                                 continue
 
                             try:
+                                pass
+                            except Exception as exc:
+                                logger.exception("Exception caught: %s", exc)
+                                raise
                                 event_data = json.loads(line)
                                 event = JournalEvent.from_dict(event_data)
 
@@ -313,15 +357,16 @@ class LocalJournal:
                                 continue
 
                 except Exception as e:
-                    logger.warning(f"Failed to read journal file {file_path}: {e}")
-                    continue
+                    logger.exception("Exception caught: %s", e)
+                    raise
 
         except Exception as e:
-            logger.error(f"Failed to read journal events: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
 
         return events
 
-    def mark_events_sent(self, event_ids: Sequence[str]) -> int:
+def mark_events_sent(self, event_ids: Sequence[str]) -> int:
         """Mark events as sent in the journal."""
 
         # For file-based journal, we need to rewrite the files
@@ -329,6 +374,10 @@ class LocalJournal:
         updated = 0
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with self._lock:
                 # Read all events
                 all_events = self.read_events()
@@ -344,25 +393,37 @@ class LocalJournal:
                     self._rewrite_journal_files(all_events)
 
         except Exception as e:
-            logger.error(f"Failed to mark events as sent: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
 
         return updated
 
-    def _rewrite_journal_files(self, events: List[JournalEvent]) -> None:
+def _rewrite_journal_files(self, events: List[JournalEvent]) -> None:
         """Rewrite all journal files with updated events."""
         # Close current file
         if self.current_file_handle:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self.current_file_handle.close()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             self.current_file_handle = None
 
         # Remove existing journal files
         for file_path in self.journal_dir.glob("journal_*.json*"):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 file_path.unlink()
             except Exception as e:
-                logger.warning(f"Failed to remove journal file {file_path}: {e}")
+                logger.exception("Exception caught: %s", e)
+                raise
 
         # Reset rotation state and rewrite events
         self.current_file = None
@@ -374,9 +435,13 @@ class LocalJournal:
         for event in events:
             self._write_event(event)
 
-    def get_stats(self) -> Dict[str, Any]:
+def get_stats(self) -> Dict[str, Any]:
         """Get journal statistics."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             stats = {
                 "journal_dir": str(self.journal_dir),
                 "current_file": str(self.current_file) if self.current_file else None,
@@ -402,16 +467,22 @@ class LocalJournal:
             return stats
 
         except Exception as e:
-            logger.error(f"Failed to get journal stats: {e}")
-            return {"error": str(e)}
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    def close(self) -> None:
+def close(self) -> None:
         """Close the journal and cleanup resources."""
         with self._lock:
             if self.current_file_handle:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     self.current_file_handle.close()
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                 self.current_file_handle = None
             self._initialized = False
 

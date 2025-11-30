@@ -1,13 +1,14 @@
 from __future__ import annotations
-
 import logging
 from uuid import uuid4
-
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-
 from somabrain import audit
 from somabrain.constitution import ConstitutionEngine, ConstitutionError
+from common.logging import logger
+
+
+
 
 LOGGER = logging.getLogger("somabrain.api.constitution")
 
@@ -38,9 +39,17 @@ async def validate(req: ValidateRequest, request: Request):
             status_code=503, detail="Constitution engine not initialized"
         )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         result = engine.validate(req.input)
         # Emit audit event (non-blocking, best-effort)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             event = {
                 "event_id": str(uuid4()),
                 "timestamp": int(__import__("time").time()),
@@ -57,7 +66,9 @@ async def validate(req: ValidateRequest, request: Request):
                 "constitution_sig": engine.get_signature(),
             }
             audit.publish_event(event)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LOGGER.exception("Failed to emit constitution audit event")
         return result
     except ConstitutionError as e:
@@ -79,6 +90,10 @@ async def load_constitution(payload: dict, request: Request):
             status_code=503, detail="Constitution engine not initialized"
         )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         engine.save(payload)
         return {"status": "saved", "checksum": engine.get_checksum()}
     except ConstitutionError as e:

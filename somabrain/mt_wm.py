@@ -1,3 +1,14 @@
+from __future__ import annotations
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from typing import List, Tuple
+import numpy as np
+import threading
+from .wm import WorkingMemory
+from common.config.settings import settings
+from . import metrics as M
+from common.logging import logger
+
 """
 Multi-Tenant Working Memory Module for SomaBrain
 
@@ -6,6 +17,7 @@ LRU eviction. It provides isolated working memory instances for different tenant
 while efficiently managing memory resources across the system.
 
 Key Features:
+    pass
 - Tenant-isolated working memory instances
 - LRU-based eviction for memory efficiency
 - Configurable capacity per tenant
@@ -13,6 +25,7 @@ Key Features:
 - Thread-safe operations with ordered access tracking
 
 Operations:
+    pass
 - Admit: Store vectors and payloads in tenant-specific memory
 - Recall: Retrieve similar items using cosine similarity
 - Novelty: Compute novelty scores for new inputs
@@ -26,22 +39,12 @@ Functions:
     None (class-based implementation)
 """
 
-from __future__ import annotations
 
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import List, Tuple
 
-import numpy as np
-import threading
-import logging
 
-from .wm import WorkingMemory
-from common.config.settings import settings
 
 # Import metrics for working‑memory instrumentation. The metrics module defines
 # counters such as ``WM_ADMIT``, ``WM_HITS``, ``WM_MISSES`` and ``WM_EVICTIONS``.
-from . import metrics as M
 
 
 @dataclass
@@ -59,7 +62,8 @@ class MTWMConfig:
 
 
 class MultiTenantWM:
-    def __init__(self, dim: int, cfg: MTWMConfig | None = None, scorer=None):
+    pass
+def __init__(self, dim: int, cfg: MTWMConfig | None = None, scorer=None):
         self.dim = int(dim)
         self.cfg = cfg or MTWMConfig()
         self._wms: OrderedDict[str, WorkingMemory] = OrderedDict()
@@ -67,7 +71,7 @@ class MultiTenantWM:
         # Re‑entrant lock to guarantee thread‑safety for all public operations.
         self._lock = threading.RLock()
 
-    def _ensure(self, tenant_id: str) -> WorkingMemory:
+def _ensure(self, tenant_id: str) -> WorkingMemory:
         """Return the ``WorkingMemory`` instance for *tenant_id*.
 
         The method is protected by ``self._lock`` to ensure that creation,
@@ -82,8 +86,7 @@ class MultiTenantWM:
                     dim=self.dim,
                     scorer=self._scorer,
                     recency_time_scale=self.cfg.recency_time_scale,
-                    recency_max_steps=self.cfg.recency_max_steps,
-                )
+                    recency_max_steps=self.cfg.recency_max_steps, )
                 self._wms[tenant_id] = wm
             # LRU update – move the accessed tenant to the end (most‑recent)
             self._wms.move_to_end(tenant_id)
@@ -91,32 +94,42 @@ class MultiTenantWM:
             while len(self._wms) > self.cfg.max_tenants:
                 evicted_id, _ = self._wms.popitem(last=False)
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     M.WM_EVICTIONS.inc()
-                except Exception as exc: raise
-                logger = logging.getLogger(__name__)
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                 logger.debug(
                     "Evicted tenant %s from MultiTenantWM (max_tenants=%s)",
                     evicted_id,
-                    self.cfg.max_tenants,
-                )
+                    self.cfg.max_tenants, )
             # Update utilization after any creation or eviction
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 total_items = sum(len(w._items) for w in self._wms.values())
                 total_capacity = self.cfg.max_tenants * self.cfg.per_tenant_capacity
                 M.WM_UTILIZATION.set(
                     total_items / total_capacity if total_capacity else 0.0
                 )
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             return wm
 
-    def admit(
+def admit(
         self,
         tenant_id: str,
         vec: np.ndarray,
         payload: dict,
         *,
-        cleanup_overlap: float | None = None,
-    ) -> None:
+        cleanup_overlap: float | None = None, ) -> None:
+            pass
         """Store a vector/payload for *tenant_id* and increment ``WM_ADMIT``.
 
         The metric uses a ``source`` label that contains the tenant identifier
@@ -126,10 +139,17 @@ class MultiTenantWM:
         with self._lock:
             self._ensure(tenant_id).admit(vec, payload, cleanup_overlap=cleanup_overlap)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.WM_ADMIT.labels(source=tenant_id[:50]).inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
-    def recall(
+def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
     ) -> List[Tuple[float, dict]]:
         """Retrieve up to *top_k* items for *tenant_id*.
@@ -140,18 +160,24 @@ class MultiTenantWM:
         with self._lock:
             results = self._ensure(tenant_id).recall(vec, top_k)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if results:
                 M.WM_HITS.inc()
             else:
                 M.WM_MISSES.inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         return results
 
-    def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
         with self._lock:
             return self._ensure(tenant_id).novelty(vec)
 
-    def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
         with self._lock:
             wm = self._ensure(tenant_id)
             data = [it.payload for it in wm._items]  # internal list for introspection
@@ -159,6 +185,6 @@ class MultiTenantWM:
             return data[-limit:]
         return data
 
-    def tenants(self) -> List[str]:
+def tenants(self) -> List[str]:
         with self._lock:
             return list(self._wms.keys())

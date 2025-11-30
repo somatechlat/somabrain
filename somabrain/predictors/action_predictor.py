@@ -1,3 +1,9 @@
+from __future__ import annotations
+from typing import Tuple
+import numpy as np
+from common.config.settings import settings
+from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
+
 """Action predictor service implementation.
 
 Provides a concrete predictor for the *action* domain. It builds on the generic
@@ -7,14 +13,9 @@ parameters are sourced from ``settings`` – no hard‑coded values – satisfyi
 VIBE requirement for a single source of truth.
 """
 
-from __future__ import annotations
 
-from typing import Tuple
 
-import numpy as np
 
-from common.config.settings import settings
-from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
 
 
 def _load_action_operator() -> Tuple[callable, int]:
@@ -44,17 +45,16 @@ class ActionPredictor(HeatDiffusionPredictor):
     derived from the global ``settings``.
     """
 
-    def __init__(self) -> None:
+def __init__(self) -> None:
         apply_A, dim = _load_action_operator()
         cfg = PredictorConfig(
             diffusion_t=getattr(settings, "diffusion_t", 0.5),
             alpha=getattr(settings, "predictor_alpha", 2.0),
             chebyshev_K=getattr(settings, "chebyshev_K", 30),
-            lanczos_m=getattr(settings, "lanczos_m", 20),
-        )
+            lanczos_m=getattr(settings, "lanczos_m", 20), )
         super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
 
-    def predict(
+def predict(
         self, source_idx: int, observed: np.ndarray
     ) -> Tuple[np.ndarray, float, float]:
         """Run a single prediction step for the action domain.

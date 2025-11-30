@@ -1,3 +1,14 @@
+from __future__ import annotations
+import json
+from typing import Any, Dict, Optional
+from somabrain.modes import feature_enabled
+from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from somabrain.common.infra import assert_ready
+from common.logging import logger
+import redis  # type: ignore
+from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
+from libs.kafka_cog.serde import AvroSerde  # type: ignore
+
 """
 WM Updates Cache Worker
 -----------------------
@@ -11,27 +22,23 @@ Keys: wm:updates:{tenant}:{domain}
 
 """
 
-from __future__ import annotations
 
-import json
-from typing import Any, Dict, Optional
-from somabrain.modes import feature_enabled
 
 # Strict: use confluent-kafka Consumer only
-from confluent_kafka import Consumer as CKConsumer  # type: ignore
-from somabrain.common.infra import assert_ready
 
 try:  # Redis optional
-    import redis  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    redis = None  # type: ignore
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
-except Exception as exc: raise  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 def _bootstrap() -> str:
@@ -48,8 +55,14 @@ def _redis_client():
     if not url or redis is None:
         return None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return redis.Redis.from_url(url)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 
@@ -57,19 +70,38 @@ def _serde() -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return AvroSerde(load_schema("belief_update"))  # type: ignore[arg-type]
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 
 def _decode(payload: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
     if serde is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return serde.deserialize(payload)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return json.loads(payload.decode("utf-8"))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 
@@ -82,8 +114,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_kafka=True,
         require_redis=True,
         require_postgres=False,
-        require_opa=False,
-    )
+        require_opa=False, )
     r = _redis_client()
     max_items = int(getattr(settings, "wm_updates_max_items", 50) or 50)
     ttl_seconds = int(getattr(settings, "wm_updates_ttl_seconds", 8) or 8)
@@ -104,35 +135,63 @@ def run_forever() -> None:  # pragma: no cover - integration loop
     )
     serde = _serde()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         while True:
             msg = consumer.poll(timeout=1.0)
             if msg is None or msg.error():
                 continue
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ev = _decode(msg.value(), serde)
                 if not isinstance(ev, dict):
                     continue
                 tenant = "public"
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     # push JSON; trim to max_items; set TTL
                     r.lpush(key, json.dumps(ev))
                     if max_items > 0:
                         r.ltrim(key, 0, max_items - 1)
                     if ttl_seconds > 0:
                         r.expire(key, ttl_seconds)
-                except Exception as exc: raise
-            except Exception as exc: raise
-                # swallow and continue
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
     finally:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             consumer.close()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 def main() -> None:  # pragma: no cover

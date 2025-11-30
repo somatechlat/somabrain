@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import Any, Optional, Sequence, Union
+import numpy as np
+from common.logging import logger
+from typing import Any as _Any, cast as _cast
+from . import roles as _roles
+from . import roles as _roles
+
 """
 Canonical numeric primitives for SomaBrain.
 
@@ -6,11 +14,8 @@ Canonical numeric primitives for SomaBrain.
 - normalize_array: safe L2 normalization; deterministic alternative for subtiny slices
 """
 
-from __future__ import annotations
 
-from typing import Any, Optional, Sequence, Union
 
-import numpy as np
 
 _ArrayLike = Union[np.ndarray, Sequence]
 
@@ -28,8 +33,8 @@ def compute_tiny_floor(
     dim_or_array: Union[int, np.ndarray],
     dtype: Any = np.float32,
     strategy: str = "sqrt",
-    scale: float = 1.0,
-) -> float:
+    scale: float = 1.0, ) -> float:
+        pass
     """Compute a dtype-aware *amplitude* tiny-floor (L2-norm units).
 
     This function returns a small positive scalar in units of the L2 norm
@@ -42,11 +47,16 @@ def compute_tiny_floor(
     """
     # Canonicalize input into (D:int, dt:np.dtype)
     try:
-        from typing import Any as _Any, cast as _cast
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         dt_try = np.dtype(_cast(_Any, dim_or_array))
         is_dtype_like = True
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         is_dtype_like = False
 
     if is_dtype_like and isinstance(dtype, (int, np.integer)):
@@ -59,13 +69,25 @@ def compute_tiny_floor(
             shape = getattr(dim_or_array, "shape", None)
             if shape is not None:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     D = int(shape[-1])
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     D = int(np.prod(shape))
             else:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     D = int(len(dim_or_array))  # type: ignore[arg-type]
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     D = 1
         dt = np.dtype(dtype)
 
@@ -118,8 +140,8 @@ def normalize_array(
     tiny_floor_strategy: str = "sqrt",
     dtype: Any = np.float32,
     strict: bool = False,
-    **kwargs,
-) -> np.ndarray:
+    **kwargs, ) -> np.ndarray:
+        pass
     """
     L2-normalize `x` along axis in a numerically safe way.
 
@@ -127,6 +149,7 @@ def normalize_array(
     Strict: raise ValueError on subtiny norms.
     """
     # Legacy compatibility:
+        pass
     # - allow old keyword `raise_on_subtiny` -> strict
     # - tolerate callers that passed `dim` as the axis (e.g. axis >= arr.ndim)
     if "raise_on_subtiny" in kwargs:
@@ -142,23 +165,39 @@ def normalize_array(
     axis_param = axis
     axis_norm = axis if axis >= 0 else ndim + axis
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         D = arr.shape[axis_norm]
-    except Exception as exc: raise
-        # Treat axis param as D when it doesn't index into arr
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             D = int(axis_param)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             D = arr.shape[-1]
         # use last axis for normalization in this compatibility case
         axis = -1
         axis_norm = ndim - 1
     if not isinstance(keepdims, (bool,)):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # caller passed dtype as the second positional argument
             dtype = np.dtype(keepdims)
             keepdims = False
-        except Exception as exc: raise
-            # keepdims really was a truthy/falsey value
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             keepdims = bool(keepdims)
 
     tiny = compute_tiny_floor(D, dtype=dtype, strategy=tiny_floor_strategy)
@@ -168,8 +207,14 @@ def normalize_array(
     # truncate to match D. This supports schema normalization which passes
     # dim as the second argument.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         cur_len = arr.shape[axis_norm]
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         cur_len = None
     if cur_len is not None and cur_len != D:
         if cur_len < D:
@@ -288,7 +333,10 @@ def make_unitary_role(
     Returns the time-domain role vector (numpy array).
     """
     try:
-        from . import roles as _roles
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     except Exception as e:  # pragma: no cover - import failure
         raise ImportError(
             "make_unitary_role is unavailable; failed to import somabrain.roles"
@@ -310,7 +358,10 @@ def role_spectrum_from_seed(
 ):
     """Legacy-compatible wrapper returning the rfft spectrum; lazy-imports roles."""
     try:
-        from . import roles as _roles
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
     except Exception as e:  # pragma: no cover - import failure
         raise ImportError(
             "role_spectrum_from_seed is unavailable; failed to import somabrain.roles"
@@ -338,8 +389,14 @@ def spectral_floor_from_tiny(tiny_amplitude: float, dim: int) -> float:
     other configured epsilons.
     """
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         D = int(dim)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         D = int(getattr(dim, "__len__", lambda: dim)())
     # convert amplitude floor (||x||_2 units) to per-frequency-bin power floor
     tiny_amp = float(tiny_amplitude)

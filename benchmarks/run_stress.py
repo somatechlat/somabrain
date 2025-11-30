@@ -1,14 +1,19 @@
+import argparse
+import json
+import os
+from pathlib import Path
+import numpy as np
+from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.numerics import irfft_norm, rfft_norm
+from somabrain.metrics_dump import dump as dump_metrics
+from common.logging import logger
+
 """Run a focused stress benchmark and write results to benchmarks/results_stress.json.
 
 This runner is safe to execute from the repo root with the project venv.
 """
 
-import argparse
-import json
-import os
-from pathlib import Path
 
-import numpy as np
 
 OUT = Path(__file__).resolve().parent / "results_stress.json"
 
@@ -25,12 +30,10 @@ def run_stress(metrics_sink: str | None = None):
             a = rng.normal(size=D).astype(np.float32)
             a = a / (np.linalg.norm(a) + 1e-30)
             role_token = f"stress_role_{D}_{sd}"
-            from somabrain.quantum import HRRConfig, QuantumLayer
 
             q = QuantumLayer(HRRConfig(dim=D, dtype="float32", renorm=True))
             q.make_unitary_role(role_token)
             c_clean = q.bind_unitary(a, role_token)
-            from somabrain.numerics import irfft_norm, rfft_norm
 
             C = rfft_norm(c_clean)
             S = (C * np.conjugate(C)).real
@@ -53,7 +56,7 @@ def run_stress(metrics_sink: str | None = None):
                 a_exact = q.unbind_exact_unitary(c_noisy, role_token)
                 a_wien = q.unbind_wiener(c_noisy, role_token, snr_db=snr_db)
 
-                def cosine(a1, b1):
+def cosine(a1, b1):
                     a1 = a1.astype(np.float64)
                     b1 = b1.astype(np.float64)
                     na = float(np.linalg.norm(a1))
@@ -85,18 +88,21 @@ def run_stress(metrics_sink: str | None = None):
                 "meta": {"D_list": D_list, "snr_db_list": snr_db_list, "seeds": seeds},
                 "results": all_rows,
             },
-            indent=2,
-        )
+            indent=2, )
     )
     print(f"Wrote stress bench results to {OUT}")
     if metrics_sink:
         try:
-            from somabrain.metrics_dump import dump as dump_metrics
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             dump_metrics(metrics_sink)
             print(f"Wrote metrics snapshot to {metrics_sink}")
         except Exception as e:
-            print(f"Failed to write metrics snapshot: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
 
 
 if __name__ == "__main__":

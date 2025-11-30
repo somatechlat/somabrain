@@ -1,3 +1,7 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+
 """Tenant-aware outbox uniqueness and indices
 
 Revision ID: b5c9f9a3d1ab
@@ -6,11 +10,8 @@ Create Date: 2025-11-14 11:45:00.000000
 
 """
 
-from __future__ import annotations
 
-from typing import Sequence
 
-from alembic import op
 
 
 # revision identifiers, used by Alembic.
@@ -29,15 +30,13 @@ def upgrade() -> None:
     op.create_index(
         "ix_outbox_status_tenant_created",
         "outbox_events",
-        ["status", "tenant_id", "created_at"],
-    )
+        ["status", "tenant_id", "created_at"], )
 
 
 def downgrade() -> None:
     op.drop_index(
         "ix_outbox_status_tenant_created",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
     with op.batch_alter_table("outbox_events") as batch_op:
         batch_op.drop_constraint("uq_outbox_tenant_dedupe", type_="unique")
         batch_op.create_unique_constraint(

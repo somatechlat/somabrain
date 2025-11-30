@@ -1,3 +1,14 @@
+from __future__ import annotations
+import math
+from collections import OrderedDict
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
+import numpy as np
+from .metrics import MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST, MICRO_VOTE_ENTROPY
+from .wm import WorkingMemory
+from common.config.settings import settings
+from common.logging import logger
+
 """
 Microcircuits Module for SomaBrain
 
@@ -6,6 +17,7 @@ and vote aggregation. It provides distributed working memory that shards data
 across multiple columns for improved capacity and retrieval performance.
 
 Key Features:
+    pass
 - Multi-column working memory architecture
 - Load distribution via hash-based routing
 - Vote aggregation for recall operations
@@ -14,6 +26,7 @@ Key Features:
 - Novelty detection across all columns
 
 Architecture:
+    pass
 - Items are routed to columns based on hash of content
 - Recall aggregates results from all columns using weighted voting
 - Novelty is computed as 1 - max similarity across columns
@@ -27,18 +40,9 @@ Functions:
     None (class-based implementation)
 """
 
-from __future__ import annotations
 
-import math
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
 
-import numpy as np
 
-from .metrics import MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST, MICRO_VOTE_ENTROPY
-from .wm import WorkingMemory
-from common.config.settings import settings
 
 
 @dataclass
@@ -70,13 +74,13 @@ class MultiColumnWM:
     - Novelty: 1 - max cosine across all columns.
     """
 
-    def __init__(self, dim: int, cfg: MCConfig, scorer=None):
+def __init__(self, dim: int, cfg: MCConfig, scorer=None):
         self.dim = int(dim)
         self.cfg = cfg
         self._tenants: OrderedDict[str, List[WorkingMemory]] = OrderedDict()
         self._scorer = scorer
 
-    def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
+def _ensure(self, tenant_id: str) -> List[WorkingMemory]:
         cols = self._tenants.get(tenant_id)
         if cols is None:
             cols = [
@@ -85,8 +89,7 @@ class MultiColumnWM:
                     dim=self.dim,
                     scorer=self._scorer,
                     recency_time_scale=self.cfg.recency_time_scale,
-                    recency_max_steps=self.cfg.recency_max_steps,
-                )
+                    recency_max_steps=self.cfg.recency_max_steps, )
                 for _ in range(max(1, int(self.cfg.columns)))
             ]
             self._tenants[tenant_id] = cols
@@ -95,8 +98,8 @@ class MultiColumnWM:
             self._tenants.popitem(last=False)
         return cols
 
-    @staticmethod
-    def _choose_column(payload: dict, columns: int) -> int:
+@staticmethod
+def _choose_column(payload: dict, columns: int) -> int:
         key = str(payload.get("task") or payload.get("fact") or "")
         if not key:
             return 0
@@ -107,22 +110,29 @@ class MultiColumnWM:
             h &= (1 << 64) - 1
         return int(h % max(1, columns))
 
-    def admit(
+def admit(
         self,
         tenant_id: str,
         vec: np.ndarray,
         payload: dict,
         *,
-        cleanup_overlap: float | None = None,
-    ) -> None:
+        cleanup_overlap: float | None = None, ) -> None:
+            pass
         cols = self._ensure(tenant_id)
         idx = self._choose_column(payload, len(cols))
         cols[idx].admit(vec, dict(payload), cleanup_overlap=cleanup_overlap)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             MICRO_COLUMN_ADMIT.labels(column=str(idx)).inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
-    def recall(
+def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
     ) -> List[Tuple[float, dict]]:
         cols = self._ensure(tenant_id)
@@ -133,12 +143,17 @@ class MultiColumnWM:
             per_col.append(hits)
             bests.append(hits[0][0] if hits else 0.0)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # increment the column with highest best score
             if bests:
                 best_idx = int(max(range(len(bests)), key=lambda i: bests[i]))
                 MICRO_COLUMN_BEST.labels(column=str(best_idx)).inc()
-        except Exception as exc: raise
-        # softmax weights over best scores
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         T = max(settings.wm_vote_softmax_floor, float(self.cfg.vote_temperature))
         xs = [b / T for b in bests]
         m = max(xs) if xs else 0.0
@@ -157,7 +172,7 @@ class MultiColumnWM:
         combined.sort(key=lambda t: t[0], reverse=True)
         return combined[: max(0, int(top_k))]
 
-    def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
+def novelty(self, tenant_id: str, vec: np.ndarray) -> float:
         cols = self._ensure(tenant_id)
         best = 0.0
         for wm in cols:
@@ -166,7 +181,7 @@ class MultiColumnWM:
             )  # wm.novelty returns 1 - best_cosine
         return max(0.0, 1.0 - best)
 
-    def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
+def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:
         cols = self._ensure(tenant_id)
         data: List[dict] = []
         for wm in cols:
@@ -175,6 +190,6 @@ class MultiColumnWM:
             return data[-limit:]
         return data
 
-    def stats(self, tenant_id: str) -> Dict[str, int]:
+def stats(self, tenant_id: str) -> Dict[str, int]:
         cols = self._ensure(tenant_id)
         return {f"col_{i}": len(wm._items) for i, wm in enumerate(cols)}

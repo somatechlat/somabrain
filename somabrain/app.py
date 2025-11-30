@@ -1,3 +1,134 @@
+from __future__ import annotations
+import asyncio
+import datetime
+import importlib.util
+import logging
+import math
+import os
+import re
+import sys
+import threading as _thr
+import time
+import time as _time
+import traceback
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+import numpy as np
+from fastapi import FastAPI, HTTPException, Request, Depends, Query
+import inspect
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from cachetools import TTLCache
+from xmlrpc.client import ServerProxy, Error as XMLRPCError
+from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
+from somabrain.amygdala import AmygdalaSalience, SalienceConfig
+from somabrain.auth import require_admin_auth, require_auth
+from somabrain.basal_ganglia import BasalGangliaPolicy
+from common.config.settings import settings
+from common.config.settings import settings as config
+from somabrain.context_hrr import HRRContextConfig
+from somabrain.oak.option_manager import option_manager
+from somabrain.oak.planner import plan_for_tenant
+from somabrain.milvus_client import MilvusClient
+from somabrain.oak.router import router as oak_router
+from somabrain.cognitive.thread_router import router as thread_router
+import httpx  # type: ignore
+from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
+from somabrain.controls.middleware import ControlsMiddleware
+from somabrain.controls.reality_monitor import assess_reality
+from somabrain.datetime_utils import coerce_to_epoch_seconds
+from somabrain.embeddings import make_embedder
+from somabrain.events import extract_event_fields
+from somabrain.exec_controller import ExecConfig, ExecutiveController
+from somabrain.hippocampus import ConsolidationConfig, Hippocampus
+from somabrain.memory_pool import MultiTenantMemory
+from somabrain.microcircuits import MCConfig, MultiColumnWM
+from somabrain.mt_context import MultiTenantHRRContext
+from somabrain.mt_wm import MTWMConfig, MultiTenantWM
+from somabrain.db import outbox as outbox_db
+from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
+from somabrain.journal import init_journal, JournalConfig
+from somabrain.db.outbox import (
+from somabrain.personality import PersonalityStore
+from somabrain.planner import plan_from_graph
+from somabrain.prediction import (
+from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
+from somabrain.quantum import HRRConfig, QuantumLayer
+from somabrain.quotas import QuotaConfig, QuotaManager
+from somabrain.ratelimit import RateConfig, RateLimiter
+from somabrain.salience import FDSalienceSketch
+from somabrain.scoring import UnifiedScorer
+from somabrain.sdr import LSHIndex, SDREncoder
+from somabrain.services.cognitive_loop_service import eval_step as _eval_step
+from somabrain.services.memory_service import MemoryService
+from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
+from somabrain.stats import EWMA
+from somabrain.supervisor import Supervisor, SupervisorConfig
+from somabrain.thalamus import ThalamusRouter
+from somabrain.tenant import get_tenant as get_tenant_async
+from somabrain.version import API_VERSION
+from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.services.memory_service import MemoryService as _MemSvc
+from config.feature_flags import FeatureFlags
+from somabrain.constitution import ConstitutionEngine
+import numpy as np
+import os as _os
+import logging as _logging
+from common.config.settings import settings as _shared
+from somabrain.observability.provider import init_tracing
+from somabrain.metrics import timing_middleware
+from somabrain.metrics import timing_middleware
+from somabrain.api.middleware.opa import OpaMiddleware
+from somabrain.api.middleware.reward_gate import RewardGateMiddleware
+from somabrain.db.outbox import get_pending_counts_by_tenant
+from somabrain.quotas import QuotaManager, QuotaConfig
+from somabrain.quotas import QuotaManager, QuotaConfig
+from somabrain.quotas import QuotaManager, QuotaConfig
+from common.config.settings import settings as _shared
+from somabrain.api import context_route as _context_route
+from somabrain.api.routers import persona as _persona_router
+from somabrain.api.routers import calibration as _calibration_router
+from somabrain.api.routers import features as _features_router
+from somabrain.api.routers import link as _link_router
+from somabrain.api import config_api as _config_api
+from somabrain.api import memory_api as _memory_api
+from somabrain.api.routers import constitution as _constitution_router
+from somabrain.api.routers import opa as _opa_router
+from somabrain.sleep import (
+import sys
+from somabrain.infrastructure.cb_registry import get_cb
+from somabrain.sleep import SleepState
+from somabrain.sleep.cb_adapter import map_cb_to_sleep
+from somabrain.stub_audit import (
+from somabrain.metrics import tau_gauge, LEARNING_RETRIEVAL_ENTROPY
+from somabrain.metrics import LEARNING_RETRIEVAL_ENTROPY
+import urllib.request
+import httpx  # type: ignore
+from fastapi import HTTPException as _HE
+from fastapi import HTTPException as _HE
+import httpx  # type: ignore
+from fastapi import HTTPException as _HE
+from fastapi import HTTPException as _HE
+import time as _t
+import re as _re
+from . import metrics as _mx
+from . import metrics as _mx
+import re as _re
+from . import metrics as _mx
+import numpy as _np
+import time as _t
+import time as _t
+from . import metrics as _mx
+from .memory_client import _stable_coord as _sc
+import logging
+import base64
+import base64
+from somabrain.db.outbox import get_pending_events
+import sys as _sys
+from somabrain import memory_client as _mc
+from somabrain.services.memory_service import MemoryService
+from somabrain.tenant_manager import get_tenant_manager
+from somabrain.tenant_manager import close_tenant_manager
+
 """SomaBrain Cognitive Application
 =================================
 
@@ -6,6 +137,7 @@ production transports, memory clients, neuromodulators, and control systems toge
 so that the runtime interacts with live infrastructure instead of mocks.
 
 Main responsibilities:
+    pass
 - bootstrap global singletons (memory pools, working memory, scorers, etc.)
 - expose REST endpoints for recalling, remembering, planning, and health
 - register background maintenance jobs and safety middleware
@@ -15,51 +147,18 @@ Usage:
     uvicorn somabrain.app:app --host 0.0.0.0 --port 9696
 """
 
-from __future__ import annotations
 
-import asyncio
-import datetime
-import importlib.util
-import logging
-import math
-import os
-import re
-import sys
 
 # Threading and time for sleep logic
-import threading as _thr
-import time
-import time as _time
-import traceback
 
-from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-import numpy as np
-from fastapi import FastAPI, HTTPException, Request, Depends, Query
-import inspect
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from cachetools import TTLCache
-from xmlrpc.client import ServerProxy, Error as XMLRPCError
 
-from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
-from somabrain.amygdala import AmygdalaSalience, SalienceConfig
-from somabrain.auth import require_admin_auth, require_auth
-from somabrain.basal_ganglia import BasalGangliaPolicy
 
 # Use the unified Settings instance for configuration.
-from common.config.settings import settings
-from common.config.settings import settings as config
-from somabrain.context_hrr import HRRContextConfig
 # Oak feature imports
-from somabrain.oak.option_manager import option_manager
-from somabrain.oak.planner import plan_for_tenant
 # Oak health dependencies – Milvus client for persistence health checks.
-from somabrain.milvus_client import MilvusClient
 # Oak FastAPI router that now talks to Milvus
-from somabrain.oak.router import router as oak_router
 # Cognitive Threads router (Phase 5)
-from somabrain.cognitive.thread_router import router as thread_router
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -71,11 +170,11 @@ class SimpleOPAEngine:
     """Lightweight wrapper around the OPA HTTP endpoint.
 
     The production code does not import a dedicated OPA client library. This
-    class stores the base URL and offers an async ``health`` method used by the
+class stores the base URL and offers an async ``health`` method used by the
     health endpoint to verify that the OPA service is reachable.
     """
 
-    def __init__(self, base_url: str):
+def __init__(self, base_url: str):
         self.base_url = base_url.rstrip('/')
 
     async def health(self) -> bool:
@@ -84,12 +183,17 @@ class SimpleOPAEngine:
         Any exception (network error, timeout, etc.) is treated as unhealthy.
         """
         try:
-            import httpx  # type: ignore
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             async with httpx.AsyncClient(timeout=2.0) as client:
                 resp = await client.get(f"{self.base_url}/health")
                 return resp.status_code == 200
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
 
 # Define OPA engine attachment function (will be registered after FastAPI app creation).
@@ -107,62 +211,23 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
         app.state.opa_engine = SimpleOPAEngine(opa_url)
     else:
         app.state.opa_engine = None
-from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
-from somabrain.controls.middleware import ControlsMiddleware
-from somabrain.controls.reality_monitor import assess_reality
-from somabrain.datetime_utils import coerce_to_epoch_seconds
-from somabrain.embeddings import make_embedder
-from somabrain.events import extract_event_fields
-from somabrain.exec_controller import ExecConfig, ExecutiveController
-from somabrain.hippocampus import ConsolidationConfig, Hippocampus
-from somabrain.memory_pool import MultiTenantMemory
-from somabrain.microcircuits import MCConfig, MultiColumnWM
-from somabrain.mt_context import MultiTenantHRRContext
-from somabrain.mt_wm import MTWMConfig, MultiTenantWM
-from somabrain.db import outbox as outbox_db
-from somabrain.neuromodulators import NeuromodState, PerTenantNeuromodulators
-from somabrain.journal import init_journal, JournalConfig
-from somabrain.db.outbox import (
     get_journal_events,
     replay_journal_events,
     get_journal_stats,
-    cleanup_journal,
-)
-from somabrain.personality import PersonalityStore
-from somabrain.planner import plan_from_graph
-from somabrain.prediction import (
+    cleanup_journal, )
     BudgetedPredictor,
     LLMPredictor,
     MahalanobisPredictor,
-    SlowPredictor,
-)
-from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
-from somabrain.quantum import HRRConfig, QuantumLayer
-from somabrain.quotas import QuotaConfig, QuotaManager
-from somabrain.ratelimit import RateConfig, RateLimiter
-from somabrain.salience import FDSalienceSketch
-from somabrain.scoring import UnifiedScorer
-from somabrain.sdr import LSHIndex, SDREncoder
-from somabrain.services.cognitive_loop_service import eval_step as _eval_step
-from somabrain.services.memory_service import MemoryService
-from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
-from somabrain.stats import EWMA
-from somabrain.supervisor import Supervisor, SupervisorConfig
-from somabrain.thalamus import ThalamusRouter
+    SlowPredictor, )
 
 # Use the new TenantManager for tenant resolution.
 
 # Import the async tenant resolver (aliased as get_tenant_async) for use in endpoints.
-from somabrain.tenant import get_tenant as get_tenant_async
-from somabrain.version import API_VERSION
-from somabrain.healthchecks import check_kafka, check_postgres
-from somabrain.services.memory_service import MemoryService as _MemSvc
-from config.feature_flags import FeatureFlags
 
 try:  # Constitution engine is optional in minimal deployments.
-    from somabrain.constitution import ConstitutionEngine
-except Exception as exc: raise  # pragma: no cover - optional dependency
-    ConstitutionEngine = None  # type: ignore[assignment]
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 # Shared configuration pulled from the platform service when available.
 
@@ -183,8 +248,8 @@ def _score_memory_candidate(
     quantum_layer: QuantumLayer | None,
     query_hrr,
     hrr_cache: dict[str, Any],
-    hrr_weight: float | None = None,
-) -> float:
+    hrr_weight: float | None = None, ) -> float:
+        pass
     embed_cache = embed_cache if embed_cache is not None else {}
     scorer = scorer or unified_scorer
     if embed_fn is None:
@@ -192,8 +257,14 @@ def _score_memory_candidate(
 
     if query_vec is None and embed_fn is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             query_vec = np.asarray(embed_fn(query_lower or ""), dtype=float).reshape(-1)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             query_vec = None
 
     if query_vec is None or scorer is None or embed_fn is None:
@@ -213,26 +284,48 @@ def _score_memory_candidate(
 
     text_lower = text.lower()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         cand_vec = embed_cache[text]
     except KeyError:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             cand_vec = np.asarray(embed_fn(text), dtype=float).reshape(-1)
             embed_cache[text] = cand_vec
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return 0.0
 
     recency_steps: Optional[int] = None
     ts_val = payload_dict.get("timestamp") or payload_dict.get("updated_at")
     if ts_val is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ts = float(coerce_to_epoch_seconds(ts_val))
             recency_steps = max(0, int((now_ts - ts) / 60.0))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             recency_steps = None
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         base = scorer.score(query_vec, cand_vec, recency_steps=recency_steps)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         base = 0.0
 
     # Lightweight lexical reinforcement for exact/partial matches and math domains
@@ -265,6 +358,10 @@ def _score_memory_candidate(
     # Optional HRR alignment blending
     if quantum_layer is not None and query_hrr is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             hv = hrr_cache.get(text)
             if hv is None:
                 hv = quantum_layer.encode_text(text)
@@ -273,7 +370,10 @@ def _score_memory_candidate(
             alpha = max(0.0, min(1.0, float(hrr_weight or 0.0)))
             if alpha > 0.0:
                 score = (1.0 - alpha) * score + alpha * hsim
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
     return float(max(0.0, min(1.0, score)))
 
@@ -284,8 +384,8 @@ def _apply_diversity_reranking(
     embedder: Any,
     k: int,
     lam: float,
-    min_k: int,
-) -> List[Dict]:
+    min_k: int, ) -> List[Dict]:
+        pass
     """
     Apply Maximal Marginal Relevance (MMR) re-ranking to a list of candidates.
 
@@ -304,6 +404,10 @@ def _apply_diversity_reranking(
         return candidates
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         candidate_texts = [_extract_text_from_candidate(c) for c in candidates]
         valid_indices = [i for i, text in enumerate(candidate_texts) if text]
         if len(valid_indices) < min_k:
@@ -365,9 +469,8 @@ def _apply_diversity_reranking(
         return [valid_candidates[idx] for idx in selected]
 
     except Exception as e:
-        active_logger = globals().get("logger") or module_logger
-        active_logger.debug("Diversity re-ranking failed: %s", e, exc_info=True)
-        return candidates[:k]
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 def _extract_text_from_candidate(candidate: Dict) -> str:
@@ -399,6 +502,10 @@ def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
     ts_value = normalized.get("timestamp")
     if ts_value is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             normalized["timestamp"] = coerce_to_epoch_seconds(ts_value)
         except ValueError:
             normalized.pop("timestamp", None)
@@ -414,6 +521,10 @@ def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
             link_ts = link_item.get("timestamp")
             if link_ts is not None:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     link_item["timestamp"] = coerce_to_epoch_seconds(link_ts)
                 except ValueError:
                     link_item.pop("timestamp", None)
@@ -425,7 +536,6 @@ def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def _cosine_similarity(a, b):
     """Compute cosine similarity between two vectors, returning ``0.0`` for zero‑norm inputs."""
-    import numpy as np
 
     a = np.array(a)
     b = np.array(b)
@@ -467,8 +577,14 @@ def _collect_candidate_keys(payload: Any) -> set[tuple[str, Any]]:
         coord = payload.get("coordinate")
         if isinstance(coord, (list, tuple)) and len(coord) == 3:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 keys.add(("coord", tuple(coord)))
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         for k in ("id", "memory_id", "key"):
             v = payload.get(k)
             if isinstance(v, str) and v.strip():
@@ -490,13 +606,19 @@ def _collect_candidate_keys(payload: Any) -> set[tuple[str, Any]]:
 
 
 def _build_wm_support_index(
-    wm_hits: Iterable[Tuple[float, dict]],
-) -> dict[tuple[str, Any], float]:
+    wm_hits: Iterable[Tuple[float, dict]], ) -> dict[tuple[str, Any], float]:
+        pass
     index: dict[tuple[str, Any], float] = {}
     for sim, payload in wm_hits:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             score = float(sim)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             continue
         for key in _collect_candidate_keys(payload):
             index[key] = max(index.get(key, 0.0), score)
@@ -509,6 +631,7 @@ def setup_logging():
     Setup comprehensive logging for cognitive brain monitoring.
 
     Initializes loggers for:
+        pass
     - General system events
     - Cognitive processing
     - Error handling
@@ -527,6 +650,10 @@ def setup_logging():
         log_path = settings.log_path
         candidate = log_path
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if not os.path.isabs(candidate):
                 if os.path.isdir("/app/logs"):
                     candidate = os.path.join("/app/logs", candidate)
@@ -538,14 +665,15 @@ def setup_logging():
                 os.makedirs(parent, exist_ok=True)
             # Try to attach a file handler; fall back to stdout-only if not writable
             handlers.append(logging.FileHandler(candidate, mode="a"))
-        except Exception as exc: raise
-            # File logging not available (likely read-only FS). Continue with stream only.
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
         logging.basicConfig(
             level=logging.INFO,
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=handlers,
-        )
+            handlers=handlers, )
 
     # Create specialized loggers for different brain regions
     global logger, cognitive_logger, error_logger
@@ -586,8 +714,8 @@ class CognitiveErrorHandler:
     Provides structured error info and recovery suggestions for API and internal errors.
     """
 
-    @staticmethod
-    def handle_error(
+@staticmethod
+def handle_error(
         error: Exception, context: str = "", request_id: str | None = None
     ) -> dict:
         """
@@ -658,7 +786,7 @@ class CognitiveMiddleware:
     Logs request lifecycle, handles errors, and tracks processing time for each API call.
     """
 
-    def __init__(self, app):
+def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
@@ -681,6 +809,10 @@ class CognitiveMiddleware:
 
         # Process request with error handling
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             await self.app(scope, receive, send)
             processing_time = time.time() - start_time
 
@@ -693,10 +825,8 @@ class CognitiveMiddleware:
             # Allow FastAPI/Starlette to handle intentional HTTP errors (e.g. auth/validation).
             raise
         except Exception as e:
-            processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(
-                e, f"{method} {path}", request_id
-            )
+            logger.exception("Exception caught: %s", e)
+            raise
 
             # Send error response
             error_response = JSONResponse(
@@ -705,8 +835,7 @@ class CognitiveMiddleware:
                     "error": "Cognitive processing error",
                     "request_id": request_id,
                     "recovery_suggestions": error_info["recovery_suggestions"],
-                },
-            )
+                }, )
 
             await error_response(scope, receive, send)
 
@@ -734,8 +863,8 @@ class CognitiveInputValidator:
     MAX_EMBEDDING_DIM = 4096
     MIN_EMBEDDING_DIM = 64
 
-    @staticmethod
-    def validate_text_input(text: str, field_name: str = "text") -> str:
+@staticmethod
+def validate_text_input(text: str, field_name: str = "text") -> str:
         """Validate text input for cognitive processing."""
         if not text:
             raise ValueError(f"{field_name} cannot be empty")
@@ -755,8 +884,8 @@ class CognitiveInputValidator:
 
         return text.strip()
 
-    @staticmethod
-    def validate_embedding_dim(dim: int) -> int:
+@staticmethod
+def validate_embedding_dim(dim: int) -> int:
         """Validate embedding dimensions for brain safety."""
         if not isinstance(dim, int) or dim < CognitiveInputValidator.MIN_EMBEDDING_DIM:
             raise ValueError(
@@ -770,8 +899,8 @@ class CognitiveInputValidator:
 
         return dim
 
-    @staticmethod
-    def validate_coordinates(coords: tuple) -> tuple:
+@staticmethod
+def validate_coordinates(coords: tuple) -> tuple:
         """Validate coordinate tuples for brain processing."""
         if not isinstance(coords, (list, tuple)) or len(coords) != 3:
             raise ValueError("Coordinates must be a tuple/list of exactly 3 floats")
@@ -779,6 +908,10 @@ class CognitiveInputValidator:
         validated_coords = []
         for i, coord in enumerate(coords):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 coord_float = float(coord)
                 # Prevent extreme values that could cause numerical instability
                 if abs(coord_float) > 1e6:
@@ -789,8 +922,8 @@ class CognitiveInputValidator:
 
         return tuple(validated_coords)
 
-    @staticmethod
-    def sanitize_query(query: str) -> str:
+@staticmethod
+def sanitize_query(query: str) -> str:
         """Sanitize and prepare query for cognitive processing."""
         # Remove potentially harmful patterns
         query = re.sub(r"[<>]", "", query)  # Remove angle brackets
@@ -807,7 +940,7 @@ class SecurityMiddleware:
     Blocks suspicious requests and patterns to protect the cognitive API.
     """
 
-    def __init__(self, app):
+def __init__(self, app):
         self.app = app
         self.suspicious_patterns = [
             re.compile(r"union\s+select", re.IGNORECASE),
@@ -834,14 +967,13 @@ class SecurityMiddleware:
                 )
             response = JSONResponse(
                 status_code=403,
-                content={"error": "Request blocked for security reasons"},
-            )
+                content={"error": "Request blocked for security reasons"}, )
             await response(scope, receive, send)
             return
 
         await self.app(scope, receive, send)
 
-    def _is_suspicious_request(self, path: str, method: str, headers: dict) -> bool:
+def _is_suspicious_request(self, path: str, method: str, headers: dict) -> bool:
         """Analyze request for suspicious patterns."""
         # Check path for suspicious patterns
         for pattern in self.suspicious_patterns:
@@ -867,20 +999,30 @@ _MINIMAL_API = False
 if settings.minimal_public_api:
     _MINIMAL_API = True
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     if bool(getattr(cfg, "minimal_public_api", False)):
         _MINIMAL_API = True
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     _EXPOSE_DEMOS = bool(getattr(cfg, "expose_brain_demos", False))
-except Exception as exc: raise
-    _EXPOSE_DEMOS = False
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 app = FastAPI(
     title="SomaBrain - Cognitive AI System",
     description="Low-latency cognitive services with strict production-mode enforcement.",
-    version=str(API_VERSION),
-)
+    version=str(API_VERSION), )
 
 # Register the OPA engine initialization to run on FastAPI startup.
 # ``_attach_opa_engine`` is defined earlier in this file without the decorator
@@ -889,21 +1031,32 @@ app = FastAPI(
 app.add_event_handler("startup", _attach_opa_engine)
 
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     _sphinx_build = os.environ.get("SPHINX_BUILD") or ("sphinx" in sys.modules)
-except Exception as exc: raise
-    _sphinx_build = False
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 if not _sphinx_build:
     setup_logging()
 
 # Emit concise startup diagnostics so operators can see effective backend wiring
 try:
-    import os as _os
-    import logging as _logging
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
-    @app.on_event("startup")
+@app.on_event("startup")
     async def _startup_diagnostics() -> None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             _log = _logging.getLogger("somabrain")
             mem_ep = str(
                 getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
@@ -915,13 +1068,22 @@ try:
             )
             # Prefer shared settings for mode and policy flags
             try:
-                from common.config.settings import settings as _shared
-            except Exception as exc: raise
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 _shared = None  # type: ignore
             mode = ""
             ext_req = False
             require_memory = True
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if _shared is not None:
                     mode = str(getattr(_shared, "mode", "") or "").strip()
                     ext_req = bool(
@@ -932,7 +1094,10 @@ try:
                     mode = settings.mode.strip()
                     ext_req = settings.require_external_backends
                     require_memory = settings.require_memory
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise
 
             _log.info(
                 "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
@@ -941,8 +1106,7 @@ try:
                 in_docker,
                 mode or "prod",
                 ext_req,
-                require_memory,
-            )
+                require_memory, )
 
             if (
                 in_docker
@@ -955,72 +1119,102 @@ try:
                 _log.warning(
                     "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
                 )
-        except Exception as exc: raise
-            # never fail startup on diagnostics
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
-except Exception as exc: raise
-
-# Initialize observability/tracing when available. Fail-open so the API still starts.
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 try:
-    from somabrain.observability.provider import init_tracing
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
-    @app.on_event("startup")
+@app.on_event("startup")
     async def _init_observability() -> None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             init_tracing()
-        except Exception as exc: raise
-            # Tracing is optional; log at debug level and continue.
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             log = globals().get("logger")
             if log:
                 log.debug("Tracing initialization failed", exc_info=True)
 
-except Exception as exc: raise
-
-# Add timing middleware for request instrumentation
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 try:
-    from somabrain.metrics import timing_middleware
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.middleware("http")(timing_middleware)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 app.add_middleware(SecurityMiddleware)
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     app.add_middleware(ControlsMiddleware)
-except Exception as exc: raise
-    log = globals().get("logger")
-    if log:
-        log.debug("Controls middleware not registered", exc_info=True)
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     app.add_middleware(CognitiveMiddleware)
-except Exception as exc: raise
-    log = globals().get("logger")
-    if log:
-        log.debug("Cognitive middleware not registered", exc_info=True)
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 # Add timing middleware for request instrumentation
 try:
-    from somabrain.metrics import timing_middleware
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.middleware("http")(timing_middleware)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api.middleware.opa import OpaMiddleware
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 except Exception as e:
-    # Strict mode: OPA middleware is required for fail-closed posture
-    raise RuntimeError(f"OPA middleware import failed: {e}")
+    logger.exception("Exception caught: %s", e)
+    raise
 app.add_middleware(OpaMiddleware)
 
 try:
-    from somabrain.api.middleware.reward_gate import RewardGateMiddleware
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.add_middleware(RewardGateMiddleware)
 except Exception as e:
-    # Reward gate can remain optional; log at debug and continue
-    log = globals().get("logger")
-    if log:
-        log.debug("Reward Gate middleware not registered: %s", e, exc_info=True)
+    logger.exception("Exception caught: %s", e)
+    raise
 
 # Supervisor (cog) control client
 _SUPERVISOR_URL = settings.supervisor_url or None
@@ -1033,9 +1227,15 @@ if not _SUPERVISOR_URL:
 
 def _supervisor() -> ServerProxy:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return ServerProxy(_SUPERVISOR_URL, allow_none=True)  # type: ignore[arg-type]
     except Exception as e:
-        raise HTTPException(
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(
             status_code=503, detail=f"supervisor client init failed: {e}"
         )
 
@@ -1061,8 +1261,8 @@ async def admin_features_state() -> S.FeatureFlagsResponse:
 
 
 async def admin_features_update(
-    body: S.FeatureFlagsUpdateRequest,
-) -> S.FeatureFlagsUpdateResponse:
+    body: S.FeatureFlagsUpdateRequest, ) -> S.FeatureFlagsUpdateResponse:
+        pass
     """Validate and apply an admin feature‑flag update.
 
     * Raises ``HTTPException`` with status 400 if any flag in ``body.disabled``
@@ -1089,64 +1289,100 @@ async def admin_features_update(
 @app.get("/admin/services", dependencies=[Depends(_admin_guard_dep)])
 async def list_services():
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         s = _supervisor()
         info = s.supervisor.getAllProcessInfo()
         return {"ok": True, "services": info}
     except XMLRPCError as e:
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
 @app.get("/admin/services/{name}", dependencies=[Depends(_admin_guard_dep)])
 async def service_status(name: str):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         s = _supervisor()
         info = s.supervisor.getProcessInfo(name)
         return {"ok": True, "service": info}
     except XMLRPCError as e:
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
 @app.post("/admin/services/{name}/start", dependencies=[Depends(_admin_guard_dep)])
 async def service_start(name: str):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         s = _supervisor()
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "start", "service": name}
     except XMLRPCError as e:
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
 @app.post("/admin/services/{name}/stop", dependencies=[Depends(_admin_guard_dep)])
 async def service_stop(name: str):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         s = _supervisor()
         res = s.supervisor.stopProcess(name, False)
         return {"ok": bool(res), "action": "stop", "service": name}
     except XMLRPCError as e:
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
 @app.post("/admin/services/{name}/restart", dependencies=[Depends(_admin_guard_dep)])
 async def service_restart(name: str):
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         s = _supervisor()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             s.supervisor.stopProcess(name, False)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
         raise HTTPException(status_code=502, detail=f"supervisor error: {e}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=503, detail=f"cannot reach supervisor: {e}")
 
 
 @app.get("/admin/outbox", dependencies=[Depends(_admin_guard_dep)])
@@ -1155,17 +1391,20 @@ async def admin_list_outbox(
     tenant: Optional[str] = Query(None),
     topic_filter: Optional[str] = Query(None, description="Filter by topic pattern"),
     limit: int = Query(50, ge=1, le=500),
-    offset: int = Query(0, ge=0),
-):
+    offset: int = Query(0, ge=0), ):
+        pass
     """List outbox events with enhanced filtering options."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         events = outbox_db.list_events_by_status(
             status=status.lower().strip(),
             tenant_id=tenant,
             topic_filter=topic_filter,
             limit=limit,
-            offset=offset,
-        )
+            offset=offset, )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -1176,37 +1415,59 @@ async def admin_list_outbox(
                 (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
             )
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise
 
     return S.OutboxListResponse(
         events=[S.OutboxEventModel.model_validate(ev) for ev in events],
-        count=len(events),
-    )
+        count=len(events), )
 
 
 @app.post("/admin/outbox/replay", dependencies=[Depends(_admin_guard_dep)])
 async def admin_replay_outbox(body: S.OutboxReplayRequest):
     """Replay specific outbox events by ID."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         count = outbox_db.mark_events_for_replay(body.event_ids)
     except HTTPException:
         raise
     except Exception as exc:
-        try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="error").inc(len(body.event_ids))
-        except Exception as exc: raise
+        logger.exception("Exception caught: %s", exc)
+        raise
         raise exc
     if count == 0:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
                 len(body.event_ids)
             )
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         raise HTTPException(status_code=404, detail="No matching events to replay")
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return S.OutboxReplayResponse(replayed=count)
 
 
@@ -1214,36 +1475,56 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
 async def admin_replay_tenant_outbox(body: S.OutboxTenantReplayRequest):
     """Replay outbox events for a specific tenant with filtering options."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         count = outbox_db.mark_tenant_events_for_replay(
             tenant_id=body.tenant_id,
             status=body.status,
             topic_filter=body.topic_filter,
             before_timestamp=body.before_timestamp,
-            limit=body.limit,
-        )
+            limit=body.limit, )
     except HTTPException:
         raise
     except Exception as exc:
-        try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_error").inc()
-        except Exception as exc: raise
+        logger.exception("Exception caught: %s", exc)
+        raise
         raise exc
     if count == 0:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_not_found").inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         raise HTTPException(
             status_code=404,
-            detail=f"No matching events to replay for tenant '{body.tenant_id}'",
-        )
+            detail=f"No matching events to replay for tenant '{body.tenant_id}'", )
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="tenant_success").inc(count)
         # Record per-tenant replay metrics
         tenant_label = body.tenant_id or "default"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.report_outbox_replayed(tenant_label, count)
-        except Exception as exc: raise
-    except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return S.OutboxTenantReplayResponse(
         tenant_id=body.tenant_id, replayed=count, status=body.status
     )
@@ -1255,17 +1536,20 @@ async def admin_get_tenant_outbox(
     status: str = Query("pending", description="pending|failed|sent"),
     topic_filter: Optional[str] = Query(None, description="Filter by topic pattern"),
     limit: int = Query(50, ge=1, le=500),
-    offset: int = Query(0, ge=0),
-):
+    offset: int = Query(0, ge=0), ):
+        pass
     """Get outbox events for a specific tenant with filtering options."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         events = outbox_db.list_tenant_events(
             tenant_id=tenant_id,
             status=status.lower().strip(),
             topic_filter=topic_filter,
             limit=limit,
-            offset=offset,
-        )
+            offset=offset, )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -1273,22 +1557,31 @@ async def admin_get_tenant_outbox(
     if status.lower().strip() == "failed":
         tenant_label = tenant_id or "default"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc(len(events))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
     return S.OutboxTenantListResponse(
         tenant_id=tenant_id,
         events=[S.OutboxEventModel.model_validate(ev) for ev in events],
         count=len(events),
-        status=status,
-    )
+        status=status, )
 
 
 @app.get("/admin/outbox/summary", dependencies=[Depends(_admin_guard_dep)])
 async def admin_get_outbox_summary():
     """Get summary statistics for outbox events across all tenants."""
     try:
-        from somabrain.db.outbox import get_pending_counts_by_tenant
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         # Get pending counts by tenant
         pending_counts = get_pending_counts_by_tenant()
@@ -1318,8 +1611,7 @@ async def admin_get_outbox_summary():
                     pending_counts.get(tenant, 0)
                     + failed_counts.get(tenant, 0)
                     + sent_counts.get(tenant, 0)
-                ),
-            )
+                ), )
             tenant_summaries.append(summary)
 
         return S.OutboxSummaryResponse(
@@ -1327,11 +1619,12 @@ async def admin_get_outbox_summary():
             total_tenants=len(tenant_summaries),
             total_pending=sum(pending_counts.values()),
             total_failed=sum(failed_counts.values()),
-            total_sent=sum(sent_counts.values()),
-        )
+            total_sent=sum(sent_counts.values()), )
 
     except Exception as exc:
-        raise HTTPException(
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(
             status_code=500, detail=f"Failed to get outbox summary: {exc}"
         )
 
@@ -1343,16 +1636,19 @@ async def admin_list_quotas(
     offset: int = Query(0, ge=0),
     tenant_filter: Optional[str] = Query(
         None, description="Filter by tenant ID prefix"
-    ),
-):
+    ), ):
+        pass
     """List quota status for all tenants.
 
     Returns per-tenant quota information including remaining capacity,
     daily limits, and reset times. Supports pagination and filtering.
     """
-    from somabrain.quotas import QuotaManager, QuotaConfig
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         quota_manager = QuotaManager(QuotaConfig())
 
         # Get all tenant quota statuses
@@ -1383,31 +1679,33 @@ async def admin_list_quotas(
                     remaining=quota_info.remaining,
                     used_today=quota_info.used_today,
                     reset_at=quota_info.reset_at,
-                    is_exempt=quota_info.is_exempt,
-                )
+                    is_exempt=quota_info.is_exempt, )
             )
 
         return S.QuotaListResponse(quotas=quota_statuses, total_tenants=total_count)
 
     except Exception as exc:
-        logger.error(f"Failed to list quotas: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to list quotas: {exc}")
+        logger.exception("Exception caught: %s", exc)
+        raise
 
 
 @app.post("/admin/quotas/{tenant_id}/reset", dependencies=[Depends(_admin_guard_dep)])
 async def admin_reset_quota(
     tenant_id: str,
     body: S.QuotaResetRequest,
-    request: Request = None,
-):
+    request: Request = None, ):
+        pass
     """Reset quota for a specific tenant.
 
     Resets the daily quota counter for the specified tenant, allowing
     them to continue making requests. Requires admin authentication.
     """
-    from somabrain.quotas import QuotaManager, QuotaConfig
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         quota_manager = QuotaManager(QuotaConfig())
 
         # Check if tenant exists
@@ -1436,37 +1734,46 @@ async def admin_reset_quota(
 
         # Emit metric for quota reset
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.QUOTA_RESETS.labels(tenant_id=tenant_id).inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
         return S.QuotaResetResponse(
             tenant_id=tenant_id,
             reset=True,
             new_remaining=new_remaining,
-            message=f"Quota reset for tenant {tenant_id}. Remaining: {new_remaining}",
-        )
+            message=f"Quota reset for tenant {tenant_id}. Remaining: {new_remaining}", )
 
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Failed to reset quota for tenant {tenant_id}: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to reset quota: {exc}")
+        logger.exception("Exception caught: %s", exc)
+        raise
 
 
 @app.post("/admin/quotas/{tenant_id}/adjust", dependencies=[Depends(_admin_guard_dep)])
 async def admin_adjust_quota(
     tenant_id: str,
     body: S.QuotaAdjustRequest,
-    request: Request = None,
-):
+    request: Request = None, ):
+        pass
     """Adjust quota limit for a specific tenant.
 
     Updates the daily quota limit for the specified tenant. This affects
     the maximum number of requests they can make per day.
     """
-    from somabrain.quotas import QuotaManager, QuotaConfig
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         quota_manager = QuotaManager(QuotaConfig())
 
         # Check if tenant exists
@@ -1499,22 +1806,28 @@ async def admin_adjust_quota(
 
         # Emit metric for quota adjustment
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.QUOTA_ADJUSTMENTS.labels(tenant_id=tenant_id).inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
         return S.QuotaAdjustResponse(
             tenant_id=tenant_id,
             old_limit=old_limit,
             new_limit=body.new_limit,
             adjusted=True,
-            message=f"Quota limit adjusted for tenant {tenant_id}: {old_limit} -> {body.new_limit}",
-        )
+            message=f"Quota limit adjusted for tenant {tenant_id}: {old_limit} -> {body.new_limit}", )
 
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Failed to adjust quota for tenant {tenant_id}: {exc}")
-        raise HTTPException(status_code=500, detail=f"Failed to adjust quota: {exc}")
+        logger.exception("Exception caught: %s", exc)
+        raise
 
 
 """
@@ -1534,11 +1847,20 @@ async def _startup_mode_banner() -> None:
     envs slated for removal.
     """
     try:
-        from common.config.settings import settings as _shared
-    except Exception as exc: raise  # pragma: no cover
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _shared = None
     lg = logging.getLogger("somabrain")
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
         api_auth = (
@@ -1566,15 +1888,23 @@ async def _startup_mode_banner() -> None:
             mem_auth,
             opa_closed,
             log_level,
-            bundle,
-        )
+            bundle, )
         if _shared is not None:
             for note in getattr(_shared, "deprecation_notices", []) or []:
                 lg.warning("DEPRECATION: %s", note)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lg.debug("Failed to emit startup mode banner", exc_info=True)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
 
 @app.on_event("startup")
@@ -1582,40 +1912,58 @@ async def _init_constitution() -> None:
     """Load the constitution engine (if present) and publish metrics."""
     app.state.constitution_engine = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         M.CONSTITUTION_VERIFIED.set(0.0)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     if ConstitutionEngine is None:
         return
     start = time.perf_counter()
     verified = False
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         engine = ConstitutionEngine()
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             engine.load()
             verified = bool(engine.verify_signature())
         except Exception as exc:
-            log = globals().get("logger")
-            if log:
-                log.warning("ConstitutionEngine load failed: %s", exc)
-            verified = False
+            logger.exception("Exception caught: %s", exc)
+            raise
         app.state.constitution_engine = engine
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         app.state.constitution_engine = None
         verified = False
     duration = time.perf_counter() - start
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
         M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
-    except Exception as exc: raise
-
-
-# Optional routers (strict posture; dependencies must be present for critical routes).
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 # NOTE: Legacy retrieval router has been fully removed in favor of unified /memory/recall.
 
 # The context router is a required component of the full‑stack deployment.
 # If it cannot be imported the application must fail fast – this guarantees that
 # `/context/evaluate` and `/context/feedback` are always available.
-from somabrain.api import context_route as _context_route
 
 app.include_router(_context_route.router, prefix="/context")
 # Oak-specific routes providing option management backed by Milvus.
@@ -1625,61 +1973,101 @@ app.include_router(oak_router, prefix="/oak")
 app.include_router(thread_router, prefix="/cognitive")
 
 try:
-    from somabrain.api.routers import persona as _persona_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_persona_router.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 try:
-    from somabrain.api.routers import calibration as _calibration_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_calibration_router.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 try:
-    from somabrain.api.routers import features as _features_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_features_router.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api.routers import link as _link_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_link_router.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api import config_api as _config_api
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_config_api.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api import memory_api as _memory_api
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_memory_api.router)
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api.routers import constitution as _constitution_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_constitution_router.router, prefix="/constitution")
-except Exception as exc: raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 try:
-    from somabrain.api.routers import opa as _opa_router
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
     app.include_router(_opa_router.router)
-except Exception as exc: raise
-
-# Demo router support removed: demo endpoints are intentionally deleted
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 _EXPOSE_DEMOS = False
 
 # Sleep system routers
 try:
-    from somabrain.sleep import (
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
         util_sleep_router,
         brain_sleep_router,
-        policy_sleep_router,
-    )
+        policy_sleep_router, )
 
     # Register sleep-related routers using the actual APIRouter objects.
     app.include_router(util_sleep_router.router)
@@ -1687,36 +2075,54 @@ try:
     app.include_router(policy_sleep_router.router)
     # Start background TTL auto‑wake watcher for cognitive sleep (only once).
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # The brain_sleep_router module provides a ``start_ttl_watcher`` helper.
         brain_sleep_router.start_ttl_watcher()
-    except Exception as exc: raise
-        # Non‑critical – log and continue.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         logger.error("Failed to start TTL watcher for brain sleep", exc_info=True)
     logger.info("Sleep system routers registered")
 except Exception as e:
-    logger.warning(f"Failed to register sleep system: {e}")
+    logger.exception("Exception caught: %s", e)
+    raise
 
 
 @app.exception_handler(RequestValidationError)
 async def _handle_validation_error(request: Request, exc: RequestValidationError):  # type: ignore[override]
     """Surface validation errors with context for operators."""
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         body = await request.body()
         body_preview = body[:256].decode("utf-8", errors="ignore") if body else ""
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         body_preview = ""
     ip = getattr(request.client, "host", None)
     ua = request.headers.get("user-agent", "")
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         logging.getLogger("somabrain").warning(
             "422 validation on %s %s from %s UA=%s bodyPreview=%s",
             request.method,
             request.url.path,
             ip,
             ua,
-            body_preview,
-        )
-    except Exception as exc: raise
+            body_preview, )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     details = exc.errors() if hasattr(exc, "errors") else []
     # Provide route‑specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
@@ -1756,8 +2162,7 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
         }
     return JSONResponse(
         status_code=422,
-        content={"detail": details, "hint": hint, "client": ip},
-    )
+        content={"detail": details, "hint": hint, "client": ip}, )
 
 
 #
@@ -1769,6 +2174,10 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 BACKEND_ENFORCEMENT = False
 if settings is not None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Prefer new mode-derived enforcement (always true under Sprint policy)
         mode_policy = bool(getattr(settings, "mode_require_external_backends", True))
         if mode_policy:
@@ -1777,20 +2186,27 @@ if settings is not None:
             BACKEND_ENFORCEMENT = bool(
                 getattr(settings, "require_external_backends", False)
             )
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 if not BACKEND_ENFORCEMENT:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         enforcement_env = settings.require_external_backends
         if enforcement_env is not None:
             BACKEND_ENFORCEMENT = enforcement_env.strip().lower() in (
                 "1",
                 "true",
                 "yes",
-                "on",
-            )
-    except Exception as exc: raise
-
-# ---------------------------------------------------------------------------
+                "on", )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 # Test‑environment override
 # ---------------------------------------------------------------------------
 # When the package is imported by the pytest test runner, the runtime singletons
@@ -1831,6 +2247,10 @@ BACKEND_ENFORCEMENT = False
 quantum: Optional[QuantumLayer] = None
 if cfg.use_hrr:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         hrr_cfg = HRRConfig(
             dim=cfg.hrr_dim,
             seed=cfg.hrr_seed,
@@ -1839,10 +2259,11 @@ if cfg.use_hrr:
             binary_mode=cfg.math_bhdc_binary_mode,
             mix=cfg.math_bhdc_mix,
             binding_seed=cfg.math_binding_seed,
-            binding_model_version=cfg.math_binding_model_version,
-        )
+            binding_model_version=cfg.math_binding_model_version, )
         quantum = QuantumLayer(hrr_cfg)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         raise RuntimeError("Failed to initialize quantum layer; HRR disabled.")
         quantum = None
 
@@ -1853,21 +2274,20 @@ _EMBED_PROVIDER = getattr(cfg, "embed_provider", "tiny")
 _PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "mahal")
 embedder = make_embedder(cfg, quantum=quantum)
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     _EMBED_DIM = int(getattr(embedder, "dim"))
-except Exception as exc: raise
-    try:
-        _EMBED_DIM = int(
-            np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
-        )
-    except Exception as exc:
-        raise RuntimeError("embedder failed to produce vector dimension") from exc
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 # Ensure config reflects the actual embedder dimension at runtime
 if cfg.embed_dim != _EMBED_DIM:
     logger.warning(
         "config embed_dim=%s mismatch with provider dim=%s; overriding",
         cfg.embed_dim,
-        _EMBED_DIM,
-    )
+        _EMBED_DIM, )
     cfg.embed_dim = _EMBED_DIM
 
 
@@ -1896,8 +2316,7 @@ def _make_predictor() -> BudgetedPredictor:
         base = LLMPredictor(
             endpoint=getattr(cfg, "predictor_llm_endpoint", None),
             token=getattr(cfg, "predictor_llm_token", None),
-            timeout_ms=cfg.predictor_timeout_ms,
-        )
+            timeout_ms=cfg.predictor_timeout_ms, )
     else:
         # If an unknown provider is requested, fall back to Mahalanobis rather
         # than a stub so we keep behaviour deterministic and production-ready.
@@ -1911,8 +2330,7 @@ if getattr(cfg, "salience_method", "dense").lower() == "fd":
     fd_sketch = FDSalienceSketch(
         dim=int(cfg.embed_dim),
         rank=max(1, min(int(cfg.salience_fd_rank), int(cfg.embed_dim))),
-        decay=float(cfg.salience_fd_decay),
-    )
+        decay=float(cfg.salience_fd_decay), )
 
 unified_scorer = UnifiedScorer(
     w_cosine=cfg.scorer_w_cosine,
@@ -1921,8 +2339,7 @@ unified_scorer = UnifiedScorer(
     weight_min=cfg.scorer_weight_min,
     weight_max=cfg.scorer_weight_max,
     recency_tau=cfg.scorer_recency_tau,
-    fd_backend=fd_sketch,
-)
+    fd_backend=fd_sketch, )
 
 mt_wm = MultiTenantWM(
     dim=cfg.embed_dim,
@@ -1930,10 +2347,8 @@ mt_wm = MultiTenantWM(
         per_tenant_capacity=max(cfg.wm_per_tenant_capacity, cfg.wm_size),
         max_tenants=cfg.mtwm_max_tenants,
         recency_time_scale=cfg.wm_recency_time_scale,
-        recency_max_steps=cfg.wm_recency_max_steps,
-    ),
-    scorer=unified_scorer,
-)
+        recency_max_steps=cfg.wm_recency_max_steps, ),
+    scorer=unified_scorer, )
 mc_wm = MultiColumnWM(
     dim=cfg.embed_dim,
     cfg=MCConfig(
@@ -1946,16 +2361,13 @@ mc_wm = MultiColumnWM(
                 int(
                     (cfg.wm_size + max(1, int(cfg.micro_circuits)) - 1)
                     // max(1, int(cfg.micro_circuits))
-                ),
-            )
+                ), )
         ),
         vote_temperature=cfg.micro_vote_temperature,
         max_tenants=cfg.micro_max_tenants,
         recency_time_scale=cfg.wm_recency_time_scale,
-        recency_max_steps=cfg.wm_recency_max_steps,
-    ),
-    scorer=unified_scorer,
-)
+        recency_max_steps=cfg.wm_recency_max_steps, ),
+    scorer=unified_scorer, )
 # The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
 # and a ``runtime.py`` module that defines the core singleton utilities
 # (embedder, mt_wm, set_singletons, etc.). Importing ``runtime`` would resolve to
@@ -1986,18 +2398,23 @@ else:
 if not getattr(_rt, "embedder", None):
     for m in list(sys.modules.values()):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             mf = getattr(m, "__file__", "") or ""
             if mf.endswith(os.path.join("somabrain", "runtime.py")):
                 _rt = m
                 break
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             continue
 
 if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
     mt_memory = MultiTenantMemory(cfg, scorer=unified_scorer, embedder=embedder)
     _rt.mt_memory = mt_memory
     # Also patch this module's global for test visibility
-    import sys
 
     mod = sys.modules[__name__]
     setattr(mod, "mt_memory", _rt.mt_memory)
@@ -2011,10 +2428,8 @@ mt_ctx = (
         HRRContextConfig(
             max_anchors=cfg.hrr_anchors_max,
             decay_lambda=cfg.hrr_decay_lambda,
-            min_confidence=cfg.hrr_cleanup_min_confidence,
-        ),
-        max_tenants=1000,
-    )
+            min_confidence=cfg.hrr_cleanup_min_confidence, ),
+        max_tenants=1000, )
     if quantum
     else None
 )
@@ -2035,10 +2450,8 @@ amygdala = AmygdalaSalience(
         soft_temperature=cfg.use_soft_salience,
         method=cfg.salience_method,
         w_fd=cfg.salience_fd_weight,
-        fd_energy_floor=cfg.salience_fd_energy_floor,
-    ),
-    fd_backend=fd_sketch,
-)
+        fd_energy_floor=cfg.salience_fd_energy_floor, ),
+    fd_backend=fd_sketch, )
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
 hippocampus = Hippocampus(ConsolidationConfig())
@@ -2082,8 +2495,7 @@ _rt.set_singletons(
     _mt_wm=mt_wm or getattr(_rt, "mt_wm", None),
     _mc_wm=mc_wm or getattr(_rt, "mc_wm", None),
     _mt_memory=mt_memory or getattr(_rt, "mt_memory", None),
-    _cfg=cfg,
-)
+    _cfg=cfg, )
 
 
 # PHASE 2: UNIFIED PROCESSING CORE - SIMPLIFIED ARCHITECTURE
@@ -2094,14 +2506,14 @@ class UnifiedBrainCore:
     Handles memory processing and retrieval using fractal and oscillatory models, with neuromodulator feedback.
     """
 
-    def __init__(self, fractal_memory, fnom_memory, neuromods):
+def __init__(self, fractal_memory, fnom_memory, neuromods):
         self.fractal = fractal_memory
         self.fnom = fnom_memory
         self.neuromods = neuromods
         self.dopamine_baseline = 0.4
         self.serotonin_baseline = 0.5
 
-    def process_memory(
+def process_memory(
         self, content: Dict[str, Any], importance: float = 0.8
     ) -> Dict[str, Any]:
         """UNIFIED: Single entry point for memory processing"""
@@ -2132,7 +2544,7 @@ class UnifiedBrainCore:
             "unified": True,
         }
 
-    def retrieve_memory(self, query: Dict[str, Any], top_k: int = 3) -> Dict[str, Any]:
+def retrieve_memory(self, query: Dict[str, Any], top_k: int = 3) -> Dict[str, Any]:
         """UNIFIED: Single entry point for memory retrieval"""
 
         # Parallel retrieval from both systems
@@ -2151,7 +2563,7 @@ class UnifiedBrainCore:
             "unified": True,
         }
 
-    def _update_neuromodulators(self, fractal_nodes: int, fnom_result):
+def _update_neuromodulators(self, fractal_nodes: int, fnom_result):
         """SIMPLIFIED: Update dopamine/serotonin based on processing success"""
 
         # Success metric: more nodes/components = better processing
@@ -2174,11 +2586,10 @@ class UnifiedBrainCore:
             serotonin=new_serotonin,
             noradrenaline=current_state.noradrenaline,
             acetylcholine=current_state.acetylcholine,
-            timestamp=time.time(),
-        )
+            timestamp=time.time(), )
         self.neuromods.set_state(new_state)
 
-    def _combine_results(self, fractal_results, fnom_results, top_k):
+def _combine_results(self, fractal_results, fnom_results, top_k):
         """SIMPLIFIED: Combine and rank results from both systems"""
 
         combined = []
@@ -2226,28 +2637,44 @@ async def _start_memory_watchdog() -> None:
     async def _watchdog_loop():
         while True:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 # Attempt circuit reset periodically; updates circuit breaker metric internally
                 memory_service._reset_circuit_if_needed()
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             await asyncio.sleep(5.0)
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         task = asyncio.create_task(_watchdog_loop())
         app.state._memory_watchdog = task  # type: ignore[attr-defined]
-    except Exception as exc: raise
-        # best-effort; don't fail startup on watchdog init
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
 
 @app.on_event("shutdown")
 async def _stop_memory_watchdog() -> None:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         task = getattr(app.state, "_memory_watchdog", None)
         if task is not None:
             task.cancel()
-    except Exception as exc: raise
-
-
-# PHASE 3: REVOLUTIONARY FEATURES - AUTO-SCALING FRACTAL INTELLIGENCE
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 class AutoScalingFractalIntelligence:
     """
     REVOLUTIONARY: Auto-scaling intelligence that adapts to complexity demands.
@@ -2255,7 +2682,7 @@ class AutoScalingFractalIntelligence:
     Dynamically adjusts intelligence level based on content complexity and performance targets.
     """
 
-    def __init__(self, unified_brain):
+def __init__(self, unified_brain):
         self.unified_brain = unified_brain
         self.intelligence_levels = {
             "minimal": {"neurons": 50, "scales": 3, "complexity_threshold": 0.1},
@@ -2267,7 +2694,7 @@ class AutoScalingFractalIntelligence:
         self.performance_history = []
         self.complexity_detector = ComplexityDetector()
 
-    def process_with_auto_scaling(
+def process_with_auto_scaling(
         self, content: Dict[str, Any], target_performance: float = 0.1
     ) -> Dict[str, Any]:
         """AUTO-SCALING: Dynamically adjust intelligence level based on content complexity"""
@@ -2297,7 +2724,7 @@ class AutoScalingFractalIntelligence:
             "optimal_level": optimal_level,
         }
 
-    def _determine_optimal_level(
+def _determine_optimal_level(
         self, complexity: float, target_performance: float
     ) -> str:
         """Determine the optimal intelligence level based on complexity and performance targets"""
@@ -2313,7 +2740,7 @@ class AutoScalingFractalIntelligence:
         # If no level meets requirements, use the highest
         return "genius"
 
-    def _scale_intelligence(self, new_level: str):
+def _scale_intelligence(self, new_level: str):
         """Scale the intelligence level dynamically"""
         if new_level == self.current_level:
             return
@@ -2322,8 +2749,7 @@ class AutoScalingFractalIntelligence:
         active_logger.info(
             "Auto-scaling intelligence: %s -> %s",
             self.current_level,
-            new_level,
-        )
+            new_level, )
 
         # Update current level
         self.current_level = new_level
@@ -2337,7 +2763,7 @@ class AutoScalingFractalIntelligence:
         # Scale fractal scales
         self._scale_fractal_scales(level_config["scales"])
 
-    def _scale_fnom_ensembles(self, total_neurons: int):
+def _scale_fnom_ensembles(self, total_neurons: int):
         """Scale FNOM ensemble sizes"""
         # For now, we'll adjust the target ensemble sizes
         # The actual scaling will be handled by the FNOM system
@@ -2356,17 +2782,16 @@ class AutoScalingFractalIntelligence:
         active_logger = globals().get("logger") or module_logger
         active_logger.debug(
             "Target ensemble sizes updated: %s",
-            target_sizes,
-        )
+            target_sizes, )
 
-    def _scale_fractal_scales(self, num_scales: int):
+def _scale_fractal_scales(self, num_scales: int):
         """Scale fractal processing scales"""
         # For now, we'll note the target scale count
         # The actual scaling will be handled by the fractal system
         active_logger = globals().get("logger") or module_logger
         active_logger.debug("Target fractal scales: %s", num_scales)
 
-    def _estimate_processing_time(self, level: str, complexity: float) -> float:
+def _estimate_processing_time(self, level: str, complexity: float) -> float:
         """Estimate processing time for a given level and complexity"""
         base_times = {
             "minimal": 0.02,
@@ -2381,7 +2806,7 @@ class AutoScalingFractalIntelligence:
 
         return base_time * complexity_multiplier
 
-    def _record_performance(
+def _record_performance(
         self, complexity: float, processing_time: float, result: Dict
     ):
         """Record performance metrics for continuous learning"""
@@ -2408,7 +2833,7 @@ class ComplexityDetector:
     Analyzes text, structure, and importance to produce a complexity score.
     """
 
-    def analyze_complexity(self, content: Dict[str, Any]) -> float:
+def analyze_complexity(self, content: Dict[str, Any]) -> float:
         """Analyze the complexity of content to determine processing requirements"""
 
         complexity_score = 0.0
@@ -2447,8 +2872,7 @@ exec_ctrl = (
             conflict_threshold=cfg.exec_conflict_threshold,
             explore_boost_k=cfg.exec_explore_boost_k,
             use_bandits=bool(getattr(cfg, "exec_use_bandits", False)),
-            bandit_eps=cfg.exec_bandit_eps,
-        )
+            bandit_eps=cfg.exec_bandit_eps, )
     )
     if cfg.use_exec_controller
     else None
@@ -2463,8 +2887,7 @@ _act_rate_ewma = EWMA(alpha=0.02)
 drift_mon = (
     DriftMonitor(
         cfg.embed_dim,
-        DriftConfig(window=cfg.drift_window, threshold=cfg.drift_threshold),
-    )
+        DriftConfig(window=cfg.drift_window, threshold=cfg.drift_threshold), )
     if cfg.use_drift_monitor
     else None
 )
@@ -2482,6 +2905,10 @@ def _sleep_loop():
         return
     while not _sleep_stop.is_set():
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             tenants = mt_wm.tenants() or ["public"]
             for tid in tenants:
                 CONS.run_nrem(
@@ -2490,8 +2917,7 @@ def _sleep_loop():
                     mt_wm,
                     mt_memory,
                     top_k=cfg.nrem_batch_size,
-                    max_summaries=cfg.max_summaries_per_cycle,
-                )
+                    max_summaries=cfg.max_summaries_per_cycle, )
                 _sleep_last.setdefault(tid, {})["nrem"] = _time.time()
                 CONS.run_rem(
                     tid,
@@ -2499,10 +2925,11 @@ def _sleep_loop():
                     mt_wm,
                     mt_memory,
                     recomb_rate=cfg.rem_recomb_rate,
-                    max_summaries=cfg.max_summaries_per_cycle,
-                )
+                    max_summaries=cfg.max_summaries_per_cycle, )
                 _sleep_last.setdefault(tid, {})["rem"] = _time.time()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         _sleep_stop.wait(interval)
 
 
@@ -2510,9 +2937,6 @@ def _sleep_loop():
 async def health(request: Request) -> S.HealthResponse:
     """Public health endpoint with shared CB + sleep degradation semantics."""
 
-    from somabrain.infrastructure.cb_registry import get_cb
-    from somabrain.sleep import SleepState
-    from somabrain.sleep.cb_adapter import map_cb_to_sleep
 
     ctx = await get_tenant_async(request, cfg.namespace)
     tenant_id = ctx.tenant_id
@@ -2530,8 +2954,7 @@ async def health(request: Request) -> S.HealthResponse:
             "memory_circuit_open": False,
             "wm_items": "tenant-scoped",
             "api_version": API_VERSION,
-        },
-    ).model_dump()
+        }, ).model_dump()
     # Core identifiers
     resp["namespace"] = ctx.namespace
     resp["trace_id"] = trace_id
@@ -2539,6 +2962,10 @@ async def health(request: Request) -> S.HealthResponse:
     resp["idempotency_key"] = idempotency_key
     # Constitution information (if engine loaded)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         engine: Optional["ConstitutionEngine"] = getattr(app.state, "constitution_engine", None)
         if engine:
             resp["constitution_version"] = engine.get_checksum()
@@ -2546,24 +2973,44 @@ async def health(request: Request) -> S.HealthResponse:
         else:
             resp["constitution_version"] = None
             resp["constitution_status"] = "not-loaded"
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["constitution_version"] = None
         resp["constitution_status"] = None
     # External backend requirement flag from settings
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["external_backends_required"] = None
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["full_stack"] = getattr(settings, "force_full_stack", None)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["full_stack"] = None
     # Memory item count – expose as top‑level field as well as component
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mem_count = int(getattr(ns_mem, "count", lambda: 0)())
         resp["memory_items"] = mem_count
         resp["components"]["wm_items"] = mem_count
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["memory_items"] = None
         resp["components"]["wm_items"] = None
     # Retrieval readiness – simple heuristic based on embedder availability.
@@ -2571,10 +3018,16 @@ async def health(request: Request) -> S.HealthResponse:
     # assignment until after ``embedder_ok`` is computed (see below).
     # OPA integration status – check if OPA engine is attached to app state
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         opa_engine = getattr(app.state, "opa_engine", None)
         resp["opa_ok"] = bool(opa_engine)
         resp["opa_required"] = getattr(settings, "require_opa", None)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["opa_ok"] = None
         resp["opa_required"] = None
 
@@ -2584,32 +3037,46 @@ async def health(request: Request) -> S.HealthResponse:
     # These correspond to the settings defined in ``common.config.settings``.
     # -------------------------------------------------------------------
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
         resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["memory_degrade_queue"] = None
         resp["memory_degrade_readonly"] = None
         resp["memory_degrade_topic"] = None
 
     # Stub audit (unchanged)
     try:
-        from somabrain.stub_audit import (
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
             BACKEND_ENFORCED as __BACKEND_ENFORCED,
-            stub_stats as __stub_stats,
-        )
+            stub_stats as __stub_stats, )
 
         resp["stub_counts"] = __stub_stats()
         if any(resp["stub_counts"].values()):
             resp["ok"] = False
         resp["external_backends_required"] = bool(__BACKEND_ENFORCED)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["stub_counts"] = {}
         resp["external_backends_required"] = BACKEND_ENFORCEMENT
 
     # Predictor / embedder diagnostics
     resp["predictor_provider"] = _PREDICTOR_PROVIDER
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         edim = None
         if embedder is not None:
             vec = embedder.embed("health_probe")  # type: ignore[attr-defined]
@@ -2617,7 +3084,9 @@ async def health(request: Request) -> S.HealthResponse:
                 shape = getattr(vec, "shape")
                 edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
 
     # -------------------------------------------------------------------
@@ -2641,11 +3110,17 @@ async def health(request: Request) -> S.HealthResponse:
     ns_mem = mt_memory.for_namespace(ctx.namespace)
     memory_ok = False
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         mhealth = ns_mem.health()
         resp["components"]["memory"] = mhealth
         if isinstance(mhealth, dict):
             memory_ok = bool(mhealth.get("http")) or bool(mhealth.get("ok"))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         memory_ok = False
 
     if memory_ok:
@@ -2659,29 +3134,45 @@ async def health(request: Request) -> S.HealthResponse:
     # may be missing if the system has not yet emitted them.
     # -------------------------------------------------------------------
     try:
-        from somabrain.metrics import tau_gauge, LEARNING_RETRIEVAL_ENTROPY
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         # The gauge objects expose a private `_value` attribute holding the
         # current metric value. Accessing it is safe for read‑only purposes.
         resp["tau"] = float(tau_gauge.labels(tenant_id=tenant_id)._value.get())
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["tau"] = None
 
     # Entropy‑cap configuration – expose the global flag and threshold.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["entropy_cap_enabled"] = getattr(settings, "entropy_cap_enabled", None)
         resp["entropy_cap"] = getattr(settings, "entropy_cap", None)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["entropy_cap_enabled"] = None
         resp["entropy_cap"] = None
 
     try:
-        from somabrain.metrics import LEARNING_RETRIEVAL_ENTROPY
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         resp["retrieval_entropy"] = float(
             LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id)._value.get()
         )
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["retrieval_entropy"] = None
 
     circuit_open = cb.is_open(tenant_id)
@@ -2697,18 +3188,29 @@ async def health(request: Request) -> S.HealthResponse:
 
     # WM items
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["components"]["wm_items"] = int(getattr(ns_mem, "count", lambda: 0)())
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         resp["components"]["wm_items"] = 0
 
     # Downstream health (integrator + segmentation)
-    import urllib.request
 
-    def _ping(url: str) -> bool:
+def _ping(url: str) -> bool:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
                 return 200 <= getattr(r, "status", 500) < 300
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
 
     integrator_url = settings.integrator_health_url
@@ -2793,8 +3295,9 @@ async def diagnostics() -> dict:
 
 
 if not _MINIMAL_API:
+    pass
 
-    @app.get("/micro/diag")
+@app.get("/micro/diag")
     async def micro_diag(request: Request):
         require_auth(request, cfg)
         # Retrieve tenant context
@@ -2811,8 +3314,14 @@ if not _MINIMAL_API:
                 "idempotency_key": idempotency_key,
             }
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             stats = mc_wm.stats(ctx.tenant_id)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             stats = {}
         return {
             "enabled": True,
@@ -2829,14 +3338,17 @@ if not _MINIMAL_API:
     # proxying to the in-container services managed by Supervisor in the
     # somabrain_cog container. They are lightweight and safe for dev/test.
 
-    def _cog_http_base() -> str:
+def _cog_http_base() -> str:
         return "http://somabrain_cog"
 
     async def _probe_service_http(
         path: str, port: int, *, timeout: float = 1.5
     ) -> bool:
         try:
-            import httpx  # type: ignore
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             url = f"{_cog_http_base()}:{port}{path}"
             async with httpx.AsyncClient(timeout=timeout) as cli:
@@ -2844,61 +3356,68 @@ if not _MINIMAL_API:
                 if int(getattr(r, "status_code", 0) or 0) != 200:
                     return False
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     j = r.json()
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     return True
                 return bool(j.get("ok", True)) if isinstance(j, dict) else True
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
 
-    @app.get("/reward/health")
+@app.get("/reward/health")
     async def reward_health() -> dict:
         # Prefer HTTP health of reward_producer (port 8083)
         ok = await _probe_service_http("/health", 8083)
         if not ok:
-            from fastapi import HTTPException as _HE
+            pass
 
             # Maintain test semantics: 404 means endpoint not mounted in this mode
             raise _HE(
                 status_code=404,
-                detail="Embedded reward endpoint not mounted (non-dev mode)",
-            )
+                detail="Embedded reward endpoint not mounted (non-dev mode)", )
         return {"ok": True}
 
-    @app.get("/learner/health")
+@app.get("/learner/health")
     async def learner_health() -> dict:
         ok = await _probe_service_http("/health", 8084)
         if not ok:
-            from fastapi import HTTPException as _HE
+            pass
 
             raise _HE(
                 status_code=404,
-                detail="Embedded learner endpoint not mounted (non-dev mode)",
-            )
+                detail="Embedded learner endpoint not mounted (non-dev mode)", )
         return {"ok": True}
 
-    @app.post("/reward/reward/{frame_id}")
+@app.post("/reward/reward/{frame_id}")
     async def post_reward_proxy(frame_id: str, body: dict) -> dict:
         # Forward to reward_producer HTTP in somabrain_cog on port 8083
         try:
-            import httpx  # type: ignore
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             url = f"{_cog_http_base()}:8083/reward/{frame_id}"
             async with httpx.AsyncClient(timeout=2.0) as cli:
                 r = await cli.post(url, json=body)
                 if r.status_code == 503:
                     # Preserve test's semantics: skip-worthy but we return 503 upstream
-                    from fastapi import HTTPException as _HE
 
                     raise _HE(
                         status_code=503,
-                        detail="Reward producer unavailable (Kafka not ready)",
-                    )
+                        detail="Reward producer unavailable (Kafka not ready)", )
                 r.raise_for_status()
                 return r.json()
-        except Exception as exc: raise
-            # Align with test skip semantics when the producer is not reachable
-            from fastapi import HTTPException as _HE
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             raise _HE(
                 status_code=503, detail="Reward producer unavailable (Kafka not ready)"
@@ -2912,16 +3431,28 @@ async def recall(req: S.RecallRequest, request: Request):
     ctx = await get_tenant_async(request, cfg.namespace)
     # Input validation for brain safety
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if hasattr(req, "query") and req.query:
             req.query = CognitiveInputValidator.sanitize_query(req.query)
-    except Exception as exc: raise
-        # Silently ignore sanitization errors; proceed with original query.
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
 
     # rate limit per tenant
     if not rate_limiter.allow(ctx.tenant_id):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.RATE_LIMITED_TOTAL.labels(path="/recall").inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         raise HTTPException(status_code=429, detail="rate limit exceeded")
 
     data = thalamus.normalize(req.model_dump())
@@ -2935,16 +3466,20 @@ async def recall(req: S.RecallRequest, request: Request):
     header_u = request.headers.get("X-Universe", "").strip() or None
     universe = req_u or header_u
     text = data.get("query", req.query)
-    import time as _t
-    import re as _re
 
     ql = ""
     qtokens: list[str] = []
     if isinstance(text, str):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ql = text.strip().lower()
             qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             ql = ""
             qtokens = []
 
@@ -2963,6 +3498,10 @@ async def recall(req: S.RecallRequest, request: Request):
     M.RECALL_WM_LAT.labels(cohort=cohort).observe(max(0.0, _t.perf_counter() - _t0))
     # WM recall quality metrics
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if wm_hits:
             top1 = float(wm_hits[0][0])
             top2 = float(wm_hits[1][0]) if len(wm_hits) > 1 else top1
@@ -2973,17 +3512,22 @@ async def recall(req: S.RecallRequest, request: Request):
             mcount = max(1, min(len(wm_hits), int(req.top_k)))
             mean_k = sum(float(s) for s, _ in wm_hits[:mcount]) / float(mcount)
             M.RECALL_SIM_TOPK_MEAN.observe(mean_k)
-    except Exception as exc: raise
-    # Optional HRR-first re-ranking of WM hits (optionally gated by margin)
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     if cfg.use_hrr_first and quantum is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             do_rerank = True
             if getattr(cfg, "hrr_rerank_only_low_margin", False):
                 if len(wm_hits) >= 2:
                     m = float(wm_hits[0][0]) - float(wm_hits[1][0])
                     if m > float(getattr(cfg, "rerank_margin_threshold", 0.05) or 0.05):
                         do_rerank = False
-                        from . import metrics as _mx
 
                         _mx.HRR_RERANK_WM_SKIPPED.inc()
             # compute HRR similarity to query for each candidate by encoding task/fact
@@ -3007,8 +3551,10 @@ async def recall(req: S.RecallRequest, request: Request):
                 reranked.sort(key=lambda t: t[0], reverse=True)
                 wm_hits = reranked[: max(0, int(req.top_k))]
                 M.HRR_RERANK_APPLIED.inc()
-        except Exception as exc: raise
-    # Filter WM hits by universe if specified (default unseen items assume 'real')
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     if universe:
         wm_hits = [
             (s, p)
@@ -3025,7 +3571,7 @@ async def recall(req: S.RecallRequest, request: Request):
     # Optional HRR cleanup influence
     hrr_info = None
     if mt_ctx is not None and cfg.use_hrr_cleanup and hrr_qv is not None:
-        from . import metrics as _mx
+        pass
 
         _mx.HRR_CLEANUP_CALLS.inc()
         cleanup_result = mt_ctx.cleanup(ctx.tenant_id, hrr_qv)
@@ -3042,12 +3588,18 @@ async def recall(req: S.RecallRequest, request: Request):
         M.HRR_CLEANUP_USED.inc()
         M.HRR_CLEANUP_SCORE.observe(score_clamped)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             acnt, amax = mt_ctx.stats(ctx.tenant_id)
             M.HRR_ANCHOR_SIZE.observe(max(0, int(acnt)))
             sat = 0.0 if amax <= 0 else float(acnt) / float(amax)
             M.HRR_CONTEXT_SAT.observe(max(0.0, min(1.0, sat)))
-        except Exception as exc: raise
-    # per-tenant recall cache
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=2048, ttl=2.0))
     ckey = f"{(universe or 'all')}:{text}:{req.top_k}"
     cached = cache.get(ckey)
@@ -3065,8 +3617,7 @@ async def recall(req: S.RecallRequest, request: Request):
             _sdr_enc,
             _sdr_idx,
             cfg.graph_hops,
-            cfg.graph_limit,
-        )
+            cfg.graph_limit, )
         M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
             max(0.0, _t.perf_counter() - _t1)
         )
@@ -3074,14 +3625,19 @@ async def recall(req: S.RecallRequest, request: Request):
         # coordinate lookup based on the query text used as key.
         if not mem_payloads:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 direct_coord = mem_client.coord_for_key(text, universe=universe)
                 direct = mem_client.payloads_for_coords(
                     [direct_coord], universe=universe
                 )
                 if direct:
                     mem_payloads = direct
-            except Exception as exc: raise
-        # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         if (
             cfg.use_hrr_first
             and quantum is not None
@@ -3089,6 +3645,10 @@ async def recall(req: S.RecallRequest, request: Request):
             and mem_payloads
         ):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ranked: list[tuple[float, dict]] = []
                 alpha = max(0.0, min(1.0, float(cfg.hrr_rerank_weight)))
                 for p in mem_payloads:
@@ -3107,10 +3667,15 @@ async def recall(req: S.RecallRequest, request: Request):
                 ranked.sort(key=lambda t: t[0], reverse=True)
                 mem_payloads = [p for _, p in ranked]
                 M.HRR_RERANK_LTM_APPLIED.inc()
-            except Exception as exc: raise
-        # If still empty, backfill from WM hits that lexically match the query
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         if not mem_payloads and wm_hits:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ql = str(text).strip().lower()
                 backfill: list[dict] = []
                 for _s, cand in wm_hits:
@@ -3136,12 +3701,19 @@ async def recall(req: S.RecallRequest, request: Request):
                     seen_tasks.add(t)
                     uniq.append(p)
                 mem_payloads = uniq
-            except Exception as exc: raise
-        # Ultimate alternative: lift matching items from WM into the memory list
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         if not mem_payloads:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 items = []
             if items:
                 ql = str(text).strip().lower()
@@ -3196,19 +3768,34 @@ async def recall(req: S.RecallRequest, request: Request):
         # Promote exact token-like queries (e.g., human-friendly IDs) even if LTM returned items.
         # This removes the need for users to switch endpoints when they have a label/token.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             promote_exact = bool(getattr(cfg, "promote_exact_token_enabled", True))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             promote_exact = True
         if promote_exact and isinstance(text, str):
             try:
-                import re as _re
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 # Heuristic: token-like if mostly [A-Za-z0-9_-] and length >= 6
                 _tokish = bool(_re.match(r"^[A-Za-z0-9_-]{6,}$", text.strip()))
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 _tokish = False
             if _tokish:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     direct_coord = mem_client.coord_for_key(text, universe=universe)
                     direct = mem_client.payloads_for_coords(
                         [direct_coord], universe=universe
@@ -3217,7 +3804,7 @@ async def recall(req: S.RecallRequest, request: Request):
                         # Insert at front if not already present (by coordinate if available)
                         d0 = direct[0]
 
-                        def _coord_of(p):
+def _coord_of(p):
                             c = p.get("coordinate") if isinstance(p, dict) else None
                             return (
                                 tuple(c)
@@ -3251,25 +3838,44 @@ async def recall(req: S.RecallRequest, request: Request):
                                 out.append(p)
                             mem_payloads = out
                         try:
-                            from . import metrics as _mx
+                            pass
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
 
                             _mx.WM_ADMIT.labels(source="promote_token").inc()
-                        except Exception as exc: raise
-                except Exception as exc: raise
-
-        # Apply composite ranking so the most relevant (math-focused) memories rise first.
+                        except Exception as exc:
+                            logger.exception("Exception caught: %s", exc)
+                            raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lexical_boost = True
         if lexical_boost and mem_payloads:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 now_ts = _t.time()
                 wm_support = _build_wm_support_index(wm_hits)
                 hrr_cache: dict[str, Any] = {}
                 scored = []
                 for p in mem_payloads:
                     try:
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         comp_score = _score_memory_candidate(
                             p,
                             query_lower=ql,
@@ -3283,19 +3889,24 @@ async def recall(req: S.RecallRequest, request: Request):
                             quantum_layer=quantum,
                             query_hrr=hrr_qv,
                             hrr_cache=hrr_cache,
-                            hrr_weight=getattr(cfg, "hrr_rerank_weight", 0.0),
-                        )
-                    except Exception as exc: raise
+                            hrr_weight=getattr(cfg, "hrr_rerank_weight", 0.0), )
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         comp_score = 0.0
                     scored.append((comp_score, p))
                 scored.sort(key=lambda sp: sp[0], reverse=True)
                 mem_payloads = [p for _, p in scored]
                 cache[ckey] = mem_payloads
-            except Exception as exc: raise
-
-        # Optional diversity pass (MMR)
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
         if getattr(cfg, "use_diversity", False):
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 k = int(getattr(cfg, "diversity_k", 10) or 10)
                 lam = float(getattr(cfg, "diversity_lambda", 0.5) or 0.5)
                 min_k = int(getattr(cfg, "diversity_min_k", 3) or 3)
@@ -3305,11 +3916,13 @@ async def recall(req: S.RecallRequest, request: Request):
                     embedder=embedder,
                     k=max(1, k),
                     lam=max(0.0, min(1.0, lam)),
-                    min_k=max(2, min_k),
-                )
+                    min_k=max(2, min_k), )
                 # Measure realized diversity (pairwise cosine distance mean) over first N items
                 try:
-                    import numpy as _np
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
 
                     N = min(8, len(mem_payloads))
                     if N >= 2:
@@ -3334,8 +3947,12 @@ async def recall(req: S.RecallRequest, request: Request):
                                     cnt += 1
                             if cnt > 0:
                                 M.DIVERSITY_PAIRWISE_MEAN.observe(dsum / float(cnt))
-                except Exception as exc: raise
-            except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
     else:
         M.RECALL_CACHE_HIT.labels(cohort=cohort).inc()
         mem_payloads = cached
@@ -3361,6 +3978,10 @@ async def recall(req: S.RecallRequest, request: Request):
     resp["results"] = resp["memory"]
     if not resp["memory"] and isinstance(req.query, str) and req.query:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             memsvc = MemoryService(mt_memory, ctx.namespace)
             coord = memsvc.coord_for_key(req.query, universe=universe)
             alternative_payloads = memsvc.payloads_for_coords(
@@ -3375,11 +3996,19 @@ async def recall(req: S.RecallRequest, request: Request):
                 if normalized:
                     resp["memory"].extend(normalized)
                     resp["results"] = resp["memory"]
-        except Exception as exc: raise
-    # Reality monitor (optional header X-Min-Sources)
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         min_src = int(request.headers.get("X-Min-Sources", "1"))
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         min_src = 1
     resp["reality"] = assess_reality(mem_payloads, min_sources=min_src)
     # Drift monitor on query vector
@@ -3398,6 +4027,7 @@ async def remember(body: dict, request: Request):
     Many integration tests (and some external callers) send the payload
     fields directly at the top level (e.g. ``{"task": "…", "content": "…"}``).
     To maintain backward compatibility we accept both shapes:
+        pass
 
     * If ``payload`` is present, we treat the request as the original schema.
     * Otherwise the entire body is interpreted as the payload.
@@ -3411,12 +4041,22 @@ async def remember(body: dict, request: Request):
 
     # Validate and coerce the payload using the defined MemoryPayload model.
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         payload_obj: S.MemoryPayload = S.MemoryPayload(**payload_data)  # type: ignore[arg-type]
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
 
     # Input validation for brain safety (task text & coordinate format).
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if payload_obj.task:
             payload_obj.task = CognitiveInputValidator.validate_text_input(
                 payload_obj.task, "task"
@@ -3431,25 +4071,40 @@ async def remember(body: dict, request: Request):
 
     if not rate_limiter.allow(ctx.tenant_id):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.RATE_LIMITED_TOTAL.labels(path="/remember").inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         raise HTTPException(status_code=429, detail="rate limit exceeded")
     if not quotas.allow_write(ctx.tenant_id, 1):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             M.QUOTA_DENIED_TOTAL.labels(reason="daily_write_quota").inc()
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         raise HTTPException(status_code=429, detail="daily write quota exceeded")
     # if coord not provided, key by task + timestamp for stable coord
     key = coord or (payload_obj.task or "task")
     payload = payload_obj.model_dump()
     if payload.get("timestamp") is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             payload["timestamp"] = coerce_to_epoch_seconds(payload["timestamp"])
         except ValueError as exc:
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid timestamp format: {exc}",
-            )
+                detail=f"Invalid timestamp format: {exc}", )
     # Universe scoping: payload value overrides header
     header_u = request.headers.get("X-Universe", "").strip() or None
     if not payload.get("universe") and header_u:
@@ -3469,24 +4124,31 @@ async def remember(body: dict, request: Request):
     memsvc = MemoryService(mt_memory, ctx.namespace)
     # Reset circuit breaker state before write
     memsvc._reset_circuit_if_needed()
-    import time as _t
 
     _s0 = _t.perf_counter()
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         await memsvc.aremember(key, payload)
     except RuntimeError as e:
         # Fail-fast: do not queue or journal. Always surface 503.
         raise HTTPException(
             status_code=503,
-            detail={"message": "memory backend unavailable"},
-        ) from e
+            detail={"message": "memory backend unavailable"}, ) from e
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
-    except Exception as exc: raise
-    # No journaling: writes must succeed against the real backend
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     # also admit to WM
     text = payload.get("task") or ""
-    import time as _t
 
     _e1 = _t.perf_counter()
     wm_vec = embedder.embed(text)
@@ -3501,28 +4163,46 @@ async def remember(body: dict, request: Request):
         cleanup_overlap = float(analysis.best_score)
         cleanup_margin = float(analysis.margin)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             payload.setdefault("_cleanup_best", cleanup_overlap)
             payload.setdefault("_cleanup_margin", cleanup_margin)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
 
     (mc_wm if cfg.use_microcircuits else mt_wm).admit(
         ctx.tenant_id,
         wm_vec,
         payload,
-        cleanup_overlap=cleanup_overlap,
-    )
+        cleanup_overlap=cleanup_overlap, )
     try:
-        from . import metrics as _mx
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         _mx.WM_ADMIT.labels(source="remember").inc()
         _mx.ATTENTION_LEVEL.set(float(thalamus.get_attention_level()))
         # WM utilization (best-effort)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
             cap = max(1, int(getattr(cfg, "wm_size", 64) or 64))
             M.WM_UTILIZATION.set(min(1.0, float(len(items)) / float(cap)))
-        except Exception as exc: raise
-    except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     if mt_ctx is not None and hrr_vec is not None:
         anchor_id = key or text
         mt_ctx.admit(ctx.tenant_id, anchor_id, hrr_vec)
@@ -3532,21 +4212,24 @@ async def remember(body: dict, request: Request):
     # SDR index admission for local/stub
     if cfg.use_sdr_prefilter and "_sdr_enc" in globals() and _sdr_enc is not None:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             idx = _sdr_idx.setdefault(
                 ctx.namespace,
-                LSHIndex(bands=cfg.sdr_bands, rows=cfg.sdr_rows, dim=cfg.sdr_dim),
-            )
+                LSHIndex(bands=cfg.sdr_bands, rows=cfg.sdr_rows, dim=cfg.sdr_dim), )
             bits = _sdr_enc.encode(text)
-            from .memory_client import _stable_coord as _sc
 
             coord = _sc(text)
             idx.add(coord, bits)
-        except Exception as exc: raise
-    # Enforce DTO contract fields
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
     deadline_ms = request.headers.get("X-Deadline-MS")
     idempotency_key = request.headers.get("X-Idempotency-Key")
-    import logging
 
     logging.info(
         f"SUCCESS: Memory saved for key={key} namespace={ctx.namespace} trace_id={trace_id}"
@@ -3562,8 +4245,9 @@ async def remember(body: dict, request: Request):
 
 
 if not _MINIMAL_API:
+    pass
 
-    @app.post("/sleep/run", response_model=S.SleepRunResponse)
+@app.post("/sleep/run", response_model=S.SleepRunResponse)
     async def sleep_run(
         body: S.SleepRunRequest, request: Request
     ) -> S.SleepRunResponse:
@@ -3581,8 +4265,7 @@ if not _MINIMAL_API:
                 mt_wm,
                 mt_memory,
                 top_k=cfg.nrem_batch_size,
-                max_summaries=cfg.max_summaries_per_cycle,
-            )
+                max_summaries=cfg.max_summaries_per_cycle, )
             _sleep_last.setdefault(ctx.tenant_id, {})["nrem"] = _time.time()
         if do_rem:
             details["rem"] = CONS.run_rem(
@@ -3591,8 +4274,7 @@ if not _MINIMAL_API:
                 mt_wm,
                 mt_memory,
                 recomb_rate=cfg.rem_recomb_rate,
-                max_summaries=cfg.max_summaries_per_cycle,
-            )
+                max_summaries=cfg.max_summaries_per_cycle, )
             _sleep_last.setdefault(ctx.tenant_id, {})["rem"] = _time.time()
         run_id = f"sleep_{ctx.tenant_id}_{int(time.time() * 1000)}"
         return S.SleepRunResponse(
@@ -3604,13 +4286,13 @@ if not _MINIMAL_API:
                 if do_nrem and do_rem
                 else ("nrem" if do_nrem else ("rem" if do_rem else "none"))
             ),
-            details=details,
-        )
+            details=details, )
 
 
 if not _MINIMAL_API:
+    pass
 
-    @app.get("/sleep/status", response_model=S.SleepStatusResponse)
+@app.get("/sleep/status", response_model=S.SleepStatusResponse)
     async def sleep_status(request: Request) -> S.SleepStatusResponse:
         require_auth(request, cfg)
         # Retrieve tenant context
@@ -3625,8 +4307,9 @@ if not _MINIMAL_API:
 
 
 if not _MINIMAL_API:
+    pass
 
-    @app.get("/sleep/status/all", response_model=S.SleepStatusAllResponse)
+@app.get("/sleep/status/all", response_model=S.SleepStatusAllResponse)
     async def sleep_status_all(request: Request) -> S.SleepStatusAllResponse:
         """Admin view: list sleep status for all known tenants.
 
@@ -3635,8 +4318,14 @@ if not _MINIMAL_API:
         ctx = await get_tenant_async(request, cfg.namespace)
         require_admin_auth(request, cfg)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             tenants = mt_wm.tenants() or [ctx.tenant_id or "public"]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             tenants = [ctx.tenant_id or "public"]
         out: dict[str, dict[str, float | None]] = {}
         for tid in tenants:
@@ -3673,6 +4362,10 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     header_u = request.headers.get("X-Universe", "").strip() or None
     universe = getattr(body, "universe", None) or header_u
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Use MemoryService to ensure any outbox or circuit logic is respected and to share the same client instance.
         memsvc = MemoryService(mt_memory, ctx.namespace)
         plan_result = plan_from_graph(
@@ -3680,9 +4373,10 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
             memsvc.client(),
             max_steps=max_steps,
             rel_types=rel_types,
-            universe=universe,
-        )
-    except Exception as exc: raise
+            universe=universe, )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         plan_result = []
     return {"plan": plan_result}
 
@@ -3702,13 +4396,22 @@ async def oak_option_create(body: S.OakOptionCreateRequest, request: Request):
     require_auth(request, cfg)
     # Decode payload safely
     try:
-        import base64
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         payload_bytes = base64.b64decode(body.payload)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
     opt_id = body.option_id or f"opt_{int(time.time() * 1000)}"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         opt = option_manager.create_option(ctx.tenant_id, opt_id, payload_bytes)
     except ValueError as ve:
         raise HTTPException(status_code=409, detail=str(ve))
@@ -3732,13 +4435,22 @@ async def oak_option_update(option_id: str, body: S.OakOptionCreateRequest, requ
     require_auth(request, cfg)
     # Decode payload safely
     try:
-        import base64
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         payload_bytes = base64.b64decode(body.payload)
     except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         opt = option_manager.update_option(ctx.tenant_id, option_id, payload_bytes)
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
@@ -3776,9 +4488,15 @@ async def delete_memory(req: S.DeleteRequest, request: Request):
     coord = tuple(req.coordinate)
     ms = MemoryService(mt_memory, ctx.namespace)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         ms.delete(coord)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Exception caught: %s", e)
+        raise
+    raise HTTPException(status_code=500, detail=str(e))
     return S.DeleteResponse()
 
 
@@ -3792,8 +4510,14 @@ async def recall_delete(req: S.DeleteRequest, request: Request):
     require_auth(request, cfg)
     ms = MemoryService(mt_memory, ctx.namespace)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         coord = tuple(req.coordinate)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         raise HTTPException(status_code=400, detail="Invalid coordinate format")
     ms.delete(coord)
     return S.DeleteResponse()
@@ -3836,8 +4560,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
-        tenant_id=ctx.tenant_id,
-    )
+        tenant_id=ctx.tenant_id, )
     # Build the response structure expected by the tests.
     act_step = {
         "step": body.task,
@@ -3853,6 +4576,10 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     plan_result: list[str] = []
     if getattr(cfg, "use_planner", False):
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Use the existing MultiTenantMemory client for planning to ensure graph visibility.
             mem_client = mt_memory.for_namespace(ctx.namespace)
             plan_result = plan_from_graph(
@@ -3860,17 +4587,17 @@ async def act_endpoint(body: S.ActRequest, request: Request):
                 mem_client,
                 max_steps=getattr(cfg, "plan_max_steps", 5),
                 rel_types=None,
-                universe=getattr(body, "universe", None),
-            )
-        except Exception as exc: raise
+                universe=getattr(body, "universe", None), )
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             plan_result = []
     return S.ActResponse(
         task=body.task,
         results=[act_step],
         # Return the list directly; empty list is acceptable for callers.
         plan=plan_result,
-        plan_universe=body.universe,
-    )
+        plan_universe=body.universe, )
 
 
 # Neuromodulators endpoint – get and set global neuromodulator state
@@ -3879,17 +4606,22 @@ async def get_neuromodulators(request: Request):
     _ = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         audit.log_admin_action(request, "neuromodulators_read")
-    except Exception as exc: raise
-    # Return current state; the Neuromodulators singleton holds a NeuromodState
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     tenant_ctx = await get_tenant_async(request, cfg.namespace)
     state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
     return S.NeuromodStateModel(
         dopamine=state.dopamine,
         serotonin=state.serotonin,
         noradrenaline=state.noradrenaline,
-        acetylcholine=state.acetylcholine,
-    )
+        acetylcholine=state.acetylcholine, )
 
 
 @app.post("/neuromodulators", response_model=S.NeuromodStateModel)
@@ -3899,7 +4631,7 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
     require_admin_auth(request, cfg)
 
     # Clamp values to allowed ranges (0.0‑0.8 for dopamine, 0.0‑0.1 for noradrenaline, etc.)
-    def clamp(val, lo, hi):
+def clamp(val, lo, hi):
         return max(lo, min(hi, float(val)))
 
     new_state = NeuromodState(
@@ -3907,11 +4639,14 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
         serotonin=clamp(body.serotonin, 0.0, 1.0),
         noradrenaline=clamp(body.noradrenaline, 0.0, 0.1),
         acetylcholine=clamp(body.acetylcholine, 0.0, 0.5),
-        timestamp=time.time(),
-    )
+        timestamp=time.time(), )
     tenant_ctx = await get_tenant_async(request, cfg.namespace)
     per_tenant_neuromods.set_state(tenant_ctx.tenant_id, new_state)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         audit.log_admin_action(
             request,
             "neuromodulators_set",
@@ -3923,15 +4658,16 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
                     "noradrenaline": new_state.noradrenaline,
                     "acetylcholine": new_state.acetylcholine,
                 },
-            },
-        )
-    except Exception as exc: raise
+            }, )
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return S.NeuromodStateModel(
         dopamine=new_state.dopamine,
         serotonin=new_state.serotonin,
         noradrenaline=new_state.noradrenaline,
-        acetylcholine=new_state.acetylcholine,
-    )
+        acetylcholine=new_state.acetylcholine, )
 
 
 # Health endpoint for tenant circuit breaker state
@@ -3946,14 +4682,19 @@ async def health_memory(request: Request) -> Dict[str, Any]:
     circuit_state = memsvc.get_circuit_state()
 
     # Get outbox pending count for this tenant
-    from somabrain.db.outbox import get_pending_events
 
     tenant_id = memsvc.tenant_id
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         pending_count = len(get_pending_events(limit=1000))
         # Filter by tenant if possible
         # Note: This is approximate, actual filtering would need tenant-aware query
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         pending_count = 0
 
     return {
@@ -3984,19 +4725,31 @@ async def health_oak(request: Request) -> Dict[str, Any]:
     # the service is unreachable. The client lazily connects on creation.
     milvus_ok: bool = False
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         _ = MilvusClient()
         milvus_ok = True
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         milvus_ok = False
 
     # OPA health – use the attached SimpleOPAEngine if present.
     opa_ok: bool = False
     opa_required: bool = getattr(settings, "require_opa", False)
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         opa_engine = getattr(app.state, "opa_engine", None)
         if opa_engine:
             opa_ok = await opa_engine.health()
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         opa_ok = False
 
     return {
@@ -4021,38 +4774,44 @@ async def graph_links(body: S.GraphLinksRequest, request: Request):
     start_coord = None
     if body.from_key:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             start_coord = memsvc.coord_for_key(body.from_key, universe=universe)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             start_coord = None
     edges = []
     if start_coord:
         # Debug: show namespace and global links for triage
         try:
-            import sys as _sys
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
-            from somabrain import memory_client as _mc
 
             active_logger = globals().get("logger") or module_logger
             active_logger.debug(
                 "graph_links namespace=%s pool_keys=%s",
                 memsvc.namespace,
-                list(getattr(mt_memory, "_pool", {}).keys()),
-            )
+                list(getattr(mt_memory, "_pool", {}).keys()), )
             active_logger.debug(
                 "graph_links memory_client_loaded=%s",
-                "somabrain.memory_client" in _sys.modules,
-            )
+                "somabrain.memory_client" in _sys.modules, )
             active_logger.debug(
                 "graph_links memory_client id=%s repr=%s",
                 id(_mc),
-                repr(_mc),
-            )
-        except Exception as exc: raise
+                repr(_mc), )
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         edges = memsvc.links_from(
             start_coord,
             type_filter=body.type,
-            limit=body.limit or 50,
-        )
+            limit=body.limit or 50, )
     return S.GraphLinksResponse(edges=edges, universe=universe)
 
 
@@ -4065,12 +4824,15 @@ _health_watchdog_task = None
 
 async def _health_watchdog_coroutine():
     """Periodic health checks for per-tenant circuit breakers."""
-    from somabrain.services.memory_service import MemoryService
 
     poll_interval = float(getattr(cfg, "memory_health_poll_interval", 5.0))
 
     while True:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Get all active tenants from memory pool
             tenants = []
             if hasattr(mt_memory, "_pool") and mt_memory._pool:
@@ -4080,6 +4842,10 @@ async def _health_watchdog_coroutine():
 
             for tenant_namespace in tenants:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     # Create memory service for this tenant
                     memsvc = MemoryService(mt_memory, tenant_namespace)
 
@@ -4101,29 +4867,33 @@ async def _health_watchdog_coroutine():
                             )
 
                 except Exception as e:
-                    logger.error(
-                        f"Health check failed for tenant {tenant_namespace}: {e}"
-                    )
+                    logger.exception("Exception caught: %s", e)
+                    raise
 
         except Exception as e:
-            logger.error(f"Health watchdog error: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
 
         await asyncio.sleep(poll_interval)
 
     # Journal Admin Endpoints
     # =======================
 
-    @app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
+@app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
     async def admin_get_journal_stats():
         """Get statistics about the local journal."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             stats = get_journal_stats()
             return {"success": True, "data": stats}
         except Exception as e:
-            logger.error(f"Failed to get journal stats: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    @app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
+@app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
     async def admin_list_journal_events(
         tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
         status: Optional[str] = Query(
@@ -4135,10 +4905,14 @@ async def _health_watchdog_coroutine():
         ),
         since: Optional[str] = Query(
             None, description="Only events after this ISO datetime"
-        ),
-    ):
+        ), ):
+            pass
         """List journal events with filtering options."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             since_dt = None
             if since:
                 since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
@@ -4148,8 +4922,7 @@ async def _health_watchdog_coroutine():
                 status=status,
                 topic=topic,
                 limit=limit,
-                since=since_dt,
-            )
+                since=since_dt, )
 
             return {
                 "success": True,
@@ -4170,10 +4943,10 @@ async def _health_watchdog_coroutine():
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to list journal events: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    @app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
+@app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
     async def admin_replay_journal_events(
         tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
         limit: int = Query(
@@ -4181,10 +4954,14 @@ async def _health_watchdog_coroutine():
         ),
         mark_processed: bool = Query(
             True, description="Mark replayed events as processed"
-        ),
-    ):
+        ), ):
+            pass
         """Replay journal events to the database outbox."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             replayed = replay_journal_events(
                 tenant_id=tenant_id, limit=limit, mark_processed=mark_processed
             )
@@ -4197,20 +4974,24 @@ async def _health_watchdog_coroutine():
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to replay journal events: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    @app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
+@app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
     async def admin_cleanup_journal():
         """Clean up old journal files based on retention policy."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             result = cleanup_journal()
             return {"success": True, "data": result}
         except Exception as e:
-            logger.error(f"Failed to cleanup journal: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    @app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
+@app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
     async def admin_init_journal(
         journal_dir: Optional[str] = Query(None, description="Journal directory path"),
         max_file_size: Optional[int] = Query(
@@ -4219,10 +5000,14 @@ async def _health_watchdog_coroutine():
         max_files: Optional[int] = Query(None, description="Max number of files"),
         retention_days: Optional[int] = Query(
             None, description="Retention period in days"
-        ),
-    ):
+        ), ):
+            pass
         """Initialize or reconfigure the journal."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             # Get current config or create new one
             config = JournalConfig.from_env()
 
@@ -4252,8 +5037,8 @@ async def _health_watchdog_coroutine():
                 },
             }
         except Exception as e:
-            logger.error(f"Failed to initialize journal: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            logger.exception("Exception caught: %s", e)
+            raise
 
 
 @app.on_event("startup")
@@ -4268,22 +5053,29 @@ async def _init_health_watchdog():
 async def _init_tenant_manager():
     """Initialize centralized tenant management system."""
     try:
-        from somabrain.tenant_manager import get_tenant_manager
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         tenant_manager = await get_tenant_manager()
         logger.info("Tenant manager initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize tenant manager: {e}")
-        # Don't fail startup - tenant management can be initialized lazily
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 @app.on_event("shutdown")
 async def _shutdown_tenant_manager():
     """Shutdown tenant manager."""
     try:
-        from somabrain.tenant_manager import close_tenant_manager
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         await close_tenant_manager()
         logger.info("Tenant manager shutdown completed")
     except Exception as e:
-        logger.error(f"Error shutting down tenant manager: {e}")
+        logger.exception("Exception caught: %s", e)
+        raise

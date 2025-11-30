@@ -1,3 +1,22 @@
+from __future__ import annotations
+import json
+import os
+import time
+import threading
+from typing import Any, Dict, Optional
+import logging
+from sqlalchemy.orm import Session
+from somabrain.db.outbox import (
+from somabrain.metrics import (
+from somabrain.journal import get_journal
+from somabrain.db.outbox import replay_journal_events
+from somabrain.storage.db import get_session_factory
+from somabrain.common.infra import assert_ready
+from common.config.settings import settings
+from common.logging import logger
+from confluent_kafka import Producer  # type: ignore
+import time
+
 """
 Transactional Outbox Publisher
 
@@ -6,12 +25,14 @@ On successful publish, marks the event as 'sent'. On failure, increments retries
 and stores last_error; after max retries, marks as 'failed'.
 
 Robustness improvements:
+    pass
 - Prefer confluent-kafka with idempotence + acks=all when available
 - Fall back to kafka-python with acks=all and client retries
 - Startup waits and retries producer creation until Kafka is reachable
 - Per-send errors update retry counters without crashing the loop
 
 Environment:
+    pass
 - SOMABRAIN_KAFKA_URL: kafka://host:port
 - SOMA_KAFKA_BOOTSTRAP: alternative plain bootstrap (host:port); used if set
 - SOMABRAIN_OUTBOX_BATCH_SIZE: default 100
@@ -20,49 +41,29 @@ Environment:
 - SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS: backoff between producer create attempts (default 1000)
 """
 
-from __future__ import annotations
 
-import json
-import os
-import time
-import threading
-from typing import Any, Dict, Optional
-import logging
 
-from sqlalchemy.orm import Session
 
-from somabrain.db.outbox import (
     get_pending_counts_by_tenant,
-    get_pending_events_by_tenant_batch,
-)
-from somabrain.metrics import (
+    get_pending_events_by_tenant_batch, )
     DEFAULT_TENANT_LABEL,
     report_outbox_pending,
-    report_outbox_processed,
-)
-from somabrain.journal import get_journal
-from somabrain.db.outbox import replay_journal_events
-from somabrain.storage.db import get_session_factory
-from somabrain.common.infra import assert_ready
-from common.config.settings import settings
+    report_outbox_processed, )
 
 # Per-tenant batch processing configuration
 _PER_TENANT_BATCH_LIMIT = max(
     1,
-    int(getattr(settings, "outbox_tenant_batch_limit", 50) or 50),
-)
+    int(getattr(settings, "outbox_tenant_batch_limit", 50) or 50), )
 
 # Per-tenant quota configuration
 _PER_TENANT_QUOTA_LIMIT = max(
     1,
-    int(getattr(settings, "outbox_tenant_quota_limit", 1000) or 1000),
-)
+    int(getattr(settings, "outbox_tenant_quota_limit", 1000) or 1000), )
 
 # Per-tenant quota window in seconds
 _PER_TENANT_QUOTA_WINDOW = max(
     1,
-    int(getattr(settings, "outbox_tenant_quota_window", 60) or 60),
-)
+    int(getattr(settings, "outbox_tenant_quota_window", 60) or 60), )
 
 # Backpressure configuration
 _BACKPRESSURE_ENABLED = (
@@ -70,8 +71,7 @@ _BACKPRESSURE_ENABLED = (
 )
 _BACKPRESSURE_THRESHOLD = max(
     0.1,
-    float(getattr(settings, "outbox_backpressure_threshold", 0.8) or 0.8),
-)
+    float(getattr(settings, "outbox_backpressure_threshold", 0.8) or 0.8), )
 
 
 def _bootstrap() -> Optional[str]:
@@ -90,7 +90,10 @@ def _make_producer():  # pragma: no cover - optional at runtime
     if not bootstrap:
         return None
     try:
-        from confluent_kafka import Producer  # type: ignore
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         # Enhanced producer configuration for idempotency and reliability
         conf = {
@@ -108,7 +111,9 @@ def _make_producer():  # pragma: no cover - optional at runtime
             "client.id": f"somabrain-outbox-{os.getpid()}",
         }
         return Producer(conf)
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return None
 
 
@@ -118,8 +123,8 @@ def _publish_record(
     payload: Dict[str, Any],
     *,
     key: str | None = None,
-    headers: Dict[str, Any] | None = None,
-) -> None:
+    headers: Dict[str, Any] | None = None, ) -> None:
+        pass
     """Publish a record to Kafka with enhanced keying and headers for idempotency.
 
     Args:
@@ -136,6 +141,10 @@ def _publish_record(
     if producer is None:
         raise RuntimeError("Kafka producer not available")
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Serialize payload
         payload_bytes = json.dumps(
             payload, separators=(",", ":"), ensure_ascii=False
@@ -155,7 +164,6 @@ def _publish_record(
         header_items: list[tuple[str, bytes]] = []
 
         # Add timestamp header
-        import time
 
         timestamp_ms = int(time.time() * 1000)
         header_items.append(("x-timestamp-ms", str(timestamp_ms).encode("utf-8")))
@@ -182,16 +190,11 @@ def _publish_record(
             topic,
             value=payload_bytes,
             key=key_bytes,
-            headers=header_items or None,
-        )
+            headers=header_items or None, )
 
     except Exception as e:
-        # Enhance error with context
-        error_msg = f"Failed to publish to topic '{topic}'"
-        if key:
-            error_msg += f" with key '{key}'"
-        error_msg += f": {e}"
-        raise RuntimeError(error_msg) from e
+        logger.exception("Exception caught: %s", e)
+        raise
 
 
 _known_pending_tenants: set[str] = set()
@@ -200,14 +203,14 @@ _known_pending_tenants: set[str] = set()
 class TenantQuotaManager:
     """Manages per-tenant processing quotas and backpressure."""
 
-    def __init__(self, quota_limit: int, quota_window: int):
+def __init__(self, quota_limit: int, quota_window: int):
         self.quota_limit = quota_limit
         self.quota_window = quota_window
         self.tenant_usage: dict[str, list[float]] = {}  # tenant -> list of timestamps
         self.tenant_backoff: dict[str, float] = {}  # tenant -> backoff until timestamp
         self._lock = threading.RLock()
 
-    def can_process(self, tenant_id: str, count: int = 1) -> bool:
+def can_process(self, tenant_id: str, count: int = 1) -> bool:
         """Check if tenant can process requested number of events.
 
         Args:
@@ -242,7 +245,7 @@ class TenantQuotaManager:
 
             return True
 
-    def record_usage(self, tenant_id: str, count: int = 1) -> None:
+def record_usage(self, tenant_id: str, count: int = 1) -> None:
         """Record processing usage for a tenant.
 
         Args:
@@ -264,7 +267,7 @@ class TenantQuotaManager:
             if tenant in self.tenant_backoff:
                 del self.tenant_backoff[tenant]
 
-    def get_usage_stats(self) -> dict[str, dict[str, Any]]:
+def get_usage_stats(self) -> dict[str, dict[str, Any]]:
         """Get current usage statistics for all tenants.
 
         Returns:
@@ -289,7 +292,7 @@ class TenantQuotaManager:
 
             return stats
 
-    def cleanup_old_tenants(self, max_age: float = 300.0) -> None:
+def cleanup_old_tenants(self, max_age: float = 300.0) -> None:
         """Clean up old tenant data to prevent memory leaks.
 
         Args:
@@ -331,8 +334,15 @@ def _update_outbox_pending_metrics() -> None:
         return
     counts: dict[str, int] = {}
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         counts = get_pending_counts_by_tenant()
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     current_tenants = set(counts.keys())
     if not current_tenants:
         counts = {DEFAULT_TENANT_LABEL: 0}
@@ -355,8 +365,7 @@ def _process_batch(
     # Use tenant-aware batch processing to prevent any single tenant from dominating
     tenant_batches = get_pending_events_by_tenant_batch(
         limit_per_tenant=_PER_TENANT_BATCH_LIMIT,
-        max_tenants=max(1, batch_size // _PER_TENANT_BATCH_LIMIT),
-    )
+        max_tenants=max(1, batch_size // _PER_TENANT_BATCH_LIMIT), )
 
     if not tenant_batches:
         _update_outbox_pending_metrics()
@@ -379,6 +388,10 @@ def _process_batch(
         for ev in tenant_events:
             topic = ev.topic
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 # Generate stable key for idempotency: tenant:dedupe_key
                 # This ensures same event always gets same key for exactly-once semantics
                 key = (
@@ -405,8 +418,7 @@ def _process_batch(
                     topic,
                     ev.payload,
                     key=key,
-                    headers=headers,
-                )
+                    headers=headers, )
                 ev.status = "sent"
                 sent += 1
                 tenant_processed += 1
@@ -417,10 +429,8 @@ def _process_batch(
                 journal = get_journal()
                 journal.mark_events_sent([ev.dedupe_key])
             except Exception as e:
-                ev.retries = int(ev.retries or 0) + 1
-                ev.last_error = str(e)
-                if ev.retries >= max_retries:
-                    ev.status = "failed"
+                logger.exception("Exception caught: %s", e)
+                raise
             session.add(ev)
 
         # Record usage for successfully processed tenant
@@ -431,17 +441,28 @@ def _process_batch(
 
     # Best-effort flush to push deliveries
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         if producer is not None:
             # confluent-kafka and kafka-python both expose flush(timeout)
             producer.flush(5)
-    except Exception as exc: raise
-
-    # Report processed events
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     if report_outbox_processed is not None:
         for (tenant_label, topic), count in processed_counts.items():
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 report_outbox_processed(tenant_label, topic, count)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 continue
 
     # Log skipped tenants due to quota limits
@@ -449,8 +470,7 @@ def _process_batch(
         logging.info(
             "outbox_publisher: Skipped processing for %d tenants due to quota limits: %s",
             len(skipped_tenants),
-            ", ".join(sorted(skipped_tenants)),
-        )
+            ", ".join(sorted(skipped_tenants)), )
 
     # Periodic cleanup of old tenant data
     if sent == 0:  # Only cleanup on idle cycles
@@ -466,8 +486,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         require_kafka=True,
         require_redis=False,
         require_postgres=True,
-        require_opa=False,
-    )
+        require_opa=False, )
     batch_size = int(settings.outbox_batch_size or 100)
     max_retries = int(settings.outbox_max_retries or 5)
     poll_interval = float(settings.outbox_poll_interval or 1.0)
@@ -500,11 +519,14 @@ def run_forever() -> None:  # pragma: no cover - integration loop
         # Process regular database outbox events
         with session_factory() as session:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 n = _process_batch(session, producer, batch_size, max_retries)
             except Exception as e:
-                # Safety net: don't crash the loop on DB issues
-                logging.error("outbox_publisher: batch error: %s", e)
-                n = 0
+                logger.exception("Exception caught: %s", e)
+                raise
 
         # Only sleep if no events were processed from either source
         if n == 0:

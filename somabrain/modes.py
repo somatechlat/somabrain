@@ -1,3 +1,11 @@
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Dict, List
+import json
+from pathlib import Path
+from common.config.settings import settings
+from common.logging import logger
+
 """Unified runtime mode + feature resolution for SomaBrain.
 
 Single source of truth for behaviour:
@@ -12,15 +20,9 @@ listing disabled feature keys. Overrides are applied only in ``full-local`` mode
 in ``prod`` they are ignored (fail‑closed semantics).
 """
 
-from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List
-import json
-from pathlib import Path
 
 # Import central settings to respect runtime feature flag overrides
-from common.config.settings import settings
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,7 @@ class ModeConfig:
     # Master switch for all cognitive sub‑services (integrator, segmentation, etc.)
     enable_cog_threads: bool
 
-    def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
+def as_dict(self) -> Dict[str, bool]:  # convenience for logging/metrics
         return {k: getattr(self, k) for k in self.__dataclass_fields__ if k != "name"}
 
 
@@ -76,6 +78,10 @@ def _load_overrides() -> List[str]:
     # Use the Settings attribute that holds the overrides file path.
     path = settings.feature_overrides_path or "./data/feature_overrides.json"
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         p = Path(path)
         if not p.exists():
             return []
@@ -83,7 +89,10 @@ def _load_overrides() -> List[str]:
         disabled = data.get("disabled")
         if isinstance(disabled, list):
             return [str(x).strip().lower() for x in disabled]
-    except Exception as exc: raise
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+    raise
     return []
 
 
@@ -119,8 +128,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
-            enable_cog_threads=getattr(settings, "enable_cog_threads", True),
-        )
+            enable_cog_threads=getattr(settings, "enable_cog_threads", True), )
     # full-local: production parity but allow dev overrides & relaxed Avro if runtime_config requests it
     if name == "full-local":
         return ModeConfig(
@@ -145,8 +153,7 @@ def get_mode_config() -> ModeConfig:
             fusion_normalization=True,
             calibration_enabled=True,
             consistency_checks=True,
-            enable_cog_threads=getattr(settings, "enable_cog_threads", True),
-        )
+            enable_cog_threads=getattr(settings, "enable_cog_threads", True), )
     # prod: same semantics (strict, all ON) – operational differences handled outside python.
     return ModeConfig(
         name="prod",
@@ -170,8 +177,7 @@ def get_mode_config() -> ModeConfig:
         fusion_normalization=True,
         calibration_enabled=True,
         consistency_checks=True,
-        enable_cog_threads=getattr(settings, "enable_cog_threads", True),
-    )
+        enable_cog_threads=getattr(settings, "enable_cog_threads", True), )
 
 
 def mode_config() -> ModeConfig:
@@ -256,6 +262,10 @@ def get_learning_config() -> dict:
     # Apply developer overrides only in full-local mode
     if cfg.name == "full-local":
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             path = settings.feature_overrides_path or "./data/feature_overrides.json"
             p = Path(path)
             if p.exists():
@@ -270,5 +280,8 @@ def get_learning_config() -> dict:
                     for k, v in lc.items():
                         if k in constraints_defaults and isinstance(v, (int, float)):
                             constraints_defaults[k] = float(v)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise
     return {"gains": gains_defaults, "constraints": constraints_defaults}

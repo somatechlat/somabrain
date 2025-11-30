@@ -1,3 +1,7 @@
+from __future__ import annotations
+from typing import Dict, List, Optional, Set, Tuple
+from common.config.settings import settings
+
 """
 Random Walk with Restart (RWR) Planner Module.
 
@@ -6,6 +10,7 @@ over the memory graph. It builds a local subgraph around a task and uses RWR to
 identify the most relevant related tasks and facts based on graph connectivity.
 
 Key Features:
+    pass
 - Random Walk with Restart for importance ranking
 - Local subgraph construction around starting task
 - Stationary probability-based node ranking
@@ -13,6 +18,7 @@ Key Features:
 - Configurable restart probability and iteration steps
 
 Algorithm Overview:
+    pass
 1. Build local neighborhood graph around starting task coordinate
 2. Perform power iterations with restart to compute stationary probabilities
 3. Rank nodes by their stationary probabilities (excluding start node)
@@ -26,11 +32,8 @@ Functions:
     rwr_plan: Main RWR-based planning function.
 """
 
-from __future__ import annotations
 
-from typing import Dict, List, Optional, Set, Tuple
 
-from common.config.settings import settings
 
 
 def rwr_plan(
@@ -39,8 +42,8 @@ def rwr_plan(
     steps: Optional[int] = None,
     restart: Optional[float] = None,
     universe: Optional[str] = None,
-    max_items: Optional[int] = None,
-) -> List[str]:
+    max_items: Optional[int] = None, ) -> List[str]:
+        pass
     """
     Generate a plan using Random Walk with Restart over the local graph.
 

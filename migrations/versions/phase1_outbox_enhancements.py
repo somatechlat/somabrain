@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Phase 1 Outbox Enhancements for Idempotency and Performance
 
 Revision ID: phase1_outbox_enhancements
@@ -6,12 +11,8 @@ Create Date: 2025-11-15 10:30:00.000000
 
 """
 
-from __future__ import annotations
 
-from typing import Sequence
 
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
@@ -36,29 +37,25 @@ def upgrade() -> None:
     op.create_index(
         "ix_outbox_status_created",
         "outbox_events",
-        ["status", "created_at"],
-    )
+        ["status", "created_at"], )
 
     # Add index for topic-based queries
     op.create_index(
         "ix_outbox_topic_status",
         "outbox_events",
-        ["topic", "status"],
-    )
+        ["topic", "status"], )
 
     # Add index for retry management
     op.create_index(
         "ix_outbox_retries_status",
         "outbox_events",
-        ["retries", "status"],
-    )
+        ["retries", "status"], )
 
     # Add index for tenant and topic queries
     op.create_index(
         "ix_outbox_tenant_topic",
         "outbox_events",
-        ["tenant_id", "topic"],
-    )
+        ["tenant_id", "topic"], )
 
     # Add composite index for efficient failed event queries
     op.create_index(
@@ -66,8 +63,7 @@ def upgrade() -> None:
         "outbox_events",
         ["status", "tenant_id", "created_at"],
         # This will be used with postgres partial index for status='failed'
-        postgresql_where=sa.text("status = 'failed'"),
-    )
+        postgresql_where=sa.text("status = 'failed'"), )
 
 
 def downgrade() -> None:
@@ -76,30 +72,24 @@ def downgrade() -> None:
     # Drop all added indices
     op.drop_index(
         "ix_outbox_failed_tenant_created",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
 
     op.drop_index(
         "ix_outbox_tenant_topic",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
 
     op.drop_index(
         "ix_outbox_retries_status",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
 
     op.drop_index(
         "ix_outbox_topic_status",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
 
     op.drop_index(
         "ix_outbox_status_created",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )
 
     op.drop_index(
         "ix_outbox_dedupe_key_tenant",
-        table_name="outbox_events",
-    )
+        table_name="outbox_events", )

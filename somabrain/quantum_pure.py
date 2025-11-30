@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import Dict, Tuple
+import numpy as np
+from somabrain.numerics import normalize_array
+from somabrain.quantum import HRRConfig
+from somabrain.seed import seed_to_uint64
+from common.logging import logger
+
 """Pure HRR reference implementation (test-only).
 
 This module provides a mathematically-pure HRR layer suitable for
@@ -7,32 +15,29 @@ no ad-hoc regularizers. The pure unbind raises an explicit ZeroDivisionError
 when any frequency component of the divisor is exactly zero.
 
 Intended usage:
+    pass
 - Import `PureQuantumLayer` in tests or benchmarking scripts and compare
   results with the production `QuantumLayer` implemented in
   `somabrain.quantum`.
 
 Notes:
+    pass
 - This module is test-only. Do NOT use `PureQuantumLayer` in production
   services because exact division is brittle under finite-precision arithmetic.
 - Intermediates are computed in complex128 to reduce transient rounding error
   before casting results back to the configured runtime dtype.
 """
 
-from __future__ import annotations
 
-from typing import Dict, Tuple
 
-import numpy as np
 
-from somabrain.numerics import normalize_array
-from somabrain.quantum import HRRConfig
-from somabrain.seed import seed_to_uint64
 
 
 class PureQuantumLayer:
     """A minimal, pure HRR implementation for verification.
 
     Behavioural contract:
+        pass
     - bind(a,b) uses exact FFT-based circular convolution.
     - unbind(c,b) performs exact frequency-domain division and raises
       ZeroDivisionError if any divisor frequency is exactly zero.
@@ -40,7 +45,7 @@ class PureQuantumLayer:
     - Deterministic encoding mirrors `QuantumLayer.encode_text` semantics.
     """
 
-    def __init__(self, cfg: HRRConfig):
+def __init__(self, cfg: HRRConfig):
         self.cfg = cfg
         # Use deterministic RNG for operations that need randomness
         self._rng = np.random.default_rng(cfg.seed)
@@ -49,14 +54,20 @@ class PureQuantumLayer:
         self._perm_inv = np.argsort(self._perm)
         self._token_cache: Dict[str, np.ndarray] = {}
 
-    def _ensure_vector(self, v: object, name: str = "vector") -> np.ndarray:
+def _ensure_vector(self, v: object, name: str = "vector") -> np.ndarray:
         if isinstance(v, np.ndarray):
             arr = v
         else:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 arr = np.asarray(v, dtype=self.cfg.dtype)
             except Exception as e:
-                raise ValueError(f"{name}: cannot convert to ndarray: {e}")
+                logger.exception("Exception caught: %s", e)
+                raise
+    raise ValueError(f"{name}: cannot convert to ndarray: {e}")
         if arr.ndim != 1:
             arr = arr.reshape(-1)
         if arr.shape[0] != self.cfg.dim:
@@ -65,22 +76,22 @@ class PureQuantumLayer:
             arr = arr.astype(self.cfg.dtype)
         return arr
 
-    def _renorm(self, v: np.ndarray) -> np.ndarray:
+def _renorm(self, v: np.ndarray) -> np.ndarray:
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
         return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
 
-    def random_vector(self) -> np.ndarray:
+def random_vector(self) -> np.ndarray:
         v = self._rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 
-    def encode_text(self, text: str) -> np.ndarray:
+def encode_text(self, text: str) -> np.ndarray:
         seed64 = seed_to_uint64(text) ^ int(self.cfg.seed)
         rng = np.random.default_rng(np.uint64(seed64))
         v = rng.normal(0.0, 1.0, size=self.cfg.dim)
         return self._renorm(v)
 
-    def superpose(self, *vectors) -> np.ndarray:
+def superpose(self, *vectors) -> np.ndarray:
         s = None
         for v in vectors:
             if isinstance(v, (list, tuple)):
@@ -94,7 +105,7 @@ class PureQuantumLayer:
             return np.zeros((self.cfg.dim,), dtype=self.cfg.dtype)
         return self._renorm(s)
 
-    def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a = self._ensure_vector(a, name="bind.a")
         b = self._ensure_vector(b, name="bind.b")
         fa = np.fft.rfft(a)
@@ -103,7 +114,7 @@ class PureQuantumLayer:
         conv = np.fft.irfft(prod, n=self.cfg.dim)
         return self._renorm(conv)
 
-    def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+def unbind(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         c = self._ensure_vector(c, name="unbind.c")
         b = self._ensure_vector(b, name="unbind.b")
         fc = np.fft.rfft(c).astype(np.complex128)
@@ -122,7 +133,7 @@ class PureQuantumLayer:
         a_est = np.fft.irfft(fa_est, n=self.cfg.dim)
         return self._renorm(a_est)
 
-    def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
         a = self._ensure_vector(a, name="permute.a")
         if times >= 0:
             idx = self._perm
@@ -134,15 +145,15 @@ class PureQuantumLayer:
             a = a[idx]
         return a
 
-    @staticmethod
-    def cosine(a: np.ndarray, b: np.ndarray) -> float:
+@staticmethod
+def cosine(a: np.ndarray, b: np.ndarray) -> float:
         na = float(np.linalg.norm(a))
         nb = float(np.linalg.norm(b))
         if na <= 0 or nb <= 0:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-    def cleanup(
+def cleanup(
         self, q: np.ndarray, anchors: Dict[str, np.ndarray]
     ) -> Tuple[str, float]:
         q = self._ensure_vector(q, name="cleanup.query")
@@ -150,6 +161,10 @@ class PureQuantumLayer:
         best = -1.0
         for k, v in anchors.items():
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 vv = self._ensure_vector(v, name=f"cleanup.anchor[{k}]")
             except ValueError:
                 continue

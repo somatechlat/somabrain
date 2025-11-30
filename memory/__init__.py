@@ -1,3 +1,5 @@
+from common.logging import logger
+
 """
 Memory package import gate.
 

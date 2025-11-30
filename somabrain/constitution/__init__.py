@@ -1,3 +1,20 @@
+from __future__ import annotations
+import json
+import logging
+import os
+import time
+from typing import Any, Dict, List, Optional
+from somabrain.constitution.storage import ConstitutionRecord, ConstitutionStorage
+from common.logging import logger
+from somabrain import audit as _audit
+import base64
+import hvac
+from cryptography.hazmat.primitives.serialization import (
+from cryptography.hazmat.primitives.serialization import (
+import requests
+import subprocess
+import tempfile
+
 """Constitution engine package.
 
 This package exposes the `ConstitutionEngine` and related helpers. The full
@@ -9,37 +26,40 @@ Keep the implementation deliberately self-contained and import-light so tests
 and import-time checks remain stable.
 """
 
-from __future__ import annotations
-
-import json
-import logging
-import os
-import time
-from typing import Any, Dict, List, Optional
 
 
-from somabrain.constitution.storage import ConstitutionRecord, ConstitutionStorage
+
 
 try:
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
     # prefer existing project audit helper if available
-    from somabrain import audit as _audit
 
     # publish_event returns bool; log_admin_action is kept for admin paths
     _PUBLISH_EVENT = getattr(_audit, "publish_event", None)
-except Exception as exc: raise
-    _PUBLISH_EVENT = None
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 LOGGER = logging.getLogger("somabrain.constitution")
 
 
 class ConstitutionError(Exception):
+    pass
 
 
 def _decode_signature(sig: str) -> bytes:
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         return bytes.fromhex(sig)
-    except Exception as exc: raise
-        import base64
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
 
         return base64.b64decode(sig)
 
@@ -48,23 +68,23 @@ class ConstitutionEngine:
     """Load and validate the AI‑Human Constitution.
 
     Responsibilities:
+        pass
     - load JSON from Redis (key: SOMA_CONSTITUTION_KEY or default 'soma:constitution')
     - compute a stable SHA256 checksum string used for versioning
     - expose `validate(instance: dict) -> dict` that returns {'allowed': bool, 'explain': ...}
     """
 
-    def __init__(
+def __init__(
         self,
         redis_url: Optional[str] = None,
         redis_client: Optional[Any] = None,
         storage: Optional[ConstitutionStorage] = None,
-        db_url: Optional[str] = None,
-    ):
+        db_url: Optional[str] = None, ):
+            pass
         self._storage = storage or ConstitutionStorage(
             redis_url=redis_url,
             redis_client=redis_client,
-            db_url=db_url,
-        )
+            db_url=db_url, )
         self._constitution: Optional[Dict[str, Any]] = None
         self._checksum: Optional[str] = None
         self._signature: Optional[str] = None
@@ -74,7 +94,7 @@ class ConstitutionEngine:
         self._key = self._storage._redis_key
         self._sig_key = self._storage._redis_sig_key
 
-    def _load_pubkey_map(self) -> Dict[str, str]:
+def _load_pubkey_map(self) -> Dict[str, str]:
         """
         Load public key map for signature verification.
         If Vault integration is enabled (VAULT_ADDR, VAULT_TOKEN, SOMABRAIN_VAULT_PUBKEY_PATH),
@@ -86,7 +106,10 @@ class ConstitutionEngine:
         vault_path = getattr(settings, "vault_pubkey_path", None)
         if vault_addr and vault_token and vault_path:
             try:
-                import hvac
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 client = hvac.Client(url=vault_addr, token=vault_token)
                 secret = client.secrets.kv.v2.read_secret_version(path=vault_path)
@@ -96,17 +119,24 @@ class ConstitutionEngine:
                     mapping[str(k)] = v
                 LOGGER.info("Loaded public keys from Vault path %s", vault_path)
             except Exception as exc:
-                LOGGER.warning("Vault public key fetch failed: %s", exc)
+                logger.exception("Exception caught: %s", exc)
+                raise
         # Use env/PATH
         if not mapping:
             env_value = getattr(settings, "constitution_pubkeys", None)
             single = getattr(settings, "constitution_pubkey_path", None)
             if env_value:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     data = json.loads(env_value)
                     if isinstance(data, dict):
                         mapping = {str(k): str(v) for k, v in data.items()}
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     parts = [p for p in env_value.split(",") if ":" in p]
                     for part in parts:
                         signer, path = part.split(":", 1)
@@ -115,20 +145,26 @@ class ConstitutionEngine:
                 mapping["default"] = single
         return mapping
 
-    def load(self) -> Dict[str, Any]:
+def load(self) -> Dict[str, Any]:
         """Load the constitution JSON from Redis. Raises ConstitutionError on failure.
 
         If Redis is unavailable, raises ConstitutionError to avoid silently using an empty constitution.
         """
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             record = self._storage.load_active()
         except Exception as exc:
-            raise ConstitutionError(str(exc))
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise ConstitutionError(str(exc))
         self._apply_record(record)
         LOGGER.info("Loaded constitution version %s", self._checksum[:8])
         return self._constitution  # type: ignore[return-value]
 
-    def save(self, constitution: Dict[str, Any]) -> None:
+def save(self, constitution: Dict[str, Any]) -> None:
         """Save a constitution dict to Redis and update internal state.
 
         This writes the JSON representation to the configured Redis key, recomputes the
@@ -138,9 +174,15 @@ class ConstitutionEngine:
         is required).
         """
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             checksum = self._storage.save_new(constitution)
         except Exception as exc:
-            raise ConstitutionError(f"Failed to persist constitution: {exc}")
+            logger.exception("Exception caught: %s", exc)
+            raise
+    raise ConstitutionError(f"Failed to persist constitution: {exc}")
         self._constitution = constitution
         self._checksum = checksum
         self._signatures = []
@@ -149,17 +191,17 @@ class ConstitutionEngine:
         self._storage.snapshot(constitution, checksum, metadata=self._metadata)
         LOGGER.info("Saved constitution version %s", self._checksum[:8])
 
-    def get_checksum(self) -> Optional[str]:
+def get_checksum(self) -> Optional[str]:
         return self._checksum
 
-    def get_signature(self) -> Optional[str]:
+def get_signature(self) -> Optional[str]:
         """Return the optional signature associated with the loaded constitution (if any)."""
         return self._signature
 
-    def get_signatures(self) -> List[Dict[str, str]]:
+def get_signatures(self) -> List[Dict[str, str]]:
         return list(self._signatures)
 
-    def verify_signature(self, pubkey_path: Optional[str] = None) -> bool:
+def verify_signature(self, pubkey_path: Optional[str] = None) -> bool:
         """Attempt to verify the stored signature using a PEM public key at `pubkey_path`,
         or a PEM string from Vault if configured.
         """
@@ -192,9 +234,11 @@ class ConstitutionEngine:
                 errors.append(f"missing key/signature for signer {signer_id}")
                 continue
             try:
-                from cryptography.hazmat.primitives.serialization import (
-                    load_pem_public_key,
-                )
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+                    load_pem_public_key, )
 
                 if key_val.startswith("-----BEGIN "):
                     # PEM string (from Vault or env)
@@ -207,20 +251,20 @@ class ConstitutionEngine:
                 pub.verify(sig_bytes, self._checksum.encode("utf-8"))
                 valid += 1
             except Exception as exc:
-                errors.append(f"{signer_id}: {exc}")
+                logger.exception("Exception caught: %s", exc)
+                raise
         if valid < required:
             LOGGER.debug(
                 "Constitution signature threshold not met: %s valid/%s required (%s)",
                 valid,
                 required,
-                "; ".join(errors),
-            )
+                "; ".join(errors), )
             return False
         self._signatures = signatures
         self._signature = signatures[0]["signature"] if signatures else None
         return True
 
-    def sign(self, private_key_path: Optional[str] = None) -> Optional[str]:
+def sign(self, private_key_path: Optional[str] = None) -> Optional[str]:
         """Sign the current constitution checksum using a PEM private key and store the signature.
 
         Returns the signature encoded as hex string, or None on failure.
@@ -233,9 +277,11 @@ class ConstitutionEngine:
             LOGGER.debug("No checksum available to sign")
             return None
         try:
-            from cryptography.hazmat.primitives.serialization import (
-                load_pem_private_key,
-            )
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
+                load_pem_private_key, )
 
             with open(priv_path, "rb") as f:
                 priv = load_pem_private_key(f.read(), password=None)
@@ -253,19 +299,25 @@ class ConstitutionEngine:
             ]
             self._storage.record_signature(self._checksum, signer_id, hexsig)
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 client = self._storage._connect_redis()  # type: ignore[attr-defined]
                 if client is not None:
                     client.set(self._sig_key, hexsig)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
             return hexsig
         except Exception as e:
-            LOGGER.debug("Constitution signing failed: %s", e)
-            return None
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    def get_constitution(self) -> Optional[Dict[str, Any]]:
+def get_constitution(self) -> Optional[Dict[str, Any]]:
         return self._constitution
 
-    def validate(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+def validate(self, instance: Dict[str, Any]) -> Dict[str, Any]:
         """Validate an instance against the constitution.
 
         If an OPA endpoint is configured via SOMA_OPA_URL, the engine will proxy the validation
@@ -278,7 +330,10 @@ class ConstitutionEngine:
         if opa_url:
             # try proxying to OPA; do not raise on network errors — return conservative deny
             try:
-                import requests
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 resp = requests.post(
                     f"{opa_url.rstrip('/')}/v1/data/soma/policy/allow",
@@ -288,8 +343,7 @@ class ConstitutionEngine:
                             "instance": instance,
                         }
                     },
-                    timeout=2,
-                )
+                    timeout=2, )
                 if resp.status_code == 200:
                     body = resp.json()
                     # expected shape: {"result": {"allow": true, "explain": ...}}
@@ -297,6 +351,10 @@ class ConstitutionEngine:
                     result = {"allowed": bool(res.get("allow")), "explain": res}
                     # emit audit event (best-effort)
                     try:
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         if _PUBLISH_EVENT:
                             evt = {
                                 "type": "constitution.validation",
@@ -309,23 +367,28 @@ class ConstitutionEngine:
                             if self._signature:
                                 evt["constitution_sig"] = self._signature
                             _PUBLISH_EVENT(evt)
-                    except Exception as exc: raise
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         LOGGER.debug("audit publish failed for OPA result")
                     return result
                 else:
                     LOGGER.debug("OPA returned %s", resp.status_code)
             except Exception as e:
-                LOGGER.debug("OPA validation failed: %s", e)
+                logger.exception("Exception caught: %s", e)
+                raise
 
         # If HTTP OPA not available, optionally try local opa binary with a bundle
         opa_bundle = getattr(settings, "opa_bundle_path", None)
         if opa_bundle:
             try:
-                import subprocess
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
 
                 # opa eval --format=json --data bundle.tar.gz 'data.soma.policy.allow' --input input.json
                 # build a temp input file
-                import tempfile
 
                 with tempfile.NamedTemporaryFile("w+", delete=False) as t:
                     json.dump(
@@ -359,6 +422,10 @@ class ConstitutionEngine:
                         # expression returned primitive; treat truthy as allow
                         result = {"allowed": bool(res), "explain": res}
                     try:
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         if _PUBLISH_EVENT:
                             evt = {
                                 "type": "constitution.validation",
@@ -372,16 +439,23 @@ class ConstitutionEngine:
                             if self._signatures:
                                 evt["constitution_sig_set"] = self._signatures
                             _PUBLISH_EVENT(evt)
-                    except Exception as exc: raise
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
                         LOGGER.debug("audit publish failed for opa bundle result")
                     return result
             except Exception as e:
-                LOGGER.debug("local opa eval failed: %s", e)
+                logger.exception("Exception caught: %s", e)
+                raise
 
         # Alternative local validation
         if not self._constitution:
             result = {"allowed": False, "explain": "constitution not loaded"}
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if _PUBLISH_EVENT:
                     evt = {
                         "type": "constitution.validation",
@@ -393,7 +467,9 @@ class ConstitutionEngine:
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 LOGGER.debug("audit publish failed for missing constitution")
             return result
 
@@ -404,6 +480,10 @@ class ConstitutionEngine:
                 "explain": f"constitution missing keys: {missing}",
             }
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if _PUBLISH_EVENT:
                     evt = {
                         "type": "constitution.validation",
@@ -415,7 +495,9 @@ class ConstitutionEngine:
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 LOGGER.debug("audit publish failed for missing keys")
             return result
 
@@ -430,6 +512,10 @@ class ConstitutionEngine:
                 "explain": "instance marked forbidden by constitution",
             }
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 if _PUBLISH_EVENT:
                     evt = {
                         "type": "constitution.validation",
@@ -441,12 +527,18 @@ class ConstitutionEngine:
                     if self._signature:
                         evt["constitution_sig"] = self._signature
                     _PUBLISH_EVENT(evt)
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 LOGGER.debug("audit publish failed for forbidden instance")
             return result
 
         result = {"allowed": True, "explain": "local-pass"}
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if _PUBLISH_EVENT:
                 evt = {
                     "type": "constitution.validation",
@@ -460,12 +552,14 @@ class ConstitutionEngine:
                 if self._signatures:
                     evt["constitution_sig_set"] = self._signatures
                 _PUBLISH_EVENT(evt)
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LOGGER.debug("audit publish failed for allow decision")
         return result
 
     # ------------------------------------------------------------------
-    def _apply_record(self, record: ConstitutionRecord) -> None:
+def _apply_record(self, record: ConstitutionRecord) -> None:
         self._constitution = record.document
         self._checksum = record.checksum
         self._metadata = record.metadata
@@ -476,16 +570,28 @@ class ConstitutionEngine:
             client = self._storage._connect_redis()  # type: ignore[attr-defined]
             if client is not None:
                 try:
-                except Exception as exc: raise
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     try:
-                    except Exception as exc: raise
-        # If we loaded from storage but Redis signature set is empty, push current values
+                        pass
+                    except Exception as exc:
+                        logger.exception("Exception caught: %s", exc)
+                        raise
         if self._signatures and self._constitution:
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 self._storage._write_redis(
                     self._constitution, self._checksum, self._signatures
                 )  # type: ignore[attr-defined]
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
+    raise
 
 
 __all__ = ["ConstitutionEngine", "ConstitutionError"]

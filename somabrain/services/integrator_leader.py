@@ -1,9 +1,24 @@
+from __future__ import annotations
+import os
+from common.config.settings import settings
+import time
+import threading
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple
+from somabrain.common.infra import assert_ready
+from somabrain.modes import feature_enabled
+import somabrain.metrics as app_metrics
+from common.logging import logger
+import redis
+import yaml
+
 """Integrator Leader Election Service
 
 Implements leader election for integrator instances using Redis-based
 distributed locking with min_dwell and entropy_cap constraints.
 
 Key features:
+    pass
 - Redis-backed leader election with TTL
 - Per-tenant leader selection
 - Dwell time tracking and enforcement
@@ -12,49 +27,34 @@ Key features:
 - Health monitoring and metrics
 """
 
-from __future__ import annotations
 
-import os
-from common.config.settings import settings
-import time
-import threading
-from dataclasses import dataclass
-from typing import Dict, Optional, Tuple
 
-from somabrain.common.infra import assert_ready
-from somabrain.modes import feature_enabled
-import somabrain.metrics as app_metrics
 
 # Leader election metrics
 LEADER_ELECTION_TOTAL = app_metrics.get_counter(
     "somabrain_leader_election_total",
     "Total leader election attempts",
-    labelnames=["tenant", "outcome"],
-)
+    labelnames=["tenant", "outcome"], )
 
 LEADER_ELECTION_LATENCY = app_metrics.get_histogram(
     "somabrain_leader_election_latency_seconds",
     "Time taken to complete leader election",
-    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0),
-)
+    buckets=(0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0), )
 
 LEADER_CURRENT = app_metrics.get_gauge(
     "somabrain_leader_current",
     "Current leader instance per tenant",
-    labelnames=["tenant", "instance_id"],
-)
+    labelnames=["tenant", "instance_id"], )
 
 LEADER_TENURE = app_metrics.get_gauge(
     "somabrain_leader_tenure_seconds",
     "Current leader tenure duration",
-    labelnames=["tenant"],
-)
+    labelnames=["tenant"], )
 
 LEADER_MIN_DWELL = app_metrics.get_gauge(
     "somabrain_leader_min_dwell_ms",
     "Current minimum dwell requirement",
-    labelnames=["tenant"],
-)
+    labelnames=["tenant"], )
 
 LEADER_ENTROPY_CAP = app_metrics.get_gauge(
     "somabrain_leader_entropy_cap", "Current entropy cap limit", labelnames=["tenant"]
@@ -63,8 +63,7 @@ LEADER_ENTROPY_CAP = app_metrics.get_gauge(
 LEADER_HEALTH_CHECK = app_metrics.get_gauge(
     "somabrain_leader_health_check",
     "Leader health check result",
-    labelnames=["tenant", "check_type"],
-)
+    labelnames=["tenant", "check_type"], )
 
 
 @dataclass
@@ -93,7 +92,7 @@ class LeaderState:
 class IntegratorLeaderElection:
     """Redis-based leader election service for integrator instances."""
 
-    def __init__(self, redis_url: Optional[str] = None) -> None:
+def __init__(self, redis_url: Optional[str] = None) -> None:
         # Prefer explicit argument; fall back to central settings.
         self._redis_url = redis_url or settings.redis_url or ""
         self._redis_client = None
@@ -111,29 +110,36 @@ class IntegratorLeaderElection:
         # Load tenant configurations
         self._load_configs()
 
-    def _init_redis(self) -> None:
+def _init_redis(self) -> None:
         """Initialize Redis client with fail-fast behavior."""
         if not self._redis_url:
             raise RuntimeError("Redis URL not configured for leader election")
 
         try:
-            import redis
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             self._redis_client = redis.from_url(
                 self._redis_url,
                 socket_connect_timeout=5,
                 socket_timeout=5,
-                health_check_interval=30,
-            )
+                health_check_interval=30, )
             # Test connection
             self._redis_client.ping()
         except Exception as e:
-            raise RuntimeError(f"Failed to initialize Redis for leader election: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
+    raise RuntimeError(f"Failed to initialize Redis for leader election: {e}")
 
-    def _load_configs(self) -> None:
+def _load_configs(self) -> None:
         """Load leader election configurations from YAML file."""
         try:
-            import yaml
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
 
             config_path = (
                 settings.learning_tenants_file
@@ -174,20 +180,24 @@ class IntegratorLeaderElection:
                         LEADER_ENTROPY_CAP.labels(tenant=tenant).set(config.entropy_cap)
 
         except Exception as e:
-            # Use defaults for all tenants if config loading fails
-            print(f"Warning: Failed to load leader configs: {e}")
+            logger.exception("Exception caught: %s", e)
+            raise
 
-    def get_config(self, tenant: str) -> LeaderConfig:
+def get_config(self, tenant: str) -> LeaderConfig:
         """Get leader election configuration for a tenant."""
         return self._configs.get(tenant, LeaderConfig())
 
-    def _get_lock_key(self, tenant: str) -> str:
+def _get_lock_key(self, tenant: str) -> str:
         """Get Redis lock key for a tenant."""
         return f"{self._lock_prefix}:{tenant}"
 
-    def is_leader(self, tenant: str) -> bool:
+def is_leader(self, tenant: str) -> bool:
         """Check if this instance is the leader for a tenant."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lock_key = self._get_lock_key(tenant)
             lock_value = self._redis_client.get(lock_key)
 
@@ -207,15 +217,21 @@ class IntegratorLeaderElection:
 
             return False
 
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="redis_error").set(0)
             return False
 
-    def acquire_leadership(self, tenant: str) -> bool:
+def acquire_leadership(self, tenant: str) -> bool:
         """Attempt to acquire leadership for a tenant."""
         start_time = time.time()
 
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             config = self.get_config(tenant)
             lock_key = self._get_lock_key(tenant)
 
@@ -233,8 +249,7 @@ class IntegratorLeaderElection:
                     start_time=time.time(),
                     last_heartbeat=time.time(),
                     min_dwell_ms=config.min_dwell_ms,
-                    entropy_cap=config.entropy_cap,
-                )
+                    entropy_cap=config.entropy_cap, )
 
                 # Update metrics
                 LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="success").inc()
@@ -252,13 +267,19 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="error").inc()
             return False
 
-    def renew_leadership(self, tenant: str) -> bool:
+def renew_leadership(self, tenant: str) -> bool:
         """Renew leadership lock for a tenant."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if not self.is_leader(tenant):
                 return False
 
@@ -279,8 +300,7 @@ class IntegratorLeaderElection:
                 1,
                 lock_key,
                 self._instance_id,
-                str(config.lock_ttl_seconds * 1000),
-            )
+                str(config.lock_ttl_seconds * 1000), )
 
             success = bool(result)
 
@@ -290,13 +310,19 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="heartbeat").set(0)
             return False
 
-    def release_leadership(self, tenant: str) -> bool:
+def release_leadership(self, tenant: str) -> bool:
         """Release leadership for a tenant."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lock_key = self._get_lock_key(tenant)
 
             # Use Lua script for atomic release
@@ -322,12 +348,18 @@ class IntegratorLeaderElection:
 
             return success
 
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
 
-    def get_leader_info(self, tenant: str) -> Optional[Tuple[str, float]]:
+def get_leader_info(self, tenant: str) -> Optional[Tuple[str, float]]:
         """Get current leader info for a tenant."""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             lock_key = self._get_lock_key(tenant)
             lock_value = self._redis_client.get(lock_key)
 
@@ -338,10 +370,12 @@ class IntegratorLeaderElection:
 
             return None
 
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return None
 
-    def can_transition_leader(self, tenant: str, current_entropy: float) -> bool:
+def can_transition_leader(self, tenant: str, current_entropy: float) -> bool:
         """Check if leader transition is allowed based on dwell and entropy constraints."""
         config = self.get_config(tenant)
 
@@ -358,7 +392,7 @@ class IntegratorLeaderElection:
 
         return True
 
-    def start_heartbeat(self) -> None:
+def start_heartbeat(self) -> None:
         """Start background heartbeat thread for leader renewal."""
         if self._running:
             return
@@ -369,13 +403,13 @@ class IntegratorLeaderElection:
         )
         self._heartbeat_thread.start()
 
-    def stop_heartbeat(self) -> None:
+def stop_heartbeat(self) -> None:
         """Stop background heartbeat thread."""
         self._running = False
         if self._heartbeat_thread:
             self._heartbeat_thread.join(timeout=5)
 
-    def _heartbeat_loop(self) -> None:
+def _heartbeat_loop(self) -> None:
         """Background thread for renewing leadership locks."""
         while self._running:
             for tenant in list(self._leader_states.keys()):
@@ -394,7 +428,7 @@ class IntegratorLeaderElection:
 
             time.sleep(heartbeat_interval)
 
-    def shutdown(self) -> None:
+def shutdown(self) -> None:
         """Graceful shutdown - release all leadership locks."""
         self.stop_heartbeat()
 
@@ -416,6 +450,10 @@ def main() -> None:  # pragma: no cover
     election_service = IntegratorLeaderElection()
 
     try:
+        pass
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
         # Test leadership acquisition
         test_tenant = "test-tenant"
 

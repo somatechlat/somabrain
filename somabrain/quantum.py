@@ -1,33 +1,46 @@
+from __future__ import annotations
+from somabrain.metrics_extra.math_metrics import MathematicalMetrics
+from dataclasses import dataclass
+from typing import Dict, Optional
+import numpy as np
+from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
+from somabrain.numerics import normalize_array
+from somabrain import roles as _roles
+from somabrain.seed import seed_to_uint64
+from common.logging import logger
+from memory.density import DensityMatrix  # type: ignore
+from somabrain.metrics_extra.advanced_math_metrics import (
+from somabrain.metrics_extra.advanced_math_metrics import (
+from somabrain.metrics_extra.advanced_math_metrics import (
+from somabrain.metrics_extra.advanced_math_metrics import (
+from somabrain.metrics_extra.advanced_math_metrics import (
+
 """BHDC quantum layer implementation for SomaBrain.
 
 mask-based composers. Binding is hardware-friendly and invertible by
 construction.
 
 Mathematical Properties:
+    pass
 - Spectral properties: |H_k|≈1 for all operations
 - Perfect binding invertibility
 - Role orthogonality
 - Superposition normalization
 """
 
-from __future__ import annotations
 
-from somabrain.metrics_extra.math_metrics import MathematicalMetrics
 
-from dataclasses import dataclass
-from typing import Dict, Optional
 
-import numpy as np
 
-from somabrain.math.bhdc_encoder import BHDCEncoder, PermutationBinder
-from somabrain.numerics import normalize_array
-from somabrain import roles as _roles
-from somabrain.seed import seed_to_uint64
 
 try:
-    from memory.density import DensityMatrix  # type: ignore
-except Exception as exc: raise  # pragma: no cover - optional dependency
-    DensityMatrix = None  # type: ignore
+    pass
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
+except Exception as exc:
+    logger.exception("Exception caught: %s", exc)
+    raise
 
 
 @dataclass
@@ -47,7 +60,7 @@ class HRRConfig:
     binding_tenant: Optional[str] = None
     binding_model_version: Optional[str] = None
 
-    def __post_init__(self) -> None:
+def __post_init__(self) -> None:
         if self.dim <= 0:
             raise ValueError("HRRConfig.dim must be a positive integer")
         if self.dtype not in ("float32", "float64"):
@@ -70,7 +83,7 @@ class HRRConfig:
 class QuantumLayer:
     """BHDC-powered hyperdimensional operations."""
 
-    def __init__(self, cfg: HRRConfig):
+def __init__(self, cfg: HRRConfig):
         self.cfg = cfg
         self._role_cache: Dict[str, np.ndarray] = {}
         self._role_fft_cache: Dict[str, np.ndarray] = {}
@@ -83,22 +96,24 @@ class QuantumLayer:
             extra_seed=cfg.binding_seed,
             tenant_id=cfg.binding_tenant,
             model_version=cfg.binding_model_version,
-            binary_mode=cfg.binary_mode,
-        )
+            binary_mode=cfg.binary_mode, )
         self._binder = PermutationBinder(
             dim=cfg.dim,
             seed=int(cfg.seed),
             dtype=cfg.dtype,
-            mix=cfg.mix,
-        )
+            mix=cfg.mix, )
         self._perm = self._binder.permutation
         self._perm_inv = self._binder.inverse_permutation
 
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _ensure_vector(self, v: object, *, name: str = "vector") -> np.ndarray:
+def _ensure_vector(self, v: object, *, name: str = "vector") -> np.ndarray:
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             arr = np.asarray(v, dtype=self.cfg.dtype)
         except Exception as exc:  # pragma: no cover - defensive
             raise ValueError(f"{name}: cannot convert to ndarray: {exc}")
@@ -110,7 +125,7 @@ class QuantumLayer:
             )
         return arr
 
-    def _renorm(self, v: np.ndarray) -> np.ndarray:
+def _renorm(self, v: np.ndarray) -> np.ndarray:
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
         return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
@@ -118,16 +133,14 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Core operations
     # ------------------------------------------------------------------
-    def random_vector(self) -> np.ndarray:
+def random_vector(self) -> np.ndarray:
         return self._renorm(self._encoder.random_vector())
 
-    def encode_text(self, text: str) -> np.ndarray:
+def encode_text(self, text: str) -> np.ndarray:
         return self._renorm(self._encoder.vector_for_key(text))
 
-    def superpose(self, *vectors) -> np.ndarray:
-        from somabrain.metrics_extra.advanced_math_metrics import (
-            AdvancedMathematicalMetrics,
-        )
+def superpose(self, *vectors) -> np.ndarray:
+            AdvancedMathematicalMetrics, )
 
         acc: Optional[np.ndarray] = None
 
@@ -151,8 +164,7 @@ class QuantumLayer:
         AdvancedMathematicalMetrics.verify_probability_conservation(
             "superpose",
             1.0,
-            final_prob,
-        )
+            final_prob, )
 
         # Measure interference patterns
         if len(vectors) > 1 and first_component is not None:
@@ -161,7 +173,7 @@ class QuantumLayer:
 
         return result
 
-    def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_vec = self._ensure_vector(a, name="bind.a")
         b_vec = self._ensure_vector(b, name="bind.b")
         result = self._renorm(self._binder.bind(a_vec, b_vec))
@@ -175,9 +187,7 @@ class QuantumLayer:
         MathematicalMetrics.verify_operation_correctness("bind", cosine_a)
 
         # Record binder condition number for diagnostics
-        from somabrain.metrics_extra.advanced_math_metrics import (
-            AdvancedMathematicalMetrics,
-        )
+            AdvancedMathematicalMetrics, )
 
         denom_abs = np.abs(b_vec)
         min_val = float(np.min(denom_abs)) if denom_abs.size else 0.0
@@ -188,7 +198,7 @@ class QuantumLayer:
 
         return result
 
-    def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
         a_vec = self._ensure_vector(a, name="unbind.a")
         b_vec = self._ensure_vector(b, name="unbind.b")
         return self._renorm(self._binder.unbind(a_vec, b_vec))
@@ -196,7 +206,7 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Unitary roles
     # ------------------------------------------------------------------
-    def make_unitary_role(self, token: str) -> np.ndarray:
+def make_unitary_role(self, token: str) -> np.ndarray:
         if token in self._role_cache:
             return self._role_cache[token]
 
@@ -205,8 +215,7 @@ class QuantumLayer:
             role_time, role_spec = _roles.make_unitary_role(
                 self.cfg.dim,
                 seed=seed_val,
-                dtype=np.float32 if self.cfg.dtype == "float32" else np.float64,
-            )
+                dtype=np.float32 if self.cfg.dtype == "float32" else np.float64, )
             role = role_time.astype(self.cfg.dtype, copy=False)
             role = self._renorm(role)
             self._role_fft_cache[token] = role_spec.astype(
@@ -223,9 +232,7 @@ class QuantumLayer:
 
         # Verify orthogonality against existing roles before caching
         if self._role_cache and self.cfg.roles_unitary:
-            from somabrain.metrics_extra.advanced_math_metrics import (
-                AdvancedMathematicalMetrics,
-            )
+                AdvancedMathematicalMetrics, )
 
             for existing_token, existing_role in self._role_cache.items():
                 cosine_sim = self.cosine(existing_role, role)
@@ -237,10 +244,8 @@ class QuantumLayer:
         self._role_cache[token] = role
         return role
 
-    def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
-        from somabrain.metrics_extra.advanced_math_metrics import (
-            AdvancedMathematicalMetrics,
-        )
+def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
+            AdvancedMathematicalMetrics, )
 
         a_vec = self._ensure_vector(a, name="bind_unitary.a")
         role_vec = self.make_unitary_role(role_token)
@@ -267,15 +272,15 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Exact / Wiener aliases (BHDC binder is perfectly invertible)
     # ------------------------------------------------------------------
-    def unbind_exact(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+def unbind_exact(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
         return self.unbind(c, b)
 
-    def unbind_exact_unitary(self, c: np.ndarray, role_token: str) -> np.ndarray:
+def unbind_exact_unitary(self, c: np.ndarray, role_token: str) -> np.ndarray:
         c_vec = self._ensure_vector(c, name="unbind_exact_unitary.c")
         role_vec = self.make_unitary_role(role_token)
         return self._renorm(self._binder.unbind(c_vec, role_vec))
 
-    def unbind_wiener(
+def unbind_wiener(
         self,
         c: np.ndarray,
         b: np.ndarray | str,
@@ -283,8 +288,8 @@ class QuantumLayer:
         *,
         k_est: int | None = None,
         alpha: float = 1e-3,
-        whiten: bool = False,
-    ) -> np.ndarray:
+        whiten: bool = False, ) -> np.ndarray:
+            pass
         _ = snr_db, k_est, alpha, whiten  # parameters retained for compatibility
         if isinstance(b, str):
             return self.unbind_exact_unitary(c, b)
@@ -293,44 +298,54 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Misc helpers
     # ------------------------------------------------------------------
-    def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
         vec = self._ensure_vector(a, name="permute.a")
         return self._binder.permute(vec, times)
 
-    @staticmethod
-    def cosine(a: np.ndarray, b: np.ndarray) -> float:
+@staticmethod
+def cosine(a: np.ndarray, b: np.ndarray) -> float:
         na = float(np.linalg.norm(a))
         nb = float(np.linalg.norm(b))
         if na <= 0 or nb <= 0:
             return 0.0
         return float(np.dot(a, b) / (na * nb))
 
-    def cleanup(
+def cleanup(
         self,
         q: np.ndarray,
         anchors: Dict[str, np.ndarray],
         *,
         use_wiener: bool = True,
         density_matrix: "DensityMatrix" = None,
-        alpha: float = 0.5,
-    ) -> tuple[str, float]:
+        alpha: float = 0.5, ) -> tuple[str, float]:
+            pass
         _ = use_wiener  # retained for signature compatibility
         query = self._ensure_vector(q, name="cleanup.query")
         best_score = -1.0
         best_id = ""
         for key, vec in anchors.items():
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 candidate = self._ensure_vector(vec, name=f"anchor[{key}]")
             except ValueError:
                 continue
             score = self.cosine(query, candidate)
             if density_matrix is not None:
                 try:
+                    pass
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
                     score = (
                         alpha * float(density_matrix.score(query, candidate))
                         + (1 - alpha) * score
                     )
-                except Exception as exc: raise
+                except Exception as exc:
+                    logger.exception("Exception caught: %s", exc)
+                    raise
             if score > best_score:
                 best_score = score
                 best_id = key
@@ -339,7 +354,7 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
-    def _validate_unitary_role(
+def _validate_unitary_role(
         self, role: np.ndarray, spectrum: Optional[np.ndarray]
     ) -> None:
         """Record invariants that prove a role remains unitary."""
@@ -349,9 +364,7 @@ class QuantumLayer:
             "unitary_role_norm", abs(norm - 1.0)
         )
 
-        from somabrain.metrics_extra.advanced_math_metrics import (
-            AdvancedMathematicalMetrics,
-        )
+            AdvancedMathematicalMetrics, )
 
         AdvancedMathematicalMetrics.record_numerical_error(abs(norm - 1.0))
 

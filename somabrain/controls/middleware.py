@@ -1,3 +1,15 @@
+from __future__ import annotations
+from typing import Awaitable, Callable
+from fastapi import Request, Response
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from common.config.settings import settings
+from .audit import AuditLogger
+from .metrics import POLICY_DECISIONS
+from .policy import PolicyEngine
+from .provenance import verify_hmac_sha256
+from common.logging import logger
+
 """
 Controls Middleware Module for SomaBrain
 
@@ -6,6 +18,7 @@ and audit logging. It provides security controls, provenance verification, and
 operational monitoring for the SomaBrain API.
 
 Key Features:
+    pass
 - Policy-based request filtering and control
 - HMAC-based provenance verification for write operations
 - Comprehensive audit logging
@@ -14,12 +27,14 @@ Key Features:
 - Configurable strict mode for security
 
 Security Controls:
+    pass
 - Policy engine evaluation for each request
 - Provenance validation using HMAC-SHA256
 - Request denial with appropriate HTTP status codes
 - Audit trail for compliance and debugging
 
 Integration:
+    pass
 - FastAPI BaseHTTPMiddleware for seamless integration
 - Policy engine for configurable rules
 - Audit logger for persistent event tracking
@@ -32,23 +47,14 @@ Functions:
     None (middleware-based implementation)
 """
 
-from __future__ import annotations
 
-from typing import Awaitable, Callable
 
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 
-from common.config.settings import settings
-from .audit import AuditLogger
-from .metrics import POLICY_DECISIONS
-from .policy import PolicyEngine
-from .provenance import verify_hmac_sha256
 
 
 class ControlsMiddleware(BaseHTTPMiddleware):
-    def __init__(
+    pass
+def __init__(
         self, app, engine: PolicyEngine | None = None, audit: AuditLogger | None = None
     ):
         super().__init__(app)
@@ -60,11 +66,17 @@ class ControlsMiddleware(BaseHTTPMiddleware):
     ):
         raw_body = b""
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if request.method.upper() in ("POST", "PUT", "PATCH"):
                 raw_body = await request.body()
                 # restore for downstream handlers
                 request._body = raw_body  # type: ignore[attr-defined]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             raw_body = b""
         headers = dict(request.headers)
         # Load configuration once per request using cached helper
@@ -96,17 +108,27 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             )
             header_str = str(header_val)
             try:
+                pass
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ctx["provenance_valid"] = verify_hmac_sha256(
                     cfg.provenance_secret,
                     raw_body,
                     header_str,  # type: ignore[arg-type]
                 )
-            except Exception as exc: raise
+            except Exception as exc:
+                logger.exception("Exception caught: %s", exc)
+                raise
                 ctx["provenance_valid"] = None
 
         # Compatibility guard: common mistake where clients send a list of chat turns to /remember
         # Provide a clear error before Pydantic's 422 to reduce log noise and guide integration.
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             if (
                 request.method.upper() == "POST"
                 and str(ctx.get("path", ""))[:9] == "/remember"
@@ -141,17 +163,20 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                                     }
                                 ],
                             },
-                        },
-                    )
+                        }, )
         except Exception as exc:
-            # best-effort guard; log the failure and continue with normal handling
-            from common.logging import logger
-            raise RuntimeError("OPA policy evaluation failed: %s", exc)
+            logger.exception("Exception caught: %s", exc)
+            raise
         dec = self.engine.evaluate(ctx)
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             POLICY_DECISIONS.labels(decision=dec.decision).inc()
-        except Exception as exc: raise
-        # Audit pre decision
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         self.audit.write(
             {
                 "phase": "pre",

@@ -1,9 +1,10 @@
 from __future__ import annotations
 import sys
-
-# Defensive: always ensure cfg is present as a module attribute, even on reload or subprocess import
 import traceback
 import datetime
+from common.logging import logger
+
+# Defensive: always ensure cfg is present as a module attribute, even on reload or subprocess import
 
 mod = sys.modules[__name__]
 
@@ -16,8 +17,10 @@ def _log_cfg_event(event):
 
 
 if not hasattr(mod, "cfg") or getattr(mod, "cfg", None) is None:
+    pass
 
-    class _TmpCfg:
+class _TmpCfg:
+    pass
 
     setattr(mod, "cfg", _TmpCfg())
     _log_cfg_event(
@@ -40,7 +43,8 @@ mt_memory = None
 
 
 class RuntimeConfig:
-    def __init__(self):
+    pass
+def __init__(self):
         self.use_query_expansion = False
         self.query_expansion_variants = 0
         self.use_microcircuits = False
@@ -69,8 +73,8 @@ def set_singletons(
     _mt_wm=None,
     _mc_wm=None,
     _mt_memory=None,
-    _cfg=None,
-) -> None:
+    _cfg=None, ) -> None:
+        pass
     global embedder, quantum, mt_wm, mc_wm, mt_memory
     embedder = _embedder
     quantum = _quantum

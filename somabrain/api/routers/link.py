@@ -1,3 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from fastapi import APIRouter, Request
+from somabrain.auth import require_auth
+from somabrain.schemas import LinkRequest, LinkResponse
+from somabrain.semgraph import normalize_relation
+from somabrain.tenant import get_tenant as get_tenant_async
+from common.logging import logger
+from somabrain.app import cfg, mt_memory
+from somabrain.services.memory_service import MemoryService
+
 """Link router: lightweight API for creating semantic/graph links.
 
 Exposes a single POST /link endpoint which accepts a LinkRequest and
@@ -8,16 +19,9 @@ This module keeps the router thin and defers heavy work to
 `somabrain.services.memory_service`.
 """
 
-from __future__ import annotations
 
-from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
 
-from somabrain.auth import require_auth
-from somabrain.schemas import LinkRequest, LinkResponse
-from somabrain.semgraph import normalize_relation
-from somabrain.tenant import get_tenant as get_tenant_async
 
 if TYPE_CHECKING:
     # Import heavy/runtime-only types only for type checking and docs
@@ -48,8 +52,6 @@ async def link(body: LinkRequest, request: Request) -> LinkResponse:
     Returns a simple LinkResponse(ok=True) on success.
     """
     # Import cfg and mt_memory lazily to avoid circular import at module load time
-    from somabrain.app import cfg, mt_memory
-    from somabrain.services.memory_service import MemoryService
 
     ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)

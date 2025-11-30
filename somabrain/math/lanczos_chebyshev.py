@@ -1,3 +1,7 @@
+import numpy as np
+from typing import Callable, Tuple, Optional
+from common.config.settings import settings
+
 """Helpers: short Lanczos for spectral bounds + Chebyshev apply for heat kernel.
 
 This module contains utilities to estimate an operator spectral interval
@@ -5,12 +9,9 @@ via a short Lanczos run and then apply a Chebyshev polynomial approximation
 of exp(-t L) to a vector using that interval.
 """
 
-import numpy as np
-from typing import Callable, Tuple, Optional
 
 # lazy config import to read truth-budget defaults when needed
 # Unified configuration – use central Settings instance
-from common.config.settings import settings
 
 
 def estimate_spectral_interval(
@@ -58,8 +59,8 @@ def chebyshev_heat_apply(
     t: float,
     K: Optional[int],
     a: float,
-    b: float,
-) -> np.ndarray:
+    b: float, ) -> np.ndarray:
+        pass
     """Approximate y = exp(-t A) x using Chebyshev polynomial of degree K.
 
     apply_A: function to apply A
@@ -75,7 +76,7 @@ def chebyshev_heat_apply(
     if b <= a:
         raise ValueError("Invalid spectral interval")
 
-    def apply_Ap(v: np.ndarray) -> np.ndarray:
+def apply_Ap(v: np.ndarray) -> np.ndarray:
         return (2.0 * apply_A(v) - (b + a) * v) / (b - a)
 
     # coefficients for exp(-t * lambda) on [-1,1] can be approximated via

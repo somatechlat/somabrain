@@ -1,3 +1,10 @@
+import json
+from pathlib import Path
+from typing import Dict, Any, List
+from somabrain.modes import mode_config, feature_enabled
+from common.config.settings import settings
+from common.logging import logger
+
 """
 Feature flags view derived from central modes.
 
@@ -7,12 +14,7 @@ flags are removed; optional local overrides are persisted in a JSON file and
 applied only in `full-local` mode.
 """
 
-import json
-from pathlib import Path
-from typing import Dict, Any, List
 
-from somabrain.modes import mode_config, feature_enabled
-from common.config.settings import settings
 
 
 class FeatureFlags:
@@ -32,10 +34,14 @@ class FeatureFlags:
         "auto_rollback",
     ]
 
-    @staticmethod
-    def _load_overrides() -> List[str]:
+@staticmethod
+def _load_overrides() -> List[str]:
         path = settings.feature_overrides_path
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             p = Path(path)
             if not p.exists():
                 return []
@@ -43,15 +49,17 @@ class FeatureFlags:
             disabled = data.get("disabled")
             if isinstance(disabled, list):
                 return [str(x).strip().lower() for x in disabled]
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
         return []
 
-    @classmethod
-    def get_status(cls) -> Dict[str, Any]:
+@classmethod
+def get_status(cls) -> Dict[str, Any]:
         cfg = mode_config()
         disabled = cls._load_overrides() if cfg.name == "full-local" else []
 
-        def resolved(k: str) -> bool:
+def resolved(k: str) -> bool:
             # map UI keys -> feature_enabled keys
             mapping = {
                 "hmm_segmentation": "hmm_segmentation",
@@ -67,12 +75,12 @@ class FeatureFlags:
 
         return {k: resolved(k) for k in cls.KEYS}
 
-    @classmethod
-    def get_overrides(cls) -> List[str]:
+@classmethod
+def get_overrides(cls) -> List[str]:
         return cls._load_overrides()
 
-    @classmethod
-    def set_overrides(cls, disabled: List[str]) -> bool:
+@classmethod
+def set_overrides(cls, disabled: List[str]) -> bool:
         """Persist disabled keys to overrides file (full-local only).
 
         Returns True when overrides were written, False when ignored.
@@ -83,11 +91,17 @@ class FeatureFlags:
             return False
         path = settings.feature_overrides_path or "./data/feature_overrides.json"
         try:
+            pass
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(
                 json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
             )
             return True
-        except Exception as exc: raise
+        except Exception as exc:
+            logger.exception("Exception caught: %s", exc)
+            raise
             return False
