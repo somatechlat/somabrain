@@ -1,3 +1,5 @@
+from hypothesis import settings as _hypothesis_settings
+
 # pytest configuration to ignore certain scripts that are not intended to be test modules.
 collect_ignore = [
     "scripts/kafka_smoke_test.py",
@@ -25,7 +27,6 @@ def pytest_ignore_collect(path, config):
 # memory only.  This change is safe for CI and local runs because it does not
 # affect the correctness of the property‑based tests – it merely removes the
 # on‑disk storage side‑effect.
-from hypothesis import settings as _hypothesis_settings
 
 # Apply globally: no persistent storage, keep defaults for other settings.
 _hypothesis_settings.register_profile("no_persistent", database=None)

@@ -1,3 +1,7 @@
+from __future__ import annotations
+from functools import lru_cache, wraps
+from typing import Any, Callable, TypeVar
+
 """
 Lightweight ARC-like cache facade.
 
@@ -8,10 +12,7 @@ If you need real ARC semantics later, replace the implementation
 with an appropriate library transparently.
 """
 
-from __future__ import annotations
 
-from functools import lru_cache, wraps
-from typing import Any, Callable, TypeVar
 
 F = TypeVar("F", bound=Callable[..., Any])
 

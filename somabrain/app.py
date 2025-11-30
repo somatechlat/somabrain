@@ -51,15 +51,20 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 from common.config.settings import settings
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
+
 # Oak feature imports
 from somabrain.oak.option_manager import option_manager
 from somabrain.oak.planner import plan_for_tenant
+
 # Oak health dependencies – Milvus client for persistence health checks.
 from somabrain.milvus_client import MilvusClient
+
 # Oak FastAPI router that now talks to Milvus
 from somabrain.oak.router import router as oak_router
+
 # Cognitive Threads router (Phase 5)
 from somabrain.cognitive.thread_router import router as thread_router
+
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -76,7 +81,7 @@ class SimpleOPAEngine:
     """
 
     def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
 
     async def health(self) -> bool:
         """Return ``True`` if the OPA ``/health`` endpoint responds with 200.
@@ -92,6 +97,7 @@ class SimpleOPAEngine:
         except Exception:
             return False
 
+
 # Define OPA engine attachment function (will be registered after FastAPI app creation).
 async def _attach_opa_engine() -> None:  # pragma: no cover
     """Initialize the OPA engine and store it in ``app.state``.
@@ -103,11 +109,15 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     instantiated.
     """
     # ``settings`` may expose the URL via ``opa_url`` or the legacy env var.
-    opa_url = getattr(settings, "opa_url", None) or getattr(settings, "SOMABRAIN_OPA_URL", None)
+    opa_url = getattr(settings, "opa_url", None) or getattr(
+        settings, "SOMABRAIN_OPA_URL", None
+    )
     if opa_url:
         app.state.opa_engine = SimpleOPAEngine(opa_url)
     else:
         app.state.opa_engine = None
+
+
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 from somabrain.controls.reality_monitor import assess_reality
@@ -2584,7 +2594,9 @@ async def health(request: Request) -> S.HealthResponse:
     resp["idempotency_key"] = idempotency_key
     # Constitution information (if engine loaded)
     try:
-        engine: Optional["ConstitutionEngine"] = getattr(app.state, "constitution_engine", None)
+        engine: Optional["ConstitutionEngine"] = getattr(
+            app.state, "constitution_engine", None
+        )
         if engine:
             resp["constitution_version"] = engine.get_checksum()
             resp["constitution_status"] = "loaded"
@@ -2596,7 +2608,9 @@ async def health(request: Request) -> S.HealthResponse:
         resp["constitution_status"] = None
     # External backend requirement flag from settings
     try:
-        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
+        resp["external_backends_required"] = getattr(
+            settings, "require_external_backends", None
+        )
     except Exception:
         resp["external_backends_required"] = None
     # Full‑stack mode flag (legacy)
@@ -2631,7 +2645,9 @@ async def health(request: Request) -> S.HealthResponse:
     # -------------------------------------------------------------------
     try:
         resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
-        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", None)
+        resp["memory_degrade_readonly"] = getattr(
+            settings, "memory_degrade_readonly", None
+        )
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
         resp["memory_degrade_queue"] = None
@@ -3754,6 +3770,7 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
         plan_result = []
     return {"plan": plan_result}
 
+
 # ---------------------------------------------------------------------------
 # Oak option creation endpoint (ROAMDP feature)
 # ---------------------------------------------------------------------------
@@ -3788,7 +3805,9 @@ async def oak_option_create(body: S.OakOptionCreateRequest, request: Request):
 # Requires OPA policy ``allow_option_update`` (brain_admin role).
 # ---------------------------------------------------------------------------
 @app.put("/oak/option/{option_id}", response_model=S.OakPlanSuggestResponse)
-async def oak_option_update(option_id: str, body: S.OakOptionCreateRequest, request: Request):
+async def oak_option_update(
+    option_id: str, body: S.OakOptionCreateRequest, request: Request
+):
     """Update the payload of an existing Oak option.
 
     The request body uses the same schema as the creation endpoint (base64
@@ -4162,10 +4181,28 @@ async def _health_watchdog_coroutine():
                         health = client.health()
 
                         # If healthy, reset the circuit breaker
-                        if health and (
-                            (isinstance(health, dict) and health.get("http", False))
-                            or (isinstance(health, dict) and health.get("ok", False))
-                        ):
+                        # The memory client health payload uses a "healthy" boolean flag
+                        # (and component‑specific flags) rather than the older "http"/"ok"
+                        # fields that the watchdog originally checked. Adjust the logic
+                        # to consider the service healthy when the "healthy" key is true.
+                        # The memory client health payload can be either a flat dict
+                        # with a top‑level ``healthy`` flag (legacy) or the newer
+                        # structure returned by the ``/health`` endpoint, where the
+                        # flag lives under ``components['memory']['healthy']``.
+                        # Detect both forms before resetting the circuit.
+                        healthy = False
+                        if isinstance(health, dict):
+                            # Legacy flat format
+                            healthy = health.get("healthy", False)
+                            # New nested format
+                            if not healthy:
+                                comps = health.get("components", {})
+                                mem = comps.get("memory", {})
+                                healthy = mem.get("healthy", False)
+                            # Fallback older boolean fields
+                            if not healthy:
+                                healthy = health.get("http", False) or health.get("ok", False)
+                        if healthy:
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
                             logger.info(
                                 f"Circuit breaker reset for tenant {memsvc.tenant_id}"
@@ -4346,6 +4383,28 @@ async def _init_tenant_manager():
     except Exception as e:
         logger.error(f"Failed to initialize tenant manager: {e}")
         # Don't fail startup - tenant management can be initialized lazily
+
+
+@app.on_event("startup")
+async def _start_outbox_sync():
+    """Launch the background outbox synchronization worker.
+
+    The worker runs forever, polling the ``outbox_events`` table and attempting
+    to forward pending rows to the external memory service. It respects the
+    ``outbox_sync_interval`` setting (seconds) and emits Prometheus metrics.
+    """
+    try:
+        # ``Config`` loads the same settings used elsewhere in the app.
+        from somabrain.config import Config
+        from somabrain.services.outbox_sync import outbox_sync_loop
+
+        cfg = Config()
+        interval = float(getattr(settings, "outbox_sync_interval", 10.0))
+        # fire‑and‑forget – FastAPI will keep the task alive as long as the app runs.
+        asyncio.create_task(outbox_sync_loop(cfg, poll_interval=interval))
+        logger.info("Outbox sync background task started (interval=%s s)", interval)
+    except Exception as exc:  # pragma: no cover – startup failures are logged
+        logger.error("Failed to start outbox sync task: %s", exc, exc_info=True)
 
 
 @app.on_event("shutdown")

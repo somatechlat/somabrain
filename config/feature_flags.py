@@ -8,20 +8,15 @@ applied only in `full-local` mode.
 """
 
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
-from somabrain.modes import mode_config, feature_enabled
-from common.config.settings import settings
+from somabrain.modes import feature_enabled, mode_config
 
 
 class FeatureFlags:
-    """Computed feature flag status.
-
-    Source of truth: `somabrain.modes`. Optional local overrides are stored in
-    ``SOMABRAIN_FEATURE_OVERRIDES`` JSON with shape {"disabled": [keys...]}
-    and are effective only in `full-local` mode.
-    """
+    """Computed feature flag status."""
 
     KEYS: List[str] = [
         "hmm_segmentation",
@@ -34,7 +29,7 @@ class FeatureFlags:
 
     @staticmethod
     def _load_overrides() -> List[str]:
-        path = settings.feature_overrides_path
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
         try:
             p = Path(path)
             if not p.exists():
@@ -53,7 +48,6 @@ class FeatureFlags:
         disabled = cls._load_overrides() if cfg.name == "full-local" else []
 
         def resolved(k: str) -> bool:
-            # map UI keys -> feature_enabled keys
             mapping = {
                 "hmm_segmentation": "hmm_segmentation",
                 "fusion_normalization": "fusion_normalization",
@@ -69,26 +63,17 @@ class FeatureFlags:
         return {k: resolved(k) for k in cls.KEYS}
 
     @classmethod
-    def get_overrides(cls) -> List[str]:
-        return cls._load_overrides()
-
-    @classmethod
-    def set_overrides(cls, disabled: List[str]) -> bool:
-        """Persist disabled keys to overrides file (full-local only).
-
-        Returns True when overrides were written, False when ignored.
-        """
+    def set_overrides(cls, disabled: List[str]) -> None:
+        """Persist disabled keys to overrides file (full-local only)."""
         cfg = mode_config()
         if cfg.name != "full-local":
-            # ignore in prod
-            return False
-        path = settings.feature_overrides_path or "./data/feature_overrides.json"
+            return
+        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(
                 json.dumps({"disabled": list(disabled)}, indent=2), encoding="utf-8"
             )
-            return True
         except Exception:
-            return False
+            pass

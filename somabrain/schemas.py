@@ -407,9 +407,11 @@ class PlanSuggestRequest(BaseModel):
 class PlanSuggestResponse(BaseModel):
     plan: List[str]
 
+
 # ---------------------------------------------------------------------------
 # Oak (ROAMDP) specific schemas
 # ---------------------------------------------------------------------------
+
 
 class OakOptionCreateRequest(BaseModel):
     """Request body for creating a new Oak option.

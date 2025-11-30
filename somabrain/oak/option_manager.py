@@ -29,8 +29,10 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from common.config.settings import settings
+from common.config.settings import settings
 from somabrain.memory_client import MemoryClient
 from somabrain.milvus_client import MilvusClient
+
 # Use the generic Avro schema loader and serde to encode events.
 from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
 from libs.kafka_cog.serde import AvroSerde  # type: ignore
@@ -81,17 +83,12 @@ class OptionManager:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
-        # Initialise MemoryClient with the global settings configuration.
-        # Other components (e.g., context factories) instantiate MemoryClient
-        # as ``MemoryClient(cfg=settings)``. The previous bare construction
-        # caused ``TypeError: MemoryClient.__init__() missing 1 required positional argument: 'cfg'``
-        # during application startup. Passing the ``settings`` object resolves the
-        # dependency and aligns with the rest of the codebase.
         self._client = MemoryClient(cfg=settings)
         # Initialize Milvus client for vector persistence.
         self._milvus = MilvusClient()
         # Initialize metrics (will be imported lazily to avoid circular imports)
         from somabrain import metrics as M
+
         self._metrics = M
 
     # ---------------------------------------------------------------------
@@ -105,7 +102,9 @@ class OptionManager:
         """
         tenant_opts = self._store.setdefault(tenant_id, {})
         if option_id in tenant_opts:
-            raise ValueError(f"Option {option_id!r} already exists for tenant {tenant_id!r}")
+            raise ValueError(
+                f"Option {option_id!r} already exists for tenant {tenant_id!r}"
+            )
 
         opt = Option(option_id=option_id, tenant_id=tenant_id, payload=payload)
         tenant_opts[option_id] = opt
@@ -123,7 +122,12 @@ class OptionManager:
             self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id).inc()
             # Recompute average utility (simple incremental avg)
             count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
-            prev_avg = self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id)._value.get() or 0.0
+            prev_avg = (
+                self._metrics.OPTION_UTILITY_AVG.labels(
+                    tenant_id=tenant_id
+                )._value.get()
+                or 0.0
+            )
             new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
             self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
         except Exception as exc:  # pragma: no cover – defensive
@@ -136,7 +140,9 @@ class OptionManager:
 
     def list_options(self, tenant_id: str) -> List[Option]:
         """Return all options for a tenant, sorted by creation time."""
-        return sorted(self._store.get(tenant_id, {}).values(), key=lambda o: o.created_ts)
+        return sorted(
+            self._store.get(tenant_id, {}).values(), key=lambda o: o.created_ts
+        )
 
     # ---------------------------------------------------------------------
     # Update API – modifies an existing option payload and recomputes utility.
@@ -168,11 +174,20 @@ class OptionManager:
         # Update metrics (same logic as creation)
         try:
             count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
-            prev_avg = self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id)._value.get() or 0.0
+            prev_avg = (
+                self._metrics.OPTION_UTILITY_AVG.labels(
+                    tenant_id=tenant_id
+                )._value.get()
+                or 0.0
+            )
             new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
             self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
         except Exception as exc:  # pragma: no cover
-            logger.error("Failed to update Oak metrics after option update %s: %s", option_id, exc)
+            logger.error(
+                "Failed to update Oak metrics after option update %s: %s",
+                option_id,
+                exc,
+            )
         return opt
 
     # ---------------------------------------------------------------------
@@ -206,7 +221,9 @@ class OptionManager:
                 value=json.dumps(model).encode("utf-8"),
             )
         except Exception as exc:  # pragma: no cover – defensive
-            logger.error("Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc)
+            logger.error(
+                "Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc
+            )
 
     # ---------------------------------------------------------------------
     # Internal helpers
@@ -235,7 +252,9 @@ class OptionManager:
                 value=encoded,
             )
         except Exception as exc:  # pragma: no cover – defensive
-            logger.error("Failed to publish option_created event for %s: %s", opt.option_id, exc)
+            logger.error(
+                "Failed to publish option_created event for %s: %s", opt.option_id, exc
+            )
 
     def _publish_update(self, opt: Option) -> None:
         """Publish an ``option_updated`` Avro event.
@@ -260,7 +279,9 @@ class OptionManager:
                 value=encoded,
             )
         except Exception as exc:  # pragma: no cover – defensive
-            logger.error("Failed to publish option_updated event for %s: %s", opt.option_id, exc)
+            logger.error(
+                "Failed to publish option_updated event for %s: %s", opt.option_id, exc
+            )
 
 
 # Export a singleton used by the FastAPI routes.

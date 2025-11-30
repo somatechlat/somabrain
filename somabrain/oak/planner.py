@@ -51,7 +51,9 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     # ignored. By importing inside the function we ensure the latest attribute
     # value from ``somabrain.storage.db`` is used.
     try:
-        from somabrain.storage.db import get_session_factory  # pylint: disable=import-outside-toplevel
+        from somabrain.storage.db import (
+            get_session_factory,
+        )  # pylint: disable=import-outside-toplevel
 
         Session = get_session_factory()
         with Session() as session:
@@ -69,10 +71,15 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     # Retrieve only the tenant's options and sort by utility (high → low).
     # Import lazily to avoid side‑effects during module import (MemoryClient init).
     try:
-        from .option_manager import option_manager  # pylint: disable=import-outside-toplevel
+        from .option_manager import (
+            option_manager,
+        )  # pylint: disable=import-outside-toplevel
+
         options = option_manager.list_options(tenant_id)
     except Exception:
         # If the option manager cannot be imported (e.g., missing cfg), fallback to empty list.
         options = []
-    sorted_opts = sorted(options, key=lambda o: getattr(o, "utility", 0.0), reverse=True)
+    sorted_opts = sorted(
+        options, key=lambda o: getattr(o, "utility", 0.0), reverse=True
+    )
     return [opt.option_id for opt in sorted_opts[:limit]]

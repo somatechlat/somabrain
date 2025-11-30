@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 
 from common.config.settings import settings
+
 # ``pymilvus`` is an optional heavy dependency. Import it lazily and provide
 # fall‑backs for the test environment where the library is not installed.
 # ``pymilvus`` is an optional heavy dependency. Import it lazily and provide
@@ -34,9 +35,11 @@ try:
         DataType,
     )
     from pymilvus.exceptions import MilvusException
+
     _PYMILVUS_AVAILABLE = True
 except Exception:  # pragma: no cover – exercised only when pymilvus missing
     _PYMILVUS_AVAILABLE = False
+
     # Minimal stand‑ins that satisfy type checking and allow the module to be
     # imported. The real functionality is mocked in the test suite.
     # Provide a dummy class that can be instantiated with arbitrary arguments
@@ -124,7 +127,9 @@ class MilvusClient:
             # Instantiate (or mock) the collection regardless of the above.
             self.collection: Collection = Collection(self.collection_name)
         except MilvusException as exc:
-            logger.warning("Milvus connection failed (%s); proceeding with mock collection", exc)
+            logger.warning(
+                "Milvus connection failed (%s); proceeding with mock collection", exc
+            )
             # ``collection`` will be replaced by tests or set later by the
             # consumer. Using ``None`` avoids attribute errors on the instance.
             self.collection = None  # type: ignore[assignment]
@@ -134,7 +139,12 @@ class MilvusClient:
     # ---------------------------------------------------------------------
     def _create_collection(self) -> None:
         fields = [
-            FieldSchema(name="option_id", dtype=DataType.VARCHAR, max_length=256, is_primary=True),
+            FieldSchema(
+                name="option_id",
+                dtype=DataType.VARCHAR,
+                max_length=256,
+                is_primary=True,
+            ),
             FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=self.dim),
         ]
@@ -183,7 +193,11 @@ class MilvusClient:
         ``settings.OAK_SIMILARITY_THRESHOLD``.
         """
         # Resolve defaults from Settings if not provided.
-        top_k = top_k if top_k is not None else getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10)
+        top_k = (
+            top_k
+            if top_k is not None
+            else getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10)
+        )
         similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None
@@ -206,4 +220,6 @@ class MilvusClient:
             if sim >= similarity_threshold:
                 out.append((hit.entity.get("option_id"), sim))
         return out
+
+
 # End of file – only the first MilvusClient implementation remains.

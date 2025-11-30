@@ -1,3 +1,5 @@
+from common.logging import logger
+
 """Service entry points for the Soma stack.
 
 This package provides lightweight wrappers around the individual

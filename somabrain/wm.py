@@ -124,12 +124,24 @@ class WorkingMemory:
         self._t = 0  # simple timestep for recency
         self._scorer = scorer
         self._now: Callable[[], float] = now_fn or time.time
-        r_scale = settings.wm_recency_time_scale if recency_time_scale is None else recency_time_scale
-        r_cap = settings.wm_recency_max_steps if recency_max_steps is None else recency_max_steps
-        self._recency_scale = self._validate_scale(r_scale, settings.wm_recency_time_scale)
+        r_scale = (
+            settings.wm_recency_time_scale
+            if recency_time_scale is None
+            else recency_time_scale
+        )
+        r_cap = (
+            settings.wm_recency_max_steps
+            if recency_max_steps is None
+            else recency_max_steps
+        )
+        self._recency_scale = self._validate_scale(
+            r_scale, settings.wm_recency_time_scale
+        )
         self._recency_cap = self._validate_scale(r_cap, settings.wm_recency_max_steps)
         self._default_salience_threshold = float(
-            settings.wm_salience_threshold if salience_threshold is None else salience_threshold
+            settings.wm_salience_threshold
+            if salience_threshold is None
+            else salience_threshold
         )
 
     @staticmethod

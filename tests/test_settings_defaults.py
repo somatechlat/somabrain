@@ -1,10 +1,3 @@
-"""Invariant tests ensuring config defaults are centralized in settings.
-
-These tests guard against regressions where modules reintroduce hard-coded
-defaults or new direct ``os.getenv`` calls outside ``common/config/settings.py``.
-They intentionally avoid mocks/shims and exercise lightweight code paths only.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -12,9 +5,11 @@ from pathlib import Path
 from common.config.settings import settings
 from somabrain.microcircuits import MCConfig
 from somabrain.mt_wm import MTWMConfig
-from somabrain.wm import WorkingMemory
-from somabrain.prediction import BudgetedPredictor, SlowPredictor
 from somabrain.planner_rwr import rwr_plan
+from somabrain.prediction import BudgetedPredictor, SlowPredictor
+from somabrain.wm import WorkingMemory
+
+"""Invariant tests ensuring config defaults are centralized in settings."""
 
 
 def test_mcconfig_defaults_follow_settings() -> None:
@@ -57,7 +52,6 @@ def test_rwr_plan_respects_settings_limits() -> None:
             return (0.0, 0.0, 0.0)
 
         def links_from(self, coord, type_filter=None, limit=None):
-            # ensure limit is what planner passes from settings
             assert limit == max(1, int(settings.planner_rwr_edges_per_node))
             return []
 
@@ -76,7 +70,6 @@ def test_no_direct_getenv_outside_settings() -> None:
     for path in root.rglob("*.py"):
         if "common/config/settings.py" in str(path) or path == Path(__file__):
             continue
-        # skip generated protobuf/egg metadata
         if path.name.endswith("_pb2.py") or "/.venv/" in str(path):
             continue
         text = path.read_text(encoding="utf-8", errors="ignore")

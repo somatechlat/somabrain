@@ -1,3 +1,6 @@
+from fastapi.testclient import TestClient
+from scripts.mock_memory import app
+
 """Simple end‑to‑end test for the mock memory HTTP service.
 
 This test uses FastAPI's ``TestClient`` to exercise the ``/remember`` and
@@ -7,10 +10,8 @@ and subsequently retrieved, providing a lightweight integration check that the
 memory service behaves as expected.
 """
 
-from fastapi.testclient import TestClient
 
 # Import the FastAPI app defined in the mock memory script.
-from scripts.mock_memory import app
 
 client = TestClient(app)
 

@@ -131,7 +131,9 @@ def rwr_plan(
     # Power iterations with restart
     s_val = max(1, int(settings.planner_rwr_steps if steps is None else steps))
     restart_prob = float(settings.planner_rwr_restart if restart is None else restart)
-    max_items_val = max(1, int(settings.planner_rwr_max_items if max_items is None else max_items))
+    max_items_val = max(
+        1, int(settings.planner_rwr_max_items if max_items is None else max_items)
+    )
     for _ in range(s_val):
         newp = [0.0] * n
         for i, row in T.items():

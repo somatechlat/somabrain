@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Create outbox_events table
 
 Revision ID: cf8b36c30d81
@@ -5,13 +10,6 @@ Revises: 0001_context_feedback
 Create Date: 2025-10-15 14:00:00.000000
 
 """
-
-from __future__ import annotations
-
-from typing import Sequence
-
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

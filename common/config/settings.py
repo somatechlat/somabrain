@@ -157,7 +157,7 @@ class Settings(BaseSettings):
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or _str_env("MEMORY_SERVICE_URL")
-        or "http://localhost:9595"
+        or "http://localhost:9696"
     )
     memory_http_token: Optional[str] = Field(
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
@@ -193,9 +193,7 @@ class Settings(BaseSettings):
             _int_env("SOMABRAIN_MILVUS_PORT", 19530),
         )
     )
-    milvus_collection: str = Field(
-        default=_str_env("MILVUS_COLLECTION", "oak_options")
-    )
+    milvus_collection: str = Field(default=_str_env("MILVUS_COLLECTION", "oak_options"))
     # Convenience full URL – used by the Milvus client when both host and
     # port are present. This keeps the client implementation free of
     # environment‑lookup logic, satisfying the VIBE “single source of truth”.
@@ -220,10 +218,14 @@ class Settings(BaseSettings):
     # Default similarity threshold for option similarity search. Lowered to 0.8
     # to align with unit‑test expectations (a hit with distance 0.2 yields a
     # similarity of ~0.833, which should be accepted).
-    OAK_SIMILARITY_THRESHOLD: float = Field(default=_float_env("OAK_SIMILARITY_THRESHOLD", 0.8))
+    OAK_SIMILARITY_THRESHOLD: float = Field(
+        default=_float_env("OAK_SIMILARITY_THRESHOLD", 0.8)
+    )
     # Salience / reward thresholds for option creation
     OAK_REWARD_THRESHOLD: float = Field(default=_float_env("OAK_REWARD_THRESHOLD", 0.5))
-    OAK_NOVELTY_THRESHOLD: float = Field(default=_float_env("OAK_NOVELTY_THRESHOLD", 0.2))
+    OAK_NOVELTY_THRESHOLD: float = Field(
+        default=_float_env("OAK_NOVELTY_THRESHOLD", 0.2)
+    )
     # Discount factor for environment reward (γ)
     OAK_GAMMA: float = Field(default=_float_env("OAK_GAMMA", 0.99))
     # EMA update factor (α)
@@ -247,20 +249,6 @@ class Settings(BaseSettings):
     host_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_HOST_PORT", 9696)
     )
-    # Public API host/port configuration used for constructing the base URL.
-    # These map to SOMABRAIN_PUBLIC_HOST and SOMABRAIN_PUBLIC_PORT environment
-    # variables. Defaults mirror the historic host_port values for backward
-    # compatibility.
-    public_host: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_PUBLIC_HOST") or "localhost"
-    )
-    public_port: Optional[int] = Field(
-        default=_int_env("SOMABRAIN_PUBLIC_PORT", 9696)
-    )
-    # API scheme (http/https) – used when constructing the base URL.
-    api_scheme: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_API_SCHEME") or "http"
-    )
     providers_path: Optional[str] = Field(default=_str_env("PROVIDERS_PATH"))
     spectral_cache_dir: Optional[str] = Field(
         default=_str_env("SOMABRAIN_SPECTRAL_CACHE_DIR")
@@ -271,7 +259,9 @@ class Settings(BaseSettings):
     # It defaults to ``False`` for local development (mirroring ``config.yaml``).
     # ``api_token`` holds the static token value when ``auth_required`` is True.
     # Both values can be overridden via environment variables for production.
-    auth_required: bool = Field(default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False))
+    auth_required: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_AUTH_REQUIRED", False)
+    )
     api_token: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_TOKEN", ""))
     learner_dlq_path: str = Field(
         default=_str_env("SOMABRAIN_LEARNER_DLQ_PATH", "./data/learner_dlq.jsonl")
@@ -338,28 +328,8 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_CONSTITUTION_SIGNER_ID", "default")
     )
     # OPA bundle path (optional)
-    opa_bundle_path: Optional[str] = Field(default=_str_env("OPA_BUNDLE_PATH") or "./opa")
-
-    # -----------------------------------------------------------------
-    # Outbox worker configuration (environment variables used by
-    # ``somabrain.workers.outbox_publisher``). These defaults mirror the
-    # historic hard‑coded values and provide typed access for the worker.
-    # -----------------------------------------------------------------
-    outbox_batch_size: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_BATCH_SIZE", 100)
-    )
-    outbox_max_retries: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_MAX_RETRIES", 5)
-    )
-    outbox_poll_interval: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_OUTBOX_POLL_INTERVAL", 1.0)
-    )
-    outbox_producer_retry_ms: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_OUTBOX_PRODUCER_RETRY_MS", 1000)
-    )
-    # Interval (seconds) for replaying journal events to the database.
-    journal_replay_interval: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_REPLAY_INTERVAL", 300)
+    opa_bundle_path: Optional[str] = Field(
+        default=_str_env("OPA_BUNDLE_PATH") or "./opa"
     )
     # Additional configuration fields needed for full removal of settings.getenv usage
     heat_method: str = Field(default=_str_env("SOMA_HEAT_METHOD", "chebyshev"))
@@ -435,19 +405,8 @@ class Settings(BaseSettings):
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
-    # Global infra requirement flag – used by workers to optionally bypass
-    # infra readiness checks (e.g., during unit tests). The original code
-    # accessed ``settings.require_infra`` but the field was never defined,
-    # causing an ``AttributeError`` in the outbox publisher and other workers.
-    # We expose it here with the same semantics: a truthy value (default ``True``)
-    # means infra must be ready; setting ``SOMABRAIN_REQUIRE_INFRA=0`` disables
-    # the check.
-    require_infra: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_INFRA", True)
-    )
-    require_memory: bool = Field(
-        default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_MEMORY", True)
-    )
+    # Memory is always required; ignore any attempt to disable via env.
+    require_memory: bool = Field(default=True)
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
@@ -531,7 +490,11 @@ class Settings(BaseSettings):
     api_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_URL", ""))
     # Base URL used for local development and fallback when no explicit URL is provided.
     # Defaults to ``http://localhost:9696`` which matches historic hard‑coded values.
-    default_base_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"))
+    default_base_url: str = Field(
+        default_factory=lambda: _str_env(
+            "SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"
+        )
+    )
 
     # OPA service URL (policy engine)
     opa_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_OPA_URL", ""))
@@ -654,10 +617,14 @@ class Settings(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_INTEGRATOR_TEMPERATURE", 1.0)
     )
     # Calibration
-    calibration_enabled: bool = Field(default=False, description="Enable predictor calibration service")
+    calibration_enabled: bool = Field(
+        default=False, description="Enable predictor calibration service"
+    )
 
     # Feature Flags
-    enable_cog_threads: bool = Field(default=False, description="Enable Cognitive Threads v2")
+    enable_cog_threads: bool = Field(
+        default=False, description="Enable Cognitive Threads v2"
+    )
 
     # Predictor timeout (ms) – used when constructing the budgeted predictor.
     # The historic default was 1000 ms; we keep that value here.
@@ -688,9 +655,7 @@ class Settings(BaseSettings):
     wm_alpha: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_ALPHA", 0.6)
     )
-    wm_beta: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3)
-    )
+    wm_beta: float = Field(default_factory=lambda: _float_env("SOMABRAIN_WM_BETA", 0.3))
     wm_gamma: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_GAMMA", 0.1)
     )

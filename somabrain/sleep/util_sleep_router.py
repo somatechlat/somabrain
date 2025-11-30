@@ -27,7 +27,6 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 import asyncio
 import logging
-from somabrain.metrics import get_counter
 from somabrain.api.dependencies.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M
@@ -68,6 +67,7 @@ _sleep_calls_counter = M.get_counter(
 _RATE_LIMIT_PATH = "/api/util/sleep"
 _rate_limiter: Any | None = None
 
+
 def _get_rate_limiter() -> Any:
     """Retrieve the global rate‑limiter defined in ``somabrain.app``.
 
@@ -90,6 +90,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
     task and the response returns immediately. ``trace_id`` is propagated to the
     log entry for observability.
     """
+
     # Helper that performs the full transition synchronously.
     async def _process() -> Dict[str, Any]:
         # 1. Authentication
@@ -118,7 +119,9 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             "max_seconds": settings.sleep_max_seconds,
         }
         if not opa_client.evaluate(opa_input):
-            raise HTTPException(status_code=403, detail="OPA policy denied sleep request")
+            raise HTTPException(
+                status_code=403, detail="OPA policy denied sleep request"
+            )
 
         # 4. Validate transition using the manager.
         manager = SleepStateManager()
@@ -136,7 +139,10 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 session.commit()
             current_state = SleepState(ss.current_state.upper())
             # Validate TTL against the configured maximum.
-            if body.ttl_seconds is not None and body.ttl_seconds > settings.sleep_max_seconds:
+            if (
+                body.ttl_seconds is not None
+                and body.ttl_seconds > settings.sleep_max_seconds
+            ):
                 raise HTTPException(
                     status_code=400,
                     detail=f"ttl_seconds exceeds maximum of {settings.sleep_max_seconds} seconds",

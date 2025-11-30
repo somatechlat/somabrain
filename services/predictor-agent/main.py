@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from common.config.settings import settings
-from common.logging import logger
+import os
 import random
+import threading
 import time
 from typing import Any, Dict, Optional
-import threading
+
 import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
-
-from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
+from somabrain.common.kafka import TOPICS, encode, make_producer
+from somabrain.observability.provider import get_tracer, init_tracing  # type: ignore
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
@@ -24,10 +23,7 @@ SOMA_TOPIC = TOPICS["soma_agent"]
 
 
 def _bootstrap() -> str:
-    # Use the centralized Settings singleton for the Kafka bootstrap URL.
-    from common.config.settings import settings as _settings  # type: ignore
-
-    url = _settings.kafka_bootstrap_servers
+    url = os.getenv("SOMABRAIN_KAFKA_URL")
     if not url:
         raise RuntimeError(
             "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
@@ -39,15 +35,15 @@ def _make_producer():
     return make_producer()
 
 
-def _serde():
+def _serde() -> str:
     return "belief_update"
 
 
-def _next_serde():
+def _next_serde() -> str:
     return "next_event"
 
 
-def _soma_serde():
+def _soma_serde() -> str:
     return "belief_update_soma"
 
 
@@ -82,9 +78,8 @@ def run_forever() -> None:  # pragma: no cover
         if _metrics
         else None
     )
-    # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        if settings.health_port:
+        if os.getenv("HEALTH_PORT"):
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -94,7 +89,6 @@ def run_forever() -> None:  # pragma: no cover
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "predictor_agent"}
 
-            # Prometheus metrics endpoint (optional)
             try:
                 from somabrain import metrics as _M  # type: ignore
 
@@ -103,15 +97,15 @@ def run_forever() -> None:  # pragma: no cover
                     return await _M.metrics_endpoint()
 
             except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+                pass
 
-            port = int(settings.health_port)
+            port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
-        logger.exception("Health server startup failed")
-    # Default ON to ensure predictor is always available unless explicitly disabled
+        pass
+
     from somabrain.modes import feature_enabled
 
     try:
@@ -123,6 +117,7 @@ def run_forever() -> None:  # pragma: no cover
     if not (composite or feature_enabled("learner")):
         print("predictor-agent: disabled by mode; exiting.")
         return
+
     prod = _make_producer()
     if prod is None:
         print("predictor-agent: Kafka not available; exiting.")
@@ -132,12 +127,11 @@ def run_forever() -> None:  # pragma: no cover
     soma_serde = _soma_serde()
     from somabrain import runtime_config as _rt
 
-    tenant = settings.default_tenant
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = _rt.get_str("agent_model_ver", "v1")
     period = _rt.get_float("agent_update_period", 0.7)
     soma_compat = _rt.get_bool("soma_compat", False)
     intents = ["browse", "purchase", "support"]
-    # Diffusion-backed predictor setup (supports production graph via env)
     from somabrain.predictors.base import build_predictor_from_env
 
     predictor, dim = build_predictor_from_env("agent")
@@ -151,7 +145,6 @@ def run_forever() -> None:  # pragma: no cover
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
-                # Apply calibration temperature scaling if available
                 try:
                     from somabrain.calibration.calibration_metrics import (
                         calibration_tracker as _calib,
@@ -161,9 +154,8 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["agent"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception as exc:
-                    from common.logging import logger
-                    logger.exception("Calibration scaling failed in predictor-agent: %s", exc)
+                except Exception:
+                    pass
                 rec = {
                     "domain": "agent",
                     "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -179,12 +171,12 @@ def run_forever() -> None:  # pragma: no cover
                     try:
                         _EMITTED.inc()
                     except Exception:
-                        logger.exception("Failed to increment emitted metric")
+                        pass
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="agent").observe(float(delta_error))
                     except Exception:
-                        logger.exception("Failed to record error histogram")
+                        pass
                 if soma_compat:
                     try:
                         ts_ms = int(time.time() * 1000)
@@ -202,7 +194,6 @@ def run_forever() -> None:  # pragma: no cover
                         prod.send(SOMA_TOPIC, value=payload)
                     except Exception:
                         pass
-                # NextEvent emission (derived) from predicted intent
                 predicted_state = f"intent:{posterior['intent']}"
                 next_ev = build_next_event(
                     "agent", tenant, float(confidence), predicted_state
@@ -220,7 +211,7 @@ def run_forever() -> None:  # pragma: no cover
             prod.flush(2)
             prod.close()
         except Exception:
-            logger.exception("Failed to flush/close producer during shutdown")
+            pass
 
 
 if __name__ == "__main__":  # pragma: no cover

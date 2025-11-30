@@ -22,10 +22,9 @@ Metrics are emitted via ``somabrain.metrics``:
 
 from __future__ import annotations
 
-import json
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from somabrain.auth import require_auth

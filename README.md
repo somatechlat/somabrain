@@ -74,6 +74,16 @@ Docker Compose (`docker-compose.yml`) starts the API plus Redis, Kafka, OPA, Pos
 
 Memory service: by default the API points to `http://localhost:9595` (`memory_http_endpoint` in `common/config/settings.py`). Override `SOMABRAIN_MEMORY_HTTP_ENDPOINT` and `SOMABRAIN_MEMORY_HTTP_TOKEN` if your memory backend runs elsewhere or requires auth.
 
+**Important:** *SomaBrain never runs an internal memory container.* All agents, services, and tests **must** use the external memory service reachable at `http://localhost:9595`. The service should already be running on the host machine; you can verify it with:
+
+```bash
+curl -f http://localhost:9595/health
+```
+
+If the health check reports `kv_store:false` or any component flag as false, the stack will refuse to start and the integration tests will fail – this is intentional to enforce the **real‑server‑only** rule.
+
+In production the same endpoint is injected via Kubernetes manifests; for local development we rely on the host‑side service.
+
 Note: Kafka’s advertised listener is internal to the Docker network by default. For host-side consumers, run your clients inside the Compose network or add a dual-listener config. For WSL2 or remote clients, set the EXTERNAL listener host before running dev scripts:
 
 ```bash

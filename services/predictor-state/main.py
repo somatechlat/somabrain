@@ -1,28 +1,24 @@
 from __future__ import annotations
 
-from common.config.settings import settings
-from common.logging import logger
+import os
 import random
-import time
 import threading
+import time
+
 import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.common.events import build_next_event
+from somabrain.common.kafka import TOPICS, encode, make_producer
+from somabrain.observability.provider import get_tracer, init_tracing  # type: ignore
+from somabrain.predictors.base import (
+    build_predictor_from_env,
+)
+from somabrain.services.calibration_service import calibration_service
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
 except Exception:  # pragma: no cover
     _metrics = None  # type: ignore
-
-from somabrain.common.kafka import make_producer, encode, TOPICS
-from somabrain.common.events import build_next_event
-from somabrain.services.calibration_service import calibration_service
-
-# Diffusion predictor
-from somabrain.predictors.base import (
-    build_predictor_from_env,
-)
-
 
 TOPIC = TOPICS["state"]
 NEXT_TOPIC = TOPICS["next"]
@@ -32,7 +28,6 @@ SOMA_TOPIC = TOPICS["soma_state"]
 def run_forever() -> None:  # pragma: no cover
     init_tracing()
     tracer = get_tracer("somabrain.predictor.state")
-    # Metrics (lazy and optional)
     _EMITTED = (
         _metrics.get_counter(
             "somabrain_predictor_state_emitted_total",
@@ -59,7 +54,7 @@ def run_forever() -> None:  # pragma: no cover
     )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        if settings.health_port:
+        if os.getenv("HEALTH_PORT"):
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -69,7 +64,6 @@ def run_forever() -> None:  # pragma: no cover
             async def _hz():  # type: ignore
                 return {"ok": True, "service": "predictor_state"}
 
-            # Prometheus metrics endpoint (optional)
             try:
                 from somabrain import metrics as _M  # type: ignore
 
@@ -78,15 +72,15 @@ def run_forever() -> None:  # pragma: no cover
                     return await _M.metrics_endpoint()
 
             except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+                pass
 
-            port = int(settings.health_port)
+            port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
-        logger.exception("Health server startup failed")
-    # Default ON to ensure predictor is always available unless explicitly disabled
+        pass
+
     from somabrain.modes import feature_enabled
 
     try:
@@ -98,34 +92,32 @@ def run_forever() -> None:  # pragma: no cover
     if not (composite or feature_enabled("learner")):
         print("predictor-state: disabled by mode; exiting.")
         return
+
     prod = make_producer()
     if prod is None:
         print("predictor-state: Kafka not available; exiting.")
         return
-    # Schema names used by encoder utility
+
     belief_schema = "belief_update"
     next_schema = "next_event"
     soma_schema = "belief_update_soma"
     from somabrain import runtime_config as _rt
 
-    tenant = settings.default_tenant  # tenancy from centralized Settings
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = _rt.get_str("state_model_ver", "v1")
     period = _rt.get_float("state_update_period", 0.5)
     soma_compat = _rt.get_bool("soma_compat", False)
-    # Diffusion-backed predictor setup (supports production graph via env)
+
     predictor, dim = build_predictor_from_env("state")
     source_idx = 0
     try:
         while True:
-            # Simple synthetic delta_error stream (bounded noise + slow wave)
             with tracer.start_as_current_span("predictor_state_emit"):
-                # Build observed vector as next one-hot (simple deterministic proxy)
                 observed = np.zeros(dim, dtype=float)
                 observed[(source_idx + 1) % dim] = 1.0
                 _, delta_error, confidence = predictor.step(
                     source_idx=source_idx, observed=observed
                 )
-                # Apply calibration temperature scaling if available
                 try:
                     from somabrain.calibration.calibration_metrics import (
                         calibration_tracker as _calib,
@@ -134,20 +126,15 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["state"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception as exc:
-                    # Log calibration failures; they should not stop the predictor.
-                    from common.logging import logger
-                    logger.exception("Calibration scaling failed in predictor-state: %s", exc)
+                except Exception:
+                    pass
 
-                # Calibration tracking
                 if calibration_service.enabled:
-                    # In production, this would use actual accuracy from feedback
-                    # For now, use confidence as a proxy for demo purposes
                     calibration_service.record_prediction(
                         domain="state",
                         tenant=tenant,
                         confidence=float(confidence),
-                        accuracy=float(1.0 - delta_error),  # Proxy for actual accuracy
+                        accuracy=float(1.0 - delta_error),
                     )
 
                 rec = {
@@ -175,14 +162,13 @@ def run_forever() -> None:  # pragma: no cover
                     try:
                         _EMITTED.inc()
                     except Exception:
-                        logger.exception("Failed to increment emitted metric")
+                        pass
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="state").observe(float(delta_error))
                     except Exception:
-                        logger.exception("Failed to record error histogram")
+                        pass
                 if soma_compat:
-                    # Map to soma-compatible BeliefUpdate
                     try:
                         ts_ms = int(time.time() * 1000)
                         soma_rec = {
@@ -198,8 +184,7 @@ def run_forever() -> None:  # pragma: no cover
                         payload = encode(soma_rec, soma_schema)
                         prod.send(SOMA_TOPIC, value=payload)
                     except Exception:
-                        logger.exception("Failed to emit soma-compatible belief update")
-                # NextEvent emission (derived): predicted_state based on stability
+                        pass
                 predicted_state = "stable" if delta_error < 0.3 else "shifting"
                 next_ev = build_next_event(
                     "state", tenant, float(confidence), predicted_state
@@ -217,7 +202,7 @@ def run_forever() -> None:  # pragma: no cover
             prod.flush(2)
             prod.close()
         except Exception:
-            logger.exception("Failed during producer cleanup")
+            pass
 
 
 if __name__ == "__main__":  # pragma: no cover

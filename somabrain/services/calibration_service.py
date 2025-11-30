@@ -8,11 +8,10 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 
 from common.config.settings import settings
-from common.logging import logger
 from somabrain.calibration.calibration_metrics import CalibrationTracker
 
 
@@ -20,9 +19,7 @@ from somabrain.calibration.calibration_metrics import CalibrationTracker
 class CalibrationService:
     """Service for managing predictor calibration."""
 
-    enabled: bool = field(
-        default_factory=lambda: settings.calibration_enabled
-    )
+    enabled: bool = field(default_factory=lambda: settings.calibration_enabled)
     trackers: Dict[str, CalibrationTracker] = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)

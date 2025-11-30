@@ -13,7 +13,6 @@ FastAPI router in ``somabrain.cognitive.thread_router``.
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import Any, List, Optional
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, func

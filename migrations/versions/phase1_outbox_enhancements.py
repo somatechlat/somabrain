@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Phase 1 Outbox Enhancements for Idempotency and Performance
 
 Revision ID: phase1_outbox_enhancements
@@ -5,13 +10,6 @@ Revises: b5c9f9a3d1ab
 Create Date: 2025-11-15 10:30:00.000000
 
 """
-
-from __future__ import annotations
-
-from typing import Sequence
-
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

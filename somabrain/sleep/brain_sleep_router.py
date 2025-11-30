@@ -23,8 +23,6 @@ from somabrain.api.dependencies.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M
 from common.config.settings import settings
-import logging
-from somabrain.metrics import get_counter
 from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.opa.client import opa_client
 from somabrain.sleep import SleepState, SleepStateManager
@@ -67,6 +65,7 @@ _sleep_toggle_counter = M.get_counter(
 _RATE_LIMIT_PATH = "/api/brain/sleep_mode"
 _rate_limiter: Any | None = None
 
+
 def _get_rate_limiter() -> Any:
     """Retrieve the global rate‑limiter defined in ``somabrain.app``.
 
@@ -88,6 +87,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
     differentiate higher‑level control. The same validation, OPA check, DB
     persistence and metric update are performed.
     """
+
     # Helper to perform the full transition synchronously.
     async def _process() -> Dict[str, Any]:
         # Authentication
@@ -167,7 +167,9 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         _sleep_state_gauge.labels(tenant=tenant_id, state=str(state_int)).set(1)
         # Increment metrics counters
         _sleep_calls_counter.labels(tenant=tenant_id, mode="brain").inc()
-        _sleep_toggle_counter.labels(tenant=tenant_id, new_state=target_state.value).inc()
+        _sleep_toggle_counter.labels(
+            tenant=tenant_id, new_state=target_state.value
+        ).inc()
         # Log trace_id if provided.
         if getattr(body, "trace_id", None):
             logger.info(

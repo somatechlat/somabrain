@@ -1,17 +1,16 @@
 from __future__ import annotations
 
-from common.config.settings import settings
-from common.logging import logger
+import os
 import random
+import threading
 import time
 from typing import Any, Dict, Optional
-import threading
+
 import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
-
-from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
+from somabrain.common.kafka import TOPICS, encode, make_producer
+from somabrain.observability.provider import get_tracer, init_tracing  # type: ignore
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
@@ -24,12 +23,7 @@ SOMA_TOPIC = TOPICS["soma_action"]
 
 
 def _bootstrap() -> str:
-    # Use the centralized Settings for Kafka bootstrap servers.
-    url = settings.kafka_bootstrap_servers
-    if not url:
-        raise ValueError(
-            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
-        )
+    url = os.getenv("SOMABRAIN_KAFKA_URL") or "localhost:30001"
     return url.replace("kafka://", "")
 
 
@@ -37,15 +31,15 @@ def _make_producer():
     return make_producer()
 
 
-def _serde():
+def _serde() -> str:
     return "belief_update"
 
 
-def _next_serde():
+def _next_serde() -> str:
     return "next_event"
 
 
-def _soma_serde():
+def _soma_serde() -> str:
     return "belief_update_soma"
 
 
@@ -83,7 +77,7 @@ def run_forever() -> None:  # pragma: no cover
     )
     # Optional health server for k8s probes (enabled only when HEALTH_PORT set)
     try:
-        if settings.health_port:
+        if os.getenv("HEALTH_PORT"):
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -102,14 +96,14 @@ def run_forever() -> None:  # pragma: no cover
                     return await _M.metrics_endpoint()
 
             except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+                pass
 
-            port = int(settings.health_port)
+            port = int(os.getenv("HEALTH_PORT"))
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
-        logger.exception("Health server startup failed")
+        pass
     # Default ON to ensure predictor is always available unless explicitly disabled
     from somabrain.modes import feature_enabled
 
@@ -131,7 +125,7 @@ def run_forever() -> None:  # pragma: no cover
     soma_serde = _soma_serde()
     from somabrain import runtime_config as _rt
 
-    tenant = settings.default_tenant
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     model_ver = _rt.get_str("action_model_ver", "v1")
     period = _rt.get_float("action_update_period", 0.9)
     soma_compat = _rt.get_bool("soma_compat", False)
@@ -158,9 +152,8 @@ def run_forever() -> None:  # pragma: no cover
                     scaler = _calib.temperature_scalers["action"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
-                except Exception as exc:
-                    from common.logging import logger
-                    logger.exception("Calibration scaling failed in predictor-action: %s", exc)
+                except Exception:
+                    pass
                 posterior = {"next_action": random.choice(actions)}
                 rec = {
                     "domain": "action",
@@ -177,12 +170,12 @@ def run_forever() -> None:  # pragma: no cover
                     try:
                         _EMITTED.inc()
                     except Exception:
-                        logger.exception("Failed to increment emitted metric")
+                        pass
                 if _ERR_HIST is not None:
                     try:
                         _ERR_HIST.labels(domain="action").observe(float(delta_error))
                     except Exception:
-                        logger.exception("Failed to record error histogram")
+                        pass
                 if soma_compat:
                     try:
                         ts_ms = int(time.time() * 1000)
@@ -199,7 +192,7 @@ def run_forever() -> None:  # pragma: no cover
                         payload = _encode(soma_rec, soma_serde)
                         prod.send(SOMA_TOPIC, value=payload)
                     except Exception:
-                        logger.exception("Failed to emit soma-compatible belief update")
+                        pass
                 # NextEvent emission (derived) from next action
                 predicted_state = f"action:{posterior['next_action']}"
                 # Include optional tenant and computed regret for learner observability

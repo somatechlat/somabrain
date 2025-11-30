@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Add cog_global_frames and cog_segments tables
 
 Revision ID: 3c1a2b4c5d67
@@ -5,13 +10,6 @@ Revises: cf8b36c30d81
 Create Date: 2025-10-26 12:00:00.000000
 
 """
-
-from __future__ import annotations
-
-from typing import Sequence
-
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

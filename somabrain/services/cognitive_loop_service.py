@@ -2,7 +2,6 @@ from __future__ import annotations
 
 # Removed direct import of os; environment variables are accessed via Settings where needed.
 import time as _t
-import datetime
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -54,6 +53,7 @@ def _get_sleep_state(tenant_id: str) -> SleepState:
         # SRS implies safety, but failing to ACTIVE might be risky if we need to freeze.
         # However, for resilience, we default to ACTIVE.
         from common.logging import logger
+
         logger.exception("Failed to retrieve sleep state from DB: %s", exc)
         state = SleepState.ACTIVE
 
@@ -123,7 +123,10 @@ def eval_step(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
         from common.logging import logger
-        logger.exception("Predictor failed, falling back to zero-error placeholder: %s", exc)
+
+        logger.exception(
+            "Predictor failed, falling back to zero-error placeholder: %s", exc
+        )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     # Neuromodulation (personality + supervisor)
@@ -155,6 +158,7 @@ def eval_step(
                 )
         except Exception as exc:
             from common.logging import logger
+
             logger.exception("Supervisor adjustment failed: %s", exc)
 
     # Salience and gates (raw, before executive inhibition)
@@ -202,6 +206,7 @@ def eval_step(
     except Exception as exc:
         # Never fail the cognitive loop due to telemetry
         from common.logging import logger
+
         logger.exception("Telemetry publishing failed: %s", exc)
 
     return {

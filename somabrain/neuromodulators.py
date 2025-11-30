@@ -235,7 +235,11 @@ def _calculate_dopamine_feedback(
 ) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
-    boost = settings.neuromod_dopamine_reward_boost if task_type == "reward_learning" else 0.0
+    boost = (
+        settings.neuromod_dopamine_reward_boost
+        if task_type == "reward_learning"
+        else 0.0
+    )
     return performance.success_rate + settings.neuromod_dopamine_bias + boost
 
 
@@ -254,7 +258,9 @@ def _calculate_noradrenaline_feedback(
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
     floor = max(0.0, min(1.0, float(settings.neuromod_latency_floor or 0.1)))
-    latency_term = (1.0 / max(floor, performance.latency)) * settings.neuromod_latency_scale
+    latency_term = (
+        1.0 / max(floor, performance.latency)
+    ) * settings.neuromod_latency_scale
     return min(settings.neuromod_noradrenaline_max, latency_term + urgency_factor)
 
 

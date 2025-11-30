@@ -118,28 +118,24 @@ def get_opa_url(default: Optional[str] = None) -> Optional[str]:
 
 
 def get_api_base_url(default: Optional[str] = None) -> Optional[str]:
-    """Return the primary SomaBrain API base URL.
-
-    The original implementation attempted to read a non‑existent ``settings.api_url``
-    attribute, which caused an ``AttributeError`` during the end‑to‑end smoke test.
-    The API base URL is derived from the public host/port configuration fields
-    that *do* exist in ``Settings`` (``public_host`` and ``public_port``) or can
-    be overridden via the ``SOMABRAIN_API_URL`` environment variable.
-    """
-    # 1️⃣  Explicit override – developers can set SOMABRAIN_API_URL directly.
+    """Return the primary SomaBrain API base URL."""
     url = _first_non_empty(
-        _from_settings("api_url"),  # maps to SOMABRAIN_API_URL if present
-        settings.public_host,
-        settings.public_port,
+        settings.api_url,
+        settings.api_url,
+        settings.api_url,
     )
-    if isinstance(url, str) and url.startswith("http"):
-        # ``api_url`` was provided as a full URL – return it unchanged.
+    if url:
         return url
 
-    # 2️⃣  Build from host/port fields.
-    host = _first_non_empty(settings.public_host)
-    port = _first_non_empty(settings.public_port)
-    scheme = _first_non_empty(settings.api_scheme) or "http"
+    host = _first_non_empty(settings.public_host, settings.public_host)
+    port = _first_non_empty(settings.public_port, settings.public_port)
+    scheme = (
+        _first_non_empty(
+            settings.api_scheme,
+            settings.api_scheme,
+        )
+        or "http"
+    )
     if host and port:
         return f"{scheme}://{host}:{port}"
     return default

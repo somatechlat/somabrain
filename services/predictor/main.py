@@ -22,12 +22,11 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
-from common.config.settings import settings
-from common.logging import logger
+import os
 import random
 import threading
 import time
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Optional, Tuple
 
 import numpy as np
 
@@ -100,7 +99,7 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
 
 def _maybe_health_server():  # pragma: no cover
     try:
-        if settings.health_port:
+        if os.getenv("HEALTH_PORT"):
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -118,15 +117,15 @@ def _maybe_health_server():  # pragma: no cover
                     return await _M.metrics_endpoint()
 
             except Exception:
-                logger.exception("Failed to set up metrics endpoint for health server")
+                pass
 
-            port = int(settings.health_port)
+            port = int(os.getenv("HEALTH_PORT"))
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
             threading.Thread(target=server.run, daemon=True).start()
     except Exception:
-        logger.exception("Health server startup failed")
+        pass
 
 
 def _get_runtime():
@@ -141,7 +140,6 @@ def _get_runtime():
     """
     try:
         from somabrain import runtime_config as _rt  # type: ignore
-
         return _rt
     except Exception as exc:  # pragma: no cover
         # Propagate a meaningful error – the caller (run_forever) will abort.
@@ -190,7 +188,7 @@ def run_forever() -> None:  # pragma: no cover
     if prod is None:
         print("predictor-unified: Kafka not available; exiting.")
         return
-    tenant = settings.default_tenant
+    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
     soma_compat = rt.get_bool("soma_compat", False)
     belief_schema = "belief_update"
     soma_schema = "belief_update_soma"
@@ -249,16 +247,12 @@ def run_forever() -> None:  # pragma: no cover
                         try:
                             counters[domain].inc()
                         except Exception:
-                            logger.exception(
-                                "Failed to increment emitted metric for %s", domain
-                            )
+                            pass
                     if err_hist is not None:
                         try:
                             err_hist.labels(domain=domain).observe(float(delta_error))
                         except Exception:
-                            logger.exception(
-                                "Failed to record error histogram for %s", domain
-                            )
+                            pass
                     if soma_compat:
                         try:
                             soma_rec = {
@@ -273,10 +267,7 @@ def run_forever() -> None:  # pragma: no cover
                                 value=encode(soma_rec, soma_schema),
                             )
                         except Exception:
-                            logger.exception(
-                                "Failed to emit soma-compatible belief update for %s",
-                                domain,
-                            )
+                            pass
                     next_ev = build_next_event(
                         domain, tenant, float(confidence), next_state
                     )
@@ -285,14 +276,14 @@ def run_forever() -> None:  # pragma: no cover
                         try:
                             next_counter.inc()
                         except Exception:
-                            logger.exception("Failed to increment next event metric")
+                            pass
             time.sleep(0.05)
     finally:
         try:
             prod.flush(2)
             prod.close()
         except Exception:
-            logger.exception("Failed during producer cleanup in unified predictor")
+            pass
 
 
 if __name__ == "__main__":  # pragma: no cover

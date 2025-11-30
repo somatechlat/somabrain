@@ -1,3 +1,8 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+import sqlalchemy as sa
+
 """Add episodic_snapshots table
 
 Revision ID: 7f1a2b3c4d89
@@ -5,13 +10,6 @@ Revises: 3c1a2b4c5d67
 Create Date: 2025-10-26 14:20:00.000000
 
 """
-
-from __future__ import annotations
-
-from typing import Sequence
-
-from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.

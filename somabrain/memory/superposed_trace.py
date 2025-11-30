@@ -238,13 +238,15 @@ class SuperposedTrace:
         if self._cleanup_index is None:
             return 0
         count = 0
-            for anchor_id, vec in self._anchors.items():
-                try:
-                    self._cleanup_index.upsert(anchor_id, vec)
-                    count += 1
-                except Exception as exc:
-                    logger.exception("Failed to upsert anchor %s into cleanup index: %s", anchor_id, exc)
-                    continue
+        for anchor_id, vec in self._anchors.items():
+            try:
+                self._cleanup_index.upsert(anchor_id, vec)
+                count += 1
+            except Exception as exc:
+                logger.exception(
+                    "Failed to upsert anchor %s into cleanup index: %s", anchor_id, exc
+                )
+                continue
         return count
 
     # ------------------------------------------------------------------

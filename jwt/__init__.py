@@ -1,3 +1,10 @@
+from __future__ import annotations
+import os
+import sys
+import importlib.util
+import sysconfig
+from common.logging import logger
+
 """Proxy module that forwards to the real PyJWT package.
 
 This repository previously shipped a local ``jwt`` stub. To enforce
@@ -5,12 +12,6 @@ This repository previously shipped a local ``jwt`` stub. To enforce
 site-packages and exposes its symbols. If PyJWT is not installed, import fails.
 """
 
-from __future__ import annotations
-
-import os
-import sys
-import importlib.util
-import sysconfig
 
 _purelib = sysconfig.get_paths().get("purelib") or ""
 _real_init = os.path.join(_purelib, "jwt", "__init__.py")

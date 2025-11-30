@@ -14,6 +14,7 @@ def upgrade() -> None:
     """Create the initial schema for context feedback and token usage.
 
     This migration defines two tables:
+        pass
     * ``feedback_events`` – stores a single feedback interaction (query,
         prompt, response, utility, optional reward, and metadata).
     * ``token_usage`` – tracks token consumption per session/tenant.

@@ -1,3 +1,7 @@
+from __future__ import annotations
+from typing import Sequence
+from alembic import op
+
 """Tenant-aware outbox uniqueness and indices
 
 Revision ID: b5c9f9a3d1ab
@@ -5,12 +9,6 @@ Revises: 7f1a2b3c4d89
 Create Date: 2025-11-14 11:45:00.000000
 
 """
-
-from __future__ import annotations
-
-from typing import Sequence
-
-from alembic import op
 
 
 # revision identifiers, used by Alembic.
