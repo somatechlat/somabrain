@@ -10,5 +10,5 @@ fallbacks or placeholder behavior.
 
 raise ImportError(
     "The real memory backend is required. Install/provide the memory client package "
-    "or mount it into the image; placeholder memory stubs are disallowed."
+    "or mount it into the image. No fallback implementations are permitted."
 )

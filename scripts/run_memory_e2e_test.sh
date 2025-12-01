@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 set -e
 
-# Start a simple mock memory service in the background on an alternative port
-# to avoid conflicts with any existing service on 9595.
-MOCK_PORT=9596
-export SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:${MOCK_PORT}"
-uvicorn scripts.mock_memory:app --host 0.0.0.0 --port $MOCK_PORT &
-MEM_PID=$!
-# Wait for the mock service to be ready
-sleep 2
+# End-to-end memory test script
+# VIBE CODING RULES: This script requires a REAL memory service to be running.
+# No mocks or stubs are permitted.
 
-# Run the end‑to‑end smoke test against the running SomaBrain API
-# Ensure the API container is up (e.g., `docker compose up -d somabrain_app`)
+# Verify the real memory service is available
+MEMORY_ENDPOINT="${SOMABRAIN_MEMORY_HTTP_ENDPOINT:-http://localhost:9595}"
+
+echo "Checking real memory service at ${MEMORY_ENDPOINT}..."
+if ! curl -sf "${MEMORY_ENDPOINT}/health" > /dev/null 2>&1; then
+    echo "ERROR: Real memory service not available at ${MEMORY_ENDPOINT}"
+    echo "Please start the memory service before running this test."
+    echo "See README.md for instructions on starting the memory backend."
+    exit 1
+fi
+
+echo "Memory service health check passed."
+
+# Run the end-to-end smoke test against the running SomaBrain API
+# Ensure the API container is up (e.g., docker compose up -d somabrain_app)
 python3 scripts/devprod_smoke.py --url http://localhost:9696
 
-# Clean up the mock memory process
-kill $MEM_PID || true
+echo "E2E test completed successfully."

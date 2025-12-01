@@ -164,21 +164,12 @@ class Settings(BaseSettings):
         or "http://localhost:9595"
     )
     # Token used for authenticating to the external memory HTTP service.
-    # The production service may require a token, but the local test instance
-    # started by ``docker-compose.yml`` does **not** enforce authentication.
-    # Therefore we default to ``None`` – the client will omit the Authorization
-    # header unless the environment variable ``SOMABRAIN_MEMORY_HTTP_TOKEN``
-    # is explicitly set.
-    # Default to the development token used in the repository's ``resolved.yml``
-    # configuration. This allows the integration test to authenticate against the
-    # locally‑started memory service without requiring the user to export the
-    # environment variable.
-    # Default token used by the local development memory service (see
-    # ``resolved.yml``). The service requires a bearer token; using the same
-    # default here allows the integration test to authenticate without the
-    # user needing to export the environment variable.
+    # SECURITY: No default token is provided. In production, the environment
+    # variable SOMABRAIN_MEMORY_HTTP_TOKEN must be explicitly set.
+    # For local development, set the token in your .env file or export it
+    # before running the service.
     memory_http_token: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN") or "devtoken"
+        default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
     )
     # Additional infra configuration fields used throughout the codebase.
     # These were previously accessed via direct ``settings.getenv`` calls.
@@ -1364,9 +1355,11 @@ class Settings(BaseSettings):
         or "http://somabrain_cog:9016/health"
     )
     # Tiered memory cleanup configuration
+    # Default to Milvus for production-grade vector search. Milvus provides
+    # scalable, persistent ANN indexing required for TieredMemory cleanup.
     tiered_memory_cleanup_backend: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_CLEANUP_BACKEND", "simple")
-        or "simple"
+        default_factory=lambda: _str_env("SOMABRAIN_CLEANUP_BACKEND", "milvus")
+        or "milvus"
     )
     tiered_memory_cleanup_topk: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_CLEANUP_TOPK", 64)

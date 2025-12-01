@@ -22,6 +22,10 @@ forbidden_patterns=(
   "placeholder implementation"
   "fake implementation"
   "temporary fallback"
+  "mock_memory"
+  "MockMemory"
+  "FakeMemory"
+  "devtoken"
 )
 
 failed=0

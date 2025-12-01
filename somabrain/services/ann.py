@@ -13,7 +13,18 @@ from somabrain.memory.superposed_trace import CleanupIndex
 
 @dataclass
 class AnnConfig:
-    backend: str = "simple"  # "simple" or "hnsw"
+    """Configuration for ANN cleanup indexes.
+
+    Supported backends:
+    - "milvus": Milvus vector database (default, scalable, persistent, recommended for production)
+    - "hnsw": HNSW index via hnswlib (fast, in-memory)
+    - "simple": In-memory cosine search (fallback only)
+
+    Configuration is loaded from settings by default. Override via constructor
+    for testing or custom deployments.
+    """
+
+    backend: str = "milvus"  # "milvus", "hnsw", or "simple"
     top_k: int = 64
     hnsw_m: int = 32
     hnsw_ef_construction: int = 200
@@ -21,6 +32,19 @@ class AnnConfig:
 
     def with_updates(self, **kwargs: object) -> "AnnConfig":
         return replace(self, **kwargs)
+
+    @classmethod
+    def from_settings(cls) -> "AnnConfig":
+        """Create AnnConfig from centralized settings."""
+        from common.config.settings import settings
+
+        return cls(
+            backend=settings.tiered_memory_cleanup_backend,
+            top_k=settings.tiered_memory_cleanup_topk,
+            hnsw_m=settings.tiered_memory_cleanup_hnsw_m,
+            hnsw_ef_construction=settings.tiered_memory_cleanup_hnsw_ef_construction,
+            hnsw_ef_search=settings.tiered_memory_cleanup_hnsw_ef_search,
+        )
 
 
 class SimpleAnnIndex(CleanupIndex):
@@ -129,9 +153,40 @@ class HNSWAnnIndex(CleanupIndex):
                 pass
 
 
-def create_cleanup_index(dim: int, cfg: Optional[AnnConfig]) -> CleanupIndex:
-    config = cfg or AnnConfig()
-    backend = (config.backend or "simple").lower()
+def create_cleanup_index(
+    dim: int,
+    cfg: Optional[AnnConfig] = None,
+    *,
+    tenant_id: str = "default",
+    namespace: str = "cleanup",
+) -> CleanupIndex:
+    """Create a CleanupIndex based on configuration.
+
+    Supported backends:
+    - "milvus": Milvus vector database (default, recommended for production)
+    - "hnsw": HNSW index via hnswlib
+    - "simple": In-memory cosine search (fallback only)
+
+    Configuration is loaded from settings if not provided explicitly.
+    """
+    config = cfg or AnnConfig.from_settings()
+    backend = (config.backend or "milvus").lower()
+
+    if backend == "milvus":
+        try:
+            from somabrain.services.milvus_ann import MilvusAnnIndex
+
+            return MilvusAnnIndex(
+                dim,
+                tenant_id=tenant_id,
+                namespace=namespace,
+                top_k=config.top_k,
+                ef_search=config.hnsw_ef_search,
+            )
+        except Exception:
+            # Fall back to HNSW if Milvus unavailable
+            backend = "hnsw"
+
     if backend == "hnsw":
         try:
             return HNSWAnnIndex(
@@ -141,8 +196,9 @@ def create_cleanup_index(dim: int, cfg: Optional[AnnConfig]) -> CleanupIndex:
                 ef_search=config.hnsw_ef_search,
             )
         except Exception:
-            # fall back to simple if hnsw unavailable
+            # Fall back to simple if hnsw unavailable
             return SimpleAnnIndex(dim)
+
     return SimpleAnnIndex(dim)
 
 

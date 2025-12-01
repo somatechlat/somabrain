@@ -33,7 +33,7 @@ services:
       SOMABRAIN_KAFKA_URL: 127.0.0.1:30102
       SOMABRAIN_LEARNING_TENANTS_FILE: /app/config/learning.tenants.yaml
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: http://host.docker.internal:9595
-      SOMABRAIN_MEMORY_HTTP_TOKEN: devtoken
+      SOMABRAIN_MEMORY_HTTP_TOKEN: ${SOMABRAIN_MEMORY_HTTP_TOKEN:?SOMABRAIN_MEMORY_HTTP_TOKEN must be set}
       SOMABRAIN_MODE: dev
       SOMABRAIN_OPA_URL: http://127.0.0.1:8181
       SOMABRAIN_PORT: "9696"
@@ -101,7 +101,7 @@ services:
       SOMABRAIN_KAFKA_URL: 127.0.0.1:30102
       SOMABRAIN_LEARNING_TENANTS_FILE: /app/config/learning.tenants.yaml
       SOMABRAIN_MEMORY_HTTP_ENDPOINT: http://host.docker.internal:9595
-      SOMABRAIN_MEMORY_HTTP_TOKEN: devtoken
+      SOMABRAIN_MEMORY_HTTP_TOKEN: ${SOMABRAIN_MEMORY_HTTP_TOKEN:?SOMABRAIN_MEMORY_HTTP_TOKEN must be set}
       SOMABRAIN_MODE: dev
       SOMABRAIN_OPA_URL: http://127.0.0.1:8181
       SOMABRAIN_POSTGRES_DSN: postgresql://somabrain:somabrain@127.0.0.1:5432/somabrain

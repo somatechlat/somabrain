@@ -127,7 +127,7 @@ curl -X POST http://localhost:9696/recall \
 
 ```bash
 SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:9595"
-SOMABRAIN_MEMORY_HTTP_TOKEN="devtoken"
+SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
 ```
 
 **Optional**:

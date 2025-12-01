@@ -21,7 +21,33 @@ services:
       retries: 3
     volumes:
       - redis_data:/data
-    command: [ "sh", "-c", "rm -f /data/dump.rdb && redis-server" ]
+    # Production-like Redis configuration with persistence and memory management
+    command:
+      - redis-server
+      - --maxmemory
+      - "400mb"
+      - --maxmemory-policy
+      - "allkeys-lru"
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - "everysec"
+      - --save
+      - "900 1"
+      - --save
+      - "300 10"
+      - --save
+      - "60 10000"
+      - --tcp-keepalive
+      - "300"
+      - --timeout
+      - "0"
+      - --tcp-backlog
+      - "511"
+      - --databases
+      - "16"
+      - --loglevel
+      - "notice"
 
   somabrain_kafka:
     image: apache/kafka:3.7.0
@@ -29,41 +55,50 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 1536M
         reservations:
-          memory: 1.5G
+          memory: 1G
     environment:
+      # Production-like Kafka configuration for constrained environment
       KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID:-1}
       KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES:-broker,controller}
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS:-1@somabrain_kafka:9093}
       KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS:-INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9094,CONTROLLER://0.0.0.0:9093}
-      # Advertised listeners for internal and external access. We avoid nested
-      # default substitutions which Docker Compose does not resolve. The
-      # environment variable KAFKA_BROKER_HOST_PORT provides the external port.
-      # Advertised listeners for internal and external access. Use a fallback
-      # default for the external port if the variable is not set.
-      # Advertised listeners for internal and external access.
-      # Hardcode external port for local development to avoid variable substitution issues.
       KAFKA_CFG_ADVERTISED_LISTENERS: INTERNAL://somabrain_kafka:9092,EXTERNAL://localhost:30102
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES:-CONTROLLER}
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: ${KAFKA_CFG_INTER_BROKER_LISTENER_NAME:-INTERNAL}
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP:-CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT}
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: ${KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE:-true}
-      KAFKA_CFG_NUM_PARTITIONS: ${KAFKA_CFG_NUM_PARTITIONS:-2}
+      # Production settings
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CFG_NUM_PARTITIONS: "3"
       KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CFG_MIN_INSYNC_REPLICAS: 1
       KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_CFG_LOG_DIRS: ${KAFKA_CFG_LOG_DIRS:-/var/lib/kafka/data}
-      KAFKA_CFG_LOG_RETENTION_MS: 604800000
-      KAFKA_CFG_LOG_SEGMENT_BYTES: 67108864
-      KAFKA_CFG_LOG_RETENTION_BYTES: 1073741824
-      KAFKA_CFG_COMPRESSION_TYPE: ${KAFKA_CFG_COMPRESSION_TYPE:-snappy}
-      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS:--Xmx384m -Xms256m}
+      # Storage and retention (production-like)
+      KAFKA_CFG_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_CFG_LOG_RETENTION_MS: "604800000"
+      KAFKA_CFG_LOG_RETENTION_BYTES: "1073741824"
+      KAFKA_CFG_LOG_SEGMENT_BYTES: "67108864"
+      KAFKA_CFG_LOG_CLEANUP_POLICY: "delete"
+      KAFKA_CFG_LOG_RETENTION_CHECK_INTERVAL_MS: "300000"
+      # Performance tuning
+      KAFKA_CFG_COMPRESSION_TYPE: "snappy"
+      KAFKA_CFG_MESSAGE_MAX_BYTES: "1048576"
+      KAFKA_CFG_REPLICA_FETCH_MAX_BYTES: "1048576"
+      KAFKA_CFG_NUM_IO_THREADS: "4"
+      KAFKA_CFG_NUM_NETWORK_THREADS: "3"
+      KAFKA_CFG_NUM_REPLICA_FETCHERS: "1"
+      KAFKA_CFG_SOCKET_SEND_BUFFER_BYTES: "102400"
+      KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES: "102400"
+      KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "104857600"
+      # JVM settings for constrained memory
+      KAFKA_HEAP_OPTS: "-Xmx768m -Xms512m"
+      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent"
       KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew}
       KAFKA_BROKER_HOST_PORT: ${KAFKA_BROKER_HOST_PORT:-30102}
       KAFKA_BROKER_CONTAINER_PORT: ${KAFKA_BROKER_CONTAINER_PORT:-9092}
-      KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20"
     volumes:
       # Persist Kafka broker data in the correct data directory.
       # The apache/kafka image uses /var/lib/kafka/data for logs; mounting at that
@@ -143,10 +178,17 @@ services:
   somabrain_schema_registry:
     image: confluentinc/cp-schema-registry:7.6.0
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: "PLAINTEXT://somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
+      SCHEMA_REGISTRY_HEAP_OPTS: "-Xms128m -Xmx192m"
     depends_on:
       somabrain_kafka:
         condition: service_healthy
@@ -169,7 +211,18 @@ services:
           memory: 128M
         reservations:
           memory: 64M
-    command: [ "run", "--server", "--addr=0.0.0.0:${OPA_CONTAINER_PORT}", "--diagnostic-addr=0.0.0.0:8282", "/policies" ]
+    # Production-like OPA configuration with decision logging and metrics
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --diagnostic-addr=0.0.0.0:8282
+      - --log-level=error
+      - --log-format=json
+      - --set=decision_logs.console=true
+      - --set=status.console=true
+      - --set=default_decision=somabrain/authz/allow
+      - /policies
     networks:
       - somabrain_net
     ports:
@@ -178,7 +231,7 @@ services:
       - ./ops/opa/policies:/policies:ro
       - opa_data:/var/lib/opa
     healthcheck:
-      test: [ "CMD", "opa", "eval", "--format=raw", "http.send({\"method\": \"GET\", \"url\": \"http://127.0.0.1:${OPA_CONTAINER_PORT}/health?plugins\"}).status == \"200 OK\"" ]
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8181/health" ]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -189,9 +242,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
         reservations:
-          memory: 64M
+          memory: 128M
     networks:
       - somabrain_net
     ports:
@@ -199,6 +252,25 @@ services:
     volumes:
       - ./ops/prometheus/etc/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    # Production-like Prometheus configuration
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=512MB
+      - --storage.tsdb.min-block-duration=2h
+      - --storage.tsdb.max-block-duration=2h
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --web.enable-lifecycle
+      - --web.enable-admin-api
+      - --log.level=warn
+      - --log.format=json
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:9090/-/healthy" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   somabrain_jaeger:
     image: jaegertracing/all-in-one:1.53
@@ -218,7 +290,14 @@ services:
       - "4317:4317"
       - "4318:4318"
     environment:
-      - COLLECTOR_OTLP_ENABLED=true
+      # Production-like Jaeger configuration (memory storage for constrained local dev)
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: "memory"
+      MEMORY_MAX_TRACES: "10000"
+      LOG_LEVEL: "warn"
+      QUERY_MAX_CLOCK_SKEW_ADJUSTMENT: "0s"
+      METRICS_BACKEND: "prometheus"
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
     healthcheck:
       test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:16686/" ]
       interval: 30s
@@ -231,13 +310,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M
         reservations:
-          memory: 64M
+          memory: 128M
     environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Production-like PostgreSQL tuning for constrained environment
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "${POSTGRES_HOST_PORT:-30106}:${POSTGRES_CONTAINER_PORT:-5432}"
     volumes:
@@ -249,6 +330,43 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+    # Production-like PostgreSQL configuration
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - effective_cache_size=128MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - max_connections=100
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=4MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - min_wal_size=80MB
+      - -c
+      - max_wal_size=1GB
+      - -c
+      - log_statement=none
+      - -c
+      - log_duration=off
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - autovacuum=on
+      - -c
+      - autovacuum_max_workers=2
 
   somabrain_db_migrate:
     image: somabrain:latest
@@ -315,6 +433,8 @@ services:
         condition: service_healthy
       somabrain_postgres:
         condition: service_healthy
+      somabrain_milvus:
+        condition: service_healthy
     networks:
       - somabrain_net
     # Ensure containers can reach host services (e.g., external memory on 9595)
@@ -340,6 +460,10 @@ services:
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
       # Mode: default to dev (full-local semantics) for local development parity
       SOMABRAIN_MODE: "full-local"
+      # Milvus configuration for vector operations
+      MILVUS_HOST: "somabrain_milvus"
+      MILVUS_PORT: "19530"
+      SOMABRAIN_ANN_BACKEND: "${SOMABRAIN_ANN_BACKEND:-milvus}"
       SUPERVISOR_HTTP_USER: "${SUPERVISOR_HTTP_USER:-admin}"
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
@@ -381,10 +505,10 @@ services:
     deploy:
       resources:
         limits:
-          # Reduced from 3.5G to keep total cluster usage comfortably under 10GB.
-          memory: 2.5G
-        reservations:
+          # Production-like but constrained for local dev (total cluster < 10GB)
           memory: 2G
+        reservations:
+          memory: 1.5G
     networks:
       - somabrain_net
     environment:
@@ -457,6 +581,12 @@ services:
       dockerfile: Dockerfile
     image: somabrain:latest
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     depends_on:
       somabrain_kafka:
         condition: service_healthy
@@ -492,37 +622,122 @@ services:
       timeout: 5s
       retries: 1
 
-  # --- Milvus vector store for Oak option manager -----------------------------------
-  somabrain_milvus:
-    # Use the official Milvus multi‑mode image. By default it expects a
-    # sub‑command; without it the container exits immediately. We start it in
-    # "standalone" mode so the pymilvus client can connect via gRPC.
-    image: milvusdb/milvus:latest
+  # --- Milvus dependencies: etcd and minio -----------------------------------
+  somabrain_etcd:
+    image: quay.io/coreos/etcd:v3.5.5
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 2G
+          memory: 256M
+        reservations:
+          memory: 128M
+    environment:
+      # Production-like etcd configuration (via env vars only)
+      ETCD_AUTO_COMPACTION_MODE: "revision"
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+      ETCD_HEARTBEAT_INTERVAL: "100"
+      ETCD_ELECTION_TIMEOUT: "1000"
+      ETCD_MAX_SNAPSHOTS: "5"
+      ETCD_MAX_WALS: "5"
+      ETCD_ENABLE_V2: "false"
+      ETCD_LOG_LEVEL: "warn"
+      ETCD_LOGGER: "zap"
+      ETCD_DATA_DIR: "/etcd"
+      ETCD_LISTEN_CLIENT_URLS: "http://0.0.0.0:2379"
+      ETCD_ADVERTISE_CLIENT_URLS: "http://somabrain_etcd:2379"
+      ETCD_LISTEN_PEER_URLS: "http://0.0.0.0:2380"
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: "http://somabrain_etcd:2380"
+      ETCD_INITIAL_CLUSTER: "default=http://somabrain_etcd:2380"
+      ETCD_INITIAL_CLUSTER_STATE: "new"
+    volumes:
+      - etcd_data:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - somabrain_net
+
+  somabrain_minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    environment:
+      # Production-like MinIO configuration
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_BROWSER: "on"
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+      MINIO_UPDATE: "off"
+      MINIO_SCANNER_SPEED: "slow"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001" --address ":9000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - somabrain_net
+
+  # --- Milvus vector store for Oak option manager -----------------------------------
+  somabrain_milvus:
+    # Production-grade Milvus standalone for vector similarity search
+    image: milvusdb/milvus:v2.3.3
+    restart: unless-stopped
+    depends_on:
+      somabrain_etcd:
+        condition: service_healthy
+      somabrain_minio:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
         reservations:
           memory: 1G
     environment:
-      # Minimal config – use default data path inside container.
+      # Production-like Milvus configuration
+      ETCD_ENDPOINTS: somabrain_etcd:2379
+      MINIO_ADDRESS: somabrain_minio:9000
+      MINIO_ACCESS_KEY_ID: minioadmin
+      MINIO_SECRET_ACCESS_KEY: minioadmin
+      MINIO_USE_SSL: "false"
+      MINIO_BUCKET_NAME: "milvus-bucket"
       TZ: UTC
-      # Enable Milvus HTTP REST interface (used for health checks) and ensure
-      # the container runs in standalone mode.
-      MILVUS_DEPLOY_MODE: "standalone"
-      MILVUS_HTTP_ENABLE: "true"
+      # Performance tuning for constrained environment
+      KNOWHERE_GPU_MEM_POOL_SIZE: "0"
+      CACHE_SIZE: "256MB"
+      INSERT_BUFFER_SIZE: "64MB"
+      # Index building settings
+      INDEX_BUILD_THRESHOLD: "1024"
+      # Query settings
+      QUERY_NODE_ENABLE_DISK: "false"
+      # Logging
+      LOG_LEVEL: "warning"
+      LOG_FORMAT: "json"
+    volumes:
+      - milvus_data:/var/lib/milvus
     ports:
-      # gRPC port used by pymilvus client
       - "${MILVUS_GRPC_HOST_PORT:-19530}:19530"
-      # HTTP port for Milvus REST API (optional, not used by client)
-      - "${MILVUS_HTTP_HOST_PORT:-19121}:19121"
+      - "${MILVUS_HTTP_HOST_PORT:-9091}:9091"
     command: ["milvus", "run", "standalone"]
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:19121/healthz" ]
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
-      timeout: 5s
-      retries: 3
+      timeout: 20s
+      retries: 5
+      start_period: 120s
     networks:
       - somabrain_net
 
@@ -580,6 +795,14 @@ volumes:
   opa_data:
     driver: local
   prometheus_data:
+    driver: local
+  jaeger_data:
+    driver: local
+  etcd_data:
+    driver: local
+  minio_data:
+    driver: local
+  milvus_data:
     driver: local
 
 networks:

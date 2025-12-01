@@ -150,7 +150,7 @@ score = w_cosine * cosine(q, c) + w_fd * fd_sim(q, c) + w_recency * exp(-age/tau
 **Required Config**:
 ```python
 http.endpoint = "http://localhost:9595"  # SOMABRAIN_MEMORY_HTTP_ENDPOINT
-http.token = "devtoken"                   # SOMABRAIN_MEMORY_HTTP_TOKEN
+http.token = "<YOUR_TOKEN_HERE>"          # SOMABRAIN_MEMORY_HTTP_TOKEN (required)
 ```
 
 **Circuit Breaker** (fail-fast):

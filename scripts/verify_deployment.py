@@ -16,8 +16,9 @@ that the environment is correctly configured for the **full‑local** mode
 (``SOMABRAIN_MODE=full-local``) required by the ROAMDP implementation.
 """
 
-import sys
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 # ---------------------------------------------------------------------
@@ -141,19 +142,40 @@ def main() -> int:
         print("🔑 Generated dev JWT secret and wrote to .env")
 
     if not settings.jwt_public_key_path:
-        # Create a minimal public key placeholder for dev. In a real deployment a
-        # proper RSA/ECDSA key pair would be generated. Here we write a static
-        # PEM header/footer to satisfy the import path.
-        key_path = Path("./keys/jwt_public.pem")
-        key_path.parent.mkdir(parents=True, exist_ok=True)
-        key_path.write_text(
-            "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn...\n-----END PUBLIC KEY-----\n"
+        # Generate a real RSA key pair for JWT signing.
+        # VIBE CODING RULES: No placeholders - generate actual cryptographic keys.
+        key_dir = Path("./keys")
+        key_dir.mkdir(parents=True, exist_ok=True)
+        private_key_path = key_dir / "jwt_private.pem"
+        public_key_path = key_dir / "jwt_public.pem"
+
+        # Generate RSA private key
+        subprocess.run(
+            ["openssl", "genrsa", "-out", str(private_key_path), "2048"],
+            check=True,
+            capture_output=True,
         )
-        os.environ["SOMABRAIN_JWT_PUBLIC_KEY_PATH"] = str(key_path)
+        # Extract public key from private key
+        subprocess.run(
+            [
+                "openssl",
+                "rsa",
+                "-in",
+                str(private_key_path),
+                "-pubout",
+                "-out",
+                str(public_key_path),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        os.environ["SOMABRAIN_JWT_PUBLIC_KEY_PATH"] = str(public_key_path)
         with Path(".env").open("a") as f:
-            f.write(f"\nSOMABRAIN_JWT_PUBLIC_KEY_PATH={key_path}\n")
+            f.write(f"\nSOMABRAIN_JWT_PUBLIC_KEY_PATH={public_key_path}\n")
+            f.write(f"SOMABRAIN_JWT_PRIVATE_KEY_PATH={private_key_path}\n")
         print(
-            f"🔐 Generated placeholder JWT public key at {key_path} and wrote to .env"
+            f"🔐 Generated real RSA key pair at {key_dir}/ and wrote paths to .env"
         )
 
     # 4️⃣ Re‑instantiate Settings now that the environment is fully populated.

@@ -57,7 +57,7 @@
 ```bash
 # Memory Backend (REQUIRED)
 SOMABRAIN_MEMORY_HTTP_ENDPOINT="http://localhost:9595"
-SOMABRAIN_MEMORY_HTTP_TOKEN="devtoken"
+SOMABRAIN_MEMORY_HTTP_TOKEN="<YOUR_TOKEN_HERE>"  # Required - set your actual token
 
 # Redis
 SOMABRAIN_REDIS_URL="redis://localhost:30100"
