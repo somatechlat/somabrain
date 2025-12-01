@@ -673,15 +673,14 @@ services:
           memory: 128M
     environment:
       # Production-like MinIO configuration
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-      MINIO_BROWSER: "on"
-      MINIO_PROMETHEUS_AUTH_TYPE: "public"
-      MINIO_UPDATE: "off"
-      MINIO_SCANNER_SPEED: "slow"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001" --address ":9000"
+      - minio_data:/minio_data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -708,24 +707,15 @@ services:
           memory: 1G
     environment:
       # Production-like Milvus configuration
-      ETCD_ENDPOINTS: somabrain_etcd:2379
-      MINIO_ADDRESS: somabrain_minio:9000
-      MINIO_ACCESS_KEY_ID: minioadmin
-      MINIO_SECRET_ACCESS_KEY: minioadmin
+      ETCD_ENDPOINTS: "somabrain_etcd:2379"
+      MINIO_ADDRESS: "somabrain_minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
       MINIO_USE_SSL: "false"
       MINIO_BUCKET_NAME: "milvus-bucket"
       TZ: UTC
-      # Performance tuning for constrained environment
-      KNOWHERE_GPU_MEM_POOL_SIZE: "0"
-      CACHE_SIZE: "256MB"
-      INSERT_BUFFER_SIZE: "64MB"
-      # Index building settings
-      INDEX_BUILD_THRESHOLD: "1024"
-      # Query settings
-      QUERY_NODE_ENABLE_DISK: "false"
       # Logging
-      LOG_LEVEL: "warning"
-      LOG_FORMAT: "json"
+      COMMON_STORAGETYPE: "minio"
     volumes:
       - milvus_data:/var/lib/milvus
     ports:
