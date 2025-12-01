@@ -124,7 +124,6 @@ class SegmentationService:
         return detect_boundaries(probs, threshold=thresh)
 
     def _serve_health(self) -> None:
-        svc = self
 
         class _Handler(BaseHTTPRequestHandler):
             def do_GET(self):  # type: ignore[override]

@@ -676,7 +676,7 @@ class AdaptationEngine:
 
             env_enable = getattr(settings, "entropy_cap_enabled", None)
             env_cap = getattr(settings, "entropy_cap", None)
-            enable_entropy_cap = (
+            (
                 (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
                 if env_enable is not None
                 else _rt.get_bool("entropy_cap_enabled", False)
@@ -691,7 +691,6 @@ class AdaptationEngine:
             if isinstance(ov.get("entropy_cap"), (int, float)):
                 entropy_cap = float(ov["entropy_cap"])  # override cap
         except Exception:
-            enable_entropy_cap = False
             entropy_cap = 0.0
         # Apply entropy cap whenever a positive cap is configured, regardless of the enable flag.
         # The strict-mode tests set the cap via runtime overrides; we enforce it here.

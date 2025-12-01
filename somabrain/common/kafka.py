@@ -51,7 +51,6 @@ class _ProducerShim:
         # return an object with get(timeout) to mimic Future
         class _Fut:
             def get(self, timeout: float | int = 5):
-                self_inner = self
                 remaining = ck.flush(timeout)
                 if remaining != 0:
                     raise TimeoutError("produce not fully flushed")

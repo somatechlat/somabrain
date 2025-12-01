@@ -618,7 +618,7 @@ async def remember_memory(
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     persisted_to_ltm = False
-    breaker_state = memsvc._is_circuit_open()
+    memsvc._is_circuit_open()
 
     try:
         coord = await memsvc.aremember(payload.key, stored_payload)

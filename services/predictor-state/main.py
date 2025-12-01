@@ -111,6 +111,11 @@ def run_forever() -> None:  # pragma: no cover
     predictor, dim = build_predictor_from_env("state")
     source_idx = 0
     try:
+        # Deterministic test mode – seed RNGs if enabled.
+        if getattr(settings, "TEST_MODE", False):
+            random.seed(0)
+            np.random.seed(0)
+
         while True:
             with tracer.start_as_current_span("predictor_state_emit"):
                 observed = np.zeros(dim, dtype=float)
@@ -145,7 +150,11 @@ def run_forever() -> None:  # pragma: no cover
                     "evidence": {"tenant": tenant, "source": "predictor-state"},
                     "posterior": {},
                     "model_ver": model_ver,
-                    "latency_ms": int(5 + 5 * random.random()),
+                    # Use configurable latency jitter from settings.
+                    "latency_ms": random.randint(
+                        getattr(settings, "PREDICTOR_LATENCY_MIN", 5),
+                        getattr(settings, "PREDICTOR_LATENCY_MAX", 15),
+                    ),
                     "calibration": (
                         {
                             "enabled": calibration_service.enabled,

@@ -8,7 +8,6 @@ applied only in `full-local` mode.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Any, Dict, List
 

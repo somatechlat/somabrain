@@ -70,7 +70,7 @@ def main() -> int:
     # 1) POST a reward to reward_producer
     # Retrieve the reward producer port as an integer.
     # ``settings.reward_producer_port`` is already an int, but we ensure the type.
-    rport = int(settings.reward_producer_port)
+    int(settings.reward_producer_port)
     from common.config.settings import settings as _settings
 
     url = f"{_settings.api_url}/reward/test-frame-learner"

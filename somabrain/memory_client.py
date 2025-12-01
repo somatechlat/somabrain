@@ -1484,7 +1484,6 @@ class MemoryClient:
         import uuid
 
         # Import uuid locally to avoid top‑level dependency.
-        import uuid
         rid = request_id or str(uuid.uuid4())
 
         # If we're in an async loop, schedule an async background persist (non-blocking)
@@ -2465,7 +2464,7 @@ class MemoryClient:
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
         tenant, namespace = self._tenant_namespace()
         sc = _stable_coord(f"{uni}::{coord_key}")
-        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
+        f"{sc[0]},{sc[1]},{sc[2]}"
 
         # Map to MemoryWriteRequest schema
         body: dict[str, Any] = {

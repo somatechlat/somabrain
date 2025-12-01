@@ -200,6 +200,24 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
     )
 
+    # ---------------------------------------------------------------
+    # Additional configuration for deterministic testing and Oak
+    # ---------------------------------------------------------------
+    # When True, all random number generators are seeded for reproducible
+    # behaviour in tests. The flag is read by predictor services and the Oak
+    # option manager.
+    TEST_MODE: bool = Field(default_factory=lambda: _bool_env("OAK_TEST_MODE", False))
+
+    # Predictor latency jitter (in milliseconds). Used by all predictor
+    # services to simulate realistic latency while still being configurable.
+    PREDICTOR_LATENCY_MIN: int = Field(default_factory=lambda: _int_env("PREDICTOR_LATENCY_MIN", 5))
+    PREDICTOR_LATENCY_MAX: int = Field(default_factory=lambda: _int_env("PREDICTOR_LATENCY_MAX", 15))
+
+    # NOTE: The Oak utility and TTL defaults are defined later in the class
+    # (under the "--- Oak (ROAMDP) configuration" section). The earlier
+    # definitions have been removed to avoid duplicate field names and ensure a
+    # single source of truth.
+
     # --- Milvus configuration (ROAMDP) --------------------------------------
     # --- Milvus configuration (ROAMDP) --------------------------------------
     # Host and port are optional because the client can be instantiated with a

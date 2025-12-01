@@ -1453,9 +1453,9 @@ async def admin_reset_quota(
         # Reset the quota
         old_rem = quota_manager.remaining(tenant_id)
         if inspect.isawaitable(old_rem):
-            old_remaining = await old_rem
+            await old_rem
         else:
-            old_remaining = old_rem
+            pass
         reset_res = quota_manager.reset_quota(tenant_id)
         if inspect.isawaitable(reset_res):
             await reset_res
@@ -4037,7 +4037,6 @@ async def health_memory(request: Request) -> Dict[str, Any]:
     # Get outbox pending count for this tenant
     from somabrain.db.outbox import get_pending_events
 
-    tenant_id = memsvc.tenant_id
     try:
         pending_count = len(get_pending_events(limit=1000))
         # Filter by tenant if possible
@@ -4378,7 +4377,7 @@ async def _init_tenant_manager():
     try:
         from somabrain.tenant_manager import get_tenant_manager
 
-        tenant_manager = await get_tenant_manager()
+        await get_tenant_manager()
         logger.info("Tenant manager initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize tenant manager: {e}")

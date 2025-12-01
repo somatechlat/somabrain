@@ -146,6 +146,11 @@ def run_forever() -> None:  # pragma: no cover
     predictor, dim = build_predictor_from_env("agent")
     source_idx = 1
     try:
+        # Deterministic test mode – seed RNGs if enabled.
+        if getattr(settings, "TEST_MODE", False):
+            random.seed(0)
+            np.random.seed(0)
+
         while True:
             with tracer.start_as_current_span("predictor_agent_emit"):
                 posterior = {"intent": random.choice(intents)}
@@ -159,7 +164,6 @@ def run_forever() -> None:  # pragma: no cover
                         calibration_tracker as _calib,
                     )  # type: ignore
 
-                    tenant_key = f"agent:{tenant}"
                     scaler = _calib.temperature_scalers["agent"][tenant]
                     if getattr(scaler, "is_fitted", False):
                         confidence = float(scaler.scale(float(confidence)))
@@ -173,7 +177,11 @@ def run_forever() -> None:  # pragma: no cover
                     "evidence": {"tenant": tenant, "source": "predictor-agent"},
                     "posterior": posterior,
                     "model_ver": model_ver,
-                    "latency_ms": int(7 + 8 * random.random()),
+                    # Use configurable latency jitter from settings.
+                    "latency_ms": random.randint(
+                        getattr(settings, "PREDICTOR_LATENCY_MIN", 5),
+                        getattr(settings, "PREDICTOR_LATENCY_MAX", 15),
+                    ),
                 }
                 prod.send(TOPIC, value=_encode(rec, serde))
                 if _EMITTED is not None:

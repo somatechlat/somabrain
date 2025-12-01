@@ -58,7 +58,7 @@ class CalibrationTracker:
             accuracy: Actual accuracy (0-1)
         """
         with self.lock:
-            entry = CalibrationEntry(
+            CalibrationEntry(
                 timestamp=time.time(),
                 confidence=confidence,
                 accuracy=accuracy,

@@ -22,12 +22,11 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
-import os
 from common.config.settings import settings
 import random
 import threading
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 
 import numpy as np
 
@@ -178,6 +177,11 @@ def run_forever() -> None:  # pragma: no cover
     rt = _get_runtime()
     from somabrain.modes import feature_enabled  # type: ignore
 
+    # Deterministic test mode – seed all RNGs at startup if enabled.
+    if getattr(settings, "TEST_MODE", False):
+        random.seed(0)
+        np.random.seed(0)
+
     try:
         composite = rt.get_bool("cog_composite", True)
     except Exception:
@@ -231,6 +235,10 @@ def run_forever() -> None:  # pragma: no cover
                     else:
                         next_state = DOMAIN_CONFIG[domain]["next_state_fn"](delta_error)
                     confidence = _calibrated(domain, tenant, float(confidence))
+                    # Use configurable latency jitter from settings.
+                    latency_min = getattr(settings, "PREDICTOR_LATENCY_MIN", 5)
+                    latency_max = getattr(settings, "PREDICTOR_LATENCY_MAX", 15)
+                    latency_ms = random.randint(latency_min, latency_max)
                     rec = {
                         "domain": domain,
                         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -239,7 +247,7 @@ def run_forever() -> None:  # pragma: no cover
                         "evidence": {"tenant": tenant, "source": "predictor-unified"},
                         "posterior": posterior,
                         "model_ver": model_versions[domain],
-                        "latency_ms": int(5 + 10 * random.random()),
+                        "latency_ms": latency_ms,
                     }
                     prod.send(
                         DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema)

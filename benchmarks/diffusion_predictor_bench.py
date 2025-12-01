@@ -1,16 +1,4 @@
 from __future__ import annotations
-
-"""
-Benchmark diffusion-backed predictors (Chebyshev/Lanczos) for accuracy and performance.
-
-Artifacts are written under:
-- benchmarks/results/diffusion_predictors/<timestamp>/
-- benchmarks/plots/diffusion_predictors/<timestamp>/
-
-Run:
-  python benchmarks/diffusion_predictor_bench.py
-"""
-
 import json
 import os
 import time
@@ -22,6 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.linalg import expm
 
+# Try to import matplotlib for plotting; optional.
 try:
     import matplotlib.pyplot as plt
 except Exception:  # pragma: no cover
@@ -35,6 +24,25 @@ from somabrain.predictors.base import (
     make_line_graph_laplacian,
     matvec_from_matrix,
 )
+
+# Benchmark diffusion-backed predictors (Chebyshev/Lanczos) for accuracy and performance.
+#
+# Artifacts are written under:
+# - benchmarks/results/diffusion_predictors/<timestamp>/
+# - benchmarks/plots/diffusion_predictors/<timestamp>/
+#
+# Run:
+#   python benchmarks/diffusion_predictor_bench.py
+
+
+
+try:
+    import matplotlib.pyplot as plt
+except Exception:  # pragma: no cover
+    raise SystemExit(
+        "matplotlib is required to run this benchmark. Install it and retry."
+    )
+
 
 
 @dataclass
@@ -196,8 +204,8 @@ def main() -> None:
     latest_txt.write_text(ts + "\n")
     print(f"Writing results to {res_dir}")
     print(f"Writing plots to   {plots_dir}")
-    acc = accuracy_sweep(res_dir, plots_dir)
-    run = runtime_sweep(res_dir, plots_dir)
+    accuracy_sweep(res_dir, plots_dir)
+    runtime_sweep(res_dir, plots_dir)
     example_heatmap(res_dir, plots_dir)
     print("Benchmark complete.")
 
