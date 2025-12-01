@@ -1,5 +1,5 @@
 from __future__ import annotations
-import os
+from common.config.settings import settings
 from dataclasses import dataclass
 from typing import Optional
 from common.logging import logger
@@ -15,7 +15,7 @@ defaults match the historic behaviour of the project.
 
 def _bool_env(name: str, default: bool = False) -> bool:
     """Read a boolean env var – ``1``, ``true``, ``yes`` and ``on`` are truthy."""
-    val = os.getenv(name)
+    val = getattr(settings, name.lower(), None)
     if val is None:
         return default
     return val.strip().lower() in {"1", "true", "yes", "on"}
@@ -23,15 +23,10 @@ def _bool_env(name: str, default: bool = False) -> bool:
 
 def _int_env(name: str, default: int) -> int:
     try:
-        pass
+        return int(getattr(settings, name.lower(), str(default)))
     except Exception as exc:
         logger.exception("Exception caught: %s", exc)
         raise
-        return int(os.getenv(name, str(default)))
-    except Exception as exc:
-        logger.exception("Exception caught: %s", exc)
-        raise
-        return default
 
 
 @dataclass(slots=True)
@@ -44,10 +39,8 @@ class MemoryConfig:
     """
 
     # Core endpoint & authentication
-    memory_http_endpoint: str = os.getenv(
-        "SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595"
-    )
-    memory_http_token: Optional[str] = os.getenv("SOMABRAIN_MEMORY_HTTP_TOKEN")
+    memory_http_endpoint: str = settings.memory_http_endpoint
+    memory_http_token: Optional[str] = settings.memory_http_token
 
     # HTTP client tuning knobs
     http_max_connections: int = _int_env("SOMABRAIN_HTTP_MAX_CONNECTIONS", 64)
@@ -63,7 +56,7 @@ class MemoryConfig:
     )
 
     # Namespace/tenant – optional but useful for multi‑tenant deployments
-    namespace: Optional[str] = os.getenv("SOMABRAIN_NAMESPACE")
+    namespace: Optional[str] = getattr(settings, "namespace", None)
 
     # Additional optional settings can be added here without touching the
     # adapter logic.

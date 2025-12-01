@@ -23,6 +23,7 @@ Environment / runtime_config keys (mirroring legacy mains):
 from __future__ import annotations
 
 import os
+from common.config.settings import settings
 import random
 import threading
 import time
@@ -99,7 +100,7 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
 
 def _maybe_health_server():  # pragma: no cover
     try:
-        if os.getenv("HEALTH_PORT"):
+        if settings.health_port:
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -119,7 +120,7 @@ def _maybe_health_server():  # pragma: no cover
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            port = int(settings.health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
@@ -188,7 +189,7 @@ def run_forever() -> None:  # pragma: no cover
     if prod is None:
         print("predictor-unified: Kafka not available; exiting.")
         return
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    tenant = settings.default_tenant
     soma_compat = rt.get_bool("soma_compat", False)
     belief_schema = "belief_update"
     soma_schema = "belief_update_soma"

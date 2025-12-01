@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+from common.config.settings import settings
 import random
 import threading
 import time
@@ -23,7 +23,16 @@ SOMA_TOPIC = TOPICS["soma_agent"]
 
 
 def _bootstrap() -> str:
-    url = os.getenv("SOMABRAIN_KAFKA_URL")
+    """Return the Kafka bootstrap URL from central Settings.
+
+    The previous implementation accessed the environment directly via a
+    ``os.getenv`` call, which violates Vibe Rule #5.  The ``Settings`` object
+    now provides a ``kafka_url`` attribute that mirrors the legacy
+    ``SOMABRAIN_KAFKA_URL`` environment variable.  We use that attribute and
+    retain the original validation semantics – an empty value raises a
+    ``RuntimeError`` – and strip any ``kafka://`` scheme prefix.
+    """
+    url = settings.kafka_url
     if not url:
         raise RuntimeError(
             "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
@@ -79,7 +88,7 @@ def run_forever() -> None:  # pragma: no cover
         else None
     )
     try:
-        if os.getenv("HEALTH_PORT"):
+        if settings.health_port:
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -99,7 +108,7 @@ def run_forever() -> None:  # pragma: no cover
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            port = int(settings.health_port)
             config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             server = uvicorn.Server(config)
             threading.Thread(target=server.run, daemon=True).start()
@@ -127,7 +136,7 @@ def run_forever() -> None:  # pragma: no cover
     soma_serde = _soma_serde()
     from somabrain import runtime_config as _rt
 
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    tenant = settings.default_tenant
     model_ver = _rt.get_str("agent_model_ver", "v1")
     period = _rt.get_float("agent_update_period", 0.7)
     soma_compat = _rt.get_bool("soma_compat", False)

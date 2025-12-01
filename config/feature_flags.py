@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from somabrain.modes import feature_enabled, mode_config
+from common.config.settings import settings
 
 
 class FeatureFlags:
@@ -29,7 +30,8 @@ class FeatureFlags:
 
     @staticmethod
     def _load_overrides() -> List[str]:
-        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        # Use the centralized Settings path to avoid direct os.getenv access.
+        path = settings.feature_overrides_path
         try:
             p = Path(path)
             if not p.exists():
@@ -68,7 +70,8 @@ class FeatureFlags:
         cfg = mode_config()
         if cfg.name != "full-local":
             return
-        path = os.getenv("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+        # Persist overrides using the centralized Settings path.
+        path = settings.feature_overrides_path
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)

@@ -179,6 +179,27 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("RUNNING_IN_DOCKER", False)
     )
 
+    # -----------------------------------------------------------------
+    # New fields to replace direct ``os.getenv`` usage throughout the codebase
+    # -----------------------------------------------------------------
+    # Health server port used by various predictor services.
+    health_port: Optional[int] = Field(
+        default_factory=lambda: _int_env("HEALTH_PORT", None)
+    )
+    # Default tenant identifier – used by predictor services.
+    default_tenant: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_TENANT", "public")
+    )
+    # Kafka URL – legacy env var used by predictor services; kept for compatibility.
+    kafka_url: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_KAFKA_URL", "")
+    )
+
+    # Path for feature flag overrides JSON (used by config/feature_flags.py)
+    feature_overrides_path: str = Field(
+        default=_str_env("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    )
+
     # --- Milvus configuration (ROAMDP) --------------------------------------
     # --- Milvus configuration (ROAMDP) --------------------------------------
     # Host and port are optional because the client can be instantiated with a
