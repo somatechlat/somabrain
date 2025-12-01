@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+from common.config.settings import settings
 from pathlib import Path
 from typing import List, Dict, Any
 

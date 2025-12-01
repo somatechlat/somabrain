@@ -56,6 +56,67 @@ except Exception as e:  # pragma: no cover
         f"prometheus_client is required for somabrain.metrics (strict mode). Missing dependency: {e}"
     )
 
+# ---------------------------------------------------------------------------
+# Type helpers for static analysis
+# ---------------------------------------------------------------------------
+from typing import Protocol, Any
+
+class _MetricProtocol(Protocol):
+    """Minimal protocol representing a Prometheus metric used in the code.
+
+    All concrete metric objects expose ``labels`` (returning a metric with the
+    same interface) and one of ``inc``, ``set`` or ``observe`` depending on the
+    metric type. The protocol captures the superset of those methods so the
+    type‑checker can validate calls such as ``metric.labels(...).inc()``.
+    """
+
+    def labels(self, *args: Any, **kwargs: Any) -> "_MetricProtocol": ...
+
+    def inc(self, amount: float = 1) -> None: ...  # noqa: D401
+
+    def set(self, value: float) -> None: ...
+
+    def observe(self, value: float) -> None: ...
+
+# Explicit return types for the factory helpers – they return objects that
+# conform to ``_MetricProtocol``. Using ``Any`` here would hide errors, so we
+# provide a concrete protocol.
+
+def _counter(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromCounter(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+
+def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromGauge(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+
+def _histogram(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromHistogram(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+
+def _summary(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+    existing = _get_existing(name)
+    if existing is not None:
+        return existing
+    if "registry" not in kwargs:
+        kwargs["registry"] = registry
+    return _PromSummary(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+
 
 # Aliases used later (avoid interleaved imports)
 

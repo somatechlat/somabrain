@@ -14,6 +14,7 @@ from typing import Optional, Tuple
 from common.utils import RedisCache
 
 from somabrain.infrastructure import get_redis_url
+from common.config.settings import settings
 
 LOGGER = logging.getLogger("somabrain.opa.policy_manager")
 

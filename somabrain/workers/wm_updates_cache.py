@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, Optional
 from somabrain.modes import feature_enabled
+from common.config.settings import settings
 
 # Strict: use confluent-kafka Consumer only
 from confluent_kafka import Consumer as CKConsumer  # type: ignore

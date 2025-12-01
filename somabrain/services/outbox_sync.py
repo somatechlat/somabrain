@@ -25,7 +25,12 @@ from typing import List
 
 from somabrain.config import Config
 from somabrain.memory_client import MemoryClient
-from somabrain.db import get_session_factory
+# NOTE: The project’s database utilities live under ``somabrain.storage.db``.
+# Historically this module imported ``get_session_factory`` from ``somabrain.db``
+# which no longer exists, causing an ``ImportError`` during test collection.
+# Updating the import ensures the outbox sync worker uses the correct session
+# factory implementation shared across the code‑base.
+from somabrain.storage.db import get_session_factory
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL
 

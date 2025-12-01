@@ -140,6 +140,7 @@ def _get_runtime():
     """
     try:
         from somabrain import runtime_config as _rt  # type: ignore
+
         return _rt
     except Exception as exc:  # pragma: no cover
         # Propagate a meaningful error – the caller (run_forever) will abort.

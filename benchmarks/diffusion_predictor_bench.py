@@ -35,14 +35,12 @@ from somabrain.predictors.base import (
 #   python benchmarks/diffusion_predictor_bench.py
 
 
-
 try:
     import matplotlib.pyplot as plt
 except Exception:  # pragma: no cover
     raise SystemExit(
         "matplotlib is required to run this benchmark. Install it and retry."
     )
-
 
 
 @dataclass

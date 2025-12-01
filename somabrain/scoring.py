@@ -11,6 +11,7 @@ from .salience import FDSalienceSketch
 
 _EPS = 1e-12
 
+# Import settings at the top to avoid E402 import order violations.
 from common.config.settings import settings
 
 try:

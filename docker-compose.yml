@@ -322,7 +322,7 @@ services:
       - "host.docker.internal:host-gateway"
     environment:
       # Use external memory service configured via environment variables (no mock)
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_HOST: "${SOMABRAIN_HOST:-0.0.0.0}"
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-9696}"
@@ -381,14 +381,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 3.5G
+          # Reduced from 3.5G to keep total cluster usage comfortably under 10GB.
+          memory: 2.5G
         reservations:
-          memory: 3G
+          memory: 2G
     networks:
       - somabrain_net
     environment:
       # Explicitly require a real external memory service; no dev fallback
-      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "${SOMABRAIN_MEMORY_HTTP_ENDPOINT}"
+      SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
       SOMABRAIN_MEMORY_HTTP_TOKEN: "${SOMABRAIN_MEMORY_HTTP_TOKEN}"
       SOMABRAIN_STRICT_REAL: "1"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
@@ -420,6 +421,9 @@ services:
       SOMABRAIN_TOPIC_NEXT_EVENT: "${SOMABRAIN_TOPIC_NEXT_EVENT:-cog.next_event}"
       SOMABRAIN_TOPIC_SEGMENTS: "${SOMABRAIN_TOPIC_SEGMENTS:-cog.segments}"
       SOMABRAIN_TOPIC_CONFIG_UPDATES: "${SOMABRAIN_TOPIC_CONFIG_UPDATES:-cog.config.updates}"
+      # Milvus configuration for Oak option manager
+      MILVUS_HOST: "somabrain_milvus"
+      MILVUS_PORT: "19530"
     ports:
       # Reward producer HTTP (host default 30083)
       - "${COG_REWARD_PRODUCER_HOST_PORT:-30083}:8083"
@@ -472,6 +476,8 @@ services:
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
       SOMABRAIN_OUTBOX_BATCH_SIZE: ${SOMABRAIN_OUTBOX_BATCH_SIZE:-100}
       SOMABRAIN_OUTBOX_MAX_DELAY: ${SOMABRAIN_OUTBOX_MAX_DELAY:-5.0}
+      # Propagate the global memory cap to the outbox publisher.
+      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
     # No journal mount required
     cap_drop: [ "ALL" ]
     read_only: true
@@ -485,6 +491,40 @@ services:
       interval: 30s
       timeout: 5s
       retries: 1
+
+  # --- Milvus vector store for Oak option manager -----------------------------------
+  somabrain_milvus:
+    # Use the official Milvus multi‑mode image. By default it expects a
+    # sub‑command; without it the container exits immediately. We start it in
+    # "standalone" mode so the pymilvus client can connect via gRPC.
+    image: milvusdb/milvus:latest
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    environment:
+      # Minimal config – use default data path inside container.
+      TZ: UTC
+      # Enable Milvus HTTP REST interface (used for health checks) and ensure
+      # the container runs in standalone mode.
+      MILVUS_DEPLOY_MODE: "standalone"
+      MILVUS_HTTP_ENABLE: "true"
+    ports:
+      # gRPC port used by pymilvus client
+      - "${MILVUS_GRPC_HOST_PORT:-19530}:19530"
+      # HTTP port for Milvus REST API (optional, not used by client)
+      - "${MILVUS_HTTP_HOST_PORT:-19121}:19121"
+    command: ["milvus", "run", "standalone"]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:19121/healthz" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - somabrain_net
 
   # --- Cognitive Thread: Predictors ----------------------------------------
 
@@ -503,6 +543,8 @@ services:
       - somabrain_net
     environment:
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      # Propagate the global memory cap to the integrator service.
+      SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_TOPIC_STATE_UPDATES: "${SOMABRAIN_TOPIC_STATE_UPDATES:-cog.state.updates}"
       SOMABRAIN_TOPIC_AGENT_UPDATES: "${SOMABRAIN_TOPIC_AGENT_UPDATES:-cog.agent.updates}"

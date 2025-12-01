@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+import os  # noqa: F401
 import time
 from typing import Any, Dict, List, Optional
+from common.config.settings import settings
 
 
 from somabrain.constitution.storage import ConstitutionRecord, ConstitutionStorage

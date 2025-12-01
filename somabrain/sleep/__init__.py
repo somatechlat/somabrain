@@ -4,7 +4,7 @@ This module provides sleep state management and consolidation cycles.
 """
 
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any  # noqa: F401
 import dataclasses
 from common.config.settings import settings as settings
 

@@ -41,7 +41,9 @@ class DummyClient:
     def __init__(self, should_succeed: bool = True):
         self._should_succeed = should_succeed
 
-    def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:  # pragma: no cover
+    def _store_http_sync(
+        self, body: dict, headers: dict
+    ) -> tuple[bool, Any]:  # pragma: no cover
         # The real implementation returns ``(success, response)``.
         return (self._should_succeed, {"mock": "response"})
 

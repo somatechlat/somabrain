@@ -30,66 +30,66 @@ _milvus = MilvusClient()
 
 @router.post("/option/create", response_model=OakPlanSuggestResponse)
 async def oak_option_create(body: OakOptionCreateRequest, request: Request):
-  """Create a new Oak option and store it in Milvus.
+    """Create a new Oak option and store it in Milvus.
 
-  The request payload is base64‑encoded. The endpoint resolves the tenant via
-  the async ``get_tenant`` helper, decodes the payload, generates an
-  ``option_id`` when omitted, and calls the synchronous ``OptionManager``.
-  """
-  require_auth(request, settings)
-  from somabrain.tenant import get_tenant as get_tenant_async
+    The request payload is base64‑encoded. The endpoint resolves the tenant via
+    the async ``get_tenant`` helper, decodes the payload, generates an
+    ``option_id`` when omitted, and calls the synchronous ``OptionManager``.
+    """
+    require_auth(request, settings)
+    from somabrain.tenant import get_tenant as get_tenant_async
 
-  tenant_ctx = await get_tenant_async(request, settings.namespace)
-  tenant_id = tenant_ctx.tenant_id
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    tenant_id = tenant_ctx.tenant_id
 
-  payload_bytes = base64.b64decode(body.payload)
-  option_id = body.option_id or str(int(time.time() * 1000))
+    payload_bytes = base64.b64decode(body.payload)
+    option_id = body.option_id or str(int(time.time() * 1000))
 
-  opt = option_manager.create_option(tenant_id, option_id, payload_bytes)
-  _milvus.upsert_option(
-    tenant_id=opt.tenant_id,
-    option_id=opt.option_id,
-    payload=opt.payload,
-  )
-  M.OPTION_COUNT.labels(opt.tenant_id).inc()
-  return OakPlanSuggestResponse(plan=[opt.option_id])
+    opt = option_manager.create_option(tenant_id, option_id, payload_bytes)
+    _milvus.upsert_option(
+        tenant_id=opt.tenant_id,
+        option_id=opt.option_id,
+        payload=opt.payload,
+    )
+    M.OPTION_COUNT.labels(opt.tenant_id).inc()
+    return OakPlanSuggestResponse(plan=[opt.option_id])
 
 
 @router.put("/option/{option_id}", response_model=OakPlanSuggestResponse)
 async def oak_option_update(
-  option_id: str, body: OakOptionCreateRequest, request: Request
+    option_id: str, body: OakOptionCreateRequest, request: Request
 ):
-  """Replace the payload of an existing Oak option.
+    """Replace the payload of an existing Oak option.
 
-  The request body is base64‑encoded. The endpoint resolves the tenant, decodes
-  the payload, and calls the synchronous ``OptionManager.update_option``.
-  """
-  require_auth(request, settings)
-  from somabrain.tenant import get_tenant as get_tenant_async
+    The request body is base64‑encoded. The endpoint resolves the tenant, decodes
+    the payload, and calls the synchronous ``OptionManager.update_option``.
+    """
+    require_auth(request, settings)
+    from somabrain.tenant import get_tenant as get_tenant_async
 
-  tenant_ctx = await get_tenant_async(request, settings.namespace)
-  tenant_id = tenant_ctx.tenant_id
-  payload_bytes = base64.b64decode(body.payload)
-  opt = option_manager.update_option(tenant_id, option_id, payload_bytes)
-  _milvus.upsert_option(
-    tenant_id=opt.tenant_id,
-    option_id=opt.option_id,
-    payload=opt.payload,
-  )
-  M.OPTION_COUNT.labels(opt.tenant_id).inc()
-  return OakPlanSuggestResponse(plan=[opt.option_id])
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    tenant_id = tenant_ctx.tenant_id
+    payload_bytes = base64.b64decode(body.payload)
+    opt = option_manager.update_option(tenant_id, option_id, payload_bytes)
+    _milvus.upsert_option(
+        tenant_id=opt.tenant_id,
+        option_id=opt.option_id,
+        payload=opt.payload,
+    )
+    M.OPTION_COUNT.labels(opt.tenant_id).inc()
+    return OakPlanSuggestResponse(plan=[opt.option_id])
 
 
 @router.get("/plan", response_model=OakPlanSuggestResponse)
 async def oak_plan(request: Request, max_options: int | None = None):
-  """Return a ranked list of Oak option identifiers for the tenant.
+    """Return a ranked list of Oak option identifiers for the tenant.
 
-  The planner now queries Milvus via ``MilvusClient.search_similar`` to find
-  the most similar existing options.
-  """
-  require_auth(request, settings)
-  from somabrain.tenant import get_tenant as get_tenant_async
+    The planner now queries Milvus via ``MilvusClient.search_similar`` to find
+    the most similar existing options.
+    """
+    require_auth(request, settings)
+    from somabrain.tenant import get_tenant as get_tenant_async
 
-  tenant_ctx = await get_tenant_async(request, settings.namespace)
-  plan = plan_for_tenant(tenant_ctx.tenant_id, max_options=max_options)
-  return OakPlanSuggestResponse(plan=plan)
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    plan = plan_for_tenant(tenant_ctx.tenant_id, max_options=max_options)
+    return OakPlanSuggestResponse(plan=plan)

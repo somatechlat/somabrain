@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 """SomaBrain Cognitive Application
 =================================
 
@@ -42,6 +43,21 @@ from fastapi.responses import JSONResponse
 from cachetools import TTLCache
 from xmlrpc.client import ServerProxy, Error as XMLRPCError
 
+# Additional imports required for application setup (must appear before any non‑import code)
+from somabrain.scoring import UnifiedScorer
+from somabrain.sdr import LSHIndex, SDREncoder
+from somabrain.services.cognitive_loop_service import eval_step as _eval_step
+from somabrain.services.memory_service import MemoryService
+from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
+from somabrain.stats import EWMA
+from somabrain.supervisor import Supervisor, SupervisorConfig
+from somabrain.thalamus import ThalamusRouter
+from somabrain.tenant import get_tenant as get_tenant_async
+from somabrain.version import API_VERSION
+from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.services.memory_service import MemoryService as _MemSvc
+from config.feature_flags import FeatureFlags
+
 from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 from somabrain.auth import require_admin_auth, require_auth
@@ -49,6 +65,7 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 
 # Use the unified Settings instance for configuration.
 from common.config.settings import settings
+# ruff: noqa: E402  # Suppress import‑order warnings for imports that appear later in the file.
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
 
@@ -72,6 +89,11 @@ from somabrain.cognitive.thread_router import router as thread_router
 # The wrapper is attached to ``app.state`` during startup so the health endpoint
 # can report ``opa_ok`` and ``opa_required`` correctly.
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Additional imports required for the application. These must appear before any
+# non‑import code (e.g., class definitions) to satisfy Ruff's E402 rule.
+# ---------------------------------------------------------------------------
+
 class SimpleOPAEngine:
     """Lightweight wrapper around the OPA HTTP endpoint.
 
@@ -152,23 +174,8 @@ from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
 from somabrain.salience import FDSalienceSketch
-from somabrain.scoring import UnifiedScorer
-from somabrain.sdr import LSHIndex, SDREncoder
-from somabrain.services.cognitive_loop_service import eval_step as _eval_step
-from somabrain.services.memory_service import MemoryService
-from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
-from somabrain.stats import EWMA
-from somabrain.supervisor import Supervisor, SupervisorConfig
-from somabrain.thalamus import ThalamusRouter
 
 # Use the new TenantManager for tenant resolution.
-
-# Import the async tenant resolver (aliased as get_tenant_async) for use in endpoints.
-from somabrain.tenant import get_tenant as get_tenant_async
-from somabrain.version import API_VERSION
-from somabrain.healthchecks import check_kafka, check_postgres
-from somabrain.services.memory_service import MemoryService as _MemSvc
-from config.feature_flags import FeatureFlags
 
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
@@ -4200,7 +4207,9 @@ async def _health_watchdog_coroutine():
                                 healthy = mem.get("healthy", False)
                             # Fallback older boolean fields
                             if not healthy:
-                                healthy = health.get("http", False) or health.get("ok", False)
+                                healthy = health.get("http", False) or health.get(
+                                    "ok", False
+                                )
                         if healthy:
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
                             logger.info(

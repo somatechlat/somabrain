@@ -14,7 +14,7 @@ the ``Settings`` instance provides attribute access.
 
 from __future__ import annotations
 
-from typing import Any
+# The ``Any`` import was unused and caused a Ruff F401 error. It has been removed.
 from types import SimpleNamespace
 
 from common.config.settings import settings as _settings, Settings as _Settings

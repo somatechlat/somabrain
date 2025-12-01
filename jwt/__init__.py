@@ -3,7 +3,7 @@ import os
 import sys
 import importlib.util
 import sysconfig
-from common.logging import logger
+from common.logging import logger  # noqa: F401
 
 """Proxy module that forwards to the real PyJWT package.
 

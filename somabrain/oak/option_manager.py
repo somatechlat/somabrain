@@ -41,6 +41,7 @@ from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------
 # Internal helper functions
 # ---------------------------------------------------------------------
@@ -135,7 +136,9 @@ class OptionManager:
                 # Increment option count per tenant
                 self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id).inc()
                 # Recompute average utility (simple incremental avg)
-                count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
+                count = self._metrics.OPTION_COUNT.labels(
+                    tenant_id=tenant_id
+                )._value.get()
                 prev_avg = (
                     self._metrics.OPTION_UTILITY_AVG.labels(
                         tenant_id=tenant_id
@@ -143,7 +146,9 @@ class OptionManager:
                     or 0.0
                 )
                 new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
-                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
+                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(
+                    new_avg
+                )
             except Exception as exc:  # pragma: no cover – defensive
                 logger.error("Failed to update Oak metrics for %s: %s", option_id, exc)
             return opt
@@ -180,14 +185,14 @@ class OptionManager:
             try:
                 self._milvus.upsert_option(tenant_id, option_id, payload)
             except Exception as exc:  # pragma: no cover – defensive
-                logger.error(
-                    "Milvus upsert failed for option %s: %s", option_id, exc
-                )
+                logger.error("Milvus upsert failed for option %s: %s", option_id, exc)
             # Publish update event
             self._publish_update(opt)
             # Update metrics (same logic as creation)
             try:
-                count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
+                count = self._metrics.OPTION_COUNT.labels(
+                    tenant_id=tenant_id
+                )._value.get()
                 prev_avg = (
                     self._metrics.OPTION_UTILITY_AVG.labels(
                         tenant_id=tenant_id
@@ -195,7 +200,9 @@ class OptionManager:
                     or 0.0
                 )
                 new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
-                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
+                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(
+                    new_avg
+                )
             except Exception as exc:  # pragma: no cover
                 logger.error(
                     "Failed to update Oak metrics after option update %s: %s",

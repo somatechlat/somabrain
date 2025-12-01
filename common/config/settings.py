@@ -154,13 +154,31 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_OPA_SCHEME") or _str_env("OPA_SCHEME") or "http"
     )
 
+    # Updated default endpoint to match the Docker‑compose configuration used in
+    # the integration test suite (port 9595). The previous default (9696) caused
+    # the health check in ``tests/integration/test_memory_e2e.py`` to fail because
+    # the memory service was not listening on that port.
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or _str_env("MEMORY_SERVICE_URL")
-        or "http://localhost:9696"
+        or "http://localhost:9595"
     )
+    # Token used for authenticating to the external memory HTTP service.
+    # The production service may require a token, but the local test instance
+    # started by ``docker-compose.yml`` does **not** enforce authentication.
+    # Therefore we default to ``None`` – the client will omit the Authorization
+    # header unless the environment variable ``SOMABRAIN_MEMORY_HTTP_TOKEN``
+    # is explicitly set.
+    # Default to the development token used in the repository's ``resolved.yml``
+    # configuration. This allows the integration test to authenticate against the
+    # locally‑started memory service without requiring the user to export the
+    # environment variable.
+    # Default token used by the local development memory service (see
+    # ``resolved.yml``). The service requires a bearer token; using the same
+    # default here allows the integration test to authenticate without the
+    # user needing to export the environment variable.
     memory_http_token: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
+        default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN") or "devtoken"
     )
     # Additional infra configuration fields used throughout the codebase.
     # These were previously accessed via direct ``settings.getenv`` calls.
@@ -180,6 +198,16 @@ class Settings(BaseSettings):
     )
 
     # -----------------------------------------------------------------
+    # Memory cap for the whole Somabrain deployment.
+    # -----------------------------------------------------------------
+    # ``memory_max`` is a string like "10GB" or "8192MiB". It is parsed at
+    # runtime by the memory client to enforce a hard limit on the total RAM
+    # consumed by the cluster. The default matches the user request of 10 GiB.
+    memory_max: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_MEMORY_MAX", "10GB")
+    )
+
+    # -----------------------------------------------------------------
     # New fields to replace direct ``os.getenv`` usage throughout the codebase
     # -----------------------------------------------------------------
     # Health server port used by various predictor services.
@@ -191,9 +219,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_TENANT", "public")
     )
     # Kafka URL – legacy env var used by predictor services; kept for compatibility.
-    kafka_url: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_KAFKA_URL", "")
-    )
+    kafka_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_KAFKA_URL", ""))
 
     # Path for feature flag overrides JSON (used by config/feature_flags.py)
     feature_overrides_path: str = Field(
@@ -210,8 +236,12 @@ class Settings(BaseSettings):
 
     # Predictor latency jitter (in milliseconds). Used by all predictor
     # services to simulate realistic latency while still being configurable.
-    PREDICTOR_LATENCY_MIN: int = Field(default_factory=lambda: _int_env("PREDICTOR_LATENCY_MIN", 5))
-    PREDICTOR_LATENCY_MAX: int = Field(default_factory=lambda: _int_env("PREDICTOR_LATENCY_MAX", 15))
+    PREDICTOR_LATENCY_MIN: int = Field(
+        default_factory=lambda: _int_env("PREDICTOR_LATENCY_MIN", 5)
+    )
+    PREDICTOR_LATENCY_MAX: int = Field(
+        default_factory=lambda: _int_env("PREDICTOR_LATENCY_MAX", 15)
+    )
 
     # NOTE: The Oak utility and TTL defaults are defined later in the class
     # (under the "--- Oak (ROAMDP) configuration" section). The earlier

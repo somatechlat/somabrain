@@ -1,4 +1,4 @@
-from common.logging import logger
+from common.logging import logger  # noqa: F401
 
 """
 Memory package import gate.

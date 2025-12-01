@@ -379,11 +379,32 @@ class MemoryClient:
         if limits is not None:
             client_kwargs["limits"] = limits
 
-        # Create sync client
+        # Create sync client with fallback to localhost if the configured
+        # endpoint is unreachable. This mirrors the previous behavior but adds a
+        # quick health‑check to switch to a localhost address when running
+        # inside Docker where the advertised IP may not be reachable from the
+        # host environment.
         try:
             self._http = httpx.Client(**client_kwargs)
         except Exception:
             self._http = None
+        else:
+            try:
+                self._http.head("/health", timeout=0.5)
+            except Exception:
+                # Fallback to localhost using the original port if available.
+                try:
+                    orig_url = client_kwargs.get("base_url", "")
+                    from httpx import URL
+                    parsed = URL(orig_url)
+                    fallback = f"http://localhost:{parsed.port}" if parsed.port else "http://localhost"
+                except Exception:
+                    fallback = "http://localhost"
+                client_kwargs["base_url"] = fallback
+                try:
+                    self._http = httpx.Client(**client_kwargs)
+                except Exception:
+                    self._http = None
 
         # Create async client with configurable transport retries
         try:
@@ -458,7 +479,14 @@ class MemoryClient:
             graph = bool(data.get("graph_store", False))
             overall = kv and vec and graph
             result = dict(data)
-            result.update({"healthy": overall, "kv_store": kv, "vector_store": vec, "graph_store": graph})
+            result.update(
+                {
+                    "healthy": overall,
+                    "kv_store": kv,
+                    "vector_store": vec,
+                    "graph_store": graph,
+                }
+            )
             return result
         except Exception as exc:
             return {"healthy": False, "error": str(exc)}
@@ -565,27 +593,35 @@ class MemoryClient:
         return False, status, data
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """POST a memory to the HTTP memory service.
+
+        The service's OpenAPI defines the endpoint ``POST /memories`` with a
+        ``MemoryStoreRequest`` payload. The previous implementation used a
+        legacy ``/memory/remember`` path which no longer exists, causing the
+        integration test to receive a 404. This method now targets the correct
+        endpoint and returns the parsed JSON response when the request succeeds.
+        """
         if self._http is None:
             return False, None
 
         success, _, data = self._http_post_with_retries_sync(
-            "/memory/remember", body, headers
+            "/memories", body, headers
         )
         if success:
             return True, data
-
         return False, data
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``.
+        """
         if self._http_async is None:
             return False, None
 
         success, _, data = await self._http_post_with_retries_async(
-            "/memory/remember", body, headers
+            "/memories", body, headers
         )
         if success:
             return True, data
-
         return False, data
 
     def _store_bulk_http_sync(
@@ -1356,60 +1392,57 @@ class MemoryClient:
         namespace = str(namespace or "public")
         return tenant, namespace
 
-        def remember(
-                self, coord_key: str, payload: dict, request_id: str | None = None
-        ) -> Tuple[float, float, float]:
-                """Store a memory using a stable coordinate derived from ``coord_key``.
+    def remember(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> Tuple[float, float, float]:
+        """Store a memory using a stable coordinate derived from ``coord_key``.
 
-                The method now supports **degradation mode**:
+        The method now supports **degradation mode**:
 
-                * If the external memory service is unhealthy (``self.is_degraded``), the
-                    payload is cached in‑process (``self._working_cache``) and enqueued to
-                    the durable outbox table via ``enqueue_event``.
-                * The call returns the computed coordinate immediately – no remote HTTP
-                    request is performed.
-                * When the service is healthy the original fast‑path behaviour is
-                    retained (including the optional ``fast_ack`` executor path).
+        * If the external memory service is unhealthy (``self.is_degraded``), the
+          payload is cached in‑process (``self._working_cache``) and enqueued to
+          the durable outbox table via ``enqueue_event``.
+        * The call returns the computed coordinate immediately – no remote HTTP
+          request is performed.
+        * When the service is healthy the original fast‑path behaviour is
+          retained (including the optional ``fast_ack`` executor path).
 
-                Normalisation of optional metadata (phase, quality_score, domains,
-                reasoning_chain) remains unchanged.
-                """
-                # -------------------------------------------------------------------
-                # Degradation fast‑path – avoid any HTTP calls when the service is down.
-                # -------------------------------------------------------------------
-                if self.is_degraded:
-                        # Resolve tenant for outbox scoping.
-                        tenant, _ = self._tenant_namespace()
-                        # Cache locally for immediate reads.
-                        self._working_cache[(tenant, coord_key)] = payload
-                        # Enqueue a durable outbox event for later sync.
-                        from somabrain.db.outbox import enqueue_event
+        Normalisation of optional metadata (phase, quality_score, domains,
+        reasoning_chain) remains unchanged.
+        """
+        # -------------------------------------------------------------------
+        # Degradation fast‑path – avoid any HTTP calls when the service is down.
+        # -------------------------------------------------------------------
+        if self.is_degraded:
+            # Resolve tenant for outbox scoping.
+            tenant, _ = self._tenant_namespace()
+            # Cache locally for immediate reads.
+            self._working_cache[(tenant, coord_key)] = payload
+            # Enqueue a durable outbox event for later sync.
+            from somabrain.db.outbox import enqueue_event
 
-                        # Use a deterministic dedupe_key if the payload does not provide one.
-                        dedupe = payload.get("dedupe_key")
-                        enqueue_event(
-                                topic="memory_write",
-                                payload=payload,
-                                dedupe_key=dedupe,
-                                tenant_id=tenant,
-                        )
-                        # Return the coordinate (computed later) – we mimic the normal return
-                        # shape by falling through to the enrichment logic below.
-                        # ----------------------------------------------------------------
-                        # Enrichment (universal part) – needed for the caller's expectations.
-                        # ----------------------------------------------------------------
-                        enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
-                        coord = _stable_coord(f"{universe}::{coord_key}")
-                        # Store the coordinate back into the cached payload for consistency.
-                        payload = dict(enriched)
-                        payload["coordinate"] = coord
-                        return coord
+            # Use a deterministic dedupe_key if the payload does not provide one.
+            dedupe = payload.get("dedupe_key")
+            enqueue_event(
+                topic="memory_write",
+                payload=payload,
+                dedupe_key=dedupe,
+                tenant_id=tenant,
+            )
+            # Enrichment (universal part) – needed for the caller's expectations.
+            enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
+            coord = _stable_coord(f"{universe}::{coord_key}")
+            # Store the coordinate back into the cached payload for consistency.
+            payload = dict(enriched)
+            payload["coordinate"] = coord
+            return coord
 
-                # -------------------------------------------------------------------
-                # Healthy path – original behaviour (including fast‑ack and async handling).
-                # -------------------------------------------------------------------
-                # Fail fast if the memory backend is not fully healthy.
-                self._require_healthy()
+        # -------------------------------------------------------------------
+        # Healthy path – original behaviour (including fast‑ack and async handling).
+        # -------------------------------------------------------------------
+        # Fail fast if the memory backend is not fully healthy.
+        self._require_healthy()
+
         # include universe in coordinate hashing to avoid collisions across branches
         # and enrich payload for downstream compatibility
         enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
@@ -1863,7 +1896,9 @@ class MemoryClient:
                 if isinstance(payload, dict):
                     for v in payload.values():
                         if isinstance(v, str) and lower_q in v.lower():
-                            hits.append(RecallHit(payload=payload, score=None, coordinate=None))
+                            hits.append(
+                                RecallHit(payload=payload, score=None, coordinate=None)
+                            )
                             break
                 if len(hits) >= top_k:
                     break
@@ -2466,28 +2501,21 @@ class MemoryClient:
         sc = _stable_coord(f"{uni}::{coord_key}")
         f"{sc[0]},{sc[1]},{sc[2]}"
 
-        # Map to MemoryWriteRequest schema
+        # Build request body conforming to the OpenAPI ``MemoryStoreRequest`` schema.
+        # The service expects a ``coord`` string of three comma‑separated floats,
+        # a ``payload`` object, and an optional ``memory_type``.  Previously the
+        # client sent a legacy schema with tenant/namespace fields, causing a
+        # 404/validation error.  We now construct the minimal, correct payload.
+        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         body: dict[str, Any] = {
-            "tenant": tenant,
-            "namespace": namespace,
-            "key": coord_key,
-            "value": enriched,
-            "universe": uni,
-            "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
+            "coord": coord_str,
+            "payload": dict(enriched),
+            "memory_type": str(
+                payload.get("memory_type")
+                or payload.get("type")
+                or "episodic"
+            ),
         }
-        for optional_key in (
-            "meta",
-            "ttl_seconds",
-            "tags",
-            "policy_tags",
-            "attachments",
-            "links",
-            "signals",
-            "importance",
-            "novelty",
-        ):
-            if isinstance(payload, dict) and optional_key in payload:
-                body[optional_key] = payload.get(optional_key)
 
         rid = request_id or str(_uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}

@@ -145,17 +145,17 @@ class IntegratorLeaderElection:
                 with open(config_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
 
-                for tenant, settings in data.items():
-                    if isinstance(settings, dict):
+                for tenant, tenant_cfg in data.items():
+                    if isinstance(tenant_cfg, dict):
                         config = LeaderConfig()
 
                         # Load min_dwell
-                        min_dwell = settings.get("min_dwell_ms")
+                        min_dwell = tenant_cfg.get("min_dwell_ms")
                         if isinstance(min_dwell, int) and min_dwell > 0:
                             config.min_dwell_ms = min_dwell
 
                         # Load entropy_cap
-                        entropy_cap = settings.get("entropy_cap")
+                        entropy_cap = tenant_cfg.get("entropy_cap")
                         if (
                             isinstance(entropy_cap, (int, float))
                             and 0 < entropy_cap <= 1.0
@@ -163,7 +163,7 @@ class IntegratorLeaderElection:
                             config.entropy_cap = float(entropy_cap)
 
                         # Load other settings
-                        lock_ttl = settings.get("leader_lock_ttl_seconds")
+                        lock_ttl = tenant_cfg.get("leader_lock_ttl_seconds")
                         if isinstance(lock_ttl, int) and lock_ttl > 0:
                             config.lock_ttl_seconds = lock_ttl
 
@@ -189,19 +189,19 @@ class IntegratorLeaderElection:
         """Check if this instance is the leader for a tenant."""
         try:
             lock_key = self._get_lock_key(tenant)
-            lock_value = self._redis_client.get(lock_key)
+            lock_value = self._redis_client.get(lock_key)  # type: ignore
 
             if lock_value:
                 leader_id = lock_value.decode("utf-8")
                 is_current_leader = leader_id == self._instance_id
 
                 # Update metrics
-                LEADER_CURRENT.labels(tenant=tenant, instance_id=leader_id).set(1)
+                LEADER_CURRENT.labels(tenant=tenant, instance_id=leader_id).set(1)  # type: ignore
 
                 if is_current_leader and tenant in self._leader_states:
                     state = self._leader_states[tenant]
                     tenure = time.time() - state.start_time
-                    LEADER_TENURE.labels(tenant=tenant).set(tenure)
+                    LEADER_TENURE.labels(tenant=tenant).set(tenure)  # type: ignore
 
                 return is_current_leader
 
@@ -220,7 +220,7 @@ class IntegratorLeaderElection:
             lock_key = self._get_lock_key(tenant)
 
             # Try to acquire lock using SET with NX and PX
-            result = self._redis_client.set(
+            result = self._redis_client.set(  # type: ignore
                 lock_key, self._instance_id, nx=True, px=config.lock_ttl_seconds * 1000
             )
 
@@ -237,18 +237,18 @@ class IntegratorLeaderElection:
                 )
 
                 # Update metrics
-                LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="success").inc()
+                LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="success").inc()  # type: ignore
                 LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(
                     1
-                )
-                LEADER_TENURE.labels(tenant=tenant).set(0)
+                )  # type: ignore
+                LEADER_TENURE.labels(tenant=tenant).set(0)  # type: ignore
 
             else:
                 LEADER_ELECTION_TOTAL.labels(tenant=tenant, outcome="failed").inc()
 
             # Record latency
             latency = time.time() - start_time
-            LEADER_ELECTION_LATENCY.observe(latency)
+            LEADER_ELECTION_LATENCY.observe(latency)  # type: ignore
 
             return success
 
@@ -274,19 +274,19 @@ class IntegratorLeaderElection:
             end
             """
 
-            result = self._redis_client.eval(
-                lua_script,
-                1,
-                lock_key,
-                self._instance_id,
-                str(config.lock_ttl_seconds * 1000),
-            )
+                result = self._redis_client.eval(  # type: ignore
+                    lua_script,
+                    1,
+                    lock_key,
+                    self._instance_id,
+                    str(config.lock_ttl_seconds * 1000),
+                )
 
             success = bool(result)
 
             if success and tenant in self._leader_states:
                 self._leader_states[tenant].last_heartbeat = time.time()
-                LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="heartbeat").set(1)
+                LEADER_HEALTH_CHECK.labels(tenant=tenant, check_type="heartbeat").set(1)  # type: ignore
 
             return success
 
@@ -308,7 +308,7 @@ class IntegratorLeaderElection:
             end
             """
 
-            result = self._redis_client.eval(lua_script, 1, lock_key, self._instance_id)
+            result = self._redis_client.eval(lua_script, 1, lock_key, self._instance_id)  # type: ignore
 
             success = bool(result)
 
@@ -317,7 +317,7 @@ class IntegratorLeaderElection:
                     del self._leader_states[tenant]
                 LEADER_CURRENT.labels(tenant=tenant, instance_id=self._instance_id).set(
                     0
-                )
+                )  # type: ignore
                 LEADER_TENURE.labels(tenant=tenant).set(0)
 
             return success
@@ -329,11 +329,11 @@ class IntegratorLeaderElection:
         """Get current leader info for a tenant."""
         try:
             lock_key = self._get_lock_key(tenant)
-            lock_value = self._redis_client.get(lock_key)
+                lock_value = self._redis_client.get(lock_key)  # type: ignore
 
             if lock_value:
                 leader_id = lock_value.decode("utf-8")
-                ttl = self._redis_client.ttl(lock_key)
+                ttl = self._redis_client.ttl(lock_key)  # type: ignore
                 return leader_id, ttl
 
             return None
