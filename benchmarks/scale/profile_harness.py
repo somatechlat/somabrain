@@ -12,9 +12,9 @@ import tracemalloc
 import time
 import importlib
 
-BENCHMARK_MODULE = "benchmarks.benchmark_link_latency"
-BENCHMARK_FUNC = "run_benchmark"
-BENCHMARK_ARGS = {"num_links": 10000}
+BENCHMARK_MODULE = "benchmarks.plan_bench"
+BENCHMARK_FUNC = "run"
+BENCHMARK_ARGS: dict = {}
 
 
 def profile_benchmark():

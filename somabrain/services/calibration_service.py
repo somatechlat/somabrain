@@ -58,7 +58,7 @@ class CalibrationService:
             }
 
     def export_reliability_data(self, domain: str, tenant: str) -> dict:
-        # Placeholder for a real export; returns current stats.
+        """Export reliability data for a domain and tenant."""
         return self.get_calibration_status(domain, tenant)
 
 

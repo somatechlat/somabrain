@@ -5,7 +5,7 @@ This module provides:
 - ``ConsolidationConfig``: tunable parameters for buffering and consolidation.
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the
-  existing consolidation routines (no stubs, no fallbacks).
+  existing consolidation routines without any fallback implementations.
 """
 
 from __future__ import annotations

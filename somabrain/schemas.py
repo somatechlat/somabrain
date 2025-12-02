@@ -338,6 +338,7 @@ class RecallResponse(BaseModel):
     # ``memory`` field remains the canonical source; ``results`` mirrors it for
     # backward compatibility.
     results: List[Dict[str, Any]] = []
+    degraded: Optional[bool] = None
 
 
 # ----- Retrieval request and response models -----

@@ -40,7 +40,6 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 | POST | `/act` | Execute an action via policy | `schemas.ActRequest` | `schemas.ActResponse` |
 | GET | `/neuromodulators` | Fetch neuromodulator state | – | `schemas.NeuromodStateModel` |
 | POST | `/neuromodulators` | Adjust neuromodulator state | `schemas.NeuromodStateModel` | `schemas.NeuromodStateModel` |
-| POST | `/graph/links` | Query graph edges for transport | `schemas.GraphLinksRequest` | `schemas.GraphLinksResponse` |
 
 **Usage notes**:
 - Write endpoints honour backend enforcement—requests fail if backing services are unreachable.
@@ -503,60 +502,6 @@ Retrieve tenant configuration and usage statistics.
 ```
 
 ---
-
-## Batch Operations
-
-### Batch Store Memories
-
-Store multiple memories in a single request.
-
-**Endpoint**: `POST /remember/batch`
-
-**Request**:
-```json
-{
-  "memories": [
-    {
-      "content": "First memory content",
-      "metadata": {"category": "batch_test", "index": 1}
-    },
-    {
-      "content": "Second memory content",
-      "metadata": {"category": "batch_test", "index": 2}
-    }
-  ],
-  "options": {
-    "fail_on_error": false,
-    "return_memory_ids": true
-  }
-}
-```
-
-**Response**:
-```json
-{
-  "results": [
-    {
-      "index": 0,
-      "status": "success",
-      "memory_id": "mem_abc123",
-      "processing_time_ms": 145
-    },
-    {
-      "index": 1,
-      "status": "success",
-      "memory_id": "mem_def456",
-      "processing_time_ms": 134
-    }
-  ],
-  "summary": {
-    "total_submitted": 2,
-    "successful": 2,
-    "failed": 0,
-    "total_processing_time_ms": 279
-  }
-}
-```
 
 ### Export Memories
 

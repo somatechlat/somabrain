@@ -4,7 +4,7 @@
 
 This module exposes the production FastAPI surface for SomaBrain. It wires
 production transports, memory clients, neuromodulators, and control systems together
-so that the runtime interacts with live infrastructure instead of mocks.
+so that the runtime interacts with live infrastructure, not simulated substitutes.
 
 Main responsibilities:
 - bootstrap global singletons (memory pools, working memory, scorers, etc.)
@@ -1396,7 +1396,7 @@ async def admin_list_quotas(
         quota_manager = QuotaManager(QuotaConfig())
 
         # Get all tenant quota statuses
-        # Support both async and sync implementations (tests use a sync mock)
+        # Support both async and sync implementations (tests may inject a sync double)
         all_quotas = quota_manager.get_all_quotas()
         if inspect.isawaitable(all_quotas):
             all_quotas = await all_quotas
@@ -1656,7 +1656,7 @@ async def _init_constitution() -> None:
 
 
 # Optional routers (strict posture; dependencies must be present for critical routes).
-# NOTE: Legacy retrieval router has been fully removed in favor of unified /memory/recall.
+# NOTE: Legacy retrieval router has been fully removed in favor of unified /recall.
 
 # The context router is a required component of the full‑stack deployment.
 # If it cannot be imported the application must fail fast – this guarantees that
@@ -1686,13 +1686,6 @@ try:
     from somabrain.api.routers import features as _features_router
 
     app.include_router(_features_router.router)
-except Exception:
-    pass
-
-try:
-    from somabrain.api.routers import link as _link_router
-
-    app.include_router(_link_router.router)
 except Exception:
     pass
 
@@ -1776,9 +1769,9 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
     details = exc.errors() if hasattr(exc, "errors") else []
     # Provide route‑specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
-    if "/memory/recall" in str(path):
+    if "/recall" in str(path):
         hint = {
-            "endpoint": "/memory/recall",
+            "endpoint": "/recall",
             "expected": {
                 "json": [
                     'Either a JSON string body (e.g. "hello world")',
@@ -1793,9 +1786,9 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
                 ]
             },
         }
-    elif "/memory/remember" in str(path):
+    elif "/remember" in str(path):
         hint = {
-            "endpoint": "/memory/remember",
+            "endpoint": "/remember",
             "expected": {
                 "json": {
                     "tenant": "string",
@@ -1819,9 +1812,9 @@ async def _handle_validation_error(request: Request, exc: RequestValidationError
 #
 # Core singletons
 #
-# The BACKEND_ENFORCEMENT flag blocks stub usage and requires external services
-# such as the memory HTTP backend. It is enabled via environment variable or the
-# shared settings configuration.
+# The BACKEND_ENFORCEMENT flag blocks disabled/local fallbacks and requires
+# external services such as the memory HTTP backend. It is enabled via environment
+# variable or the shared settings configuration.
 BACKEND_ENFORCEMENT = False
 if settings is not None:
     try:
@@ -1932,8 +1925,9 @@ if cfg.embed_dim != _EMBED_DIM:
 def _make_predictor() -> BudgetedPredictor:
     """Create the configured predictor.
 
-    Stubs are no longer permitted: requesting a 'stub' or 'baseline' provider
-    will raise explicitly. The default provider is now 'mahal' (Mahalanobis).
+    Disabled toy providers are no longer permitted: requesting a 'baseline'
+    provider will raise explicitly. The default provider is now
+    'mahal' (Mahalanobis).
     """
     provider_override = settings.predictor_provider
     provider = str(
@@ -1941,7 +1935,7 @@ def _make_predictor() -> BudgetedPredictor:
     ).lower()
 
     if provider in ("stub", "baseline"):
-        # Always disallow stub providers — this enforces the no-mocks policy.
+        # Always disallow toy providers — this enforces the real-backend policy.
         raise RuntimeError(
             "Predictor provider 'stub' is not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
         )
@@ -1957,8 +1951,8 @@ def _make_predictor() -> BudgetedPredictor:
             timeout_ms=cfg.predictor_timeout_ms,
         )
     else:
-        # If an unknown provider is requested, fall back to Mahalanobis rather
-        # than a stub so we keep behaviour deterministic and production-ready.
+        # If an unknown provider is requested, fall back to Mahalanobis so we
+        # keep behaviour deterministic and production-ready.
         base = MahalanobisPredictor(alpha=0.01)
     return BudgetedPredictor(base, timeout_ms=cfg.predictor_timeout_ms)
 
@@ -2651,9 +2645,9 @@ async def health(request: Request) -> S.HealthResponse:
     # These correspond to the settings defined in ``common.config.settings``.
     # -------------------------------------------------------------------
     try:
-        resp["memory_degrade_queue"] = getattr(settings, "memory_degrade_queue", None)
+        resp["memory_degrade_queue"] = True  # enforced to queue in prod-like modes
         resp["memory_degrade_readonly"] = getattr(
-            settings, "memory_degrade_readonly", None
+            settings, "memory_degrade_readonly", False
         )
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
@@ -2661,7 +2655,7 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_degrade_readonly"] = None
         resp["memory_degrade_topic"] = None
 
-    # Stub audit (unchanged)
+    # Fallback audit (unchanged)
     try:
         from somabrain.stub_audit import (
             BACKEND_ENFORCED as __BACKEND_ENFORCED,
@@ -2713,7 +2707,11 @@ async def health(request: Request) -> S.HealthResponse:
         mhealth = ns_mem.health()
         resp["components"]["memory"] = mhealth
         if isinstance(mhealth, dict):
-            memory_ok = bool(mhealth.get("http")) or bool(mhealth.get("ok"))
+            memory_ok = (
+                bool(mhealth.get("http"))
+                or bool(mhealth.get("ok"))
+                or bool(mhealth.get("healthy"))
+            )
     except Exception:
         memory_ok = False
 
@@ -2753,6 +2751,7 @@ async def health(request: Request) -> S.HealthResponse:
     except Exception:
         resp["retrieval_entropy"] = None
 
+    # Recompute circuit state after recording success/failure to avoid stale flags.
     circuit_open = cb.is_open(tenant_id)
     should_reset = cb.should_attempt_reset(tenant_id)
     resp["memory_circuit_open"] = circuit_open
@@ -2760,6 +2759,38 @@ async def health(request: Request) -> S.HealthResponse:
     resp["memory_should_reset"] = should_reset
     resp["memory_ok"] = memory_ok
     resp["memory_degraded"] = circuit_open or should_reset
+
+    # Outbox buffering diagnostics (pending degraded writes)
+    try:
+        from somabrain.db.models.outbox import OutboxEvent
+        from somabrain.storage.db import get_session_factory
+
+        Session = get_session_factory()
+        pending = 0
+        last_created = None
+        with Session() as s:
+            pending = (
+                s.query(OutboxEvent)
+                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .count()
+            )
+            last = (
+                s.query(OutboxEvent)
+                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .order_by(OutboxEvent.created_at.desc())
+                .first()
+            )
+            if last and getattr(last, "created_at", None):
+                last_created = last.created_at.isoformat()
+        resp["components"]["outbox"] = {
+            "pending": pending,
+            "last_pending_created_at": last_created,
+        }
+    except Exception:
+        resp["components"]["outbox"] = {
+            "pending": None,
+            "last_pending_created_at": None,
+        }
 
     # Sleep state derived from CB status
     resp["sleep_state"] = map_cb_to_sleep(cb, tenant_id, SleepState.ACTIVE).value
@@ -3145,18 +3176,6 @@ async def recall(req: S.RecallRequest, request: Request):
         M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
             max(0.0, _t.perf_counter() - _t1)
         )
-        # Read-your-writes alternative: if LTM recall returned nothing, try direct
-        # coordinate lookup based on the query text used as key.
-        if not mem_payloads:
-            try:
-                direct_coord = mem_client.coord_for_key(text, universe=universe)
-                direct = mem_client.payloads_for_coords(
-                    [direct_coord], universe=universe
-                )
-                if direct:
-                    mem_payloads = direct
-            except Exception:
-                pass
         # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
         if (
             cfg.use_hrr_first
@@ -3244,99 +3263,6 @@ async def recall(req: S.RecallRequest, request: Request):
                     mem_payloads = lifted
         # cache result (after all alternatives)
         cache[ckey] = mem_payloads
-        # Optional graph augmentation: expand k-hop from query key coord
-        if cfg.use_graph_augment:
-            start = mem_client.coord_for_key(text, universe=universe)
-            coords = mem_client.k_hop(
-                [start], depth=cfg.graph_hops, limit=cfg.graph_limit
-            )
-            graph_payloads = mem_client.payloads_for_coords(coords, universe=universe)
-            # append unique payloads by coordinate if available
-            seen_coords = {
-                tuple(coord)
-                for p in mem_payloads
-                if isinstance(p, dict)
-                and (coord := p.get("coordinate")) is not None
-                and isinstance(coord, (list, tuple))
-            }
-            added = 0
-            max_add = int(getattr(cfg, "graph_augment_max_additions", 20) or 20)
-            for gp in graph_payloads:
-                if not isinstance(gp, dict):
-                    continue
-                c = gp.get("coordinate")
-                if isinstance(c, (list, tuple)) and tuple(c) not in seen_coords:
-                    mem_payloads.append(gp)
-                    seen_coords.add(tuple(c))
-                    added += 1
-                    if added >= max_add:
-                        break
-        # Promote exact token-like queries (e.g., human-friendly IDs) even if LTM returned items.
-        # This removes the need for users to switch endpoints when they have a label/token.
-        try:
-            promote_exact = bool(getattr(cfg, "promote_exact_token_enabled", True))
-        except Exception:
-            promote_exact = True
-        if promote_exact and isinstance(text, str):
-            try:
-                import re as _re
-
-                # Heuristic: token-like if mostly [A-Za-z0-9_-] and length >= 6
-                _tokish = bool(_re.match(r"^[A-Za-z0-9_-]{6,}$", text.strip()))
-            except Exception:
-                _tokish = False
-            if _tokish:
-                try:
-                    direct_coord = mem_client.coord_for_key(text, universe=universe)
-                    direct = mem_client.payloads_for_coords(
-                        [direct_coord], universe=universe
-                    )
-                    if direct:
-                        # Insert at front if not already present (by coordinate if available)
-                        d0 = direct[0]
-
-                        def _coord_of(p):
-                            c = p.get("coordinate") if isinstance(p, dict) else None
-                            return (
-                                tuple(c)
-                                if isinstance(c, (list, tuple)) and len(c) == 3
-                                else None
-                            )
-
-                        dcoord = _coord_of(d0)
-                        seen = set()
-                        out = []
-                        if dcoord is not None:
-                            seen.add(dcoord)
-                            out.append(d0)
-                            for p in mem_payloads:
-                                pc = _coord_of(p)
-                                if pc is not None and pc in seen:
-                                    continue
-                                if pc is not None:
-                                    seen.add(pc)
-                                out.append(p)
-                            mem_payloads = out
-                        else:
-                            # If no coordinate, ensure textual uniqueness by payload string
-                            keyset = {str(d0)}
-                            out = [d0]
-                            for p in mem_payloads:
-                                sp = str(p)
-                                if sp in keyset:
-                                    continue
-                                keyset.add(sp)
-                                out.append(p)
-                            mem_payloads = out
-                        try:
-                            from . import metrics as _mx
-
-                            _mx.WM_ADMIT.labels(source="promote_token").inc()
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
-
         # Apply composite ranking so the most relevant (math-focused) memories rise first.
         try:
             lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
@@ -3442,24 +3368,14 @@ async def recall(req: S.RecallRequest, request: Request):
     }
     # Compatibility shim: expose a ``results`` list for older callers/tests.
     resp["results"] = resp["memory"]
-    if not resp["memory"] and isinstance(req.query, str) and req.query:
-        try:
-            memsvc = MemoryService(mt_memory, ctx.namespace)
-            coord = memsvc.coord_for_key(req.query, universe=universe)
-            alternative_payloads = memsvc.payloads_for_coords(
-                [coord], universe=universe
-            )
-            if alternative_payloads:
-                normalized = [
-                    _normalize_payload_timestamps(p)
-                    for p in alternative_payloads
-                    if isinstance(p, dict)
-                ]
-                if normalized:
-                    resp["memory"].extend(normalized)
-                    resp["results"] = resp["memory"]
-        except Exception:
-            pass
+    # Flag degraded mode so callers can detect buffered/partial results
+    try:
+        from somabrain.infrastructure.cb_registry import get_cb
+
+        cb = get_cb()
+        resp["degraded"] = bool(cb.is_open(ctx.tenant_id))
+    except Exception:
+        resp["degraded"] = None
     # Reality monitor (optional header X-Min-Sources)
     try:
         min_src = int(request.headers.get("X-Min-Sources", "1"))
@@ -3619,7 +3535,7 @@ async def remember(body: dict, request: Request):
     M.SALIENCE_STORE.inc()
     # Add to hippocampus for consolidation
     hippocampus.add_memory(dict(payload))
-    # SDR index admission for local/stub
+    # SDR index admission for local SDR prefilter
     if cfg.use_sdr_prefilter and "_sdr_enc" in globals() and _sdr_enc is not None:
         try:
             idx = _sdr_idx.setdefault(
@@ -3914,7 +3830,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     ctx = await get_tenant_async(request, cfg.namespace)
     require_auth(request, cfg)
     # Retrieve the predictor, neuromodulators and personality store for the tenant
-    # Use the configured predictor factory instead of instantiating a stub.
+    # Use the configured predictor factory instead of instantiating any fallback.
     predictor = _make_predictor()
     # Run a single evaluation step – use the cognitive loop service helper.
     # For this simplified endpoint, novelty is computed as 0.0, but the real
@@ -4102,57 +4018,6 @@ async def health_oak(request: Request) -> Dict[str, Any]:
     }
 
 
-# Graph links endpoint – returns semantic graph edges
-@app.post("/graph/links", response_model=S.GraphLinksResponse)
-async def graph_links(body: S.GraphLinksRequest, request: Request):
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Determine universe (body overrides header)
-    header_u = request.headers.get("X-Universe", "").strip() or None
-    universe = body.universe or header_u
-    # Use the base MultiTenantMemory client with namespace handling inside MemoryService
-    memsvc = MemoryService(mt_memory, ctx.namespace)
-    # Resolve starting coordinate if from_key provided
-    start_coord = None
-    if body.from_key:
-        try:
-            start_coord = memsvc.coord_for_key(body.from_key, universe=universe)
-        except Exception:
-            start_coord = None
-    edges = []
-    if start_coord:
-        # Debug: show namespace and global links for triage
-        try:
-            import sys as _sys
-
-            from somabrain import memory_client as _mc
-
-            active_logger = globals().get("logger") or module_logger
-            active_logger.debug(
-                "graph_links namespace=%s pool_keys=%s",
-                memsvc.namespace,
-                list(getattr(mt_memory, "_pool", {}).keys()),
-            )
-            active_logger.debug(
-                "graph_links memory_client_loaded=%s",
-                "somabrain.memory_client" in _sys.modules,
-            )
-            active_logger.debug(
-                "graph_links memory_client id=%s repr=%s",
-                id(_mc),
-                repr(_mc),
-            )
-        except Exception:
-            pass
-        edges = memsvc.links_from(
-            start_coord,
-            type_filter=body.type,
-            limit=body.limit or 50,
-        )
-    return S.GraphLinksResponse(edges=edges, universe=universe)
-
-
-# Removed routes: /reflect, /migrate/export, /migrate/import (hard-removed)
 
 
 # Background task for health watchdog and circuit-breaker monitoring

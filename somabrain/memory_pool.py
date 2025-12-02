@@ -1,7 +1,7 @@
 """Multi-tenant memory pool for SomaBrain.
 
 The pool hands out one `MemoryClient` instance per namespace. There is no
-local journal replay or stub mirror. All operations are HTTP-first via the
+local journal replay or local mirror. All operations are HTTP-first via the
 external memory service.
 """
 
@@ -40,7 +40,7 @@ class MultiTenantMemory:
             # ALWAYS use the external HTTP MemoryClient. Fallback to a local in‑process
             # memory store has been removed to enforce a single source of truth for
             # memory operations. This ensures consistency across tenants and aligns
-            # with the roadmap's Phase 0 goal of eliminating stub/fallback behavior.
+            # with the roadmap's Phase 0 goal of eliminating any fallback behavior.
             client = MemoryClient(cfg2, scorer=self._scorer, embedder=self._embedder)
             self._pool[ns] = client
 

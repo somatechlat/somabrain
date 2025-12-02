@@ -38,7 +38,7 @@ WORKDIR /app
 
 # System packages for healthcheck and optional components
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl supervisor \
+    && apt-get install -y --no-install-recommends curl supervisor python3-numpy \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy wheel from builder stage and install

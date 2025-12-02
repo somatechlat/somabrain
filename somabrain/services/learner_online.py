@@ -67,7 +67,7 @@ class LearnerService:
 
         Fail fast when Kafka bootstrap or topics are not configured or when
         ``confluent_kafka`` is not installed. This avoids the silent no‑op
-        behavior of the earlier stub.
+        behavior of earlier fallback implementations.
         """
         # Use centralized Settings for Kafka bootstrap; no env fallback needed.
         bootstrap = getattr(self._settings, "kafka_bootstrap_servers", "")

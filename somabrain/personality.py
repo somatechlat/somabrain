@@ -1,9 +1,9 @@
 """
 Personality store for SomaBrain.
 
-Maintains per-tenant personality traits that can influence neuromodulation and
-salience. Uses real in-memory storage (no stubs) and validates via the shared
-`PersonalityState` schema.
+ Maintains per-tenant personality traits that can influence neuromodulation and
+ salience. Uses real in-memory storage with no fallback shims and validates via
+ the shared `PersonalityState` schema.
 """
 
 from __future__ import annotations

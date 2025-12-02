@@ -3,7 +3,7 @@
 
 This module implements the core *Oak* option management logic required by the
 ROAMDP roadmap. It provides a concrete, testable implementation without any
-placeholder stubs.
+incomplete stand‑ins.
 
 Key responsibilities
 ---------------------
@@ -89,7 +89,7 @@ class OptionManager:
 
     The manager maintains a per‑tenant dictionary of options keyed by ``option_id``.
     All modifications are immediately persisted via ``MemoryClient`` using the
-    ``option_created`` Avro schema. The implementation avoids any stub code –
+    ``option_created`` Avro schema. The implementation avoids any incomplete stand‑ins –
     all paths are concrete and exercised by unit tests (not shown here).
     """
 

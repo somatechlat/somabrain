@@ -53,6 +53,7 @@ This document explains the recent changes that enable automatic recovery of the 
 2. **Memory service restored** → watchdog sees the healthy payload → resets the circuit.
 3. **Outbox sync** re‑plays queued events to the memory backend.
 4. **Journal** persists events for crash‑recovery; the new import ensures it works.
+5. **Recall in degraded mode** → `/recall` responses include `"degraded": true` and may only surface cached WM hits (no persisted coordinates) until the backend recovers.
 
 ## 7. How to Verify
 
@@ -60,7 +61,7 @@ This document explains the recent changes that enable automatic recovery of the 
 # 1. Stop the external memory container
 docker stop somafractalmemory_api
 # 2. Send a few remember calls (they will be queued)
-curl -X POST http://localhost:9696/memory/remember ...
+curl -X POST http://localhost:9696/remember ...
 # 3. Restart the memory container
 docker start somafractalmemory_api
 # 4. Wait ~70 s (reset interval + watchdog poll)

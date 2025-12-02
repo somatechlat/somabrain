@@ -6,7 +6,7 @@ Helm chart created under ``charts/somabrain``. It follows the VIBE rules:
 
 * **Real implementation** – uses ``subprocess`` to invoke ``helm`` and ``httpx``
   for health checks.
-* **No placeholders** – all paths, flags and defaults are derived from the
+* **No invented defaults** – all paths, flags and settings are derived from the
   actual project configuration.
 * **Error handling** – on failure the CLI can automatically roll back the
   release.

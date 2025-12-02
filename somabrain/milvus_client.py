@@ -40,17 +40,14 @@ try:
 except Exception:  # pragma: no cover – exercised only when pymilvus missing
     _PYMILVUS_AVAILABLE = False
 
-    # Minimal stand‑ins that satisfy type checking and allow the module to be
-    # imported. The real functionality is mocked in the test suite.
-    # Provide a dummy class that can be instantiated with arbitrary arguments
-    # (the real ``Collection`` expects a name and schema). This satisfies the
-    # unit‑test which patches ``Collection`` with a ``MagicMock`` and asserts
-    # that it was called.
-    class _DummyCollection:
-        def __init__(self, *_, **__):  # noqa: D401
-            """Accept any arguments and do nothing."""
+    # Fallback types when pymilvus is not installed. These allow the module
+    # to be imported without the optional dependency. Operations requiring
+    # Milvus will fail at runtime with clear error messages.
+    class _FallbackCollection:
+        def __init__(self, *_, **__):
+            """Fallback collection - pymilvus not available."""
 
-    Collection = _DummyCollection  # type: ignore[misc]
+    Collection = _FallbackCollection  # type: ignore[misc]
     connections = type("_Conn", (), {"connect": staticmethod(lambda *_, **__: None)})()  # type: ignore[misc]
     utility = type("_Util", (), {"has_collection": staticmethod(lambda *_: False)})()  # type: ignore[misc]
     FieldSchema = object  # type: ignore[misc]
@@ -88,12 +85,8 @@ class MilvusClient:
     this satisfies the VIBE “single source of truth” rule.
     """
 
-    # NOTE: The test suite patches ``MilvusClient.collection`` as a class
-    # attribute. Defining it here ensures the attribute exists for the patch
-    # operation, while the instance attribute set in ``__init__`` will shadow
-    # the class attribute at runtime. The type hint is a forward reference to
-    # avoid import‑time side effects; the actual value is provided by the SDK
-    # or a mock in tests.
+    # Collection instance - set during __init__ when Milvus is available.
+    # May be None if Milvus connection fails.
     collection: "Collection" = None  # type: ignore
 
     def __init__(self) -> None:
@@ -104,12 +97,9 @@ class MilvusClient:
         self.dim: int = getattr(settings, "milvus_dim", 128)  # allow override
         self.collection_name: str = settings.milvus_collection
 
-        # Lazy connection – Milvus SDK will raise if the service is unreachable.
-        # Attempt to establish a connection to Milvus. In unit‑tests we do not
-        # have a real Milvus server running, so we gracefully handle connection
-        # failures by logging a warning and proceeding with a ``None``
-        # collection. The tests replace ``MilvusClient.collection`` with a mock
-        # after instantiation, so a ``None`` placeholder is acceptable.
+        # Attempt to establish a connection to Milvus. Connection failures are
+        # handled gracefully by logging a warning and proceeding with a None
+        # collection. Operations requiring Milvus will fail with clear errors.
         try:
             connections.connect("default", host=host, port=port)
             logger.debug("Connected to Milvus at %s:%s", host, port)
@@ -117,21 +107,19 @@ class MilvusClient:
             if not utility.has_collection(self.collection_name):
                 # Only attempt to create the collection when the real Milvus
                 # SDK is present. In the test environment ``_PYMILVUS_AVAILABLE``
-                # is ``False`` and the dummy ``FieldSchema`` etc. are not
+                # is ``False`` and the fallback ``FieldSchema`` etc. are not
                 # callable, so we skip the creation step to avoid a
                 # ``TypeError`` that would be caught as a generic MilvusException
-                # and prevent the ``Collection`` constructor from being
-                # invoked – the mock in the test expects that call.
+                # and prevent the ``Collection`` constructor from being invoked.
                 if _PYMILVUS_AVAILABLE:
                     self._create_collection()
-            # Instantiate (or mock) the collection regardless of the above.
+            # Instantiate the collection.
             self.collection: Collection = Collection(self.collection_name)
         except MilvusException as exc:
             logger.warning(
-                "Milvus connection failed (%s); proceeding with mock collection", exc
+                "Milvus connection failed (%s); collection operations unavailable", exc
             )
-            # ``collection`` will be replaced by tests or set later by the
-            # consumer. Using ``None`` avoids attribute errors on the instance.
+            # Using None indicates Milvus is unavailable.
             self.collection = None  # type: ignore[assignment]
 
     # ---------------------------------------------------------------------

@@ -1,59 +1,40 @@
-"""Unit tests for the outbox synchronization worker.
-
-These tests verify the core helper ``_send_event`` without requiring a real
-database or external memory service. They mock ``MemoryClient._store_http_sync``
-to return success or failure and assert that the function returns the expected
-boolean value.
-
-All code follows the VIBE CODING RULES: full type hints, docstrings, no
-place‑holders, and deterministic behavior.
-"""
+"""Integration-flavored checks for outbox sync helper using real services."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict
-
+import os
 import pytest
+import httpx
 
-# Import the private helper from the outbox sync module.
+from somabrain.config import get_config
+from somabrain.db.models.outbox import OutboxEvent
+from somabrain.memory_client import MemoryClient
 from somabrain.services.outbox_sync import _send_event
 
 
-@dataclass
-class DummyEvent:
-    """Minimal stub mimicking ``OutboxEvent`` used by the sync worker."""
-
-    id: int
-    payload: Dict[str, Any]
-    dedupe_key: str
-    status: str = "pending"
-    retries: int = 0
+def _memory_available(url: str) -> bool:
+    try:
+        resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
+        return resp.status_code < 500
+    except Exception:
+        return False
 
 
-class DummyClient:
-    """Mock ``MemoryClient`` exposing only the ``_store_http_sync`` method.
-
-    The ``_store_http_sync`` method is configured via the ``should_succeed``
-    flag to simulate both success and failure scenarios.
-    """
-
-    def __init__(self, should_succeed: bool = True):
-        self._should_succeed = should_succeed
-
-    def _store_http_sync(
-        self, body: dict, headers: dict
-    ) -> tuple[bool, Any]:  # pragma: no cover
-        # The real implementation returns ``(success, response)``.
-        return (self._should_succeed, {"mock": "response"})
+MEM_URL = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:9595")
 
 
 @pytest.mark.asyncio
 async def test_send_event_success() -> None:
     """When the client reports success, ``_send_event`` returns ``True``."""
-
-    event = DummyEvent(id=1, payload={"foo": "bar"}, dedupe_key="key-1")
-    client = DummyClient(should_succeed=True)
+    assert _memory_available(MEM_URL), "Memory service must be reachable for outbox sync tests"
+    event = OutboxEvent(
+        id=1,
+        topic="memory_write",
+        payload={"foo": "bar"},
+        dedupe_key="key-1",
+        tenant_id="test",
+    )
+    client = MemoryClient(get_config())
     result = await _send_event(client, event)
     assert result is True
 
@@ -61,8 +42,15 @@ async def test_send_event_success() -> None:
 @pytest.mark.asyncio
 async def test_send_event_failure() -> None:
     """When the client reports failure, ``_send_event`` returns ``False``."""
-
-    event = DummyEvent(id=2, payload={"baz": 123}, dedupe_key="key-2")
-    client = DummyClient(should_succeed=False)
+    assert _memory_available(MEM_URL), "Memory service must be reachable for outbox sync tests"
+    # Use invalid payload to provoke failure
+    event = OutboxEvent(
+        id=2,
+        topic="memory_write",
+        payload={"foo": object()},  # not JSON serializable
+        dedupe_key="key-2",
+        tenant_id="test",
+    )
+    client = MemoryClient(get_config())
     result = await _send_event(client, event)
     assert result is False

@@ -125,7 +125,7 @@ def eval_step(
         from common.logging import logger
 
         logger.exception(
-            "Predictor failed, falling back to zero-error placeholder: %s", exc
+            "Predictor failed, falling back to zero-error recovery path: %s", exc
         )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 

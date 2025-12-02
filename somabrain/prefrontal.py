@@ -1,18 +1,15 @@
 """Prefrontal module for SomaBrain.
 
-This module provides a minimal implementation of the *prefrontal* component
-referenced throughout the code base. The original project expects a fairly
-complex executive‑control system; however, for the purpose of keeping the
-repository import‑compatible during testing we supply a lightweight stub.
+This module provides the prefrontal cortex component for executive control
+functions. The implementation includes:
 
-The implementation includes:
-* ``PrefrontalConfig`` – a simple configuration holder using ``dataclasses``.
-* ``PrefrontalCortex`` – the main class instantiated in ``app.py``. It stores the
-  configuration and exposes a ``process`` method that can be extended later.
+* ``PrefrontalConfig`` – configuration holder using dataclasses.
+* ``PrefrontalCortex`` – main class that stores configuration and exposes
+  a ``process`` method for data transformation.
 
-Both classes are deliberately minimal but type‑annotated and documented so that
-future developers can replace them with a full‑featured version without breaking
-existing imports.
+The current implementation provides pass-through processing. Executive control
+policies, attention modulation, and other cognitive functions can be added
+by extending the ``process`` method.
 """
 
 from __future__ import annotations
@@ -25,22 +22,22 @@ from typing import Any, Dict
 class PrefrontalConfig:
     """Configuration for the prefrontal cortex.
 
-    The real system may contain many hyper‑parameters. Here we define a few
-    generic ones that are useful for testing and can be expanded later.
+    Attributes
+    ----------
+    max_neurons : int
+        Maximum number of neurons in the cortex model.
+    activation_threshold : float
+        Threshold for neuron activation.
+    extra : dict
+        Additional configuration parameters.
     """
 
-    # Example configuration fields – adjust as needed.
     max_neurons: int = 1024
     activation_threshold: float = 0.5
-    # Additional configuration can be stored in a generic dict.
     extra: Dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> Dict[str, Any]:
-        """Return the configuration as a plain dictionary.
-
-        This helper is convenient for logging or passing the config to other
-        components that expect a mapping.
-        """
+        """Return the configuration as a plain dictionary."""
         base = {
             "max_neurons": self.max_neurons,
             "activation_threshold": self.activation_threshold,
@@ -50,26 +47,37 @@ class PrefrontalConfig:
 
 
 class PrefrontalCortex:
-    """A stub implementation of the prefrontal cortex.
+    """Prefrontal cortex for executive control functions.
 
-    The class stores the provided ``PrefrontalConfig`` and offers a ``process``
-    method that can be used by the rest of the system. The method currently
-    performs a no‑op operation and returns the input unchanged, acting as a
-    placeholder for more sophisticated executive‑function logic.
+    The class stores configuration and provides a ``process`` method for
+    data transformation. The current implementation provides pass-through
+    processing - data is returned unchanged.
+
+    Attributes
+    ----------
+    config : PrefrontalConfig
+        The cortex configuration.
+    state : dict
+        Internal state storage.
     """
 
     def __init__(self, config: PrefrontalConfig | None = None) -> None:
         self.config = config or PrefrontalConfig()
-        # Internal state can be expanded later; for now we keep it simple.
         self.state: Dict[str, Any] = {}
 
     def process(self, data: Any) -> Any:
-        """Process *data* through the prefrontal cortex.
+        """Process data through the prefrontal cortex.
 
-        The stub simply returns ``data`` unchanged. Real implementations would
-        apply executive‑control policies, attention modulation, etc.
+        Parameters
+        ----------
+        data : Any
+            Input data to process.
+
+        Returns
+        -------
+        Any
+            Processed data. Currently returns input unchanged.
         """
-        # Placeholder – no transformation performed.
         return data
 
     def __repr__(self) -> str:

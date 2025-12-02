@@ -111,7 +111,7 @@ graph TD
 ## Data Flow Patterns
 
 ### Memory Storage Flow
-1. Client sends `/memory/remember` request with content, signals, attachments, and links
+1. Client sends `/remember` request with content, signals, attachments, and links
 2. OPA middleware validates tenant permissions (fail-closed)
 3. MemoryService circuit breaker checked and reset if needed
 4. Payload composed with signals (importance, novelty, ttl), tags, and metadata
@@ -124,7 +124,7 @@ graph TD
 11. Success response returned with coordinate, WM promotion status, and signal feedback
 
 ### Memory Recall Flow
-1. Client sends `/memory/recall` request (string or object body)
+1. Client sends `/recall` request (string or object body)
 2. OPA middleware validates access permissions (fail-closed)
 3. Request coerced to RetrievalRequest with environment-backed defaults
 4. Retrieval pipeline orchestrates multiple retrievers:

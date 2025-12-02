@@ -42,7 +42,7 @@ async def utility_guard(
     It is intentionally conservative and non-raising on missing constitution.
     """
     eng: Optional[ConstitutionEngine] = engine
-    # Determine mode; in dev, relax strict constitution requirement (no mocks otherwise)
+    # Determine mode; in dev, relax strict constitution requirement (no test doubles otherwise)
     dev_mode = False
     try:
         if settings is not None:

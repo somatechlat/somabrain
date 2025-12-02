@@ -77,7 +77,7 @@ async def put_persona(
     # lookup existing persona payload (best-effort)
     coord = ms.coord_for_key(key)
     try:
-        existing = ms.payloads_for_coords([coord]) or []
+        existing = ms.fetch_by_coord(coord) or []
     except Exception:
         existing = []
 
@@ -148,7 +148,7 @@ async def get_persona(pid: str, request: Request, response: Response):
     key = f"persona:{pid}"
     coord = ms.coord_for_key(key)
     try:
-        hits = ms.payloads_for_coords([coord]) or []
+        hits = ms.fetch_by_coord(coord) or []
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

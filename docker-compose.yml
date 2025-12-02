@@ -231,10 +231,13 @@ services:
       - ./ops/opa/policies:/policies:ro
       - opa_data:/var/lib/opa
     healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost:8181/health" ]
+      # OPA's minimal image lacks curl/wget. Use OPA's built-in check command
+      # which verifies the server is running and policies are loaded.
+      test: [ "CMD", "/opa", "check", "/policies" ]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
+      start_period: 10s
 
   somabrain_prometheus:
     image: prom/prometheus:v2.49.0

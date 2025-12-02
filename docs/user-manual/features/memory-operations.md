@@ -2,7 +2,7 @@
 
 **Purpose** Describe how to write and retrieve memories through SomaBrain’s public API.
 
-**Audience** Developers integrating the `/remember`, `/remember/batch`, `/recall`, and related endpoints.
+**Audience** Developers integrating the `/remember`, `/recall`, and related endpoints.
 
 **Prerequisites** Running SomaBrain instance, memory backend reachable at `SOMABRAIN_MEMORY_HTTP_ENDPOINT`, and an authentication token (unless auth disabled for development).
 
@@ -73,38 +73,7 @@ curl -sS http://localhost:9696/remember \
 
 ---
 
-## 3. Batch Ingestion – `/remember/batch`
-
-`/remember/batch` accepts an array of payloads and returns success/failure counts. Payload objects follow the same schema as `/remember`.
-
-```bash
-curl -sS http://localhost:9696/remember/batch \
-  -H "Content-Type: application/json" \
-  -d '{
-        "memories": [
-          {"task": "kb.geography.paris", "content": "Paris is the capital of France."},
-          {"task": "kb.geography.madrid", "content": "Madrid is the capital of Spain."}
-        ]
-      }'
-```
-
-Response (fields inspected in `somabrain/app.py::remember_batch`):
-
-```json
-{
-  "ok": true,
-  "success": true,
-  "stored": 2,
-  "failed": 0,
-  "trace_id": "140351450668000"
-}
-```
-
-Partial failures return the number of stored vs. failed memories plus an `errors` array with validation messages.
-
----
-
-## 4. Recalling Memories – `/recall`
+## 3. Recalling Memories – `/recall`
 
 `somabrain/schemas.py::RecallResponse` surfaces three collections:
 
@@ -175,7 +144,6 @@ SomaBrain exposes auxiliary endpoints when you need to tidy specific coordinates
 |----------|-------------|
 | `POST /delete` | Remove a memory by coord/key (requires payload with `coord` or `task`). |
 | `POST /recall/delete` | Remove a memory surfaced by recall. |
-| `POST /graph/links` | Manage graph relationships returned by recall (links between coords). |
 
 Consult the [API Integration guide](api-integration.md) for request bodies and authentication requirements.
 

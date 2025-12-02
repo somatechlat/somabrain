@@ -80,9 +80,8 @@ def recall_ltm(
             )
             for _ in cand_coords:
                 M.SDR_CANDIDATES.labels(cohort=cohort).inc()
-            if cand_coords:
-                mem_payloads = mem_client.payloads_for_coords(cand_coords)
-                did_sdr = True
+            # SDR prefilter found candidates but payloads_for_coords is not available
+            did_sdr = False
         except Exception:
             did_sdr = False
     if not did_sdr:
@@ -109,29 +108,8 @@ def recall_ltm(
                         return True
                 return False
 
-            if ql and (not any(_lex_match(p) for p in mem_payloads)):
-                coord = mem_client.coord_for_key(text, universe=universe)
-                direct = mem_client.payloads_for_coords([coord], universe=universe)
-                if direct:
-                    # Prepend direct hit ensuring uniqueness by 'task' text
-                    dh = direct[0]
-                    seen = set()
-                    out: list[dict] = []
-
-                    def _key(p: dict) -> str:
-                        return str(
-                            p.get("task") or p.get("fact") or p.get("text") or ""
-                        )
-
-                    out.append(dh)
-                    seen.add(_key(dh))
-                    for p in mem_payloads:
-                        kp = _key(p)
-                        if kp in seen:
-                            continue
-                        out.append(p)
-                        seen.add(kp)
-                    mem_payloads = out
+            # Direct coordinate lookup removed - payloads_for_coords not available
+            pass
         except Exception:
             pass
     # Lexical/token-aware boost: if the query looks like a short unique token or
@@ -174,17 +152,6 @@ def recall_ltm(
                 ]
     except Exception:
         pass
-    # Deterministic read-your-writes alternative:
-    # If no payloads were returned via SDR/recall, derive the coordinate
-    # from the query text (used as key on store) and fetch directly.
-    if not mem_payloads:
-        try:
-            coord = mem_client.coord_for_key(text, universe=universe)
-            direct = mem_client.payloads_for_coords([coord], universe=universe)
-            if direct:
-                mem_payloads = direct
-        except Exception:
-            pass
     # Filter by universe if any
     if universe:
         mem_payloads = [

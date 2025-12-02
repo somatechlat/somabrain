@@ -290,7 +290,7 @@ class TestAPIIntegration:
 
         # Store a memory
         remember_response = api_client.post(
-            "/memory/remember",
+            "/remember",
             json={
                 "payload": {
                     "task": unique_content,
@@ -306,7 +306,7 @@ class TestAPIIntegration:
 
         # Recall memories
         recall_response = api_client.post(
-            "/memory/recall",
+            "/recall",
             json={
                 "query": unique_content,
                 "top_k": 5

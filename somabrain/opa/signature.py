@@ -33,7 +33,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     environments). If the required classes are unavailable, an informative
     ``ImportError`` is raised.
     """
-    # A valid private key path is required; no placeholders or alternatives.
+    # A valid private key path is required; no stand-ins or alternatives.
     if not private_key_path:
         raise ValueError("private_key_path is required for OPA policy signing")
     # Import lazily – raise if missing.

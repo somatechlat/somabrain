@@ -2,18 +2,41 @@
 
 This module mirrors the pattern used by other services in the SomaStack.
 It provides a single ``Settings`` class (pydantic ``BaseSettings``) that
-loads values from the canonical ``.env`` file or the environment. All new code
-should import ``Settings`` from here instead of calling ``settings.getenv`` directly.
+loads values from the canonical ``.env`` file, environment variables, and
+``config.yaml``. All new code should import ``Settings`` from here instead
+of calling ``settings.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
 default to the current variables.
+
+Configuration precedence (highest to lowest):
+1. Environment variables
+2. .env file
+3. config.yaml
 """
 
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from pathlib import Path
+from typing import Optional, Any, Dict
+
+# Load config.yaml as the base configuration source
+_CONFIG_YAML: Dict[str, Any] = {}
+try:
+    import yaml
+    _config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    if _config_path.exists():
+        with open(_config_path, "r") as f:
+            _CONFIG_YAML = yaml.safe_load(f) or {}
+except Exception:
+    pass  # yaml not available or config.yaml not found
+
+
+def _yaml_get(key: str, default: Any = None) -> Any:
+    """Get a value from config.yaml with fallback to default."""
+    return _CONFIG_YAML.get(key, default)
 
 BaseSettings: Any  # forward-declare for mypy
 try:
@@ -467,6 +490,16 @@ class Settings(BaseSettings):
     )
     # Memory is always required; ignore any attempt to disable via env.
     require_memory: bool = Field(default=True)
+    # Infrastructure requirement flag – controls whether the outbox publisher
+    # and other services require Kafka/Postgres/Redis to be available at startup.
+    require_infra: str = Field(default="1")
+    # Outbox publisher configuration (operational constants)
+    outbox_batch_size: int = Field(default=100)
+    outbox_max_delay: float = Field(default=5.0)
+    outbox_max_retries: int = Field(default=5)
+    outbox_poll_interval: float = Field(default=1.0)
+    outbox_producer_retry_ms: int = Field(default=1000)
+    journal_replay_interval: int = Field(default=300)
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
@@ -489,6 +522,8 @@ class Settings(BaseSettings):
     allow_tiny_embedder: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_TINY_EMBEDDER", False)
     )
+
+
 
     # Kafka aliases / topics (keep compatibility with legacy env names)
     kafka_bootstrap: str = Field(
@@ -886,6 +921,13 @@ class Settings(BaseSettings):
     )
     use_graph_augment: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_GRAPH_AUGMENT", False)
+    )
+    # Graph reasoning parameters (from config.yaml defaults)
+    graph_hops: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_GRAPH_HOPS", _yaml_get("graph_hops", 2))
+    )
+    graph_limit: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_GRAPH_LIMIT", _yaml_get("graph_limit", 20))
     )
     use_hrr_first: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False)

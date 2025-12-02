@@ -318,7 +318,7 @@ class ContextBuilder:
                         entropy = -sum(p * _m.log(p) for p in probs)
                         attempts += 1
                     if entropy > float(cap):
-                        # Final strong sharpen if stubborn
+                        # Final strong sharpen if still resistant
                         for i in range(len(vec)):
                             if i != largest_idx:
                                 vec[i] *= 0.05

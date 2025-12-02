@@ -588,7 +588,7 @@ UNBIND_K_EST = Gauge(
 # --- Retrieval metrics ---
 RECALL_REQUESTS = get_counter(
     "somabrain_recall_requests_total",
-    "Number of /memory/recall requests",
+    "Number of /recall requests",
     labelnames=["namespace"],
 )
 RETRIEVAL_REQUESTS = get_counter(

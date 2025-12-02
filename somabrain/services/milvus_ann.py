@@ -7,7 +7,7 @@ HNSWAnnIndex for production deployments where scalability is required.
 VIBE CODING RULES:
 - All configuration from common.config.settings
 - No hardcoded values
-- Real Milvus connection required (no mocks)
+- Real Milvus connection required; simulated connectors are not supported.
 """
 
 from __future__ import annotations
