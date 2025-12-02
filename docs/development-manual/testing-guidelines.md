@@ -492,4 +492,33 @@ SomaBrain testing follows strict VIBE Coding Rules:
 3. **NO STUBS** - Skip tests if services unavailable, don't fake them
 4. **REAL INFRASTRUCTURE** - Postgres, Redis, Kafka, Memory Service must be running
 
+---
+
+## Recall Testing Workbench (integration)
+
+**Purpose**: Prove recall correctness, degradation flag presence, tenant isolation, and latency SLOs against the live memory service.
+
+**Env vars (required)**  
+- `SOMABRAIN_MEMORY_HTTP_ENDPOINT` (default fallback: `http://localhost:9595`)  
+- `SOMABRAIN_MEMORY_HTTP_TOKEN` (dev token lives in `.env`)  
+- `SOMABRAIN_API_URL` (default fallback: `http://localhost:9696`)  
+- `SOMABRAIN_POSTGRES_DSN` for any DB-backed flows.
+
+**How to run (local stack up via docker compose)**  
+```bash
+source .venv/bin/activate
+pytest tests/integration/test_recall_quality.py
+```
+
+**What it checks**
+- Quality: precision/recall/nDCG on a small labeled corpus (`test_recall_quality_basic`).
+- Isolation: tenant A results never include tenant B payloads.
+- Degraded flag: `/recall` response includes `degraded` field (schema truth).
+
+**Latency/SLO (optional)**
+- Use `benchmarks/recall_latency_bench.py` with live stack to verify p95 targets (remember <300 ms, recall <400 ms). Example:
+```bash
+SOMABRAIN_API_URL=http://localhost:9696 python benchmarks/recall_latency_bench.py --requests 50 --concurrency 4
+```
+
 This ensures that tests validate actual system behavior and catch real integration issues.

@@ -299,24 +299,15 @@ def create_milvus_cleanup_index(
 ) -> CleanupIndex:
     """Factory function to create a Milvus-backed CleanupIndex.
 
-    Falls back to SimpleAnnIndex if Milvus is unavailable.
+    Fails fast if Milvus is unavailable; no fallbacks permitted.
     """
-    try:
-        return MilvusAnnIndex(
-            dim,
-            tenant_id=tenant_id,
-            namespace=namespace,
-            top_k=top_k,
-            ef_search=ef_search,
-        )
-    except Exception as exc:
-        logger.warning(
-            "Failed to create MilvusAnnIndex, falling back to SimpleAnnIndex: %s",
-            exc,
-        )
-        from somabrain.services.ann import SimpleAnnIndex
-
-        return SimpleAnnIndex(dim)
+    return MilvusAnnIndex(
+        dim,
+        tenant_id=tenant_id,
+        namespace=namespace,
+        top_k=top_k,
+        ef_search=ef_search,
+    )
 
 
 __all__ = [

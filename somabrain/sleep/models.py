@@ -26,7 +26,7 @@ class TenantSleepState(Base):
         ttl                     Optional datetime after which the state should
                                 automatically revert to ``ACTIVE``.
         scheduled_wake          Cached datetime when the auto‑wake should fire.
-        circuit_breaker_state   Placeholder for future circuit‑breaker status.
+        circuit_breaker_state   Persisted circuit‑breaker state for the tenant.
         parameters_json         JSON‑encoded ``SleepParameters`` for debugging.
         updated_at              Timestamp of last update (auto‑managed).
     """

@@ -155,5 +155,28 @@
     - **Validates: Requirements 8.3, 8.4**
     - Test store then recall returns original data
 
-- [ ] 17. Final Checkpoint - Verify all changes
+- [x] 17. Final Checkpoint - Verify all changes
   - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 18. Build Recall Testing Workbench (new)
+  - [x] 18.1 Add integration suite `tests/integration/test_recall_quality.py`
+    - Precision/recall/nDCG on labeled corpus (vector + WM hybrid)
+    - Validates degradation flag and circuit state exposure in responses
+  - [x] 18.2 Add metrics helper `tests/utils/metrics.py`
+    - Compute precision@k, recall@k, nDCG@k
+  - [x] 18.3 Add load/SLO check using existing harness (parametrized `benchmarks/recall_latency_bench.py`)
+    - Assert p95 latency targets for /remember and /recall (dev stack)
+  - [x] 18.4 Add multi-tenant isolation test
+    - Tenant A recalls never return Tenant B payloads; metrics labeled per tenant
+  - [x] 18.5 Add outbox durability test
+    - Force memory 5xx, ensure events queue, replay drains pending to 0, no dupes
+  - [x] 18.6 Document workbench in `docs/development-manual/testing-guidelines.md`
+    - Env vars, datasets, expected SLOs, how to run locally/CI
+
+- [ ] 19. Milvus Hardening (no fallbacks, full exploitation)
+  - [x] 19.1 Remove ANN fallback chain (Milvus → HNSW → Simple) so configured backend is mandatory
+  - [x] 19.2 Add live Milvus smoke + golden-set recall@10 test (ensures vector layer correctness)
+  - [x] 19.3 Add index-config drift check (schema + metric + index params) and fail on mismatch
+  - [ ] 19.4 Expose Milvus health/SLO telemetry (p95 search/ingest, segment load) via health/metrics
+  - [ ] 19.5 Add reconciliation job/tests to ensure Postgres canonical rows exist in Milvus (no orphans)
+  - [ ] 19.6 Harden Oak option upsert: mandatory Milvus write with retries/backoff and alerting

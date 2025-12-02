@@ -197,7 +197,37 @@ When removing dead code, the following error handling approach applies:
    - Raise `NotImplementedError` with a clear message if the functionality should exist but doesn't
 
 3. **Graceful Degradation:** For features that depend on removed functionality:
-   - Log a warning at startup if the feature is disabled
+- Log a warning at startup if the feature is disabled
+
+## Testing Workbench Design (New)
+
+**Purpose**: Prove SomaBrain recall correctness, degradation handling, tenant isolation, and performance against the real memory backend.
+
+**Scope & Surfaces**
+- Endpoints: `/remember`, `/recall`, `/health`, `/memory/metrics`.
+- Client: `MemoryClient.remember/recall`, `_stable_coord`, dedupe/rerank helpers.
+- Background: outbox sync loop, circuit breaker, sleep CB adapter.
+
+**Datasets**
+- Labeled mini-corpus for relevance (text).
+- Orthogonal vector corpus for perfect nearest-neighbor ground truth.
+- Multi-tenant fixtures (tenant_a, tenant_b) with disjoint corpora.
+- Failure fixtures: forced 5xx/timeouts on memory backend.
+
+**Metrics & Assertions**
+- Quality: precision@k, recall@k, nDCG@k (targets: ≥0.8 on labeled set).
+- Performance: p95 remember <300 ms, recall <400 ms (dev stack).
+- Degradation: writes queued when memory fails; `/recall` returns `degraded=true`; pending drains to 0 post-recovery; no duplicates.
+- Isolation: no cross-tenant hits; metrics labeled by tenant_id.
+
+**Planned Test Assets**
+- `tests/integration/test_recall_quality.py` (quality, degradation, isolation).
+- `tests/utils/metrics.py` (precision/recall/nDCG helpers).
+- Parametrized run of `benchmarks/recall_latency_bench.py` for SLO enforcement.
+- Outbox durability scenario using forced backend failure and replay.
+
+**Documentation**
+- Add a “Testing Workbench” section to `docs/development-manual/testing-guidelines.md` detailing env vars (memory URL/token, Postgres DSN), datasets, commands, and SLO thresholds.
    - Return empty results rather than crashing
    - Document the limitation in the code
 
@@ -294,6 +324,14 @@ The cleanup should proceed in this order to minimize breakage:
 7. **Phase 7: Benchmark Cleanup**
    - Delete dead benchmark files
    - Update remaining benchmarks to use correct endpoints
+
+8. **Phase 8: Milvus Hardening (no fallbacks)**
+   - Enforce Milvus as the sole ANN backend when configured; fail fast on connect/index errors
+   - Validate collection schema/metric/index params at startup; refuse to run on drift
+   - Add golden-set recall@10 smoke to CI/workbench against live Milvus
+   - Expose Milvus p95 ingest/search + segment load in health/metrics payloads
+   - Add reconciliation (Postgres ↔ Milvus) to detect/repair missing/extra vectors
+   - Oak option upserts must retry with backoff; failures propagate (no log-only)
 
 ## Risk Assessment
 

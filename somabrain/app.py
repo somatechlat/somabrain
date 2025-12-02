@@ -169,7 +169,7 @@ from somabrain.prediction import (
     MahalanobisPredictor,
     SlowPredictor,
 )
-from somabrain.prefrontal import PrefrontalConfig, PrefrontalCortex
+# Prefrontal cortex component removed per VIBE hardening requirements.
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
@@ -2094,7 +2094,7 @@ amygdala = AmygdalaSalience(
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
 hippocampus = Hippocampus(ConsolidationConfig())
-prefrontal = PrefrontalCortex(PrefrontalConfig())
+    # Prefrontal instance creation removed; the system no longer uses this stub.
 
 fnom_memory: Any = None  # type: ignore[assignment]
 fractal_memory: Any = None  # type: ignore[assignment]

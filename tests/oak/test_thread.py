@@ -5,6 +5,7 @@ from typing import Any, Dict
 
 
 from somabrain.cognitive.thread_model import CognitiveThread
+from somabrain.storage.db import Base
 from somabrain.oak import planner as oak_planner
 import pytest
 
@@ -51,6 +52,11 @@ def test_planner_uses_thread_next_option(monkeypatch):
 
     session_factory = factory()
     with session_factory() as session:
+        # Ensure the cognitive_threads table exists for the real Postgres DSN.
+        Base.metadata.create_all(session.get_bind())
+        # Clear any leftover rows from previous runs to avoid PK collisions.
+        session.query(CognitiveThread).delete()
+        session.commit()
         thread = CognitiveThread(tenant_id="tenant1")
         thread.set_options(["thread_opt"])
         session.add(thread)

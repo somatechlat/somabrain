@@ -947,8 +947,9 @@ class MemoryClient:
 
         headers = {"X-Request-ID": request_id}
         universe_value = str(universe or "real")
+        query_text = str(query or "")
         body = {
-            "query": str(query or ""),
+            "query": query_text,
             "top_k": max(int(top_k), 1),
             "universe": universe_value,
         }

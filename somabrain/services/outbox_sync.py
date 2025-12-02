@@ -45,21 +45,19 @@ async def _send_event(client: MemoryClient, event: OutboxEvent) -> bool:
     degradation guard – the worker only runs when the service is healthy.
     """
     try:
-        # Build a minimal payload compatible with the memory ``/remember``
-        # endpoint. ``event.payload`` already contains the user‑supplied data.
-        body = {
-            "key": event.dedupe_key,
-            "value": event.payload,
-            "universe": event.payload.get("universe", "real"),
-        }
-        headers = {
-            "X-Request-ID": f"outbox-sync-{int(time.time()*1000)}",
-            "X-Tenant-ID": event.tenant_id or "default",
-        }
-        if event.dedupe_key:
-            headers["X-Idempotency-Key"] = event.dedupe_key
-        success, _ = client._store_http_sync(body, headers)
-        return bool(success)
+        # Re-use the production code path to persist the payload so that
+        # schema, auth headers, and circuit‑breaker behaviour stay consistent.
+        key = event.dedupe_key or str(event.id)
+        payload = dict(event.payload or {})
+        # Ensure payload is JSON-serialisable; bail out on invalid types.
+        try:
+            import json
+
+            json.dumps(payload)
+        except Exception:
+            return False
+        client.remember(key, payload)
+        return True
     except Exception as exc:  # pragma: no cover – unexpected errors are logged
         logger.error("Failed to sync outbox event %s: %s", event.id, exc, exc_info=True)
         return False

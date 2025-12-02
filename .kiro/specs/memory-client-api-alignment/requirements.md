@@ -362,6 +362,27 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 | `docs/development-manual/testing-guidelines.md` | Update endpoint references |
 | `benchmarks/README.md` | Update endpoint references |
 
+### New Requirements: Recall Testing Workbench
+
+- **Req 8.1** Labeled recall-quality tests SHALL compute and assert precision@k, recall@k, nDCG@k for hybrid (vector + WM) retrieval against a known corpus.
+- **Req 8.2** Degradation-path test SHALL prove writes queue on memory failure, `/recall` returns `degraded=true`, and queued events replay without duplicates after recovery.
+- **Req 8.3** Multi-tenant isolation test SHALL prove tenant A recalls never include tenant B payloads and that metrics are tenant-labeled.
+- **Req 8.4** Performance SLO test SHALL fail if p95 `/remember` > 300 ms or p95 `/recall` > 400 ms in the dev stack.
+- **Req 8.5** Workbench SHALL fail fast with clear messaging when required env vars (memory URL/token, Postgres DSN) are missing; no silent skips.
+- **Req 8.6** Documentation update SHALL describe datasets, env vars, commands, and SLO targets in `docs/development-manual/testing-guidelines.md`.
+
+### Requirement 11: Milvus Must Be Mandatory and Verified
+
+**User Story:** As an operator, I need Milvus to be the enforced ANN backend with verified correctness and observable SLOs, so vector recall stays production‑grade without silent degradation.**
+
+#### Acceptance Criteria
+1. WHEN `tiered_memory_cleanup_backend` is set to `milvus` THEN the service SHALL fail fast on startup if Milvus is unreachable; no fallback to HNSW/Simple is permitted.
+2. WHEN Milvus is reachable THEN a smoke test SHALL insert and search a golden vector set and assert recall@10 meets a configured threshold.
+3. WHEN the service initializes THEN Milvus collection schema, metric type, and index parameters SHALL be validated against expected config; mismatch SHALL fail startup.
+4. WHEN health/metrics endpoints are queried THEN they SHALL expose Milvus p95 ingest/search latency and segment load status.
+5. WHEN Postgres holds canonical memory/option rows THEN a reconciliation job SHALL ensure Milvus contains the same anchors (no orphans/missing) and SHALL emit alerts on drift.
+6. WHEN Oak option upserts occur THEN Milvus persistence SHALL be mandatory with retries/backoff; failures SHALL propagate (no log‑only paths).
+
 ---
 
 ## Audit Statistics

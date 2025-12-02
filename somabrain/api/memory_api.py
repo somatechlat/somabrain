@@ -30,7 +30,6 @@ from somabrain.runtime.config_runtime import (
     ensure_supervisor_worker,
     register_config_listener,
     submit_metrics_snapshot,
-    get_cutover_controller,
 )
 
 # Unified configuration: use the central Settings instance from common.config.settings.
@@ -271,29 +270,6 @@ class MemoryRecallResponse(BaseModel):
     degraded: bool = False
 
 
-class CutoverOpenRequest(BaseModel):
-    tenant: str = Field(..., min_length=1)
-    from_namespace: str = Field(..., min_length=1)
-    to_namespace: str = Field(..., min_length=1)
-
-
-class CutoverActionRequest(BaseModel):
-    tenant: str = Field(..., min_length=1)
-    reason: Optional[str] = None
-
-
-class CutoverPlanResponse(BaseModel):
-    tenant: str
-    from_namespace: str
-    to_namespace: str
-    status: str
-    ready: bool
-    created_at: float
-    approved_at: Optional[float] = None
-    notes: List[str] = Field(default_factory=list)
-    last_top1_accuracy: Optional[float] = None
-    last_margin: Optional[float] = None
-    last_latency_p95_ms: Optional[float] = None
 
 
 def _tiered_enabled() -> bool:
@@ -365,70 +341,18 @@ class MemoryBatchWriteResponse(BaseModel):
 class MemoryRecallSessionResponse(BaseModel):
     session_id: str
     tenant: str
-    namespace: str
-    scoring_mode: Optional[str]
-    conversation_id: Optional[str]
-    created_at: float
-    results: List[MemoryRecallItem]
-
-
-class OutboxEventSummary(BaseModel):
-    id: int
-    tenant_id: Optional[str]
-    topic: str
-    status: str
-    retries: int
-    created_at: float
-    dedupe_key: str
-    last_error: Optional[str] = None
-    payload: Dict[str, Any]
-
-
-class OutboxReplayRequest(BaseModel):
-    ids: List[int] = Field(
-        ..., min_items=1, description="Outbox event IDs to mark for replay"
-    )
-
-
-def _runtime_module():
-    """Return the canonical runtime module carrying singletons.
-
-    Prefer the initializer-loaded module name ("somabrain.runtime_module") when present
-    to ensure we reference the same object that `app.py` wires up. Use the
-    package module ("somabrain.runtime"). As a final guard, scan `sys.modules` for any
-    module whose file path points to `somabrain/runtime.py` and return that instance.
-    """
-    import sys
-
-    # Prefer the explicit initializer alias if available
-    m = sys.modules.get("somabrain.runtime_module")
-    if m is not None:
-        return m
-    try:
-        from somabrain import runtime as rt  # type: ignore
-
-        return rt
-    except Exception:
-        pass
-    # Last resort: find a loaded module referencing runtime.py by filepath
-    for mod in list(sys.modules.values()):
-        try:
-            mf = getattr(mod, "__file__", "") or ""
-            if mf.endswith("somabrain/runtime.py"):
-                return mod
-        except Exception:
-            continue
-    # If nothing found, import the package module now
-    from somabrain import runtime as rt  # type: ignore
-
-    return rt
 
 
 def _app_config():
+    """Retrieve the central configuration singleton.
+
+    Mirrors the logic used in other modules: attempt to reuse an existing
+    ``cfg`` attribute on the runtime module; if missing, fall back to the
+    unified ``settings`` instance and store it for future calls.
+    """
     rt = _runtime_module()
     cfg = getattr(rt, "cfg", None)
     if cfg is None:
-        # Legacy get_config import removed; use unified settings
         cfg = settings
         setattr(rt, "cfg", cfg)
     return cfg
@@ -1133,19 +1057,7 @@ async def _perform_recall(
     except Exception:
         pass
 
-    # Optionally feed shadow metrics into any open cutover plan for this tenant/namespace.
-    try:
-        controller = get_cutover_controller()
-        await controller.record_shadow_metrics(
-            payload.tenant,
-            payload.namespace,
-            top1_accuracy=top_confidence,
-            margin=float(tiered_margin_value or 0.0),
-            latency_p95_ms=duration * 1000.0,
-        )
-    except Exception:
-        # Best-effort: ignore when no plan is open or namespaces do not match.
-        pass
+    # Cutover functionality has been removed; shadow metrics are no longer recorded.
 
     return MemoryRecallResponse(
         tenant=payload.tenant,
@@ -1561,62 +1473,5 @@ class AnnRebuildRequest(BaseModel):
     namespace: Optional[str] = None
 
 
-def _plan_to_response(plan) -> CutoverPlanResponse:
-    last = plan.last_shadow_metrics
-    return CutoverPlanResponse(
-        tenant=plan.tenant,
-        from_namespace=plan.from_namespace,
-        to_namespace=plan.to_namespace,
-        status=plan.status,
-        ready=plan.ready,
-        created_at=plan.created_at,
-        approved_at=plan.approved_at,
-        notes=list(plan.notes or []),
-        last_top1_accuracy=(last.top1_accuracy if last else None),
-        last_margin=(last.margin if last else None),
-        last_latency_p95_ms=(last.latency_p95_ms if last else None),
-    )
-
-
-@router.post("/cutover/open", response_model=CutoverPlanResponse)
-async def cutover_open(payload: CutoverOpenRequest) -> CutoverPlanResponse:
-    await _ensure_config_runtime_started()
-    controller = get_cutover_controller()
-    plan = await controller.open_plan(
-        payload.tenant, payload.from_namespace, payload.to_namespace
-    )
-    return _plan_to_response(plan)
-
-
-@router.post("/cutover/approve", response_model=CutoverPlanResponse)
-async def cutover_approve(payload: CutoverActionRequest) -> CutoverPlanResponse:
-    await _ensure_config_runtime_started()
-    controller = get_cutover_controller()
-    plan = await controller.approve(payload.tenant)
-    return _plan_to_response(plan)
-
-
-@router.post("/cutover/execute", response_model=CutoverPlanResponse)
-async def cutover_execute(payload: CutoverActionRequest) -> CutoverPlanResponse:
-    await _ensure_config_runtime_started()
-    controller = get_cutover_controller()
-    plan = await controller.execute(payload.tenant)
-    return _plan_to_response(plan)
-
-
-@router.post("/cutover/cancel")
-async def cutover_cancel(payload: CutoverActionRequest) -> Dict[str, Any]:
-    await _ensure_config_runtime_started()
-    controller = get_cutover_controller()
-    await controller.cancel(payload.tenant, reason=payload.reason or "")
-    return {"ok": True}
-
-
-@router.get("/cutover/status/{tenant}", response_model=CutoverPlanResponse)
-async def cutover_status(tenant: str) -> CutoverPlanResponse:
-    await _ensure_config_runtime_started()
-    controller = get_cutover_controller()
-    plan = controller.get_plan(tenant)
-    if plan is None:
-        raise HTTPException(status_code=404, detail="no active plan for tenant")
-    return _plan_to_response(plan)
+# Cutover functionality has been fully removed per VIBE hardening.
+# All related request/response models, helper functions, and endpoints have been deleted.

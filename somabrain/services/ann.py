@@ -15,10 +15,10 @@ from somabrain.memory.superposed_trace import CleanupIndex
 class AnnConfig:
     """Configuration for ANN cleanup indexes.
 
-    Supported backends:
+    Supported backends (explicit, no implicit fallbacks):
     - "milvus": Milvus vector database (default, scalable, persistent, recommended for production)
-    - "hnsw": HNSW index via hnswlib (fast, in-memory)
-    - "simple": In-memory cosine search (fallback only)
+    - "hnsw": HNSW index via hnswlib (fast, in-memory) – requires library present
+    - "simple": In-memory cosine search (only when explicitly configured)
 
     Configuration is loaded from settings by default. Override via constructor
     for testing or custom deployments.
@@ -82,15 +82,12 @@ class SimpleAnnIndex(CleanupIndex):
 
 
 class HNSWAnnIndex(CleanupIndex):
-    """Thin wrapper around hnswlib; falls back to SimpleAnnIndex if library missing."""
+    """Thin wrapper around hnswlib; fails fast if the optional library is missing."""
 
     def __init__(
         self, dim: int, *, m: int, ef_construction: int, ef_search: int
     ) -> None:
-        try:
-            import hnswlib  # type: ignore
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise RuntimeError("hnswlib not available") from exc
+        import hnswlib  # type: ignore
 
         self._dim = int(dim)
         self._index = hnswlib.Index(space="cosine", dim=self._dim)
@@ -162,44 +159,29 @@ def create_cleanup_index(
 ) -> CleanupIndex:
     """Create a CleanupIndex based on configuration.
 
-    Supported backends:
-    - "milvus": Milvus vector database (default, recommended for production)
-    - "hnsw": HNSW index via hnswlib
-    - "simple": In-memory cosine search (fallback only)
-
-    Configuration is loaded from settings if not provided explicitly.
+    **VIBE RULES COMPLIANCE** – No implicit fallback to alternative backends.
+    The system must use Milvus exclusively; any other backend configuration
+    results in an explicit error, preventing silent degradation.
     """
     config = cfg or AnnConfig.from_settings()
     backend = (config.backend or "milvus").lower()
 
-    if backend == "milvus":
-        try:
-            from somabrain.services.milvus_ann import MilvusAnnIndex
+    if backend != "milvus":
+        # Hardening: disallow fallback to HNSW or simple in‑memory indexes.
+        raise ValueError(
+            f"Milvus backend is required; configured backend '{backend}' is not supported"
+        )
 
-            return MilvusAnnIndex(
-                dim,
-                tenant_id=tenant_id,
-                namespace=namespace,
-                top_k=config.top_k,
-                ef_search=config.hnsw_ef_search,
-            )
-        except Exception:
-            # Fall back to HNSW if Milvus unavailable
-            backend = "hnsw"
+    # Import is safe because Milvus support is mandatory.
+    from somabrain.services.milvus_ann import MilvusAnnIndex
 
-    if backend == "hnsw":
-        try:
-            return HNSWAnnIndex(
-                dim,
-                m=config.hnsw_m,
-                ef_construction=config.hnsw_ef_construction,
-                ef_search=config.hnsw_ef_search,
-            )
-        except Exception:
-            # Fall back to simple if hnsw unavailable
-            return SimpleAnnIndex(dim)
-
-    return SimpleAnnIndex(dim)
+    return MilvusAnnIndex(
+        dim,
+        tenant_id=tenant_id,
+        namespace=namespace,
+        top_k=config.top_k,
+        ef_search=config.hnsw_ef_search,
+    )
 
 
 def _normalize(vec: np.ndarray | Iterable[float], dim: int) -> np.ndarray:
