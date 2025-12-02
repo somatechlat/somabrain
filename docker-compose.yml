@@ -7,9 +7,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 1G
         reservations:
-          memory: 256M
+          memory: 512M
     networks:
       - somabrain_net
     ports:
@@ -25,7 +25,7 @@ services:
     command:
       - redis-server
       - --maxmemory
-      - "400mb"
+      - "800mb"
       - --maxmemory-policy
       - "allkeys-lru"
       - --appendonly
@@ -55,7 +55,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 2G
         reservations:
           memory: 1G
     environment:
@@ -94,7 +94,7 @@ services:
       KAFKA_CFG_SOCKET_RECEIVE_BUFFER_BYTES: "102400"
       KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES: "104857600"
       # JVM settings for constrained memory
-      KAFKA_HEAP_OPTS: "-Xmx768m -Xms512m"
+      KAFKA_HEAP_OPTS: "-Xmx1g -Xms512m"
       KAFKA_JVM_PERFORMANCE_OPTS: "-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent"
       KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:-79LccNO-Qe6G6YgqP1Zrew}
       KAFKA_BROKER_HOST_PORT: ${KAFKA_BROKER_HOST_PORT:-30102}
@@ -242,9 +242,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 256M
     networks:
       - somabrain_net
     ports:
@@ -310,9 +310,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 256M
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -421,9 +421,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 2G
         reservations:
-          memory: 512M
+          memory: 1G
     depends_on:
       somabrain_redis:
         condition: service_healthy
@@ -505,10 +505,10 @@ services:
     deploy:
       resources:
         limits:
-          # Production-like but constrained for local dev (total cluster < 10GB)
-          memory: 2G
+          # Production-like allocation for cognitive services
+          memory: 3G
         reservations:
-          memory: 1.5G
+          memory: 2G
     networks:
       - somabrain_net
     environment:
@@ -665,14 +665,14 @@ services:
   somabrain_minio:
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     restart: unless-stopped
+    hostname: minio
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 512M
         reservations:
-          memory: 128M
+          memory: 256M
     environment:
-      # Production-like MinIO configuration
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     volumes:
@@ -687,11 +687,14 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      - somabrain_net
+      somabrain_net:
+        aliases:
+          - minio
 
   # --- Milvus vector store for Oak option manager -----------------------------------
   somabrain_milvus:
     # Production-grade Milvus standalone for vector similarity search
+    # Milvus standalone requires minimum 4GB RAM for all internal components
     image: milvusdb/milvus:v2.3.3
     restart: unless-stopped
     depends_on:
@@ -702,19 +705,19 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          # Milvus standalone needs 4GB minimum for rootcoord, datacoord, querycoord, etc.
+          memory: 4G
         reservations:
-          memory: 1G
+          memory: 2G
     environment:
       # Production-like Milvus configuration
       ETCD_ENDPOINTS: "somabrain_etcd:2379"
-      MINIO_ADDRESS: "somabrain_minio:9000"
+      MINIO_ADDRESS: "minio:9000"
       MINIO_ACCESS_KEY: "minioadmin"
       MINIO_SECRET_KEY: "minioadmin"
       MINIO_USE_SSL: "false"
       MINIO_BUCKET_NAME: "milvus-bucket"
       TZ: UTC
-      # Logging
       COMMON_STORAGETYPE: "minio"
     volumes:
       - milvus_data:/var/lib/milvus
@@ -726,8 +729,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
       timeout: 20s
-      retries: 5
-      start_period: 120s
+      retries: 10
+      start_period: 180s
     networks:
       - somabrain_net
 
