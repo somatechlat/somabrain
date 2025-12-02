@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict
 
 
 from somabrain.cognitive.thread_model import CognitiveThread
 from somabrain.storage.db import Base
 from somabrain.oak import planner as oak_planner
-import pytest
 
 """
 Unit tests for the Cognitive Thread implementation.
@@ -45,9 +43,11 @@ def test_cognitive_thread_basic_operations() -> None:
 def test_planner_uses_thread_next_option(monkeypatch):
     """Ensure ``plan_for_tenant`` prefers a thread's next option."""
     assert PG_DSN, "TEST_PG_DSN or DATABASE_URL must be set for oak thread tests"
+
     # The planner uses get_session_factory; ensure it points at configured DSN.
     def factory():
         from somabrain.storage.db import get_session_factory
+
         return get_session_factory()
 
     session_factory = factory()
@@ -62,7 +62,9 @@ def test_planner_uses_thread_next_option(monkeypatch):
         session.add(thread)
         session.commit()
 
-    monkeypatch.setattr("somabrain.storage.db.get_session_factory", lambda *_, **__: session_factory)
+    monkeypatch.setattr(
+        "somabrain.storage.db.get_session_factory", lambda *_, **__: session_factory
+    )
 
     result = oak_planner.plan_for_tenant("tenant1")
     assert result == ["thread_opt"]

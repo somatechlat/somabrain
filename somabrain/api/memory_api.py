@@ -270,8 +270,6 @@ class MemoryRecallResponse(BaseModel):
     degraded: bool = False
 
 
-
-
 def _tiered_enabled() -> bool:
     # Centralized feature gating with legacy env compatibility handled in modes
     from somabrain.modes import feature_enabled

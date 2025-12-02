@@ -103,9 +103,7 @@ class AbstractMemoryBackend(abc.ABC):
         pool via asyncio.to_thread. Backends with a native async client
         should override this for better performance.
         """
-        return await asyncio.to_thread(
-            self.remember, coord_key, payload, request_id
-        )
+        return await asyncio.to_thread(self.remember, coord_key, payload, request_id)
 
     async def arecall(
         self,
@@ -121,6 +119,4 @@ class AbstractMemoryBackend(abc.ABC):
         pool via asyncio.to_thread. Backends with a native async client
         should override this for better performance.
         """
-        return await asyncio.to_thread(
-            self.recall, query, top_k, universe, request_id
-        )
+        return await asyncio.to_thread(self.recall, query, top_k, universe, request_id)

@@ -44,7 +44,7 @@ import time as _time
 from .config import Config
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
-from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH
+from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED
 from .mt_wm import MultiTenantWM
 from .reflect import top_keywords
 

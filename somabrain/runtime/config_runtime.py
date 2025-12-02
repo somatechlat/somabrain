@@ -10,10 +10,8 @@ from typing import Awaitable, Callable, List, Optional
 from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
 
-try:
-    # The cutover controller has been removed per VIBE hardening. No import needed.
-except Exception:  # pragma: no cover - optional
-    CutoverController = None  # type: ignore
+# Cutover controller removed per VIBE hardening.
+CutoverController = None  # type: ignore
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
     ParameterSupervisor,

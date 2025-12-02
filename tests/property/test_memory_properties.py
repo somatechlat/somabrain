@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import os
 import time
-from pathlib import Path
 from typing import Tuple
 
 import httpx
-import pytest
 from hypothesis import given, settings, strategies as st
 
 from somabrain.config import get_config
@@ -48,7 +46,9 @@ def test_memory_round_trip(key: str, payload: dict) -> None:
     client = MemoryClient(cfg)
 
     mem_url = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:9595")
-    assert _memory_service_available(mem_url), "Memory service must be reachable for round-trip test"
+    assert _memory_service_available(
+        mem_url
+    ), "Memory service must be reachable for round-trip test"
 
     # remember
     coord = client.remember(key, payload)

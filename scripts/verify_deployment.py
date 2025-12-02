@@ -174,9 +174,7 @@ def main() -> int:
         with Path(".env").open("a") as f:
             f.write(f"\nSOMABRAIN_JWT_PUBLIC_KEY_PATH={public_key_path}\n")
             f.write(f"SOMABRAIN_JWT_PRIVATE_KEY_PATH={private_key_path}\n")
-        print(
-            f"🔐 Generated real RSA key pair at {key_dir}/ and wrote paths to .env"
-        )
+        print(f"🔐 Generated real RSA key pair at {key_dir}/ and wrote paths to .env")
 
     # 4️⃣ Re‑instantiate Settings now that the environment is fully populated.
     fresh = _load_fresh_settings()

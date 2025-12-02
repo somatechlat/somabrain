@@ -13,7 +13,6 @@ VIBE CODING RULES:
 from __future__ import annotations
 
 import sys
-import time
 
 import numpy as np
 
@@ -118,7 +117,9 @@ def test_create_cleanup_index_factory() -> bool:
         if isinstance(index, MilvusAnnIndex):
             print("  ✓ Factory created MilvusAnnIndex")
         else:
-            print(f"  ✗ Factory created {type(index).__name__} instead of MilvusAnnIndex")
+            print(
+                f"  ✗ Factory created {type(index).__name__} instead of MilvusAnnIndex"
+            )
             return False
 
         return True
@@ -138,10 +139,14 @@ def test_settings_configuration() -> bool:
 
         print(f"  milvus_host: {settings.milvus_host}")
         print(f"  milvus_port: {settings.milvus_port}")
-        print(f"  tiered_memory_cleanup_backend: {settings.tiered_memory_cleanup_backend}")
+        print(
+            f"  tiered_memory_cleanup_backend: {settings.tiered_memory_cleanup_backend}"
+        )
 
         if settings.tiered_memory_cleanup_backend != "milvus":
-            print(f"  ✗ Expected cleanup backend 'milvus', got '{settings.tiered_memory_cleanup_backend}'")
+            print(
+                f"  ✗ Expected cleanup backend 'milvus', got '{settings.tiered_memory_cleanup_backend}'"
+            )
             return False
 
         print("  ✓ Settings configured correctly for Milvus")

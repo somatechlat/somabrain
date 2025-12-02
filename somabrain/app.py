@@ -65,6 +65,7 @@ from somabrain.basal_ganglia import BasalGangliaPolicy
 
 # Use the unified Settings instance for configuration.
 from common.config.settings import settings
+
 # ruff: noqa: E402  # Suppress import‑order warnings for imports that appear later in the file.
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
@@ -93,6 +94,7 @@ from somabrain.cognitive.thread_router import router as thread_router
 # Additional imports required for the application. These must appear before any
 # non‑import code (e.g., class definitions) to satisfy Ruff's E402 rule.
 # ---------------------------------------------------------------------------
+
 
 class SimpleOPAEngine:
     """Lightweight wrapper around the OPA HTTP endpoint.
@@ -169,6 +171,7 @@ from somabrain.prediction import (
     MahalanobisPredictor,
     SlowPredictor,
 )
+
 # Prefrontal cortex component removed per VIBE hardening requirements.
 from somabrain.quantum import HRRConfig, QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
@@ -2094,7 +2097,7 @@ amygdala = AmygdalaSalience(
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
 hippocampus = Hippocampus(ConsolidationConfig())
-    # Prefrontal instance creation removed; the system no longer uses this stub.
+# Prefrontal instance creation removed; the system no longer uses this stub.
 
 fnom_memory: Any = None  # type: ignore[assignment]
 fractal_memory: Any = None  # type: ignore[assignment]
@@ -2771,12 +2774,16 @@ async def health(request: Request) -> S.HealthResponse:
         with Session() as s:
             pending = (
                 s.query(OutboxEvent)
-                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
                 .count()
             )
             last = (
                 s.query(OutboxEvent)
-                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
                 .order_by(OutboxEvent.created_at.desc())
                 .first()
             )
@@ -4016,8 +4023,6 @@ async def health_oak(request: Request) -> Dict[str, Any]:
         "opa_ok": opa_ok,
         "opa_required": opa_required,
     }
-
-
 
 
 # Background task for health watchdog and circuit-breaker monitoring

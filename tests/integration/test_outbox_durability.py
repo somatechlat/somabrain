@@ -5,7 +5,6 @@ import time
 import os
 
 import httpx
-import pytest
 
 from somabrain.config import get_config
 from somabrain.memory_client import MemoryClient
@@ -31,8 +30,12 @@ def _memory_available() -> bool:
 
 
 def test_outbox_event_replays_when_memory_available() -> None:
-    assert MEM_TOKEN, "SOMABRAIN_MEMORY_HTTP_TOKEN must be set for outbox durability test"
-    assert _memory_available(), "Memory service must be reachable for outbox durability test"
+    assert (
+        MEM_TOKEN
+    ), "SOMABRAIN_MEMORY_HTTP_TOKEN must be set for outbox durability test"
+    assert (
+        _memory_available()
+    ), "Memory service must be reachable for outbox durability test"
 
     cfg = get_config()
     client = MemoryClient(cfg)

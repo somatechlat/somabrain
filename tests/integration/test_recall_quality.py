@@ -69,7 +69,9 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
 
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
-    r = client.post("/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k})
+    r = client.post(
+        "/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k}
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     results = body.get("results") or body.get("memory") or []
@@ -80,9 +82,18 @@ def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List
 def test_recall_quality_basic(http_client: httpx.Client) -> None:
     tenant = "workbench-quality"
     corpus = {
-        "alpha solar storage": {"query": "alpha solar storage", "relevant": {"alpha solar storage"}},
-        "beta wind turbine": {"query": "beta wind turbine", "relevant": {"beta wind turbine"}},
-        "gamma battery study": {"query": "gamma battery study", "relevant": {"gamma battery study"}},
+        "alpha solar storage": {
+            "query": "alpha solar storage",
+            "relevant": {"alpha solar storage"},
+        },
+        "beta wind turbine": {
+            "query": "beta wind turbine",
+            "relevant": {"beta wind turbine"},
+        },
+        "gamma battery study": {
+            "query": "gamma battery study",
+            "relevant": {"gamma battery study"},
+        },
     }
     # Ingest
     for text in corpus:
@@ -126,7 +137,9 @@ def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
 
 def test_recall_includes_degraded_flag(http_client: httpx.Client) -> None:
     tenant = "workbench-degraded"
-    r = http_client.post("/recall", headers={"X-Tenant-ID": tenant}, json={"query": "noop", "top_k": 1})
+    r = http_client.post(
+        "/recall", headers={"X-Tenant-ID": tenant}, json={"query": "noop", "top_k": 1}
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert "degraded" in body, "recall response missing degraded flag"

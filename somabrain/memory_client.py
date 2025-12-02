@@ -397,8 +397,13 @@ class MemoryClient:
                 try:
                     orig_url = client_kwargs.get("base_url", "")
                     from httpx import URL
+
                     parsed = URL(orig_url)
-                    fallback = f"http://localhost:{parsed.port}" if parsed.port else "http://localhost"
+                    fallback = (
+                        f"http://localhost:{parsed.port}"
+                        if parsed.port
+                        else "http://localhost"
+                    )
                 except Exception:
                     fallback = "http://localhost"
                 client_kwargs["base_url"] = fallback
@@ -603,16 +608,13 @@ class MemoryClient:
         if self._http is None:
             return False, None
 
-        success, _, data = self._http_post_with_retries_sync(
-            "/memories", body, headers
-        )
+        success, _, data = self._http_post_with_retries_sync("/memories", body, headers)
         if success:
             return True, data
         return False, data
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
-        """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``.
-        """
+        """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``."""
         if self._http_async is None:
             return False, None
 
@@ -641,7 +643,9 @@ class MemoryClient:
         all_success = True
         for idx, item in enumerate(items):
             item_headers = dict(headers)
-            item_headers["X-Request-ID"] = f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            item_headers["X-Request-ID"] = (
+                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            )
             success, data = self._store_http_sync(item, item_headers)
             results.append(data if success else None)
             if not success:
@@ -661,7 +665,9 @@ class MemoryClient:
         all_success = True
         for idx, item in enumerate(items):
             item_headers = dict(headers)
-            item_headers["X-Request-ID"] = f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            item_headers["X-Request-ID"] = (
+                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            )
             success, data = await self._store_http_async(item, item_headers)
             results.append(data if success else None)
             if not success:
@@ -1453,7 +1459,9 @@ class MemoryClient:
                 )
             except Exception as exc:
                 # Fail fast to avoid silent loss; caller can retry once backend is up.
-                raise RuntimeError("Memory service degraded and outbox enqueue failed") from exc
+                raise RuntimeError(
+                    "Memory service degraded and outbox enqueue failed"
+                ) from exc
 
             # Cache locally for immediate reads (non-durable convenience).
             self._working_cache[(tenant, coord_key)] = payload
@@ -2122,9 +2130,7 @@ class MemoryClient:
             "coord": coord_str,
             "payload": dict(enriched),
             "memory_type": str(
-                payload.get("memory_type")
-                or payload.get("type")
-                or "episodic"
+                payload.get("memory_type") or payload.get("type") or "episodic"
             ),
         }
 

@@ -7,13 +7,17 @@ from typing import List
 import numpy as np
 import pytest
 
+
 # Lazily import pymilvus with a marshmallow compatibility shim to avoid module-level skips.
 def _milvus_import():
     try:  # pragma: no cover - shim
         import marshmallow
+
         ver = marshmallow.__version__.split(".")
         marshmallow.__version_info__ = tuple(int(x) for x in ver)  # type: ignore[attr-defined]
-        marshmallow.__dict__["__version_info__"] = marshmallow.__version_info__  # ensure attr exists in __dict__
+        marshmallow.__dict__["__version_info__"] = (
+            marshmallow.__version_info__
+        )  # ensure attr exists in __dict__
     except Exception:
         pass
 
@@ -26,6 +30,7 @@ def _milvus_import():
             connections,
             utility,
         )
+
         return Collection, CollectionSchema, DataType, FieldSchema, connections, utility
     except Exception as exc:
         # Fallback attempt: patch minimal marshmallow shim and retry once
@@ -45,7 +50,15 @@ def _milvus_import():
                 connections,
                 utility,
             )
-            return Collection, CollectionSchema, DataType, FieldSchema, connections, utility
+
+            return (
+                Collection,
+                CollectionSchema,
+                DataType,
+                FieldSchema,
+                connections,
+                utility,
+            )
         except Exception:
             pytest.skip(f"pymilvus not available: {exc}", allow_module_level=True)
             raise
@@ -84,7 +97,11 @@ def _build_temp_collection(name: str, dim: int = 4) -> Collection:
     coll = Collection(name, schema)
     coll.create_index(
         field_name="vector",
-        index_params={"index_type": "IVF_FLAT", "metric_type": "COSINE", "params": {"nlist": 16}},
+        index_params={
+            "index_type": "IVF_FLAT",
+            "metric_type": "COSINE",
+            "params": {"nlist": 16},
+        },
     )
     coll.load()
     return coll

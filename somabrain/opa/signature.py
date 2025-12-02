@@ -54,7 +54,11 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     # checking here because the attribute is guaranteed by the ``cryptography``
     # library at runtime.
     # To avoid positional‑argument mismatches we cast the key to ``Any``.
-    from typing import Any, cast  # noqa: E402  (import after top‑level imports is acceptable here)
+    from typing import (
+        Any,
+        cast,
+    )  # noqa: E402  (import after top‑level imports is acceptable here)
+
     private_key_any = cast(Any, private_key)
     signature = private_key_any.sign(
         policy.encode("utf-8"),

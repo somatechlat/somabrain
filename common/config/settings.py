@@ -26,6 +26,7 @@ from typing import Optional, Any, Dict
 _CONFIG_YAML: Dict[str, Any] = {}
 try:
     import yaml
+
     _config_path = Path(__file__).parent.parent.parent / "config.yaml"
     if _config_path.exists():
         with open(_config_path, "r") as f:
@@ -37,6 +38,7 @@ except Exception:
 def _yaml_get(key: str, default: Any = None) -> Any:
     """Get a value from config.yaml with fallback to default."""
     return _CONFIG_YAML.get(key, default)
+
 
 BaseSettings: Any  # forward-declare for mypy
 try:
@@ -523,8 +525,6 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_TINY_EMBEDDER", False)
     )
 
-
-
     # Kafka aliases / topics (keep compatibility with legacy env names)
     kafka_bootstrap: str = Field(
         default_factory=lambda: _str_env("SOMA_KAFKA_BOOTSTRAP", "")
@@ -924,10 +924,14 @@ class Settings(BaseSettings):
     )
     # Graph reasoning parameters (from config.yaml defaults)
     graph_hops: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_GRAPH_HOPS", _yaml_get("graph_hops", 2))
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_GRAPH_HOPS", _yaml_get("graph_hops", 2)
+        )
     )
     graph_limit: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_GRAPH_LIMIT", _yaml_get("graph_limit", 20))
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_GRAPH_LIMIT", _yaml_get("graph_limit", 20)
+        )
     )
     use_hrr_first: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False)

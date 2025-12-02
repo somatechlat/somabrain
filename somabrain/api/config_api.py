@@ -7,16 +7,15 @@ tests without introducing external dependencies.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request
+from fastapi import APIRouter, Body, Query, Request
 from pydantic import BaseModel
 
 from somabrain.runtime.config_runtime import (
     ensure_config_dispatcher,
     get_config_service,
 )
-from somabrain.services.config_service import ConfigMergeError
 
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -52,6 +51,5 @@ async def patch_memory_config(
     namespace: str = Query(..., description="Namespace"),
     payload: Dict[str, Any] = Body(..., description="Partial config patch"),
 ):
-    actor = request.headers.get("X-Actor") or "api"
     # Cutover functionality has been removed per VIBE hardening.
     await ensure_config_dispatcher()

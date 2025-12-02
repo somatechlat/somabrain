@@ -8,8 +8,6 @@ but is now a **no‑op** so that Alembic can safely ignore it.
 
 from __future__ import annotations
 from typing import Sequence
-from alembic import op
-import sqlalchemy as sa
 
 # Use a unique, non‑conflicting revision identifier.
 revision: str = "deprecated_20231015"

@@ -274,13 +274,13 @@ class IntegratorLeaderElection:
             end
             """
 
-                result = self._redis_client.eval(  # type: ignore
-                    lua_script,
-                    1,
-                    lock_key,
-                    self._instance_id,
-                    str(config.lock_ttl_seconds * 1000),
-                )
+            result = self._redis_client.eval(  # type: ignore
+                lua_script,
+                1,
+                lock_key,
+                self._instance_id,
+                str(config.lock_ttl_seconds * 1000),
+            )
 
             success = bool(result)
 
@@ -329,7 +329,7 @@ class IntegratorLeaderElection:
         """Get current leader info for a tenant."""
         try:
             lock_key = self._get_lock_key(tenant)
-                lock_value = self._redis_client.get(lock_key)  # type: ignore
+            lock_value = self._redis_client.get(lock_key)  # type: ignore
 
             if lock_value:
                 leader_id = lock_value.decode("utf-8")

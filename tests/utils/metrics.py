@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable, Sequence, Set
+from typing import Sequence, Set
 
 
 def precision_at_k(relevant: Set[str], retrieved: Sequence[str], k: int) -> float:
@@ -25,7 +25,9 @@ def ndcg_at_k(relevance_scores: Sequence[int], k: int) -> float:
     if k <= 0:
         return 0.0
     k = min(k, len(relevance_scores))
-    dcg = sum((score / math.log2(idx + 2)) for idx, score in enumerate(relevance_scores[:k]))
+    dcg = sum(
+        (score / math.log2(idx + 2)) for idx, score in enumerate(relevance_scores[:k])
+    )
     ideal = sorted(relevance_scores, reverse=True)
     idcg = sum((score / math.log2(idx + 2)) for idx, score in enumerate(ideal[:k]))
     return dcg / idcg if idcg > 0 else 0.0

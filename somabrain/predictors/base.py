@@ -7,6 +7,7 @@ import numpy as np
 
 from somabrain.math.graph_heat import graph_heat_chebyshev, graph_heat_lanczos
 import json
+
 # Import the global Settings instance used throughout the project.
 # ``settings`` provides configuration such as ``heat_method``.
 from common.config.settings import settings  # noqa: E402

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import time
-import statistics
 
 import httpx
 import pytest
@@ -45,11 +44,21 @@ def test_latency_slo_basic() -> None:
 
     # Warm-up to avoid cold-start skew
     for i in range(3):
-        client.post("/remember", headers=headers, json={"payload": {"task": f"warm-{i}", "content": f"warm-{i}"}})
+        client.post(
+            "/remember",
+            headers=headers,
+            json={"payload": {"task": f"warm-{i}", "content": f"warm-{i}"}},
+        )
     time.sleep(0.3)
 
     for i in range(5):
-        payload = {"payload": {"task": f"slo-{i}", "content": f"slo-{i}", "memory_type": "episodic"}}
+        payload = {
+            "payload": {
+                "task": f"slo-{i}",
+                "content": f"slo-{i}",
+                "memory_type": "episodic",
+            }
+        }
         t0 = time.time()
         r = client.post("/remember", headers=headers, json=payload)
         assert r.status_code == 200, r.text
@@ -59,7 +68,9 @@ def test_latency_slo_basic() -> None:
 
     for i in range(5):
         t0 = time.time()
-        r = client.post("/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1})
+        r = client.post(
+            "/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1}
+        )
         assert r.status_code == 200, r.text
         recall_lat.append((time.time() - t0) * 1000)
 

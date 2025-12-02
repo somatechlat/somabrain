@@ -59,7 +59,8 @@ except Exception as e:  # pragma: no cover
 # ---------------------------------------------------------------------------
 # Type helpers for static analysis
 # ---------------------------------------------------------------------------
-from typing import Protocol, Any
+from typing import Protocol
+
 
 class _MetricProtocol(Protocol):
     """Minimal protocol representing a Prometheus metric used in the code.
@@ -78,11 +79,15 @@ class _MetricProtocol(Protocol):
 
     def observe(self, value: float) -> None: ...
 
+
 # Explicit return types for the factory helpers – they return objects that
 # conform to ``_MetricProtocol``. Using ``Any`` here would hide errors, so we
 # provide a concrete protocol.
 
-def _counter(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+
+def _counter(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     existing = _get_existing(name)
     if existing is not None:
         return existing
@@ -90,6 +95,7 @@ def _counter(name: str, documentation: str, *args: Any, **kwargs: Any) -> _Metri
     if "registry" not in kwargs:
         kwargs["registry"] = registry
     return _PromCounter(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+
 
 def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
     existing = _get_existing(name)
@@ -100,7 +106,10 @@ def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricP
         kwargs["registry"] = registry
     return _PromGauge(name, documentation, *args, **kwargs)  # type: ignore[return-value]
 
-def _histogram(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+
+def _histogram(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     existing = _get_existing(name)
     if existing is not None:
         return existing
@@ -109,7 +118,10 @@ def _histogram(name: str, documentation: str, *args: Any, **kwargs: Any) -> _Met
         kwargs["registry"] = registry
     return _PromHistogram(name, documentation, *args, **kwargs)  # type: ignore[return-value]
 
-def _summary(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+
+def _summary(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     existing = _get_existing(name)
     if existing is not None:
         return existing
