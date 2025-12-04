@@ -15,9 +15,9 @@ from typing import List, Tuple, Dict, Iterable
 import random
 
 try:
-    from somabrain import metrics  # type: ignore
+    from somabrain import metrics
 except Exception:  # pragma: no cover
-    metrics = None  # type: ignore
+    metrics = None
 
 
 # Metrics (lazy init on first update)

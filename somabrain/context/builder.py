@@ -383,7 +383,7 @@ class ContextBuilder:
         overrides: Dict[str, Dict] = {}
         if path and os.path.exists(path):
             try:
-                import yaml  # type: ignore
+                import yaml
 
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
@@ -510,4 +510,4 @@ class ContextBuilder:
 try:  # circular import guard
     from somabrain.runtime.working_memory import WorkingMemoryBuffer
 except Exception:  # pragma: no cover - runtime optional during static analysis
-    WorkingMemoryBuffer = None  # type: ignore
+    WorkingMemoryBuffer = None

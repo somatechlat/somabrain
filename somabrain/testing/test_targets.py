@@ -35,7 +35,7 @@ DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0"
 try:  # Optional dependency in some environments.
     import redis
 except Exception:  # pragma: no cover - redis not always installed.
-    redis = None  # type: ignore
+    redis = None
 
 
 @dataclass(frozen=True)

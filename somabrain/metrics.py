@@ -94,7 +94,7 @@ def _counter(
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
-    return _PromCounter(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+    return _PromCounter(name, documentation, *args, **kwargs)
 
 
 def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
@@ -104,7 +104,7 @@ def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricP
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
-    return _PromGauge(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+    return _PromGauge(name, documentation, *args, **kwargs)
 
 
 def _histogram(
@@ -116,7 +116,7 @@ def _histogram(
 
     if "registry" not in kwargs:
         kwargs["registry"] = registry
-    return _PromHistogram(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+    return _PromHistogram(name, documentation, *args, **kwargs)
 
 
 def _summary(
@@ -127,7 +127,7 @@ def _summary(
         return existing
     if "registry" not in kwargs:
         kwargs["registry"] = registry
-    return _PromSummary(name, documentation, *args, **kwargs)  # type: ignore[return-value]
+    return _PromSummary(name, documentation, *args, **kwargs)
 
 
 # Aliases used later (avoid interleaved imports)
@@ -293,6 +293,47 @@ OPTION_COUNT = get_gauge(
 OPA_DENY_TOTAL = get_counter(
     "somabrain_opa_deny_total",
     "Number of requests denied by OPA",
+)
+
+# ---------------------------------------------------------------------------
+# Milvus telemetry (VIBE task 19.4)
+# ---------------------------------------------------------------------------
+# p95 latency for Milvus search operations, labelled by tenant.
+MILVUS_SEARCH_LAT_P95 = get_gauge(
+    "somabrain_milvus_search_latency_p95_seconds",
+    "p95 search latency to Milvus",
+    ["tenant_id"],
+)
+
+# p95 latency for Milvus ingest (upsert) operations, labelled by tenant.
+MILVUS_INGEST_LAT_P95 = get_gauge(
+    "somabrain_milvus_ingest_latency_p95_seconds",
+    "p95 ingest latency to Milvus",
+    ["tenant_id"],
+)
+
+# Segment load metric for Milvus, representing current segment load per tenant.
+MILVUS_SEGMENT_LOAD = get_gauge(
+    "somabrain_milvus_segment_load",
+    "Current Milvus segment load",
+    ["tenant_id"],
+)
+
+# ---------------------------------------------------------------------------
+# Milvus ↔ PostgreSQL reconciliation metrics (VIBE task 19.5)
+# ---------------------------------------------------------------------------
+# Counter for missing vectors that were inserted into Milvus during reconciliation.
+MILVUS_RECONCILE_MISSING = get_counter(
+    "somabrain_milvus_reconcile_missing_total",
+    "Number of missing option vectors inserted into Milvus during reconciliation",
+    ["tenant_id"],
+)
+
+# Counter for orphan vectors that were removed from Milvus during reconciliation.
+MILVUS_RECONCILE_ORPHAN = get_counter(
+    "somabrain_milvus_reconcile_orphan_total",
+    "Number of orphan option vectors removed from Milvus during reconciliation",
+    ["tenant_id"],
 )
 
 # Learning loop metrics (tau/entropy/feedback)
@@ -1519,7 +1560,7 @@ async def metrics_endpoint() -> Any:
     """
     # import Response locally to avoid hard dependency at module import time
     try:
-        from fastapi import Response  # type: ignore
+        from fastapi import Response
     except Exception:  # pragma: no cover - optional runtime dependency
         # If FastAPI isn't present, return raw bytes from the shared registry
         try:

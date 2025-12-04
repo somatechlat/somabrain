@@ -33,8 +33,8 @@ from somabrain.memory_client import MemoryClient
 from somabrain.milvus_client import MilvusClient
 
 # Use the generic Avro schema loader and serde to encode events.
-from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-from libs.kafka_cog.serde import AvroSerde  # type: ignore
+from libs.kafka_cog.avro_schemas import load_schema
+from libs.kafka_cog.serde import AvroSerde
 import json
 import threading
 from typing import Tuple

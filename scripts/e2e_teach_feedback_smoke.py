@@ -19,17 +19,17 @@ import time
 from typing import Any, Dict, Optional
 
 try:
-    from kafka import KafkaProducer, KafkaConsumer  # type: ignore
+    from kafka import KafkaProducer, KafkaConsumer
 except Exception:
     print("kafka-python not installed", file=sys.stderr)
     sys.exit(2)
 
 try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    from libs.kafka_cog.avro_schemas import load_schema
+    from libs.kafka_cog.serde import AvroSerde
 except Exception:
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    load_schema = None
+    AvroSerde = None
 
 
 TEACH_TOPIC = "cog.teach.feedback"
@@ -45,7 +45,7 @@ def _avro_reward_serde() -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
-        return AvroSerde(load_schema("reward_event"))  # type: ignore[arg-type]
+        return AvroSerde(load_schema("reward_event"))
     except Exception:
         return None
 
@@ -55,7 +55,7 @@ def _decode_reward(value: bytes) -> Optional[Dict[str, Any]]:
     serde = _avro_reward_serde()
     if serde is not None:
         try:
-            out = serde.deserialize(value)  # type: ignore[arg-type]
+            out = serde.deserialize(value)
             if isinstance(out, dict):
                 return out
         except Exception:

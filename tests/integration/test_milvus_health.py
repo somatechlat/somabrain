@@ -14,7 +14,7 @@ def _milvus_import():
         import marshmallow
 
         ver = marshmallow.__version__.split(".")
-        marshmallow.__version_info__ = tuple(int(x) for x in ver)  # type: ignore[attr-defined]
+        marshmallow.__version_info__ = tuple(int(x) for x in ver)
         marshmallow.__dict__["__version_info__"] = (
             marshmallow.__version_info__
         )  # ensure attr exists in __dict__

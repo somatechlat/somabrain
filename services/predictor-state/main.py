@@ -9,16 +9,16 @@ import numpy as np
 
 from somabrain.common.events import build_next_event
 from somabrain.common.kafka import TOPICS, encode, make_producer
-from somabrain.observability.provider import get_tracer, init_tracing  # type: ignore
+from somabrain.observability.provider import get_tracer, init_tracing
 from somabrain.predictors.base import (
     build_predictor_from_env,
 )
 from somabrain.services.calibration_service import calibration_service
 
 try:
-    from somabrain import metrics as _metrics  # type: ignore
+    from somabrain import metrics as _metrics
 except Exception:  # pragma: no cover
-    _metrics = None  # type: ignore
+    _metrics = None
 
 TOPIC = TOPICS["state"]
 NEXT_TOPIC = TOPICS["next"]
@@ -56,19 +56,19 @@ def run_forever() -> None:  # pragma: no cover
     try:
         if settings.health_port:
             from fastapi import FastAPI
-            import uvicorn  # type: ignore
+            import uvicorn
 
             app = FastAPI(title="Predictor-State Health")
 
             @app.get("/healthz")
-            async def _hz():  # type: ignore
+            async def _hz():
                 return {"ok": True, "service": "predictor_state"}
 
             try:
-                from somabrain import metrics as _M  # type: ignore
+                from somabrain import metrics as _M
 
                 @app.get("/metrics")
-                async def _metrics_ep():  # type: ignore
+                async def _metrics_ep():
                     return await _M.metrics_endpoint()
 
             except Exception:
@@ -126,7 +126,7 @@ def run_forever() -> None:  # pragma: no cover
                 try:
                     from somabrain.calibration.calibration_metrics import (
                         calibration_tracker as _calib,
-                    )  # type: ignore
+                    )
 
                     scaler = _calib.temperature_scalers["state"][tenant]
                     if getattr(scaler, "is_fitted", False):

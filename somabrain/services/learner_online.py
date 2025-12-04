@@ -82,7 +82,7 @@ class LearnerService:
             self._settings, "topic_config_updates", "cog.config.updates"
         )
         try:
-            import confluent_kafka as ck  # type: ignore
+            import confluent_kafka as ck
         except Exception as exc:  # pragma: no cover
             raise RuntimeError(
                 "confluent_kafka is required for LearnerService.run(); install the dependency."
@@ -171,9 +171,9 @@ class LearnerService:
         try:
             gauge = self._g_next_regret
             if hasattr(gauge, "labels"):
-                gauge.labels(tenant_id=tenant).set(regret)  # type: ignore[attr-defined]
+                gauge.labels(tenant_id=tenant).set(regret)
             else:
-                gauge.set(regret)  # type: ignore[call-arg]
+                gauge.set(regret)
         except Exception:  # pragma: no cover – defensive logging
             LEARNER_EVENTS_FAILED.labels(tenant_id=tenant, phase="gauge").inc()
             raise

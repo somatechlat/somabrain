@@ -20,20 +20,20 @@ from somabrain.modes import feature_enabled
 from common.config.settings import settings
 
 # Strict: use confluent-kafka Consumer only
-from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from confluent_kafka import Consumer as CKConsumer
 from somabrain.common.infra import assert_ready
 
 try:  # Redis optional
-    import redis  # type: ignore
+    import redis
 except Exception:  # pragma: no cover
-    redis = None  # type: ignore
+    redis = None
 
 try:
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    from libs.kafka_cog.avro_schemas import load_schema
+    from libs.kafka_cog.serde import AvroSerde
 except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    load_schema = None
+    AvroSerde = None
 
 
 def _bootstrap() -> str:
@@ -59,7 +59,7 @@ def _serde() -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
-        return AvroSerde(load_schema("belief_update"))  # type: ignore[arg-type]
+        return AvroSerde(load_schema("belief_update"))
     except Exception:
         return None
 

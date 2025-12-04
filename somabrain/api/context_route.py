@@ -112,8 +112,8 @@ def feature_flags_endpoint() -> dict:
 
 # Store initialization is lazy to avoid import-time failures that would
 # prevent the router from registering (and thus 404 the entire /context API).
-_feedback_store = None  # type: ignore[assignment]
-_token_ledger = None  # type: ignore[assignment]
+_feedback_store = None
+_token_ledger = None
 
 
 def _get_feedback_store() -> FeedbackStore:
@@ -121,14 +121,14 @@ def _get_feedback_store() -> FeedbackStore:
     if _feedback_store is None:
         # Best-effort init; let endpoint-level try/except surface clear errors
         _feedback_store = FeedbackStore()
-    return _feedback_store  # type: ignore[return-value]
+    return _feedback_store
 
 
 def _get_token_ledger() -> TokenLedger:
     global _token_ledger
     if _token_ledger is None:
         _token_ledger = TokenLedger()
-    return _token_ledger  # type: ignore[return-value]
+    return _token_ledger
 
 
 # Global counter for feedback applications across requests
@@ -470,7 +470,7 @@ async def adaptation_state_endpoint(
     )
 
 
-class ResetAdaptationRequest(BaseModel):  # type: ignore[misc]
+class ResetAdaptationRequest(BaseModel):
     tenant_id: Optional[str] = None
     base_lr: Optional[float] = None
     reset_history: bool = True
@@ -504,7 +504,7 @@ async def adaptation_reset_endpoint(
     except Exception:
         # If settings cannot be imported, remain conservative and allow only when legacy auth is disabled
         try:
-            from somabrain.auth import _auth_disabled as _legacy_auth_disabled  # type: ignore
+            from somabrain.auth import _auth_disabled as _legacy_auth_disabled
 
             if not _legacy_auth_disabled():
                 raise HTTPException(

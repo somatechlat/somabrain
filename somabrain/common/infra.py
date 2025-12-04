@@ -14,7 +14,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 2.0) -> bool:
     if not bs:
         return False
     try:
-        from confluent_kafka import Consumer  # type: ignore
+        from confluent_kafka import Consumer
 
         c = Consumer(
             {
@@ -49,7 +49,7 @@ def check_redis(redis_url: Optional[str], timeout_s: float = 2.0) -> bool:
     if not url:
         return False
     try:
-        import redis  # type: ignore
+        import redis
 
         r = redis.from_url(url, socket_timeout=timeout_s)
         return bool(r.ping())
@@ -69,7 +69,7 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 2.0) -> bool:
     if not dsn:
         return False
     try:
-        import psycopg  # type: ignore
+        import psycopg
 
         conn = psycopg.connect(dsn, connect_timeout=max(1, int(timeout_s)))
         try:
@@ -98,7 +98,7 @@ def check_opa(opa_url: Optional[str], timeout_s: float = 2.0) -> bool:
         # Treat missing OPA as not configured rather than down
         return True
     try:
-        import requests  # type: ignore
+        import requests
 
         # Try a cheap GET on /health (if available), else root
         for path in ("/health", "/v1/policies"):

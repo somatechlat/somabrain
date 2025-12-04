@@ -9,7 +9,7 @@ import json
 import time
 import uuid
 
-from kafka import KafkaConsumer, KafkaProducer  # type: ignore
+from kafka import KafkaConsumer, KafkaProducer
 
 
 def main():

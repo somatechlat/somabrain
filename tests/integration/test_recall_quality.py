@@ -8,7 +8,7 @@ import httpx
 import pytest
 
 try:  # load .env for convenience
-    from dotenv import load_dotenv  # type: ignore
+    from dotenv import load_dotenv
 
     load_dotenv(dotenv_path=".env", override=False)
 except Exception:

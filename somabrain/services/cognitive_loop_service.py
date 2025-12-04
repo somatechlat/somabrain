@@ -17,7 +17,7 @@ _FF_COG_UPDATES = feature_enabled("integrator")
 _BU_PUBLISHER = None
 if _FF_COG_UPDATES:
     try:
-        from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+        from somabrain.cog.producer import BeliefUpdatePublisher
 
         _BU_PUBLISHER = BeliefUpdatePublisher()
         if not getattr(_BU_PUBLISHER, "enabled", False):

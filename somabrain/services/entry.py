@@ -121,7 +121,7 @@ def main() -> None:  # pragma: no cover
     # Handle SIGTERM/SIGINT gracefully by exiting the main loop
     stop = threading.Event()
 
-    def _sig_handler(signum, frame):  # type: ignore
+    def _sig_handler(signum, frame):
         print(f"orchestrator: received signal {signum}; shutting down...")
         stop.set()
 

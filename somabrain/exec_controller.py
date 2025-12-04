@@ -150,7 +150,7 @@ class ExecutiveController:
             arm = self.choose_arm(tenant)
             use_graph = bool(arm == 1)
             try:
-                from . import metrics as _mx  # type: ignore
+                from . import metrics as _mx
 
                 _mx.EXEC_BANDIT_ARM.labels(
                     arm=("explore" if use_graph else "baseline")

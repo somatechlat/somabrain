@@ -1280,7 +1280,7 @@ async def recall_memory(
 
     # Map candidates to MemoryRecallItems
     # Convert RetrievalResponse (pydantic) to dict for portability
-    ret_dict = ret_resp.dict() if hasattr(ret_resp, "dict") else ret_resp  # type: ignore
+    ret_dict = ret_resp.dict() if hasattr(ret_resp, "dict") else ret_resp
     cands = ret_dict.get("candidates") or []
     items = _map_retrieval_to_memory_items(cands)
 

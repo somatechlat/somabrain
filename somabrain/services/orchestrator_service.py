@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 
 # Strict mode: use confluent-kafka Consumer
-from confluent_kafka import Consumer as CKConsumer  # type: ignore
+from confluent_kafka import Consumer as CKConsumer
 from somabrain.modes import feature_enabled
 
 # Central configuration import per VIBE rules
@@ -37,14 +37,14 @@ from common.config.settings import settings
 
 # Optional Avro serde
 try:  # pragma: no cover
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    from libs.kafka_cog.avro_schemas import load_schema
+    from libs.kafka_cog.serde import AvroSerde
 except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    load_schema = None
+    AvroSerde = None
 
 # Outbox API (DB-backed) required
-from somabrain.db.outbox import enqueue_event  # type: ignore
+from somabrain.db.outbox import enqueue_event
 from somabrain.common.infra import assert_ready
 
 
@@ -79,7 +79,7 @@ def _parse_global_frame(
     try:
         data: Dict[str, Any]
         if serde is not None:
-            data = serde.deserialize(raw)  # type: ignore[arg-type]
+            data = serde.deserialize(raw)
         else:
             data = json.loads(raw.decode("utf-8"))
         ts = str(data.get("ts") or "")
@@ -110,7 +110,7 @@ def _parse_segment_boundary(
 ) -> Optional[Dict[str, Any]]:
     try:
         if serde is not None:
-            return serde.deserialize(raw)  # type: ignore[arg-type]
+            return serde.deserialize(raw)
         return json.loads(raw.decode("utf-8"))
     except Exception:
         return None
@@ -122,11 +122,11 @@ class OrchestratorService:
         self._serde_sb: Optional[AvroSerde] = None
         if load_schema is not None and AvroSerde is not None:
             try:
-                self._serde_gf = AvroSerde(load_schema("global_frame"))  # type: ignore[arg-type]
+                self._serde_gf = AvroSerde(load_schema("global_frame"))
             except Exception:
                 self._serde_gf = None
             try:
-                self._serde_sb = AvroSerde(load_schema("segment_boundary"))  # type: ignore[arg-type]
+                self._serde_sb = AvroSerde(load_schema("segment_boundary"))
             except Exception:
                 self._serde_sb = None
         self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
@@ -140,7 +140,7 @@ class OrchestratorService:
         self._ctx: Dict[str, GlobalFrameCtx] = {}
         # Optional health / metrics server
         try:
-            from common.config.settings import settings as _settings  # type: ignore
+            from common.config.settings import settings as _settings
 
             if _settings.health_port:
                 self._start_health_server()
@@ -153,7 +153,7 @@ class OrchestratorService:
             import threading
 
             class _Handler(BaseHTTPRequestHandler):
-                def do_GET(self):  # type: ignore[override]
+                def do_GET(self):
                     if self.path not in ("/health", "/healthz", "/ready"):
                         self.send_response(404)
                         self.end_headers()
@@ -167,7 +167,7 @@ class OrchestratorService:
                 def log_message(self, format, *args):  # noqa: N802
                     return
 
-            from common.config.settings import settings as _settings  # type: ignore
+            from common.config.settings import settings as _settings
 
             port = int(_settings.health_port)
             srv = HTTPServer(("", port), _Handler)

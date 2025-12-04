@@ -87,7 +87,7 @@ class CircuitBreaker:
         try:
             # Local import avoids circular dependencies with ``metrics`` which
             # itself imports many parts of the application.
-            from . import metrics  # type: ignore
+            from . import metrics
 
             gauge = getattr(metrics, "CIRCUIT_BREAKER_STATE", None)
             if gauge is not None and hasattr(gauge, "labels"):

@@ -10,7 +10,7 @@ try:
 
     # The Settings singleton is imported above; no need for a redundant alias.
 except Exception:  # pragma: no cover - optional dependency in lean environments
-    settings = None  # type: ignore
+    settings = None
 
 
 def _clean(value: Optional[str]) -> Optional[str]:

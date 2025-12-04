@@ -18,9 +18,9 @@ from somabrain.db.outbox import enqueue_event
 
 # Import FastAPI Request only if available to avoid hard dependency at import time
 try:
-    from fastapi import Request  # type: ignore
+    from fastapi import Request
 except Exception:  # pragma: no cover - optional runtime dependency
-    Request = Any  # type: ignore
+    Request = Any
 
 from common.config.settings import settings
 
@@ -64,7 +64,7 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
 
     # Optional: schema validation with no alternative path
     try:
-        import jsonschema  # type: ignore
+        import jsonschema
 
         sp = _schema_path()
         if sp is not None:
@@ -211,6 +211,6 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     except Exception:
         # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
         try:
-            return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}  # type: ignore[return-value]
+            return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}
         except Exception:
             return ev

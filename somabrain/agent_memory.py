@@ -35,7 +35,7 @@ def _to_unit(vec: Any) -> Any:
     tiny_floor = float(np.finfo(dtype).eps) * max(1.0, float(HRR_DIM))
     if n < tiny_floor:
         # Return zero vector of expected shape
-        return np.zeros((HRR_DIM,), dtype=HRR_DTYPE)  # type: ignore[return-value]
+        return np.zeros((HRR_DIM,), dtype=HRR_DTYPE)
     return (v / n).astype(HRR_DTYPE)
 
 
@@ -124,7 +124,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
     # complaint for now with a narrow ignore.
     vecs = np.stack(
         [_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0
-    )  # type: ignore[arg-type]
+    )
     w = weights / float(weights.sum())
     avg = (w[:, None] * vecs).sum(axis=0)
     avg = _to_unit(avg)

@@ -36,7 +36,7 @@ from common.config.settings import Settings, settings
 # Load environment variables from a .env file. ``python-dotenv`` is a required
 # development dependency for this script.  If it is missing the script will raise
 # an ImportError, which is intentional – we do not provide any fallback.
-from dotenv import load_dotenv  # type: ignore
+from dotenv import load_dotenv
 
 
 def _load_fresh_settings() -> Settings:

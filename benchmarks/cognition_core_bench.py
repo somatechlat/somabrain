@@ -303,7 +303,7 @@ def try_plots(
         cfg_dir.mkdir(parents=True, exist_ok=True)
         os.environ.setdefault("MPLCONFIGDIR", str(cfg_dir))
         os.environ.setdefault("XDG_CACHE_HOME", str(cfg_dir))
-        import matplotlib.pyplot as plt  # type: ignore
+        import matplotlib.pyplot as plt
 
         # Cosine vs k for three modes
         ks = sorted(

@@ -23,9 +23,9 @@ import urllib.request
 from typing import Optional
 
 try:
-    import requests  # type: ignore
+    import requests
 except Exception:  # pragma: no cover – ``requests`` may be unavailable in minimal envs.
-    requests = None  # type: ignore
+    requests = None
 
 
 def _http_get(url: str, timeout: float) -> Optional[int]:

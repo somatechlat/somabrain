@@ -10,7 +10,7 @@ _import_error: Exception | None = None
 try:  # pragma: no cover - optional dependency
     import etcd3
 except Exception as exc:  # pragma: no cover
-    etcd3 = None  # type: ignore
+    etcd3 = None
     _import_error = exc
 
 

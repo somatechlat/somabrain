@@ -12,7 +12,7 @@ def _bootstrap() -> str:
 
 def main() -> int:
     try:
-        from kafka import KafkaConsumer  # type: ignore
+        from kafka import KafkaConsumer
     except Exception as e:
         print(f"kafka-python not available: {e}")
         return 2

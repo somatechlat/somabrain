@@ -8,7 +8,7 @@ from somabrain import metrics as M
 from somabrain.constitution import ConstitutionEngine
 
 # Centralized settings for mode-aware behavior
-from common.config.settings import settings  # type: ignore
+from common.config.settings import settings
 
 
 def compute_utility(

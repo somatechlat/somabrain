@@ -82,7 +82,7 @@ def main() -> None:  # pragma: no cover – exercised via integration tests
     from common.config.settings import settings
 
     port = int(settings.feature_flags_port)
-    import uvicorn  # type: ignore
+    import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=port)
 

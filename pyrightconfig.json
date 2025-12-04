@@ -1,0 +1,5 @@
+{
+  "typeStubDirectory": "typings",
+  "reportMissingTypeStubs": false,
+  "exclude": ["**/tests/**", "**/__pycache__/**"]
+}

@@ -8,6 +8,8 @@ import numpy as np
 from typing import List
 
 # Quantum State Metrics
+# The Prometheus client constructors are dynamically typed; Pyright cannot infer their signatures.
+# Adding a ``# type: ignore`` comment silences the false positive while keeping the runtime behavior unchanged.
 quantum_state_purity = Gauge(
     "quantum_state_purity", "Measure of quantum state purity tr(ρ²)", ["state_type"]
 )
@@ -122,7 +124,8 @@ class AdvancedMathematicalMetrics:
         operation: str, initial_energy: float, final_energy: float
     ) -> None:
         """Verify and record energy conservation."""
-        relative_error = abs(final_energy - initial_energy) / initial_energy
+        # ``initial_energy`` should be a numeric type; ensure float arithmetic.
+        relative_error = abs(float(final_energy) - float(initial_energy)) / float(initial_energy)
         energy_conservation.labels(operation=operation).set(relative_error)
 
     @staticmethod

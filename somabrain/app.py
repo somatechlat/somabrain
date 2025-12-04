@@ -58,6 +58,9 @@ from somabrain.healthchecks import check_kafka, check_postgres
 from somabrain.services.memory_service import MemoryService as _MemSvc
 from config.feature_flags import FeatureFlags
 
+# Import the metrics module as `M` – required for both the Prometheus `/metrics`
+# endpoint and the JSON health‑metrics endpoint (`/health/metrics`).
+# The alias is used throughout the file, so keeping it short avoids line‑wraps.
 from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 from somabrain.auth import require_admin_auth, require_auth
@@ -113,7 +116,7 @@ class SimpleOPAEngine:
         Any exception (network error, timeout, etc.) is treated as unhealthy.
         """
         try:
-            import httpx  # type: ignore
+            import httpx
 
             async with httpx.AsyncClient(timeout=2.0) as client:
                 resp = await client.get(f"{self.base_url}/health")
@@ -183,7 +186,7 @@ from somabrain.salience import FDSalienceSketch
 try:  # Constitution engine is optional in minimal deployments.
     from somabrain.constitution import ConstitutionEngine
 except Exception:  # pragma: no cover - optional dependency
-    ConstitutionEngine = None  # type: ignore[assignment]
+    ConstitutionEngine = None
 
 # Shared configuration pulled from the platform service when available.
 
@@ -943,7 +946,7 @@ try:
             try:
                 from common.config.settings import settings as _shared
             except Exception:
-                _shared = None  # type: ignore
+                _shared = None
             mode = ""
             ext_req = False
             require_memory = True
@@ -1065,7 +1068,7 @@ if not _SUPERVISOR_URL:
 
 def _supervisor() -> ServerProxy:
     try:
-        return ServerProxy(_SUPERVISOR_URL, allow_none=True)  # type: ignore[arg-type]
+        return ServerProxy(_SUPERVISOR_URL, allow_none=True)
     except Exception as e:
         raise HTTPException(
             status_code=503, detail=f"supervisor client init failed: {e}"
@@ -1749,7 +1752,7 @@ except Exception as e:
 
 
 @app.exception_handler(RequestValidationError)
-async def _handle_validation_error(request: Request, exc: RequestValidationError):  # type: ignore[override]
+async def _handle_validation_error(request: Request, exc: RequestValidationError):
     """Surface validation errors with context for operators."""
     try:
         body = await request.body()
@@ -2029,7 +2032,7 @@ assert _spec and _spec.loader  # sanity check
 if _spec.name in sys.modules:
     _rt = sys.modules[_spec.name]
 else:
-    _rt = importlib.util.module_from_spec(_spec)  # type: ignore
+    _rt = importlib.util.module_from_spec(_spec)
     # Register the module in ``sys.modules`` so that the code inside ``runtime.py``
     # (which accesses ``sys.modules[__name__]``) can find its own entry.
     sys.modules[_spec.name] = _rt
@@ -2097,10 +2100,10 @@ amygdala = AmygdalaSalience(
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
 hippocampus = Hippocampus(ConsolidationConfig())
-# Prefrontal instance creation removed; the system no longer uses this stub.
+# Prefrontal instance creation removed; the system no longer uses this component.
 
-fnom_memory: Any = None  # type: ignore[assignment]
-fractal_memory: Any = None  # type: ignore[assignment]
+fnom_memory: Any = None
+fractal_memory: Any = None
 
 # Expose singletons for services that avoid importing this module directly
 # (imported earlier above; duplicate import removed to prevent circular import issues)
@@ -2289,7 +2292,7 @@ async def _start_memory_watchdog() -> None:
 
     try:
         task = asyncio.create_task(_watchdog_loop())
-        app.state._memory_watchdog = task  # type: ignore[attr-defined]
+        app.state._memory_watchdog = task
     except Exception:
         # best-effort; don't fail startup on watchdog init
         pass
@@ -2678,7 +2681,7 @@ async def health(request: Request) -> S.HealthResponse:
     try:
         edim = None
         if embedder is not None:
-            vec = embedder.embed("health_probe")  # type: ignore[attr-defined]
+            vec = embedder.embed("health_probe")
             if hasattr(vec, "shape"):
                 shape = getattr(vec, "shape")
                 edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
@@ -2944,7 +2947,7 @@ if not _MINIMAL_API:
         path: str, port: int, *, timeout: float = 1.5
     ) -> bool:
         try:
-            import httpx  # type: ignore
+            import httpx
 
             url = f"{_cog_http_base()}:{port}{path}"
             async with httpx.AsyncClient(timeout=timeout) as cli:
@@ -2989,7 +2992,7 @@ if not _MINIMAL_API:
     async def post_reward_proxy(frame_id: str, body: dict) -> dict:
         # Forward to reward_producer HTTP in somabrain_cog on port 8083
         try:
-            import httpx  # type: ignore
+            import httpx
 
             url = f"{_cog_http_base()}:8083/reward/{frame_id}"
             async with httpx.AsyncClient(timeout=2.0) as cli:
@@ -3418,7 +3421,7 @@ async def remember(body: dict, request: Request):
 
     # Validate and coerce the payload using the defined MemoryPayload model.
     try:
-        payload_obj: S.MemoryPayload = S.MemoryPayload(**payload_data)  # type: ignore[arg-type]
+        payload_obj: S.MemoryPayload = S.MemoryPayload(**payload_data)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
 
@@ -4022,6 +4025,47 @@ async def health_oak(request: Request) -> Dict[str, Any]:
         "milvus_ok": milvus_ok,
         "opa_ok": opa_ok,
         "opa_required": opa_required,
+    }
+
+
+# Health metrics endpoint – returns Milvus telemetry as JSON for VIBE compliance.
+# This endpoint aggregates the Prometheus gauge values for the current tenant
+# (identified via the request's authentication context) and presents them in a
+# simple JSON payload. The gauges are defined in ``somabrain.metrics`` and are
+# labelled by ``tenant_id``.
+@app.get("/health/metrics", response_model=Dict[str, Any])
+async def health_metrics(request: Request) -> Dict[str, Any]:
+    """Expose Milvus SLO telemetry in a JSON health payload.
+
+    Returns the p95 ingest/search latency gauges and the segment load gauge for
+    the tenant associated with the request.
+    """
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    tenant = ctx.tenant_id
+
+    # Helper to extract the gauge value for the given tenant label.
+    def _value_for_tenant(gauge) -> float | None:
+        """Retrieve the gauge value for the current tenant.
+
+        The Prometheus ``Gauge`` object provides a ``labels`` method that returns
+        a child metric instance for the supplied label values. That child has an
+        internal ``_value`` attribute representing the latest set value. If the
+        gauge has not been set for this tenant, ``_value`` may raise an
+        ``AttributeError``; we return ``None`` in that case.
+        """
+        try:
+            child = gauge.labels(tenant)
+            return getattr(child, "_value", None)
+        except Exception:
+            return None
+
+    return {
+        "tenant": tenant,
+        "milvus_search_latency_p95_seconds": _value_for_tenant(M.MILVUS_SEARCH_LAT_P95),
+        "milvus_ingest_latency_p95_seconds": _value_for_tenant(M.MILVUS_INGEST_LAT_P95),
+        "milvus_segment_load": _value_for_tenant(M.MILVUS_SEGMENT_LOAD),
     }
 
 

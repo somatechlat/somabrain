@@ -31,10 +31,10 @@ import numpy as np
 
 # Prefer the optional top-level arc_cache helper; if unavailable, caching is disabled
 try:  # pragma: no cover - trivial import guard
-    from arc_cache import arc_cache  # type: ignore
+    from arc_cache import arc_cache
 except Exception:  # pragma: no cover
 
-    def arc_cache(*args, **kwargs):  # type: ignore
+    def arc_cache(*args, **kwargs):
         def _decorator(fn):
             return fn
 
@@ -178,7 +178,7 @@ class _JLProjector:
         if self.k is None or self.k >= self.base_dim:
             return v
         self._ensure_P()
-        P = self._P  # type: ignore
+        P = self._P
         out = (v @ P).astype("float32")
         n = np.linalg.norm(out)
         if n > 0:
@@ -254,7 +254,7 @@ def make_embedder(cfg, quantum=None):
         )
     elif provider == "transformer":
         try:
-            from .providers.transformer_embed import TransformerEmbedder  # type: ignore
+            from .providers.transformer_embed import TransformerEmbedder
 
             t = TransformerEmbedder(model_name=getattr(cfg, "embed_model", None))
             base_dim = t.dim

@@ -24,7 +24,7 @@ if spec is None or spec.loader is None:  # pragma: no cover
     raise ImportError("Unable to load real PyJWT from site-packages")
 _mod = importlib.util.module_from_spec(spec)
 sys.modules["_pyjwt_real"] = _mod
-spec.loader.exec_module(_mod)  # type: ignore[assignment]
+spec.loader.exec_module(_mod)
 
 # Re-export everything from the real PyJWT
 globals().update(

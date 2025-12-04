@@ -17,9 +17,15 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import time
 from typing import List, Tuple
 
 from common.config.settings import settings
+from somabrain.metrics import (
+    MILVUS_INGEST_LAT_P95,
+    MILVUS_SEARCH_LAT_P95,
+    MILVUS_SEGMENT_LOAD,
+)
 
 # ``pymilvus`` is an optional heavy dependency. Import it lazily and provide
 # fall‑backs for the test environment where the library is not installed.
@@ -47,12 +53,12 @@ except Exception:  # pragma: no cover – exercised only when pymilvus missing
         def __init__(self, *_, **__):
             """Fallback collection - pymilvus not available."""
 
-    Collection = _FallbackCollection  # type: ignore[misc]
-    connections = type("_Conn", (), {"connect": staticmethod(lambda *_, **__: None)})()  # type: ignore[misc]
-    utility = type("_Util", (), {"has_collection": staticmethod(lambda *_: False)})()  # type: ignore[misc]
-    FieldSchema = object  # type: ignore[misc]
-    CollectionSchema = object  # type: ignore[misc]
-    DataType = type("_DT", (), {"VARCHAR": None, "FLOAT_VECTOR": None})  # type: ignore[misc]
+    Collection = _FallbackCollection
+    connections = type("_Conn", (), {"connect": staticmethod(lambda *_, **__: None)})()
+    utility = type("_Util", (), {"has_collection": staticmethod(lambda *_: False)})()
+    FieldSchema = object
+    CollectionSchema = object
+    DataType = type("_DT", (), {"VARCHAR": None, "FLOAT_VECTOR": None})
     MilvusException = Exception
 
 logger = logging.getLogger(__name__)
@@ -87,7 +93,7 @@ class MilvusClient:
 
     # Collection instance - set during __init__ when Milvus is available.
     # May be None if Milvus connection fails.
-    collection: "Collection" = None  # type: ignore
+    collection: "Collection" = None
 
     def __init__(self) -> None:
         # Resolve host/port from Settings; ``milvus_url`` is a convenience that
@@ -120,7 +126,7 @@ class MilvusClient:
                 "Milvus connection failed (%s); collection operations unavailable", exc
             )
             # Using None indicates Milvus is unavailable.
-            self.collection = None  # type: ignore[assignment]
+            self.collection = None
 
     # ---------------------------------------------------------------------
     # Private helpers
@@ -159,12 +165,76 @@ class MilvusClient:
         Milvus has no native UPSERT, but inserting a row with an existing primary
         key overwrites the previous entry (the SDK performs a replace under the
         hood).  The vector is derived deterministically from ``payload``.
+
+        This implementation now *mandates* a successful write to Milvus. If the
+        Milvus collection is unavailable the operation will be retried (with
+        exponential back‑off) a configurable number of times before raising an
+        exception.  Failures are recorded via a dedicated counter metric so that
+        operators can be alerted.
         """
-        vector = _vector_from_payload(payload, dim=self.dim)
-        entities = [[option_id], [tenant_id], [vector]]
-        self.collection.insert(entities)
-        self.collection.flush()
-        logger.debug("Upserted option %s for tenant %s", option_id, tenant_id)
+        if self.collection is None:
+            # Milvus client could not be initialised – treat as fatal.
+            raise RuntimeError("Milvus collection is unavailable – cannot upsert option")
+
+        # Configuration for retry behaviour – defaults are safe for production.
+        max_retries: int = getattr(settings, "milvus_upsert_retries", 3)
+        backoff_base: float = getattr(settings, "milvus_upsert_backoff_base", 0.5)
+
+        attempt = 0
+        while True:
+            attempt += 1
+            start = time.perf_counter()
+            try:
+                vector = _vector_from_payload(payload, dim=self.dim)
+                entities = [[option_id], [tenant_id], [vector]]
+                self.collection.insert(entities)
+                self.collection.flush()
+                elapsed = max(0.0, time.perf_counter() - start)
+                # Record ingestion latency (p95 gauge) per tenant.
+                MILVUS_INGEST_LAT_P95.labels(tenant_id=tenant_id).set(elapsed)
+                # Update segment load – use number of entities as a proxy.
+                try:
+                    count = getattr(self.collection, "num_entities", None)
+                    if count is not None:
+                        MILVUS_SEGMENT_LOAD.labels(tenant_id=tenant_id).set(int(count))
+                except Exception:
+                    pass
+                logger.debug(
+                    "Upserted option %s for tenant %s (latency=%.4fs, attempt=%d)",
+                    option_id,
+                    tenant_id,
+                    elapsed,
+                    attempt,
+                )
+                # Success – exit the retry loop.
+                return
+            except Exception as exc:
+                # Record a failure metric for visibility.
+                try:
+                    from somabrain.metrics import Counter as _Counter
+                    # Dynamic counter name to avoid polluting existing metric set.
+                    failure_counter_name = "somabrain_milvus_upsert_failure_total"
+                    failure_counter = _Counter(
+                        failure_counter_name,
+                        "Count of Milvus upsert failures",
+                        ["tenant_id"],
+                    )
+                    failure_counter.labels(tenant_id=tenant_id).inc()
+                except Exception:
+                    pass
+                logger.error(
+                    "Milvus upsert attempt %d failed for tenant %s, option %s: %s",
+                    attempt,
+                    tenant_id,
+                    option_id,
+                    exc,
+                )
+                if attempt >= max_retries:
+                    # Exhausted retries – propagate the error.
+                    raise
+                # Exponential back‑off before the next attempt.
+                sleep_time = backoff_base * (2 ** (attempt - 1))
+                time.sleep(sleep_time)
 
     def search_similar(
         self,
@@ -192,6 +262,7 @@ class MilvusClient:
             else getattr(settings, "OAK_SIMILARITY_THRESHOLD", 0.85)
         )
 
+        start = time.perf_counter()
         vector = _vector_from_payload(payload, dim=self.dim)
         search_params = {"metric_type": "HAMMING", "params": {"nprobe": 10}}
         results = self.collection.search(
@@ -207,6 +278,9 @@ class MilvusClient:
             sim = 1.0 / (1.0 + hit.distance)
             if sim >= similarity_threshold:
                 out.append((hit.entity.get("option_id"), sim))
+        # Record search latency metric.
+        elapsed = max(0.0, time.perf_counter() - start)
+        MILVUS_SEARCH_LAT_P95.labels(tenant_id=tenant_id).set(elapsed)
         return out
 
 

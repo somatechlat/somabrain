@@ -22,7 +22,7 @@ class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in
 try:
     from common.config.settings import settings as settings
 except Exception:  # pragma: no cover - optional dependency
-    settings = None  # type: ignore
+    settings = None
 
 from somabrain.infrastructure import get_redis_url
 
@@ -41,7 +41,7 @@ def _load_tenant_overrides() -> dict[str, dict]:
     # Attempt to load from YAML if available
     if path and os.path.exists(path):
         try:
-            import yaml  # type: ignore
+            import yaml
 
             with open(path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}

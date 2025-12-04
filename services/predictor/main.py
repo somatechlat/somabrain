@@ -30,23 +30,23 @@ from typing import Dict, Any, Tuple
 
 import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.observability.provider import init_tracing, get_tracer
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
 
 try:
-    from somabrain import metrics as _metrics  # type: ignore
+    from somabrain import metrics as _metrics
 except Exception:  # pragma: no cover
-    _metrics = None  # type: ignore
+    _metrics = None
 
 try:
-    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
+    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib
 except Exception:  # pragma: no cover
-    _calib = None  # type: ignore
+    _calib = None
 
 try:
-    from somabrain.predictors.base import build_predictor_from_env  # type: ignore
+    from somabrain.predictors.base import build_predictor_from_env
 except Exception as e:  # pragma: no cover
     raise RuntimeError(f"predictor.unified: predictor base unavailable: {e}")
 
@@ -101,19 +101,19 @@ def _maybe_health_server():  # pragma: no cover
     try:
         if settings.health_port:
             from fastapi import FastAPI
-            import uvicorn  # type: ignore
+            import uvicorn
 
             app = FastAPI(title="Predictor Unified Health")
 
             @app.get("/healthz")
-            async def _hz():  # type: ignore
+            async def _hz():
                 return {"ok": True, "service": "predictor_unified"}
 
             try:
-                from somabrain import metrics as _M  # type: ignore
+                from somabrain import metrics as _M
 
                 @app.get("/metrics")
-                async def _metrics_ep():  # type: ignore
+                async def _metrics_ep():
                     return await _M.metrics_endpoint()
 
             except Exception:
@@ -139,7 +139,7 @@ def _get_runtime():
     import fails, preventing silent fallback to default values.
     """
     try:
-        from somabrain import runtime_config as _rt  # type: ignore
+        from somabrain import runtime_config as _rt
 
         return _rt
     except Exception as exc:  # pragma: no cover
@@ -176,7 +176,7 @@ def run_forever() -> None:  # pragma: no cover
     tracer = get_tracer("somabrain.predictor.unified")
     _maybe_health_server()
     rt = _get_runtime()
-    from somabrain.modes import feature_enabled  # type: ignore
+    from somabrain.modes import feature_enabled
 
     # Deterministic test mode – seed all RNGs at startup if enabled.
     if getattr(settings, "TEST_MODE", False):

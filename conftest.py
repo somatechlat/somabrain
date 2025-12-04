@@ -2,7 +2,7 @@ from hypothesis import settings as _hypothesis_settings
 import os
 
 try:
-    from dotenv import load_dotenv  # type: ignore
+    from dotenv import load_dotenv
 
     load_dotenv(".env", override=False)
 except Exception:
@@ -20,7 +20,7 @@ os.environ.setdefault(
 os.environ.setdefault("DATABASE_URL", os.environ["TEST_PG_DSN"])
 os.environ.setdefault("SOMABRAIN_POSTGRES_DSN", os.environ["TEST_PG_DSN"])
 try:
-    from common.config.settings import settings as _settings  # type: ignore
+    from common.config.settings import settings as _settings
 
     _settings.postgres_dsn = os.environ["TEST_PG_DSN"]
     tok = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")

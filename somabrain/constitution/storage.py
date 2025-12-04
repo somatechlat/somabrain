@@ -28,9 +28,9 @@ from sqlalchemy.orm import Session
 from somabrain.storage import db as storage_db
 
 try:  # pragma: no cover - redis is optional during unit tests
-    import redis  # type: ignore
+    import redis
 except Exception:  # pragma: no cover
-    redis = None  # type: ignore[assignment]
+    redis = None
 
 LOGGER = logging.getLogger("somabrain.constitution.storage")
 
@@ -295,7 +295,7 @@ class ConstitutionStorage:
         engine = storage_db.get_engine(self._db_url)
         storage_db.Base.metadata.create_all(engine)
 
-    def _connect_redis(self):  # type: ignore[override]
+    def _connect_redis(self):
         if self._redis_client is not None:
             return self._redis_client
         if not self._redis_url or redis is None:

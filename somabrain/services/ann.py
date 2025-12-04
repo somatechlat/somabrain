@@ -87,7 +87,7 @@ class HNSWAnnIndex(CleanupIndex):
     def __init__(
         self, dim: int, *, m: int, ef_construction: int, ef_search: int
     ) -> None:
-        import hnswlib  # type: ignore
+        import hnswlib
 
         self._dim = int(dim)
         self._index = hnswlib.Index(space="cosine", dim=self._dim)

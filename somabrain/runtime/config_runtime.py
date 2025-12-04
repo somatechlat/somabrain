@@ -11,7 +11,7 @@ from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
 
 # Cutover controller removed per VIBE hardening.
-CutoverController = None  # type: ignore
+CutoverController = None
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
     ParameterSupervisor,

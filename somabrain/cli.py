@@ -59,7 +59,7 @@ def run_api() -> None:
         >>> # somabrain-api
     """
     try:
-        import uvicorn  # type: ignore
+        import uvicorn
     except Exception:
         print(
             "uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr

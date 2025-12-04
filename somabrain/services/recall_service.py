@@ -89,7 +89,7 @@ def recall_ltm(
         # hits may be RecallHit wrappers
         try:
             mem_payloads = [h.payload for h in hits]
-            mem_hits = hits  # type: ignore
+            mem_hits = hits
         except Exception:
             mem_payloads = []
         # If recall returned items but none lexically match the query, inject
@@ -217,8 +217,8 @@ def diversify_payloads(
                 if score > best_score:
                     best_score = score
                     best_i = i
-            selected.append(best_i)  # type: ignore
-            remaining.discard(best_i)  # type: ignore
+            selected.append(best_i)
+            remaining.discard(best_i)
         # reorder payloads: selected first, then the rest in original order
         ordered = [payloads[i] for i in selected] + [
             payloads[i] for i in range(len(payloads)) if i not in selected

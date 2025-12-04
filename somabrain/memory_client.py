@@ -288,7 +288,7 @@ class MemoryClient:
         return
 
     def _init_http(self) -> None:
-        import httpx  # type: ignore
+        import httpx
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
@@ -1497,7 +1497,7 @@ class MemoryClient:
             # quality_score
             if "quality_score" in payload:
                 try:
-                    qs = float(payload["quality_score"])  # type: ignore[arg-type]
+                    qs = float(payload["quality_score"])
                     if qs < 0:
                         qs = 0.0
                     if qs > 1:
@@ -1518,7 +1518,7 @@ class MemoryClient:
                     payload["domains"] = parts or []
                 elif isinstance(dval, (list, tuple)):
                     cleaned = []
-                    for x in dval:  # type: ignore[assignment]
+                    for x in dval:
                         if isinstance(x, str) and x.strip():
                             cleaned.append(x.strip().lower())
                     payload["domains"] = cleaned
@@ -2210,4 +2210,4 @@ class MemoryClient:
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.
 # Adding a Protocol-based alias for type checkers helps during the refactor.
-MemoryClientType: type = MemoryBackend  # type: ignore[misc]
+MemoryClientType: type = MemoryBackend

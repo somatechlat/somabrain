@@ -44,14 +44,14 @@ BaseSettings: Any  # forward-declare for mypy
 try:
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
-    import pydantic_settings as _ps  # type: ignore
+    import pydantic_settings as _ps
     from pydantic import Field
 
-    BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
+    BaseSettings = _ps.BaseSettings
 except Exception:  # pragma: no cover - alternative for older envs
     from pydantic import BaseSettings as _BS, Field
 
-    BaseSettings = _BS  # type: ignore[assignment]
+    BaseSettings = _BS
 
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}

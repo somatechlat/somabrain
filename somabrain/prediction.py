@@ -412,7 +412,7 @@ class LLMPredictor:
                 predicted_vec=expected_vec, actual_vec=actual_vec, error=base_err
             )
         try:
-            import httpx  # type: ignore
+            import httpx
 
             headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
             with httpx.Client(timeout=self.timeout_ms / 1000.0) as client:

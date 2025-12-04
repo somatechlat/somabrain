@@ -7,9 +7,9 @@ import time
 from typing import Any
 
 try:
-    import requests  # type: ignore
+    import requests
 except Exception:
-    import urllib.request as _rq  # type: ignore
+    import urllib.request as _rq
 
     class _Resp:
         def __init__(self, code: int, data: bytes) -> None:
@@ -25,12 +25,12 @@ except Exception:
             data=json.dumps(body).encode("utf-8"),
             headers={"Content-Type": "application/json"},
         )
-        with _rq.urlopen(req, timeout=10) as resp:  # type: ignore
+        with _rq.urlopen(req, timeout=10) as resp:
             return _Resp(getattr(resp, "status", 200), resp.read())
 
 else:
 
-    def _post(url: str, body: Any):  # type: ignore
+    def _post(url: str, body: Any):
         return requests.post(url, json=body, timeout=10)
 
 
@@ -41,7 +41,7 @@ def _bootstrap() -> str:
 
 def _consume_one(topic: str, timeout_s: float) -> bool:
     try:
-        from kafka import KafkaConsumer  # type: ignore
+        from kafka import KafkaConsumer
     except Exception:
         return False
     c = KafkaConsumer(

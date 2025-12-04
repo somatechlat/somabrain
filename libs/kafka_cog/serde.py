@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Dict
 from common.logging import logger
-from fastavro import parse_schema, schemaless_reader, schemaless_writer  # type: ignore
+from fastavro import parse_schema, schemaless_reader, schemaless_writer
 import io
 
 

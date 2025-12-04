@@ -22,7 +22,9 @@ quantum_role_orthogonality = Gauge(
 )
 
 # Density Matrix Metrics
-density_matrix_trace = Gauge("density_matrix_trace", "Verify |tr(ρ) - 1| < 1e-4")
+density_matrix_trace = Gauge(
+    "density_matrix_trace", "Verify |tr(ρ) - 1| < 1e-4"
+)
 
 density_matrix_min_eigenvalue = Gauge(
     "density_matrix_min_eigenvalue",

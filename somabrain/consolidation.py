@@ -145,7 +145,7 @@ def main():
 
     tenant = args.tenant
     cfg = copy.deepcopy(settings)
-    mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)  # type: ignore
+    mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)
     mtmem = MultiTenantMemory(cfg)
     if args.nrem:
         stats = run_nrem(

@@ -162,7 +162,7 @@ class IntegratorHub:
         hub_ref = self
 
         class _Handler(BaseHTTPRequestHandler):
-            def do_GET(self):  # type: ignore[override]
+            def do_GET(self):
                 if self.path not in ("/health", "/healthz", "/ready"):
                     self.send_response(404)
                     self.end_headers()
