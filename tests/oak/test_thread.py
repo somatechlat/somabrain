@@ -1,42 +1,37 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-
-from somabrain.cognitive.thread_model import CognitiveThread
+from somabrain.cognitive.thread_model import Base, CognitiveThread
 from somabrain.oak import planner as oak_planner
 
 """Unit tests for the Cognitive Thread implementation.
 
 The tests verify the SQLAlchemy model helpers and the integration point in
-``somabrain.oak.planner.plan_for_tenant``. They avoid requiring a real
-PostgreSQL instance by monkey-patching ``somabrain.storage.db.get_session_factory``
-to return a simple in-memory mock session that mimics the ``.get`` and ``.commit``
-behaviour used by the router and planner.
+``somabrain.oak.planner.plan_for_tenant``.
+They use an in-memory SQLite database as a real replacement for PostgreSQL.
 """
 
 
-class DummySession:
-    """Very small mock of a SQLAlchemy session."""
+@pytest.fixture
+def db_session(monkeypatch):
+    """Create an in-memory SQLite database and session for testing."""
+    # Use SQLite in-memory database as a real implementation replacement for Postgres
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-    def __init__(self) -> None:
-        self._store: Dict[str, CognitiveThread] = {}
+    # Patch the session factory used in planner
+    monkeypatch.setattr(
+        "somabrain.storage.db.get_session_factory",
+        lambda *a, **kw: lambda: session,
+    )
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return False
-
-    def get(self, model: Any, pk: str) -> CognitiveThread | None:  # noqa: D401
-        """Return the stored instance or ``None`` if missing."""
-        return self._store.get(pk)
-
-    def add(self, instance: CognitiveThread) -> None:
-        self._store[instance.tenant_id] = instance
-
-    def commit(self) -> None:
-        return None
+    yield session
+    session.close()
 
 
 def test_cognitive_thread_basic_operations() -> None:
@@ -60,22 +55,19 @@ def test_cognitive_thread_basic_operations() -> None:
     assert thread.cursor == 0
 
 
-def test_planner_uses_thread_next_option(monkeypatch):
+def test_planner_uses_thread_next_option(db_session):
     """Ensure ``plan_for_tenant`` prefers a thread's next option."""
-
-    dummy_session = DummySession()
+    # Create thread in the real (in-memory) DB
     thread = CognitiveThread(tenant_id="tenant1")
     thread.set_options(["thread_opt"])
-    dummy_session.add(thread)
-    assert dummy_session.get(CognitiveThread, "tenant1") is thread
+    db_session.add(thread)
+    db_session.commit()
 
-    def fake_factory(*_, **__):
-        return dummy_session
+    # Ensure it was saved
+    saved_thread = db_session.get(CognitiveThread, "tenant1")
+    assert saved_thread is not None
+    assert saved_thread.get_options() == ["thread_opt"]
 
-    monkeypatch.setattr(
-        "somabrain.storage.db.get_session_factory",
-        lambda *a, **kw: lambda: dummy_session,
-    )
-
+    # Run planner which should use the patched session factory
     result = oak_planner.plan_for_tenant("tenant1")
     assert result == ["thread_opt"]

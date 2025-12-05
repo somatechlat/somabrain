@@ -13,7 +13,6 @@ with an appropriate library transparently.
 """
 
 
-
 F = TypeVar("F", bound=Callable[..., Any])
 
 

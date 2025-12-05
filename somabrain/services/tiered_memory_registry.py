@@ -39,8 +39,7 @@ class TieredMemoryRegistry:
 
         This is used by the API layer after a successful external write so
         tests and debug endpoints can introspect what was sent without relying
-        on an external store. It does not mock or bypass the real memory
-        backend; it merely mirrors the payload.
+        on an external store. It mirrors the payload.
         """
         tenant = tenant or "default"
         slot = self._records.setdefault(tenant, {})

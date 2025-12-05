@@ -21,11 +21,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, List
+from typing import List
 
 from somabrain.config import Config
 from somabrain.memory_client import MemoryClient
-from somabrain.db import get_session_factory
+# Fix: Import get_session_factory from storage.db, not db
+from somabrain.storage.db import get_session_factory
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL
 
