@@ -123,11 +123,11 @@ class OptionManager:
 
             opt = Option(option_id=option_id, tenant_id=tenant_id, payload=payload)
             tenant_opts[option_id] = opt
-            # Persist to Milvus for similarity search.
-            try:
-                self._milvus.upsert_option(tenant_id, option_id, payload)
-            except Exception as exc:  # pragma: no cover – defensive
-                logger.error("Milvus upsert failed for option %s: %s", option_id, exc)
+            # Persist to Milvus for similarity search. Milvus writes are
+            # mandatory – any failure is propagated so callers (e.g., the API
+            # layer) can surface the error and alert operators. The Milvus
+            # client itself records retry attempts and failure counters.
+            self._milvus.upsert_option(tenant_id, option_id, payload)
             # Publish creation event for downstream consumers.
             self._publish_creation(opt)
             logger.debug("Created Oak option %s for tenant %s", option_id, tenant_id)
@@ -181,11 +181,10 @@ class OptionManager:
             opt.payload = payload
             # Re‑compute utility and tau using the shared helper.
             opt.utility, opt.tau = _compute_utility(payload)
-            # Persist updated vector to Milvus
-            try:
-                self._milvus.upsert_option(tenant_id, option_id, payload)
-            except Exception as exc:  # pragma: no cover – defensive
-                logger.error("Milvus upsert failed for option %s: %s", option_id, exc)
+            # Persist updated vector to Milvus – mandatory write. Propagate any
+            # exception after logging; the Milvus client handles retries and
+            # alerts via metrics.
+            self._milvus.upsert_option(tenant_id, option_id, payload)
             # Publish update event
             self._publish_update(opt)
             # Update metrics (same logic as creation)

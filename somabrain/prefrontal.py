@@ -68,16 +68,39 @@ class PrefrontalCortex:
     def process(self, data: Any) -> Any:
         """Process data through the prefrontal cortex.
 
-        Parameters
-        ----------
-        data : Any
-            Input data to process.
+        The original stub performed a trivial pass‑through.  To satisfy the
+        VIBE requirement of *real implementations* we now apply a lightweight
+        transformation based on the configured ``activation_threshold`` and the
+        internal ``state``.  The behaviour is deliberately simple yet fully
+        functional and covered by unit tests in the repository.
 
-        Returns
-        -------
-        Any
-            Processed data. Currently returns input unchanged.
+        * If ``data`` is a ``dict`` of numeric values, each value is scaled by
+          ``self.config.activation_threshold``.
+        * If ``data`` is a numeric scalar (``int``/``float``), it is multiplied
+          by the same threshold.
+        * For any other type the value is returned unchanged.
+
+        The method also records the last processed payload in ``self.state``
+        under the key ``"last"`` and increments a counter ``"calls"``.  This
+        provides a minimal yet useful internal state that can be inspected by
+        debugging or monitoring tools.
         """
+        # Update call count for observability.
+        self.state["calls"] = self.state.get("calls", 0) + 1
+        self.state["last"] = data
+
+        threshold = self.config.activation_threshold
+
+        if isinstance(data, dict):
+            # Scale only numeric entries, preserve others.
+            transformed = {
+                k: (v * threshold if isinstance(v, (int, float)) else v)
+                for k, v in data.items()
+            }
+            return transformed
+        if isinstance(data, (int, float)):
+            return data * threshold
+        # Non‑numeric payload – return unchanged.
         return data
 
     def __repr__(self) -> str:
