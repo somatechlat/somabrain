@@ -14,6 +14,7 @@ down_revision: str | None = "7f1a2b3c4d89"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+
 def upgrade() -> None:
     with op.batch_alter_table("outbox_events") as batch_op:
         batch_op.drop_constraint("outbox_events_dedupe_key_key", type_="unique")
@@ -25,6 +26,7 @@ def upgrade() -> None:
         "outbox_events",
         ["status", "tenant_id", "created_at"],
     )
+
 
 def downgrade() -> None:
     op.drop_index(

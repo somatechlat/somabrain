@@ -16,7 +16,6 @@ fast to enforce mandatory observability.
 """
 
 
-
 _initialized: bool = False
 
 

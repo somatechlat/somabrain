@@ -1,37 +1,40 @@
-"""Simplified Thalamus router stub used by :mod:`somabrain.app`.
+"""Thalamus: High-level router and input normalizer for the cognitive loop.
 
-The production implementation provides a full HTTP routing layer.  For the unit‑test
-suite we only need a lightweight object that can be instantiated and has a
-``register`` method.  This stub records registrations in ``self.routes`` so that
-imports succeed without side‑effects.  It consolidates the previous duplicated
-docstrings into a single, correct module docstring and places the ``__future__``
-import at the proper location.
+The Thalamus acts as a central switchboard, normalizing incoming stimuli (inputs)
+and routing them to the appropriate cognitive processors (cortex). In this
+minimal implementation, it simply registers route handlers.
 """
 
 from __future__ import annotations
-
-from typing import Any, Callable, List, Tuple
+from typing import Callable, Dict, List, Any
 
 
 class ThalamusRouter:
-    """Minimal router used by :mod:`somabrain.app` during tests.
-
-    It records registrations in ``self.routes`` so that the public API matches
-    the real router without performing any network operations.
-    """
+    """Central router for cognitive inputs."""
 
     def __init__(self) -> None:
-        # Store tuples of (path, handler) for potential inspection in tests.
-        self.routes: List[Tuple[str, Callable[..., Any]]] = []
+        self.routes: Dict[str, Callable[..., Any]] = {}
 
     def register(self, path: str, handler: Callable[..., Any]) -> None:
-        """Record a route registration.
+        """Register a handler for a specific stimulus path."""
+        self.routes[path] = handler
 
-        The real router would configure a FastAPI or Flask endpoint. Here we
-        simply store the tuple so that tests can import the class without side‑
-        effects.
-        """
-        self.routes.append((path, handler))
+    def dispatch(self, path: str, *args, **kwargs) -> Any:
+        """Dispatch a stimulus to the registered handler."""
+        if path in self.routes:
+            return self.routes[path](*args, **kwargs)
+        raise KeyError(f"No handler registered for path: {path}")
 
-    def __repr__(self) -> str:  # pragma: no cover
-        return f"<ThalamusRouter routes={len(self.routes)}>"
+    def normalize(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize input data."""
+        # Simple pass-through for now, real implementation would handle schema normalization
+        return input_data
+
+    def filter_input(self, data: Dict[str, Any], neuromod_state: Any) -> Dict[str, Any]:
+        """Filter input based on attention and neuromodulator state."""
+        # Simple pass-through for now
+        return data
+
+    def get_attention_level(self) -> float:
+        """Return current attention level."""
+        return 1.0

@@ -163,7 +163,6 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
     )
     # Additional infra configuration fields used throughout the codebase.
-    # These were previously accessed via direct ``settings.getenv`` calls.
     log_path: str = Field(
         default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
     )
@@ -390,18 +389,14 @@ class Settings(BaseSettings):
     )
 
     # Toggle whether provenance verification is required for write‑like
-    # endpoints (e.g. /remember, /act).  Defaults to ``False`` for backward
-    # compatibility; set to ``True`` in production to enforce strict checks.
+    # endpoints (e.g. /remember, /act).
     # The unified provenance flags are defined later in the file (environment
     # variable names ``REQUIRE_PROVENANCE`` and ``PROVENANCE_STRICT_DENY``).
-    # The older duplicated definitions are removed to avoid confusion.
 
     # Feature flags --------------------------------------------------------
-    # ``require_external_backends`` is the canonical flag that replaces the
-    # legacy ``force_full_stack``. It controls whether external services (Redis,
+    # ``require_external_backends`` controls whether external services (Redis,
     # Kafka, etc.) must be available. The default mirrors the historic behaviour
-    # of ``SOMABRAIN_FORCE_FULL_STACK`` (True) but can be overridden via the
-    # ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` environment variable.
+    # but can be overridden via the ``SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`` environment variable.
     require_external_backends: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS", True)
     )
@@ -410,7 +405,7 @@ class Settings(BaseSettings):
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
-    # Auth is always-on in strict mode; legacy auth toggle removed.
+    # Auth is always-on in strict mode.
     mode: str = Field(default=_str_env("SOMABRAIN_MODE", "full-local"))
     minimal_public_api: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_MINIMAL_PUBLIC_API", False)
@@ -430,7 +425,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _bool_env("SOMABRAIN_ALLOW_TINY_EMBEDDER", False)
     )
 
-    # Kafka aliases / topics (keep compatibility with legacy env names)
+    # Kafka aliases / topics
     kafka_bootstrap: str = Field(
         default_factory=lambda: _str_env("SOMA_KAFKA_BOOTSTRAP", "")
     )
@@ -489,7 +484,6 @@ class Settings(BaseSettings):
     # Base API URL (used throughout benchmarks, demos, scripts)
     api_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_API_URL", ""))
     # Base URL used for local development and fallback when no explicit URL is provided.
-    # Defaults to ``http://localhost:9696`` which matches historic hard‑coded values.
     default_base_url: str = Field(
         default_factory=lambda: _str_env(
             "SOMABRAIN_DEFAULT_BASE_URL", "http://localhost:9696"
@@ -504,12 +498,6 @@ class Settings(BaseSettings):
         default_factory=lambda: _str_env("OTEL_EXPORTER_OTLP_ENDPOINT", "")
     )
 
-    # Integrator and segmentation health endpoint defaults (internal services)
-    # Removed unused integrator_triplet_health_url per VIBE cleanup.
-    # Removed unused segmentation_health_url per VIBE cleanup.
-    # Base URL for the somabrain_cog service
-    # Removed unused somabrain_cog_base_url per VIBE cleanup.
-
     # -----------------------------------------------------------------
     # Provenance / audit control flags (used by ControlsMiddleware)
     # -----------------------------------------------------------------
@@ -522,9 +510,7 @@ class Settings(BaseSettings):
     )
 
     # Toggle to require provenance headers on write‑like requests (POST to
-    # ``/remember`` or ``/act``).  Historically this was ``require_provenance``
-    # in the settings model; we re‑introduce it with a safe default of ``False``
-    # so that the API remains functional without clients supplying the header.
+    # ``/remember`` or ``/act``).
     require_provenance: bool = Field(
         default_factory=lambda: _bool_env("REQUIRE_PROVENANCE", False)
     )
@@ -540,7 +526,7 @@ class Settings(BaseSettings):
     opa_timeout_seconds: float = Field(
         default_factory=lambda: _float_env("SOMA_OPA_TIMEOUT", 2.0)
     )
-    # OPA posture derived from mode; env flag removed. Use mode_opa_fail_closed.
+    # OPA posture derived from mode. Use mode_opa_fail_closed.
 
     # Memory client feature toggles ---------------------------------------------------
     memory_enable_weighting: bool = Field(
@@ -636,15 +622,9 @@ class Settings(BaseSettings):
     # ---------------------------------------------------------------------
     # Core model dimensions
     # ---------------------------------------------------------------------
-    # ``embed_dim`` is used throughout the codebase (e.g. in ``somabrain.app``)
-    # to size embedding vectors.  The original repository relied on an older
-    # settings implementation that provided this attribute implicitly.  Adding
-    # it here restores compatibility without altering runtime behaviour – the
-    # default of ``256`` matches the historic default used by the embedder.
     embed_dim: int = Field(default=256)
 
-    # Working memory configuration – defaults align with documentation and
-    # historic values used throughout the codebase.
+    # Working memory configuration
     wm_size: int = Field(default_factory=lambda: _int_env("SOMABRAIN_WM_SIZE", 64))
     wm_recency_time_scale: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_WM_RECENCY_TIME_SCALE", 1.0)
@@ -738,8 +718,7 @@ class Settings(BaseSettings):
     segment_health_port: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_SEGMENTATION_HEALTH_PORT", 9016)
     )
-    # Enable flag for segmentation health endpoint (legacy env var).
-    # Historically defaulted to "1" (enabled).  Stored as a bool.
+    # Enable flag for segmentation health endpoint (env var).
     segment_health_enable: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_SEGMENT_HEALTH_ENABLE", True)
     )
@@ -761,7 +740,7 @@ class Settings(BaseSettings):
     learning_tenants_file: Optional[str] = Field(
         default=_str_env("SOMABRAIN_LEARNING_TENANTS_FILE")
     )
-    # Alternate name used by some legacy code (same purpose).
+    # Alternate name used by some code (same purpose).
     learning_tenants_config: Optional[str] = Field(
         default=_str_env("LEARNING_TENANTS_CONFIG")
     )
@@ -1107,10 +1086,7 @@ class Settings(BaseSettings):
         default_factory=lambda: _int_env("SOMABRAIN_REM_BATCH_SIZE", 32)
     )
     # Recombination rate for REM consolidation – used by the REM algorithm to
-    # determine how many pairs of episodic memories to recombine.  Historically
-    # this was a hard‑coded constant (0.2) in several modules; exposing it as a
-    # configurable setting restores compatibility with the existing code that
-    # expects ``cfg.rem_recomb_rate``.
+    # determine how many pairs of episodic memories to recombine.
     rem_recomb_rate: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_REM_RECOMB_RATE", 0.2)
     )
@@ -1350,12 +1326,10 @@ class Settings(BaseSettings):
         default_factory=lambda: _str_env("SOMABRAIN_TOPIC_SEGMENTS", "cog.segments")
         or "cog.segments"
     )
-    # Deprecated alternative toggles removed: no local/durable alternatives allowed
 
     # --- Mode-derived views (read-only, not sourced from env) ---------------------
     # These computed properties provide a single source of truth for behavior
-    # by SOMABRAIN_MODE without mutating legacy flags. Existing code continues
-    # to read legacy auth settings/require_external_backends until migrated in Sprint 2.
+    # by SOMABRAIN_MODE.
 
     @property
     def mode_normalized(self) -> str:
@@ -1392,9 +1366,9 @@ class Settings(BaseSettings):
 
     @property
     def mode_require_external_backends(self) -> bool:
-        """Require real backends (no stubs) across all modes by policy.
+        """Require real backends across all modes by policy.
 
-        This mirrors the "no mocks" requirement and prevents silent alternatives.
+        This prevents silent alternatives and enforces production-grade backends.
         """
         try:
             from somabrain.mode import get_mode_config
@@ -1457,7 +1431,7 @@ class Settings(BaseSettings):
     def deprecation_notices(self) -> list[str]:
         """List of deprecation notices derived from env usage.
 
-        We do not mutate legacy flags here; we only surface guidance so logs
+        We do not mutate flags here; we only surface guidance so logs
         can point developers to SOMABRAIN_MODE as the source of truth.
         """
         notes: list[str] = []
@@ -1469,10 +1443,10 @@ class Settings(BaseSettings):
         except Exception:
             pass
         try:
-            legacy_auth_env = _str_env("SOMABRAIN_AUTH_LEGACY")
-            if legacy_auth_env is not None:
+            old_auth_env = _str_env("SOMABRAIN_AUTH_LEGACY")
+            if old_auth_env is not None:
                 notes.append(
-                    "Legacy auth environment variable is deprecated; auth is always required in strict mode."
+                    "Old auth environment variable is deprecated; auth is always required in strict mode."
                 )
         except Exception:
             pass
@@ -1504,15 +1478,13 @@ class Settings(BaseSettings):
     }
 
     # -----------------------------------------------------------------
-    # Helpers for legacy call sites
+    # Helpers for environment variable mapping
     # -----------------------------------------------------------------
     def _env_to_attr(self, name: str) -> str:
         """Best-effort mapping from env var name to Settings attribute.
 
         Strips common prefixes (SOMABRAIN_, SOMA_, OPA_) and lowercases /
-        converts to snake_case to align with field names. This keeps legacy
-        ``settings.getenv("SOMABRAIN_X")`` call sites functional while the code
-        base is migrated to direct attribute access.
+        converts to snake_case to align with field names.
         """
         key = name.lower()
         for prefix in ("somabrain_", "soma_", "opa_"):
@@ -1522,7 +1494,7 @@ class Settings(BaseSettings):
         key = key.replace("-", "_")
         return key
 
-    # Hard block legacy access: all call sites must be updated to use typed
+    # Hard block deprecated access: all call sites must be updated to use typed
     # Settings attributes. This will raise immediately wherever getenv is still
     # called.
     def getenv(
@@ -1536,8 +1508,3 @@ class Settings(BaseSettings):
 # Export a singleton – mirrors the historic pattern used throughout the
 # codebase (``settings = Settings()``).
 settings = Settings()
-
-# Legacy compatibility shim removed. Direct ``settings.getenv`` calls should now be
-# replaced with ``settings`` attributes throughout the codebase to ensure a single
-# source of truth. Until migration is complete, ``getenv`` maps env-style names to
-# Settings attributes to keep behaviour centralised.

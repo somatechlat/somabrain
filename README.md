@@ -97,9 +97,7 @@ Kubernetes defaults to ClusterIP internally. If you need host access without an 
 - API: 30200 → 9696
 - Integrator health: 30201 → 8091
 - Segmentation health: 30202 → 8092
-- Predictor-State health: 30203 → 8093
-- Predictor-Agent health: 30204 → 8094
-- Predictor-Action health: 30205 → 8095
+- Unified Predictor health: 30203 → 8093 (Consolidated service)
 - Reward Producer (optional): 30206 → 8083
 - Learner Online (optional): 30207 → 8084
 
@@ -140,7 +138,6 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 |----------|-------------|
 | `POST /plan/suggest` | Suggest a plan derived from the semantic graph around a task key.
 | `POST /act` | Execute an action/task and return step results with salience scoring.
-| `POST /graph/links` | Returns semantic graph edges from a starting key.
 | `POST /delete` | Delete a memory at the given coordinate.
 | `POST /recall/delete` | Delete a memory by coordinate via the recall API.
 
@@ -167,11 +164,6 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 | `GET /admin/features` | Get current feature flag status and overrides.
 | `POST /admin/features` | Update feature flag overrides (full-local mode only).
 | `POST /memory/admin/rebuild-ann` | Rebuild ANN indexes for tiered memory.
-| `POST /memory/cutover/open` | Open a cutover plan for namespace migration.
-| `POST /memory/cutover/approve` | Approve an open cutover plan.
-| `POST /memory/cutover/execute` | Execute an approved cutover plan.
-| `POST /memory/cutover/cancel` | Cancel an active cutover plan.
-| `GET /memory/cutover/status/{tenant}` | Get cutover plan status for a tenant.
 
 All endpoints require a Bearer token (auth may be disabled automatically in dev mode). Every call can be scoped with `X-Tenant-ID`.
 
@@ -200,19 +192,12 @@ Override via environment variables (no code changes required):
 
 **Working-memory tuning:** adjust microcircuit column sizing and vote noise via `SOMABRAIN_WM_PER_COL_MIN_CAPACITY`, `SOMABRAIN_WM_VOTE_SOFTMAX_FLOOR`, and `SOMABRAIN_WM_VOTE_ENTROPY_EPS` (see `common/config/settings.py` for defaults).
 
-### Tiered Memory & Cutover
+### Tiered Memory
 
-SomaBrain supports governed tiered memory with namespace-level cutover:
+SomaBrain supports governed tiered memory:
 
 - **TieredMemoryRegistry** (`somabrain/services/tiered_memory_registry.py`) maintains per-tenant/namespace superposed traces
-- **Cutover Controller** (`somabrain/services/cutover_controller.py`) orchestrates safe namespace migrations with shadow metrics
 - **Outbox Pattern** (`somabrain/db/outbox.py`) ensures transactional event publishing to Kafka
-
-Cutover workflow:
-1. `POST /memory/cutover/open` — create migration plan
-2. System collects shadow metrics (top1_accuracy, margin, latency_p95_ms)
-3. `POST /memory/cutover/approve` — approve when metrics meet thresholds
-4. `POST /memory/cutover/execute` — atomically switch namespace routing
 
 Tip: set `use_hrr=true` in config to enable HRR reranking when `rerank=auto`.
 
@@ -289,8 +274,6 @@ curl -fsS http://127.0.0.1:9696/metrics | head -n 20
 For common queries, see the PromQL cheat sheet at the top of the monitoring guide.
 
 Alertmanager playbooks and escalation examples: see `docs/monitoring/alertmanager-playbooks.md`.
-
----
 
 ## Cognitive Threads (Predictors, Integrator, Segmentation)
 

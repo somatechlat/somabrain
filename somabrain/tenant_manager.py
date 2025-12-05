@@ -15,7 +15,7 @@ from fastapi import Request, HTTPException
 
 from .tenant_registry import TenantRegistry, TenantMetadata, TenantTier, TenantStatus
 
-# Import get_config for legacy configuration access
+# Import get_config for configuration access
 from .config import get_config
 
 # Unified Settings instance (still used elsewhere)
@@ -334,10 +334,8 @@ class TenantManager:
 
         return quota_config
 
-    async def resolve_tenant_for_legacy_compatibility(
-        self, tenant_id: Optional[str] = None
-    ) -> str:
-        """Resolve tenant ID for legacy compatibility."""
+    async def resolve_tenant_alias(self, tenant_id: Optional[str] = None) -> str:
+        """Resolve tenant ID alias."""
         if not self._initialized:
             await self.initialize()
 
@@ -345,16 +343,16 @@ class TenantManager:
         if tenant_id and await self.registry.tenant_exists(tenant_id):
             return tenant_id
 
-        # Try to resolve legacy hardcoded names
-        legacy_mappings = {
+        # Try to resolve hardcoded names
+        alias_mappings = {
             "agent_zero": "agent_zero",
             "public": "public",
             "sandbox": "sandbox",
             "default": "public",
         }
 
-        for legacy_name, system_name in legacy_mappings.items():
-            if tenant_id == legacy_name:
+        for alias_name, system_name in alias_mappings.items():
+            if tenant_id == alias_name:
                 system_tenant_id = await self.get_system_tenant_id(system_name)
                 if system_tenant_id:
                     return system_tenant_id

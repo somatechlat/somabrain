@@ -215,21 +215,4 @@ class SegmentationService:
 
 
 class Segmenter(SegmentationService):
-    """Alias for backward compatibility – behaves exactly like ``SegmentationService``."""
-
-
-class CPDSegmenter(SegmentationService):
-    """Placeholder for the CPD‑specific segmenter.
-
-    The real implementation would apply change‑point detection; for the purposes
-    of the unit tests we only need the class to exist and inherit the base
-    functionality.
-    """
-
-
-class HazardSegmenter(SegmentationService):
-    """Placeholder hazard segmenter used in integration tests.
-
-    It currently does not add extra behaviour but provides a distinct type so
-    that ``isinstance`` checks succeed.
-    """
+    """Alias for ``SegmentationService``."""

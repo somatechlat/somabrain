@@ -22,11 +22,10 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
-import os
 import random
 import threading
 import time
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 
 import numpy as np
 
@@ -34,6 +33,7 @@ from somabrain.observability.provider import init_tracing, get_tracer  # type: i
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
+from common.config.settings import settings
 
 try:
     from somabrain import metrics as _metrics  # type: ignore
@@ -99,7 +99,8 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
 
 def _maybe_health_server():  # pragma: no cover
     try:
-        if os.getenv("HEALTH_PORT"):
+        health_port = getattr(settings, "HEALTH_PORT", None)
+        if health_port:
             from fastapi import FastAPI
             import uvicorn  # type: ignore
 
@@ -119,7 +120,7 @@ def _maybe_health_server():  # pragma: no cover
             except Exception:
                 pass
 
-            port = int(os.getenv("HEALTH_PORT"))
+            port = int(health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
@@ -140,6 +141,7 @@ def _get_runtime():
     """
     try:
         from somabrain import runtime_config as _rt  # type: ignore
+
         return _rt
     except Exception as exc:  # pragma: no cover
         # Propagate a meaningful error – the caller (run_forever) will abort.
@@ -188,7 +190,7 @@ def run_forever() -> None:  # pragma: no cover
     if prod is None:
         print("predictor-unified: Kafka not available; exiting.")
         return
-    tenant = os.getenv("SOMABRAIN_DEFAULT_TENANT", "public")
+    tenant = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public")
     soma_compat = rt.get_bool("soma_compat", False)
     belief_schema = "belief_update"
     soma_schema = "belief_update_soma"

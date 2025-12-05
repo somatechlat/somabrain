@@ -247,7 +247,7 @@ class MemoryClient:
         # Always operate as an HTTP-first Memory client. Local/redis modes
         # and in-process memory service imports are disabled by default to
         # avoid heavy top-level imports and environment coupling.
-        # Keep a _mode attribute for compatibility but it is informational only.
+        # Keep a _mode attribute for information.
         self._mode = "http"
         self._local = None
         # Annotate http clients to help static checkers; actual httpx types
@@ -458,7 +458,14 @@ class MemoryClient:
             graph = bool(data.get("graph_store", False))
             overall = kv and vec and graph
             result = dict(data)
-            result.update({"healthy": overall, "kv_store": kv, "vector_store": vec, "graph_store": graph})
+            result.update(
+                {
+                    "healthy": overall,
+                    "kv_store": kv,
+                    "vector_store": vec,
+                    "graph_store": graph,
+                }
+            )
             return result
         except Exception as exc:
             return {"healthy": False, "error": str(exc)}
@@ -1302,7 +1309,7 @@ class MemoryClient:
         except Exception:
             return
 
-    # --- HTTP compatibility helpers -------------------------------------------------
+    # --- HTTP helpers -------------------------------------------------
     def _compat_enrich_payload(
         self, payload: dict, coord_key: str
     ) -> tuple[dict, str, dict]:
@@ -1357,61 +1364,64 @@ class MemoryClient:
         return tenant, namespace
 
         def remember(
-                self, coord_key: str, payload: dict, request_id: str | None = None
+            self, coord_key: str, payload: dict, request_id: str | None = None
         ) -> Tuple[float, float, float]:
-                """Store a memory using a stable coordinate derived from ``coord_key``.
+            """Store a memory using a stable coordinate derived from ``coord_key``.
 
-                The method now supports **degradation mode**:
+            The method now supports **degradation mode**:
 
-                * If the external memory service is unhealthy (``self.is_degraded``), the
-                    payload is cached in‑process (``self._working_cache``) and enqueued to
-                    the durable outbox table via ``enqueue_event``.
-                * The call returns the computed coordinate immediately – no remote HTTP
-                    request is performed.
-                * When the service is healthy the original fast‑path behaviour is
-                    retained (including the optional ``fast_ack`` executor path).
+            * If the external memory service is unhealthy (``self.is_degraded``), the
+                payload is cached in‑process (``self._working_cache``) and enqueued to
+                the durable outbox table via ``enqueue_event``.
+            * The call returns the computed coordinate immediately – no remote HTTP
+                request is performed.
+            * When the service is healthy the original fast‑path behaviour is
+                retained (including the optional ``fast_ack`` executor path).
 
-                Normalisation of optional metadata (phase, quality_score, domains,
-                reasoning_chain) remains unchanged.
-                """
-                # -------------------------------------------------------------------
-                # Degradation fast‑path – avoid any HTTP calls when the service is down.
-                # -------------------------------------------------------------------
-                if self.is_degraded:
-                        # Resolve tenant for outbox scoping.
-                        tenant, _ = self._tenant_namespace()
-                        # Cache locally for immediate reads.
-                        self._working_cache[(tenant, coord_key)] = payload
-                        # Enqueue a durable outbox event for later sync.
-                        from somabrain.db.outbox import enqueue_event
+            Normalisation of optional metadata (phase, quality_score, domains,
+            reasoning_chain) remains unchanged.
+            """
+            # -------------------------------------------------------------------
+            # Degradation fast‑path – avoid any HTTP calls when the service is down.
+            # -------------------------------------------------------------------
+            if self.is_degraded:
+                # Resolve tenant for outbox scoping.
+                tenant, _ = self._tenant_namespace()
+                # Cache locally for immediate reads.
+                self._working_cache[(tenant, coord_key)] = payload
+                # Enqueue a durable outbox event for later sync.
+                from somabrain.db.outbox import enqueue_event
 
-                        # Use a deterministic dedupe_key if the payload does not provide one.
-                        dedupe = payload.get("dedupe_key")
-                        enqueue_event(
-                                topic="memory_write",
-                                payload=payload,
-                                dedupe_key=dedupe,
-                                tenant_id=tenant,
-                        )
-                        # Return the coordinate (computed later) – we mimic the normal return
-                        # shape by falling through to the enrichment logic below.
-                        # ----------------------------------------------------------------
-                        # Enrichment (universal part) – needed for the caller's expectations.
-                        # ----------------------------------------------------------------
-                        enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
-                        coord = _stable_coord(f"{universe}::{coord_key}")
-                        # Store the coordinate back into the cached payload for consistency.
-                        payload = dict(enriched)
-                        payload["coordinate"] = coord
-                        return coord
+                # Use a deterministic dedupe_key if the payload does not provide one.
+                dedupe = payload.get("dedupe_key")
+                enqueue_event(
+                    topic="memory_write",
+                    payload=payload,
+                    dedupe_key=dedupe,
+                    tenant_id=tenant,
+                )
+                # Return the coordinate (computed later) – we mimic the normal return
+                # shape by falling through to the enrichment logic below.
+                # ----------------------------------------------------------------
+                # Enrichment (universal part) – needed for the caller's expectations.
+                # ----------------------------------------------------------------
+                enriched, universe, _hdr = self._compat_enrich_payload(
+                    payload, coord_key
+                )
+                coord = _stable_coord(f"{universe}::{coord_key}")
+                # Store the coordinate back into the cached payload for consistency.
+                payload = dict(enriched)
+                payload["coordinate"] = coord
+                return coord
 
-                # -------------------------------------------------------------------
-                # Healthy path – original behaviour (including fast‑ack and async handling).
-                # -------------------------------------------------------------------
-                # Fail fast if the memory backend is not fully healthy.
-                self._require_healthy()
+            # -------------------------------------------------------------------
+            # Healthy path – original behaviour (including fast‑ack and async handling).
+            # -------------------------------------------------------------------
+            # Fail fast if the memory backend is not fully healthy.
+            self._require_healthy()
+
         # include universe in coordinate hashing to avoid collisions across branches
-        # and enrich payload for downstream compatibility
+        # and enrich payload
         enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
         coord = _stable_coord(f"{universe}::{coord_key}")
 
@@ -1484,7 +1494,7 @@ class MemoryClient:
         import uuid
 
         # Import uuid locally to avoid top‑level dependency.
-        import uuid
+
         rid = request_id or str(uuid.uuid4())
 
         # If we're in an async loop, schedule an async background persist (non-blocking)
@@ -1864,7 +1874,9 @@ class MemoryClient:
                 if isinstance(payload, dict):
                     for v in payload.values():
                         if isinstance(v, str) and lower_q in v.lower():
-                            hits.append(RecallHit(payload=payload, score=None, coordinate=None))
+                            hits.append(
+                                RecallHit(payload=payload, score=None, coordinate=None)
+                            )
                             break
                 if len(hits) >= top_k:
                     break
@@ -2273,13 +2285,13 @@ class MemoryClient:
         except Exception:
             return 0.0
 
-    # --- Compatibility helper methods expected by migration and other code ---
+    # --- Helper methods ---
     def coord_for_key(
         self, key: str, universe: str | None = None
     ) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*.
 
-        This is a lightweight compatibility shim used by migration scripts and
+        This is a lightweight helper used by migration scripts and
         higher-level services. It mirrors the stable hash used for remembered
         payloads.
         """
@@ -2405,7 +2417,7 @@ class MemoryClient:
         return out
 
     def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
-        """Compatibility helper: store a payload dict into the memory backend.
+        """Store a payload dict into the memory backend.
 
         Tests and migration scripts call this helper. If the payload contains a
         concrete ``coordinate`` value we send it directly to the memory service.

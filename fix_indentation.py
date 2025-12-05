@@ -3,8 +3,9 @@ import re
 
 #!/usr/bin/env python3
 
+
 def fix_file(path):
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         lines = f.readlines()
     changed = False
     i = 0
@@ -21,23 +22,27 @@ def fix_file(path):
             if j < len(lines):
                 next_line = lines[j]
                 next_stripped = next_line.lstrip()
-                if next_stripped.startswith("logger.exception") or next_stripped.startswith("raise"):
+                if next_stripped.startswith(
+                    "logger.exception"
+                ) or next_stripped.startswith("raise"):
                     desired_indent = base_indent + "    "
                     if not next_line.startswith(desired_indent):
                         lines[j] = desired_indent + next_stripped
                         changed = True
         i += 1
     if changed:
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.writelines(lines)
         print(f"Fixed {path}")
 
+
 def main():
-    root = os.path.abspath(os.path.join(os.path.dirname(__file__), ''))
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), ""))
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
-            if fn.endswith('.py'):
+            if fn.endswith(".py"):
                 fix_file(os.path.join(dirpath, fn))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

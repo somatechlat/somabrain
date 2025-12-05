@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from common.config.settings import settings
-from common.config.settings import settings
 from somabrain.memory_client import MemoryClient
 from somabrain.milvus_client import MilvusClient
 

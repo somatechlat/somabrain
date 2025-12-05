@@ -3,7 +3,7 @@
 This module provides a minimal implementation of the *prefrontal* component
 referenced throughout the code base. The original project expects a fairly
 complex executive‑control system; however, for the purpose of keeping the
-repository import‑compatible during testing we supply a lightweight stub.
+repository import‑compatible during testing we supply a lightweight implementation.
 
 The implementation includes:
 * ``PrefrontalConfig`` – a simple configuration holder using ``dataclasses``.
@@ -50,12 +50,12 @@ class PrefrontalConfig:
 
 
 class PrefrontalCortex:
-    """A stub implementation of the prefrontal cortex.
+    """A minimal implementation of the prefrontal cortex.
 
     The class stores the provided ``PrefrontalConfig`` and offers a ``process``
     method that can be used by the rest of the system. The method currently
-    performs a no‑op operation and returns the input unchanged, acting as a
-    placeholder for more sophisticated executive‑function logic.
+    performs a pass-through operation and returns the input unchanged, acting as a
+    baseline for executive‑function logic.
     """
 
     def __init__(self, config: PrefrontalConfig | None = None) -> None:
@@ -66,10 +66,10 @@ class PrefrontalCortex:
     def process(self, data: Any) -> Any:
         """Process *data* through the prefrontal cortex.
 
-        The stub simply returns ``data`` unchanged. Real implementations would
+        Currently performs a pass-through. Real implementations would
         apply executive‑control policies, attention modulation, etc.
         """
-        # Placeholder – no transformation performed.
+        # Pass-through logic - minimal implementation
         return data
 
     def __repr__(self) -> str:

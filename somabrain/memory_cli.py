@@ -69,12 +69,6 @@ def cmd_get(args):
     print(json.dumps(result, indent=2))
 
 
-def cmd_link(args):
-    payload = {"from_key": args.from_key, "to_key": args.to_key}
-    result = _post("/link", payload)
-    print(json.dumps(result, indent=2))
-
-
 # ----------------------------------------------------------------------
 # Argument parser
 # ----------------------------------------------------------------------
@@ -96,11 +90,6 @@ def build_parser() -> argparse.ArgumentParser:
     p_get = sub.add_parser("get", help="Fetch a memory by its key.")
     p_get.add_argument("key", help="Memory key (as returned by /remember).")
     p_get.set_defaults(func=cmd_get)
-
-    p_link = sub.add_parser("link", help="Create a link between two memories.")
-    p_link.add_argument("from_key", help="Source memory key.")
-    p_link.add_argument("to_key", help="Target memory key.")
-    p_link.set_defaults(func=cmd_link)
 
     return parser
 
