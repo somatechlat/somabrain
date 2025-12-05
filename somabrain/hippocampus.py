@@ -5,7 +5,7 @@ This module provides:
 - ``ConsolidationConfig``: tunable parameters for buffering and consolidation.
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the
-  existing consolidation routines (no stubs, no fallbacks).
+  existing consolidation routines without any fallback implementations.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class Hippocampus:
         # Lazy bind to runtime singletons if not provided
         if mt_memory is None or mt_wm is None:
             try:
-                from . import runtime as _rt  # type: ignore
+                from . import runtime as _rt
             except Exception:
                 from importlib import import_module
 
@@ -92,18 +92,18 @@ class Hippocampus:
         if self.cfg.enable_nrem:
             stats["nrem"] = consolidation.run_nrem(
                 tenant,
-                self._mt_memory.cfg,  # type: ignore[attr-defined]
+                self._mt_memory.cfg,
                 self._mt_wm,
-                self._mt_memory,  # type: ignore[arg-type]
+                self._mt_memory,
                 top_k=self.cfg.nrem_top_k,
                 max_summaries=self.cfg.max_summaries,
             )
         if self.cfg.enable_rem:
             stats["rem"] = consolidation.run_rem(
                 tenant,
-                self._mt_memory.cfg,  # type: ignore[attr-defined]
+                self._mt_memory.cfg,
                 self._mt_wm,
-                self._mt_memory,  # type: ignore[arg-type]
+                self._mt_memory,
                 recomb_rate=self.cfg.rem_recomb_rate,
                 max_summaries=self.cfg.max_summaries,
             )

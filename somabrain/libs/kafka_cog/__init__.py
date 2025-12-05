@@ -11,7 +11,7 @@ import sys as _sys
 
 try:
     _base = importlib.import_module("libs.kafka_cog")
-    for attr in getattr(_base, "__all__", []):  # type: ignore[arg-type]
+    for attr in getattr(_base, "__all__", []):
         try:
             globals()[attr] = getattr(_base, attr)
         except Exception:

@@ -22,6 +22,7 @@ Environment / runtime_config keys (mirroring legacy mains):
 
 from __future__ import annotations
 
+from common.config.settings import settings
 import random
 import threading
 import time
@@ -29,24 +30,24 @@ from typing import Dict, Any, Tuple
 
 import numpy as np
 
-from somabrain.observability.provider import init_tracing, get_tracer  # type: ignore
+from somabrain.observability.provider import init_tracing, get_tracer
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
 from common.config.settings import settings
 
 try:
-    from somabrain import metrics as _metrics  # type: ignore
+    from somabrain import metrics as _metrics
 except Exception:  # pragma: no cover
-    _metrics = None  # type: ignore
+    _metrics = None
 
 try:
-    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib  # type: ignore
+    from somabrain.calibration.calibration_metrics import calibration_tracker as _calib
 except Exception:  # pragma: no cover
-    _calib = None  # type: ignore
+    _calib = None
 
 try:
-    from somabrain.predictors.base import build_predictor_from_env  # type: ignore
+    from somabrain.predictors.base import build_predictor_from_env
 except Exception as e:  # pragma: no cover
     raise RuntimeError(f"predictor.unified: predictor base unavailable: {e}")
 
@@ -99,28 +100,27 @@ def _calibrated(domain: str, tenant: str, confidence: float) -> float:
 
 def _maybe_health_server():  # pragma: no cover
     try:
-        health_port = getattr(settings, "HEALTH_PORT", None)
-        if health_port:
+        if settings.health_port:
             from fastapi import FastAPI
-            import uvicorn  # type: ignore
+            import uvicorn
 
             app = FastAPI(title="Predictor Unified Health")
 
             @app.get("/healthz")
-            async def _hz():  # type: ignore
+            async def _hz():
                 return {"ok": True, "service": "predictor_unified"}
 
             try:
-                from somabrain import metrics as _M  # type: ignore
+                from somabrain import metrics as _M
 
                 @app.get("/metrics")
-                async def _metrics_ep():  # type: ignore
+                async def _metrics_ep():
                     return await _M.metrics_endpoint()
 
             except Exception:
                 pass
 
-            port = int(health_port)
+            port = int(settings.health_port)
             server = uvicorn.Server(
                 uvicorn.Config(app, host="0.0.0.0", port=port, log_level="warning")
             )
@@ -140,7 +140,7 @@ def _get_runtime():
     import fails, preventing silent fallback to default values.
     """
     try:
-        from somabrain import runtime_config as _rt  # type: ignore
+        from somabrain import runtime_config as _rt
 
         return _rt
     except Exception as exc:  # pragma: no cover
@@ -177,7 +177,12 @@ def run_forever() -> None:  # pragma: no cover
     tracer = get_tracer("somabrain.predictor.unified")
     _maybe_health_server()
     rt = _get_runtime()
-    from somabrain.modes import feature_enabled  # type: ignore
+    from somabrain.modes import feature_enabled
+
+    # Deterministic test mode – seed all RNGs at startup if enabled.
+    if getattr(settings, "TEST_MODE", False):
+        random.seed(0)
+        np.random.seed(0)
 
     try:
         composite = rt.get_bool("cog_composite", True)
@@ -190,7 +195,7 @@ def run_forever() -> None:  # pragma: no cover
     if prod is None:
         print("predictor-unified: Kafka not available; exiting.")
         return
-    tenant = getattr(settings, "SOMABRAIN_DEFAULT_TENANT", "public")
+    tenant = settings.default_tenant
     soma_compat = rt.get_bool("soma_compat", False)
     belief_schema = "belief_update"
     soma_schema = "belief_update_soma"
@@ -232,6 +237,10 @@ def run_forever() -> None:  # pragma: no cover
                     else:
                         next_state = DOMAIN_CONFIG[domain]["next_state_fn"](delta_error)
                     confidence = _calibrated(domain, tenant, float(confidence))
+                    # Use configurable latency jitter from settings.
+                    latency_min = getattr(settings, "PREDICTOR_LATENCY_MIN", 5)
+                    latency_max = getattr(settings, "PREDICTOR_LATENCY_MAX", 15)
+                    latency_ms = random.randint(latency_min, latency_max)
                     rec = {
                         "domain": domain,
                         "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -240,7 +249,7 @@ def run_forever() -> None:  # pragma: no cover
                         "evidence": {"tenant": tenant, "source": "predictor-unified"},
                         "posterior": posterior,
                         "model_ver": model_versions[domain],
-                        "latency_ms": int(5 + 10 * random.random()),
+                        "latency_ms": latency_ms,
                     }
                     prod.send(
                         DOMAIN_CONFIG[domain]["topic"], value=encode(rec, belief_schema)

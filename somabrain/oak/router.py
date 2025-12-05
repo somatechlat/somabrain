@@ -12,6 +12,8 @@ The VIBE guidelines are respected:
 """
 
 from fastapi import APIRouter, Request
+import base64
+import time
 from somabrain.schemas import OakOptionCreateRequest, OakPlanSuggestResponse
 from somabrain.auth import require_auth
 from somabrain.oak.option_manager import option_manager
@@ -30,19 +32,25 @@ _milvus = MilvusClient()
 async def oak_option_create(body: OakOptionCreateRequest, request: Request):
     """Create a new Oak option and store it in Milvus.
 
-    The function mirrors the previous Redis‑based implementation but now calls
-    ``MilvusClient.upsert_option``.  The endpoint is protected by the same JWT
-    guard used by the rest of the API.
+    The request payload is base64‑encoded. The endpoint resolves the tenant via
+    the async ``get_tenant`` helper, decodes the payload, generates an
+    ``option_id`` when omitted, and calls the synchronous ``OptionManager``.
     """
     require_auth(request, settings)
-    opt = await option_manager.create_option(body)
-    # Persist via Milvus – payload is the raw bytes stored in the option model.
+    from somabrain.tenant import get_tenant as get_tenant_async
+
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    tenant_id = tenant_ctx.tenant_id
+
+    payload_bytes = base64.b64decode(body.payload)
+    option_id = body.option_id or str(int(time.time() * 1000))
+
+    opt = option_manager.create_option(tenant_id, option_id, payload_bytes)
     _milvus.upsert_option(
         tenant_id=opt.tenant_id,
         option_id=opt.option_id,
         payload=opt.payload,
     )
-    # Increment per‑tenant option count gauge
     M.OPTION_COUNT.labels(opt.tenant_id).inc()
     return OakPlanSuggestResponse(plan=[opt.option_id])
 
@@ -53,11 +61,16 @@ async def oak_option_update(
 ):
     """Replace the payload of an existing Oak option.
 
-    The update is performed via ``MilvusClient.upsert_option`` which overwrites
-    the existing row because ``option_id`` is the primary key.
+    The request body is base64‑encoded. The endpoint resolves the tenant, decodes
+    the payload, and calls the synchronous ``OptionManager.update_option``.
     """
     require_auth(request, settings)
-    opt = await option_manager.update_option(option_id, body)
+    from somabrain.tenant import get_tenant as get_tenant_async
+
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    tenant_id = tenant_ctx.tenant_id
+    payload_bytes = base64.b64decode(body.payload)
+    opt = option_manager.update_option(tenant_id, option_id, payload_bytes)
     _milvus.upsert_option(
         tenant_id=opt.tenant_id,
         option_id=opt.option_id,
@@ -75,8 +88,8 @@ async def oak_plan(request: Request, max_options: int | None = None):
     the most similar existing options.
     """
     require_auth(request, settings)
-    tenant_ctx = await request.app.state.get_tenant_async(request, settings.namespace)  # type: ignore[attr-defined]
-    # Use the existing planner logic; it will internally call Milvus through the
-    # option manager when needed.
-    plan = await plan_for_tenant(tenant_ctx.tenant_id, max_options=max_options)
+    from somabrain.tenant import get_tenant as get_tenant_async
+
+    tenant_ctx = await get_tenant_async(request, settings.namespace)
+    plan = plan_for_tenant(tenant_ctx.tenant_id, max_options=max_options)
     return OakPlanSuggestResponse(plan=plan)

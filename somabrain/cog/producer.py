@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from somabrain.common.kafka import make_producer, encode
+from common.config.settings import settings
 
 
 def _bootstrap_from_env() -> Optional[str]:

@@ -78,9 +78,8 @@ def recall_ltm(
             )
             for _ in cand_coords:
                 M.SDR_CANDIDATES.labels(cohort=cohort).inc()
-            if cand_coords:
-                mem_payloads = mem_client.payloads_for_coords(cand_coords)
-                did_sdr = True
+            # SDR prefilter found candidates but payloads_for_coords is not available
+            did_sdr = False
         except Exception:
             did_sdr = False
     if not did_sdr:
@@ -88,7 +87,7 @@ def recall_ltm(
         # hits may be RecallHit wrappers
         try:
             mem_payloads = [h.payload for h in hits]
-            mem_hits = hits  # type: ignore
+            mem_hits = hits
         except Exception:
             mem_payloads = []
         # If recall returned items but none lexically match the query, inject
@@ -107,10 +106,8 @@ def recall_ltm(
                         return True
                 return False
 
-            if ql and (not any(_lex_match(p) for p in mem_payloads)):
-                coord = mem_client.coord_for_key(text, universe=universe)
-                # payload_for_coords is removed, just try to get it directly if possible via client
-                pass
+            # Direct coordinate lookup removed - payloads_for_coords not available
+            pass
         except Exception:
             pass
     # Lexical/token-aware boost: if the query looks like a short unique token or
@@ -153,14 +150,6 @@ def recall_ltm(
                 ]
     except Exception:
         pass
-    # Deterministic read-your-writes alternative:
-    # If no payloads were returned via SDR/recall, derive the coordinate
-    # from the query text (used as key on store) and fetch directly.
-    if not mem_payloads:
-        try:
-            pass
-        except Exception:
-            pass
     # Filter by universe if any
     if universe:
         mem_payloads = [
@@ -225,8 +214,8 @@ def diversify_payloads(
                 if score > best_score:
                     best_score = score
                     best_i = i
-            selected.append(best_i)  # type: ignore
-            remaining.discard(best_i)  # type: ignore
+            selected.append(best_i)
+            remaining.discard(best_i)
         # reorder payloads: selected first, then the rest in original order
         ordered = [payloads[i] for i in selected] + [
             payloads[i] for i in range(len(payloads)) if i not in selected

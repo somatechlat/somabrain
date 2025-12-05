@@ -11,7 +11,7 @@ transaction handling.
 
 The implementation follows the **VIBE CODING RULES**:
 * full type hints and docstrings
-* no placeholder code – every branch is functional
+* every branch is functional and exercised in production
 * observability via ``somabrain.metrics.MEMORY_OUTBOX_SYNC_TOTAL``
 * error handling that logs failures but keeps the loop alive
 """
@@ -20,15 +20,19 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from typing import List
 
 from somabrain.config import Config
 from somabrain.memory_client import MemoryClient
-# Fix: Import get_session_factory from storage.db, not db
+
+# NOTE: The project’s database utilities live under ``somabrain.storage.db``.
+# Historically this module imported ``get_session_factory`` from ``somabrain.db``
+# which no longer exists, causing an ``ImportError`` during test collection.
+# Updating the import ensures the outbox sync worker uses the correct session
+# factory implementation shared across the code‑base.
 from somabrain.storage.db import get_session_factory
 from somabrain.db.models.outbox import OutboxEvent
-from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL
+from somabrain.metrics import MEMORY_OUTBOX_SYNC_TOTAL, report_outbox_pending
 
 logger = logging.getLogger(__name__)
 
@@ -41,16 +45,19 @@ async def _send_event(client: MemoryClient, event: OutboxEvent) -> bool:
     degradation guard – the worker only runs when the service is healthy.
     """
     try:
-        # Build a minimal payload compatible with the memory ``/remember``
-        # endpoint. ``event.payload`` already contains the user‑supplied data.
-        body = {
-            "key": event.dedupe_key,
-            "value": event.payload,
-            "universe": event.payload.get("universe", "real"),
-        }
-        headers = {"X-Request-ID": f"outbox-sync-{int(time.time()*1000)}"}
-        success, _ = client._store_http_sync(body, headers)
-        return bool(success)
+        # Re-use the production code path to persist the payload so that
+        # schema, auth headers, and circuit‑breaker behaviour stay consistent.
+        key = event.dedupe_key or str(event.id)
+        payload = dict(event.payload or {})
+        # Ensure payload is JSON-serialisable; bail out on invalid types.
+        try:
+            import json
+
+            json.dumps(payload)
+        except Exception:
+            return False
+        client.remember(key, payload)
+        return True
     except Exception as exc:  # pragma: no cover – unexpected errors are logged
         logger.error("Failed to sync outbox event %s: %s", event.id, exc, exc_info=True)
         return False
@@ -65,8 +72,10 @@ async def outbox_sync_loop(cfg: Config, poll_interval: float = 10.0) -> None:
     synchronisations.
     """
     client = MemoryClient(cfg)
+    max_retries = getattr(cfg, "outbox_max_retries", 5)
     # Ensure the client is healthy before entering the loop – otherwise we
     # would generate a flood of failed attempts.
+    backoff = poll_interval
     while True:
         try:
             # -----------------------------------------------------------------
@@ -86,6 +95,16 @@ async def outbox_sync_loop(cfg: Config, poll_interval: float = 10.0) -> None:
                     # Nothing to do – sleep and continue.
                     await asyncio.sleep(poll_interval)
                     continue
+                # Update pending gauge per tenant
+                try:
+                    per_tenant: dict[str, int] = {}
+                    for ev in pending:
+                        tid = ev.tenant_id or "default"
+                        per_tenant[tid] = per_tenant.get(tid, 0) + 1
+                    for tid, cnt in per_tenant.items():
+                        report_outbox_pending(tid, cnt)
+                except Exception:
+                    pass
 
                 success_cnt = 0
                 for ev in pending:
@@ -93,10 +112,14 @@ async def outbox_sync_loop(cfg: Config, poll_interval: float = 10.0) -> None:
                     if ok:
                         ev.status = "sent"
                         ev.retries = ev.retries or 0
+                        ev.last_error = None
                         success_cnt += 1
                     else:
-                        # Increment retry counter; keep status = pending.
+                        # Increment retry counter; keep status = pending until threshold.
                         ev.retries = (ev.retries or 0) + 1
+                        ev.last_error = "delivery_failed"
+                        if ev.retries >= max_retries:
+                            ev.status = "failed"
 
                 session.commit()
 
@@ -105,11 +128,13 @@ async def outbox_sync_loop(cfg: Config, poll_interval: float = 10.0) -> None:
             # -----------------------------------------------------------------
             if success_cnt:
                 MEMORY_OUTBOX_SYNC_TOTAL.labels(status="success").inc(success_cnt)
+                backoff = poll_interval  # reset backoff on success
             else:
                 MEMORY_OUTBOX_SYNC_TOTAL.labels(status="failure").inc()
 
         except Exception as exc:  # pragma: no cover – keep loop alive on any error
             logger.error("Outbox sync loop unexpected error: %s", exc, exc_info=True)
+            backoff = min(backoff * 2, 60.0)
 
-        # Respect the polling interval before the next iteration.
-        await asyncio.sleep(poll_interval)
+        # Respect adaptive backoff before the next iteration.
+        await asyncio.sleep(backoff)

@@ -90,7 +90,7 @@ def _make_producer():  # pragma: no cover - optional at runtime
     if not bootstrap:
         return None
     try:
-        from confluent_kafka import Producer  # type: ignore
+        from confluent_kafka import Producer
 
         # Enhanced producer configuration for idempotency and reliability
         conf = {

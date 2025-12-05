@@ -10,7 +10,7 @@
 
 ## Core Themes
 
-- **Memory Operations** – `/remember`, `/remember/batch`, `/recall`, cleanup and quotas.
+- **Memory Operations** – `/remember`, `/recall`, cleanup and quotas.
 - **Context & Feedback** – Evaluate prompts, submit feedback, inspect adaptation state.
 - **Integration Patterns** – Required headers, error handling, and examples using curl/httpx.
 - **Tenant Isolation** – How namespaces, quotas, and metrics remain tenant-aware.

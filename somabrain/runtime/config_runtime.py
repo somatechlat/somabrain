@@ -10,10 +10,8 @@ from typing import Awaitable, Callable, List, Optional
 from common.config.settings import Settings as Config
 from somabrain.services.config_service import ConfigEvent, ConfigService
 
-try:
-    from somabrain.services.cutover_controller import CutoverController
-except Exception:  # pragma: no cover - optional
-    CutoverController = None  # type: ignore
+# Cutover controller removed per VIBE hardening.
+CutoverController = None
 from somabrain.services.parameter_supervisor import (
     MetricsSnapshot,
     ParameterSupervisor,
@@ -22,7 +20,7 @@ from somabrain.services.parameter_supervisor import (
 _logger = logging.getLogger(__name__)
 
 _config_service = ConfigService(lambda: Config())
-_cutover_controller = CutoverController(_config_service) if CutoverController else None
+# _cutover_controller is no longer used; placeholder removed.
 _event_queue = _config_service.subscribe()
 _listeners: List[Callable[[ConfigEvent], Optional[Awaitable[None]]]] = []
 _dispatcher_task: Optional[asyncio.Task[None]] = None
@@ -37,10 +35,9 @@ def get_config_service() -> ConfigService:
     return _config_service
 
 
-def get_cutover_controller() -> CutoverController:
-    if _cutover_controller is None:
-        raise RuntimeError("CutoverController unavailable")
-    return _cutover_controller
+# get_cutover_controller has been removed; any code attempting to use cutover
+# functionality should be eliminated. This placeholder function is no longer
+# provided to ensure no traces of cutover remain.
 
 
 def get_parameter_supervisor() -> ParameterSupervisor:
@@ -108,7 +105,6 @@ async def _run_supervisor() -> None:
 
 __all__ = [
     "get_config_service",
-    "get_cutover_controller",
     "register_config_listener",
     "ensure_config_dispatcher",
     "get_parameter_supervisor",

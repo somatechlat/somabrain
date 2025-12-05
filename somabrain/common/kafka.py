@@ -6,16 +6,16 @@ from functools import lru_cache
 from typing import Any, Dict, Optional
 
 try:  # Strict mode: use confluent-kafka only
-    from confluent_kafka import Producer as CKProducer  # type: ignore
+    from confluent_kafka import Producer as CKProducer
 except Exception as e:  # pragma: no cover
     raise RuntimeError(f"common.kafka: confluent-kafka required: {e}")
 
 try:  # Avro serde utilities (optional)
-    from libs.kafka_cog.avro_schemas import load_schema  # type: ignore
-    from libs.kafka_cog.serde import AvroSerde  # type: ignore
+    from libs.kafka_cog.avro_schemas import load_schema
+    from libs.kafka_cog.serde import AvroSerde
 except Exception:  # pragma: no cover
-    load_schema = None  # type: ignore
-    AvroSerde = None  # type: ignore
+    load_schema = None
+    AvroSerde = None
 
 
 def _bootstrap_url() -> str:
@@ -51,7 +51,6 @@ class _ProducerShim:
         # return an object with get(timeout) to mimic Future
         class _Fut:
             def get(self, timeout: float | int = 5):
-                self_inner = self
                 remaining = ck.flush(timeout)
                 if remaining != 0:
                     raise TimeoutError("produce not fully flushed")
@@ -82,7 +81,7 @@ def get_serde(schema_name: str) -> Optional[AvroSerde]:
     if load_schema is None or AvroSerde is None:
         return None
     try:
-        return AvroSerde(load_schema(schema_name))  # type: ignore[arg-type]
+        return AvroSerde(load_schema(schema_name))
     except Exception:  # pragma: no cover
         return None
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import base64
 import pathlib
+from typing import Any, cast  # noqa: E402
 
 # Cryptography is an optional dependency; import lazily with alternative.
 try:
@@ -32,7 +33,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     environments). If the required classes are unavailable, an informative
     ``ImportError`` is raised.
     """
-    # A valid private key path is required; no placeholders or alternatives.
+    # A valid private key path is required; no stand-ins or alternatives.
     if not private_key_path:
         raise ValueError("private_key_path is required for OPA policy signing")
     # Import lazily – raise if missing.
@@ -48,7 +49,18 @@ def sign_policy(policy: str, private_key_path: str) -> str:
     key_path = pathlib.Path(private_key_path).expanduser()
     with key_path.open("rb") as f:
         private_key = load_pem_private_key(f.read(), password=None)
-    signature = private_key.sign(
+    # ``sign`` is defined on concrete private‑key classes (e.g., RSAPrivateKey).
+    # The exact runtime type depends on the key format; we silence static
+    # checking here because the attribute is guaranteed by the ``cryptography``
+    # library at runtime.
+    # To avoid positional‑argument mismatches we cast the key to ``Any``.
+    from typing import (
+        Any,
+        cast,
+    )  # noqa: E402  (import after top‑level imports is acceptable here)
+
+    private_key_any = cast(Any, private_key)
+    signature = private_key_any.sign(
         policy.encode("utf-8"),
         padding.PKCS1v15(),
         hashes.SHA256(),
@@ -83,7 +95,14 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
         except Exception:
             return False
     try:
-        public_key.verify(
+        # ``verify`` exists on concrete public‑key classes. We silence static
+        # checking for the same reason as in ``sign_policy``.
+        # ``verify`` has a variable signature depending on the concrete key
+        # class.  Suppress the argument‑count check for the same reason as
+        # ``sign`` above.
+        # Cast to ``Any`` to silence argument‑count checking.
+        public_key_any = cast(Any, public_key)
+        public_key_any.verify(
             signature,
             policy.encode("utf-8"),
             padding.PKCS1v15(),

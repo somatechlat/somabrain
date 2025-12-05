@@ -32,7 +32,7 @@
 
 **Workflow**
 
-1. Ingest knowledge base articles via `/remember/batch`.
+1. Ingest knowledge base articles via repeated `/remember` calls (one payload per request).
 2. For each user question, call `/context/evaluate` to obtain:
    - `prompt` – ready-to-send context string.
    - `memories` – structured metadata you can use for citations.

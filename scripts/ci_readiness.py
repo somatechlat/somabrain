@@ -31,9 +31,9 @@ from pathlib import Path
 import subprocess
 
 # External deps (all required in project dependencies)
-import requests  # type: ignore
-import redis  # type: ignore
-import psycopg  # type: ignore
+import requests
+import redis
+import psycopg
 
 REQUIRED_TOPIC_ENV_VARS = [
     "SOMABRAIN_TOPIC_REWARD_EVENTS",
@@ -76,7 +76,7 @@ def check_postgres() -> CheckResult:
     if not dsn:
         return CheckResult("postgres", False, "SOMABRAIN_POSTGRES_DSN not set")
     try:
-        with psycopg.connect(dsn, connect_timeout=3) as conn:  # type: ignore[attr-defined]
+        with psycopg.connect(dsn, connect_timeout=3) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1")
                 cur.fetchone()
@@ -129,7 +129,7 @@ def check_kafka() -> List[CheckResult]:
 
     # Try confluent_kafka for metadata if available; otherwise rely on socket connect + topic env presence.
     try:
-        from confluent_kafka import AdminClient  # type: ignore
+        from confluent_kafka import AdminClient
 
         admin = AdminClient({"bootstrap.servers": bootstrap})
         md = admin.list_topics(timeout=5)

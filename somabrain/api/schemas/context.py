@@ -7,27 +7,27 @@ from typing import Dict, List, Optional
 try:
     from pydantic import BaseModel, Field
 except Exception:  # pragma: no cover
-    BaseModel = object  # type: ignore
+    BaseModel = object
 
-    def Field(*a, **k):  # type: ignore
+    def Field(*a, **k):
         return None
 
 
-class EvaluateRequest(BaseModel):  # type: ignore[misc]
+class EvaluateRequest(BaseModel):
     session_id: str
     query: str
     top_k: int = Field(default=5, ge=1, le=50)
     tenant_id: Optional[str] = None
 
 
-class MemoryItem(BaseModel):  # type: ignore[misc]
+class MemoryItem(BaseModel):
     id: str
     score: float
     metadata: Dict
     embedding: Optional[List[float]] = None
 
 
-class EvaluateResponse(BaseModel):  # type: ignore[misc]
+class EvaluateResponse(BaseModel):
     query: str
     prompt: str
     tenant_id: str
@@ -38,7 +38,7 @@ class EvaluateResponse(BaseModel):  # type: ignore[misc]
     constitution_checksum: Optional[str] = None
 
 
-class FeedbackRequest(BaseModel):  # type: ignore[misc]
+class FeedbackRequest(BaseModel):
     session_id: str
     query: str
     prompt: str
@@ -49,25 +49,25 @@ class FeedbackRequest(BaseModel):  # type: ignore[misc]
     tenant_id: Optional[str] = None
 
 
-class FeedbackResponse(BaseModel):  # type: ignore[misc]
+class FeedbackResponse(BaseModel):
     accepted: bool
     adaptation_applied: bool
 
 
-class RetrievalWeightsState(BaseModel):  # type: ignore[misc]
+class RetrievalWeightsState(BaseModel):
     alpha: float
     beta: float
     gamma: float
     tau: float
 
 
-class UtilityWeightsState(BaseModel):  # type: ignore[misc]
+class UtilityWeightsState(BaseModel):
     lambda_: float
     mu: float
     nu: float
 
 
-class AdaptationGainsState(BaseModel):  # type: ignore[misc]
+class AdaptationGainsState(BaseModel):
     alpha: float
     gamma: float
     lambda_: float
@@ -75,7 +75,7 @@ class AdaptationGainsState(BaseModel):  # type: ignore[misc]
     nu: float
 
 
-class AdaptationConstraintsState(BaseModel):  # type: ignore[misc]
+class AdaptationConstraintsState(BaseModel):
     alpha_min: float
     alpha_max: float
     gamma_min: float
@@ -88,7 +88,7 @@ class AdaptationConstraintsState(BaseModel):  # type: ignore[misc]
     nu_max: float
 
 
-class AdaptationStateResponse(BaseModel):  # type: ignore[misc]
+class AdaptationStateResponse(BaseModel):
     retrieval: RetrievalWeightsState
     utility: UtilityWeightsState
     history_len: int

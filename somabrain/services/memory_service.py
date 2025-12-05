@@ -36,7 +36,8 @@ class MemoryService:
         self._backend = backend
         self.namespace = namespace or ""
         self._cb = get_cb()
-        self._degrade_queue = bool(getattr(settings, "memory_degrade_queue", True))
+        # Enforce production-like degradation defaults: always queue, never silently drop.
+        self._degrade_queue = True
         self._degrade_readonly = bool(
             getattr(settings, "memory_degrade_readonly", False)
         )
@@ -51,7 +52,7 @@ class MemoryService:
         """Return a client scoped to this instance's namespace.
 
         The backend is expected to provide a ``for_namespace`` method that
-        returns an object with the actual memory‑operation methods.
+        returns an object with the actual memory‑operation methods (``remember``).
         """
         return self._backend.for_namespace(self.namespace)
 
@@ -94,6 +95,8 @@ class MemoryService:
     def remember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
             payload["universe"] = universe
+        # Attempt auto-reset of circuit if backend has recovered.
+        self._reset_circuit_if_needed()
         if self._is_circuit_open():
             self._queue_degraded("remember", {"key": key, "payload": payload})
             message = "Memory service unavailable (circuit open)"
@@ -111,6 +114,7 @@ class MemoryService:
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
             payload["universe"] = universe
+        self._reset_circuit_if_needed()
         if self._is_circuit_open():
             self._queue_degraded("remember", {"key": key, "payload": payload})
             message = "Memory service unavailable (circuit open)"
@@ -138,6 +142,7 @@ class MemoryService:
             prepared.append((key, body))
         if not prepared:
             return []
+        self._reset_circuit_if_needed()
         if self._is_circuit_open():
             for key, body in prepared:
                 self._queue_degraded("remember", {"key": key, "payload": body})
@@ -183,7 +188,13 @@ class MemoryService:
     def coord_for_key(self, key: str, universe: str | None = None):
         return self.client().coord_for_key(key, universe)
 
+    def fetch_by_coord(self, coord, universe: str | None = None):
+        """Fetch memory payloads by coordinate using GET /memories/{coord}."""
+        self._reset_circuit_if_needed()
+        return self.client().fetch_by_coord(coord, universe)
+
     def delete(self, coordinate):
+        self._reset_circuit_if_needed()
         return self.client().delete(coordinate)
 
     # ---------------------------------------------------------------------

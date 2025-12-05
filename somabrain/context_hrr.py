@@ -8,7 +8,7 @@ hyperdimensional behaviour by:
 * Enforcing configurable confidence thresholds during cleanup
 * Exposing capacity/SNR/cosine-margin metrics for supervisory control loops
 
-The implementation is deliberately free of mocks or shortcuts; every update
+The implementation is deliberately free of test doubles or shortcuts; every update
 applies the exact decay specified by :class:`HRRContextConfig.decay_lambda`
 and updates Prometheus-backed metrics for downstream verification.
 """

@@ -47,8 +47,8 @@ All confidential information uses placeholders:
 - Internal IP addresses (use `<INTERNAL_IP>` placeholder)
 
 **ALWAYS use:**
-- `devtoken` for development examples
-- `<TOKEN>` placeholders for production
+- `<YOUR_TOKEN_HERE>` placeholders for all token examples
+- `<TOKEN>` placeholders for production documentation
 - `localhost` or `127.0.0.1` for local examples
 - `somabrain_*` service names for Docker Compose examples
 

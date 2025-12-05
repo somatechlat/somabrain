@@ -117,10 +117,8 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, embedder, and circuit breaker state.
-| `POST /memory/remember` | Store a memory with signals (importance, novelty, ttl), attachments, links, and policy tags. Returns coordinate, WM promotion status, and signal feedback.
-| `POST /memory/remember/batch` | Bulk memory ingestion with per-item success/failure tracking and signal feedback.
-| `POST /memory/recall` | Unified retrieval backed by the full retrieval pipeline (vector, wm, graph, lexical retrievers). Supports streaming, session pinning, and tiered memory.
-| `POST /memory/recall/stream` | Chunked recall for streaming large result sets.
+| `POST /remember` | Store a memory with signals (importance, novelty, ttl), attachments, links, and policy tags. Returns coordinate, WM promotion status, and signal feedback.
+| `POST /recall` | Unified retrieval backed by the full retrieval pipeline (vector, wm, graph, lexical retrievers). Supports streaming, session pinning, and tiered memory.
 | `GET /memory/context/{session_id}` | Retrieve pinned recall session results.
 | `GET /memory/metrics` | Per-tenant memory metrics (WM items, circuit breaker state).
 
@@ -169,7 +167,7 @@ All endpoints require a Bearer token (auth may be disabled automatically in dev 
 
 ### Unified Memory API & Retrieval Pipeline
 
-The `/memory/recall` endpoint is backed by a full retrieval pipeline (`somabrain/services/retrieval_pipeline.py`) that orchestrates:
+The `/recall` endpoint is backed by a full retrieval pipeline (`somabrain/services/retrieval_pipeline.py`) that orchestrates:
 
 - **Multiple retrievers**: vector, wm (working memory), graph, lexical
 - **Reranking strategies**: auto (HRR → MMR → cosine), mmr, hrr, cosine

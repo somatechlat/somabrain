@@ -62,11 +62,9 @@ application_roles:
     permissions:
       - memory:write
       - memory:update
-      - memory:batch_operations
     api_endpoints:
       - "POST /remember"
       - "PUT /memories/{id}"
-      - "POST /remember/batch"
       - "PATCH /memories/{id}/metadata"
     rate_limits:
       requests_per_minute: 300

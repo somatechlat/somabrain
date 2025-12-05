@@ -65,7 +65,7 @@ def compute_tiny_floor(
                     D = int(np.prod(shape))
             else:
                 try:
-                    D = int(len(dim_or_array))  # type: ignore[arg-type]
+                    D = int(len(dim_or_array))
                 except Exception:
                     D = 1
         dt = np.dtype(dtype)

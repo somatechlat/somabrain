@@ -41,6 +41,10 @@ dependencies = [
   "opentelemetry-api==1.37.0",
   "opentelemetry-sdk==1.37.0",
   "opentelemetry-exporter-otlp==1.37.0",
+  # Optional heavy dependencies that are lazily imported in the codebase.
+  # They are added here so that static analysis (pyright) can resolve the symbols.
+  "pymilvus>=2.4",
+  "hvac>=2.0",
 ]
 
 # Optional dependencies have been removed to enforce a minimal, production‑only set of packages.

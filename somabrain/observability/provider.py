@@ -1,7 +1,7 @@
 """Observability provider.
 
 This module provides a thin wrapper around OpenTelemetry tracing for production
-use. Under strict, production-focused policy we do not expose no-op stubs.
+use. Under strict, production-focused policy we do not expose disabled fallbacks.
 If OpenTelemetry is not available or tracing cannot be initialized, initialization
 raises an explicit error so missing instrumentation is addressed during deploy.
 """

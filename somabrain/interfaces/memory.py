@@ -8,7 +8,7 @@ behavior.
 
 from __future__ import annotations
 
-from typing import Protocol, Optional, Any, Tuple
+from typing import Protocol, Optional, Tuple, Any, List
 
 Coordinate = Tuple[float, float, float]
 
@@ -25,5 +25,9 @@ class MemoryBackend(Protocol):
     async def aremember(self, key: str, payload: dict, *args, **kwargs) -> Any: ...
 
     def coord_for_key(self, key: str, universe: Optional[str] = None) -> Coordinate: ...
+
+    def fetch_by_coord(
+        self, coord: Coordinate, universe: Optional[str] = None
+    ) -> List[Any]: ...
 
     def delete(self, coordinate: Coordinate) -> Any: ...

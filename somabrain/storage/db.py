@@ -19,7 +19,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 try:
     from common.config.settings import settings as settings
 except Exception:  # pragma: no cover - optional dependency during migration
-    settings = None  # type: ignore
+    settings = None
 
 Base = declarative_base()
 _ENGINE: Optional[Engine] = None

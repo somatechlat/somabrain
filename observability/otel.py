@@ -1,7 +1,7 @@
 """Strict OpenTelemetry span helper (no no-op alternative)."""
 
 from contextlib import contextmanager
-from opentelemetry import trace  # type: ignore
+from opentelemetry import trace
 from common.logging import logger
 
 

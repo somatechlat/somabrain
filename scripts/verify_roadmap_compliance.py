@@ -131,7 +131,6 @@ class RoadmapComplianceVerifier:
         print("🔍 Verifying HMM segmentation...")
 
         # Test transition matrix
-        states = ["STABLE", "TRANSITION"]
         transition_matrix = np.array([[0.9, 0.1], [0.2, 0.8]])
 
         # Verify matrix properties
@@ -199,12 +198,6 @@ class RoadmapComplianceVerifier:
         print("📋 Verifying Avro strict mode...")
 
         # Check that only Avro schemas are used
-        required_topics = [
-            "cog.state.updates",
-            "cog.agent.updates",
-            "cog.action.updates",
-            "cog.global.frame",
-        ]
 
         print("✅ Avro strict mode verified")
         return True
@@ -214,10 +207,6 @@ class RoadmapComplianceVerifier:
         print("🔄 Testing end-to-end integration...")
 
         # Test memory operations
-        test_data = {
-            "content": "Test roadmap compliance verification",
-            "metadata": {"test": "integration"},
-        }
 
         # Test API endpoints
         endpoints = ["/health", "/metrics", "/features"]

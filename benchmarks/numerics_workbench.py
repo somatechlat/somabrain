@@ -86,7 +86,7 @@ def run(
         for D in D_list:
             key = f"{dtype_name}:{D}"
             # static type checkers may be conservative about numpy dtype types
-            tiny = compute_tiny_floor(D, dtype=dt)  # type: ignore[arg-type]
+            tiny = compute_tiny_floor(D, dtype=dt)
             results["tiny_floor"][key] = tiny
 
             # FFT roundtrip
@@ -97,7 +97,7 @@ def run(
             results["unitary_roundtrip"][key] = err
 
             # role generation norm
-            role = make_unitary_role("bench_role", D=D, global_seed=42, dtype=dt)  # type: ignore[arg-type]
+            role = make_unitary_role("bench_role", D=D, global_seed=42, dtype=dt)
             role_norm = float(np.linalg.norm(role))
             results["role_norms"][key] = role_norm
 

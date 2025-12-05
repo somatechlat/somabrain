@@ -1,5 +1,5 @@
 from .provider import init_tracing, get_tracer  # noqa: F401
-from common.logging import logger
+from common.logging import logger  # noqa: F401
 
 """Observability package public surface.
 

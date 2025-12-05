@@ -320,7 +320,7 @@ def calculate_health_score(tenant: str, instance_id: str) -> float:
     metrics = _global_collector.get_metrics(tenant, instance_id)
 
     # Health factors
-    tenure = time.time() - metrics.start_time
+    time.time() - metrics.start_time
     renewal_success_rate = max(
         0, 1 - (metrics.renewal_failures / max(1, metrics.transition_count * 10))
     )

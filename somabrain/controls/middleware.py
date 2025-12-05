@@ -63,7 +63,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             if request.method.upper() in ("POST", "PUT", "PATCH"):
                 raw_body = await request.body()
                 # restore for downstream handlers
-                request._body = raw_body  # type: ignore[attr-defined]
+                request._body = raw_body
         except Exception:
             raw_body = b""
         headers = dict(request.headers)
@@ -99,7 +99,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                 ctx["provenance_valid"] = verify_hmac_sha256(
                     cfg.provenance_secret,
                     raw_body,
-                    header_str,  # type: ignore[arg-type]
+                    header_str,
                 )
             except Exception:
                 ctx["provenance_valid"] = None

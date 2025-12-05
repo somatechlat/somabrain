@@ -145,17 +145,17 @@ class IntegratorLeaderElection:
                 with open(config_path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
 
-                for tenant, settings in data.items():
-                    if isinstance(settings, dict):
+                for tenant, tenant_cfg in data.items():
+                    if isinstance(tenant_cfg, dict):
                         config = LeaderConfig()
 
                         # Load min_dwell
-                        min_dwell = settings.get("min_dwell_ms")
+                        min_dwell = tenant_cfg.get("min_dwell_ms")
                         if isinstance(min_dwell, int) and min_dwell > 0:
                             config.min_dwell_ms = min_dwell
 
                         # Load entropy_cap
-                        entropy_cap = settings.get("entropy_cap")
+                        entropy_cap = tenant_cfg.get("entropy_cap")
                         if (
                             isinstance(entropy_cap, (int, float))
                             and 0 < entropy_cap <= 1.0
@@ -163,7 +163,7 @@ class IntegratorLeaderElection:
                             config.entropy_cap = float(entropy_cap)
 
                         # Load other settings
-                        lock_ttl = settings.get("leader_lock_ttl_seconds")
+                        lock_ttl = tenant_cfg.get("leader_lock_ttl_seconds")
                         if isinstance(lock_ttl, int) and lock_ttl > 0:
                             config.lock_ttl_seconds = lock_ttl
 

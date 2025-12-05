@@ -318,7 +318,7 @@ class ContextBuilder:
                         entropy = -sum(p * _m.log(p) for p in probs)
                         attempts += 1
                     if entropy > float(cap):
-                        # Final strong sharpen if stubborn
+                        # Final strong sharpen if still resistant
                         for i in range(len(vec)):
                             if i != largest_idx:
                                 vec[i] *= 0.05
@@ -383,7 +383,7 @@ class ContextBuilder:
         overrides: Dict[str, Dict] = {}
         if path and os.path.exists(path):
             try:
-                import yaml  # type: ignore
+                import yaml
 
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
@@ -510,4 +510,4 @@ class ContextBuilder:
 try:  # circular import guard
     from somabrain.runtime.working_memory import WorkingMemoryBuffer
 except Exception:  # pragma: no cover - runtime optional during static analysis
-    WorkingMemoryBuffer = None  # type: ignore
+    WorkingMemoryBuffer = None

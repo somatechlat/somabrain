@@ -11,9 +11,9 @@ import json
 from typing import Deque, Dict, List, Optional
 
 try:  # pragma: no cover - optional dependency
-    import redis  # type: ignore
+    import redis
 except Exception:  # pragma: no cover
-    redis = None  # type: ignore
+    redis = None
 
 from somabrain.infrastructure import get_redis_url
 from common.config.settings import settings

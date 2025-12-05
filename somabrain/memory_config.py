@@ -1,4 +1,5 @@
 from __future__ import annotations
+from common.config.settings import settings
 from dataclasses import dataclass
 from typing import Optional
 from common.config.settings import settings
@@ -12,6 +13,22 @@ defaults match the historic behaviour of the project.
 """
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    """Read a boolean env var – ``1``, ``true``, ``yes`` and ``on`` are truthy."""
+    val = getattr(settings, name.lower(), None)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _int_env(name: str, default: int) -> int:
+    try:
+        return int(getattr(settings, name.lower(), str(default)))
+    except Exception as exc:
+        logger.exception("Exception caught: %s", exc)
+        raise
+
+
 @dataclass(slots=True)
 class MemoryConfig:
     """Typed configuration for the memory HTTP adapter.
@@ -22,8 +39,8 @@ class MemoryConfig:
     """
 
     # Core endpoint & authentication
-    memory_http_endpoint: str = getattr(settings, "memory_http_endpoint", "http://localhost:9595")
-    memory_http_token: Optional[str] = getattr(settings, "memory_http_token", None)
+    memory_http_endpoint: str = settings.memory_http_endpoint
+    memory_http_token: Optional[str] = settings.memory_http_token
 
     # HTTP client tuning knobs
     http_max_connections: int = getattr(settings, "http_max_connections", 64)

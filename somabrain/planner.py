@@ -32,7 +32,7 @@ Functions:
 
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import List
 
 from .memory_client import MemoryClient
 
@@ -47,81 +47,21 @@ def plan_from_graph(
     """
     Extract a best-effort plan from typed relations around a task key.
 
-    Performs heuristic planning by traversing the memory graph outward from the
-    specified task key, following relationships of allowed types. Returns an
-    ordered list of unique task/fact strings as a suggested plan.
-
-    The algorithm uses a cost-based approach to prioritize more relevant relationships
-    and bounds the search to prevent excessive computation.
+    NOTE: Graph traversal functionality is currently unavailable. The memory
+    backend API does not expose graph link endpoints (/neighbors, /link).
+    This function returns an empty list until graph functionality is implemented
+    in the backend service.
 
     Args:
-        task_key (str): The key of the task to plan around. Used to find the
-            starting coordinate in the memory graph.
-        mem (MemoryClient): Memory client instance for accessing graph data
-            and retrieving payloads.
+        task_key (str): The key of the task to plan around.
+        mem (MemoryClient): Memory client instance.
         max_steps (int): Maximum number of planning steps/tasks to return.
-            Limits the plan length to prevent overly complex plans. Default: 5
         rel_types (List[str] | None): List of allowed relation types to follow.
-            If None, uses default types: ["depends_on", "causes", "part_of", "motivates", "related"]
-        universe (str | None): Optional universe identifier for multi-tenant isolation.
-            If provided, restricts planning to the specified universe.
+        universe (str | None): Optional universe identifier.
 
     Returns:
-        List[str]: Ordered list of unique task/fact strings forming the plan.
-            Each string represents a task or fact extracted from visited graph nodes.
-            Returns empty list if no related content is found.
-
-    Algorithm Details:
-        1. Convert task_key to starting coordinate using mem.coord_for_key()
-        2. Perform BFS traversal with cost-based prioritization
-        3. Cost function: depth + relation_priority + (1/link_weight)
-        4. Extract payloads from visited coordinates (excluding start)
-        5. Sort by cost and deduplicate task/fact strings
-        6. Return up to max_steps items
-
-    Relation Priority:
-        Relations are prioritized in the order they appear in rel_types.
-        Lower priority values are preferred in the cost function.
-
-    Note:
-        This is a heuristic approach that may not find optimal plans but provides
-        reasonable suggestions based on semantic relationships in memory.
+        List[str]: Empty list - graph traversal not available in current backend.
     """
-    rel_types = rel_types or ["depends_on", "causes", "part_of", "motivates", "related"]
-    # Relation type priority weights (lower is preferred)
-    rel_weight: Dict[str, float] = {t: float(i) for i, t in enumerate(rel_types)}
-    start = mem.coord_for_key(task_key, universe=universe)
-    # The links_from and payloads_for_coords methods have been removed from the client interface.
-    # Therefore, this planner functionality is now deprecated/disabled until a new graph mechanism is introduced.
-    plan: List[str] = []
-
-    # Logic commented out due to VIBE compliance (no dead methods)
-    # visited: Set[Tuple[float, float, float]] = set([start])
-    # queue: deque[Tuple[Tuple[float, float, float], int]] = deque([(start, 0)])
-    # best_cost: Dict[Tuple[float, float, float], float] = {}
-    # while queue and len(plan) < max_steps:
-    #     u, d = queue.popleft()
-    #     for t in rel_types:
-    #         edges = mem.links_from(u, type_filter=t, limit=16)
-    #         for e in edges:
-    #             v = tuple(e["to"])
-    #             w = float(e.get("weight", 1.0) or 1.0)
-    #             inv_w = 1.0 / max(1e-6, w)
-    #             cost = float(d + 1) + rel_weight.get(t, 10.0) + inv_w
-    #             if v not in best_cost or cost < best_cost[v]:
-    #                 best_cost[v] = cost
-    #             if v not in visited:
-    #                 visited.add(v)
-    #                 queue.append((v, d + 1))
-    # coords = [c for c in visited if c != start]
-    # coords_sorted = sorted(
-    #     [c for c in coords if c in best_cost], key=lambda c: best_cost[c]
-    # )
-    # for p in mem.payloads_for_coords(coords_sorted, universe=universe):
-    #     text = str(p.get("task") or p.get("fact") or "").strip()
-    #     if text and text not in plan:
-    #         plan.append(text)
-    #         if len(plan) >= max_steps:
-    #             break
-
-    return plan
+    # Graph traversal requires /neighbors and /link endpoints which do not exist
+    # in the current SomaFractalMemory API. Return empty list.
+    return []

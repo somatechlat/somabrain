@@ -13,9 +13,10 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+import os  # noqa: F401
 import time
 from typing import Any, Dict, List, Optional
+from common.config.settings import settings
 
 
 from somabrain.constitution.storage import ConstitutionRecord, ConstitutionStorage
@@ -129,7 +130,7 @@ class ConstitutionEngine:
             raise ConstitutionError(str(exc))
         self._apply_record(record)
         LOGGER.info("Loaded constitution version %s", self._checksum[:8])
-        return self._constitution  # type: ignore[return-value]
+        return self._constitution
 
     def save(self, constitution: Dict[str, Any]) -> None:
         """Save a constitution dict to Redis and update internal state.
@@ -257,7 +258,7 @@ class ConstitutionEngine:
             ]
             self._storage.record_signature(self._checksum, signer_id, hexsig)
             try:
-                client = self._storage._connect_redis()  # type: ignore[attr-defined]
+                client = self._storage._connect_redis()
                 if client is not None:
                     client.set(self._sig_key, hexsig)
             except Exception:
@@ -478,7 +479,7 @@ class ConstitutionEngine:
         if self._signatures:
             self._signature = self._signatures[0].get("signature")
         else:
-            client = self._storage._connect_redis()  # type: ignore[attr-defined]
+            client = self._storage._connect_redis()
             if client is not None:
                 try:
                     legacy = client.get(self._sig_key)
@@ -494,7 +495,7 @@ class ConstitutionEngine:
             try:
                 self._storage._write_redis(
                     self._constitution, self._checksum, self._signatures
-                )  # type: ignore[attr-defined]
+                )
             except Exception:
                 pass
 

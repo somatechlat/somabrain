@@ -2,7 +2,7 @@
 Adaptive Neuromodulators Module for TRUE LEARNING
 
 This module replaces static neuromodulator values with adaptive parameters
-that learn from performance feedback, eliminating the mock brain behavior.
+that learn from performance feedback, eliminating simulated brain behavior.
 
 Key Features:
 - Adaptive dopamine levels based on reward prediction errors

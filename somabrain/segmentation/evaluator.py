@@ -15,9 +15,9 @@ from typing import List, Tuple, Dict, Iterable
 import random
 
 try:
-    from somabrain import metrics  # type: ignore
+    from somabrain import metrics
 except Exception:  # pragma: no cover
-    metrics = None  # type: ignore
+    metrics = None
 
 
 # Metrics (lazy init on first update)
@@ -128,7 +128,7 @@ def evaluate_boundaries(
                 matched_true.add(t)
                 break
     fp = max(0, len(emitted) - tp)
-    fn = max(0, len(true) - tp)
+    max(0, len(true) - tp)
     precision = tp / len(emitted) if emitted else 0.0
     recall = tp / len(true) if true else 0.0
     f1 = (

@@ -26,9 +26,9 @@ from somabrain import roles as _roles
 from somabrain.seed import seed_to_uint64
 
 try:
-    from memory.density import DensityMatrix  # type: ignore
+    from memory.density import DensityMatrix
 except Exception:  # pragma: no cover - optional dependency
-    DensityMatrix = None  # type: ignore
+    DensityMatrix = None
 
 
 @dataclass

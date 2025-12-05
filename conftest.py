@@ -1,4 +1,33 @@
 from hypothesis import settings as _hypothesis_settings
+import os
+
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(".env", override=False)
+except Exception:
+    pass
+
+# Default local overrides for integration tests (host ports)
+os.environ.setdefault("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
+os.environ.setdefault(
+    "SOMABRAIN_MEMORY_HTTP_TOKEN", os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN", "")
+)
+os.environ.setdefault("SOMABRAIN_API_URL", "http://localhost:9696")
+os.environ.setdefault(
+    "TEST_PG_DSN", "postgresql://soma:soma_pass@localhost:30106/somabrain"
+)
+os.environ.setdefault("DATABASE_URL", os.environ["TEST_PG_DSN"])
+os.environ.setdefault("SOMABRAIN_POSTGRES_DSN", os.environ["TEST_PG_DSN"])
+try:
+    from common.config.settings import settings as _settings
+
+    _settings.postgres_dsn = os.environ["TEST_PG_DSN"]
+    tok = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+    if tok:
+        _settings.memory_http_token = tok
+except Exception:
+    pass
 
 # pytest configuration to ignore certain scripts that are not intended to be test modules.
 collect_ignore = [

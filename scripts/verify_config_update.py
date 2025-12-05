@@ -23,14 +23,14 @@ import time
 from typing import Any, Dict
 
 try:
-    import requests  # type: ignore
+    import requests
 except Exception as e:
     raise RuntimeError(
         "requests library is required to run verify_config_update.py"
     ) from e
 
 try:
-    from confluent_kafka import Consumer as CfConsumer  # type: ignore
+    from confluent_kafka import Consumer as CfConsumer
 except Exception as e:
     raise RuntimeError(
         "confluent_kafka is required to run verify_config_update.py"

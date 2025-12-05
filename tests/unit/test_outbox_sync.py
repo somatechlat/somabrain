@@ -1,57 +1,42 @@
-"""Unit tests for the outbox synchronization worker.
-
-These tests verify the core helper ``_send_event`` using real but local/in-memory implementations.
-The tests use dependency injection where possible or lightweight local classes.
-
-All code follows the VIBE CODING RULES: full type hints, docstrings, no
-place‑holders, and deterministic behavior.
-"""
+"""Integration-flavored checks for outbox sync helper using real services."""
 
 from __future__ import annotations
 
+import os
 import pytest
-from typing import Any, Tuple
+import httpx
 
-# Use the real OutboxEvent class if possible, or a compatible dataclass if not easily instantiable without DB.
-# Assuming OutboxEvent is a SQLAlchemy model, we can instantiate it directly.
-from somabrain.db.outbox import OutboxEvent
-
-# Import the private helper from the outbox sync module.
+from somabrain.config import get_config
+from somabrain.db.models.outbox import OutboxEvent
+from somabrain.memory_client import MemoryClient
 from somabrain.services.outbox_sync import _send_event
 
 
-class LocalMemoryClient:
-    """Local, functional implementation of MemoryClient for testing.
+def _memory_available(url: str) -> bool:
+    try:
+        resp = httpx.get(url.rstrip("/") + "/health", timeout=2.0)
+        return resp.status_code < 500
+    except Exception:
+        return False
 
-    This class implements the `_store_http_sync` contract
-    deterministically based on initialization parameters.
-    """
 
-    def __init__(self, succeed: bool = True):
-        self._succeed = succeed
-        self.last_stored_body = None
-
-    def _store_http_sync(self, body: dict, headers: dict) -> Tuple[bool, Any]:
-        """Real implementation of the storage interface for testing."""
-        if self._succeed:
-            self.last_stored_body = body
-            return (True, {"status": "ok", "id": "local-123"})
-        else:
-            return (False, {"status": "error", "reason": "simulated failure"})
+MEM_URL = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:9595")
 
 
 @pytest.mark.asyncio
 async def test_send_event_success() -> None:
     """When the client reports success, ``_send_event`` returns ``True``."""
-
-    # Use real OutboxEvent model
+    assert _memory_available(
+        MEM_URL
+    ), "Memory service must be reachable for outbox sync tests"
     event = OutboxEvent(
-        id=1, payload={"foo": "bar"}, dedupe_key="key-1", status="pending", retries=0
+        id=1,
+        topic="memory_write",
+        payload={"foo": "bar"},
+        dedupe_key="key-1",
+        tenant_id="test",
     )
-
-    # Use local functional client
-    client = LocalMemoryClient(succeed=True)
-
+    client = MemoryClient(get_config())
     result = await _send_event(client, event)
 
     assert result is True
@@ -66,13 +51,18 @@ async def test_send_event_success() -> None:
 @pytest.mark.asyncio
 async def test_send_event_failure() -> None:
     """When the client reports failure, ``_send_event`` returns ``False``."""
-
+    assert _memory_available(
+        MEM_URL
+    ), "Memory service must be reachable for outbox sync tests"
+    # Use invalid payload to provoke failure
     event = OutboxEvent(
-        id=2, payload={"baz": 123}, dedupe_key="key-2", status="pending", retries=0
+        id=2,
+        topic="memory_write",
+        payload={"foo": object()},  # not JSON serializable
+        dedupe_key="key-2",
+        tenant_id="test",
     )
-
-    client = LocalMemoryClient(succeed=False)
-
+    client = MemoryClient(get_config())
     result = await _send_event(client, event)
 
     assert result is False

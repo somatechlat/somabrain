@@ -17,7 +17,7 @@ _FF_COG_UPDATES = feature_enabled("integrator")
 _BU_PUBLISHER = None
 if _FF_COG_UPDATES:
     try:
-        from somabrain.cog.producer import BeliefUpdatePublisher  # type: ignore
+        from somabrain.cog.producer import BeliefUpdatePublisher
 
         _BU_PUBLISHER = BeliefUpdatePublisher()
         if not getattr(_BU_PUBLISHER, "enabled", False):
@@ -125,7 +125,7 @@ def eval_step(
         from common.logging import logger
 
         logger.exception(
-            "Predictor failed, falling back to zero-error placeholder: %s", exc
+            "Predictor failed, falling back to zero-error recovery path: %s", exc
         )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 

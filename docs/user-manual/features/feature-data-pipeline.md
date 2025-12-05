@@ -10,7 +10,7 @@
 
 SomaBrain processes data through multiple stages:
 
-1. **Ingestion** → `/memory/remember` or `/memory/remember/batch`
+1. **Ingestion** → `/remember`
 2. **Embedding** → Vector generation via configured embedder
 3. **Working Memory** → Admission to MultiTenantWM (Redis-backed)
 4. **Long-Term Storage** → HTTP memory service persistence
@@ -24,7 +24,7 @@ SomaBrain processes data through multiple stages:
 ```
 Client Request
     ↓
-/memory/remember
+/remember
     ↓
 OPA Authorization (fail-closed)
     ↓
@@ -52,7 +52,7 @@ Response to Client
 
 ### 1. Ingestion
 
-**Endpoint**: `POST /memory/remember`
+**Endpoint**: `POST /remember`
 
 **Input**:
 ```json
@@ -123,7 +123,7 @@ Response to Client
 
 ## Retrieval Pipeline
 
-**Endpoint**: `POST /memory/recall`
+**Endpoint**: `POST /recall`
 
 **Retrievers** (default full-power mode):
 - **Vector**: Cosine similarity in embedding space

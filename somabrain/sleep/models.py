@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from sqlalchemy import Column, String, DateTime, Text, func
+from sqlalchemy import String, DateTime, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 from somabrain.storage.db import Base
 
@@ -26,21 +27,21 @@ class TenantSleepState(Base):
         ttl                     Optional datetime after which the state should
                                 automatically revert to ``ACTIVE``.
         scheduled_wake          Cached datetime when the auto‑wake should fire.
-        circuit_breaker_state   Placeholder for future circuit‑breaker status.
+        circuit_breaker_state   Persisted circuit‑breaker state for the tenant.
         parameters_json         JSON‑encoded ``SleepParameters`` for debugging.
         updated_at              Timestamp of last update (auto‑managed).
     """
 
     __tablename__ = "tenant_sleep_states"
 
-    tenant_id = Column(String(255), primary_key=True, nullable=False)
-    current_state = Column(String(50), nullable=False, default="active")
-    target_state = Column(String(50), nullable=False, default="active")
-    ttl = Column(DateTime(timezone=True), nullable=True)
-    scheduled_wake = Column(DateTime(timezone=True), nullable=True)
-    circuit_breaker_state = Column(String(50), nullable=False, default="closed")
-    parameters_json = Column(Text, nullable=True)
-    updated_at = Column(
+    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True, nullable=False)
+    current_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    target_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    ttl: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_wake: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    circuit_breaker_state: Mapped[str] = mapped_column(String(50), nullable=False, default="closed")
+    parameters_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),

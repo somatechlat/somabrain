@@ -26,22 +26,6 @@ def _remember(client: TestClient, task: str, headers: dict):
     assert r.status_code == 200, r.text
 
 
-def _link(
-    client: TestClient,
-    from_key: str,
-    to_key: str,
-    typ: str,
-    headers: dict,
-    weight: float = 1.0,
-):
-    r = client.post(
-        "/link",
-        json={"from_key": from_key, "to_key": to_key, "type": typ, "weight": weight},
-        headers=headers,
-    )
-    assert r.status_code == 200, r.text
-
-
 def _plan(
     client: TestClient,
     task_key: str,
@@ -78,25 +62,13 @@ def run():
     for d in goal_docs:
         _remember(client, d, headers)
 
-    # Add some structural relations among the docs to simulate knowledge
-    _link(
-        client,
-        "design solar array layout",
-        "choose inverter size",
-        "depends_on",
-        headers,
-    )
-    _link(
-        client, "estimate battery capacity", "choose inverter size", "related", headers
-    )
-
     query = "solar project planning"
 
     # Baseline plan suggestions without recall session links
     base_plan = _plan(
         client,
         query,
-        rel_types=["depends_on", "causes", "part_of", "motivates", "related"],
+        rel_types=["related", "depends_on", "motivates"],
         headers=headers,
     )
     base_hr = _hit_rate(base_plan, goal_docs)

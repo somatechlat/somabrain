@@ -10,7 +10,7 @@ LOGGER = logging.getLogger("somabrain.opa")
 try:
     from common.config.settings import settings
 except Exception:  # pragma: no cover - optional dependency in legacy layouts
-    settings = None  # type: ignore
+    settings = None
 
 
 def _policy_path_for_mode() -> str:

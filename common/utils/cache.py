@@ -8,7 +8,7 @@ from typing import Any, Optional
 try:  # pragma: no cover - optional dependency guard
     from redis import Redis
 except Exception as exc:  # pragma: no cover
-    Redis = None  # type: ignore
+    Redis = None
     _import_error = exc
 else:
     _import_error = None

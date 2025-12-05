@@ -6,7 +6,7 @@ This runbook explains how to run SomaBrain benchmarks end-to-end (live, real IO)
 
 - Live/E2E (real HTTP/DB/Kafka):
   - `benchmarks/recall_latency_bench.py` — Remember + recall latency percentiles against a running API.
-  - `benchmarks/recall_live_bench.py` — Seeds corpus, queries `/memory/recall` (unified), computes hit-rate@k.
+  - `benchmarks/recall_live_bench.py` — Seeds corpus, queries `/recall` (unified), computes hit-rate@k.
   - `benchmarks/http_bench.py` — Async HTTP harness for any endpoint to get latency percentiles.
   - `benchmarks/db_bench.py` — Direct DB throughput sanity via SQLAlchemy.
   - `benchmarks/scale/*` — Load/soak/spike, chaos experiments.

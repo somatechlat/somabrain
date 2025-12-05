@@ -5,7 +5,7 @@ Single source of truth for behaviour:
         - full-local : production parity on a single machine (all features ON)
         - prod       : production deployment (same semantics, external secrets/infra)
 
-Strict defaults: Avro-only, fail‑fast Kafka, no mock backends. Legacy ENABLE_* or
+Strict defaults: Avro-only, fail‑fast Kafka, and only real backends. Legacy ENABLE_* or
 SOMABRAIN_FF_* env flags are removed. Optional operator overrides are persisted
 in a JSON file (``SOMABRAIN_FEATURE_OVERRIDES`` path, default ``./data/feature_overrides.json``)
 listing disabled feature keys. Overrides are applied only in ``full-local`` mode;

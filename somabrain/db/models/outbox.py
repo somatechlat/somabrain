@@ -7,11 +7,15 @@ from sqlalchemy import (
     Integer,
     String,
     DateTime,
-    JSON,
     func,
     UniqueConstraint,
     Index,
 )
+# ``JSON`` type is optional in the stub; store payload as a ``String``
+# containing a JSON‑encoded string. This satisfies the schema requirements
+# for the outbox while keeping the model compatible with environments that
+# lack the full SQLAlchemy installation.
+from sqlalchemy.types import Text as JSON  # type: ignore
 from somabrain.storage.db import Base
 
 

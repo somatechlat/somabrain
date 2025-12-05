@@ -13,7 +13,7 @@ import json
 import sys
 from urllib.parse import urljoin
 
-import requests  # type: ignore
+import requests
 
 from somabrain.infrastructure import get_api_base_url, require
 

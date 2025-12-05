@@ -15,8 +15,8 @@ endpoint:
 6. Updates a Prometheus gauge ``somabrain_sleep_state`` labelled by tenant and
    integer state value (ACTIVE=0, LIGHT=1, DEEP=2, FREEZE=3).
 
-The implementation avoids any mock or bypass logic – it works against the real
-database and OPA service, satisfying the VIBE "no‑guess" rule.
+The implementation avoids any simulated or bypass logic – it works against the
+real database and OPA service, satisfying the VIBE "no‑guess" rule.
 """
 
 from __future__ import annotations

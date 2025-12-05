@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import time
 from somabrain.services.cognitive_loop_service import eval_step, _SLEEP_STATE_CACHE
 from somabrain.sleep import SleepState
 from somabrain.neuromodulators import NeuromodState
@@ -51,12 +52,59 @@ class FakeAmygdala:
         return (True, True)
 
 
+class SimplePredictor:
+    def __init__(self, error: float = 0.1):
+        self._error = error
+        self.called = False
+
+    def predict_and_compare(self, wm_vec, wm_vec_target):
+        self.called = True
+
+        class R:
+            error = self._error
+            predicted_vec = wm_vec
+            actual_vec = wm_vec_target
+
+        return R()
+
+
+class SimpleNeuromods:
+    def __init__(self, state=None):
+        self._state = state or {"dopamine": 0.5}
+
+    def get_state(self):
+        return dict(self._state)
+
+
+class SimplePersonalityStore:
+    def __init__(self):
+        self._traits = {}
+
+    def get(self, tenant_id):
+        return self._traits.get(tenant_id)
+
+    def modulate_neuromods(self, neuromods, traits):
+        return neuromods
+
+
+class SimpleAmygdala:
+    def __init__(self, score_val: float = 0.8, gates_val=(True, True)):
+        self._score = score_val
+        self._gates = gates_val
+
+    def score(self, *_):
+        return self._score
+
+    def gates(self, *_):
+        return self._gates
+
+
 @pytest.fixture
-def real_components():
-    predictor = FakePredictor(error=0.1)
-    neuromods = FakeNeuromods()
-    personality_store = FakePersonalityStore()
-    amygdala = FakeAmygdala()
+def components():
+    predictor = SimplePredictor()
+    neuromods = SimpleNeuromods()
+    personality_store = SimplePersonalityStore()
+    amygdala = SimpleAmygdala()
     return predictor, neuromods, personality_store, amygdala
 
 
@@ -67,24 +115,9 @@ def clean_cache():
     _SLEEP_STATE_CACHE.clear()
 
 
-# Instead of patching _get_sleep_state, we inject the cache state directly
-# since _get_sleep_state reads from _SLEEP_STATE_CACHE if available (and ttl valid).
-# However, _get_sleep_state logic might check circuit breaker if cache missing.
-# A better approach for VIBE is to expose a way to inject state or use the real circuit breaker logic.
-# But for unit testing `eval_step`, we can pre-populate the cache which `_get_sleep_state` checks.
-
-
-def set_sleep_state(tenant_id, state):
-    import time
-
-    # Cache entry is (value, expiry)
-    _SLEEP_STATE_CACHE[tenant_id] = (state, time.time() + 60.0)
-
-
-def test_eval_step_active_mode(real_components, clean_cache):
-    predictor, neuromods, personality_store, amygdala = real_components
-    tenant = "tenant1"
-    set_sleep_state(tenant, SleepState.ACTIVE)
+def test_eval_step_active_mode(components, clean_cache):
+    predictor, neuromods, personality_store, amygdala = components
+    _SLEEP_STATE_CACHE["tenant1"] = (SleepState.ACTIVE, time.time())
 
     result = eval_step(
         novelty=0.5,
@@ -95,7 +128,7 @@ def test_eval_step_active_mode(real_components, clean_cache):
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
-        tenant_id=tenant,
+        tenant_id="tenant1",
     )
 
     assert result["sleep_state"] == "active"
@@ -104,10 +137,9 @@ def test_eval_step_active_mode(real_components, clean_cache):
     assert result["pred_error"] == 0.1
 
 
-def test_eval_step_deep_mode(real_components, clean_cache):
-    predictor, neuromods, personality_store, amygdala = real_components
-    tenant = "tenant1"
-    set_sleep_state(tenant, SleepState.DEEP)
+def test_eval_step_deep_mode(components, clean_cache):
+    predictor, neuromods, personality_store, amygdala = components
+    _SLEEP_STATE_CACHE["tenant1"] = (SleepState.DEEP, time.time())
 
     result = eval_step(
         novelty=0.5,
@@ -118,7 +150,7 @@ def test_eval_step_deep_mode(real_components, clean_cache):
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
-        tenant_id=tenant,
+        tenant_id="tenant1",
     )
 
     assert result["sleep_state"] == "deep"
@@ -127,10 +159,9 @@ def test_eval_step_deep_mode(real_components, clean_cache):
     assert result["pred_error"] == 0.1  # Prediction still runs
 
 
-def test_eval_step_freeze_mode(real_components, clean_cache):
-    predictor, neuromods, personality_store, amygdala = real_components
-    tenant = "tenant1"
-    set_sleep_state(tenant, SleepState.FREEZE)
+def test_eval_step_freeze_mode(components, clean_cache):
+    predictor, neuromods, personality_store, amygdala = components
+    _SLEEP_STATE_CACHE["tenant1"] = (SleepState.FREEZE, time.time())
 
     result = eval_step(
         novelty=0.5,
@@ -141,19 +172,18 @@ def test_eval_step_freeze_mode(real_components, clean_cache):
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
-        tenant_id=tenant,
+        tenant_id="tenant1",
     )
 
     assert result["sleep_state"] == "freeze"
     assert result["eta"] == 0.0
-    assert result["pred_error"] == 0.0  # Dummy result
-    assert not predictor.called  # Should short-circuit
+    assert result["pred_error"] == 0.0  # Predictor should be bypassed
+    assert predictor.called is False
 
 
-def test_eval_step_light_mode(real_components, clean_cache):
-    predictor, neuromods, personality_store, amygdala = real_components
-    tenant = "tenant1"
-    set_sleep_state(tenant, SleepState.LIGHT)
+def test_eval_step_light_mode(components, clean_cache):
+    predictor, neuromods, personality_store, amygdala = components
+    _SLEEP_STATE_CACHE["tenant1"] = (SleepState.LIGHT, time.time())
 
     result = eval_step(
         novelty=0.5,
@@ -164,7 +194,7 @@ def test_eval_step_light_mode(real_components, clean_cache):
         personality_store=personality_store,
         supervisor=None,
         amygdala=amygdala,
-        tenant_id=tenant,
+        tenant_id="tenant1",
     )
 
     assert result["sleep_state"] == "light"

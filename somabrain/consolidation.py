@@ -99,29 +99,7 @@ def run_nrem(
     }
     mem.remember(summary, payload)
     CONSOLIDATION_RUNS.labels(phase="NREM").inc()
-    # Reinforce links pairwise within batch
-    coords = _coords_for_payloads(mem, batch)
-    reinforced = 0
-    for i in range(len(coords)):
-        # Check time budget at outer loop
-        if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
-            break
-        for j in range(i + 1, len(coords)):
-            if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
-                break
-            # mem.link() removed for VIBE compliance
-            pass
-    # Decay/prune weak links to prevent unbounded growth
-    try:
-        pruned = 0
-        if hasattr(mem, "decay_links"):
-            pruned = mem.decay_links(
-                factor=float(getattr(cfg, "link_decay_factor", 0.98) or 0.98),
-                min_weight=float(getattr(cfg, "link_min_weight", 0.05) or 0.05),
-            )
-    except Exception:
-        pruned = 0
-    return {"created": 1, "reinforced": reinforced, "pruned": pruned}
+    return {"created": 1}
 
 
 def run_rem(
@@ -168,7 +146,7 @@ def main():
 
     tenant = args.tenant
     cfg = copy.deepcopy(settings)
-    mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)  # type: ignore
+    mtwm = MultiTenantWM(dim=cfg.embed_dim, cfg=None)
     mtmem = MultiTenantMemory(cfg)
     if args.nrem:
         stats = run_nrem(

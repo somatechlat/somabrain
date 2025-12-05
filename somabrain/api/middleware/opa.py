@@ -51,7 +51,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
             async def receive() -> dict:
                 return {"type": "http.request", "body": body_bytes}
 
-            request._receive = receive  # type: ignore[attr-defined]
+            request._receive = receive
         except Exception:
             # If reading the body fails we continue with method/path only
             pass

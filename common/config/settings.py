@@ -2,31 +2,56 @@
 
 This module mirrors the pattern used by other services in the SomaStack.
 It provides a single ``Settings`` class (pydantic ``BaseSettings``) that
-loads values from the canonical ``.env`` file or the environment. All new code
-should import ``Settings`` from here instead of calling ``settings.getenv`` directly.
+loads values from the canonical ``.env`` file, environment variables, and
+``config.yaml``. All new code should import ``Settings`` from here instead
+of calling ``settings.getenv`` directly.
 
 The implementation is deliberately permissive – existing code that still
 reads environment variables will continue to work because the default values
 default to the current variables.
+
+Configuration precedence (highest to lowest):
+1. Environment variables
+2. .env file
+3. config.yaml
 """
 
 from __future__ import annotations
 
 import os
-from typing import Optional, Any
+from pathlib import Path
+from typing import Optional, Any, Dict
+
+# Load config.yaml as the base configuration source
+_CONFIG_YAML: Dict[str, Any] = {}
+try:
+    import yaml
+
+    _config_path = Path(__file__).parent.parent.parent / "config.yaml"
+    if _config_path.exists():
+        with open(_config_path, "r") as f:
+            _CONFIG_YAML = yaml.safe_load(f) or {}
+except Exception:
+    pass  # yaml not available or config.yaml not found
+
+
+def _yaml_get(key: str, default: Any = None) -> Any:
+    """Get a value from config.yaml with fallback to default."""
+    return _CONFIG_YAML.get(key, default)
+
 
 BaseSettings: Any  # forward-declare for mypy
 try:
     # pydantic v2 moved BaseSettings to the pydantic-settings package. Prefer
     # that when available to maintain the previous BaseSettings behaviour.
-    import pydantic_settings as _ps  # type: ignore
+    import pydantic_settings as _ps
     from pydantic import Field
 
-    BaseSettings = _ps.BaseSettings  # type: ignore[attr-defined,assignment]
+    BaseSettings = _ps.BaseSettings
 except Exception:  # pragma: no cover - alternative for older envs
     from pydantic import BaseSettings as _BS, Field
 
-    BaseSettings = _BS  # type: ignore[assignment]
+    BaseSettings = _BS
 
 
 _TRUE_VALUES = {"1", "true", "yes", "on"}
@@ -154,11 +179,20 @@ class Settings(BaseSettings):
         default=_str_env("SOMABRAIN_OPA_SCHEME") or _str_env("OPA_SCHEME") or "http"
     )
 
+    # Updated default endpoint to match the Docker‑compose configuration used in
+    # the integration test suite (port 9595). The previous default (9696) caused
+    # the health check in ``tests/integration/test_memory_e2e.py`` to fail because
+    # the memory service was not listening on that port.
     memory_http_endpoint: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_MEMORY_HTTP_ENDPOINT")
         or _str_env("MEMORY_SERVICE_URL")
-        or "http://localhost:9696"
+        or "http://localhost:9595"
     )
+    # Token used for authenticating to the external memory HTTP service.
+    # SECURITY: No default token is provided. In production, the environment
+    # variable SOMABRAIN_MEMORY_HTTP_TOKEN must be explicitly set.
+    # For local development, set the token in your .env file or export it
+    # before running the service.
     memory_http_token: Optional[str] = Field(
         default=_str_env("SOMABRAIN_MEMORY_HTTP_TOKEN")
     )
@@ -177,6 +211,57 @@ class Settings(BaseSettings):
     running_in_docker: bool = Field(
         default_factory=lambda: _bool_env("RUNNING_IN_DOCKER", False)
     )
+
+    # -----------------------------------------------------------------
+    # Memory cap for the whole Somabrain deployment.
+    # -----------------------------------------------------------------
+    # ``memory_max`` is a string like "10GB" or "8192MiB". It is parsed at
+    # runtime by the memory client to enforce a hard limit on the total RAM
+    # consumed by the cluster. The default matches the user request of 10 GiB.
+    memory_max: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_MEMORY_MAX", "10GB")
+    )
+
+    # -----------------------------------------------------------------
+    # New fields to replace direct ``os.getenv`` usage throughout the codebase
+    # -----------------------------------------------------------------
+    # Health server port used by various predictor services.
+    health_port: Optional[int] = Field(
+        default_factory=lambda: _int_env("HEALTH_PORT", None)
+    )
+    # Default tenant identifier – used by predictor services.
+    default_tenant: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_DEFAULT_TENANT", "public")
+    )
+    # Kafka URL – legacy env var used by predictor services; kept for compatibility.
+    kafka_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_KAFKA_URL", ""))
+
+    # Path for feature flag overrides JSON (used by config/feature_flags.py)
+    feature_overrides_path: str = Field(
+        default=_str_env("SOMABRAIN_FEATURE_OVERRIDES", "./data/feature_overrides.json")
+    )
+
+    # ---------------------------------------------------------------
+    # Additional configuration for deterministic testing and Oak
+    # ---------------------------------------------------------------
+    # When True, all random number generators are seeded for reproducible
+    # behaviour in tests. The flag is read by predictor services and the Oak
+    # option manager.
+    TEST_MODE: bool = Field(default_factory=lambda: _bool_env("OAK_TEST_MODE", False))
+
+    # Predictor latency jitter (in milliseconds). Used by all predictor
+    # services to simulate realistic latency while still being configurable.
+    PREDICTOR_LATENCY_MIN: int = Field(
+        default_factory=lambda: _int_env("PREDICTOR_LATENCY_MIN", 5)
+    )
+    PREDICTOR_LATENCY_MAX: int = Field(
+        default_factory=lambda: _int_env("PREDICTOR_LATENCY_MAX", 15)
+    )
+
+    # NOTE: The Oak utility and TTL defaults are defined later in the class
+    # (under the "--- Oak (ROAMDP) configuration" section). The earlier
+    # definitions have been removed to avoid duplicate field names and ensure a
+    # single source of truth.
 
     # --- Milvus configuration (ROAMDP) --------------------------------------
     # --- Milvus configuration (ROAMDP) --------------------------------------
@@ -402,6 +487,16 @@ class Settings(BaseSettings):
     )
     # Memory is always required; ignore any attempt to disable via env.
     require_memory: bool = Field(default=True)
+    # Infrastructure requirement flag – controls whether the outbox publisher
+    # and other services require Kafka/Postgres/Redis to be available at startup.
+    require_infra: str = Field(default="1")
+    # Outbox publisher configuration (operational constants)
+    outbox_batch_size: int = Field(default=100)
+    outbox_max_delay: float = Field(default=5.0)
+    outbox_max_retries: int = Field(default=5)
+    outbox_poll_interval: float = Field(default=1.0)
+    outbox_producer_retry_ms: int = Field(default=1000)
+    journal_replay_interval: int = Field(default=300)
     # Test environment detection flag (used in code paths for pytest).
     # Centralises the environment variable read to avoid direct settings.getenv usage.
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
@@ -805,6 +900,17 @@ class Settings(BaseSettings):
     )
     use_graph_augment: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_GRAPH_AUGMENT", False)
+    )
+    # Graph reasoning parameters (from config.yaml defaults)
+    graph_hops: int = Field(
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_GRAPH_HOPS", _yaml_get("graph_hops", 2)
+        )
+    )
+    graph_limit: int = Field(
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_GRAPH_LIMIT", _yaml_get("graph_limit", 20)
+        )
     )
     use_hrr_first: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_HRR_FIRST", False)
@@ -1271,9 +1377,11 @@ class Settings(BaseSettings):
         or "http://somabrain_cog:9016/health"
     )
     # Tiered memory cleanup configuration
+    # Default to Milvus for production-grade vector search. Milvus provides
+    # scalable, persistent ANN indexing required for TieredMemory cleanup.
     tiered_memory_cleanup_backend: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_CLEANUP_BACKEND", "simple")
-        or "simple"
+        default_factory=lambda: _str_env("SOMABRAIN_CLEANUP_BACKEND", "milvus")
+        or "milvus"
     )
     tiered_memory_cleanup_topk: int = Field(
         default_factory=lambda: _int_env("SOMABRAIN_CLEANUP_TOPK", 64)

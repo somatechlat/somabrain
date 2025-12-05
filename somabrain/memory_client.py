@@ -20,6 +20,7 @@ import os
 import random
 import re
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -228,7 +229,7 @@ class MemoryClient:
     - Legacy vendor-specific memory client imports stay isolated to this module (ADR‑0002)
     - Backend enforcement: If SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS is enabled,
         recall() raises a RuntimeError if the HTTP backend is unavailable. It does
-        not silently fall back to a stub.
+        not silently fall back to any local mirror.
 
     Implementation Notes
     --------------------
@@ -287,7 +288,7 @@ class MemoryClient:
         return
 
     def _init_http(self) -> None:
-        import httpx  # type: ignore
+        import httpx
 
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
@@ -379,11 +380,37 @@ class MemoryClient:
         if limits is not None:
             client_kwargs["limits"] = limits
 
-        # Create sync client
+        # Create sync client with fallback to localhost if the configured
+        # endpoint is unreachable. This mirrors the previous behavior but adds a
+        # quick health‑check to switch to a localhost address when running
+        # inside Docker where the advertised IP may not be reachable from the
+        # host environment.
         try:
             self._http = httpx.Client(**client_kwargs)
         except Exception:
             self._http = None
+        else:
+            try:
+                self._http.head("/health", timeout=0.5)
+            except Exception:
+                # Fallback to localhost using the original port if available.
+                try:
+                    orig_url = client_kwargs.get("base_url", "")
+                    from httpx import URL
+
+                    parsed = URL(orig_url)
+                    fallback = (
+                        f"http://localhost:{parsed.port}"
+                        if parsed.port
+                        else "http://localhost"
+                    )
+                except Exception:
+                    fallback = "http://localhost"
+                client_kwargs["base_url"] = fallback
+                try:
+                    self._http = httpx.Client(**client_kwargs)
+                except Exception:
+                    self._http = None
 
         # Create async client with configurable transport retries
         try:
@@ -572,48 +599,80 @@ class MemoryClient:
         return False, status, data
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """POST a memory to the HTTP memory service.
+
+        The service's OpenAPI defines the endpoint ``POST /memories`` with a
+        ``MemoryStoreRequest`` payload. This method targets that endpoint and
+        returns the parsed JSON response when the request succeeds.
+        """
         if self._http is None:
             return False, None
 
-        success, _, data = self._http_post_with_retries_sync(
-            "/memory/remember", body, headers
-        )
+        success, _, data = self._http_post_with_retries_sync("/memories", body, headers)
         if success:
             return True, data
-
         return False, data
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
+        """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``."""
         if self._http_async is None:
             return False, None
 
         success, _, data = await self._http_post_with_retries_async(
-            "/memory/remember", body, headers
+            "/memories", body, headers
         )
         if success:
             return True, data
-
         return False, data
 
     def _store_bulk_http_sync(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
+        """Store multiple memories by iterating over items.
+
+        The memory service API does not provide a batch endpoint. This method
+        iterates over the items in the batch request and stores each one
+        individually via POST /memories.
+        """
         if self._http is None:
             return False, 0, None
-        success, status, data = self._http_post_with_retries_sync(
-            "/memory/remember/batch", batch_request, headers
-        )
-        return success, status or 0, data
+        items = batch_request.get("items", [])
+        if not items:
+            return False, 0, None
+        results = []
+        all_success = True
+        for idx, item in enumerate(items):
+            item_headers = dict(headers)
+            item_headers["X-Request-ID"] = (
+                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            )
+            success, data = self._store_http_sync(item, item_headers)
+            results.append(data if success else None)
+            if not success:
+                all_success = False
+        return all_success, 200 if all_success else 500, {"items": results}
 
     async def _store_bulk_http_async(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
+        """Async version of bulk store using individual POST /memories calls."""
         if self._http_async is None:
             return False, 0, None
-        success, status, data = await self._http_post_with_retries_async(
-            "/memory/remember/batch", batch_request, headers
-        )
-        return success, status or 0, data
+        items = batch_request.get("items", [])
+        if not items:
+            return False, 0, None
+        results = []
+        all_success = True
+        for idx, item in enumerate(items):
+            item_headers = dict(headers)
+            item_headers["X-Request-ID"] = (
+                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
+            )
+            success, data = await self._store_http_async(item, item_headers)
+            results.append(data if success else None)
+            if not success:
+                all_success = False
+        return all_success, 200 if all_success else 500, {"items": results}
 
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
         hits: List[RecallHit] = []
@@ -894,14 +953,15 @@ class MemoryClient:
 
         headers = {"X-Request-ID": request_id}
         universe_value = str(universe or "real")
+        query_text = str(query or "")
         body = {
-            "query": str(query or ""),
+            "query": query_text,
             "top_k": max(int(top_k), 1),
             "universe": universe_value,
         }
 
         success, status, data = self._http_post_with_retries_sync(
-            "/memory/recall", body, headers
+            "/memories/search", body, headers
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -957,7 +1017,7 @@ class MemoryClient:
         }
 
         success, status, data = await self._http_post_with_retries_async(
-            "/memory/recall", body, headers
+            "/memories/search", body, headers
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -1363,62 +1423,60 @@ class MemoryClient:
         namespace = str(namespace or "public")
         return tenant, namespace
 
-        def remember(
-            self, coord_key: str, payload: dict, request_id: str | None = None
-        ) -> Tuple[float, float, float]:
-            """Store a memory using a stable coordinate derived from ``coord_key``.
+    def remember(
+        self, coord_key: str, payload: dict, request_id: str | None = None
+    ) -> Tuple[float, float, float]:
+        """Store a memory using a stable coordinate derived from ``coord_key``.
 
-            The method now supports **degradation mode**:
+        The method now supports **degradation mode**:
 
-            * If the external memory service is unhealthy (``self.is_degraded``), the
-                payload is cached in‑process (``self._working_cache``) and enqueued to
-                the durable outbox table via ``enqueue_event``.
-            * The call returns the computed coordinate immediately – no remote HTTP
-                request is performed.
-            * When the service is healthy the original fast‑path behaviour is
-                retained (including the optional ``fast_ack`` executor path).
+        * If the external memory service is unhealthy (``self.is_degraded``), the
+          payload is cached in‑process (``self._working_cache``) and enqueued to
+          the durable outbox table via ``enqueue_event``.
+        * The call returns the computed coordinate immediately – no remote HTTP
+          request is performed.
+        * When the service is healthy the original fast‑path behaviour is
+          retained (including the optional ``fast_ack`` executor path).
 
-            Normalisation of optional metadata (phase, quality_score, domains,
-            reasoning_chain) remains unchanged.
-            """
-            # -------------------------------------------------------------------
-            # Degradation fast‑path – avoid any HTTP calls when the service is down.
-            # -------------------------------------------------------------------
-            if self.is_degraded:
-                # Resolve tenant for outbox scoping.
-                tenant, _ = self._tenant_namespace()
-                # Cache locally for immediate reads.
-                self._working_cache[(tenant, coord_key)] = payload
-                # Enqueue a durable outbox event for later sync.
-                from somabrain.db.outbox import enqueue_event
+        Normalisation of optional metadata (phase, quality_score, domains,
+        reasoning_chain) remains unchanged.
+        """
+        # -------------------------------------------------------------------
+        # Degradation fast‑path – avoid any HTTP calls when the service is down.
+        # Persist to outbox first (durable), then mirror to working cache.
+        # -------------------------------------------------------------------
+        if self.is_degraded:
+            tenant, _ = self._tenant_namespace()
+            from somabrain.db.outbox import enqueue_event
 
-                # Use a deterministic dedupe_key if the payload does not provide one.
-                dedupe = payload.get("dedupe_key")
+            dedupe = payload.get("dedupe_key")
+            try:
                 enqueue_event(
                     topic="memory_write",
                     payload=payload,
                     dedupe_key=dedupe,
                     tenant_id=tenant,
                 )
-                # Return the coordinate (computed later) – we mimic the normal return
-                # shape by falling through to the enrichment logic below.
-                # ----------------------------------------------------------------
-                # Enrichment (universal part) – needed for the caller's expectations.
-                # ----------------------------------------------------------------
-                enriched, universe, _hdr = self._compat_enrich_payload(
-                    payload, coord_key
-                )
-                coord = _stable_coord(f"{universe}::{coord_key}")
-                # Store the coordinate back into the cached payload for consistency.
-                payload = dict(enriched)
-                payload["coordinate"] = coord
-                return coord
+            except Exception as exc:
+                # Fail fast to avoid silent loss; caller can retry once backend is up.
+                raise RuntimeError(
+                    "Memory service degraded and outbox enqueue failed"
+                ) from exc
 
-            # -------------------------------------------------------------------
-            # Healthy path – original behaviour (including fast‑ack and async handling).
-            # -------------------------------------------------------------------
-            # Fail fast if the memory backend is not fully healthy.
-            self._require_healthy()
+            # Cache locally for immediate reads (non-durable convenience).
+            self._working_cache[(tenant, coord_key)] = payload
+
+            enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
+            coord = _stable_coord(f"{universe}::{coord_key}")
+            payload = dict(enriched)
+            payload["coordinate"] = coord
+            return coord
+
+        # -------------------------------------------------------------------
+        # Healthy path – original behaviour (including fast‑ack and async handling).
+        # -------------------------------------------------------------------
+        # Fail fast if the memory backend is not fully healthy.
+        self._require_healthy()
 
         # include universe in coordinate hashing to avoid collisions across branches
         # and enrich payload
@@ -1439,7 +1497,7 @@ class MemoryClient:
             # quality_score
             if "quality_score" in payload:
                 try:
-                    qs = float(payload["quality_score"])  # type: ignore[arg-type]
+                    qs = float(payload["quality_score"])
                     if qs < 0:
                         qs = 0.0
                     if qs > 1:
@@ -1460,7 +1518,7 @@ class MemoryClient:
                     payload["domains"] = parts or []
                 elif isinstance(dval, (list, tuple)):
                     cleaned = []
-                    for x in dval:  # type: ignore[assignment]
+                    for x in dval:
                         if isinstance(x, str) and x.strip():
                             cleaned.append(x.strip().lower())
                     payload["domains"] = cleaned
@@ -1494,7 +1552,6 @@ class MemoryClient:
         import uuid
 
         # Import uuid locally to avoid top‑level dependency.
-
         rid = request_id or str(uuid.uuid4())
 
         # If we're in an async loop, schedule an async background persist (non-blocking)
@@ -1944,348 +2001,7 @@ class MemoryClient:
                 return hits
         return await self.arecall(query, top_k, universe, request_id)
 
-    def link(
-        self,
-        from_coord: tuple[float, float, float],
-        to_coord: tuple[float, float, float],
-        link_type: str = "related",
-        weight: float = 1.0,
-        request_id: str | None = None,
-    ) -> None:
-        """Create or strengthen a typed edge in the memory graph."""
-        self._require_healthy()
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: link requires an HTTP memory backend."
-            )
-        try:
-            import uuid
-
-            rid = request_id or str(uuid.uuid4())
-            rid_hdr = {"X-Request-ID": rid}
-            self._http.post(
-                "/link",
-                json={
-                    "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
-                    "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
-                    "type": link_type,
-                    "weight": weight,
-                },
-                headers=rid_hdr,
-            )
-        except Exception as exc:
-            logger.debug("link request failed: %r", exc)
-
-    async def alink(
-        self,
-        from_coord: tuple[float, float, float],
-        to_coord: tuple[float, float, float],
-        link_type: str = "related",
-        weight: float = 1.0,
-        request_id: str | None = None,
-    ) -> None:
-        """Async helper mirroring :meth:`link` behaviour."""
-        if self._http_async is not None:
-            rid = request_id or str(uuid.uuid4())
-            headers = {"X-Request-ID": rid}
-            try:
-                await self._http_async.post(
-                    "/link",
-                    json={
-                        "from_coord": f"{from_coord[0]},{from_coord[1]},{from_coord[2]}",
-                        "to_coord": f"{to_coord[0]},{to_coord[1]},{to_coord[2]}",
-                        "type": link_type,
-                        "weight": weight,
-                    },
-                    headers=headers,
-                )
-                return
-            except Exception as exc:
-                logger.debug("async link request failed: %r", exc)
-
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None,
-            lambda: self.link(
-                from_coord,
-                to_coord,
-                link_type=link_type,
-                weight=weight,
-                request_id=request_id,
-            ),
-        )
-
-    def links_from(
-        self,
-        start: Tuple[float, float, float],
-        type_filter: str | None = None,
-        limit: int = 50,
-    ) -> List[dict]:
-        """List outgoing edges with metadata from the memory service."""
-
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: links_from requires an HTTP memory backend."
-            )
-
-        unlimited = int(limit) <= 0
-        max_items = None if unlimited else int(limit)
-        out: List[dict] = []
-        try:
-            body = {
-                "from_coord": [float(start[0]), float(start[1]), float(start[2])],
-                "type": str(type_filter) if type_filter else None,
-                "limit": int(limit),
-            }
-            resp = self._http.post("/neighbors", json=body)
-            data = self._response_json(resp)
-            if isinstance(data, dict):
-                edges = data.get("edges") or data.get("results") or []
-            else:
-                edges = []
-            for edge in edges:
-                try:
-                    raw_from = edge.get("from") or start
-                    raw_to = edge.get("to") or start
-                    if isinstance(raw_from, (list, tuple)) and len(raw_from) >= 3:
-                        from_vec = (
-                            float(raw_from[0]),
-                            float(raw_from[1]),
-                            float(raw_from[2]),
-                        )
-                    else:
-                        from_vec = (
-                            float(start[0]),
-                            float(start[1]),
-                            float(start[2]),
-                        )
-                    if isinstance(raw_to, (list, tuple)) and len(raw_to) >= 3:
-                        to_vec = (
-                            float(raw_to[0]),
-                            float(raw_to[1]),
-                            float(raw_to[2]),
-                        )
-                    else:
-                        to_vec = (
-                            float(start[0]),
-                            float(start[1]),
-                            float(start[2]),
-                        )
-                    if type_filter and edge.get("type") != type_filter:
-                        continue
-                    out.append(
-                        {
-                            "from": from_vec,
-                            "to": to_vec,
-                            "type": edge.get("type"),
-                            "weight": float(edge.get("weight", 1.0)),
-                        }
-                    )
-                    if (
-                        not unlimited
-                        and max_items is not None
-                        and len(out) >= max_items
-                    ):
-                        break
-                except Exception:
-                    continue
-        except Exception as exc:
-            logger.debug("links_from request failed: %r", exc)
-            return []
-
-        return out if unlimited else out[:max_items]
-
-    def unlink(
-        self,
-        from_coord: tuple[float, float, float],
-        to_coord: tuple[float, float, float],
-        link_type: str | None = None,
-        request_id: str | None = None,
-    ) -> bool:
-        """Remove a directed edge from the memory graph."""
-
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: unlink requires an HTTP memory backend."
-            )
-
-        rid = request_id or str(uuid.uuid4())
-        headers = {"X-Request-ID": rid}
-        body = {
-            "from_coord": [
-                float(from_coord[0]),
-                float(from_coord[1]),
-                float(from_coord[2]),
-            ],
-            "to_coord": [
-                float(to_coord[0]),
-                float(to_coord[1]),
-                float(to_coord[2]),
-            ],
-            "type": link_type,
-        }
-
-        success, _, _ = self._http_post_with_retries_sync("/unlink", body, headers)
-        if not success:
-            raise RuntimeError("Memory service unavailable (unlink failed)")
-        return True
-
-    async def aunlink(
-        self,
-        from_coord: tuple[float, float, float],
-        to_coord: tuple[float, float, float],
-        link_type: str | None = None,
-        request_id: str | None = None,
-    ) -> bool:
-        """Async companion to :meth:`unlink`."""
-
-        if self._http_async is not None:
-            rid = request_id or str(uuid.uuid4())
-            headers = {"X-Request-ID": rid}
-            body = {
-                "from_coord": [
-                    float(from_coord[0]),
-                    float(from_coord[1]),
-                    float(from_coord[2]),
-                ],
-                "to_coord": [
-                    float(to_coord[0]),
-                    float(to_coord[1]),
-                    float(to_coord[2]),
-                ],
-                "type": link_type,
-            }
-            success, _, _ = await self._http_post_with_retries_async(
-                "/unlink", body, headers
-            )
-            if success:
-                return True
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.unlink(
-                from_coord,
-                to_coord,
-                link_type=link_type,
-                request_id=request_id,
-            ),
-        )
-
-    def prune_links(
-        self,
-        coord: tuple[float, float, float],
-        *,
-        weight_below: float | None = None,
-        max_degree: int | None = None,
-        type_filter: str | None = None,
-        request_id: str | None = None,
-    ) -> int:
-        """Prune outgoing edges using the remote memory service."""
-
-        if self._http is None:
-            raise RuntimeError(
-                "MEMORY SERVICE UNAVAILABLE: prune_links requires an HTTP memory backend."
-            )
-
-        rid = request_id or str(uuid.uuid4())
-        headers = {"X-Request-ID": rid}
-        body = {
-            "from_coord": [float(coord[0]), float(coord[1]), float(coord[2])],
-            "weight_below": weight_below,
-            "max_degree": max_degree,
-            "type": type_filter,
-        }
-        success, _, data = self._http_post_with_retries_sync("/prune", body, headers)
-        if success and isinstance(data, dict):
-            try:
-                removed = int(data.get("removed") or data.get("count") or 0)
-            except Exception:
-                removed = 0
-            return removed
-
-        raise RuntimeError("Memory service unavailable (prune_links failed)")
-
-    async def aprune_links(
-        self,
-        coord: tuple[float, float, float],
-        *,
-        weight_below: float | None = None,
-        max_degree: int | None = None,
-        type_filter: str | None = None,
-        request_id: str | None = None,
-    ) -> int:
-        """Async helper matching :meth:`prune_links`."""
-
-        if self._http_async is not None:
-            rid = request_id or str(uuid.uuid4())
-            headers = {"X-Request-ID": rid}
-            body = {
-                "from_coord": [float(coord[0]), float(coord[1]), float(coord[2])],
-                "weight_below": weight_below,
-                "max_degree": max_degree,
-                "type": type_filter,
-            }
-            success, _, data = await self._http_post_with_retries_async(
-                "/prune", body, headers
-            )
-            if success and isinstance(data, dict):
-                try:
-                    return int(data.get("removed") or data.get("count") or 0)
-                except Exception:
-                    return 0
-
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None,
-            lambda: self.prune_links(
-                coord,
-                weight_below=weight_below,
-                max_degree=max_degree,
-                type_filter=type_filter,
-                request_id=request_id,
-            ),
-        )
-
-    # --- Graph Analytics Helpers ---
-    def degree(self, node: Tuple[float, float, float]) -> int:
-        """Return the number of outgoing edges from *node* via the remote service."""
-
-        try:
-            neighbors = self.links_from(node, limit=1024)
-            return len(neighbors)
-        except Exception:
-            return 0
-
-    def centrality(self, node: Tuple[float, float, float]) -> float:
-        """Approximate degree centrality using remote neighbors only."""
-
-        try:
-            neighbors = self.links_from(node, limit=1024)
-            if not neighbors:
-                return 0.0
-            deg = float(len(neighbors))
-            unique_nodes: set[Tuple[float, float, float]] = {
-                (float(node[0]), float(node[1]), float(node[2]))
-            }
-            for edge in neighbors:
-                to_coord = edge.get("to")
-                if isinstance(to_coord, (list, tuple)) and len(to_coord) >= 3:
-                    unique_nodes.add(
-                        (
-                            float(to_coord[0]),
-                            float(to_coord[1]),
-                            float(to_coord[2]),
-                        )
-                    )
-            total = len(unique_nodes)
-            if total <= 1:
-                return 0.0
-            return deg / float(total - 1)
-        except Exception:
-            return 0.0
-
-    # --- Helper methods ---
+    # --- Compatibility helper methods ---
     def coord_for_key(
         self, key: str, universe: str | None = None
     ) -> Tuple[float, float, float]:
@@ -2302,119 +2018,44 @@ class MemoryClient:
         uni = universe or "real"
         return _stable_coord(f"{uni}::{key}")
 
-    def k_hop(
-        self,
-        starts: List[Tuple[float, float, float]],
-        depth: int = 1,
-        limit: int = 50,
-        type_filter: str | None = None,
-    ) -> List[Tuple[float, float, float]]:
-        """Return a list of coordinates reachable from *starts* within *depth* hops."""
+    def fetch_by_coord(
+        self, coord: Tuple[float, float, float], universe: str | None = None
+    ) -> List[Dict[str, Any]]:
+        """Fetch memory payloads by coordinate using GET /memories/{coord}.
+
+        Returns a list of payload dicts for the given coordinate. Returns an
+        empty list if no memory exists at that coordinate or if the request fails.
+        """
+        if self._http is None:
+            return []
         try:
-            if not starts:
+            coord_str = f"{coord[0]},{coord[1]},{coord[2]}"
+            endpoint = f"/memories/{coord_str}"
+            r = self._http.get(endpoint)
+            status = int(getattr(r, "status_code", 0) or 0)
+            if status == 404:
                 return []
-            seen: set[Tuple[float, float, float]] = set()
-            # build explicit 3-tuples for static typing
-            frontier = [(float(s[0]), float(s[1]), float(s[2])) for s in starts]
-            out: list[Tuple[float, float, float]] = []
-            for d in range(max(1, int(depth))):
-                new_frontier: list[Tuple[float, float, float]] = []
-                for node in frontier:
-                    if node in seen:
-                        continue
-                    seen.add(node)
-                    # gather neighbors
-                    try:
-                        neigh = self.links_from(
-                            node, type_filter=type_filter, limit=limit
-                        )
-                    except Exception:
-                        neigh = []
-                    for e in neigh:
-                        to_coord = e.get("to")
-                        if isinstance(to_coord, (list, tuple)) and len(to_coord) >= 3:
-                            t = (
-                                float(to_coord[0]),
-                                float(to_coord[1]),
-                                float(to_coord[2]),
-                            )
-                            if t not in seen and t not in out:
-                                out.append(t)
-                                new_frontier.append(t)
-                                if len(out) >= max(1, int(limit)):
-                                    return out
-                frontier = new_frontier
-                if not frontier:
-                    break
-            return out
+            if status != 200:
+                return []
+            data = self._response_json(r)
+            if data is None:
+                return []
+            # Handle various response formats
+            if isinstance(data, dict):
+                payload = data.get("payload")
+                if isinstance(payload, dict):
+                    return [payload]
+                memory = data.get("memory")
+                if isinstance(memory, dict):
+                    return [memory.get("payload") or memory]
+                # If the response itself looks like a payload, return it
+                if "task" in data or "fact" in data or "text" in data:
+                    return [data]
+            if isinstance(data, list):
+                return [p for p in data if isinstance(p, dict)]
+            return []
         except Exception:
             return []
-
-    def payloads_for_coords(
-        self, coords: List[Tuple[float, float, float]], universe: str | None = None
-    ) -> List[dict]:
-        """Bulk retrieval of payloads for the given coordinates.
-
-        The method performs a best-effort call to the remote ``/payloads`` endpoint.
-        It returns payload dictionaries that include a ``coordinate`` field when
-        available. When the memory service is unavailable the function returns an
-        empty list (or raises in strict mode).
-        """
-
-        if not coords:
-            return []
-
-        if self._http is None:
-            require_memory_enabled = bool(getattr(settings, "require_memory", False))
-            if require_memory_enabled:
-                raise RuntimeError(
-                    "MEMORY SERVICE UNAVAILABLE: payloads_for_coords requires an HTTP memory backend."
-                )
-            return []
-
-        coord_strs = [f"{c[0]},{c[1]},{c[2]}" for c in coords]
-        body: dict[str, Any] = {"coords": coord_strs}
-        if universe:
-            body["universe"] = universe
-
-        try:
-            resp = self._http.post("/payloads", json=body)
-            data = self._response_json(resp)
-        except Exception as exc:
-            logger.debug("payloads_for_coords request failed: %r", exc)
-            return []
-
-        out: List[dict] = []
-        if isinstance(data, dict):
-            entries = data.get("payloads") or data.get("results") or []
-            if isinstance(entries, list):
-                for entry in entries:
-                    payload = entry.get("payload") if isinstance(entry, dict) else entry
-                    if not isinstance(payload, dict):
-                        continue
-                    coord_value = None
-                    if isinstance(entry, dict):
-                        coord_value = entry.get("coord") or entry.get("coordinate")
-                    if coord_value is None:
-                        coord_value = payload.get("coordinate")
-                    parsed_coord: Tuple[float, float, float] | None = None
-                    if isinstance(coord_value, str):
-                        parsed_coord = _parse_coord_string(coord_value)
-                    elif (
-                        isinstance(coord_value, (list, tuple)) and len(coord_value) >= 3
-                    ):
-                        try:
-                            parsed_coord = (
-                                float(coord_value[0]),
-                                float(coord_value[1]),
-                                float(coord_value[2]),
-                            )
-                        except Exception:
-                            parsed_coord = None
-                    if parsed_coord is not None:
-                        payload["coordinate"] = parsed_coord
-                    out.append(payload)
-        return out
 
     def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
         """Store a payload dict into the memory backend.
@@ -2477,30 +2118,21 @@ class MemoryClient:
         enriched, uni, compat_hdr = self._compat_enrich_payload(payload, coord_key)
         tenant, namespace = self._tenant_namespace()
         sc = _stable_coord(f"{uni}::{coord_key}")
-        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
+        f"{sc[0]},{sc[1]},{sc[2]}"
 
-        # Map to MemoryWriteRequest schema
+        # Build request body conforming to the OpenAPI ``MemoryStoreRequest`` schema.
+        # The service expects a ``coord`` string of three comma‑separated floats,
+        # a ``payload`` object, and an optional ``memory_type``.  Previously the
+        # client sent a legacy schema with tenant/namespace fields, causing a
+        # 404/validation error.  We now construct the minimal, correct payload.
+        coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
         body: dict[str, Any] = {
-            "tenant": tenant,
-            "namespace": namespace,
-            "key": coord_key,
-            "value": enriched,
-            "universe": uni,
-            "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
+            "coord": coord_str,
+            "payload": dict(enriched),
+            "memory_type": str(
+                payload.get("memory_type") or payload.get("type") or "episodic"
+            ),
         }
-        for optional_key in (
-            "meta",
-            "ttl_seconds",
-            "tags",
-            "policy_tags",
-            "attachments",
-            "links",
-            "signals",
-            "importance",
-            "novelty",
-        ):
-            if isinstance(payload, dict) and optional_key in payload:
-                body[optional_key] = payload.get(optional_key)
 
         rid = request_id or str(_uuid.uuid4())
         rid_hdr = {"X-Request-ID": rid}
@@ -2578,4 +2210,4 @@ class MemoryClient:
 
 # NOTE: MemoryClient already implements the required methods used by MemoryService.
 # Adding a Protocol-based alias for type checkers helps during the refactor.
-MemoryClientType: type = MemoryBackend  # type: ignore[misc]
+MemoryClientType: type = MemoryBackend

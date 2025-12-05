@@ -78,12 +78,7 @@ async def put_persona(
     # Removing payloads_for_coords usage - try recall instead
     existing = []
     try:
-        # Attempt to find it via memory search/recall if needed, or rely on other mechanism
-        # For CAS, we ideally need to read what is there.
-        # Since payloads_for_coords is dead, we can't look up by coordinate directly unless
-        # the service supports get_by_key directly (which might be under 'recall' or similar).
-        # Assuming recall(key) might work if key is unique enough, or we skip CAS check if strictly unsupported.
-        pass
+        existing = ms.fetch_by_coord(coord) or []
     except Exception:
         existing = []
 
@@ -152,11 +147,11 @@ async def get_persona(pid: str, request: Request, response: Response):
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
-
-    hits = []
-    # Removed payloads_for_coords usage.
-    # Logic needs to be replaced with a viable retrieval method or throw NotImplemented if persona retrieval depends on it.
-    # Assuming for now we can't retrieve by coordinate directly.
+    coord = ms.coord_for_key(key)
+    try:
+        hits = ms.fetch_by_coord(coord) or []
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     # select most recent persona payload (exclude tombstones)
     for p in reversed(hits):

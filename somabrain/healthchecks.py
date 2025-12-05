@@ -36,7 +36,7 @@ def check_kafka(bootstrap: Optional[str], timeout_s: float = 1.0) -> bool:
         return False
     servers = _strip_scheme(bootstrap)
     try:
-        from confluent_kafka import Consumer  # type: ignore
+        from confluent_kafka import Consumer
 
         c = Consumer(
             {
@@ -68,7 +68,7 @@ def check_postgres(dsn: Optional[str], timeout_s: float = 1.0) -> bool:
     if not dsn:
         return False
     try:
-        import psycopg  # type: ignore
+        import psycopg
 
         # psycopg.connect supports connect_timeout as kwarg (seconds)
         conn = psycopg.connect(dsn, connect_timeout=max(1, int(timeout_s)))

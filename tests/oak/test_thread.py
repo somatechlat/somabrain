@@ -1,41 +1,26 @@
 from __future__ import annotations
 
-import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import os
 
-from somabrain.cognitive.thread_model import Base, CognitiveThread
+
+from somabrain.cognitive.thread_model import CognitiveThread
+from somabrain.storage.db import Base
 from somabrain.oak import planner as oak_planner
 
-"""Unit tests for the Cognitive Thread implementation.
+"""
+Unit tests for the Cognitive Thread implementation.
 
-The tests verify the SQLAlchemy model helpers and the integration point in
-``somabrain.oak.planner.plan_for_tenant``.
-They use an in-memory SQLite database as a real replacement for PostgreSQL.
+If a real PostgreSQL connection is not configured (via ``TEST_PG_DSN`` or
+``DATABASE_URL``), the tests fail fast to enforce the no-mocks policy.
 """
 
 
-@pytest.fixture
-def db_session(monkeypatch):
-    """Create an in-memory SQLite database and session for testing."""
-    # Use SQLite in-memory database as a real implementation replacement for Postgres
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
-    Session = sessionmaker(bind=engine)
-    session = Session()
-
-    # Patch the session factory used in planner
-    monkeypatch.setattr(
-        "somabrain.storage.db.get_session_factory",
-        lambda *a, **kw: lambda: session,
-    )
-
-    yield session
-    session.close()
+PG_DSN = os.environ.get("TEST_PG_DSN") or os.environ.get("DATABASE_URL")
 
 
 def test_cognitive_thread_basic_operations() -> None:
     """Validate ``CognitiveThread`` helper methods."""
+    assert PG_DSN, "TEST_PG_DSN or DATABASE_URL must be set for oak thread tests"
     thread = CognitiveThread(tenant_id="test")
     assert thread.get_options() == []
     assert thread.next_option() is None
@@ -57,16 +42,29 @@ def test_cognitive_thread_basic_operations() -> None:
 
 def test_planner_uses_thread_next_option(db_session):
     """Ensure ``plan_for_tenant`` prefers a thread's next option."""
-    # Create thread in the real (in-memory) DB
-    thread = CognitiveThread(tenant_id="tenant1")
-    thread.set_options(["thread_opt"])
-    db_session.add(thread)
-    db_session.commit()
+    assert PG_DSN, "TEST_PG_DSN or DATABASE_URL must be set for oak thread tests"
 
-    # Ensure it was saved
-    saved_thread = db_session.get(CognitiveThread, "tenant1")
-    assert saved_thread is not None
-    assert saved_thread.get_options() == ["thread_opt"]
+    # The planner uses get_session_factory; ensure it points at configured DSN.
+    def factory():
+        from somabrain.storage.db import get_session_factory
+
+        return get_session_factory()
+
+    session_factory = factory()
+    with session_factory() as session:
+        # Ensure the cognitive_threads table exists for the real Postgres DSN.
+        Base.metadata.create_all(session.get_bind())
+        # Clear any leftover rows from previous runs to avoid PK collisions.
+        session.query(CognitiveThread).delete()
+        session.commit()
+        thread = CognitiveThread(tenant_id="tenant1")
+        thread.set_options(["thread_opt"])
+        session.add(thread)
+        session.commit()
+
+    monkeypatch.setattr(
+        "somabrain.storage.db.get_session_factory", lambda *_, **__: session_factory
+    )
 
     # Run planner which should use the patched session factory
     result = oak_planner.plan_for_tenant("tenant1")

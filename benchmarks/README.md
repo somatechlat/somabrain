@@ -6,7 +6,7 @@ This folder contains a mix of pure numerics/micro-benchmarks and live end-to-end
 
 - Live/E2E (real IO)
   - `recall_latency_bench.py` — Remember/recall latency (requests to running API). Outputs p50/p95 for writes/reads.
-  - `recall_live_bench.py` — End-to-end recall: seeds a small corpus via `/remember`, queries `/memory/recall` (unified), computes hit-rate@k.
+- `recall_live_bench.py` — End-to-end recall: seeds a small corpus via `/remember`, queries `/recall` (unified), computes hit-rate@k.
   - `http_bench.py` — Simple concurrent HTTP load harness for any endpoint (async httpx). Good for latency percentiles.
   
   - `eval_learning_speed.py` — Measures adaptation/learning progression via live API.
@@ -38,7 +38,7 @@ This folder contains a mix of pure numerics/micro-benchmarks and live end-to-end
 - Recall live bench (defaults to http://127.0.0.1:9696):
   - SOMABRAIN_API_URL=http://127.0.0.1:9696 python benchmarks/recall_live_bench.py --output benchmarks/outputs/recall_live_results.json
 - HTTP harness (choose endpoint):
-  - python benchmarks/http_bench.py --url http://127.0.0.1:9696/memory/recall --concurrency 8 --requests 200
+- python benchmarks/http_bench.py --url http://127.0.0.1:9696/recall --concurrency 8 --requests 200
 
 3) Micro-benches:
 - Cognition core:

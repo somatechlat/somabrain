@@ -1,0 +1,1262 @@
+{
+    "version": "1.1.407",
+    "time": "1764871181198",
+    "generalDiagnostics": [
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/agent_coding_bench.py",
+            "severity": "error",
+            "message": "Expression of type \"None\" cannot be assigned to parameter of type \"str\"\n  \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 41,
+                    "character": 20
+                },
+                "end": {
+                    "line": 41,
+                    "character": 24
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present\n  ...",
+            "range": {
+                "start": {
+                    "line": 310,
+                    "character": 20
+                },
+                "end": {
+                    "line": 310,
+                    "character": 26
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 310,
+                    "character": 20
+                },
+                "end": {
+                    "line": 310,
+                    "character": 26
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present\n  ...",
+            "range": {
+                "start": {
+                    "line": 326,
+                    "character": 68
+                },
+                "end": {
+                    "line": 326,
+                    "character": 74
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 326,
+                    "character": 68
+                },
+                "end": {
+                    "line": 326,
+                    "character": 74
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"list[object]\" cannot be assigned to parameter \"height\" of type \"ArrayLike\"\n  Type \"list[object]\" is not assignable to type \"ArrayLike\"\n    \"list[object]\" is not assignable to \"float\"\n    \"list[object]\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"list[object]\" is incompatible with protocol \"_SupportsArray[dtype[Any]]\"\n      \"__array__\" is not present\n    \"list[object]\" is incompatible with protocol \"_NestedSequence[_SupportsArray[dtype[Any]]]\"\n      \"__getitem__\" is an incompatible type\n  ...",
+            "range": {
+                "start": {
+                    "line": 351,
+                    "character": 24
+                },
+                "end": {
+                    "line": 351,
+                    "character": 28
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Operator \"+\" not supported for types \"object\" and \"float\"",
+            "range": {
+                "start": {
+                    "line": 355,
+                    "character": 24
+                },
+                "end": {
+                    "line": 355,
+                    "character": 32
+                }
+            },
+            "rule": "reportOperatorIssue"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present\n  ...",
+            "range": {
+                "start": {
+                    "line": 380,
+                    "character": 70
+                },
+                "end": {
+                    "line": 380,
+                    "character": 76
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 380,
+                    "character": 70
+                },
+                "end": {
+                    "line": 380,
+                    "character": 76
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 381,
+                    "character": 18
+                },
+                "end": {
+                    "line": 381,
+                    "character": 33
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present\n  ...",
+            "range": {
+                "start": {
+                    "line": 391,
+                    "character": 74
+                },
+                "end": {
+                    "line": 391,
+                    "character": 80
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 391,
+                    "character": 74
+                },
+                "end": {
+                    "line": 391,
+                    "character": 80
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present\n  ...",
+            "range": {
+                "start": {
+                    "line": 395,
+                    "character": 75
+                },
+                "end": {
+                    "line": 395,
+                    "character": 81
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToInt\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToInt\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsInt\"\n      \"__int__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 395,
+                    "character": 75
+                },
+                "end": {
+                    "line": 395,
+                    "character": 81
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 397,
+                    "character": 19
+                },
+                "end": {
+                    "line": 397,
+                    "character": 20
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 397,
+                    "character": 30
+                },
+                "end": {
+                    "line": 397,
+                    "character": 31
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 401,
+                    "character": 24
+                },
+                "end": {
+                    "line": 401,
+                    "character": 25
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 401,
+                    "character": 35
+                },
+                "end": {
+                    "line": 401,
+                    "character": 36
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/cognition_core_bench.py",
+            "severity": "error",
+            "message": "Argument of type \"object\" cannot be assigned to parameter \"x\" of type \"ConvertibleToFloat\" in function \"__new__\"\n  Type \"object\" is not assignable to type \"ConvertibleToFloat\"\n    \"object\" is not assignable to \"str\"\n    \"object\" is incompatible with protocol \"Buffer\"\n      \"__buffer__\" is not present\n    \"object\" is incompatible with protocol \"SupportsFloat\"\n      \"__float__\" is not present\n    \"object\" is incompatible with protocol \"SupportsIndex\"\n      \"__index__\" is not present",
+            "range": {
+                "start": {
+                    "line": 407,
+                    "character": 18
+                },
+                "end": {
+                    "line": 407,
+                    "character": 34
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/db_bench.py",
+            "severity": "error",
+            "message": "Expected 0 positional arguments",
+            "range": {
+                "start": {
+                    "line": 20,
+                    "character": 25
+                },
+                "end": {
+                    "line": 20,
+                    "character": 28
+                }
+            },
+            "rule": "reportCallIssue"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/scale/load_soak_spike.py",
+            "severity": "error",
+            "message": "\"errors\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 36,
+                    "character": 24
+                },
+                "end": {
+                    "line": 36,
+                    "character": 30
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/scale/load_soak_spike.py",
+            "severity": "error",
+            "message": "\"errors\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 20
+                },
+                "end": {
+                    "line": 39,
+                    "character": 26
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/scale/run_remember_recall.py",
+            "severity": "error",
+            "message": "\"os\" is not defined",
+            "range": {
+                "start": {
+                    "line": 27,
+                    "character": 7
+                },
+                "end": {
+                    "line": 27,
+                    "character": 9
+                }
+            },
+            "rule": "reportUndefinedVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/benchmarks/worker_bench.py",
+            "severity": "error",
+            "message": "No parameter named \"cfg\"",
+            "range": {
+                "start": {
+                    "line": 33,
+                    "character": 28
+                },
+                "end": {
+                    "line": 33,
+                    "character": 31
+                }
+            },
+            "rule": "reportCallIssue"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 120,
+                    "character": 24
+                },
+                "end": {
+                    "line": 122,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "\"strip\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 201,
+                    "character": 64
+                },
+                "end": {
+                    "line": 201,
+                    "character": 69
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 204,
+                    "character": 23
+                },
+                "end": {
+                    "line": 206,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 208,
+                    "character": 32
+                },
+                "end": {
+                    "line": 208,
+                    "character": 88
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 209,
+                    "character": 32
+                },
+                "end": {
+                    "line": 209,
+                    "character": 87
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 221,
+                    "character": 22
+                },
+                "end": {
+                    "line": 223,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Argument of type \"None\" cannot be assigned to parameter \"default\" of type \"int\" in function \"_int_env\"\n  \"None\" is not assignable to \"int\"",
+            "range": {
+                "start": {
+                    "line": 230,
+                    "character": 56
+                },
+                "end": {
+                    "line": 230,
+                    "character": 60
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 233,
+                    "character": 26
+                },
+                "end": {
+                    "line": 235,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 237,
+                    "character": 21
+                },
+                "end": {
+                    "line": 237,
+                    "character": 87
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Declaration \"feature_overrides_path\" is obscured by a declaration of the same name",
+            "range": {
+                "start": {
+                    "line": 240,
+                    "character": 4
+                },
+                "end": {
+                    "line": 240,
+                    "character": 26
+                }
+            },
+            "rule": "reportRedeclaration"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 280,
+                    "character": 29
+                },
+                "end": {
+                    "line": 280,
+                    "character": 88
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Declaration \"api_token\" is obscured by a declaration of the same name",
+            "range": {
+                "start": {
+                    "line": 349,
+                    "character": 4
+                },
+                "end": {
+                    "line": 349,
+                    "character": 13
+                }
+            },
+            "rule": "reportRedeclaration"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 350,
+                    "character": 28
+                },
+                "end": {
+                    "line": 352,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Declaration \"log_config\" is obscured by a declaration of the same name",
+            "range": {
+                "start": {
+                    "line": 357,
+                    "character": 4
+                },
+                "end": {
+                    "line": 357,
+                    "character": 14
+                }
+            },
+            "rule": "reportRedeclaration"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 357,
+                    "character": 32
+                },
+                "end": {
+                    "line": 357,
+                    "character": 79
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Declaration \"constitution_signer_id\" is obscured by a declaration of the same name",
+            "range": {
+                "start": {
+                    "line": 411,
+                    "character": 4
+                },
+                "end": {
+                    "line": 411,
+                    "character": 26
+                }
+            },
+            "rule": "reportRedeclaration"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 411,
+                    "character": 44
+                },
+                "end": {
+                    "line": 413,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 419,
+                    "character": 23
+                },
+                "end": {
+                    "line": 419,
+                    "character": 79
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 441,
+                    "character": 33
+                },
+                "end": {
+                    "line": 443,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 447,
+                    "character": 37
+                },
+                "end": {
+                    "line": 451,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 462,
+                    "character": 16
+                },
+                "end": {
+                    "line": 462,
+                    "character": 65
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 508,
+                    "character": 16
+                },
+                "end": {
+                    "line": 508,
+                    "character": 71
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "\"strip\" is not a known attribute of \"None\"",
+            "range": {
+                "start": {
+                    "line": 516,
+                    "character": 61
+                },
+                "end": {
+                    "line": 516,
+                    "character": 66
+                }
+            },
+            "rule": "reportOptionalMemberAccess"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 519,
+                    "character": 26
+                },
+                "end": {
+                    "line": 519,
+                    "character": 81
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 528,
+                    "character": 27
+                },
+                "end": {
+                    "line": 530,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 584,
+                    "character": 19
+                },
+                "end": {
+                    "line": 584,
+                    "character": 83
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 587,
+                    "character": 28
+                },
+                "end": {
+                    "line": 591,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 594,
+                    "character": 19
+                },
+                "end": {
+                    "line": 594,
+                    "character": 83
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 597,
+                    "character": 35
+                },
+                "end": {
+                    "line": 599,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 644,
+                    "character": 31
+                },
+                "end": {
+                    "line": 646,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 653,
+                    "character": 26
+                },
+                "end": {
+                    "line": 653,
+                    "character": 87
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 661,
+                    "character": 32
+                },
+                "end": {
+                    "line": 663,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 703,
+                    "character": 20
+                },
+                "end": {
+                    "line": 703,
+                    "character": 59
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/config/settings.py",
+            "severity": "error",
+            "message": "Type \"str | None\" is not assignable to declared type \"str\"\n  Type \"str | None\" is not assignable to type \"str\"\n    \"None\" is not assignable to \"str\"",
+            "range": {
+                "start": {
+                    "line": 1285,
+                    "character": 39
+                },
+                "end": {
+                    "line": 1289,
+                    "character": 5
+                }
+            },
+            "rule": "reportAssignmentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/etcd_client.py",
+            "severity": "error",
+            "message": "Import \"etcd3\" could not be resolved",
+            "range": {
+                "start": {
+                    "line": 10,
+                    "character": 11
+                },
+                "end": {
+                    "line": 10,
+                    "character": 16
+                }
+            },
+            "rule": "reportMissingImports"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "\"_LOG\" is not defined",
+            "range": {
+                "start": {
+                    "line": 16,
+                    "character": 4
+                },
+                "end": {
+                    "line": 16,
+                    "character": 8
+                }
+            },
+            "rule": "reportUndefinedVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "\"TracerProvider\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 15
+                },
+                "end": {
+                    "line": 35,
+                    "character": 29
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "\"Resource\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 35,
+                    "character": 39
+                },
+                "end": {
+                    "line": 35,
+                    "character": 47
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "\"OTLPSpanExporter\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 36,
+                    "character": 20
+                },
+                "end": {
+                    "line": 36,
+                    "character": 36
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "\"BatchSpanProcessor\" is possibly unbound",
+            "range": {
+                "start": {
+                    "line": 37,
+                    "character": 21
+                },
+                "end": {
+                    "line": 37,
+                    "character": 39
+                }
+            },
+            "rule": "reportPossiblyUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/common/utils/trace.py",
+            "severity": "error",
+            "message": "Variable not allowed in type expression",
+            "range": {
+                "start": {
+                    "line": 42,
+                    "character": 46
+                },
+                "end": {
+                    "line": 42,
+                    "character": 52
+                }
+            },
+            "rule": "reportInvalidTypeForm"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/config/feature_flags.py",
+            "severity": "error",
+            "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__new__\"\n  Type \"str | None\" is not assignable to type \"StrPath\"\n    Type \"None\" is not assignable to type \"StrPath\"\n      \"None\" is not assignable to \"str\"\n      \"None\" is incompatible with protocol \"PathLike[str]\"\n        \"__fspath__\" is not present",
+            "range": {
+                "start": {
+                    "line": 34,
+                    "character": 21
+                },
+                "end": {
+                    "line": 34,
+                    "character": 25
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/config/feature_flags.py",
+            "severity": "error",
+            "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__init__\"\n  Type \"str | None\" is not assignable to type \"StrPath\"\n    Type \"None\" is not assignable to type \"StrPath\"\n      \"None\" is not assignable to \"str\"\n      \"None\" is incompatible with protocol \"PathLike[str]\"\n        \"__fspath__\" is not present",
+            "range": {
+                "start": {
+                    "line": 34,
+                    "character": 21
+                },
+                "end": {
+                    "line": 34,
+                    "character": 25
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/config/feature_flags.py",
+            "severity": "error",
+            "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__new__\"\n  Type \"str | None\" is not assignable to type \"StrPath\"\n    Type \"None\" is not assignable to type \"StrPath\"\n      \"None\" is not assignable to \"str\"\n      \"None\" is incompatible with protocol \"PathLike[str]\"\n        \"__fspath__\" is not present",
+            "range": {
+                "start": {
+                    "line": 74,
+                    "character": 21
+                },
+                "end": {
+                    "line": 74,
+                    "character": 25
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/config/feature_flags.py",
+            "severity": "error",
+            "message": "Argument of type \"str | None\" cannot be assigned to parameter \"args\" of type \"StrPath\" in function \"__init__\"\n  Type \"str | None\" is not assignable to type \"StrPath\"\n    Type \"None\" is not assignable to type \"StrPath\"\n      \"None\" is not assignable to \"str\"\n      \"None\" is incompatible with protocol \"PathLike[str]\"\n        \"__fspath__\" is not present",
+            "range": {
+                "start": {
+                    "line": 74,
+                    "character": 21
+                },
+                "end": {
+                    "line": 74,
+                    "character": 25
+                }
+            },
+            "rule": "reportArgumentType"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/infra/web/serve_monitor.py",
+            "severity": "error",
+            "message": "Except clause is unreachable because exception is already handled\n  \"Exception\" is a subclass of \"Exception\"",
+            "range": {
+                "start": {
+                    "line": 42,
+                    "character": 15
+                },
+                "end": {
+                    "line": 42,
+                    "character": 24
+                }
+            },
+            "rule": "reportUnusedExcept"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/infra/web/serve_monitor.py",
+            "severity": "error",
+            "message": "Zero-argument form of \"super\" call is valid only within a method",
+            "range": {
+                "start": {
+                    "line": 46,
+                    "character": 4
+                },
+                "end": {
+                    "line": 46,
+                    "character": 9
+                }
+            },
+            "rule": "reportGeneralTypeIssues"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/infra/web/serve_monitor.py",
+            "severity": "error",
+            "message": "Zero-argument form of \"super\" call is valid only within a method",
+            "range": {
+                "start": {
+                    "line": 53,
+                    "character": 4
+                },
+                "end": {
+                    "line": 53,
+                    "character": 9
+                }
+            },
+            "rule": "reportGeneralTypeIssues"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/avro_schemas.py",
+            "severity": "error",
+            "message": "Except clause is unreachable because exception is already handled\n  \"Exception\" is a subclass of \"Exception\"",
+            "range": {
+                "start": {
+                    "line": 36,
+                    "character": 11
+                },
+                "end": {
+                    "line": 36,
+                    "character": 20
+                }
+            },
+            "rule": "reportUnusedExcept"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/avro_schemas.py",
+            "severity": "error",
+            "message": "\"e\" is unbound",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 58
+                },
+                "end": {
+                    "line": 39,
+                    "character": 59
+                }
+            },
+            "rule": "reportUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/avro_schemas.py",
+            "severity": "error",
+            "message": "Invalid exception class or object\n  \"Unbound\" does not derive from BaseException",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 68
+                },
+                "end": {
+                    "line": 39,
+                    "character": 69
+                }
+            },
+            "rule": "reportGeneralTypeIssues"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/avro_schemas.py",
+            "severity": "error",
+            "message": "\"e\" is unbound",
+            "range": {
+                "start": {
+                    "line": 39,
+                    "character": 68
+                },
+                "end": {
+                    "line": 39,
+                    "character": 69
+                }
+            },
+            "rule": "reportUnboundVariable"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/serde.py",
+            "severity": "error",
+            "message": "Except clause is unreachable because exception is already handled\n  \"Exception\" is a subclass of \"Exception\"",
+            "range": {
+                "start": {
+                    "line": 13,
+                    "character": 7
+                },
+                "end": {
+                    "line": 13,
+                    "character": 16
+                }
+            },
+            "rule": "reportUnusedExcept"
+        },
+        {
+            "file": "/Users/macbookpro201916i964gb1tb/Documents/GitHub/somabrain/libs/kafka_cog/serde.py",
+            "severity": "error",
+            "message": "Argument missing for parameter \"reader_schema\"",
+            "range": {
+                "start": {
+                    "line": 49,
+                    "character": 11
+                },
+                "end": {
+                    "line": 49,
+                    "character": 47
+                }
+            },
+            "rule": "reportCallIssue"
+        }
+    ],
+    "summary": {
+        "filesAnalyzed": 51,
+        "errorCount": 78,
+        "warningCount": 0,
+        "informationCount": 0,
+        "timeInSec": 8.59
+    }
+}
+

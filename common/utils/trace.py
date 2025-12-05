@@ -15,8 +15,8 @@ try:  # pragma: no cover - optional dependency guard
 except Exception as exc:  # pragma: no cover
     # Log the import failure for debugging purposes while keeping the optional nature.
     _LOG.exception("Failed to import OpenTelemetry modules: %s", exc)
-    trace = None  # type: ignore
-    Tracer = None  # type: ignore
+    trace = None
+    Tracer = None
 
 _LOG = logging.getLogger(__name__)
 

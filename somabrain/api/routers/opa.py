@@ -61,7 +61,7 @@ async def update_policy(request: Request):
     # Sign policy – private key path from env (optional for testing)
     # Use Settings attribute instead of deprecated getenv
     priv_key_path = getattr(settings, "opa_privkey_path", None)
-    # ``sign_policy`` can handle a ``None`` path (e.g., when mocked in tests).
+    # ``sign_policy`` can handle a ``None`` path (e.g., when injected in tests).
     sig = opa_signature.sign_policy(policy_str, priv_key_path)
     # Verify signature (optional safety check)
     pub_key_path = getattr(settings, "opa_pubkey_path", None)

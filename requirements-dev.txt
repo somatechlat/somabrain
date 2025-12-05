@@ -27,8 +27,13 @@ psycopg[binary]==3.2.10
 PyJWT[crypto]==2.9.0
 pydantic-settings==2.4.0
 scipy==1.16.2
-grpcio==1.75.0
+# grpcio version limited by pymilvus compatibility (<=1.60.0)
+grpcio==1.60.0
 # fastavro==1.9.7  # Disabled for Python 3.13 compatibility; not required for core tests
+
+# Milvus vector store client – required for real Milvus integration.
+# The latest stable 2.x series works with Milvus 2.4.x.
+pymilvus==2.4.0
 
 # Plotting and profiling for benchmarks
 # matplotlib==3.7.5  # downgraded to avoid build issues on Python 3.13

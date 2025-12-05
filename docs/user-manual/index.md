@@ -12,10 +12,10 @@
 
 SomaBrain is a FastAPI service that exposes cognitive memory and planning primitives. The production binary defined in `somabrain/app.py` wires together:
 
-- `/remember` and `/remember/batch` for episodic memory ingestion handled by `somabrain.services.memory_service.MemoryService`.
+- `/remember` for episodic memory ingestion handled by `somabrain.services.memory_service.MemoryService`.
 - `/recall` for semantic retrieval backed by working memory (`somabrain.mt_wm.MultiTenantWM`) and long‑term storage via the external memory HTTP service.
 - `/context/evaluate` and `/context/feedback` for end‑to‑end reasoning loops that exercise the BHDC `QuantumLayer`, `ContextBuilder`, `ContextPlanner`, and `AdaptationEngine`.
-- Optional flows such as `/act`, `/plan/suggest`, `/sleep/run`, and `/graph/links` that are enabled when the full stack is running.
+- Optional flows such as `/act`, `/plan/suggest`, and `/sleep/run` that are enabled when the full stack is running.
 
 All endpoints are authenticated, tenant‑scoped, and observable with Prometheus metrics emitted from the same runtime.
 

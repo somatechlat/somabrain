@@ -40,14 +40,12 @@ curl -sS http://localhost:9696/health -H "$AUTH" -H "$TENANT" | jq
 | `/health` | GET | Component liveness (Redis, Postgres, Kafka, memory backend, embedder) | `somabrain.app.health` |
 | `/metrics` | GET | Prometheus metrics | `somabrain.app` (global registry) |
 | `/remember` | POST | Store a single memory payload | `somabrain.app.remember` |
-| `/remember/batch` | POST | Store multiple payloads in one request | `somabrain.app.remember_batch` |
 | `/recall` | POST | Semantic recall from working + long-term memory | `somabrain.app.recall` |
 | `/context/evaluate` | POST | Build contextual prompt and retrieve weighted memories | `somabrain.api.context_route.evaluate_endpoint` |
 | `/context/feedback` | POST | Submit utility/feedback scores that drive `AdaptationEngine` | `somabrain.api.context_route.feedback_endpoint` |
 | `/act` | POST | Execute planner actions (enabled in full stack) | `somabrain.app.act` |
 | `/plan/suggest` | POST | Request plan suggestions | `somabrain.app.plan_suggest` |
 | `/sleep/run` | POST | Trigger NREM/REM consolidation | `somabrain.app.sleep_run` |
-| `/graph/links` | POST | List or mutate graph edges for a coordinate | `somabrain.app.graph_links` |
 | `/neuromodulators` | POST/GET | Inspect or set neuromodulator state | `somabrain.app.neuromodulators` |
 
 Endpoints gated by `if not _MINIMAL_API` require the full Docker stack (see `.env` flags such as `SOMABRAIN_FORCE_FULL_STACK`, `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS`).
