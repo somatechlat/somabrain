@@ -177,6 +177,6 @@
   - [x] 19.1 Remove ANN fallback chain (Milvus → HNSW → Simple) so configured backend is mandatory
   - [x] 19.2 Add live Milvus smoke + golden-set recall@10 test (ensures vector layer correctness)
   - [x] 19.3 Add index-config drift check (schema + metric + index params) and fail on mismatch
-  - [ ] 19.4 Expose Milvus health/SLO telemetry (p95 search/ingest, segment load) via health/metrics
-  - [ ] 19.5 Add reconciliation job/tests to ensure Postgres canonical rows exist in Milvus (no orphans)
-  - [ ] 19.6 Harden Oak option upsert: mandatory Milvus write with retries/backoff and alerting
+  - [x] 19.4 Expose Milvus health/SLO telemetry (p95 search/ingest, segment load) via health/metrics
+  - [x] 19.5 Add reconciliation job/tests to ensure Postgres canonical rows exist in Milvus (no orphans)
+  - [x] 19.6 Harden Oak option upsert: mandatory Milvus write with retries/backoff and alerting

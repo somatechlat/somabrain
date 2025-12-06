@@ -80,22 +80,19 @@ class OptionManager:
     all paths are concrete and exercised by unit tests (not shown here).
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        memory_client: Optional[MemoryClient] = None,
+        milvus_client: Optional[MilvusClient] = None,
+    ) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
-        self._client = MemoryClient(cfg=settings)
-        # Initialize Milvus client for vector persistence.
-        # Lazy initialization is preferred to allow import in environments without Milvus running.
-        # However, for production strictness, we should init here.
-        # But to allow unit tests to mock it during instantiation, we can be a bit more flexible or require mocking at class level.
-        # In VIBE strict mode, we should fail if dependencies are missing at runtime usage, but module import should be safe.
-        # We will initialize lazily or handle the exception if running in a context where it's mocked later?
-        # No, strict means strict. But we also need to allow tests to load the module.
-        # The MilvusClient constructor attempts to connect immediately.
-        # If we are in a test environment (e.g. CI without Milvus), this will fail at import time if we instantiate a global.
-        # Solution: Use a lazy property or instantiation inside methods, OR ensure the global is only created when app starts.
-        # But ``option_manager = OptionManager()`` is at module level.
-        # We will lazily instantiate the clients to allow module import.
-        self._milvus_client: Optional[MilvusClient] = None
+        # VIBE-compliant dependency injection to avoid mocking hard-coded constructors.
+        # Defaults to real implementations if not provided.
+        self._client = memory_client or MemoryClient(cfg=settings)
+        # Initialize Milvus client lazily if not provided, to allow safe import.
+        # However, for injection to work properly in tests, we store what is passed.
+        self._milvus_client = milvus_client
+
         # Initialize metrics (will be imported lazily to avoid circular imports)
         from somabrain import metrics as M
 
