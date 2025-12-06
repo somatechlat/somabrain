@@ -13,9 +13,8 @@ from somabrain.api.schemas.task import TaskCreate, TaskUpdate
 class TaskRegistryStore:
     def __init__(self, engine_url: Optional[str] = None) -> None:
         self._engine = db.get_engine(engine_url)
-        # We generally expect migrations to handle table creation,
-        # but create_all is safe if tables exist.
-        db.Base.metadata.create_all(self._engine)
+        # Table creation is handled exclusively by Alembic migrations.
+        # No automated schema creation is performed here.
         self._session_factory = db.get_session_factory(engine_url)
 
     def create(self, task_data: TaskCreate) -> TaskRegistry:

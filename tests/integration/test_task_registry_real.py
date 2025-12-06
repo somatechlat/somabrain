@@ -3,16 +3,15 @@
 Adheres to VIBE rules:
 - No Mocks.
 - Real Database (Postgres).
-- Real HTTP Client.
+- Real HTTP Client (httpx against localhost).
 - Real Auth (via Token).
 """
 
 import time
 import uuid
 import pytest
-from fastapi.testclient import TestClient
+import httpx
 from sqlalchemy import text
-from somabrain.app import app
 from somabrain.storage import db
 from common.config.settings import settings
 
@@ -26,10 +25,21 @@ def _db_available() -> bool:
     except Exception:
         return False
 
+# Check if the service is reachable on localhost (real network check)
+def _service_available() -> bool:
+    endpoint = getattr(settings, "api_url", "http://localhost:9696")
+    try:
+        with httpx.Client(base_url=endpoint, timeout=2.0) as client:
+            resp = client.get("/health")
+            return resp.status_code == 200
+    except Exception:
+        return False
+
 @pytest.mark.skipif(not _db_available(), reason="Real Postgres not available")
-def test_task_registry_lifecycle():
+@pytest.mark.skipif(not _service_available(), reason="Real API service not reachable")
+def test_task_registry_lifecycle_real_network():
     """
-    Test the full lifecycle of a task registry entry using real infrastructure.
+    Test the full lifecycle of a task registry entry using real network requests against a running server.
 
     1. Clean up potential conflicts (DELETE).
     2. Register a new task (POST).
@@ -39,62 +49,59 @@ def test_task_registry_lifecycle():
     6. Delete the task (DELETE).
     """
 
-    # 1. Setup Client
-    client = TestClient(app)
+    # 1. Setup Client (Real HTTPX Client)
+    base_url = getattr(settings, "api_url", "http://localhost:9696")
+    client = httpx.Client(base_url=base_url, timeout=10.0)
 
     # Generate a unique task name to avoid collision
     task_name = f"integration-task-{uuid.uuid4().hex[:8]}"
 
-    # Create a valid token (or use a bypass if configured for dev, but we prefer real headers)
-    # Since we can't easily generate a signed JWT without the secret, and we are in Vibe Rules mode,
-    # we should check if the environment allows us to use the configured API token.
-    # settings.api_token is used for simple auth.
+    # Real Auth Headers
     headers = {}
     if settings.api_token:
         headers["Authorization"] = f"Bearer {settings.api_token}"
 
-    # 2. Register (POST)
-    payload = {
-        "name": task_name,
-        "description": "Integration Test Task",
-        "schema": {"type": "object", "properties": {"foo": {"type": "string"}}},
-        "version": "1.0.0"
-    }
+    try:
+        # 2. Register (POST)
+        payload = {
+            "name": task_name,
+            "description": "Integration Test Task",
+            "schema": {"type": "object", "properties": {"foo": {"type": "string"}}},
+            "version": "1.0.0"
+        }
 
-    # We expect this to fail if Auth is strictly required and we don't have a valid token.
-    # However, for this test to pass in "Real Code" mode, we assume the environment is set up with
-    # a known token or we are running in a mode where we can authenticate.
+        resp = client.post("/tasks/register", json=payload, headers=headers)
 
-    resp = client.post("/tasks/register", json=payload, headers=headers)
+        assert resp.status_code in (200, 201), f"Registration failed: {resp.text}"
 
-    # If auth fails, we can't proceed. Assert 200 or 401 to fail fast with clarity.
-    assert resp.status_code in (200, 201), f"Registration failed: {resp.text}"
+        data = resp.json()
+        task_id = data["id"]
+        assert data["name"] == task_name
 
-    data = resp.json()
-    task_id = data["id"]
-    assert data["name"] == task_name
+        # 3. Retrieve (GET)
+        resp = client.get(f"/tasks/{task_id}", headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["id"] == task_id
 
-    # 3. Retrieve (GET)
-    resp = client.get(f"/tasks/{task_id}", headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["id"] == task_id
+        # 4. List (GET)
+        resp = client.get("/tasks", headers=headers)
+        assert resp.status_code == 200
+        tasks = resp.json()["tasks"]
+        assert any(t["id"] == task_id for t in tasks)
 
-    # 4. List (GET)
-    resp = client.get("/tasks", headers=headers)
-    assert resp.status_code == 200
-    tasks = resp.json()["tasks"]
-    assert any(t["id"] == task_id for t in tasks)
+        # 5. Update (PATCH)
+        update_payload = {"description": "Updated Description"}
+        resp = client.patch(f"/tasks/{task_id}", json=update_payload, headers=headers)
+        assert resp.status_code == 200
+        assert resp.json()["description"] == "Updated Description"
 
-    # 5. Update (PATCH)
-    update_payload = {"description": "Updated Description"}
-    resp = client.patch(f"/tasks/{task_id}", json=update_payload, headers=headers)
-    assert resp.status_code == 200
-    assert resp.json()["description"] == "Updated Description"
+        # 6. Delete (DELETE)
+        resp = client.delete(f"/tasks/{task_id}", headers=headers)
+        assert resp.status_code == 200
 
-    # 6. Delete (DELETE)
-    resp = client.delete(f"/tasks/{task_id}", headers=headers)
-    assert resp.status_code == 200
+        # Verify deletion
+        resp = client.get(f"/tasks/{task_id}", headers=headers)
+        assert resp.status_code == 404
 
-    # Verify deletion
-    resp = client.get(f"/tasks/{task_id}", headers=headers)
-    assert resp.status_code == 404
+    finally:
+        client.close()

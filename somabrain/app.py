@@ -1703,12 +1703,9 @@ try:
 except Exception:
     pass
 
-try:
-    from somabrain.api.routers import task as _task_router
+from somabrain.api.routers import task as _task_router
 
-    app.include_router(_task_router.router)
-except Exception:
-    pass
+app.include_router(_task_router.router)
 
 try:
     from somabrain.api.routers import constitution as _constitution_router
