@@ -1555,3 +1555,50 @@ FUSION_SOFTMAX_WEIGHT = Gauge(
     labelnames=["tenant", "domain"],
     registry=registry,
 )
+
+# --- Milvus Health/SLO Metrics ---
+MILVUS_CONNECT_LATENCY = Histogram(
+    "somabrain_milvus_connect_latency_seconds",
+    "Latency of Milvus connection attempts",
+    registry=registry,
+)
+MILVUS_CONNECT_SUCCESS = Counter(
+    "somabrain_milvus_connect_success_total",
+    "Count of successful Milvus connection attempts",
+    registry=registry,
+)
+MILVUS_CONNECT_FAILURE = Counter(
+    "somabrain_milvus_connect_failure_total",
+    "Count of failed Milvus connection attempts",
+    registry=registry,
+)
+MILVUS_UPSERT_LATENCY = Histogram(
+    "somabrain_milvus_upsert_latency_seconds",
+    "Latency of Milvus upsert operations",
+    registry=registry,
+)
+MILVUS_UPSERT_SUCCESS = Counter(
+    "somabrain_milvus_upsert_success_total",
+    "Count of successful Milvus upsert operations",
+    registry=registry,
+)
+MILVUS_UPSERT_FAILURE = Counter(
+    "somabrain_milvus_upsert_failure_total",
+    "Count of failed Milvus upsert operations",
+    registry=registry,
+)
+MILVUS_SEARCH_LATENCY = Histogram(
+    "somabrain_milvus_search_latency_seconds",
+    "Latency of Milvus search operations",
+    registry=registry,
+)
+MILVUS_SEARCH_SUCCESS = Counter(
+    "somabrain_milvus_search_success_total",
+    "Count of successful Milvus search operations",
+    registry=registry,
+)
+MILVUS_SEARCH_FAILURE = Counter(
+    "somabrain_milvus_search_failure_total",
+    "Count of failed Milvus search operations",
+    registry=registry,
+)

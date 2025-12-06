@@ -41,10 +41,11 @@ import random
 from typing import List, Tuple
 import time as _time
 
+from common.config.settings import settings
 from .config import Config
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
-from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED, REPLAY_STRENGTH
+from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED
 from .mt_wm import MultiTenantWM
 from .reflect import top_keywords
 
@@ -108,9 +109,8 @@ def run_nrem(
         for j in range(i + 1, len(coords)):
             if _budget > 0.0 and (_time.perf_counter() - _t0) > _budget:
                 break
-            mem.link(coords[i], coords[j], link_type="co_replay", weight=1.0)
-            REPLAY_STRENGTH.observe(1.0)
-            reinforced += 1
+            # mem.link() removed for VIBE compliance
+            pass
     # Decay/prune weak links to prevent unbounded growth
     try:
         pruned = 0

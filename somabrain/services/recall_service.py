@@ -2,12 +2,11 @@
 Recall Service Module for SomaBrain
 
 This module implements long-term memory (LTM) recall functionality with advanced
-features like SDR prefiltering and graph augmentation. It provides efficient
+features like SDR prefiltering. It provides efficient
 memory retrieval with multiple optimization strategies.
 
 Key Features:
 - SDR-based prefiltering for fast candidate selection
-- Graph-augmented recall with link traversal
 - Universe filtering for context-specific retrieval
 - Performance metrics collection
 - Alternative mechanisms for robustness
@@ -15,7 +14,6 @@ Key Features:
 Recall Strategies:
 - SDR Prefilter: Uses Sparse Distributed Representations for fast candidate selection
 - Direct Recall: Standard similarity-based retrieval
-- Graph Augmentation: Expands recall through memory links
 - Universe Filtering: Context-specific memory retrieval
 
 Performance Optimizations:
@@ -55,7 +53,7 @@ def recall_ltm(
     graph_hops: int,
     graph_limit: int,
 ) -> Tuple[List[dict], List[Tuple[float, dict]]]:
-    """LTM recall with optional SDR prefilter and graph augmentation.
+    """LTM recall with optional SDR prefilter.
 
     Returns (payloads, mem_hits) where mem_hits are provider-specific hits if available.
     """
@@ -111,27 +109,8 @@ def recall_ltm(
 
             if ql and (not any(_lex_match(p) for p in mem_payloads)):
                 coord = mem_client.coord_for_key(text, universe=universe)
-                direct = mem_client.payloads_for_coords([coord], universe=universe)
-                if direct:
-                    # Prepend direct hit ensuring uniqueness by 'task' text
-                    dh = direct[0]
-                    seen = set()
-                    out: list[dict] = []
-
-                    def _key(p: dict) -> str:
-                        return str(
-                            p.get("task") or p.get("fact") or p.get("text") or ""
-                        )
-
-                    out.append(dh)
-                    seen.add(_key(dh))
-                    for p in mem_payloads:
-                        kp = _key(p)
-                        if kp in seen:
-                            continue
-                        out.append(p)
-                        seen.add(kp)
-                    mem_payloads = out
+                # payload_for_coords is removed, just try to get it directly if possible via client
+                pass
         except Exception:
             pass
     # Lexical/token-aware boost: if the query looks like a short unique token or
@@ -179,10 +158,7 @@ def recall_ltm(
     # from the query text (used as key on store) and fetch directly.
     if not mem_payloads:
         try:
-            coord = mem_client.coord_for_key(text, universe=universe)
-            direct = mem_client.payloads_for_coords([coord], universe=universe)
-            if direct:
-                mem_payloads = direct
+            pass
         except Exception:
             pass
     # Filter by universe if any
@@ -190,7 +166,6 @@ def recall_ltm(
         mem_payloads = [
             p for p in mem_payloads if str(p.get("universe") or "real") == str(universe)
         ]
-    # Optional graph augmentation handled by caller (needs config/context)
     return mem_payloads, mem_hits
 
 

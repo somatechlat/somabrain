@@ -51,8 +51,7 @@ class MemoryService:
         """Return a client scoped to this instance's namespace.
 
         The backend is expected to provide a ``for_namespace`` method that
-        returns an object with the actual memory‑operation methods (``remember``,
-        ``link`` …).  For the unit tests a tiny mock backend is supplied.
+        returns an object with the actual memory‑operation methods.
         """
         return self._backend.for_namespace(self.namespace)
 
@@ -154,56 +153,6 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
-    def link(
-        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
-    ):
-        if self._is_circuit_open():
-            self._queue_degraded(
-                "link",
-                {
-                    "from": from_coord,
-                    "to": to_coord,
-                    "type": link_type,
-                    "weight": weight,
-                },
-            )
-            message = "Memory service unavailable (circuit open)"
-            if self._degrade_readonly:
-                raise RuntimeError(message)
-            raise RuntimeError(f"{message}; queued locally for replay")
-        try:
-            result = self.client().link(from_coord, to_coord, link_type, weight)
-            self._mark_success()
-            return result
-        except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
-
-    async def alink(
-        self, from_coord, to_coord, link_type: str = "related", weight: float = 1.0
-    ):
-        if self._is_circuit_open():
-            self._queue_degraded(
-                "link",
-                {
-                    "from": from_coord,
-                    "to": to_coord,
-                    "type": link_type,
-                    "weight": weight,
-                },
-            )
-            message = "Memory service unavailable (circuit open)"
-            if self._degrade_readonly:
-                raise RuntimeError(message)
-            raise RuntimeError(f"{message}; queued locally for replay")
-        try:
-            result = await self.client().alink(from_coord, to_coord, link_type, weight)
-            self._mark_success()
-            return result
-        except Exception as e:
-            self._mark_failure()
-            raise RuntimeError("Memory service unavailable") from e
-
     # ---------------------------------------------------------------------
     # Miscellaneous helper methods (mostly no‑ops for metrics)
     # ---------------------------------------------------------------------
@@ -234,14 +183,8 @@ class MemoryService:
     def coord_for_key(self, key: str, universe: str | None = None):
         return self.client().coord_for_key(key, universe)
 
-    def payloads_for_coords(self, coords, universe: str | None = None):
-        return self.client().payloads_for_coords(coords, universe)
-
     def delete(self, coordinate):
         return self.client().delete(coordinate)
-
-    def links_from(self, start, type_filter: str | None = None, limit: int = 50):
-        return self.client().links_from(start, type_filter, limit)
 
     # ---------------------------------------------------------------------
     # Circuit‑breaker state inspection (used by the test suite)
@@ -254,7 +197,7 @@ class MemoryService:
         fields required by the tests.
         """
         state = self.__class__._circuit_breaker.get_state(self.tenant_id)
-        # Add compatibility fields expected by the legacy test suite.
+        # Add compatibility fields
         state.update({"tenant": self.tenant_id, "namespace": self.namespace})
         return state
 
