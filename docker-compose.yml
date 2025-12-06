@@ -143,7 +143,7 @@ services:
       # Expose only the EXTERNAL listener container port to the host
       - "${KAFKA_BROKER_HOST_PORT:-30102}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT:-9094}"
     healthcheck:
-      test: [ "CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1" ]
+      test: [ "CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1" ]
       interval: 20s
       timeout: 20s
       start_period: 60s
@@ -451,7 +451,7 @@ services:
       SOMABRAIN_PORT: "${SOMABRAIN_PORT:-9696}"
       SOMABRAIN_WORKERS: "${SOMABRAIN_WORKERS:-1}"
       SOMABRAIN_REDIS_URL: "${SOMABRAIN_REDIS_URL}"
-      SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
+      SOMABRAIN_KAFKA_URL: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMA_KAFKA_BOOTSTRAP: "somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT}"
       SOMABRAIN_OPA_URL: "${SOMABRAIN_OPA_URL}"
       SOMABRAIN_POSTGRES_DSN: "${SOMABRAIN_POSTGRES_DSN}"
@@ -472,7 +472,6 @@ services:
       # Adaptive knobs are controlled by runtime config overrides (local only)
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
       # Disable Kafka readiness check for local dev (scripts/kafka_smoke_test.py not included)
-      SOMABRAIN_REQUIRE_KAFKA: "0"
     ports:
       - "${SOMABRAIN_HOST_PORT:-9696}:${SOMABRAIN_PORT:-9696}"
     healthcheck:

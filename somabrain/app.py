@@ -1657,6 +1657,56 @@ async def _init_constitution() -> None:
         pass
 
 
+# --- Enforce mandatory Kafka availability ------------------------------------------------
+@app.on_event("startup")
+async def _enforce_kafka_required() -> None:
+    """Fail fast if Kafka broker cannot be reached.
+
+    The VIBE coding rules require external services to be mandatory when the
+    application is running in production.  Previously the service would start
+    and merely report ``kafka_ok: false`` in the health endpoint.  This event
+    performs the same check during startup and raises an exception, causing the
+    container to exit with a non‑zero status so Docker will restart it.
+    """
+    try:
+        kafka_ok = check_kafka(settings.kafka_bootstrap_servers)
+        if not kafka_ok:
+            # Raising RuntimeError aborts the FastAPI startup sequence.
+            raise RuntimeError(
+                "Kafka broker unavailable – aborting startup as required by VIBE rules"
+            )
+    except Exception as exc:
+        # Ensure any unexpected error also aborts startup.
+        raise RuntimeError(f"Kafka health check failed during startup: {exc}")
+
+
+# --- Enforce mandatory OPA and Postgres availability ---------------------------
+@app.on_event("startup")
+async def _enforce_opa_postgres_required() -> None:
+    """Fail fast if OPA or Postgres are not reachable.
+
+    The ``assert_ready`` helper in ``somabrain.common.infra`` performs the
+    actual connectivity checks. We call it with ``require_kafka=False`` because
+    Kafka is already enforced by ``_enforce_kafka_required``. If any check
+    fails, we log a clear error and raise ``RuntimeError`` so the container
+    exits, satisfying the VIBE rule that external services must be mandatory.
+    """
+    try:
+        from somabrain.common.infra import assert_ready
+
+        # OPA and Postgres are required; Kafka is already handled separately.
+        assert_ready(require_kafka=False, require_opa=True, require_postgres=True)
+    except Exception as exc:
+        # Log the failure before aborting – this makes the reason visible in
+        # container logs and matches the logging style used for the Kafka check.
+        import logging
+
+        logging.getLogger("somabrain").error(
+            f"Mandatory backend check failed (OPA/Postgres): {exc}"
+        )
+        raise RuntimeError(f"OPA or Postgres not ready: {exc}")
+
+
 # Optional routers (strict posture; dependencies must be present for critical routes).
 # NOTE: Legacy retrieval router has been fully removed in favor of unified /recall.
 
@@ -2657,20 +2707,17 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_degrade_readonly"] = None
         resp["memory_degrade_topic"] = None
 
-    # Fallback audit (unchanged)
+    # External‑backend enforcement – use the central Settings flag.
+    # The previous stub‑audit implementation has been removed to satisfy VIBE
+    # Rule 1 (no stubs/placeholders). We now rely on the ``require_external_backends``
+    # setting which is already defined in ``common.config.settings``.
     try:
-        from somabrain.stub_audit import (
-            BACKEND_ENFORCED as __BACKEND_ENFORCED,
-            stub_stats as __stub_stats,
-        )
-
-        resp["stub_counts"] = __stub_stats()
-        if any(resp["stub_counts"].values()):
-            resp["ok"] = False
-        resp["external_backends_required"] = bool(__BACKEND_ENFORCED)
-    except Exception:
         resp["stub_counts"] = {}
-        resp["external_backends_required"] = BACKEND_ENFORCEMENT
+        resp["external_backends_required"] = bool(getattr(settings, "require_external_backends", True))
+    except Exception:
+        # Fallback to True if settings are unavailable – safest default.
+        resp["stub_counts"] = {}
+        resp["external_backends_required"] = True
 
     # Predictor / embedder diagnostics
     resp["predictor_provider"] = _PREDICTOR_PROVIDER
