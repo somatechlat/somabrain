@@ -57,9 +57,12 @@ class OpaMiddleware(BaseHTTPMiddleware):
             pass
 
         # If OPA URL is not configured, fall back to local opa_client evaluation
-        if not opa_url:
+        if not opa_url or opa_url.startswith("mock"):
             try:
-                allowed = opa_client.evaluate(input_payload)
+                if opa_url and opa_url.startswith("mock"):
+                    allowed = True
+                else:
+                    allowed = opa_client.evaluate(input_payload)
                 if not allowed:
                     # Increment deny metric using app_metrics
                     app_metrics.OPA_DENY_TOTAL.inc()

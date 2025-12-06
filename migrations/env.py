@@ -4,6 +4,9 @@ from sqlalchemy import engine_from_config, pool
 from somabrain.storage import db
 from common.config.settings import settings
 
+# Import models to ensure they are registered with Base.metadata
+from somabrain.db.models.task import TaskRegistry  # noqa: F401
+
 # Import the application settings to obtain the PostgreSQL DSN. This resolves a
 # NameError that occurs during migration execution because ``settings`` was not
 # defined in this module.
