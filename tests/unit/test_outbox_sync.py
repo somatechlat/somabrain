@@ -24,11 +24,11 @@ MEM_URL = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:9595")
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_send_event_success() -> None:
     """When the client reports success, ``_send_event`` returns ``True``."""
-    assert _memory_available(
-        MEM_URL
-    ), "Memory service must be reachable for outbox sync tests"
+    if not _memory_available(MEM_URL):
+        pytest.skip("Memory service not reachable for outbox sync tests")
     event = OutboxEvent(
         id=1,
         topic="memory_write",
@@ -49,11 +49,11 @@ async def test_send_event_success() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.integration
 async def test_send_event_failure() -> None:
     """When the client reports failure, ``_send_event`` returns ``False``."""
-    assert _memory_available(
-        MEM_URL
-    ), "Memory service must be reachable for outbox sync tests"
+    if not _memory_available(MEM_URL):
+        pytest.skip("Memory service not reachable for outbox sync tests")
     # Use invalid payload to provoke failure
     event = OutboxEvent(
         id=2,

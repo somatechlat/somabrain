@@ -36,10 +36,11 @@ def _comment_and_docstring_tokens(path: Path) -> list[str]:
     return tokens
 
 
+@pytest.mark.property
 @given(st.sampled_from(_prod_files()))
-@settings(max_examples=40, deadline=None)
+@settings(max_examples=120, deadline=None)
 def test_no_forbidden_terms_in_comments(path: Path) -> None:
-    """Randomly sampled production files should not contain forbidden terms."""
+    """**Feature: memory-client-api-alignment, Property 4: Production comments/docstrings never contain forbidden terms**"""
     tokens = _comment_and_docstring_tokens(path)
     bad = [t for t in tokens if any(term in t for term in FORBIDDEN)]
     assert not bad, f"Forbidden term found in comments/docstrings of {path}"

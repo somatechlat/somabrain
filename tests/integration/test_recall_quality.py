@@ -50,8 +50,10 @@ def _api_available() -> bool:
 
 @pytest.fixture(scope="session")
 def http_client() -> httpx.Client:
-    assert MEM_TOKEN, "SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests"
-    assert _memory_available(), "Memory service must be reachable for workbench tests"
+    if not MEM_TOKEN:
+        pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests")
+    if not _memory_available():
+        pytest.skip("Memory service not reachable for workbench tests")
     if not _api_available():
         pytest.skip("Somabrain API not reachable for workbench tests")
     base = API_URL

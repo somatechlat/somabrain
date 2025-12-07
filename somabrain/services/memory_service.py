@@ -111,6 +111,18 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
+    def recall(self, query: str, top_k: int = 3, universe: str | None = None):
+        self._reset_circuit_if_needed()
+        if self._is_circuit_open():
+            raise RuntimeError("Memory service unavailable (circuit open)")
+        try:
+            hits = self.client().recall(query, top_k=top_k, universe=universe)
+            self._mark_success()
+            return hits
+        except Exception as e:
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
+
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
             payload["universe"] = universe
@@ -125,6 +137,20 @@ class MemoryService:
             result = await self.client().aremember(key, payload)
             self._mark_success()
             return result
+        except Exception as e:
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
+
+    async def arecall(
+        self, query: str, top_k: int = 3, universe: str | None = None
+    ):
+        self._reset_circuit_if_needed()
+        if self._is_circuit_open():
+            raise RuntimeError("Memory service unavailable (circuit open)")
+        try:
+            hits = await self.client().arecall(query, top_k=top_k, universe=universe)
+            self._mark_success()
+            return hits
         except Exception as e:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
@@ -196,6 +222,9 @@ class MemoryService:
     def delete(self, coordinate):
         self._reset_circuit_if_needed()
         return self.client().delete(coordinate)
+
+    def health(self) -> dict:
+        return self.client().health()
 
     # ---------------------------------------------------------------------
     # Circuit‑breaker state inspection (used by the test suite)

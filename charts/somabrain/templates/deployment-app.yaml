@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "somabrain.fullname" . }}-app
+  labels:
+    {{- include "somabrain.labels" . | nindent 4 }}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: {{ include "somabrain.fullname" . }}-app
+  template:
+    metadata:
+      labels:
+        app: {{ include "somabrain.fullname" . }}-app
+    spec:
+      containers:
+        - name: somabrain
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName }}
+          env:
+            - name: SOMABRAIN_HOST
+              value: {{ .Values.env.SOMABRAIN_HOST | quote }}
+            - name: SOMABRAIN_PORT
+              value: {{ .Values.env.SOMABRAIN_PORT | quote }}
+            - name: SOMABRAIN_MODE
+              value: {{ .Values.env.SOMABRAIN_MODE | quote }}
+            - name: SOMABRAIN_MEMORY_HTTP_ENDPOINT
+              value: {{ .Values.env.SOMABRAIN_MEMORY_HTTP_ENDPOINT | quote }}
+          resources:
+            limits:
+              memory: {{ .Values.resources.app.limits.memory }}
+            requests:
+              memory: {{ .Values.resources.app.requests.memory }}
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: app-logs
+              mountPath: /app/logs
+      volumes:
+        - name: app-logs
+          emptyDir: {}

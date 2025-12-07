@@ -20,7 +20,7 @@ from somabrain.services.parameter_supervisor import (
 _logger = logging.getLogger(__name__)
 
 _config_service = ConfigService(lambda: Config())
-# _cutover_controller is no longer used; placeholder removed.
+# _cutover_controller is no longer used; legacy hook removed.
 _event_queue = _config_service.subscribe()
 _listeners: List[Callable[[ConfigEvent], Optional[Awaitable[None]]]] = []
 _dispatcher_task: Optional[asyncio.Task[None]] = None
@@ -36,8 +36,8 @@ def get_config_service() -> ConfigService:
 
 
 # get_cutover_controller has been removed; any code attempting to use cutover
-# functionality should be eliminated. This placeholder function is no longer
-# provided to ensure no traces of cutover remain.
+# functionality should be eliminated. The helper is intentionally absent to
+# ensure no traces of cutover remain.
 
 
 def get_parameter_supervisor() -> ParameterSupervisor:

@@ -22,6 +22,14 @@ from __future__ import annotations
 # Threading and time for sleep logic
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+import asyncio
+import importlib
+import logging
+import os
+import re
+import sys
+import threading as _thr
+import time
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Request, Depends, Query
@@ -70,17 +78,10 @@ from somabrain.milvus_client import MilvusClient
 
 # Oak FastAPI router that now talks to Milvus
 from somabrain.oak.router import router as oak_router
+from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
 
 # Cognitive Threads router (Phase 5)
-
-# Oak health dependencies – Milvus client for persistence health checks.
-
-# Oak feature imports
-
-# Oak FastAPI router that now talks to Milvus
-
-
-# Import the async tenant resolver (aliased as get_tenant_async) for use in endpoints.
+from somabrain.cognitive.thread_router import router as thread_router
 
 
 # ---------------------------------------------------------------------------
@@ -2562,6 +2563,33 @@ exec_ctrl = (
 )
 _sleep_stop = _thr.Event()
 _sleep_thread: _thr.Thread | None = None
+
+
+def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
+    """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
+
+    def _read(gauge, **labels) -> Optional[float]:
+        try:
+            child = gauge.labels(**labels)
+            stored = getattr(child, "_value", None)
+            if stored is None:
+                return None
+            return float(stored.get())
+        except Exception:
+            return None
+
+    return {
+        "search_latency_p95_seconds": _read(
+            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
+        ),
+        "ingest_latency_p95_seconds": _read(
+            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
+        ),
+        "segment_load": _read(
+            M.MILVUS_SEGMENT_LOAD,
+            collection=getattr(settings, "milvus_collection", "oak_options"),
+        ),
+    }
 _sleep_last: dict[str, dict[str, float]] = {}
 _nov_ewma = EWMA(alpha=0.05)
 _err_ewma = EWMA(alpha=0.05)
@@ -2624,6 +2652,7 @@ async def health(request: Request) -> S.HealthResponse:
 
     ctx = await get_tenant_async(request, cfg.namespace)
     tenant_id = ctx.tenant_id
+    ns_mem = mt_memory.for_namespace(ctx.namespace)
     cb = get_cb()
 
     trace_id = request.headers.get("X-Request-ID") or str(id(request))
@@ -2750,7 +2779,6 @@ async def health(request: Request) -> S.HealthResponse:
         resp["opa_required"] = False
 
     # Memory health + CB mapping
-    ns_mem = mt_memory.for_namespace(ctx.namespace)
     memory_ok = False
     try:
         mhealth = ns_mem.health()
@@ -2898,6 +2926,10 @@ async def health(request: Request) -> S.HealthResponse:
     # Observability readiness derived from real backend connectivity
     resp["metrics_required"] = ["kafka", "postgres"]
     resp["metrics_ready"] = bool(kafka_ok and postgres_ok)
+
+    milvus_stats = _milvus_metrics_for_tenant(tenant_id)
+    resp["milvus_metrics"] = milvus_stats
+    resp["components"]["milvus"] = milvus_stats
 
     return resp
 
@@ -4087,29 +4119,8 @@ async def health_metrics(request: Request) -> Dict[str, Any]:
     require_auth(request, cfg)
 
     tenant = ctx.tenant_id
-
-    # Helper to extract the gauge value for the given tenant label.
-    def _value_for_tenant(gauge) -> float | None:
-        """Retrieve the gauge value for the current tenant.
-
-        The Prometheus ``Gauge`` object provides a ``labels`` method that returns
-        a child metric instance for the supplied label values. That child has an
-        internal ``_value`` attribute representing the latest set value. If the
-        gauge has not been set for this tenant, ``_value`` may raise an
-        ``AttributeError``; we return ``None`` in that case.
-        """
-        try:
-            child = gauge.labels(tenant)
-            return getattr(child, "_value", None)
-        except Exception:
-            return None
-
-    return {
-        "tenant": tenant,
-        "milvus_search_latency_p95_seconds": _value_for_tenant(M.MILVUS_SEARCH_LAT_P95),
-        "milvus_ingest_latency_p95_seconds": _value_for_tenant(M.MILVUS_INGEST_LAT_P95),
-        "milvus_segment_load": _value_for_tenant(M.MILVUS_SEGMENT_LOAD),
-    }
+    stats = _milvus_metrics_for_tenant(tenant)
+    return {"tenant": tenant, **stats}
 
 
 # Background task for health watchdog and circuit-breaker monitoring
@@ -4370,6 +4381,32 @@ async def _start_outbox_sync():
         logger.info("Outbox sync background task started (interval=%s s)", interval)
     except Exception as exc:  # pragma: no cover – startup failures are logged
         logger.error("Failed to start outbox sync task: %s", exc, exc_info=True)
+
+
+@app.on_event("startup")
+async def _start_milvus_reconciliation_task():
+    """Launch the Milvus reconciliation loop (Requirement 11.5)."""
+
+    interval = float(getattr(settings, "milvus_reconcile_interval", 3600.0))
+    if interval <= 0:
+        logging.getLogger("somabrain").info(
+            "Milvus reconciliation disabled (interval=%s)", interval
+        )
+        return
+
+    async def _runner() -> None:
+        log = logging.getLogger("somabrain")
+        while True:
+            try:
+                await asyncio.to_thread(milvus_reconcile)
+            except Exception as exc:
+                log.error("Milvus reconciliation run failed: %s", exc)
+            await asyncio.sleep(interval)
+
+    asyncio.create_task(_runner())
+    logging.getLogger("somabrain").info(
+        "Milvus reconciliation task started (interval=%s s)", interval
+    )
 
 
 @app.on_event("shutdown")

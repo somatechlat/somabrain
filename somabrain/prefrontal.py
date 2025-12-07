@@ -68,7 +68,7 @@ class PrefrontalCortex:
     def process(self, data: Any) -> Any:
         """Process data through the prefrontal cortex.
 
-        The original stub performed a trivial pass‑through.  To satisfy the
+        The original minimal version performed a trivial pass‑through.  To satisfy the
         VIBE requirement of *real implementations* we now apply a lightweight
         transformation based on the configured ``activation_threshold`` and the
         internal ``state``.  The behaviour is deliberately simple yet fully

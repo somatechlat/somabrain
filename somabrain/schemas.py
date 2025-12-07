@@ -676,6 +676,7 @@ class HealthResponse(BaseModel):
     metrics_required: Optional[list[str]] = None
     alerts: Optional[list[str]] = None
     memory_circuit_open: Optional[bool] = None
+    milvus_metrics: Optional[Dict[str, Any]] = None
     fd_trace_norm_error: Optional[float] = None
     fd_psd_ok: Optional[bool] = None
     fd_capture_ratio: Optional[float] = None

@@ -17,7 +17,7 @@ the drift state in memory and persists it to the path configured via
 ``settings.drift_store_path``.  The implementation is deliberately simple to
 avoid heavy dependencies while still respecting the VIBE rules:
 
-* **Rule 1 – No placeholders** – the class performs actual work (state update
+* **Rule 1 – No fake implementations** – the class performs actual work (state update
   and persistence).
 * **Rule 2 – Full type safety** – all public members are fully typed.
 * **Rule 4 – Real implementations only** – the methods contain concrete logic

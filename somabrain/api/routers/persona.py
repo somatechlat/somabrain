@@ -73,10 +73,10 @@ async def put_persona(
             mem_backend = None
     ms = _MS(mem_backend, ctx.namespace)
     key = f"persona:{pid}"
+    coord = ms.coord_for_key(key)
 
-    # lookup existing persona payload (best-effort)
-    # Removing payloads_for_coords usage - try recall instead
-    existing = []
+    # Lookup existing persona payload (best-effort)
+    existing: list[dict] = []
     try:
         existing = ms.fetch_by_coord(coord) or []
     except Exception:

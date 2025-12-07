@@ -93,7 +93,8 @@ def recall_ltm(
         # If recall returned items but none lexically match the query, inject
         # a deterministic read-your-writes result derived from the query key.
         try:
-            ql = str(text or "").strip().lower()
+            raw_query = str(text or "").strip()
+            ql = raw_query.lower()
 
             def _lex_match(p: dict) -> bool:
                 for k in ("task", "text", "content", "what", "fact"):
@@ -102,12 +103,32 @@ def recall_ltm(
                         isinstance(v, str)
                         and v
                         and (ql in v.lower() or v.lower() in ql)
-                    ):
-                        return True
+                ):
+                    return True
                 return False
 
-            # Direct coordinate lookup removed - payloads_for_coords not available
-            pass
+            if (
+                raw_query
+                and not any(_lex_match(p) for p in mem_payloads if isinstance(p, dict))
+                and hasattr(mem_client, "coord_for_key")
+                and hasattr(mem_client, "fetch_by_coord")
+            ):
+                fallback_payloads: List[dict] = []
+                try:
+                    coord = mem_client.coord_for_key(raw_query, universe)
+                    fetched = mem_client.fetch_by_coord(coord, universe)
+                    fallback_payloads = [
+                        p for p in fetched if isinstance(p, dict)
+                    ]
+                except Exception:
+                    fallback_payloads = []
+                if fallback_payloads:
+                    deduped: List[dict] = []
+                    for payload in fallback_payloads:
+                        if payload not in mem_payloads:
+                            deduped.append(payload)
+                    if deduped:
+                        mem_payloads = deduped + mem_payloads
         except Exception:
             pass
     # Lexical/token-aware boost: if the query looks like a short unique token or

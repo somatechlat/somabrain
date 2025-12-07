@@ -278,6 +278,12 @@ class Settings(BaseSettings):
         )
     )
     milvus_collection: str = Field(default=_str_env("MILVUS_COLLECTION", "oak_options"))
+    milvus_segment_refresh_interval: float = Field(
+        default=_float_env("MILVUS_SEGMENT_REFRESH_INTERVAL", 60.0)
+    )
+    milvus_latency_window: int = Field(
+        default=_int_env("MILVUS_LATENCY_WINDOW", 50)
+    )
     # Convenience full URL – used by the Milvus client when both host and
     # port are present. This keeps the client implementation free of
     # environment‑lookup logic, satisfying the VIBE “single source of truth”.

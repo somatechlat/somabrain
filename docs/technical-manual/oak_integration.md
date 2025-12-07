@@ -281,9 +281,11 @@ traffic via an ingress weight.
 > at runtime by `libs.kafka_cog.avro_schemas`.
 
 **Q: What happens if Milvus is unavailable?**
-> The `OptionManager` logs an error and continues; the request still succeeds
-> because the option is stored in the in‑memory dictionary.  The metric
-> `somabrain_option_count` will not increase until Milvus becomes reachable.
+> Oak writes now fail fast. `OptionManager` surfaces the `RuntimeError` raised
+> by `MilvusClient` so the API request returns an error instead of silently
+> succeeding.  Each retry attempt increments
+> `somabrain_milvus_upsert_retry_total`, and exhausting all retries increments
+> `somabrain_milvus_upsert_failure_total` so alerts can fire immediately.
 
 ---
 

@@ -227,31 +227,6 @@ class SomaBrainClient:
         r.raise_for_status()
         return r.json()
 
-    def link(
-        self,
-        *,
-        from_key: Optional[str] = None,
-        to_key: Optional[str] = None,
-        from_coord: Optional[str] = None,
-        to_coord: Optional[str] = None,
-        type: Optional[str] = None,
-        weight: float = 1.0,
-        universe: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Create a semantic link between memories in SomaBrain."""
-        body: Dict[str, Any] = {
-            "from_key": from_key,
-            "to_key": to_key,
-            "from_coord": from_coord,
-            "to_coord": to_coord,
-            "type": type,
-            "weight": weight,
-            "universe": universe,
-        }
-        r = self._http.post("/link", json=body)
-        r.raise_for_status()
-        return r.json()
-
     def plan_suggest(
         self,
         task_key: str,

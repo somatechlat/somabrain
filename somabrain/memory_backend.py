@@ -66,29 +66,32 @@ class AbstractMemoryBackend(abc.ABC):
         """
 
     @abc.abstractmethod
-    def link(
+    def fetch_by_coord(
         self,
-        from_coord: Tuple[float, float, float],
-        to_coord: Tuple[float, float, float],
-        link_type: str = "related",
-        weight: float = 1.0,
+        coord: Tuple[float, float, float],
+        universe: Optional[str] = None,
         request_id: Optional[str] = None,
-    ) -> None:
-        """Create a typed edge between two memory coordinates."""
+    ) -> List[dict]:
+        """Return payloads stored at *coord* (GET /memories/{coord})."""
 
     @abc.abstractmethod
-    def unlink(
+    def delete(
         self,
-        from_coord: Tuple[float, float, float],
-        to_coord: Tuple[float, float, float],
-        link_type: Optional[str] = None,
+        coord: Tuple[float, float, float],
+        universe: Optional[str] = None,
         request_id: Optional[str] = None,
     ) -> bool:
-        """Remove a directed edge; returns True on success."""
+        """Delete a memory coordinate via DELETE /memories/{coord}."""
+
+    @abc.abstractmethod
+    def coord_for_key(
+        self, key: str, universe: Optional[str] = None
+    ) -> Tuple[float, float, float]:
+        """Return the deterministic coordinate associated with *key*."""
 
     @abc.abstractmethod
     def health(self) -> dict:
-        """Return a simple health dict, e.g. {"http": True}."""
+        """Return readiness information (e.g. {"healthy": True})."""
 
     async def aremember(
         self,

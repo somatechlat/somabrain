@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "somabrain.fullname" . }}-redis
+  labels:
+    {{- include "somabrain.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "somabrain.fullname" . }}-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "somabrain.fullname" . }}-redis
+  template:
+    metadata:
+      labels:
+        app: {{ include "somabrain.fullname" . }}-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.2-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              memory: {{ .Values.resources.redis.limits.memory }}
+            requests:
+              memory: {{ .Values.resources.redis.requests.memory }}
+          command:
+            - redis-server
+            - --maxmemory
+            - "800mb"
+            - --maxmemory-policy
+            - "allkeys-lru"
+            - --appendonly
+            - "yes"
+            - --appendfsync
+            - "everysec"
+            - --save
+            - "900 1"
+            - --save
+            - "300 10"
+            - --save
+            - "60 10000"
+            - --tcp-keepalive
+            - "300"
+            - --timeout
+            - "0"
+            - --tcp-backlog
+            - "511"
+            - --databases
+            - "16"
+            - --loglevel
+            - "notice"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

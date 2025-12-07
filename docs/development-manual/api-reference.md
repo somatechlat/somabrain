@@ -28,6 +28,7 @@ FastAPI lives in `somabrain/app.py`. The table below lists the stable backend-en
 | --- | --- | --- | --- | --- |
 | GET | `/health` | Readiness + dependency status | – | `schemas.HealthResponse` |
 | GET | `/healthz` | Alias of `/health` for probes | – | Same as `/health` |
+| GET | `/health/metrics` | Milvus telemetry (tenant p95 + segment load) | – | JSON (see below) |
 | POST | `/recall` | Retrieve memories ranked by scorer | `schemas.RecallRequest` | `schemas.RecallResponse` |
 | POST | `/remember` | Persist memory payloads | `schemas.RememberRequest` | `schemas.RememberResponse` |
 | POST | `/delete` | Delete long-term memory items | `schemas.DeleteRequest` | `schemas.DeleteResponse` |
@@ -838,6 +839,31 @@ X-RateLimit-Retry-After: 60
   }
 }
 ```
+
+### Milvus Telemetry
+
+**Endpoint**: `GET /health/metrics`
+
+**Description**: Returns tenant-scoped Milvus SLO counters so operators can
+verify ingest/search latency and the current segment load for the configured
+collection (see `MILVUS_COLLECTION`). Latencies are reported as sliding-window
+p95s; the segment load represents the number of Milvus query segments currently
+loaded for the Oak options collection.
+
+**Response**:
+```json
+{
+  "tenant": "tenant_a",
+  "search_latency_p95_seconds": 0.183,
+  "ingest_latency_p95_seconds": 0.094,
+  "segment_load": 18
+}
+```
+
+**Notes**:
+- The telemetry is derived from live Prometheus gauges; it updates within the
+  refresh window controlled by `MILVUS_SEGMENT_REFRESH_INTERVAL`.
+- A `null` field indicates no recent traffic for that tenant/collection.
 
 ### Metrics Endpoint
 

@@ -7,6 +7,7 @@ target sleep states, optional TTL for auto‑wake, and additional parameters.
 
 from __future__ import annotations
 
+import datetime
 import json
 from typing import Any, Optional
 

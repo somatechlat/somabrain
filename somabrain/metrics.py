@@ -312,10 +312,24 @@ MILVUS_INGEST_LAT_P95 = get_gauge(
     ["tenant_id"],
 )
 
-# Segment load metric for Milvus, representing current segment load per tenant.
+# Number of Milvus query segments loaded for a collection.
 MILVUS_SEGMENT_LOAD = get_gauge(
     "somabrain_milvus_segment_load",
-    "Current Milvus segment load",
+    "Number of Milvus query segments currently loaded for a collection",
+    ["collection"],
+)
+
+# Counter for retry attempts performed during Milvus option upserts.
+MILVUS_UPSERT_RETRY_TOTAL = get_counter(
+    "somabrain_milvus_upsert_retry_total",
+    "Retry attempts while persisting Oak options to Milvus",
+    ["tenant_id"],
+)
+
+# Counter for Milvus option upserts that still failed after exhausting retries.
+MILVUS_UPSERT_FAILURE_TOTAL = get_counter(
+    "somabrain_milvus_upsert_failure_total",
+    "Number of Milvus option upserts that failed after all retries",
     ["tenant_id"],
 )
 

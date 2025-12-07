@@ -18,26 +18,39 @@ MEM_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
 TENANT = "workbench-slo"
 
 
+def _api_available(url: str) -> bool:
+    base = url.rstrip("/") or "http://localhost:9696"
+    try:
+        r = httpx.get(f"{base}/health", timeout=2.0)
+        return r.status_code < 500
+    except Exception:
+        try:
+            r = httpx.get("http://localhost:9696/health", timeout=2.0)
+            return r.status_code < 500
+        except Exception:
+            return False
+
+
 def _api_client() -> httpx.Client:
     base = API_URL or "http://localhost:9696"
-    try:
-        httpx.get(f"{base.rstrip('/')}/health", timeout=1.0)
-    except Exception:
+    if not _api_available(base):
+        raise RuntimeError("API unavailable")
+    if not base.rstrip("/"):
         base = "http://localhost:9696"
-    return httpx.Client(base_url=base, timeout=5.0)
+    return httpx.Client(base_url=base.rstrip("/"), timeout=5.0)
 
 
 @pytest.mark.integration
 def test_latency_slo_basic() -> None:
     if not MEM_TOKEN:
         pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN required for latency SLO test")
-    # Skip cleanly if API is unreachable
-    try:
-        httpx.get(f"{API_URL.rstrip('/')}/health", timeout=5.0)
-    except Exception:
-        httpx.get("http://localhost:9696/health", timeout=5.0)
+    if not _api_available(API_URL):
+        pytest.skip("Somabrain API not reachable for latency SLO test")
 
-    client = _api_client()
+    try:
+        client = _api_client()
+    except RuntimeError:
+        pytest.skip("Somabrain API not reachable for latency SLO test")
     headers = {"X-Tenant-ID": TENANT}
     remember_lat = []
     recall_lat = []

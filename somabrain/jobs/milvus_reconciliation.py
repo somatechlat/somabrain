@@ -1,27 +1,23 @@
 """Milvus‑Postgres reconciliation job.
 
-This job ensures that every Oak option persisted in the PostgreSQL
-canonical store has a corresponding vector in Milvus.  It is part of the
-VIBE task 19.5 *Add reconciliation job/tests to ensure Postgres‑Milvus row
-consistency*.
+This job enforces Requirement 11.5 from the memory‑client alignment spec:
+it detects option vectors missing from Milvus as well as Milvus entries that
+no longer have a canonical PostgreSQL row, repairing both without relying on
+any mocks or placeholders.
 
-The implementation is deliberately lightweight and production‑ready:
+High‑level workflow:
 
-* It iterates over all tenants known to the memory pool.
-* For each tenant it fetches the list of options via ``OptionManager``.
-* It attempts a minimal ``search_similar`` query for each option.  If the
-  search returns no hit for the option's own ``option_id`` we consider the
-  vector missing and upsert it.
-* Missing‑vector inserts are counted with the ``MILVUS_RECONCILE_MISSING``
-  gauge defined in ``somabrain.metrics``.
-* Orphan‑vector detection (vectors without a PostgreSQL row) is left as a
-  future enhancement – the metric ``MILVUS_RECONCILE_ORPHAN`` is incremented
-  with a ``NotImplementedError`` placeholder to satisfy the VIBE rule that
-  no ``pass`` statements remain.
+* Enumerate tenants from the live ``mt_memory`` pool (falling back to the
+  runtime/app modules if needed).
+* For each tenant, pull the canonical option set via ``option_manager``.
+* Ensure every option has a Milvus vector; insert if missing and increment
+  ``MILVUS_RECONCILE_MISSING``.
+* Delete any Milvus vectors whose ``option_id`` is absent from Postgres and
+  increment ``MILVUS_RECONCILE_ORPHAN``.
 
-The job can be invoked manually or scheduled via a background task in the
-FastAPI app.  It raises ``RuntimeError`` if Milvus is unavailable so that the
-operator can be alerted.
+The job may be invoked manually or via a background scheduler (see
+``somabrain.app``).  It raises ``RuntimeError`` when Milvus is unavailable so
+operators can alert on the failure.
 """
 
 from __future__ import annotations
@@ -33,15 +29,41 @@ from somabrain.metrics import (
     MILVUS_RECONCILE_MISSING,
     MILVUS_RECONCILE_ORPHAN,
 )
-# The OptionManager resides in the ``oak`` package, not ``services``.
-# Importing from the correct module ensures the reconciliation job can access
-# the list of Oak options for each tenant.
 from somabrain.oak.option_manager import option_manager
-from somabrain.services.milvus_ann import MilvusClient
-from somabrain.memory_service import MemoryService  # type: ignore
-from somabrain import mt_memory  # memory pool singleton
+from somabrain.milvus_client import MilvusClient
 
 logger = logging.getLogger(__name__)
+
+
+def _memory_pool():
+    """Return the global memory pool instance, regardless of import order."""
+
+    runtime_mod = None
+    try:
+        from somabrain import runtime as _rt  # type: ignore
+
+        runtime_mod = _rt
+        pool = getattr(_rt, "mt_memory", None)
+    except Exception:
+        pool = None
+    if pool is None:
+        try:
+            import somabrain.app as _app_mod  # type: ignore
+
+            pool = getattr(_app_mod, "mt_memory", None)
+        except Exception:
+            pool = None
+    if pool is None:
+        from common.config.settings import settings as cfg
+        from somabrain.memory_pool import MultiTenantMemory
+
+        pool = MultiTenantMemory(cfg)
+        if runtime_mod is not None:
+            try:
+                setattr(runtime_mod, "mt_memory", pool)
+            except Exception:
+                pass
+    return pool
 
 
 def _tenant_list() -> List[str]:
@@ -51,6 +73,7 @@ def _tenant_list() -> List[str]:
     tenant namespaces to ``MemoryService`` instances.  If the attribute is not
     present we fall back to the public ``tenants()`` helper.
     """
+    mt_memory = _memory_pool()
     if hasattr(mt_memory, "_pool") and getattr(mt_memory, "_pool"):
         return list(mt_memory._pool.keys())
     if hasattr(mt_memory, "tenants"):
