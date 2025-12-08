@@ -21,6 +21,7 @@ import random
 import re
 import time
 import uuid
+import httpx
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -28,7 +29,11 @@ from .config import Config
 
 from common.config.settings import settings
 
-from somabrain.infrastructure import get_memory_http_endpoint
+from somabrain import metrics as M
+from somabrain.infrastructure import (
+    get_memory_http_endpoint,
+    resolve_memory_endpoint,
+)
 from somabrain.interfaces.memory import MemoryBackend
 
 # logger for diagnostic output during tests
@@ -50,6 +55,144 @@ if debug_memory_client:
     logger.setLevel(logging.DEBUG)
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
+
+
+class MemoryHTTPTransport:
+    """Encapsulates the HTTP/AsyncHTTP clients used by MemoryClient."""
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        headers: dict,
+        limits: Optional[httpx.Limits],
+        retries: int,
+        logger: logging.Logger,
+    ) -> None:
+        self.base_url = base_url
+        self._headers = dict(headers)
+        self._limits = limits
+        self._retries = max(0, int(retries))
+        self._logger = logger
+        self._client: Optional[httpx.Client] = None
+        self._async_client: Optional[httpx.AsyncClient] = None
+        self._init_clients()
+
+    @property
+    def client(self) -> Optional[httpx.Client]:
+        return self._client
+
+    @property
+    def async_client(self) -> Optional[httpx.AsyncClient]:
+        return self._async_client
+
+    def _init_clients(self) -> None:
+        client_kwargs: dict[str, Any] = {
+            "base_url": self.base_url,
+            "headers": dict(self._headers),
+            "timeout": 10.0,
+        }
+        if self._limits is not None:
+            client_kwargs["limits"] = self._limits
+        try:
+            self._client = httpx.Client(**client_kwargs)
+        except Exception:
+            self._client = None
+        else:
+            try:
+                self._client.head("/health", timeout=0.5)
+            except Exception:
+                self._fallback_to_localhost(client_kwargs)
+
+        try:
+            transport = httpx.AsyncHTTPTransport(retries=self._retries)
+            async_kwargs = dict(client_kwargs)
+            async_kwargs["transport"] = transport
+            self._async_client = httpx.AsyncClient(**async_kwargs)
+        except Exception:
+            try:
+                self._async_client = httpx.AsyncClient(**client_kwargs)
+            except Exception:
+                self._async_client = None
+
+        if not self.base_url:
+            self._client = None
+            self._async_client = None
+
+    def _fallback_to_localhost(self, client_kwargs: dict) -> None:
+        try:
+            orig_url = client_kwargs.get("base_url", "")
+            parsed = httpx.URL(orig_url)
+            fallback = (
+                f"http://localhost:{parsed.port}" if parsed.port else "http://localhost"
+            )
+        except Exception:
+            fallback = "http://localhost"
+        client_kwargs["base_url"] = fallback
+        try:
+            self._client = httpx.Client(**client_kwargs)
+        except Exception:
+            self._client = None
+
+    def post_with_retries_sync(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
+        if self._client is None:
+            return False, 0, None
+        status = 0
+        data: Any = None
+        for attempt in range(max_retries + 1):
+            try:
+                resp = self._client.post(endpoint, json=body, headers=headers)
+            except Exception:
+                if attempt < max_retries:
+                    time.sleep(0.01 + random.random() * 0.02)
+                continue
+            status = int(getattr(resp, "status_code", 0) or 0)
+            if status in (429, 503) and attempt < max_retries:
+                time.sleep(0.01 + random.random() * 0.02)
+                continue
+            if status >= 500 and attempt < max_retries:
+                time.sleep(0.05 + random.random() * 0.05)
+                continue
+            data = MemoryClient._response_json(resp)
+            return status < 300, status, data
+        return False, status, data
+
+    async def post_with_retries_async(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+    ) -> tuple[bool, int, Any]:
+        if self._async_client is None:
+            return False, 0, None
+        status = 0
+        data: Any = None
+        for attempt in range(max_retries + 1):
+            try:
+                resp = await self._async_client.post(endpoint, json=body, headers=headers)
+            except Exception:
+                if attempt < max_retries:
+                    await asyncio.sleep(0.01 + random.random() * 0.02)
+                continue
+            status = int(getattr(resp, "status_code", 0) or 0)
+            if status in (429, 503) and attempt < max_retries:
+                await asyncio.sleep(0.01 + random.random() * 0.02)
+                continue
+            if status >= 500 and attempt < max_retries:
+                await asyncio.sleep(0.05 + random.random() * 0.05)
+                continue
+            data = MemoryClient._response_json(resp)
+            return status < 300, status, data
+        return False, status, data
 
 
 def _http_setting(attr: str, default_val: int) -> int:
@@ -251,11 +394,7 @@ class MemoryClient:
         # Keep a _mode attribute for information.
         self._mode = "http"
         self._local = None
-        # Annotate http clients to help static checkers; actual httpx types
-        # are imported locally inside _init_http to avoid heavy top-level
-        # imports in some runtime contexts.
-        self._http: Optional[Any] = None
-        self._http_async: Optional[Any] = None
+        self._transport: Optional[MemoryHTTPTransport] = None
         # NEW: Ensure the directory for the SQLite DB (if using local mode) exists.
         # MEMORY_DB_PATH is injected via docker‑compose; default to ./data/memory.db.
         if settings is not None:
@@ -271,13 +410,8 @@ class MemoryClient:
             pass
         # Store for potential future use (e.g., passing to the local backend)
         self._memory_db_path = db_path
-        # Initialize HTTP client (primary runtime path). Local/redis
-        # initialization is intentionally not attempted here.
-        self._init_http()
-        # In‑process working cache used during degradation mode.
-        # Keyed by (tenant_id, key) → payload. Allows immediate reads without
-        # waiting for outbox replay.
-        self._working_cache: dict[tuple[str, str], Any] = {}
+        # Initialize HTTP transport (primary runtime path).
+        self._transport = self._create_transport()
 
     def _init_local(self) -> None:
         # Local in-process backend initialization has been removed. Running a
@@ -287,9 +421,7 @@ class MemoryClient:
         # code separately in a developer-only helper.
         return
 
-    def _init_http(self) -> None:
-        import httpx
-
+    def _create_transport(self) -> MemoryHTTPTransport:
         # Default headers applied to all requests; per-request we add X-Request-ID
         headers = {}
         token_value = getattr(self.cfg, "memory_http_token", None)
@@ -339,118 +471,63 @@ class MemoryClient:
         # Useful for tests or local development where a memory service runs on
         # a non-default port. Accept either a base URL or a full openapi.json
         # URL and normalise to the service base URL.
-        candidate_base = get_memory_http_endpoint()
-        env_base = getattr(settings, "memory_http_endpoint", None) or getattr(
-            settings, "http_endpoint", None
-        )
-        if not env_base:
-            env_base = candidate_base
-        if env_base:
-            try:
-                env_base = str(env_base).strip()
-                if "://" not in env_base and env_base.startswith("/"):
-                    pass
-                elif "://" not in env_base:
-                    env_base = f"http://{env_base}"
-                if env_base.endswith("/openapi.json"):
-                    env_base = env_base[: -len("/openapi.json")]
-            except Exception:
-                env_base = None
-        base_url = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
-        if not base_url and env_base:
-            base_url = env_base
-        # Strict mode: memory endpoint is always required
-        if not base_url:
+        resolved = None
+        try:
+            resolved = resolve_memory_endpoint()
+        except RuntimeError:
+            resolved = None
+
+        cfg_endpoint = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
+        if cfg_endpoint:
+            base_url = cfg_endpoint.strip()
+        elif resolved is not None:
+            base_url = resolved.url
+        else:
             base_url = get_memory_http_endpoint() or ""
         if not base_url:
             raise RuntimeError("Memory HTTP endpoint required but not configured")
-        # Final normalisation: ensure empty string remains empty
+        try:
+            base_url = str(base_url).strip()
+            if base_url.endswith("/openapi.json"):
+                base_url = base_url[: -len("/openapi.json")]
+            base_url = base_url.rstrip("/") or base_url
+        except Exception:
+            pass
         base_url = base_url or ""
-        # Fail-fast: do not auto-default inside Docker; require explicit endpoint
-        client_kwargs: dict[str, Any] = {
-            "base_url": base_url,
-            "headers": headers,
-            "timeout": 10.0,
-        }
-        # Diagnostic: record chosen endpoint for debugging in tests
         try:
             logger.debug("MemoryClient HTTP base_url=%r", base_url)
         except Exception:
             pass
-        if limits is not None:
-            client_kwargs["limits"] = limits
 
-        # Create sync client with fallback to localhost if the configured
-        # endpoint is unreachable. This mirrors the previous behavior but adds a
-        # quick health‑check to switch to a localhost address when running
-        # inside Docker where the advertised IP may not be reachable from the
-        # host environment.
-        try:
-            self._http = httpx.Client(**client_kwargs)
-        except Exception:
-            self._http = None
-        else:
-            try:
-                self._http.head("/health", timeout=0.5)
-            except Exception:
-                # Fallback to localhost using the original port if available.
-                try:
-                    orig_url = client_kwargs.get("base_url", "")
-                    from httpx import URL
-
-                    parsed = URL(orig_url)
-                    fallback = (
-                        f"http://localhost:{parsed.port}"
-                        if parsed.port
-                        else "http://localhost"
-                    )
-                except Exception:
-                    fallback = "http://localhost"
-                client_kwargs["base_url"] = fallback
-                try:
-                    self._http = httpx.Client(**client_kwargs)
-                except Exception:
-                    self._http = None
-
-        # Create async client with configurable transport retries
-        try:
-            transport = httpx.AsyncHTTPTransport(retries=retries)
-            async_kwargs = dict(client_kwargs)
-            async_kwargs["transport"] = transport
-            self._http_async = httpx.AsyncClient(**async_kwargs)
-        except Exception:
-            try:
-                self._http_async = httpx.AsyncClient(**client_kwargs)
-            except Exception:
-                self._http_async = None
-
-        # If endpoint is empty, treat HTTP client as unavailable
-        try:
-            if not base_url:
-                self._http = None
-                self._http_async = None
-        except Exception:
-            pass
-        # Strict mode: memory is always required
-        if self._http is None:
+        transport = MemoryHTTPTransport(
+            base_url=base_url,
+            headers=headers,
+            limits=limits,
+            retries=retries,
+            logger=logger,
+        )
+        if transport.client is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED but not reachable or endpoint unset. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT in the environment."
             )
-        # Enforce token presence by mode policy
-        # Strict mode: authentication token is mandatory for HTTP memory backend
-        # Previously the client enforced the presence of an auth token for the
-        # HTTP memory backend, raising a RuntimeError when ``token_value`` was
-        # falsy. In many development or test scenarios (including the current
-        # health check) the token is optional. We therefore downgrade this to a
-        # warning‑style log rather than a hard failure, allowing the service to
-        # start even without authentication.
-        if self._http is not None and not token_value:
+        if not token_value:
             try:
                 logger.warning(
                     "Memory HTTP client initialized without token; proceeding without auth."
                 )
             except Exception:
                 pass
+        return transport
+
+    def _get_http_client(self) -> Optional[httpx.Client]:
+        if self._transport is None:
+            return None
+        return self._transport.client
+
+    def _get_http_async_client(self) -> Optional[httpx.AsyncClient]:
+        if self._transport is None:
+            return None
+        return self._transport.async_client
 
     def _init_redis(self) -> None:
         # Redis mode removed. Redis-backed behavior should be exposed via the
@@ -466,13 +543,13 @@ class MemoryClient:
         dictionary with the raw payload plus a top‑level ``healthy`` key that is
         ``True`` only when **all** component flags are true.
         """
-        if self._http is None:
+        if self._transport is None or self._transport.client is None:
             return {"healthy": False, "error": "HTTP client not configured"}
 
         # Prefer the generic /health endpoint – the memory service currently
         # implements it and returns the component flags.
         try:
-            r = self._http.get("/health")
+            r = self._transport.client.get("/health")
             status = int(getattr(r, "status_code", 0) or 0)
             if status != 200:
                 return {"healthy": False, "status": status}
@@ -517,17 +594,6 @@ class MemoryClient:
     # ---------------------------------------------------------------------
     # Degradation helpers
     # ---------------------------------------------------------------------
-    @property
-    def is_degraded(self) -> bool:
-        """Return ``True`` when the external memory service is unhealthy.
-
-        The property is cheap – it calls ``self.health()`` and caches the
-        result for the duration of the request. Callers should use this flag to
-        decide whether to write to the outbox and/or the in‑process cache.
-        """
-        health = self.health()
-        return not bool(health.get("healthy"))
-
     # --- HTTP helpers ---------------------------------------------------------
     @staticmethod
     def _response_json(resp: Any) -> Any:
@@ -545,28 +611,22 @@ class MemoryClient:
         headers: dict,
         *,
         max_retries: int = 2,
+        operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
-        if self._http is None:
+        if self._transport is None:
             return False, 0, None
+        start = time.perf_counter()
+        success = False
         status = 0
         data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = self._http.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    time.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                time.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                time.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = self._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
+        try:
+            success, status, data = self._transport.post_with_retries_sync(
+                endpoint, body, headers, max_retries=max_retries
+            )
+            return success, status, data
+        finally:
+            duration = max(0.0, time.perf_counter() - start)
+            self._record_http_metrics(operation, success, status, duration)
 
     async def _http_post_with_retries_async(
         self,
@@ -575,28 +635,22 @@ class MemoryClient:
         headers: dict,
         *,
         max_retries: int = 2,
+        operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
-        if self._http_async is None:
+        if self._transport is None:
             return False, 0, None
+        start = time.perf_counter()
+        success = False
         status = 0
         data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = await self._http_async.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                await asyncio.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = self._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
+        try:
+            success, status, data = await self._transport.post_with_retries_async(
+                endpoint, body, headers, max_retries=max_retries
+            )
+            return success, status, data
+        finally:
+            duration = max(0.0, time.perf_counter() - start)
+            self._record_http_metrics(operation, success, status, duration)
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         """POST a memory to the HTTP memory service.
@@ -605,21 +659,23 @@ class MemoryClient:
         ``MemoryStoreRequest`` payload. This method targets that endpoint and
         returns the parsed JSON response when the request succeeds.
         """
-        if self._http is None:
+        if self._transport is None:
             return False, None
 
-        success, _, data = self._http_post_with_retries_sync("/memories", body, headers)
+        success, _, data = self._http_post_with_retries_sync(
+            "/memories", body, headers, operation="remember"
+        )
         if success:
             return True, data
         return False, data
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``."""
-        if self._http_async is None:
+        if self._transport is None:
             return False, None
 
         success, _, data = await self._http_post_with_retries_async(
-            "/memories", body, headers
+            "/memories", body, headers, operation="remember"
         )
         if success:
             return True, data
@@ -634,7 +690,7 @@ class MemoryClient:
         iterates over the items in the batch request and stores each one
         individually via POST /memories.
         """
-        if self._http is None:
+        if self._transport is None:
             return False, 0, None
         items = batch_request.get("items", [])
         if not items:
@@ -656,7 +712,7 @@ class MemoryClient:
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
         """Async version of bulk store using individual POST /memories calls."""
-        if self._http_async is None:
+        if self._transport is None:
             return False, 0, None
         items = batch_request.get("items", [])
         if not items:
@@ -948,7 +1004,7 @@ class MemoryClient:
         universe: str,
         request_id: str,
     ) -> List[RecallHit]:
-        if self._http is None:
+        if self._transport is None:
             raise RuntimeError("HTTP memory service required but not configured")
 
         headers = {"X-Request-ID": request_id}
@@ -961,7 +1017,7 @@ class MemoryClient:
         }
 
         success, status, data = self._http_post_with_retries_sync(
-            "/memories/search", body, headers
+            "/memories/search", body, headers, operation="recall"
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -1005,19 +1061,20 @@ class MemoryClient:
         universe: str,
         request_id: str,
     ) -> List[RecallHit]:
-        if self._http_async is None:
+        if self._transport is None or self._transport.async_client is None:
             raise RuntimeError("Async HTTP memory service required but not configured")
 
         headers = {"X-Request-ID": request_id}
         universe_value = str(universe or "real")
+        query_text = str(query or "")
         body = {
-            "query": str(query or ""),
+            "query": query_text,
             "top_k": max(int(top_k), 1),
             "universe": universe_value,
         }
 
         success, status, data = await self._http_post_with_retries_async(
-            "/memories/search", body, headers
+            "/memories/search", body, headers, operation="recall"
         )
         if success:
             hits = self._normalize_recall_hits(data)
@@ -1423,58 +1480,34 @@ class MemoryClient:
         namespace = str(namespace or "public")
         return tenant, namespace
 
+    def _record_http_metrics(
+        self, operation: str, success: bool, status: int, duration: float
+    ) -> None:
+        try:
+            tenant, _ = self._tenant_namespace()
+            status_label = str(status or (200 if success else 0))
+            M.MEMORY_HTTP_REQUESTS.labels(
+                operation=operation, tenant=tenant, status=status_label
+            ).inc()
+            M.MEMORY_HTTP_LATENCY.labels(operation=operation, tenant=tenant).observe(
+                max(0.0, float(duration))
+            )
+        except Exception:
+            return
+
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> Tuple[float, float, float]:
         """Store a memory using a stable coordinate derived from ``coord_key``.
 
-        The method now supports **degradation mode**:
-
-        * If the external memory service is unhealthy (``self.is_degraded``), the
-          payload is cached in‑process (``self._working_cache``) and enqueued to
-          the durable outbox table via ``enqueue_event``.
-        * The call returns the computed coordinate immediately – no remote HTTP
-          request is performed.
-        * When the service is healthy the original fast‑path behaviour is
-          retained (including the optional ``fast_ack`` executor path).
+        Memory writes now always require the external HTTP backend to be healthy;
+        degraded queuing is handled exclusively by :class:`MemoryService` and the
+        outbox journal. This method therefore fails fast if the backend is
+        unavailable, preserving a single source of truth.
 
         Normalisation of optional metadata (phase, quality_score, domains,
         reasoning_chain) remains unchanged.
         """
-        # -------------------------------------------------------------------
-        # Degradation fast‑path – avoid any HTTP calls when the service is down.
-        # Persist to outbox first (durable), then mirror to working cache.
-        # -------------------------------------------------------------------
-        if self.is_degraded:
-            tenant, _ = self._tenant_namespace()
-            from somabrain.db.outbox import enqueue_event
-
-            dedupe = payload.get("dedupe_key")
-            try:
-                enqueue_event(
-                    topic="memory_write",
-                    payload=payload,
-                    dedupe_key=dedupe,
-                    tenant_id=tenant,
-                )
-            except Exception as exc:
-                # Fail fast to avoid silent loss; caller can retry once backend is up.
-                raise RuntimeError(
-                    "Memory service degraded and outbox enqueue failed"
-                ) from exc
-
-            # Cache locally for immediate reads (non-durable convenience).
-            self._working_cache[(tenant, coord_key)] = payload
-
-            enriched, universe, _hdr = self._compat_enrich_payload(payload, coord_key)
-            coord = _stable_coord(f"{universe}::{coord_key}")
-            payload = dict(enriched)
-            payload["coordinate"] = coord
-            return coord
-
-        # -------------------------------------------------------------------
-        # Healthy path – original behaviour (including fast‑ack and async handling).
-        # -------------------------------------------------------------------
         # Fail fast if the memory backend is not fully healthy.
         self._require_healthy()
 
@@ -1558,7 +1591,7 @@ class MemoryClient:
         if in_async:
             try:
                 loop = asyncio.get_running_loop()
-                if self._http_async is not None:
+                if self._transport is not None and self._transport.async_client is not None:
                     try:
                         loop.create_task(
                             self._aremember_background(coord_key, payload, rid)
@@ -1678,7 +1711,7 @@ class MemoryClient:
                 }
             )
 
-        if self._http is None:
+        if self._transport is None or self._transport.client is None:
             raise RuntimeError(
                 "MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember)."
             )
@@ -1746,7 +1779,7 @@ class MemoryClient:
         # Mirror locally first for read‑your‑writes semantics (optional)
         # Strict real mode: no local mirroring, only HTTP service
         p2: dict[str, Any] | None = None
-        if self._http_async is not None:
+        if self._transport is not None and self._transport.async_client is not None:
             try:
                 enriched, universe, compat_hdr = self._compat_enrich_payload(
                     payload, coord_key
@@ -1845,7 +1878,7 @@ class MemoryClient:
                 }
             )
 
-        if self._http_async is None:
+        if self._transport is None or self._transport.async_client is None:
             return self.remember_bulk(records, request_id=request_id)
 
         rid = request_id or str(uuid.uuid4())
@@ -1909,37 +1942,7 @@ class MemoryClient:
         universe: str | None = None,
         request_id: str | None = None,
     ) -> List[RecallHit]:
-        """Retrieve memories relevant to ``query``.
-
-        *When the memory service is degraded* the method falls back to the
-        in‑process ``_working_cache`` and performs a lightweight keyword match
-        against the cached payloads. The result mimics the normal ``RecallHit``
-        objects (score is ``None`` and ``coordinate`` is ``None``) so callers can
-        treat the output uniformly.
-
-        When the service is healthy the original HTTP‑based recall path is used.
-        """
-        # Degraded fast‑path – avoid any HTTP calls.
-        if self.is_degraded:
-            tenant, _ = self._tenant_namespace()
-            hits: List[RecallHit] = []
-            lower_q = query.lower()
-            for (t, _key), payload in self._working_cache.items():
-                if t != tenant:
-                    continue
-                # Simple keyword search in string fields of the payload.
-                if isinstance(payload, dict):
-                    for v in payload.values():
-                        if isinstance(v, str) and lower_q in v.lower():
-                            hits.append(
-                                RecallHit(payload=payload, score=None, coordinate=None)
-                            )
-                            break
-                if len(hits) >= top_k:
-                    break
-            return hits
-
-        # Healthy path – original behaviour.
+        """Retrieve memories relevant to ``query`` via the HTTP backend."""
         self._require_healthy()
         rid = request_id or str(uuid.uuid4())
         return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
@@ -1956,7 +1959,7 @@ class MemoryClient:
         Fails fast if the memory service is unhealthy.
         """
         self._require_healthy()
-        if self._http is not None:
+        if self._transport is not None and self._transport.client is not None:
             rid = request_id or str(uuid.uuid4())
             hits = self._http_recall_aggregate_sync(
                 query, top_k, universe or "real", rid
@@ -1973,7 +1976,7 @@ class MemoryClient:
         request_id: str | None = None,
     ) -> List[RecallHit]:
         """Async recall for HTTP mode; falls back to sync execution when needed."""
-        if self._http_async is not None:
+        if self._transport is not None and self._transport.async_client is not None:
             rid = request_id or str(uuid.uuid4())
             return await self._http_recall_aggregate_async(
                 query, top_k, universe or "real", rid
@@ -1992,7 +1995,7 @@ class MemoryClient:
     ) -> List[RecallHit]:
         """Async companion to :meth:`recall_with_scores`."""
 
-        if self._http_async is not None:
+        if self._transport is not None and self._transport.async_client is not None:
             rid = request_id or str(uuid.uuid4())
             hits = await self._http_recall_aggregate_async(
                 query, top_k, universe or "real", rid
@@ -2026,12 +2029,13 @@ class MemoryClient:
         Returns a list of payload dicts for the given coordinate. Returns an
         empty list if no memory exists at that coordinate or if the request fails.
         """
-        if self._http is None:
+        client = self._get_http_client()
+        if client is None:
             return []
         try:
             coord_str = f"{coord[0]},{coord[1]},{coord[2]}"
             endpoint = f"/memories/{coord_str}"
-            r = self._http.get(endpoint)
+            r = client.get(endpoint)
             status = int(getattr(r, "status_code", 0) or 0)
             if status == 404:
                 return []
@@ -2111,7 +2115,7 @@ class MemoryClient:
         """
         import uuid as _uuid
 
-        if self._http is None:
+        if self._transport is None or self._transport.client is None:
             raise RuntimeError("HTTP memory service required for persistence")
 
         # Enrich payload and compute coord string once
@@ -2139,11 +2143,10 @@ class MemoryClient:
         rid_hdr.update(compat_hdr)
         stored = False
         response_payload: Any = None
-        if self._http is not None:
-            try:
-                stored, response_payload = self._store_http_sync(body, rid_hdr)
-            except Exception:
-                stored = False
+        try:
+            stored, response_payload = self._store_http_sync(body, rid_hdr)
+        except Exception:
+            stored = False
         server_coord: Tuple[float, float, float] | None = None
         if stored and response_payload is not None:
             try:
@@ -2161,7 +2164,7 @@ class MemoryClient:
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> None:
         """Async background persistence using the AsyncClient; used when remember is called from async contexts."""
-        if self._http_async is None:
+        if self._transport is None or self._transport.async_client is None:
             # alternative: sync persist in executor
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(

@@ -902,11 +902,9 @@ async def _perform_recall(
         pool = _get_memory_pool()
         resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
         memsvc = MemoryService(pool, resolved_ns)
-        memsvc._reset_circuit_if_needed()
-        client = memsvc.client()
         stage_start = time.perf_counter()
         try:
-            hits = await client.arecall(
+            hits = await memsvc.arecall(
                 payload.query,
                 top_k=payload.top_k,
                 universe=payload.universe or "real",

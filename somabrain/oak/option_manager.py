@@ -11,9 +11,9 @@ Key responsibilities
 * Compute a utility score for each option (the exact formula is configurable
   via ``settings`` – see ``settings.py`` for the relevant environment
   variables).
-* Persist options using the existing ``MemoryClient`` (which writes to the
-  configured memory service). The persistence format follows the Avro schema
-  ``option_created`` defined in ``proto/cog/avro/option_created.avsc``.
+* Persist option state/events via ``MemoryService`` so circuit-breaker and
+  outbox semantics are consistent across the stack. Avro payloads follow the
+  schemas in ``proto/cog/avro``.
 * Expose a small API used by the FastAPI routes (see ``app.py``) – ``create``
   and ``get``.
 
@@ -23,13 +23,15 @@ hard‑coded numbers are used, satisfying the VIBE rule *no hard‑coded values*
 
 from __future__ import annotations
 
+import base64
 import logging
 import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 from common.config.settings import settings
-from somabrain.memory_client import MemoryClient
+from somabrain.memory_pool import MultiTenantMemory
+from somabrain.services.memory_service import MemoryService
 from somabrain.milvus_client import MilvusClient
 
 # Use the generic Avro schema loader and serde to encode events.
@@ -95,7 +97,7 @@ class OptionManager:
 
     def __init__(self) -> None:
         self._store: Dict[str, Dict[str, Option]] = {}
-        self._client = MemoryClient(cfg=settings)
+        self._memory_backend = MultiTenantMemory(cfg=settings)
         # Initialize Milvus client for vector persistence.
         self._milvus = MilvusClient()
         # Thread‑safety lock for all mutating operations.
@@ -235,11 +237,14 @@ class OptionManager:
             ]
         }
         try:
-            self._client.remember(
-                topic="oak.option.model",
-                key=tenant_id,
-                value=json.dumps(model).encode("utf-8"),
-            )
+            memsvc = MemoryService(self._memory_backend, tenant_id)
+            payload = {
+                "topic": "oak.option.model",
+                "model": model,
+                "content_type": "application/json",
+                "timestamp": time.time(),
+            }
+            memsvc.remember(key=tenant_id, payload=payload)
         except Exception as exc:  # pragma: no cover – defensive
             logger.error(
                 "Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc
@@ -254,27 +259,13 @@ class OptionManager:
         The payload is the raw ``bytes`` stored in the option; the Avro schema
         expects ``payload`` as ``bytes``.
         """
-        try:
-            # Load the Avro schema for the option_created event.
-            schema_dict = load_schema("option_created")
-            serde = AvroSerde(schema_dict)
-            record = {
-                "option_id": opt.option_id,
-                "tenant_id": opt.tenant_id,
-                "timestamp": int(opt.created_ts * 1000),  # ms epoch
-                "payload": opt.payload,
-            }
-            # Encode using the serde and publish via the memory client.
-            encoded = serde.encode(record)
-            self._client.remember(
-                topic="oak.option.created",
-                key=opt.option_id,
-                value=encoded,
-            )
-        except Exception as exc:  # pragma: no cover – defensive
-            logger.error(
-                "Failed to publish option_created event for %s: %s", opt.option_id, exc
-            )
+        self._persist_event(
+            tenant_id=opt.tenant_id,
+            topic="oak.option.created",
+            schema_name="option_created",
+            payload_bytes=opt.payload,
+            option=opt,
+        )
 
     def _publish_update(self, opt: Option) -> None:
         """Publish an ``option_updated`` Avro event.
@@ -283,24 +274,47 @@ class OptionManager:
         topic. This method mirrors ``_publish_creation`` but uses the
         ``option_updated`` schema.
         """
+        self._persist_event(
+            tenant_id=opt.tenant_id,
+            topic="oak.option.updated",
+            schema_name="option_updated",
+            payload_bytes=opt.payload,
+            option=opt,
+        )
+
+    def _persist_event(
+        self,
+        *,
+        tenant_id: str,
+        topic: str,
+        schema_name: str,
+        payload_bytes: bytes,
+        option: Option,
+    ) -> None:
+        """Serialize an Oak event via Avro and store it through MemoryService."""
+
         try:
-            schema_dict = load_schema("option_updated")
+            schema_dict = load_schema(schema_name)
             serde = AvroSerde(schema_dict)
             record = {
-                "option_id": opt.option_id,
-                "tenant_id": opt.tenant_id,
-                "timestamp": int(opt.created_ts * 1000),
-                "payload": opt.payload,
+                "option_id": option.option_id,
+                "tenant_id": tenant_id,
+                "timestamp": int(option.created_ts * 1000),
+                "payload": payload_bytes,
             }
             encoded = serde.encode(record)
-            self._client.remember(
-                topic="oak.option.updated",
-                key=opt.option_id,
-                value=encoded,
-            )
+            memsvc = MemoryService(self._memory_backend, tenant_id)
+            payload = {
+                "topic": topic,
+                "namespace": tenant_id,
+                "content_type": "application/avro-binary",
+                "payload_b64": base64.b64encode(encoded).decode("ascii"),
+                "timestamp": time.time(),
+            }
+            memsvc.remember(key=f"{topic}:{option.option_id}", payload=payload)
         except Exception as exc:  # pragma: no cover – defensive
             logger.error(
-                "Failed to publish option_updated event for %s: %s", opt.option_id, exc
+                "Failed to persist %s event for %s: %s", topic, option.option_id, exc
             )
 
 

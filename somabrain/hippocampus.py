@@ -14,6 +14,8 @@ from collections import defaultdict, deque
 from dataclasses import dataclass
 from typing import Deque, Dict, Optional
 
+from somabrain.services.memory_service import MemoryService
+
 from . import consolidation
 
 # The runtime module (somabrain/runtime.py) already wires mt_wm/mt_memory
@@ -68,9 +70,9 @@ class Hippocampus:
         self._buffers[tenant].append(p)
         # Persist to external memory if available (no silent fallback).
         if self._mt_memory is not None:
-            mem = self._mt_memory.for_namespace(f"{tenant}")
+            memsvc = MemoryService(self._mt_memory, f"{tenant}")
             key = str(p.get("task") or p.get("fact") or p.get("content") or "episodic")
-            mem.remember(key, p)
+            memsvc.remember(key, p)
         # Mirror into working memory if available (keeps consolidation inputs real)
         if self._mt_wm is not None and hasattr(self._mt_wm, "items"):
             try:

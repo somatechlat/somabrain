@@ -89,7 +89,7 @@ async def run_retrieval_pipeline(
     payload: dict = {}
     if key:
         try:
-            hits = memsvc.client().recall(key, top_k=1, universe=universe)
+            hits = memsvc.recall(key, top_k=1, universe=universe)
             if hits:
                 hit = hits[0]
                 payload = hit.get("payload") or {}
@@ -126,7 +126,7 @@ async def run_retrieval_pipeline(
             try:
                 q_vec = embedder.embed(req.query)
                 # Compare against any memory we can fetch
-                hits = memsvc.client().recall(
+                hits = memsvc.recall(
                     req.query, top_k=req.top_k or 3, universe=universe
                 )
                 for h in hits:

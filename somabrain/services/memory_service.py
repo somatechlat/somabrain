@@ -8,7 +8,7 @@ delegates circuit‑breaker logic to the shared :class:`~somabrain.infrastructur
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable
+from typing import Any, Iterable, List
 
 # Local imports – placed after the standard library imports to avoid circular
 # dependencies when the ``metrics`` module lazily imports ``MemoryService``.
@@ -123,6 +123,28 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
+    def recall_with_scores(
+        self, query: str, top_k: int = 3, universe: str | None = None
+    ) -> List[Any]:
+        """Recall memories while preserving similarity scores when supported."""
+
+        self._reset_circuit_if_needed()
+        if self._is_circuit_open():
+            raise RuntimeError("Memory service unavailable (circuit open)")
+        client = self.client()
+        try:
+            if hasattr(client, "recall_with_scores"):
+                hits = client.recall_with_scores(
+                    query, top_k=top_k, universe=universe
+                )
+            else:
+                hits = client.recall(query, top_k=top_k, universe=universe)
+            self._mark_success()
+            return hits
+        except Exception as e:
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
+
     async def aremember(self, key: str, payload: dict, universe: str | None = None):
         if universe and "universe" not in payload:
             payload["universe"] = universe
@@ -151,6 +173,28 @@ class MemoryService:
             hits = await self.client().arecall(query, top_k=top_k, universe=universe)
             self._mark_success()
             return hits
+        except Exception as e:
+            self._mark_failure()
+            raise RuntimeError("Memory service unavailable") from e
+
+    async def arecall_with_scores(
+        self, query: str, top_k: int = 3, universe: str | None = None
+    ) -> List[Any]:
+        """Async variant of :meth:`recall_with_scores`."""
+
+        self._reset_circuit_if_needed()
+        if self._is_circuit_open():
+            raise RuntimeError("Memory service unavailable (circuit open)")
+        client = self.client()
+        try:
+            if hasattr(client, "arecall_with_scores"):
+                hits = await client.arecall_with_scores(
+                    query, top_k=top_k, universe=universe
+                )
+            else:
+                hits = await client.arecall(query, top_k=top_k, universe=universe)
+            self._mark_success()
+            return list(hits)
         except Exception as e:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e

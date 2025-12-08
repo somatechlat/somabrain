@@ -1637,6 +1637,19 @@ MEMORY_OUTBOX_SYNC_TOTAL = Counter(
     ["status"],
     registry=registry,
 )
+MEMORY_HTTP_REQUESTS = Counter(
+    "somabrain_memory_http_requests_total",
+    "Count of HTTP operations issued to the external memory service.",
+    ["operation", "tenant", "status"],
+    registry=registry,
+)
+MEMORY_HTTP_LATENCY = Histogram(
+    "somabrain_memory_http_latency_seconds",
+    "Latency distribution for memory HTTP operations.",
+    ["operation", "tenant"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+    registry=registry,
+)
 
 # --- Segmentation HMM Metrics (Roadmap Completion) ---
 SEGMENTATION_BOUNDARIES_PER_HOUR = Gauge(

@@ -16,7 +16,9 @@ import numpy as np
 
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
-from somabrain.memory_client import MemoryClient, RecallHit
+from somabrain.memory_client import RecallHit
+from somabrain.memory_pool import MultiTenantMemory
+from somabrain.services.memory_service import MemoryService
 
 
 @dataclass
@@ -52,11 +54,16 @@ class ContextBuilder:
         self,
         embed_fn: Callable[[str], Iterable[float]],
         memory: Optional[object] = None,
+        memory_backend: Optional[MultiTenantMemory] = None,
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
         self._embed_fn = embed_fn
-        self._memory = memory or MemoryClient(cfg=settings)
+        self._memory = memory
+        self._memory_backend = memory_backend
+        self._memory_service: Optional[MemoryService] = None
+        if self._memory is None and self._memory_backend is None:
+            self._memory_backend = MultiTenantMemory(cfg=settings)
         self._weights = weights or RetrievalWeights(
             settings.retrieval_alpha,
             settings.retrieval_beta,
@@ -65,7 +72,7 @@ class ContextBuilder:
         )
         self._working_memory = working_memory
         # Tenant identifier for per‑tenant metrics (default value)
-        self._tenant_id: str = "default"
+        self._tenant_id: str = getattr(settings, "default_tenant", "public")
         # Align temporal decay and density penalties with runtime configuration when available
         self._recency_half_life = settings.retrieval_recency_half_life
         self._recency_sharpness = settings.retrieval_recency_sharpness
@@ -140,6 +147,9 @@ class ContextBuilder:
         """Store the tenant ID so weight updates can be attributed correctly."""
         if tenant_id:
             self._tenant_id = tenant_id
+        if self._memory is None and self._memory_backend is not None:
+            namespace = self._namespace_for_tenant(self._tenant_id)
+            self._memory_service = MemoryService(self._memory_backend, namespace)
 
     def build(  # noqa: PLR0914
         self,
@@ -191,11 +201,30 @@ class ContextBuilder:
             raise RuntimeError("embedding function returned empty vector")
         return [float(v) for v in raw]
 
+    def _namespace_for_tenant(self, tenant_id: str) -> str:
+        base = getattr(settings, "namespace", "public") or "public"
+        tid = str(tenant_id or getattr(settings, "default_tenant", "public"))
+        return f"{base}:{tid}"
+
+    def _memory_component(self) -> object:
+        if self._memory is not None:
+            return self._memory
+        if self._memory_backend is None:
+            self._memory_backend = MultiTenantMemory(cfg=settings)
+        if self._memory_service is None:
+            namespace = self._namespace_for_tenant(self._tenant_id)
+            self._memory_service = MemoryService(self._memory_backend, namespace)
+        return self._memory_service
+
     def _search(
         self, query_text: str, embedding: List[float], top_k: int
     ) -> List[Dict[str, Any]]:
+        memory_component = self._memory_component()
         try:
-            hits = self._memory.recall_with_scores(query_text, top_k=top_k)
+            if hasattr(memory_component, "recall_with_scores"):
+                hits = memory_component.recall_with_scores(query_text, top_k=top_k)
+            else:
+                hits = memory_component.recall(query_text, top_k=top_k)
             return self._hits_to_results(hits)
         except Exception:
             return []

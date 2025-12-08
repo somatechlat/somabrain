@@ -4151,8 +4151,7 @@ async def _health_watchdog_coroutine():
                     circuit_state = memsvc.get_circuit_state()
                     if circuit_state["circuit_open"]:
                         # Perform health check
-                        client = memsvc.client()
-                        health = client.health()
+                        health = memsvc.health()
 
                         # If healthy, reset the circuit breaker
                         # The memory client health payload uses a "healthy" boolean flag

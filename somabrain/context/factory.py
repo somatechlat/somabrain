@@ -12,7 +12,7 @@ from somabrain.runtime.working_memory import WorkingMemoryBuffer
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
 from somabrain.embeddings import make_embedder
-from somabrain.memory_client import MemoryClient
+from somabrain.memory_pool import MultiTenantMemory
 
 
 _embedder = None
@@ -37,14 +37,14 @@ _retrieval_weights = RetrievalWeights(
     tau=float(getattr(settings, "retrieval_tau", 0.8)),
 )
 _utility_weights = UtilityWeights()
+_memory_backend = MultiTenantMemory(cfg=settings)
 
 
 @lru_cache(maxsize=1)
 def get_context_builder() -> ContextBuilder:
-    memory = MemoryClient(cfg=settings)
     return ContextBuilder(
         embed_fn=_embedder.embed,
-        memory=memory,
+        memory_backend=_memory_backend,
         weights=_retrieval_weights,
         working_memory=_working_memory,
     )

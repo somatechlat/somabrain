@@ -37,7 +37,17 @@ try:
         connections,
         utility,
     )
-    from pymilvus.exceptions import MilvusException
+    try:  # pymilvus 2.4 exposes exceptions as a module attribute
+        from pymilvus import exceptions as _milvus_exceptions
+
+        MilvusException = getattr(
+            _milvus_exceptions, "MilvusException", Exception
+        )
+    except Exception:  # pragma: no cover - compatibility shim
+        try:
+            from pymilvus.exceptions import MilvusException  # type: ignore
+        except Exception:  # Final guard: keep import successful even on API drift
+            MilvusException = Exception  # type: ignore
 
     _PYMILVUS_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only when pymilvus missing
@@ -190,6 +200,34 @@ class MilvusClient:
         assert self.collection is not None  # mypy hint
         try:
             desc = self.collection.describe()
+        except AttributeError:
+            schema_obj = getattr(self.collection, "schema", None)
+            if schema_obj is None:
+                logger.warning(
+                    "Milvus Collection schema attribute missing; skipping verification"
+                )
+                return
+            raw_fields = []
+            for field in getattr(schema_obj, "fields", []):
+                try:
+                    raw_fields.append(field.to_dict())
+                except Exception:
+                    raw_fields.append({
+                        "name": getattr(field, "name", "unknown"),
+                        "data_type": getattr(field, "dtype", None),
+                        "params": {
+                            "max_length": getattr(field, "max_length", None),
+                            "dim": getattr(field, "dim", None),
+                        },
+                        "is_primary": getattr(field, "is_primary", False),
+                    })
+            if not raw_fields:
+                logger.warning(
+                    "Milvus schema inspection yielded no fields; skipping verification"
+                )
+                return
+            desc = {"fields": raw_fields}
+        try:
             schema_fields = desc.get("schema", {}).get("fields")
             raw_fields = schema_fields if schema_fields else desc.get("fields", [])
             fields = {f["name"]: f for f in raw_fields}

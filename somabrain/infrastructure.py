@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 try:
@@ -64,27 +65,70 @@ def get_redis_url(default: Optional[str] = None) -> Optional[str]:
     return default
 
 
-def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
-    """Return the configured Memory HTTP endpoint."""
+@dataclass(frozen=True)
+class MemoryEndpoint:
+    """Normalized view of the memory HTTP endpoint configuration."""
 
-    endpoint = _first_non_empty(
-        _from_settings("memory_http_endpoint"),
-        # fallbacks via Settings fields
-        _from_settings("memory_http_host"),
-        _from_settings("memory_http_port"),
-        _from_settings("memory_http_scheme"),
-    )
-    if endpoint:
-        return endpoint
+    scheme: str
+    host: str
+    port: Optional[int]
+    url: str
+
+
+def resolve_memory_endpoint(default: Optional[str] = None) -> MemoryEndpoint:
+    """Return the canonical memory endpoint configuration.
+
+    The resolver prefers explicit URLs (``memory_http_endpoint``) but can also
+    reconstruct a URL from ``memory_http_host``/``memory_http_port``. The result
+    is cached implicitly via the ``settings`` singleton, so callers should not
+    mutate the returned dataclass.
+    """
+
+    explicit = _first_non_empty(_from_settings("memory_http_endpoint"))
+    if explicit:
+        clean = explicit.rstrip("/")
+        scheme, host, port = _parse_url(clean)
+        return MemoryEndpoint(scheme=scheme, host=host, port=port, url=clean)
 
     host = _from_settings("memory_http_host")
     port = _from_settings("memory_http_port")
     scheme = _from_settings("memory_http_scheme") or "http"
 
-    if host and port:
-        return f"{scheme}://{host}:{port}"
+    if host:
+        built = f"{scheme}://{host}:{port}" if port else f"{scheme}://{host}"
+        return MemoryEndpoint(
+            scheme=scheme,
+            host=host,
+            port=int(port) if port else None,
+            url=built.rstrip("/"),
+        )
 
-    return default
+    if default:
+        scheme, host, port = _parse_url(default)
+        return MemoryEndpoint(scheme=scheme, host=host, port=port, url=default.rstrip("/"))
+
+    raise RuntimeError("Memory HTTP endpoint is not configured")
+
+
+def get_memory_http_endpoint(default: Optional[str] = None) -> Optional[str]:
+    """Compatibility wrapper returning the resolved memory endpoint URL."""
+
+    try:
+        return resolve_memory_endpoint(default).url
+    except RuntimeError:
+        return default
+
+
+def _parse_url(value: str) -> tuple[str, str, Optional[int]]:
+    """Parse *value* into ``(scheme, host, port)`` with basic validation."""
+
+    from urllib.parse import urlparse
+
+    parsed = urlparse(value if "://" in value else f"http://{value}")
+    if not parsed.hostname:
+        raise RuntimeError(f"Invalid memory endpoint: {value!r}")
+    port = parsed.port
+    return parsed.scheme or "http", parsed.hostname, port
 
 
 def get_kafka_bootstrap(default: Optional[str] = None) -> Optional[str]:

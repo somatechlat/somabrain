@@ -45,6 +45,7 @@ from common.config.settings import settings
 from .config import Config
 from .memory_client import MemoryClient
 from .memory_pool import MultiTenantMemory
+from somabrain.services.memory_service import MemoryService
 from .metrics import CONSOLIDATION_RUNS, REM_SYNTHESIZED
 from .mt_wm import MultiTenantWM
 from .reflect import top_keywords
@@ -79,7 +80,8 @@ def run_nrem(
     top_k: int = 16,
     max_summaries: int = 3,
 ) -> dict:
-    mem = mtmem.for_namespace(f"{cfg.namespace}:{tenant_id}")
+    namespace = f"{cfg.namespace}:{tenant_id}"
+    memsvc = MemoryService(mtmem, namespace)
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if not episodics:
         return {"created": 0, "reinforced": 0}
@@ -97,7 +99,7 @@ def run_nrem(
         "memory_type": "semantic",
         "phase": "NREM",
     }
-    mem.remember(summary, payload)
+    memsvc.remember(summary, payload)
     CONSOLIDATION_RUNS.labels(phase="NREM").inc()
     return {"created": 1}
 
@@ -110,7 +112,8 @@ def run_rem(
     recomb_rate: float = 0.2,
     max_summaries: int = 2,
 ) -> dict:
-    mem = mtmem.for_namespace(f"{cfg.namespace}:{tenant_id}")
+    namespace = f"{cfg.namespace}:{tenant_id}"
+    memsvc = MemoryService(mtmem, namespace)
     episodics = _episodics_from_wm(mtwm, tenant_id, limit=256)
     if len(episodics) < 2:
         return {"created": 0}
@@ -128,7 +131,7 @@ def run_rem(
         keys = list({*top_keywords([ta], k=5), *top_keywords([tb], k=5)})
         synth = ", ".join(keys) if keys else f"combine: {ta[:20]} + {tb[:20]}"
         payload = {"fact": f"rem: {synth}", "memory_type": "semantic", "phase": "REM"}
-        mem.remember(synth, payload)
+        memsvc.remember(synth, payload)
         REM_SYNTHESIZED.inc()
         created += 1
     CONSOLIDATION_RUNS.labels(phase="REM").inc()
