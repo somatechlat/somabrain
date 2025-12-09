@@ -29,6 +29,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 ### Retrieval & Scoring
 - **ContextBuilder** (`somabrain/context/builder.py`) embeds queries, computes per-memory weights, and adjusts the temperature parameter \(\tau\) based on observed duplicate ratios.
 - **UnifiedScorer** (`somabrain/scoring.py`) blends cosine, frequent-directions projections, and recency; weights and decay constants can be tuned via `scorer_*` settings and are exposed through diagnostics.
+- **ContextBuilder** (`somabrain/context/builder.py`) constructs context bundles by retrieving memories, computing weights, and generating prompts.
 - **TieredMemory** (`somabrain/memory/hierarchical.py`, `somabrain/mt_wm.py`) orchestrates working and long-term traces with configurable promotion policies and safe handling when cleanup finds no anchor.
 
 ### Learning & Neuromodulation

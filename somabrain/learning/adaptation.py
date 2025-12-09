@@ -13,8 +13,6 @@ if TYPE_CHECKING:
 
 @dataclass
 class RetrievalWeights:  # Minimal duplicate to avoid import-time circularity in tests.
-    """Represents the weights for the retrieval scoring components."""
-
     alpha: float
     beta: float
     gamma: float
@@ -133,8 +131,6 @@ def _get_redis():
 
 @dataclass
 class UtilityWeights:
-    """Represents the weights for the utility scoring components."""
-
     lambda_: float = float(getattr(settings, "utility_lambda", 1.0))
     mu: float = float(getattr(settings, "utility_mu", 0.1))
     nu: float = float(getattr(settings, "utility_nu", 0.05))
@@ -154,7 +150,6 @@ class UtilityWeights:
             float(getattr(settings, "utility_nu_max", 5.0)),
         ),
     ) -> None:
-        """Clamps the utility weights to the given bounds."""
         self.lambda_ = min(max(self.lambda_, lambda_bounds[0]), lambda_bounds[1])
         self.mu = min(max(self.mu, mu_bounds[0]), mu_bounds[1])
         self.nu = min(max(self.nu, nu_bounds[0]), nu_bounds[1])
@@ -234,19 +229,6 @@ class AdaptationEngine:
         enable_dynamic_lr: bool = False,
         gains: Optional[AdaptationGains] = None,
     ) -> None:
-        """Initializes the AdaptationEngine.
-
-        Args:
-            retrieval: The initial retrieval weights.
-            utility: The initial utility weights.
-            learning_rate: The learning rate.
-            max_history: The maximum number of history entries to keep for
-                rollback.
-            constraints: The constraints for the weights.
-            tenant_id: The ID of the tenant.
-            enable_dynamic_lr: Whether to enable dynamic learning rate.
-            gains: The gains for the adaptation.
-        """
         if settings and not getattr(settings, "enable_advanced_learning", True):
             raise RuntimeError(
                 "Advanced learning is disabled; set SOMABRAIN_ENABLE_ADVANCED_LEARNING=1 to enable adaptation."
@@ -493,17 +475,14 @@ class AdaptationEngine:
 
     @property
     def retrieval_weights(self) -> RetrievalWeights:
-        """The current retrieval weights."""
         return self._retrieval
 
     @property
     def utility_weights(self) -> UtilityWeights:
-        """The current utility weights."""
         return self._utility
 
     @property
     def tenant_id(self) -> str:
-        """The ID of the current tenant."""
         return self._tenant_id
 
     def apply_feedback(
@@ -823,12 +802,10 @@ class AdaptationEngine:
     # --- Convenience properties and helpers expected by tests ---
     @property
     def learning_rate(self) -> float:
-        """The current learning rate."""
         return float(getattr(self, "_lr", self._base_lr))
 
     @property
     def tau(self) -> float:
-        """The current tau value."""
         return float(self._retrieval.tau)
 
     def exponential_decay(self, tau_0: float, gamma: float, t: int) -> float:
@@ -851,7 +828,6 @@ class AdaptationEngine:
         return max(float(tau_min), float(tau_0) - float(alpha) * (int(t) + 1))
 
     def update_parameters(self, feedback: dict) -> None:
-        """Updates the parameters based on the given feedback."""
         reward = 0.0
         error = 0.0
         if isinstance(feedback, dict):
@@ -874,7 +850,6 @@ class AdaptationEngine:
             pass
 
     def update_from_experience(self, exp: dict) -> None:
-        """Updates the parameters based on the given experience."""
         # Track experiences for tests; optionally route reward to apply_feedback
         try:
             self.total_experiences = int(getattr(self, "total_experiences", 0)) + 1
@@ -888,11 +863,9 @@ class AdaptationEngine:
 
     @property
     def alpha(self) -> float:  # expose retrieval alpha for bounds test
-        """The current alpha value."""
         return float(self._retrieval.alpha)
 
     def initialize_from_prior(self, prior_params: dict) -> None:
-        """Initializes the parameters from the given prior."""
         if not isinstance(prior_params, dict):
             return
         try:
@@ -905,7 +878,6 @@ class AdaptationEngine:
             pass
 
     def monitor_performance(self, metrics: dict) -> None:
-        """Monitors the performance of the adaptation engine."""
         # Record metrics and use reward (if present) to trigger adaptation
         try:
             self.performance_history = getattr(self, "performance_history", [])
@@ -921,7 +893,6 @@ class AdaptationEngine:
             pass
 
     def set_curriculum_stage(self, stage: str) -> None:
-        """Sets the curriculum stage."""
         key = str(stage).strip().lower()
         base = float(self._base_lr)
         if key == "easy":
@@ -932,12 +903,10 @@ class AdaptationEngine:
             self._lr = _clamp(base, 0.001, 1.0)
 
     def transfer_parameters(self, source_task: str, target_task: str) -> None:
-        """Transfers parameters from a source task to a target task."""
         # Record target task for tests
         self.task_type = str(target_task)
 
     def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
-        """Optimizes the hyperparameters."""
         lr_opts = list(search_space.get("learning_rate", [self._base_lr]))
         tau_opts = list(search_space.get("tau", [self._retrieval.tau]))
         # Deterministic choice for test determinism: pick the first option

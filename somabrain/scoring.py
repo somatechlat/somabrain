@@ -21,8 +21,6 @@ except Exception:
 
 @dataclass
 class ScorerWeights:
-    """Weights for the different components of the unified scorer."""
-
     w_cosine: float
     w_fd: float
     w_recency: float
@@ -64,17 +62,6 @@ class UnifiedScorer:
         recency_tau: float,
         fd_backend: Optional[FDSalienceSketch] = None,
     ) -> None:
-        """Initializes the UnifiedScorer.
-
-        Args:
-            w_cosine: The weight for the cosine similarity component.
-            w_fd: The weight for the FD subspace cosine component.
-            w_recency: The weight for the recency component.
-            weight_min: The minimum value for the weights.
-            weight_max: The maximum value for the weights.
-            recency_tau: The tau value for the recency decay.
-            fd_backend: The FD salience sketch backend.
-        """
         lo, hi = sorted((float(weight_min), float(weight_max)))
         cosine_val = _gain_setting("w_cosine")
         fd_val = _gain_setting("w_fd")
@@ -137,17 +124,6 @@ class UnifiedScorer:
         recency_steps: Optional[int] = None,
         cosine: Optional[float] = None,
     ) -> float:
-        """Calculates the unified score for a candidate memory.
-
-        Args:
-            query: The query vector.
-            candidate: The candidate memory vector.
-            recency_steps: The number of recency steps.
-            cosine: The pre-computed cosine similarity.
-
-        Returns:
-            The unified score.
-        """
         q = np.asarray(query, dtype=float).reshape(-1)
         c = np.asarray(candidate, dtype=float).reshape(-1)
         cos = float(cosine) if cosine is not None else self._cosine(q, c)
@@ -172,7 +148,6 @@ class UnifiedScorer:
         return total_score
 
     def stats(self) -> dict[str, float | dict[str, float | bool]]:
-        """Returns a dictionary of the scorer's statistics."""
         info: dict[str, float | dict[str, float | bool]] = {
             "w_cosine": self._weights.w_cosine,
             "w_fd": self._weights.w_fd,

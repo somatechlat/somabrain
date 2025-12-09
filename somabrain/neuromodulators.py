@@ -91,7 +91,6 @@ class Neuromodulators:
     """
 
     def __init__(self):
-        """Initializes the Neuromodulators hub."""
         self._state = NeuromodState(
             dopamine=settings.neuromod_dopamine_base,
             serotonin=settings.neuromod_serotonin_base,
@@ -102,7 +101,6 @@ class Neuromodulators:
         self._subs: List[Callable[[NeuromodState], None]] = []
 
     def get_state(self) -> NeuromodState:
-        """Returns the current neuromodulator state."""
         return self._state
 
     def set_state(self, s: NeuromodState) -> None:
@@ -130,7 +128,6 @@ class Neuromodulators:
             pass
 
     def subscribe(self, cb: Callable[[NeuromodState], None]) -> None:
-        """Subscribes a callback to neuromodulator state changes."""
         self._subs.append(cb)
 
 
@@ -141,35 +138,16 @@ class PerTenantNeuromodulators:
     If a tenant has no stored state, the global Neuromodulators instance is used as a default.
     """
 
-
-
     def __init__(self):
-        """Initializes the per-tenant neuromodulator store."""
         self._states: Dict[str, NeuromodState] = {}
         self._global = Neuromodulators()
 
     def get_state(self, tenant_id: str | None = None) -> NeuromodState:
-        """Gets the neuromodulator state for the given tenant.
-
-        If no tenant ID is provided, the global state is returned.
-
-        Args:
-            tenant_id: The ID of the tenant.
-
-        Returns:
-            The neuromodulator state.
-        """
         if tenant_id is None:
             return self._global.get_state()
         return self._states.get(tenant_id, self._global.get_state())
 
     def set_state(self, tenant_id: str, state: NeuromodState) -> None:
-        """Sets the neuromodulator state for the given tenant.
-
-        Args:
-            tenant_id: The ID of the tenant.
-            state: The new neuromodulator state.
-        """
         self._states[tenant_id] = state
         # Notify any global subscribers of the change for this tenant if needed
         # (subscribers receive the raw NeuromodState; they can filter by tenant themselves)
@@ -190,7 +168,6 @@ class AdaptiveNeuromodulators:
     acetylcholine_param: AdaptiveParameter
 
     def __init__(self):
-        """Initializes the adaptive neuromodulators."""
         # Initialize adaptive parameters with learning bounds
         self.dopamine_param = AdaptiveParameter(
             name="dopamine",
@@ -300,7 +277,6 @@ class AdaptivePerTenantNeuromodulators:
     """Per-tenant adaptive neuromodulator system."""
 
     def __init__(self):
-        """Initializes the per-tenant adaptive neuromodulator system."""
         self._adaptive_systems: Dict[str, AdaptiveNeuromodulators] = {}
         self._global = AdaptiveNeuromodulators()
 

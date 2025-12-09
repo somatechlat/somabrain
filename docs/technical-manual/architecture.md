@@ -54,13 +54,13 @@ graph TD
 *Human Impact:* Instant access to the most important memories, with a seamless transition to long-term storage.
 *The Science:* A hierarchical memory system composed of a multi-tenant working memory manager (`MultiTenantWM`) that provides tenant-isolated, Redis-backed working memory instances. These instances are built on a tiered memory system (`TieredMemory`) that uses governed superposition traces (`SuperposedTrace`) for both working and long-term memory, with exponential decay to manage interference.
 
-**⚛️ Meaning Engine** (`somabrain/quantum.py`)
-*Human Impact:* Understands that "car" and "automobile" mean the same thing
-*The Science:* Binary Hyperdimensional Computing (BHDC) with 2048D vector spaces using permutation-based binding (PermutationBinder). Perfectly invertible by construction. Deterministic unitary roles with verified spectral properties (‖H_k‖≈1). Orthogonality and binding correctness verified via MathematicalMetrics on every operation.
-
 **🧠 Context Builder** (`somabrain/context/builder.py`)
 *Human Impact:* Assembles the most relevant information to answer your questions.
 *The Science:* Constructs context bundles by retrieving memories, computing weights using a tunable, multi-factor scoring model, and generating prompts for the agent.
+
+**⚛️ Meaning Engine** (`somabrain/quantum.py`)
+*Human Impact:* Understands that "car" and "automobile" mean the same thing
+*The Science:* Binary Hyperdimensional Computing (BHDC) with 2048D vector spaces using permutation-based binding (PermutationBinder). Perfectly invertible by construction. Deterministic unitary roles with verified spectral properties (‖H_k‖≈1). Orthogonality and binding correctness verified via MathematicalMetrics on every operation.
 
 **📊 Relevance Oracle** (`somabrain/scoring.py`)
 *Human Impact:* Finds exactly what you need, even when you ask imperfectly

@@ -21,8 +21,6 @@ from somabrain.memory_client import MemoryClient, RecallHit
 
 @dataclass
 class RetrievalWeights:
-    """Weights for the different components of the retrieval score."""
-
     alpha: float
     beta: float
     gamma: float
@@ -31,8 +29,6 @@ class RetrievalWeights:
 
 @dataclass
 class MemoryRecord:
-    """A single memory record."""
-
     id: str
     score: float
     metadata: Dict
@@ -41,8 +37,6 @@ class MemoryRecord:
 
 @dataclass
 class ContextBundle:
-    """A bundle of context, including memories, weights, and a prompt."""
-
     query: str
     prompt: str
     memories: List[MemoryRecord]
@@ -61,15 +55,6 @@ class ContextBuilder:
         weights: Optional[RetrievalWeights] = None,
         working_memory: Optional["WorkingMemoryBuffer"] = None,
     ) -> None:
-        """Initializes the ContextBuilder.
-
-        Args:
-            embed_fn: The function to use for embedding text.
-            memory: The memory client to use for retrieving memories.
-            weights: The weights to use for scoring memories.
-            working_memory: The working memory buffer to use for storing session
-                data.
-        """
         self._embed_fn = embed_fn
         self._memory = memory or MemoryClient(cfg=settings)
         self._weights = weights or RetrievalWeights(
@@ -162,16 +147,6 @@ class ContextBuilder:
         top_k: int = 5,
         session_id: Optional[str] = None,
     ) -> ContextBundle:
-        """Builds a context bundle for the given query.
-
-        Args:
-            query: The query to build the context for.
-            top_k: The number of memories to retrieve.
-            session_id: The ID of the session.
-
-        Returns:
-            The context bundle.
-        """
         embedding = self._embed(query)
         results = self._search(query, embedding, top_k)
         memories: List[MemoryRecord] = [
@@ -207,7 +182,6 @@ class ContextBuilder:
 
     @property
     def weights(self) -> RetrievalWeights:
-        """The retrieval weights."""
         return self._weights
 
     # ------------------------------------------------------------------
