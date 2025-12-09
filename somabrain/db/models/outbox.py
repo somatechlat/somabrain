@@ -11,11 +11,10 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
 )
-# ``JSON`` type is optional in lightweight deployments; store payload as a ``String``
-# containing a JSON‑encoded document. This satisfies the schema requirements
-# for the outbox while keeping the model compatible with environments that
-# lack the full SQLAlchemy installation.
-from sqlalchemy.types import Text as JSON  # type: ignore
+try:  # Prefer native JSON/JSONB when SQLAlchemy is available
+    from sqlalchemy import JSON  # type: ignore
+except Exception:  # pragma: no cover - compatibility fallback
+    from sqlalchemy.types import Text as JSON  # type: ignore
 from somabrain.storage.db import Base
 
 

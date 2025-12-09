@@ -1717,6 +1717,15 @@ async def _enforce_opa_postgres_required() -> None:
 from somabrain.api import context_route as _context_route
 
 app.include_router(_context_route.router, prefix="/context")
+
+# Modular routers extracted from app.py monolith
+from somabrain.routers import admin_router, health_router, memory_router, neuromod_router
+
+app.include_router(admin_router, tags=["admin"])
+app.include_router(health_router, tags=["health"])
+app.include_router(memory_router, tags=["memory"])
+app.include_router(neuromod_router, tags=["neuromodulators"])
+
 # Oak-specific routes providing option management backed by Milvus.
 # The router is imported as ``oak_router`` earlier in this file.
 app.include_router(oak_router, prefix="/oak")

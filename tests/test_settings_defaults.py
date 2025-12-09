@@ -68,7 +68,8 @@ def test_no_direct_getenv_outside_settings() -> None:
     root = Path(__file__).resolve().parents[1]
     offenders: list[str] = []
     for path in root.rglob("*.py"):
-        if "common/config/settings.py" in str(path) or path == Path(__file__):
+        # Allow settings module and its subpackage (base.py contains the canonical helpers)
+        if "common/config/settings" in str(path) or path == Path(__file__):
             continue
         if path.name.endswith("_pb2.py") or "/.venv/" in str(path):
             continue

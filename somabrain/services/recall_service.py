@@ -103,8 +103,8 @@ def recall_ltm(
                         isinstance(v, str)
                         and v
                         and (ql in v.lower() or v.lower() in ql)
-                ):
-                    return True
+                    ):
+                        return True
                 return False
 
             if (

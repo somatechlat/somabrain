@@ -17,6 +17,28 @@ from common.config.settings import settings
 LOGGER = logging.getLogger("somabrain.api.middleware.opa")
 
 
+class SimpleOPAEngine:
+    """Lightweight wrapper around the OPA HTTP endpoint for health checks.
+
+    This class stores the base URL and offers an async ``health`` method used by the
+    health endpoint to verify that the OPA service is reachable.
+    """
+
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip("/")
+
+    async def health(self) -> bool:
+        """Return True if the OPA /health endpoint responds with 200."""
+        try:
+            import httpx
+
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                resp = await client.get(f"{self.base_url}/health")
+                return resp.status_code == 200
+        except Exception:
+            return False
+
+
 class OpaMiddleware(BaseHTTPMiddleware):
     """FastAPI middleware that forwards request data to an OPA side‑car for policy enforcement.
 

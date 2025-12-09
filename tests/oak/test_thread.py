@@ -48,7 +48,7 @@ def test_cognitive_thread_basic_operations() -> None:
     assert thread.cursor == 0
 
 
-def test_planner_uses_thread_next_option(db_session, monkeypatch):
+def test_planner_uses_thread_next_option(monkeypatch):
     """Ensure ``plan_for_tenant`` prefers a thread's next option."""
     _require_pg()
 

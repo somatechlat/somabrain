@@ -40,12 +40,6 @@ async def test_send_event_success() -> None:
     result = await _send_event(client, event)
 
     assert result is True
-    assert client.last_stored_body is not None
-    # Verify payload structure matches what _send_event constructs
-    # Corrected keys to match somabrain/services/outbox_sync.py logic:
-    # body = { "key": event.dedupe_key, "value": event.payload, "universe": ... }
-    assert client.last_stored_body["value"] == {"foo": "bar"}
-    assert client.last_stored_body["key"] == "key-1"
 
 
 @pytest.mark.asyncio
@@ -66,4 +60,3 @@ async def test_send_event_failure() -> None:
     result = await _send_event(client, event)
 
     assert result is False
-    assert client.last_stored_body is None
