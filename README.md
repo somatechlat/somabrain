@@ -29,7 +29,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 ### Retrieval & Scoring
 - **ContextBuilder** (`somabrain/context/builder.py`) embeds queries, computes per-memory weights, and adjusts the temperature parameter \(\tau\) based on observed duplicate ratios.
 - **UnifiedScorer** (`somabrain/scoring.py`) blends cosine, frequent-directions projections, and recency; weights and decay constants can be tuned via `scorer_*` settings and are exposed through diagnostics.
-- **TieredMemory** (`somabrain/memory/hierarchical.py`) orchestrates working and long-term traces with configurable promotion policies and safe handling when cleanup finds no anchor.
+- **TieredMemory** (`somabrain/memory/hierarchical.py`, `somabrain/mt_wm.py`) orchestrates working and long-term traces with configurable promotion policies and safe handling when cleanup finds no anchor.
 
 ### Learning & Neuromodulation
 - **AdaptationEngine** (`somabrain/learning/adaptation.py`) provides decoupled gains for retrieval (α, β, γ, τ) and utility (λ, μ, ν), driven by tenant-specific feedback. Configured gains/bounds are mirrored in metrics and the adaptation state API.
@@ -237,9 +237,8 @@ Close the loop with feedback:
 ```bash
 $ curl -s http://localhost:9696/context/feedback \
     -H "Content-Type: application/json" \
-    -d '`
-{"session_id":"demo","query":"capital of France","prompt":"Summarise the capital of France.","response_text":"Paris is the capital of France.","utility":0.9,"reward":0.9}
-`
+    -d '
+{"session_id":"demo","tenant_id":"default","query":"capital of France","prompt":"Summarise the capital of France.","response_text":"Paris is the capital of France.","utility":0.9,"reward":0.9}
 '
 ```
 

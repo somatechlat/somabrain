@@ -55,9 +55,14 @@ H = -Σ p_i * ln(p_i)
 ```
 If `H > entropy_cap` (and `entropy_cap > 0`), all non-max components are scaled toward zero by a bounded factor to reduce dispersion.
 
+## Neuromodulator Influence
+The adaptation engine can be configured to use neuromodulator levels to dynamically adjust the learning rate. When enabled, the dopamine level from the `Neuromodulators` service is used to scale the base learning rate. This allows the system to learn faster in response to positive feedback (higher dopamine) and more slowly in response to negative feedback (lower dopamine).
+
+This feature is controlled by the `SOMABRAIN_LEARNING_RATE_DYNAMIC` environment variable.
+
 ## Feedback Flow (Simplified)
 1. Request hits `/context/feedback`.
-2. Adaptation Engine computes learning rate and applies deltas.
+2. Adaptation Engine computes learning rate and applies deltas. If dynamic learning rate is enabled, the dopamine level is used to scale the base learning rate.
 3. Tau decay (if enabled) executes with rate from tenant override or global.
 4. Entropy computed; metric recorded; capping applied if necessary.
 5. State persisted (Redis if configured) and metrics updated.

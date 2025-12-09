@@ -72,6 +72,11 @@ class QuantumLayer:
     """BHDC-powered hyperdimensional operations."""
 
     def __init__(self, cfg: HRRConfig):
+        """Initializes the QuantumLayer with the given configuration.
+
+        Args:
+            cfg: The configuration object for hyperdimensional operations.
+        """
         self.cfg = cfg
         self._role_cache: Dict[str, np.ndarray] = {}
         # Compatibility caches expected by legacy numerics tests
@@ -100,6 +105,18 @@ class QuantumLayer:
     # Helpers
     # ------------------------------------------------------------------
     def _ensure_vector(self, v: object, *, name: str = "vector") -> np.ndarray:
+        """Ensures that the input is a valid vector of the correct shape and type.
+
+        Args:
+            v: The object to be converted to a vector.
+            name: The name of the vector, used in error messages.
+
+        Returns:
+            The validated and converted numpy array.
+
+        Raises:
+            ValueError: If the input cannot be converted to a valid vector.
+        """
         try:
             arr = np.asarray(v, dtype=self.cfg.dtype)
         except Exception as exc:  # pragma: no cover - defensive
@@ -113,6 +130,14 @@ class QuantumLayer:
         return arr
 
     def _renorm(self, v: np.ndarray) -> np.ndarray:
+        """Renormalizes the vector if the configuration requires it.
+
+        Args:
+            v: The vector to renormalize.
+
+        Returns:
+            The renormalized vector.
+        """
         if not self.cfg.renorm:
             return v.astype(self.cfg.dtype, copy=False)
         return normalize_array(v, axis=-1, keepdims=False, dtype=self.cfg.dtype)
@@ -121,12 +146,33 @@ class QuantumLayer:
     # Core operations
     # ------------------------------------------------------------------
     def random_vector(self) -> np.ndarray:
+        """Generates a random vector.
+
+        Returns:
+            A new random vector.
+        """
         return self._renorm(self._encoder.random_vector())
 
     def encode_text(self, text: str) -> np.ndarray:
+        """Encodes a string of text into a vector.
+
+        Args:
+            text: The text to encode.
+
+        Returns:
+            The encoded vector.
+        """
         return self._renorm(self._encoder.vector_for_key(text))
 
     def superpose(self, *vectors) -> np.ndarray:
+        """Superposes multiple vectors into a single vector.
+
+        Args:
+            *vectors: A variable number of vectors to superpose.
+
+        Returns:
+            The superposed vector.
+        """
         from somabrain.metrics_extra.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
@@ -164,6 +210,15 @@ class QuantumLayer:
         return result
 
     def bind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Binds two vectors together.
+
+        Args:
+            a: The first vector.
+            b: The second vector.
+
+        Returns:
+            The bound vector.
+        """
         a_vec = self._ensure_vector(a, name="bind.a")
         b_vec = self._ensure_vector(b, name="bind.b")
         result = self._renorm(self._binder.bind(a_vec, b_vec))
@@ -191,6 +246,15 @@ class QuantumLayer:
         return result
 
     def unbind(self, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Unbinds two vectors.
+
+        Args:
+            a: The bound vector.
+            b: The vector to unbind with.
+
+        Returns:
+            The unbound vector.
+        """
         a_vec = self._ensure_vector(a, name="unbind.a")
         b_vec = self._ensure_vector(b, name="unbind.b")
         return self._renorm(self._binder.unbind(a_vec, b_vec))
@@ -199,6 +263,16 @@ class QuantumLayer:
     # Unitary roles
     # ------------------------------------------------------------------
     def make_unitary_role(self, token: str) -> np.ndarray:
+        """Creates a unitary role vector for the given token.
+
+        If the role has already been created, it is returned from the cache.
+
+        Args:
+            token: The token to create the role for.
+
+        Returns:
+            The unitary role vector.
+        """
         if token in self._role_cache:
             return self._role_cache[token]
 
@@ -240,6 +314,15 @@ class QuantumLayer:
         return role
 
     def bind_unitary(self, a: np.ndarray, role_token: str) -> np.ndarray:
+        """Binds a vector with a unitary role.
+
+        Args:
+            a: The vector to bind.
+            role_token: The token of the unitary role to bind with.
+
+        Returns:
+            The bound vector.
+        """
         from somabrain.metrics_extra.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
         )
@@ -270,9 +353,30 @@ class QuantumLayer:
     # Exact / Wiener aliases (BHDC binder is perfectly invertible)
     # ------------------------------------------------------------------
     def unbind_exact(self, c: np.ndarray, b: np.ndarray) -> np.ndarray:
+        """Unbinds two vectors exactly.
+
+        This is an alias for the `unbind` method, as the BHDC binder is
+        perfectly invertible.
+
+        Args:
+            c: The bound vector.
+            b: The vector to unbind with.
+
+        Returns:
+            The unbound vector.
+        """
         return self.unbind(c, b)
 
     def unbind_exact_unitary(self, c: np.ndarray, role_token: str) -> np.ndarray:
+        """Unbinds a vector with a unitary role exactly.
+
+        Args:
+            c: The bound vector.
+            role_token: The token of the unitary role to unbind with.
+
+        Returns:
+            The unbound vector.
+        """
         c_vec = self._ensure_vector(c, name="unbind_exact_unitary.c")
         role_vec = self.make_unitary_role(role_token)
         return self._renorm(self._binder.unbind(c_vec, role_vec))
@@ -287,6 +391,23 @@ class QuantumLayer:
         alpha: float = 1e-3,
         whiten: bool = False,
     ) -> np.ndarray:
+        """Unbinds two vectors using a Wiener filter.
+
+        This is an alias for the `unbind` or `unbind_exact_unitary` method,
+        as the BHDC binder is perfectly invertible. The additional parameters
+        are retained for compatibility with other HRR implementations.
+
+        Args:
+            c: The bound vector.
+            b: The vector or role token to unbind with.
+            snr_db: The signal-to-noise ratio in decibels.
+            k_est: The estimated number of items in the superposition.
+            alpha: The regularization parameter.
+            whiten: Whether to whiten the input vectors.
+
+        Returns:
+            The unbound vector.
+        """
         _ = snr_db, k_est, alpha, whiten  # parameters retained for compatibility
         if isinstance(b, str):
             return self.unbind_exact_unitary(c, b)
@@ -296,11 +417,29 @@ class QuantumLayer:
     # Misc helpers
     # ------------------------------------------------------------------
     def permute(self, a: np.ndarray, times: int = 1) -> np.ndarray:
+        """Permutes the given vector a specified number of times.
+
+        Args:
+            a: The vector to permute.
+            times: The number of times to permute the vector.
+
+        Returns:
+            The permuted vector.
+        """
         vec = self._ensure_vector(a, name="permute.a")
         return self._binder.permute(vec, times)
 
     @staticmethod
     def cosine(a: np.ndarray, b: np.ndarray) -> float:
+        """Calculates the cosine similarity between two vectors.
+
+        Args:
+            a: The first vector.
+            b: The second vector.
+
+        Returns:
+            The cosine similarity between the two vectors.
+        """
         na = float(np.linalg.norm(a))
         nb = float(np.linalg.norm(b))
         if na <= 0 or nb <= 0:
@@ -316,6 +455,21 @@ class QuantumLayer:
         density_matrix: "DensityMatrix" = None,
         alpha: float = 0.5,
     ) -> tuple[str, float]:
+        """Finds the best matching anchor vector for a given query vector.
+
+        Args:
+            q: The query vector.
+            anchors: A dictionary of anchor vectors.
+            use_wiener: Whether to use a Wiener filter. Retained for
+                compatibility.
+            density_matrix: An optional density matrix to use for scoring.
+            alpha: The mixing parameter for combining the cosine similarity
+                and density matrix scores.
+
+        Returns:
+            A tuple containing the ID of the best matching anchor and the
+            score.
+        """
         _ = use_wiener  # retained for signature compatibility
         query = self._ensure_vector(q, name="cleanup.query")
         best_score = -1.0
@@ -368,6 +522,14 @@ class QuantumLayer:
 
 
 def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
+    """Creates a new QuantumLayer instance.
+
+    Args:
+        cfg: The configuration for the quantum layer.
+
+    Returns:
+        A new QuantumLayer instance.
+    """
     return QuantumLayer(cfg)
 
 
@@ -377,6 +539,18 @@ def make_quantum_layer(cfg: HRRConfig) -> QuantumLayer:
 
 
 def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
+    """Binds a vector with a unitary role.
+
+    This is a backwards-compatible wrapper function.
+
+    Args:
+        a: The vector to bind.
+        role: The unitary role to bind with. Can be a string token or a
+            numpy array.
+
+    Returns:
+        The bound vector.
+    """
     q = QuantumLayer(HRRConfig(dim=len(a), seed=42))
     if isinstance(role, str):
         return q.bind_unitary(a, role)
@@ -386,6 +560,19 @@ def bind_unitary(a: np.ndarray, role: object) -> np.ndarray:
 def unbind_exact_or_tikhonov_or_wiener(
     c: np.ndarray, role: object, snr_db: float | None = None
 ) -> np.ndarray:
+    """Unbinds a vector with a unitary role.
+
+    This is a backwards-compatible wrapper function.
+
+    Args:
+        c: The bound vector.
+        role: The unitary role to unbind with. Can be a string token or a
+            numpy array.
+        snr_db: The signal-to-noise ratio in decibels.
+
+    Returns:
+        The unbound vector.
+    """
     q = QuantumLayer(HRRConfig(dim=len(c), seed=42))
     if isinstance(role, str):
         return q.unbind_exact_unitary(c, role)

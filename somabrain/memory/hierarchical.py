@@ -25,6 +25,15 @@ class LayerPolicy:
     promote_margin: float = 0.1  # margin requirement to promote into the next tier
 
     def validate(self) -> "LayerPolicy":
+        """Validates the policy parameters.
+
+        Returns:
+            The validated policy.
+
+        Raises:
+            ValueError: If the threshold is not between 0 and 1, or if the
+                promote_margin is negative.
+        """
         thr = float(self.threshold)
         if not 0.0 <= thr <= 1.0:
             raise ValueError("threshold must be between 0 and 1")
@@ -46,6 +55,7 @@ class RecallContext:
 
     @property
     def margin(self) -> float:
+        """The margin between the best and second-best scores."""
         return max(0.0, float(self.score) - float(self.second_score))
 
 
@@ -63,6 +73,18 @@ class TieredMemory:
         wm_cleanup_index: Optional["CleanupIndex"] = None,
         ltm_cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
+        """Initializes the TieredMemory instance.
+
+        Args:
+            wm_cfg: The configuration for the working memory trace.
+            ltm_cfg: The configuration for the long-term memory trace.
+            wm_policy: The policy for the working memory layer.
+            ltm_policy: The policy for the long-term memory layer.
+            promotion_callback: A callback to determine if a memory should be
+                promoted.
+            wm_cleanup_index: The cleanup index for working memory.
+            ltm_cleanup_index: The cleanup index for long-term memory.
+        """
         self.wm = SuperposedTrace(wm_cfg, cleanup_index=wm_cleanup_index)
         self.ltm = SuperposedTrace(ltm_cfg, cleanup_index=ltm_cleanup_index)
         self._wm_policy = (wm_policy or LayerPolicy()).validate()
@@ -75,7 +97,13 @@ class TieredMemory:
     # Memory operations
     # ------------------------------------------------------------------
     def remember(self, anchor_id: str, key: np.ndarray, value: np.ndarray) -> None:
-        """Store an item in working memory, optionally promoting to LTM."""
+        """Store an item in working memory, optionally promoting to LTM.
+
+        Args:
+            anchor_id: The ID of the anchor to associate the memory with.
+            key: The key vector for the memory.
+            value: The value vector for the memory.
+        """
 
         key_vec = self._ensure_vector(key, self.wm.cfg.dim, "key")
         value_vec = self._ensure_vector(value, self.wm.cfg.dim, "value")
@@ -93,7 +121,14 @@ class TieredMemory:
             self.ltm.upsert(anchor_id, key_ltm, value_ltm)
 
     def recall(self, key: np.ndarray) -> RecallContext:
-        """Recall via WM, falling back to LTM when necessary."""
+        """Recall via WM, falling back to LTM when necessary.
+
+        Args:
+            key: The key vector to recall.
+
+        Returns:
+            The recall context, containing the best matching memory.
+        """
 
         key_wm = self._ensure_vector(key, self.wm.cfg.dim, "key_wm")
         wm_hit = self._recall_internal(self.wm, key_wm, layer="wm")
@@ -114,12 +149,30 @@ class TieredMemory:
     def _recall_internal(
         self, trace: SuperposedTrace, key: np.ndarray, *, layer: str
     ) -> RecallContext:
+        """Performs a recall on a single memory trace.
+
+        Args:
+            trace: The memory trace to recall from.
+            key: The key vector to recall.
+            layer: The name of the layer being recalled from.
+
+        Returns:
+            The recall context.
+        """
         raw, (anchor_id, best, second) = trace.recall(key)
         return RecallContext(
             layer=layer, anchor_id=anchor_id, score=best, second_score=second, raw=raw
         )
 
     def _should_promote(self, result: RecallContext) -> bool:
+        """Determines if a memory should be promoted to the next tier.
+
+        Args:
+            result: The recall context for the memory.
+
+        Returns:
+            True if the memory should be promoted, False otherwise.
+        """
         if result.score < self._wm_policy.threshold:
             return False
         if result.margin < self._wm_policy.promote_margin:
@@ -130,6 +183,20 @@ class TieredMemory:
 
     @staticmethod
     def _ensure_vector(vec: np.ndarray, dim: int, name: str) -> np.ndarray:
+        """Ensures that a vector has the correct dimensions and is normalized.
+
+        Args:
+            vec: The vector to ensure.
+            dim: The desired dimension of the vector.
+            name: The name of the vector, for error messages.
+
+        Returns:
+            The ensured vector.
+
+        Raises:
+            TypeError: If the vector is not a numpy array.
+            ValueError: If the vector is not 1-D, or has a zero norm.
+        """
         if not isinstance(vec, np.ndarray):
             raise TypeError(f"{name} must be a numpy.ndarray")
         arr = vec.astype(np.float32, copy=False)
@@ -147,18 +214,22 @@ class TieredMemory:
 
     @property
     def wm_config(self) -> TraceConfig:
+        """The configuration of the working memory trace."""
         return self.wm.cfg
 
     @property
     def ltm_config(self) -> TraceConfig:
+        """The configuration of the long-term memory trace."""
         return self.ltm.cfg
 
     @property
     def wm_policy(self) -> LayerPolicy:
+        """The policy for the working memory layer."""
         return self._wm_policy
 
     @property
     def ltm_policy(self) -> LayerPolicy:
+        """The policy for the long-term memory layer."""
         return self._ltm_policy
 
     def configure(
@@ -170,6 +241,15 @@ class TieredMemory:
         cleanup_params: Optional[dict] = None,
         wm_tau: Optional[float] = None,
     ) -> None:
+        """Updates the configuration of the memory traces.
+
+        Args:
+            wm_eta: The new eta value for working memory.
+            ltm_eta: The new eta value for long-term memory.
+            cleanup_topk: The new cleanup_topk value.
+            cleanup_params: The new cleanup_params value.
+            wm_tau: The new threshold for the working memory policy.
+        """
         self.wm.update_parameters(
             eta=wm_eta,
             cleanup_topk=cleanup_topk,
@@ -198,6 +278,15 @@ class TieredMemory:
         wm_cleanup_index: Optional[CleanupIndex] = None,
         ltm_cleanup_index: Optional[CleanupIndex] = None,
     ) -> Tuple[int, int]:
+        """Rebuilds the cleanup indexes for both memory traces.
+
+        Args:
+            wm_cleanup_index: The new cleanup index for working memory.
+            ltm_cleanup_index: The new cleanup index for long-term memory.
+
+        Returns:
+            A tuple containing the number of items in each index.
+        """
         wm_count = self.wm.rebuild_cleanup_index(wm_cleanup_index)
         ltm_count = self.ltm.rebuild_cleanup_index(ltm_cleanup_index)
         return wm_count, ltm_count

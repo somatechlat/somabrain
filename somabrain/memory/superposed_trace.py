@@ -56,6 +56,14 @@ class TraceConfig:
     epsilon: float = 1e-12
 
     def validate(self) -> "TraceConfig":
+        """Validates the trace configuration.
+
+        Returns:
+            The validated trace configuration.
+
+        Raises:
+            ValueError: If any of the configuration parameters are invalid.
+        """
         dim = int(self.dim)
         if dim <= 0:
             raise ValueError("dim must be positive")
@@ -98,6 +106,16 @@ class SuperposedTrace:
         rotation_matrix_factory: Optional[Callable[[int, int], np.ndarray]] = None,
         cleanup_index: Optional["CleanupIndex"] = None,
     ) -> None:
+        """Initializes the SuperposedTrace.
+
+        Args:
+            cfg: The configuration for the trace.
+            quantum: An optional QuantumLayer instance. If not provided, a new
+                one will be created.
+            rotation_matrix_factory: An optional factory for creating the
+                rotation matrix.
+            cleanup_index: An optional cleanup index.
+        """
         self.cfg = cfg.validate()
         self._q = quantum or QuantumLayer(
             HRRConfig(dim=self.cfg.dim, seed=self.cfg.rotation_seed)

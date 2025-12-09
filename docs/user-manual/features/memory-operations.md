@@ -110,8 +110,8 @@ Partial failures return the number of stored vs. failed memories plus an `errors
 
 | Field | Description |
 |-------|-------------|
-| `wm` | Matches from working memory (`MultiTenantWM` or microcircuits). |
-| `memory` | Long-term memory hits returned from the external memory service. |
+| `wm` | Matches from working memory (`MultiTenantWM` or microcircuits). These are typically the most recent and relevant memories for a given tenant. |
+| `memory` | Long-term memory hits returned from the external memory service. The tiered memory system automatically promotes important memories from working memory to long-term memory. |
 | `results` | Legacy mirror of `memory` retained for client compatibility. |
 
 Example query:
