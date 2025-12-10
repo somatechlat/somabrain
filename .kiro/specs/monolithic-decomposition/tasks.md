@@ -77,7 +77,7 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Extract Lifecycle Functions
-  - [-] 11.1 Create `somabrain/lifecycle/__init__.py` with exports
+  - [x] 11.1 Create `somabrain/lifecycle/__init__.py` with exports
     - _Requirements: 1.5_
   - [ ] 11.2 Create `somabrain/lifecycle/startup.py`
     - Move `_startup_mode_banner()`, `_init_constitution()`, `_init_tenant_manager()`

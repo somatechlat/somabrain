@@ -26,7 +26,6 @@ import asyncio
 import importlib
 import logging
 import os
-import re
 import sys
 import threading as _thr
 import time
@@ -44,20 +43,20 @@ from somabrain.scoring import UnifiedScorer
 from somabrain.sdr import LSHIndex, SDREncoder
 from somabrain.services.cognitive_loop_service import eval_step as _eval_step
 from somabrain.services.memory_service import MemoryService
-from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
+
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
 from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.version import API_VERSION
-from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.healthchecks import check_kafka
 from somabrain.services.memory_service import MemoryService as _MemSvc
 from config.feature_flags import FeatureFlags
 
 # Import the metrics module as `M` – required for both the Prometheus `/metrics`
 # endpoint and the JSON health‑metrics endpoint (`/health/metrics`).
 # The alias is used throughout the file, so keeping it short avoids line‑wraps.
-from somabrain import audit, consolidation as CONS, metrics as M, schemas as S
+from somabrain import consolidation as CONS, metrics as M, schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 from somabrain.auth import require_admin_auth, require_auth
 from somabrain.basal_ganglia import BasalGangliaPolicy
@@ -69,12 +68,7 @@ from common.config.settings import settings
 from common.config.settings import settings as config
 from somabrain.context_hrr import HRRContextConfig
 
-# Oak feature imports
-from somabrain.oak.option_manager import option_manager
-from somabrain.oak.planner import plan_for_tenant
-
-# Oak health dependencies – Milvus client for persistence health checks.
-from somabrain.milvus_client import MilvusClient
+# Oak feature imports - option_manager and plan_for_tenant moved to oak/router.py
 
 # Oak FastAPI router that now talks to Milvus
 from somabrain.oak.router import router as oak_router
@@ -87,13 +81,11 @@ from somabrain.cognitive.thread_router import router as thread_router
 from somabrain.middleware import (
     CognitiveMiddleware,
     SecurityMiddleware,
-    CognitiveErrorHandler,
-    CognitiveInputValidator,
 )
 
 # Bootstrap components (extracted to somabrain/bootstrap/)
 from somabrain.bootstrap import setup_logging
-from somabrain.bootstrap.opa import SimpleOPAEngine, create_opa_engine
+from somabrain.bootstrap.opa import create_opa_engine
 
 
 # ---------------------------------------------------------------------------
@@ -126,10 +118,10 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
 
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
-from somabrain.controls.reality_monitor import assess_reality
+# assess_reality moved to memory router
 from somabrain.datetime_utils import coerce_to_epoch_seconds
 from somabrain.embeddings import make_embedder
-from somabrain.events import extract_event_fields
+# extract_event_fields moved to memory router
 from somabrain.exec_controller import ExecConfig, ExecutiveController
 from somabrain.hippocampus import ConsolidationConfig, Hippocampus
 from somabrain.memory_pool import MultiTenantMemory
@@ -2390,572 +2382,8 @@ if not _MINIMAL_API:
             )
 
 
-# NOTE: /recall endpoint is also defined in somabrain/routers/memory.py
-# This duplicate will be removed in a future cleanup pass.
-# The memory_router version uses lazy imports for better modularity.
-@app.post("/recall", response_model=S.RecallResponse)
-async def recall(req: S.RecallRequest, request: Request):
-    require_auth(request, cfg)
-    # Retrieve tenant context
-    ctx = await get_tenant_async(request, cfg.namespace)
-    # Input validation for brain safety
-    try:
-        if hasattr(req, "query") and req.query:
-            req.query = CognitiveInputValidator.sanitize_query(req.query)
-    except Exception:
-        # Silently ignore sanitization errors; proceed with original query.
-        pass
-
-    # rate limit per tenant
-    if not rate_limiter.allow(ctx.tenant_id):
-        try:
-            M.RATE_LIMITED_TOTAL.labels(path="/recall").inc()
-        except Exception:
-            pass
-        raise HTTPException(status_code=429, detail="rate limit exceeded")
-
-    data = thalamus.normalize(req.model_dump())
-    # Apply thalamic filtering based on attention and neuromodulators
-    data = thalamus.filter_input(
-        data, per_tenant_neuromodulators.get_state(ctx.tenant_id)
-    )
-    cohort = request.headers.get("X-Backend-Cohort", "baseline").strip() or "baseline"
-    # Universe scoping: request field overrides header if provided
-    req_u = getattr(req, "universe", None) or None
-    header_u = request.headers.get("X-Universe", "").strip() or None
-    universe = req_u or header_u
-    text = data.get("query", req.query)
-    import time as _t
-    import re as _re
-
-    ql = ""
-    qtokens: list[str] = []
-    if isinstance(text, str):
-        try:
-            ql = text.strip().lower()
-            qtokens = [t for t in _re.split(r"[^A-Za-z0-9_-]+", ql) if t]
-        except Exception:
-            ql = ""
-            qtokens = []
-
-    _e0 = _t.perf_counter()
-    wm_qv = embedder.embed(text)
-    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(
-        max(0.0, _t.perf_counter() - _e0)
-    )
-    query_vec = np.asarray(wm_qv, dtype=float).reshape(-1)
-    embed_cache: dict[str, np.ndarray] = {}
-    hrr_qv = quantum.encode_text(text) if quantum else None
-    _t0 = _t.perf_counter()
-    wm_hits = (mc_wm if cfg.use_microcircuits else mt_wm).recall(
-        ctx.tenant_id, wm_qv, top_k=req.top_k
-    )
-    M.RECALL_WM_LAT.labels(cohort=cohort).observe(max(0.0, _t.perf_counter() - _t0))
-    # WM recall quality metrics
-    try:
-        if wm_hits:
-            top1 = float(wm_hits[0][0])
-            top2 = float(wm_hits[1][0]) if len(wm_hits) > 1 else top1
-            margin = max(0.0, top1 - top2)
-            M.RECALL_MARGIN_TOP12.observe(margin)
-            M.RECALL_SIM_TOP1.observe(top1)
-
-            mcount = max(1, min(len(wm_hits), int(req.top_k)))
-            mean_k = sum(float(s) for s, _ in wm_hits[:mcount]) / float(mcount)
-            M.RECALL_SIM_TOPK_MEAN.observe(mean_k)
-    except Exception:
-        pass
-    # Optional HRR-first re-ranking of WM hits (optionally gated by margin)
-    if cfg.use_hrr_first and quantum is not None:
-        try:
-            do_rerank = True
-            if getattr(cfg, "hrr_rerank_only_low_margin", False):
-                if len(wm_hits) >= 2:
-                    m = float(wm_hits[0][0]) - float(wm_hits[1][0])
-                    if m > float(getattr(cfg, "rerank_margin_threshold", 0.05) or 0.05):
-                        do_rerank = False
-                        from . import metrics as _mx
-
-                        _mx.HRR_RERANK_WM_SKIPPED.inc()
-            # compute HRR similarity to query for each candidate by encoding task/fact
-            if do_rerank:
-                reranked = []
-                for s, p in wm_hits:
-                    if isinstance(p, dict):
-                        text_p = str(p.get("task") or p.get("fact") or "")
-                    else:
-                        text_p = str(p)
-                    if not text_p:
-                        reranked.append((s, p))
-                        continue
-                    hv = quantum.encode_text(text_p)
-                    hsim = (
-                        QuantumLayer.cosine(hrr_qv, hv) if hrr_qv is not None else 0.0
-                    )
-                    alpha = max(0.0, min(1.0, float(cfg.hrr_rerank_weight)))
-                    combined = (1.0 - alpha) * float(s) + alpha * float(hsim)
-                    reranked.append((combined, p))
-                reranked.sort(key=lambda t: t[0], reverse=True)
-                wm_hits = reranked[: max(0, int(req.top_k))]
-                M.HRR_RERANK_APPLIED.inc()
-        except Exception:
-            pass
-    # Filter WM hits by universe if specified (default unseen items assume 'real')
-    if universe:
-        wm_hits = [
-            (s, p)
-            for s, p in wm_hits
-            if (
-                isinstance(p, dict)
-                and str(p.get("universe") or "real") == str(universe)
-            )
-        ]
-    if wm_hits:
-        M.WM_HITS.inc()
-    else:
-        M.WM_MISSES.inc()
-    # Optional HRR cleanup influence
-    hrr_info = None
-    if mt_ctx is not None and cfg.use_hrr_cleanup and hrr_qv is not None:
-        from . import metrics as _mx
-
-        _mx.HRR_CLEANUP_CALLS.inc()
-        cleanup_result = mt_ctx.cleanup(ctx.tenant_id, hrr_qv)
-        anchor_id = getattr(cleanup_result, "best_id", "")
-        score = getattr(cleanup_result, "best_score", 0.0)
-        # Clamp score to [0,1] to avoid floating drift causing >1.0
-        score_clamped = max(0.0, min(1.0, float(score)))
-        margin = getattr(cleanup_result, "margin", 0.0)
-        hrr_info = {
-            "anchor_id": anchor_id,
-            "score": score_clamped,
-            "margin": float(margin),
-        }
-        M.HRR_CLEANUP_USED.inc()
-        M.HRR_CLEANUP_SCORE.observe(score_clamped)
-        try:
-            acnt, amax = mt_ctx.stats(ctx.tenant_id)
-            M.HRR_ANCHOR_SIZE.observe(max(0, int(acnt)))
-            sat = 0.0 if amax <= 0 else float(acnt) / float(amax)
-            M.HRR_CONTEXT_SAT.observe(max(0.0, min(1.0, sat)))
-        except Exception:
-            pass
-    # per-tenant recall cache
-    cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=2048, ttl=2.0))
-    ckey = f"{(universe or 'all')}:{text}:{req.top_k}"
-    cached = cache.get(ckey)
-    if cached is None:
-        M.RECALL_CACHE_MISS.labels(cohort=cohort).inc()
-        mem_client = mt_memory.for_namespace(ctx.namespace)
-        _t1 = _t.perf_counter()
-        mem_payloads, mem_hits = await _recall_ltm(
-            mem_client,
-            text,
-            req.top_k,
-            universe,
-            cohort,
-            cfg.use_sdr_prefilter and "_sdr_enc" in globals() and _sdr_enc is not None,
-            _sdr_enc,
-            _sdr_idx,
-            cfg.graph_hops,
-            cfg.graph_limit,
-        )
-        M.RECALL_LTM_LAT.labels(cohort=cohort).observe(
-            max(0.0, _t.perf_counter() - _t1)
-        )
-        # Optional HRR-first rerank of LTM payloads (no scores available: use HRR sim only)
-        if (
-            cfg.use_hrr_first
-            and quantum is not None
-            and hrr_qv is not None
-            and mem_payloads
-        ):
-            try:
-                ranked: list[tuple[float, dict]] = []
-                alpha = max(0.0, min(1.0, float(cfg.hrr_rerank_weight)))
-                for p in mem_payloads:
-                    if isinstance(p, dict):
-                        text_p = str(p.get("task") or p.get("fact") or "")
-                    else:
-                        text_p = str(p)
-                    if not text_p:
-                        ranked.append((0.0, p))
-                        continue
-                    hv = quantum.encode_text(text_p)
-                    hsim = QuantumLayer.cosine(hrr_qv, hv)
-                    # When no base score, use HRR sim directly; alpha kept for symmetry
-                    score = alpha * float(hsim)
-                    ranked.append((score, p))
-                ranked.sort(key=lambda t: t[0], reverse=True)
-                mem_payloads = [p for _, p in ranked]
-                M.HRR_RERANK_LTM_APPLIED.inc()
-            except Exception:
-                pass
-        # If still empty, backfill from WM hits that lexically match the query
-        if not mem_payloads and wm_hits:
-            try:
-                ql = str(text).strip().lower()
-                backfill: list[dict] = []
-                for _s, cand in wm_hits:
-                    if not isinstance(cand, dict):
-                        continue
-                    txt = str(
-                        cand.get("task") or cand.get("fact") or cand.get("text") or ""
-                    )
-                    if txt and ql and (ql in txt.lower() or txt.lower() in ql):
-                        # Universe-filter if requested
-                        if universe and str(cand.get("universe") or "real") != str(
-                            universe
-                        ):
-                            continue
-                        backfill.append(cand)
-                # Keep order as in WM hits, but unique by 'task' text
-                seen_tasks = set()
-                uniq: list[dict] = []
-                for p in backfill:
-                    t = str(p.get("task") or p.get("fact") or p.get("text") or "")
-                    if t in seen_tasks:
-                        continue
-                    seen_tasks.add(t)
-                    uniq.append(p)
-                mem_payloads = uniq
-            except Exception:
-                pass
-        # Ultimate alternative: lift matching items from WM into the memory list
-        if not mem_payloads:
-            try:
-                items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
-            except Exception:
-                items = []
-            if items:
-                ql = str(text).strip().lower()
-                lifted = []
-                for p in items:
-                    if not isinstance(p, dict):
-                        continue
-                    t = str(
-                        p.get("task")
-                        or p.get("fact")
-                        or p.get("text")
-                        or p.get("content")
-                        or ""
-                    )
-                    tl = t.lower()
-                    if t and (ql in tl or tl in ql):
-                        if not universe or str(p.get("universe") or "real") == str(
-                            universe
-                        ):
-                            lifted.append(p)
-                if lifted:
-                    mem_payloads = lifted
-        # cache result (after all alternatives)
-        cache[ckey] = mem_payloads
-        # Apply composite ranking so the most relevant (math-focused) memories rise first.
-        try:
-            lexical_boost = bool(getattr(cfg, "lexical_boost_enabled", True))
-        except Exception:
-            lexical_boost = True
-        if lexical_boost and mem_payloads:
-            try:
-                now_ts = _t.time()
-                wm_support = _build_wm_support_index(wm_hits)
-                hrr_cache: dict[str, Any] = {}
-                scored = []
-                for p in mem_payloads:
-                    try:
-                        comp_score = _score_memory_candidate(
-                            p,
-                            query_lower=ql,
-                            query_tokens=qtokens,
-                            query_vec=query_vec,
-                            embed_fn=embedder.embed,
-                            embed_cache=embed_cache,
-                            scorer=unified_scorer,
-                            wm_support=wm_support,
-                            now_ts=now_ts,
-                            quantum_layer=quantum,
-                            query_hrr=hrr_qv,
-                            hrr_cache=hrr_cache,
-                            hrr_weight=getattr(cfg, "hrr_rerank_weight", 0.0),
-                        )
-                    except Exception:
-                        comp_score = 0.0
-                    scored.append((comp_score, p))
-                scored.sort(key=lambda sp: sp[0], reverse=True)
-                mem_payloads = [p for _, p in scored]
-                cache[ckey] = mem_payloads
-            except Exception:
-                pass
-
-        # Optional diversity pass (MMR)
-        if getattr(cfg, "use_diversity", False):
-            try:
-                k = int(getattr(cfg, "diversity_k", 10) or 10)
-                lam = float(getattr(cfg, "diversity_lambda", 0.5) or 0.5)
-                min_k = int(getattr(cfg, "diversity_min_k", 3) or 3)
-                mem_payloads = _apply_diversity_reranking(
-                    candidates=mem_payloads,
-                    query_vec=query_vec,
-                    embedder=embedder,
-                    k=max(1, k),
-                    lam=max(0.0, min(1.0, lam)),
-                    min_k=max(2, min_k),
-                )
-                # Measure realized diversity (pairwise cosine distance mean) over first N items
-                try:
-                    import numpy as _np
-
-                    N = min(8, len(mem_payloads))
-                    if N >= 2:
-                        embs = []
-                        for cand in mem_payloads[:N]:
-                            txt = _extract_text_from_candidate(cand)
-                            if not txt:
-                                continue
-                            embs.append(
-                                _np.array(embedder.embed(txt), dtype=_np.float32)
-                            )
-                        if len(embs) >= 2:
-                            embs = [
-                                e / (float(_np.linalg.norm(e)) + 1e-8) for e in embs
-                            ]
-                            dsum = 0.0
-                            cnt = 0
-                            for i in range(len(embs)):
-                                for j in range(i + 1, len(embs)):
-                                    cos = float(_np.dot(embs[i], embs[j]))
-                                    dsum += 1.0 - cos
-                                    cnt += 1
-                            if cnt > 0:
-                                M.DIVERSITY_PAIRWISE_MEAN.observe(dsum / float(cnt))
-                except Exception:
-                    pass
-            except Exception:
-                pass
-    else:
-        M.RECALL_CACHE_HIT.labels(cohort=cohort).inc()
-        mem_payloads = cached
-    # Enforce DTO contract fields
-    trace_id = request.headers.get("X-Request-ID") or str(id(request))
-    deadline_ms = request.headers.get("X-Deadline-MS")
-    idempotency_key = request.headers.get("X-Idempotency-Key")
-    # Only return valid dicts in memory for response validation
-    # Base response payloads from the recall pipeline.
-    resp = {
-        "wm": [{"score": s, "payload": p} for s, p in wm_hits],
-        "memory": [
-            _normalize_payload_timestamps(p)
-            for p in mem_payloads
-            if isinstance(p, dict)
-        ],
-        "namespace": ctx.namespace,
-        "trace_id": trace_id,
-        "deadline_ms": deadline_ms,
-        "idempotency_key": idempotency_key,
-    }
-    # Compatibility shim: expose a ``results`` list for older callers/tests.
-    resp["results"] = resp["memory"]
-    # Flag degraded mode so callers can detect buffered/partial results
-    try:
-        from somabrain.infrastructure.cb_registry import get_cb
-
-        cb = get_cb()
-        resp["degraded"] = bool(cb.is_open(ctx.tenant_id))
-    except Exception:
-        resp["degraded"] = None
-    # Reality monitor (optional header X-Min-Sources)
-    try:
-        min_src = int(request.headers.get("X-Min-Sources", "1"))
-    except Exception:
-        min_src = 1
-    resp["reality"] = assess_reality(mem_payloads, min_sources=min_src)
-    # Drift monitor on query vector
-    if drift_mon is not None:
-        resp["drift"] = drift_mon.update(wm_qv)
-    if hrr_info is not None:
-        resp["hrr_cleanup"] = hrr_info
-    return resp
-
-
-# NOTE: /remember endpoint is also defined in somabrain/routers/memory.py
-# This duplicate will be removed in a future cleanup pass.
-# The memory_router version uses lazy imports for better modularity.
-@app.post("/remember", response_model=S.RememberResponse)
-async def remember(body: dict, request: Request):
-    """Handle memory storage.
-
-    The original API expected a ``RememberRequest`` with a ``payload`` field.
-    Many integration tests (and some external callers) send the payload
-    fields directly at the top level (e.g. ``{"task": "…", "content": "…"}``).
-    To maintain backward compatibility we accept both shapes:
-
-    * If ``payload`` is present, we treat the request as the original schema.
-    * Otherwise the entire body is interpreted as the payload.
-    """
-    require_auth(request, cfg)
-    ctx = await get_tenant_async(request, cfg.namespace)
-
-    # Determine coordinate and payload data supporting both request shapes.
-    coord = body.get("coord")
-    payload_data = body.get("payload", body)
-
-    # Validate and coerce the payload using the defined MemoryPayload model.
-    try:
-        payload_obj: S.MemoryPayload = S.MemoryPayload(**payload_data)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Invalid payload: {e}")
-
-    # Input validation for brain safety (task text & coordinate format).
-    try:
-        if payload_obj.task:
-            payload_obj.task = CognitiveInputValidator.validate_text_input(
-                payload_obj.task, "task"
-            )
-        if coord:
-            coord_parts = str(coord).split(",")
-            if len(coord_parts) == 3:
-                coords_tuple = tuple(float(x.strip()) for x in coord_parts)
-                CognitiveInputValidator.validate_coordinates(coords_tuple)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid input: {str(e)}")
-
-    if not rate_limiter.allow(ctx.tenant_id):
-        try:
-            M.RATE_LIMITED_TOTAL.labels(path="/remember").inc()
-        except Exception:
-            pass
-        raise HTTPException(status_code=429, detail="rate limit exceeded")
-    if not quotas.allow_write(ctx.tenant_id, 1):
-        try:
-            M.QUOTA_DENIED_TOTAL.labels(reason="daily_write_quota").inc()
-        except Exception:
-            pass
-        raise HTTPException(status_code=429, detail="daily write quota exceeded")
-    # if coord not provided, key by task + timestamp for stable coord
-    key = coord or (payload_obj.task or "task")
-    payload = payload_obj.model_dump()
-    if payload.get("timestamp") is not None:
-        try:
-            payload["timestamp"] = coerce_to_epoch_seconds(payload["timestamp"])
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid timestamp format: {exc}",
-            )
-    # Universe scoping: payload value overrides header
-    header_u = request.headers.get("X-Universe", "").strip() or None
-    if not payload.get("universe") and header_u:
-        payload["universe"] = header_u
-    # enrich payload with best-effort event fields if missing
-    if payload.get("task") and not any(
-        payload.get(k) for k in ("who", "did", "what", "where", "when", "why")
-    ):
-        fields = extract_event_fields(str(payload.get("task")))
-        payload.update(
-            {
-                k: v
-                for k, v in fields.items()
-                if k in ("who", "did", "what", "where", "when", "why")
-            }
-        )
-    memsvc = MemoryService(mt_memory, ctx.namespace)
-    # Reset circuit breaker state before write
-    memsvc._reset_circuit_if_needed()
-    import time as _t
-
-    _s0 = _t.perf_counter()
-    try:
-        await memsvc.aremember(key, payload)
-    except RuntimeError as e:
-        # Fail-fast: do not queue or journal. Always surface 503.
-        raise HTTPException(
-            status_code=503,
-            detail={"message": "memory backend unavailable"},
-        ) from e
-    try:
-        M.LTM_STORE_LAT.observe(max(0.0, _t.perf_counter() - _s0))
-    except Exception:
-        pass
-    # No journaling: writes must succeed against the real backend
-    # also admit to WM
-    text = payload.get("task") or ""
-    import time as _t
-
-    _e1 = _t.perf_counter()
-    wm_vec = embedder.embed(text)
-    M.EMBED_LAT.labels(provider=_EMBED_PROVIDER).observe(
-        max(0.0, _t.perf_counter() - _e1)
-    )
-    hrr_vec = quantum.encode_text(text) if quantum else None
-    cleanup_overlap = None
-    cleanup_margin = None
-    if mt_ctx is not None and hrr_vec is not None:
-        analysis = mt_ctx.analyze(ctx.tenant_id, hrr_vec)
-        cleanup_overlap = float(analysis.best_score)
-        cleanup_margin = float(analysis.margin)
-        try:
-            payload.setdefault("_cleanup_best", cleanup_overlap)
-            payload.setdefault("_cleanup_margin", cleanup_margin)
-        except Exception:
-            pass
-
-    (mc_wm if cfg.use_microcircuits else mt_wm).admit(
-        ctx.tenant_id,
-        wm_vec,
-        payload,
-        cleanup_overlap=cleanup_overlap,
-    )
-    try:
-        from . import metrics as _mx
-
-        _mx.WM_ADMIT.labels(source="remember").inc()
-        _mx.ATTENTION_LEVEL.set(float(thalamus.get_attention_level()))
-        # WM utilization (best-effort)
-        try:
-            items = (mc_wm if cfg.use_microcircuits else mt_wm).items(ctx.tenant_id)
-            cap = max(1, int(getattr(cfg, "wm_size", 64) or 64))
-            M.WM_UTILIZATION.set(min(1.0, float(len(items)) / float(cap)))
-        except Exception:
-            pass
-    except Exception:
-        pass
-    if mt_ctx is not None and hrr_vec is not None:
-        anchor_id = key or text
-        mt_ctx.admit(ctx.tenant_id, anchor_id, hrr_vec)
-    M.SALIENCE_STORE.inc()
-    # Add to hippocampus for consolidation
-    hippocampus.add_memory(dict(payload))
-    # SDR index admission for local SDR prefilter
-    if cfg.use_sdr_prefilter and "_sdr_enc" in globals() and _sdr_enc is not None:
-        try:
-            idx = _sdr_idx.setdefault(
-                ctx.namespace,
-                LSHIndex(bands=cfg.sdr_bands, rows=cfg.sdr_rows, dim=cfg.sdr_dim),
-            )
-            bits = _sdr_enc.encode(text)
-            from .memory_client import _stable_coord as _sc
-
-            coord = _sc(text)
-            idx.add(coord, bits)
-        except Exception:
-            pass
-    # Enforce DTO contract fields
-    trace_id = request.headers.get("X-Request-ID") or str(id(request))
-    deadline_ms = request.headers.get("X-Deadline-MS")
-    idempotency_key = request.headers.get("X-Idempotency-Key")
-    import logging
-
-    logging.info(
-        f"SUCCESS: Memory saved for key={key} namespace={ctx.namespace} trace_id={trace_id}"
-    )
-    return {
-        "ok": True,
-        "success": True,
-        "namespace": ctx.namespace,
-        "trace_id": trace_id,
-        "deadline_ms": deadline_ms,
-        "idempotency_key": idempotency_key,
-    }
+# /recall and /remember endpoints have been moved to somabrain/routers/memory.py
+# They are included via: app.include_router(memory_router, tags=["memory"])
 
 
 if not _MINIMAL_API:
