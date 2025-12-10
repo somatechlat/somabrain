@@ -39,13 +39,29 @@ from dataclasses import dataclass
 from typing import Deque, Dict, Optional, Tuple
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 @dataclass
 class ExecConfig:
-    window: int = 8
-    conflict_threshold: float = 0.7
+    window: int = None  # type: ignore[assignment]
+    conflict_threshold: float = None  # type: ignore[assignment]
     explore_boost_k: int = 2
     use_bandits: bool = False
-    bandit_eps: float = 0.1
+    bandit_eps: float = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        """Apply Settings defaults for None values."""
+        s = _get_settings()
+        if self.window is None:
+            self.window = s.exec_window
+        if self.conflict_threshold is None:
+            self.conflict_threshold = s.exec_conflict_threshold
+        if self.bandit_eps is None:
+            self.bandit_eps = s.exec_bandit_eps
 
 
 @dataclass

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from typing import List, Set
 
@@ -14,12 +13,14 @@ try:  # load .env for convenience
 except Exception:
     pass
 
+from common.config.settings import settings
 from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 
-MEM_URL = os.environ.get("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
-MEM_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
-API_URL = os.environ.get("SOMABRAIN_API_URL", "http://localhost:9696")
+# Use centralized Settings for test configuration
+MEM_URL = settings.memory_http_endpoint or "http://localhost:9595"
+MEM_TOKEN = settings.memory_http_token
+API_URL = settings.api_url or "http://localhost:9696"
 
 
 def _memory_available() -> bool:

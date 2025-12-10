@@ -13,8 +13,11 @@ try:
 except Exception:
     pass
 
-API_URL = os.environ.get("SOMABRAIN_API_URL", "http://localhost:9696")
-MEM_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+from common.config.settings import settings
+
+# Use centralized Settings for test configuration
+API_URL = settings.api_url or "http://localhost:9696"
+MEM_TOKEN = settings.memory_http_token
 TENANT = "workbench-slo"
 
 

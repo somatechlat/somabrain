@@ -28,6 +28,7 @@ from common.config.settings.memory import MemorySettingsMixin
 from common.config.settings.learning import LearningSettingsMixin
 from common.config.settings.auth import AuthSettingsMixin
 from common.config.settings.oak import OakSettingsMixin
+from common.config.settings.cognitive import CognitiveSettingsMixin
 
 __all__ = ["Settings", "settings"]
 
@@ -38,6 +39,7 @@ class Settings(
     LearningSettingsMixin,
     AuthSettingsMixin,
     OakSettingsMixin,
+    CognitiveSettingsMixin,
 ):
     """Unified application settings aggregating all domain-specific configurations.
 

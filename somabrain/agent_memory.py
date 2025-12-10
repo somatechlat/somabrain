@@ -11,8 +11,13 @@ from typing import Any, List, Optional, Tuple, cast
 import numpy as np
 
 from somabrain.math import cosine_similarity
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 from somabrain.schemas import Memory, Observation, Thought
+
+
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
 
 # In-memory store for demonstration (replace with DB/service in production)
 MEMORY_STORE: List[Memory] = []
@@ -20,18 +25,22 @@ MEMORY_STORE: List[Memory] = []
 
 def _to_unit(vec: Any) -> Any:
     """
-    Pad/truncate to global HRR_DIM and unit-normalize (HRR_DTYPE).
-    Enforces mathematical invariant: all vectors are unit-norm, HRR_DTYPE, and reproducible.
+    Pad/truncate to global hrr_dim and unit-normalize (hrr_dtype).
+    Enforces mathematical invariant: all vectors are unit-norm, hrr_dtype, and reproducible.
     """
     from somabrain.math import normalize_vector
     
-    v = cast(np.ndarray, np.asarray(vec, dtype=HRR_DTYPE).reshape(-1))
-    if v.size != HRR_DIM:
-        if v.size < HRR_DIM:
-            v = np.pad(v, (0, HRR_DIM - v.size))
+    s = _get_settings()
+    hrr_dim = s.hrr_dim
+    hrr_dtype = s.hrr_dtype
+    
+    v = cast(np.ndarray, np.asarray(vec, dtype=hrr_dtype).reshape(-1))
+    if v.size != hrr_dim:
+        if v.size < hrr_dim:
+            v = np.pad(v, (0, hrr_dim - v.size))
         else:
-            v = v[:HRR_DIM]
-    return normalize_vector(v, dtype=np.dtype(HRR_DTYPE))
+            v = v[:hrr_dim]
+    return normalize_vector(v, dtype=np.dtype(hrr_dtype))
 
 
 # --- Encode (store memory) ---

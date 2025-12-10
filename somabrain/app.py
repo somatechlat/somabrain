@@ -543,7 +543,8 @@ app = FastAPI(
 app.add_event_handler("startup", _attach_opa_engine)
 
 try:
-    _sphinx_build = os.environ.get("SPHINX_BUILD") or ("sphinx" in sys.modules)
+    # Use centralized Settings for SPHINX_BUILD detection
+    _sphinx_build = settings.sphinx_build or ("sphinx" in sys.modules)
 except Exception:
     _sphinx_build = False
 

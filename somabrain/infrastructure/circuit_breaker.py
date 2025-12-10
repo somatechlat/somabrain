@@ -20,30 +20,49 @@ from typing import Dict
 __all__ = ["CircuitBreaker"]
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 class CircuitBreaker:
     """Per‑tenant circuit‑breaker with configurable thresholds.
 
     Parameters
     ----------
-    global_failure_threshold: int, default ``3``
+    global_failure_threshold: int, default from Settings (circuit_failure_threshold)
         Number of consecutive failures before the circuit opens for a tenant.
-    global_reset_interval: float, default ``60.0`` seconds
+    global_reset_interval: float, default from Settings (circuit_reset_interval)
         Minimum time to wait after the circuit opens before attempting a reset.
+    global_cooldown_interval: float, default from Settings (circuit_cooldown_interval)
+        Extra wait time after a reset attempt before another attempt may be made.
     """
 
     def __init__(
         self,
         *,
-        global_failure_threshold: int = 3,
-        global_reset_interval: float = 60.0,
-        global_cooldown_interval: float = 0.0,
+        global_failure_threshold: int = None,  # type: ignore[assignment]
+        global_reset_interval: float = None,  # type: ignore[assignment]
+        global_cooldown_interval: float = None,  # type: ignore[assignment]
     ) -> None:
         """Create a circuit‑breaker with optional cooldown interval.
 
         ``global_cooldown_interval`` (seconds) adds an extra wait time after a
         reset attempt before another attempt may be made. ``0`` disables the
         extra cooldown, preserving historic behaviour.
+        
+        All parameters default to values from centralized Settings if not provided.
         """
+        # Apply Settings defaults for None values
+        s = _get_settings()
+        if global_failure_threshold is None:
+            global_failure_threshold = s.circuit_failure_threshold
+        if global_reset_interval is None:
+            global_reset_interval = s.circuit_reset_interval
+        if global_cooldown_interval is None:
+            global_cooldown_interval = s.circuit_cooldown_interval
+        
         self._global_failure_threshold = max(1, int(global_failure_threshold))
         self._global_reset_interval = max(1.0, float(global_reset_interval))
         self._global_cooldown_interval = max(0.0, float(global_cooldown_interval))

@@ -14,6 +14,12 @@ from .neuromodulators import NeuromodState
 from .salience import FDSalienceSketch
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 @dataclass
 class SalienceConfig:
     """
@@ -34,13 +40,13 @@ class SalienceConfig:
     use_soft : bool, optional
         Whether to use soft gating (default: False).
     soft_temperature : float, optional
-        Temperature for soft gating sigmoid (default: 0.15).
+        Temperature for soft gating sigmoid (default from Settings).
         method : str, optional
             Salience pathway to use: ``"dense"`` (default) or ``"fd"``.
         w_fd : float, optional
             Weight for FD residual energy when ``method="fd"``.
         fd_energy_floor : float, optional
-            Minimum acceptable energy capture before adding corrective boost.
+            Minimum acceptable energy capture before adding corrective boost (default from Settings).
     """
 
     w_novelty: float
@@ -49,10 +55,17 @@ class SalienceConfig:
     threshold_act: float
     hysteresis: float
     use_soft: bool = False
-    soft_temperature: float = 0.15
+    soft_temperature: float = None  # type: ignore[assignment]
     method: str = "dense"
     w_fd: float = 0.0
-    fd_energy_floor: float = 0.9
+    fd_energy_floor: float = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        """Apply Settings defaults for None values."""
+        if self.soft_temperature is None:
+            self.soft_temperature = _get_settings().salience_soft_temperature
+        if self.fd_energy_floor is None:
+            self.fd_energy_floor = _get_settings().salience_fd_energy_floor
 
 
 class AmygdalaSalience:

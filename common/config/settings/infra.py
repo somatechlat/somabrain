@@ -147,12 +147,16 @@ class InfraSettingsMixin(BaseSettings):
         default_factory=lambda: _int_env("SOMABRAIN_HTTP_RETRIES", 1)
     )
 
-    # Logging
+    # Logging and metrics
     log_path: str = Field(
         default=_str_env("SOMABRAIN_LOG_PATH", "somabrain.log").strip()
     )
     log_level: str = Field(
         default_factory=lambda: _str_env("SOMABRAIN_LOG_LEVEL", "INFO") or "INFO"
+    )
+    metrics_sink: Optional[str] = Field(
+        default=_str_env("SOMABRAIN_METRICS_SINK"),
+        description="Path to write metrics snapshot (optional)",
     )
     log_config: str = Field(
         default_factory=lambda: _str_env(
@@ -286,6 +290,22 @@ class InfraSettingsMixin(BaseSettings):
     # Test environment
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))
     TEST_MODE: bool = Field(default_factory=lambda: _bool_env("OAK_TEST_MODE", False))
+
+    # Documentation build detection (for Sphinx)
+    sphinx_build: bool = Field(
+        default_factory=lambda: _bool_env("SPHINX_BUILD", False),
+        description="Set to true when building documentation with Sphinx",
+    )
+
+    # CLI server settings (generic HOST/PORT for uvicorn)
+    cli_host: str = Field(
+        default_factory=lambda: _str_env("HOST", "0.0.0.0") or "0.0.0.0",
+        description="Host for CLI server (uvicorn)",
+    )
+    cli_port: int = Field(
+        default_factory=lambda: _int_env("PORT", 8000) or 8000,
+        description="Port for CLI server (uvicorn)",
+    )
 
     # Mode configuration
     mode: str = Field(default=_str_env("SOMABRAIN_MODE", "full-local"))

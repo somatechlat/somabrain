@@ -36,31 +36,45 @@ from datetime import datetime
 import numpy as np
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 
-from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 from somabrain.datetime_utils import coerce_to_epoch_seconds
 
 
-def normalize_vector(vec_like, dim: int = HRR_DIM):
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
+def normalize_vector(vec_like, dim: int = None):
     """
     Convert an input sequence/array to a unit-norm float32 list of length `dim`.
     Raises ValueError on invalid inputs.
+    
+    Args:
+        vec_like: Input vector (list, tuple, or ndarray)
+        dim: Target dimension (defaults to Settings.hrr_dim)
     """
     from somabrain.math import normalize_vector as _canonical_normalize
 
+    s = _get_settings()
+    if dim is None:
+        dim = s.hrr_dim
+    hrr_dtype = s.hrr_dtype
+
     # Ensure we have a 1-D numpy array, pad or truncate to `dim` as needed
-    arr = np.asarray(vec_like, dtype=HRR_DTYPE)
+    arr = np.asarray(vec_like, dtype=hrr_dtype)
     if arr.ndim != 1:
         arr = arr.reshape(-1)
     if arr.size < dim:
         # pad with zeros
-        padded = np.zeros((dim,), dtype=HRR_DTYPE)
+        padded = np.zeros((dim,), dtype=hrr_dtype)
         padded[: arr.size] = arr
         arr = padded
     elif arr.size > dim:
         arr = arr[:dim]
 
     # Use canonical normalize_vector from somabrain.math
-    normed = _canonical_normalize(arr, dtype=np.dtype(HRR_DTYPE))
+    normed = _canonical_normalize(arr, dtype=np.dtype(hrr_dtype))
     return normed.tolist()
 
 
@@ -77,7 +91,7 @@ class Observation(BaseModel):
 
     @model_validator(mode="after")
     def _validate_embeddings(self):
-        self.embeddings = normalize_vector(self.embeddings, dim=HRR_DIM)
+        self.embeddings = normalize_vector(self.embeddings, dim=_get_settings().hrr_dim)
         return self
 
 
@@ -92,7 +106,7 @@ class Thought(BaseModel):
 
     @model_validator(mode="after")
     def _validate_vector(self):
-        self.vector = normalize_vector(self.vector, dim=HRR_DIM)
+        self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
 
 
@@ -106,7 +120,7 @@ class Memory(BaseModel):
 
     @model_validator(mode="after")
     def _validate_memory_vector(self):
-        self.vector = normalize_vector(self.vector, dim=HRR_DIM)
+        self.vector = normalize_vector(self.vector, dim=_get_settings().hrr_dim)
         return self
 
 

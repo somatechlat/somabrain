@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import os
 import pytest
 import httpx
 
+from common.config.settings import settings
 from somabrain.config import get_config
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.memory_client import MemoryClient
@@ -20,7 +20,8 @@ def _memory_available(url: str) -> bool:
         return False
 
 
-MEM_URL = os.environ.get("SOMABRAIN_MEMORY_URL", "http://localhost:9595")
+# Use centralized Settings for test configuration
+MEM_URL = settings.memory_http_endpoint or "http://localhost:9595"
 
 
 @pytest.mark.asyncio

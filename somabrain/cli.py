@@ -11,7 +11,6 @@ Functions:
 
 from __future__ import annotations
 
-import os
 import sys
 
 # Direct import of the shared settings object.
@@ -34,26 +33,22 @@ def run_api() -> None:
     """
     Launch the FastAPI API server via uvicorn.
 
-    Console entry point for running the SomaBrain API server. Respects environment
-    variables for host and port configuration, and loads SomaBrain configuration
-    from standard sources.
+    Console entry point for running the SomaBrain API server. Uses centralized
+    Settings for host and port configuration.
 
     Usage:
-        somabrain-api [--host 0.0.0.0 --port 8000]
+        somabrain-api
 
     Environment Variables:
-        HOST: Server host (default: "0.0.0.0")
-        PORT: Server port (default: "8000")
+        HOST: Server host (default: "0.0.0.0") - via settings.cli_host
+        PORT: Server port (default: 8000) - via settings.cli_port
         SOMABRAIN_*: Configuration overrides
 
     Raises:
         Exception: If uvicorn is not installed or server fails to start.
 
     Example:
-        >>> # From command line:
-        >>> # somabrain-api --host localhost --port 3000
-        >>>
-        >>> # Or set environment:
+        >>> # Set environment:
         >>> # export HOST=127.0.0.1
         >>> # export PORT=8080
         >>> # somabrain-api
@@ -65,8 +60,9 @@ def run_api() -> None:
             "uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr
         )
         raise
-    host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", "8000"))
+    # Use centralized Settings for HOST/PORT configuration
+    host = settings.cli_host
+    port = settings.cli_port
     uvicorn.run("somabrain.app:app", host=host, port=port, reload=False)
 
 

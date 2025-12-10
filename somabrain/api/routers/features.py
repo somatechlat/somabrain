@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict
 
 from fastapi import APIRouter
 
@@ -15,11 +15,6 @@ async def features_status() -> Dict:
     # Centralized flags only; overrides removed for enterprise mode.
     status = FeatureFlags.get_status()
     return {"status": status}
-
-
-def _write_overrides(disabled: List[str]) -> None:
-    # Overrides deprecated; no-op to keep backward compatibility of API shape.
-    return None
 
 
 @router.post("/disable")

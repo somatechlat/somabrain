@@ -42,10 +42,24 @@ import numpy as np
 from .metrics import DRIFT_ALERT, DRIFT_SCORE
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 @dataclass
 class DriftConfig:
-    window: int = 128
-    threshold: float = 5.0
+    window: int = None  # type: ignore[assignment]
+    threshold: float = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        """Apply Settings defaults for None values."""
+        s = _get_settings()
+        if self.window is None:
+            self.window = s.drift_window
+        if self.threshold is None:
+            self.threshold = s.drift_threshold
 
 
 class DriftMonitor:

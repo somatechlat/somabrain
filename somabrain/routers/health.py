@@ -3,23 +3,14 @@
 from __future__ import annotations
 
 import logging
-import time
 import urllib.request
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import Any, Dict
 
 from fastapi import APIRouter, Request
 
 from common.config.settings import settings
-from somabrain import metrics as M, schemas as S
-from somabrain.auth import require_auth
-from somabrain.healthchecks import check_kafka, check_postgres
-from somabrain.milvus_client import MilvusClient
-from somabrain.services.memory_service import MemoryService
-from somabrain.tenant import get_tenant as get_tenant_async
+from somabrain import metrics as M
 from somabrain.version import API_VERSION
-
-if TYPE_CHECKING:
-    from somabrain.constitution import ConstitutionEngine
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])

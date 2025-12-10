@@ -269,7 +269,7 @@ class MemorySettingsMixin(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_WEIGHT", 0.25)
     )
     salience_fd_energy_floor: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.0)
+        default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_FD_ENERGY_FLOOR", 0.9)
     )
     use_soft_salience: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_USE_SOFT_SALIENCE", False)

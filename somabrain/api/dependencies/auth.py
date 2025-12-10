@@ -67,22 +67,6 @@ def _resolve_tenants(cfg: Config) -> List[str]:
     return sorted(set(t for t in tenants if t))
 
 
-def get_allowed_tenants() -> List[str]:
-    """Get list of allowed tenants (DEPRECATED).
-
-    This method is deprecated. Use TenantManager.list_tenants() instead.
-    """
-    return list(_allowed_tenants)
-
-
-def get_default_tenant() -> str:
-    """Get default tenant ID (DEPRECATED).
-
-    This method is deprecated. Use TenantManager.resolve_tenant_from_request() instead.
-    """
-    return _default_tenant
-
-
 def auth_override_disabled() -> None:
     """Utility for tests wanting to disable auth."""
     global _current_config
@@ -90,9 +74,9 @@ def auth_override_disabled() -> None:
 
 
 async def auth_guard(request: Request) -> None:
-    """Auth guard with tenant validation (DEPRECATED).
+    """Auth guard with tenant validation.
 
-    This method is deprecated. Use centralized tenant management through TenantManager.
+    Uses centralized tenant management through TenantManager.
     """
     if _current_config is None:
         return
@@ -108,8 +92,8 @@ async def get_allowed_tenants_async() -> List[str]:
         tenants = await tenant_manager.list_tenants()
         return [t.tenant_id for t in tenants if t.status.value == "active"]
     except Exception:
-        # Fallback to legacy method
-        return get_allowed_tenants()
+        # Fallback to module-level allowed tenants list
+        return list(_allowed_tenants)
 
 
 async def get_default_tenant_async() -> str:
@@ -124,7 +108,7 @@ async def get_default_tenant_async() -> str:
         if public_tenant_id:
             return public_tenant_id
 
-        # Fallback to legacy method
-        return get_default_tenant()
+        # Fallback to module-level default tenant
+        return _default_tenant
     except Exception:
-        return get_default_tenant()
+        return _default_tenant

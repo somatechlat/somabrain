@@ -37,8 +37,6 @@ import time as _t
 from typing import Callable, List, Optional, Tuple
 import re
 
-import numpy as np
-
 from .. import metrics as M
 from ..math import cosine_similarity
 from ..sdr import LSHIndex

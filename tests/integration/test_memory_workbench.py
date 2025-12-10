@@ -1,15 +1,16 @@
-import os
 import time
 from typing import List, Set
 
 import httpx
 import pytest
 
+from common.config.settings import settings
 from tests.conftest import http_client
 from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
-MEM_URL = os.environ.get("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
-MEM_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+# Use centralized Settings for test configuration
+MEM_URL = settings.memory_http_endpoint or "http://localhost:9595"
+MEM_TOKEN = settings.memory_http_token
 
 
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:

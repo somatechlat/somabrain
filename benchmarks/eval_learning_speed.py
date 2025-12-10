@@ -134,11 +134,12 @@ def main():
     )
     from common.config.settings import settings
 
+    # Use centralized Settings for defaults
     ap.add_argument(
-        "--base", default=os.environ.get("SOMABRAIN_BASE", settings.api_url)
+        "--base", default=settings.api_url
     )
     ap.add_argument(
-        "--tenant", default=os.environ.get("SOMABRAIN_TENANT", "learnbench")
+        "--tenant", default=settings.default_tenant or "learnbench"
     )
     ap.add_argument("--top-k", type=int, default=5)
     ap.add_argument(

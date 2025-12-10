@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import asyncio
 import time
-import os
 
 import httpx
 import pytest
 
+from common.config.settings import settings
 from somabrain.config import get_config
 from somabrain.memory_client import MemoryClient
 from somabrain.services.outbox_sync import _send_event
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.storage.db import Base, get_session_factory
 
-MEM_URL = os.environ.get("SOMABRAIN_MEMORY_HTTP_ENDPOINT", "http://localhost:9595")
-MEM_TOKEN = os.environ.get("SOMABRAIN_MEMORY_HTTP_TOKEN")
+# Use centralized Settings for test configuration
+MEM_URL = settings.memory_http_endpoint or "http://localhost:9595"
+MEM_TOKEN = settings.memory_http_token
 
 
 def _memory_available() -> bool:

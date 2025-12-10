@@ -38,13 +38,13 @@
     - **Property 3: Zero-norm handling** - `cosine(zero, any) == 0.0`
     - **Validates: Requirements 4.5, 11.1**
 
-- [ ] 2. Configuration Centralization (30+ os.environ violations)
-  - [ ] 2.1 Move hardcoded values from `nano_profile.py` to Settings
+- [-] 2. Configuration Centralization (30+ os.environ violations)
+  - [x] 2.1 Move hardcoded values from `nano_profile.py` to Settings
     - Add `hrr_dim`, `bhdc_sparsity`, `sdr_bits`, `sdr_density` to Settings
     - Add `context_budget_tokens`, `max_superpose`, `wm_slots`, `seed` to Settings
     - Update `nano_profile.py` to read from Settings
     - _Requirements: 14.1, 3.1_
-  - [ ] 2.2 Move hardcoded values from dataclass defaults to Settings
+  - [x] 2.2 Move hardcoded values from dataclass defaults to Settings
     - Update `SalienceConfig` defaults in `amygdala.py`
     - Update `DriftConfig` defaults in `controls/drift_monitor.py`
     - Update `HRRConfig` defaults in `quantum.py`
@@ -52,23 +52,23 @@
     - Update `ExecConfig` defaults in `exec_controller.py`
     - Update `CircuitBreaker` defaults in `infrastructure/circuit_breaker.py`
     - _Requirements: 14.1_
-  - [ ] 2.3 Replace direct os.environ access in somabrain/
+  - [x] 2.3 Replace direct os.environ access in somabrain/
     - Fix `somabrain/app.py:918` - move SPHINX_BUILD to Settings
     - Fix `somabrain/cli.py:68-69` - move HOST, PORT to Settings
     - _Requirements: 14.2_
-  - [ ] 2.4 Replace direct os.environ access in scripts/
+  - [x] 2.4 Replace direct os.environ access in scripts/
     - Fix `scripts/check_memory_endpoint.py:11` - use Settings
     - Fix `scripts/sb_precheck.py:13-15` - use Settings
     - Fix `scripts/verify_deployment.py:138,173` - use Settings
     - Fix `scripts/constitution_sign.py:58,62` - use Settings
     - _Requirements: 14.2_
-  - [ ] 2.5 Replace direct os.environ access in benchmarks/
+  - [x] 2.5 Replace direct os.environ access in benchmarks/
     - Fix `benchmarks/run_stress.py:105` - use Settings
     - Fix `benchmarks/eval_learning_speed.py:138,141` - use Settings
     - Fix `benchmarks/diffusion_predictor_bench.py:77` - use Settings
     - Fix `benchmarks/cognition_core_bench.py:300-305` - use Settings
     - _Requirements: 14.2_
-  - [ ] 2.6 Replace direct os.environ access in tests/
+  - [x] 2.6 Replace direct os.environ access in tests/
     - Fix `conftest.py:12-29` - use Settings with test overrides
     - Fix `tests/conftest.py:18-20` - use Settings
     - Fix `tests/unit/test_outbox_sync.py:23` - use conftest fixtures
@@ -84,7 +84,7 @@
     - **Property 4: Settings round-trip** - serialize/deserialize preserves values
     - **Validates: Requirements 3.4, 14.3**
 
-- [ ] 3. Checkpoint - Ensure all tests pass
+- [x] 3. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 2: Duplicate Code Elimination (Week 3)
@@ -162,7 +162,7 @@
     - Note: `controls/drift_monitor.py` uses z-score norm (not unit normalization) - kept as-is
     - _Requirements: 11.2, 11.3_
 
-- [ ] 5. Checkpoint - Ensure all tests pass
+- [x] 5. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 3: Error Handling Standardization (Week 4)
@@ -451,42 +451,42 @@
     - Note: Cannot delete - it's the actual implementation
     - _Requirements: 8.2_
 
-- [ ] 18. Checkpoint - Ensure all tests pass
+- [x] 18. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 7: Deprecated Code Removal (Week 9)
 
 - [ ] 19. Remove Deprecated Functions
-  - [ ] 19.1 Remove deprecated auth functions in `somabrain/api/dependencies/auth.py`
+  - [x] 19.1 Remove deprecated auth functions in `somabrain/api/dependencies/auth.py`
     - Remove `get_allowed_tenants()` - use TenantManager.list_tenants()
     - Remove `get_default_tenant()` - use TenantManager.resolve_tenant_from_request()
     - Remove `auth_guard()` - use centralized tenant management
     - Update all callers
     - _Requirements: 8.1_
-  - [ ] 19.2 Remove deprecated features functions in `somabrain/api/routers/features.py`
+  - [x] 19.2 Remove deprecated features functions in `somabrain/api/routers/features.py`
     - Remove `_write_overrides()` no-op
     - Update or remove endpoints that use it
     - _Requirements: 8.1_
-  - [ ] 19.3 Remove deprecated migration file
+  - [x] 19.3 Remove deprecated migration file
     - Delete `migrations/versions/20231015_create_outbox_events_table.py`
     - _Requirements: 8.1_
-  - [ ] 19.4 Remove deprecated configuration patterns
+  - [x] 19.4 Remove deprecated configuration patterns
     - Remove `SOMABRAIN_FORCE_FULL_STACK` support
     - Update documentation to use `SOMABRAIN_MODE`
     - _Requirements: 8.1, 14.4_
 
 - [ ] 20. Clean Up Unused Code
-  - [ ] 20.1 Run dead code analysis
+  - [x] 20.1 Run dead code analysis
     - Use vulture or similar tool to find unused code
     - Document findings
     - _Requirements: 8.5_
-  - [ ] 20.2 Remove identified dead code
+  - [x] 20.2 Remove identified dead code
     - Remove unused functions
     - Remove unused imports
     - Remove unused variables
     - _Requirements: 8.4, 8.5_
 
-- [ ] 21. Checkpoint - Ensure all tests pass
+- [-] 21. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 8: Documentation & Testing (Week 10)

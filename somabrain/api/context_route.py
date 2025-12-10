@@ -22,8 +22,8 @@ from somabrain.core.container import container
 from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import (
     auth_guard,
-    get_allowed_tenants,
-    get_default_tenant,
+    get_allowed_tenants_async,
+    get_default_tenant_async,
 )
 from somabrain.api.schemas.context import (
     EvaluateRequest,
@@ -217,12 +217,12 @@ async def evaluate_endpoint(
 ):
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = get_default_tenant()
+    default_tenant = await get_default_tenant_async()
     tenant_id = payload.tenant_id or default_tenant
     # Ensure the builder knows the tenant for metric attribution
     if hasattr(builder, "set_tenant"):
         builder.set_tenant(tenant_id)
-    allowed = get_allowed_tenants()
+    allowed = await get_allowed_tenants_async()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
     try:
@@ -275,13 +275,13 @@ async def feedback_endpoint(
     start_time = time.perf_counter()
     planner = get_context_planner()
     builder = get_context_builder()
-    default_tenant = get_default_tenant()
+    default_tenant = await get_default_tenant_async()
     tenant_id = payload.tenant_id or default_tenant
     _enforce_feedback_rate_limit(tenant_id)
     # Ensure the builder knows the tenant for metric attribution
     if hasattr(builder, "set_tenant"):
         builder.set_tenant(tenant_id)
-    allowed = get_allowed_tenants()
+    allowed = await get_allowed_tenants_async()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
     # Enforce payload size/length limits
@@ -502,7 +502,7 @@ async def adaptation_state_endpoint(
     """
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = get_default_tenant()
+    default_tenant = await get_default_tenant_async()
     tid = tenant_id or default_tenant
     adapter = _get_adaptation(builder, planner, tenant_id=tid)
     retrieval_state = RetrievalWeightsState(
@@ -583,7 +583,7 @@ async def adaptation_reset_endpoint(
             )
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = get_default_tenant()
+    default_tenant = await get_default_tenant_async()
     tenant_id = payload.tenant_id or default_tenant
     adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
 

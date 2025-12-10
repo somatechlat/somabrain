@@ -93,9 +93,11 @@ def run_stress(metrics_sink: str | None = None):
 
 
 if __name__ == "__main__":
+    from common.config.settings import settings
+
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--metrics-sink", type=str, default=os.environ.get("SOMABRAIN_METRICS_SINK")
+        "--metrics-sink", type=str, default=settings.metrics_sink
     )
     args = parser.parse_args()
     run_stress(metrics_sink=args.metrics_sink)

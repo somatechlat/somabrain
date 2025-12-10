@@ -32,16 +32,25 @@ except Exception:  # pragma: no cover - optional dependency
     DensityMatrix = None
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 @dataclass
 class HRRConfig:
-    """Configuration for BHDC hyperdimensional operations."""
+    """Configuration for BHDC hyperdimensional operations.
+    
+    Defaults are sourced from centralized Settings configuration.
+    """
 
-    dim: int = 2048
-    seed: int = 42
-    dtype: str = "float32"
-    renorm: bool = True
+    dim: int = None  # type: ignore[assignment]
+    seed: int = None  # type: ignore[assignment]
+    dtype: str = None  # type: ignore[assignment]
+    renorm: bool = None  # type: ignore[assignment]
     binding_method: str = "bhdc"
-    sparsity: float = 0.1
+    sparsity: float = None  # type: ignore[assignment]
     binary_mode: str = "pm_one"
     mix: str = "none"
     roles_unitary: bool = True
@@ -50,6 +59,20 @@ class HRRConfig:
     binding_model_version: Optional[str] = None
 
     def __post_init__(self) -> None:
+        # Apply Settings defaults for None values
+        s = _get_settings()
+        if self.dim is None:
+            self.dim = s.quantum_dim
+        if self.seed is None:
+            self.seed = s.global_seed
+        if self.dtype is None:
+            self.dtype = s.hrr_dtype
+        if self.renorm is None:
+            self.renorm = s.hrr_renorm
+        if self.sparsity is None:
+            self.sparsity = s.quantum_sparsity
+        
+        # Validation
         if self.dim <= 0:
             raise ValueError("HRRConfig.dim must be a positive integer")
         if self.dtype not in ("float32", "float64"):

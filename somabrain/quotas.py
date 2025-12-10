@@ -52,9 +52,20 @@ class QuotaInfo:
     is_exempt: bool = False
 
 
+def _get_settings():
+    """Lazy settings access to avoid circular imports."""
+    from common.config.settings import settings
+    return settings
+
+
 @dataclass
 class QuotaConfig:
-    daily_writes: int = 10000
+    daily_writes: int = None  # type: ignore[assignment]
+
+    def __post_init__(self):
+        """Apply Settings defaults for None values."""
+        if self.daily_writes is None:
+            self.daily_writes = _get_settings().write_daily_limit
 
 
 class QuotaManager:

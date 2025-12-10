@@ -64,9 +64,12 @@ def _milvus_import():
             raise
 
 
-MILVUS_HOST = os.environ.get("MILVUS_HOST", "localhost")
-MILVUS_PORT = int(os.environ.get("MILVUS_PORT", "19530"))
-COLL = os.environ.get("MILVUS_COLLECTION", "oak_options")
+from common.config.settings import settings
+
+# Use centralized Settings for test configuration
+MILVUS_HOST = settings.milvus_host or "localhost"
+MILVUS_PORT = settings.milvus_port or 19530
+COLL = settings.milvus_collection or "oak_options"
 
 
 def _milvus_ready() -> bool:

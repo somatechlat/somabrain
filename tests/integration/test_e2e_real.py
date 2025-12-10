@@ -27,11 +27,11 @@ from common.logging import logger
 # ---------------------------------------------------------------------------
 
 # SomaBrain app endpoint (default to local docker-compose port)
-# Note: Using os.getenv is acceptable in test files per VIBE rules
-# (test data must be clearly marked as test data)
 # Port 30101 is the standardized SomaBrain cluster port
-_SOMABRAIN_APP_URL_ENV = os.environ.get("SOMABRAIN_APP_URL")
-SOMABRAIN_APP_URL = _SOMABRAIN_APP_URL_ENV if _SOMABRAIN_APP_URL_ENV else "http://localhost:30101"
+from common.config.settings import settings
+
+# Use centralized Settings for test configuration
+SOMABRAIN_APP_URL = settings.api_url or "http://localhost:30101"
 
 # Test tenant ID
 TEST_TENANT_ID = "e2e_test_tenant"

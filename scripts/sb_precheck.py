@@ -4,15 +4,15 @@ Exits non-zero on failure.
 """
 
 import sys
-import os
 import requests
 import redis
 from kafka import KafkaProducer
 from common.config.settings import settings
 
-kafka_port = os.environ.get("KAFKA_PORT")
-opa_port = os.environ.get("OPA_PORT")
-redis_port = os.environ.get("REDIS_PORT")
+# Use centralized Settings for port configuration
+kafka_port = settings.kafka_port
+opa_port = settings.opa_port
+redis_port = settings.redis_port
 
 if not kafka_port or not opa_port or not redis_port:
     print("Missing port discovery:", kafka_port, opa_port, redis_port)

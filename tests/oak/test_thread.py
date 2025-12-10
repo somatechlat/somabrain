@@ -16,9 +16,12 @@ These rely on a real PostgreSQL instance referenced by ``TEST_PG_DSN`` or
 preserving the "no mocks" guarantee without causing false negatives.
 """
 
+from common.config.settings import settings
+
 pytestmark = pytest.mark.integration
 
-PG_DSN = os.environ.get("TEST_PG_DSN") or os.environ.get("DATABASE_URL")
+# Use centralized Settings for test configuration
+PG_DSN = settings.postgres_dsn or settings.database_url
 
 
 def _require_pg() -> None:
