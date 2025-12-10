@@ -391,11 +391,13 @@
     - Updated `somabrain/app.py` to import from middleware module
     - Removed ~280 lines of inline class definitions from app.py
     - _Requirements: 1.3_
-  - [ ] 15.2 Extract bootstrap logic to `somabrain/bootstrap/`
-    - Create `somabrain/bootstrap/__init__.py`
-    - Move singleton initialization to `somabrain/bootstrap/singletons.py`
-    - Move logging setup to `somabrain/bootstrap/logging.py`
-    - Move OPA engine setup to `somabrain/bootstrap/opa.py`
+  - [x] 15.2 Extract bootstrap logic to `somabrain/bootstrap/` ✅
+    - Created `somabrain/bootstrap/__init__.py` with exports
+    - Created `somabrain/bootstrap/logging.py` with `setup_logging()` and `get_loggers()`
+    - Created `somabrain/bootstrap/opa.py` with `SimpleOPAEngine` and `create_opa_engine()`
+    - Updated `somabrain/app.py` to import from bootstrap module
+    - Removed ~90 lines of inline code from app.py
+    - Note: Singleton initialization deferred (complex dependencies with runtime.py)
     - _Requirements: 1.5_
   - [ ] 15.3 Extract scoring functions to `somabrain/scoring/`
     - Move `_score_memory_candidate` to `somabrain/scoring/memory.py`

@@ -91,6 +91,10 @@ from somabrain.middleware import (
     CognitiveInputValidator,
 )
 
+# Bootstrap components (extracted to somabrain/bootstrap/)
+from somabrain.bootstrap import setup_logging
+from somabrain.bootstrap.opa import SimpleOPAEngine, create_opa_engine
+
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -104,30 +108,7 @@ from somabrain.middleware import (
 # ---------------------------------------------------------------------------
 
 
-class SimpleOPAEngine:
-    """Lightweight wrapper around the OPA HTTP endpoint.
-
-    The production code does not import a dedicated OPA client library. This
-    class stores the base URL and offers an async ``health`` method used by the
-    health endpoint to verify that the OPA service is reachable.
-    """
-
-    def __init__(self, base_url: str):
-        self.base_url = base_url.rstrip("/")
-
-    async def health(self) -> bool:
-        """Return ``True`` if the OPA ``/health`` endpoint responds with 200.
-
-        Any exception (network error, timeout, etc.) is treated as unhealthy.
-        """
-        try:
-            import httpx
-
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                resp = await client.get(f"{self.base_url}/health")
-                return resp.status_code == 200
-        except Exception:
-            return False
+# SimpleOPAEngine moved to somabrain/bootstrap/opa.py
 
 
 # Define OPA engine attachment function (will be registered after FastAPI app creation).
@@ -140,14 +121,7 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     registered as a startup event handler after the ``FastAPI`` instance is
     instantiated.
     """
-    # ``settings`` may expose the URL via ``opa_url`` or the environment variable.
-    opa_url = getattr(settings, "opa_url", None) or getattr(
-        settings, "SOMABRAIN_OPA_URL", None
-    )
-    if opa_url:
-        app.state.opa_engine = SimpleOPAEngine(opa_url)
-    else:
-        app.state.opa_engine = None
+    app.state.opa_engine = create_opa_engine()
 
 
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
@@ -518,77 +492,11 @@ def _build_wm_support_index(
     return index
 
 
-# Configure advanced logging for brain-like cognitive monitoring
-def setup_logging():
-    """
-    Setup comprehensive logging for cognitive brain monitoring.
+# setup_logging moved to somabrain/bootstrap/logging.py
+# Import get_loggers to access the configured loggers after setup_logging() is called
+from somabrain.bootstrap.logging import get_loggers
 
-    Initializes loggers for:
-    - General system events
-    - Cognitive processing
-    - Error handling
-
-    Log output is sent to both console and 'somabrain.log'.
-    """
-    root = logging.getLogger()
-    already_configured = bool(getattr(root, "handlers", None))
-
-    if not already_configured:
-        handlers: list[logging.Handler] = [logging.StreamHandler()]
-
-        # Resolve a writable file path for logs under hardened containers
-        # Priority: SOMABRAIN_LOG_PATH > /app/logs/somabrain.log > CWD/somabrain.log
-        # Use centralized Settings for log path
-        log_path = settings.log_path
-        candidate = log_path
-        try:
-            if not os.path.isabs(candidate):
-                if os.path.isdir("/app/logs"):
-                    candidate = os.path.join("/app/logs", candidate)
-                else:
-                    candidate = os.path.join(os.getcwd(), candidate)
-            parent = os.path.dirname(candidate) or "."
-            if parent and not os.path.exists(parent):
-                # Best-effort; on read-only rootfs this may fail, which is fine
-                os.makedirs(parent, exist_ok=True)
-            # Try to attach a file handler; fall back to stdout-only if not writable
-            handlers.append(logging.FileHandler(candidate, mode="a"))
-        except Exception:
-            # File logging not available (likely read-only FS). Continue with stream only.
-            pass
-
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            handlers=handlers,
-        )
-
-    # Create specialized loggers for different brain regions
-    global logger, cognitive_logger, error_logger
-    logger = logging.getLogger("somabrain")
-    cognitive_logger = logging.getLogger("somabrain.cognitive")
-    error_logger = logging.getLogger("somabrain.errors")
-
-    # Set levels
-    cognitive_logger.setLevel(logging.DEBUG)
-    error_logger.setLevel(logging.ERROR)
-
-    # Add cognitive-specific formatting when we own the handler stack
-    if not any(
-        isinstance(h, logging.StreamHandler) and getattr(h, "_somabrain_marker", False)
-        for h in cognitive_logger.handlers
-    ):
-        cognitive_handler = logging.StreamHandler()
-        cognitive_handler.setFormatter(
-            logging.Formatter("%(asctime)s - COGNITIVE - %(levelname)s - %(message)s")
-        )
-        setattr(cognitive_handler, "_somabrain_marker", True)
-        cognitive_logger.addHandler(cognitive_handler)
-
-    logger.info("🧠 SomaBrain cognitive logging initialized")
-
-
-# Global loggers
+# Global loggers - will be populated after setup_logging() is called
 logger = None
 cognitive_logger = None
 error_logger = None
@@ -641,6 +549,8 @@ except Exception:
 
 if not _sphinx_build:
     setup_logging()
+    # Populate global logger references after setup
+    logger, cognitive_logger, error_logger = get_loggers()
 
 # Emit concise startup diagnostics so operators can see effective backend wiring
 try:
