@@ -47,10 +47,33 @@ PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 
 
 class ActionPredictorService:
-    """Action prediction service with strict error handling."""
+    """Action prediction service with strict error handling.
+    
+    Implements the action prediction thread as specified in Phase 1 of the
+    AROMADP roadmap. Consumes action vectors from the cognitive processing
+    pipeline, makes predictions using an LLM-based predictor, and publishes
+    PredictorUpdate events with error metrics and latency data.
+    """
 
-    def __init__(self):
-        """Initialize the action predictor service."""
+    def __init__(self) -> None:
+        """Initialize the action predictor service with LLM predictor and Kafka.
+        
+        Creates an LLMPredictor using the configured LLM endpoint for action
+        sequence prediction. Initializes Kafka consumer subscribed to the
+        next event topic and producer for publishing predictor updates.
+        
+        Raises:
+            RuntimeError: If LLM endpoint is not configured, Kafka bootstrap
+                          servers are missing, or consumer/producer creation fails.
+        
+        Notes:
+            - Requires SOMABRAIN_LLM_ENDPOINT to be set in environment/Settings
+            - Uses centralized Settings for Kafka and tenant configuration
+            - Enforces strict fail-fast behavior on configuration errors
+            - Consumer group: 'action-predictor'
+            - Consumes from: cog.next_event (configurable via Settings)
+            - Publishes to: cog.action.updates (configurable via Settings)
+        """
         # Use LLM predictor for action prediction (more suitable for action sequences)
         # Use centralized Settings for LLM endpoint; Settings provides default handling
         llm_endpoint = getattr(settings, "llm_endpoint", None)

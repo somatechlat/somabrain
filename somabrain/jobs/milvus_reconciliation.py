@@ -36,7 +36,23 @@ logger = logging.getLogger(__name__)
 
 
 def _memory_pool():
-    """Return the global memory pool instance, regardless of import order."""
+    """Return the global memory pool instance, regardless of import order.
+    
+    Attempts to retrieve the mt_memory pool from the runtime module first,
+    then falls back to the app module. If neither has an initialized pool,
+    creates a new MultiTenantMemory instance using centralized Settings
+    and caches it on the runtime module for subsequent calls.
+    
+    Returns:
+        MultiTenantMemory: The global memory pool instance for tenant-scoped
+                          memory operations.
+    
+    Notes:
+        - Import order agnostic: handles circular import scenarios gracefully
+        - Lazy initialization: creates pool only when first accessed
+        - Caches result on runtime module to avoid repeated instantiation
+        - Uses centralized Settings for pool configuration
+    """
 
     runtime_mod = None
     try:

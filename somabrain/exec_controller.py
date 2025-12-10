@@ -83,7 +83,21 @@ class ExecutiveController:
     - Optional epsilon-greedy bandit to explore graph augmentation.
     """
 
-    def __init__(self, cfg: ExecConfig):
+    def __init__(self, cfg: ExecConfig) -> None:
+        """Initialize the executive controller with configuration.
+        
+        Args:
+            cfg: ExecConfig instance specifying window size, conflict threshold,
+                 exploration boost, and bandit parameters. Defaults are sourced
+                 from centralized Settings.
+        
+        Notes:
+            - Creates per-tenant sliding windows for recall strength tracking
+            - Initializes two-armed bandit state for exploration vs exploitation
+            - Window size determines how many recent observations influence policy
+            - Conflict threshold triggers graph-based reasoning when exceeded
+            - Bandit epsilon controls exploration rate in epsilon-greedy strategy
+        """
         self.cfg = cfg
         self._recall_strength: Dict[str, Deque[float]] = {}
         # Two-armed bandit per tenant: 0=baseline, 1=explore (use_graph+boost_k)

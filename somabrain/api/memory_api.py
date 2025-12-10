@@ -437,6 +437,15 @@ def _app_config():
 
 
 def _resolve_namespace(tenant: str, namespace: str) -> str:
+    """Construct a fully-qualified namespace string for memory operations.
+    
+    Args:
+        tenant: Tenant identifier; defaults to 'public' if empty.
+        namespace: Logical namespace within the tenant scope.
+    
+    Returns:
+        Colon-separated namespace string in format 'base:tenant:namespace'.
+    """
     base = getattr(_app_config(), "namespace", "somabrain")
     tenant_part = tenant.strip() or "public"
     ns_part = namespace.strip()
@@ -445,6 +454,14 @@ def _resolve_namespace(tenant: str, namespace: str) -> str:
 
 
 def _get_embedder():
+    """Retrieve the global embedder instance from the runtime module.
+    
+    Returns:
+        The embedder instance for text-to-vector conversion.
+    
+    Raises:
+        HTTPException: 503 if embedder is not initialized.
+    """
     embedder = getattr(_runtime_module(), "embedder", None)
     if embedder is None:
         raise HTTPException(status_code=503, detail="embedder unavailable")
@@ -452,6 +469,14 @@ def _get_embedder():
 
 
 def _get_wm():
+    """Retrieve the global working memory instance from the runtime module.
+    
+    Returns:
+        The multi-tenant working memory (mt_wm) instance.
+    
+    Raises:
+        HTTPException: 503 if working memory is not initialized.
+    """
     wm = getattr(_runtime_module(), "mt_wm", None)
     if wm is None:
         raise HTTPException(status_code=503, detail="working memory unavailable")
@@ -459,6 +484,14 @@ def _get_wm():
 
 
 def _get_memory_pool():
+    """Retrieve the global memory pool instance from the runtime module.
+    
+    Returns:
+        The multi-tenant memory pool (mt_memory) instance.
+    
+    Raises:
+        HTTPException: 503 if memory pool is not initialized.
+    """
     pool = getattr(_runtime_module(), "mt_memory", None)
     if pool is None:
         raise HTTPException(status_code=503, detail="memory pool unavailable")
@@ -466,6 +499,14 @@ def _get_memory_pool():
 
 
 def _serialize_coord(coord: Any) -> Optional[List[float]]:
+    """Convert a coordinate tuple to a serializable list of floats.
+    
+    Args:
+        coord: A 3-element tuple or list representing spatial coordinates.
+    
+    Returns:
+        List of 3 floats if conversion succeeds, None otherwise.
+    """
     if isinstance(coord, (list, tuple)) and len(coord) == 3:
         try:
             return [float(coord[0]), float(coord[1]), float(coord[2])]
@@ -501,6 +542,35 @@ def _compose_memory_payload(
     trace_id: Optional[str],
     actor: str,
 ) -> tuple[Dict[str, Any], Dict[str, Any], str]:
+    """Compose a complete memory payload from request parameters.
+    
+    Merges the provided value with metadata, tags, attachments, links, and
+    signal data to create a fully-formed payload ready for storage.
+    
+    Args:
+        tenant: Tenant identifier for the memory.
+        namespace: Logical namespace within the tenant.
+        key: Unique key for the memory entry.
+        value: Core payload data to store.
+        meta: Optional metadata to merge into the payload.
+        universe: Universe scope (defaults to 'real' if not provided).
+        attachments: List of attachment descriptors.
+        links: List of outbound links to other memories.
+        tags: Agent-supplied tags for categorization.
+        policy_tags: Governance/policy tags for access control.
+        signals: Agent-provided signals (importance, novelty, etc.).
+        importance: Shortcut for signals.importance.
+        novelty: Shortcut for signals.novelty.
+        ttl_seconds: Time-to-live hint for automatic cleanup.
+        trace_id: Correlation identifier for observability.
+        actor: Identity of the actor performing the write.
+    
+    Returns:
+        Tuple of (stored_payload, signal_data, seed_text) where:
+        - stored_payload: Complete payload ready for storage
+        - signal_data: Extracted signal information
+        - seed_text: Text to use for embedding generation
+    """
     stored_payload: Dict[str, Any] = dict(value)
     stored_payload.setdefault("task", stored_payload.get("text") or key)
     stored_payload.setdefault("tenant_id", tenant)

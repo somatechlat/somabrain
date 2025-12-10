@@ -47,10 +47,32 @@ PREDICTOR_ALPHA = float(getattr(settings, "predictor_alpha", 2.0))
 
 
 class AgentPredictorService:
-    """Agent prediction service with strict error handling."""
+    """Agent prediction service with strict error handling.
+    
+    Implements the agent prediction thread as specified in Phase 1 of the
+    AROMADP roadmap. Consumes agent behavior vectors from the cognitive
+    processing pipeline, makes predictions using a budgeted Mahalanobis
+    predictor, and publishes PredictorUpdate events with error metrics.
+    """
 
-    def __init__(self):
-        """Initialize the agent predictor service."""
+    def __init__(self) -> None:
+        """Initialize the agent predictor service with Kafka consumer/producer.
+        
+        Creates a BudgetedPredictor wrapping MahalanobisPredictor with a 100ms
+        timeout for agent predictions. Initializes Kafka consumer subscribed
+        to the global frame topic and producer for publishing predictor updates.
+        
+        Raises:
+            RuntimeError: If Kafka bootstrap servers are not configured or
+                          if consumer/producer creation fails.
+        
+        Notes:
+            - Uses centralized Settings for Kafka and tenant configuration
+            - Enforces strict fail-fast behavior on configuration errors
+            - Consumer group: 'agent-predictor'
+            - Consumes from: cog.global.frame (configurable via Settings)
+            - Publishes to: cog.agent.updates (configurable via Settings)
+        """
         # Use budgeted predictor to enforce time limits on agent predictions
         base_predictor = MahalanobisPredictor()
         self.predictor = BudgetedPredictor(base_predictor, timeout_ms=100)

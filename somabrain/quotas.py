@@ -75,7 +75,20 @@ class QuotaManager:
     Now integrates with TenantManager for dynamic tenant-specific quota management.
     """
 
-    def __init__(self, cfg: QuotaConfig):
+    def __init__(self, cfg: QuotaConfig) -> None:
+        """Initialize the quota manager with configuration.
+        
+        Args:
+            cfg: QuotaConfig instance specifying daily write limits. Defaults
+                 are sourced from centralized Settings (write_daily_limit).
+        
+        Notes:
+            - Quotas are tracked in-memory and reset at UTC day boundaries
+            - Exempt tenants (e.g., AGENT_ZERO) bypass quota checks entirely
+            - TenantManager integration enables per-tenant quota customization
+            - Not persistent across restarts; use Redis for durable quotas
+            - Thread-safe for concurrent quota checks and updates
+        """
         self.cfg = cfg
         # key -> (date_key, count)
         self._counts: Dict[str, Tuple[int, int]] = {}

@@ -49,7 +49,33 @@ HMM_THRESHOLD = float(getattr(settings, "segment_hmm_threshold", 0.6))
 
 
 class SegmentationService:
-    def __init__(self):
+    """Cognitive stream segmentation service using gradient and HMM methods.
+    
+    Consumes GlobalFrame events from Kafka, computes salience gradients to
+    detect cognitive boundaries, optionally applies HMM smoothing for robust
+    boundary detection, and publishes segment boundary events with metrics.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the segmentation service with Kafka and health server.
+        
+        Creates Kafka consumer subscribed to the global frame topic and
+        producer for publishing segment boundary events. Optionally starts
+        a health check HTTP server on the configured port.
+        
+        Raises:
+            RuntimeError: If Kafka bootstrap servers are not configured or
+                          if consumer/producer creation fails.
+        
+        Notes:
+            - Uses centralized Settings for all configuration values
+            - Gradient threshold and HMM threshold are runtime-configurable
+            - HMM segmentation can be toggled via feature flag 'hmm_segmentation'
+            - Consumer group: 'segmentation-service'
+            - Consumes from: cog.global.frame (configurable via Settings)
+            - Publishes to: cog.segments (configurable via Settings)
+            - Health server port: 9016 (configurable via segment_health_port)
+        """
         bs = getattr(settings, "kafka_bootstrap", None) or getattr(
             settings, "kafka_bootstrap_servers", None
         )

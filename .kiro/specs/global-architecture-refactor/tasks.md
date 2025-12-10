@@ -486,19 +486,19 @@
     - Remove unused variables
     - _Requirements: 8.4, 8.5_
 
-- [-] 21. Checkpoint - Ensure all tests pass
+- [x] 21. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 8: Documentation & Testing (Week 10)
 
-- [ ] 22. Add Missing Docstrings
-  - [ ] 22.1 Document high-priority functions
+- [x] 22. Add Missing Docstrings
+  - [x] 22.1 Document high-priority functions
     - Add docstring to `somabrain/quantum.py:QuantumLayer.__init__`
     - Add docstring to `somabrain/services/agent_predictor.py:AgentPredictorService.__init__`
     - Add docstring to `somabrain/services/action_predictor.py:ActionPredictorService.__init__`
     - Add docstring to `somabrain/services/segmentation_service.py:SegmentationService.__init__`
     - _Requirements: 9.1_
-  - [ ] 22.2 Document medium-priority functions
+  - [x] 22.2 Document medium-priority functions
     - Add docstrings to `somabrain/exec_controller.py:ExecutiveController.__init__`
     - Add docstrings to `somabrain/quotas.py:QuotaManager.__init__`
     - Add docstrings to `somabrain/jobs/milvus_reconciliation.py:_memory_pool`

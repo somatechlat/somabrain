@@ -93,9 +93,32 @@ class HRRConfig:
 
 
 class QuantumLayer:
-    """BHDC-powered hyperdimensional operations."""
+    """BHDC-powered hyperdimensional operations.
+    
+    Implements Binary Hyperdimensional Computing (BHDC) operations for
+    cognitive vector manipulation. Provides binding, unbinding, superposition,
+    and role-based operations with mathematical guarantees on spectral
+    properties and invertibility.
+    """
 
-    def __init__(self, cfg: HRRConfig):
+    def __init__(self, cfg: HRRConfig) -> None:
+        """Initialize the QuantumLayer with BHDC encoder and permutation binder.
+        
+        Args:
+            cfg: HRRConfig instance specifying dimension, seed, dtype, sparsity,
+                 binding method, and role configuration. Defaults are sourced
+                 from centralized Settings.
+        
+        Raises:
+            ValueError: If cfg contains invalid parameters (e.g., non-positive
+                        dimension, unsupported dtype or binding method).
+        
+        Notes:
+            - Creates a BHDCEncoder for vector encoding with configurable sparsity
+            - Creates a PermutationBinder for invertible bind/unbind operations
+            - Initializes role caches for unitary role vectors
+            - Uses numpy's default_rng for reproducible random generation
+        """
         self.cfg = cfg
         self._role_cache: Dict[str, np.ndarray] = {}
         # Compatibility caches expected by legacy numerics tests
