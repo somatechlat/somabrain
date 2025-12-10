@@ -47,16 +47,16 @@
 - [x] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Extract OAK Router
-  - [ ] 7.1 Create `somabrain/routers/oak.py` with OAK endpoints
+- [x] 7. Extract OAK Router
+  - [x] 7.1 Create `somabrain/routers/oak.py` with OAK endpoints
     - Move `oak_option_create()`, `oak_option_update()`, `oak_plan()` endpoints
     - _Requirements: 1.2_
-  - [ ] 7.2 Update `somabrain/app.py` to import oak router
+  - [x] 7.2 Update `somabrain/app.py` to import oak router
     - Add `app.include_router(oak_router)`
     - Remove extracted endpoint definitions
     - _Requirements: 1.1_
 
-- [ ] 8. Checkpoint - Ensure all tests pass
+- [x] 8. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Extract Service Classes
@@ -77,7 +77,7 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 11. Extract Lifecycle Functions
-  - [ ] 11.1 Create `somabrain/lifecycle/__init__.py` with exports
+  - [-] 11.1 Create `somabrain/lifecycle/__init__.py` with exports
     - _Requirements: 1.5_
   - [ ] 11.2 Create `somabrain/lifecycle/startup.py`
     - Move `_startup_mode_banner()`, `_init_constitution()`, `_init_tenant_manager()`

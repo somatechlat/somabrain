@@ -3085,84 +3085,9 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Oak option creation endpoint (ROAMDP feature)
+# Oak endpoints moved to somabrain/oak/router.py
+# The oak_router is included via app.include_router(oak_router, prefix="/oak")
 # ---------------------------------------------------------------------------
-@app.post("/oak/option/create", response_model=S.OakPlanSuggestResponse)
-async def oak_option_create(body: S.OakOptionCreateRequest, request: Request):
-    """Create a new Oak option and return its identifier.
-
-    The request payload must contain a base64‑encoded ``payload`` field. An
-    ``option_id`` may be supplied; otherwise a timestamp‑based identifier is
-    generated. The option is stored via ``option_manager`` and an ``option_created``
-    event is emitted.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Decode payload safely
-    try:
-        import base64
-
-        payload_bytes = base64.b64decode(body.payload)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
-    opt_id = body.option_id or f"opt_{int(time.time() * 1000)}"
-    try:
-        opt = option_manager.create_option(ctx.tenant_id, opt_id, payload_bytes)
-    except ValueError as ve:
-        raise HTTPException(status_code=409, detail=str(ve))
-    return S.OakPlanSuggestResponse(plan=[opt.option_id])
-
-
-# ---------------------------------------------------------------------------
-# Oak option update endpoint – replaces the payload of an existing option.
-# Requires OPA policy ``allow_option_update`` (brain_admin role).
-# ---------------------------------------------------------------------------
-@app.put("/oak/option/{option_id}", response_model=S.OakPlanSuggestResponse)
-async def oak_option_update(
-    option_id: str, body: S.OakOptionCreateRequest, request: Request
-):
-    """Update the payload of an existing Oak option.
-
-    The request body uses the same schema as the creation endpoint (base64
-    ``payload`` and optional ``option_id``).  The ``option_id`` path parameter
-    identifies the option to update; if the body contains a different
-    ``option_id`` it is ignored.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Decode payload safely
-    try:
-        import base64
-
-        payload_bytes = base64.b64decode(body.payload)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail="Invalid base64 payload") from exc
-
-    try:
-        opt = option_manager.update_option(ctx.tenant_id, option_id, payload_bytes)
-    except ValueError as ve:
-        raise HTTPException(status_code=404, detail=str(ve))
-    # Return the updated option identifier in the same format as creation.
-    return S.OakPlanSuggestResponse(plan=[opt.option_id])
-
-
-# ---------------------------------------------------------------------------
-# Oak planning endpoint – returns a ranked list of option identifiers for the
-# requesting tenant based on utility scores.
-# ---------------------------------------------------------------------------
-@app.get("/oak/plan", response_model=S.OakPlanSuggestResponse)
-async def oak_plan(request: Request, max_options: int | None = None):
-    """Return a utility‑sorted list of Oak option IDs for the tenant.
-
-    The ``max_options`` query parameter limits the number of identifiers
-    returned; if omitted the default is taken from ``settings`` (see
-    ``oak/planner.py`` for details).
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    plan = plan_for_tenant(ctx.tenant_id, max_options)
-    return S.OakPlanSuggestResponse(plan=plan)
-
 
 # /delete and /recall/delete endpoints moved to somabrain/routers/memory.py
 # The memory_router is included via app.include_router(memory_router) above.
