@@ -260,6 +260,49 @@ async def act_endpoint(body: S.ActRequest, request: Request):
 async def set_personality(
     state: S.PersonalityState, request: Request
 ) -> S.PersonalityState:
-    """Set personality traits (placeholder - not implemented)."""
-    # This endpoint is a placeholder for future personality trait management
+    """Set personality traits (reserved for future implementation)."""
+    # This endpoint is reserved for future personality trait management
     raise HTTPException(status_code=404, detail="Not Found")
+
+
+@router.get("/micro/diag")
+async def micro_diag(request: Request):
+    """Get microcircuit diagnostics for the current tenant.
+
+    Returns information about the multi-column working memory state
+    including per-column statistics and tenant context.
+    """
+    cfg = _get_app_config()
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    trace_id = request.headers.get("X-Request-ID") or str(id(request))
+    deadline_ms = request.headers.get("X-Deadline-MS")
+    idempotency_key = request.headers.get("X-Idempotency-Key")
+
+    if not cfg.use_microcircuits:
+        return {
+            "enabled": False,
+            "namespace": ctx.namespace,
+            "trace_id": trace_id,
+            "deadline_ms": deadline_ms,
+            "idempotency_key": idempotency_key,
+        }
+
+    # Get mc_wm from app module
+    try:
+        from somabrain import app as app_module
+        mc_wm = getattr(app_module, "mc_wm", None)
+        stats = mc_wm.stats(ctx.tenant_id) if mc_wm else {}
+    except Exception:
+        stats = {}
+
+    return {
+        "enabled": True,
+        "tenant": ctx.tenant_id,
+        "columns": stats,
+        "namespace": ctx.namespace,
+        "trace_id": trace_id,
+        "deadline_ms": deadline_ms,
+        "idempotency_key": idempotency_key,
+    }

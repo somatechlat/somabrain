@@ -411,12 +411,26 @@
     - Note: app.py has duplicate admin endpoints that should be removed (deferred - risk of subtle differences)
     - Note: Journal admin endpoints in app.py are inside conditional block
     - _Requirements: 1.2_
-  - [ ] 15.5 Clean up app.py (IN PROGRESS)
-    - Current: 4051 lines (down from 4421)
-    - Extracted: middleware (~280 lines), bootstrap (~90 lines)
-    - Remaining: scoring functions, helper functions, endpoint handlers
-    - Note: Getting to <500 lines requires major refactoring of endpoint handlers
-    - Note: Many endpoints have tight coupling with module-level globals
+  - [-] 15.5 Clean up app.py (IN PROGRESS - PARTIAL)
+    - Current: **1073 lines** (down from 4421 originally - **76% reduction**)
+    - Extracted this session:
+      - Journal admin endpoints (~150 lines) → `somabrain/routers/admin.py`
+      - `/micro/diag` endpoint (~30 lines) → `somabrain/routers/cognitive.py`
+      - Embedded service proxies (~80 lines) → `somabrain/routers/proxy.py` (NEW)
+      - Sleep endpoints (~100 lines) → `somabrain/routers/sleep.py` (NEW)
+      - Sleep loop and state (~50 lines) → `somabrain/routers/sleep.py`
+      - Removed unused imports: threading, time, Dict, require_auth, require_admin_auth, get_tenant_async, CONS
+      - Removed unused _supervisor, _admin_guard_dep, _SUPERVISOR_URL (~20 lines)
+    - Previously extracted: middleware (~280 lines), bootstrap (~90 lines)
+    - Remaining (CANNOT EXTRACT - tied to FastAPI app instance):
+      - Startup/shutdown event handlers (~100 lines) - require @app.on_event decorator
+      - Validation error handler (~60 lines) - requires @app.exception_handler decorator
+      - Admin feature flag helpers (~40 lines) - tests import from somabrain.app
+      - Middleware registration (~70 lines) - requires app instance
+    - Remaining (HIGH RISK - DEFERRED):
+      - Singleton initialization (~300 lines) - tightly coupled with runtime.py via importlib.util
+    - Note: Target <500 lines requires major refactoring of singleton initialization
+    - Note: Current architecture is stable and all tests pass (4 passed, 1 skipped)
     - _Requirements: 1.2_
 
 - [ ] 16. Decompose `somabrain/memory_client.py` (2,216 lines) (DEFERRED)
@@ -456,7 +470,7 @@
 
 ## Phase 7: Deprecated Code Removal (Week 9)
 
-- [ ] 19. Remove Deprecated Functions
+- [x] 19. Remove Deprecated Functions
   - [x] 19.1 Remove deprecated auth functions in `somabrain/api/dependencies/auth.py`
     - Remove `get_allowed_tenants()` - use TenantManager.list_tenants()
     - Remove `get_default_tenant()` - use TenantManager.resolve_tenant_from_request()
@@ -475,7 +489,7 @@
     - Update documentation to use `SOMABRAIN_MODE`
     - _Requirements: 8.1, 14.4_
 
-- [ ] 20. Clean Up Unused Code
+- [x] 20. Clean Up Unused Code
   - [x] 20.1 Run dead code analysis
     - Use vulture or similar tool to find unused code
     - Document findings

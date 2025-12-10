@@ -17,12 +17,10 @@ import json
 import logging
 import math
 import os
-import random
 import re
 import time
 import uuid
 import httpx
-from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .config import Config
@@ -35,6 +33,19 @@ from somabrain.infrastructure import (
     resolve_memory_endpoint,
 )
 from somabrain.interfaces.memory import MemoryBackend
+
+# Import extracted components from memory module
+from somabrain.memory.transport import (
+    MemoryHTTPTransport,
+    _http_setting,
+    _response_json,
+)
+from somabrain.memory.types import RecallHit
+from somabrain.memory.normalization import (
+    _stable_coord,
+    _extract_memory_coord,
+)
+from somabrain.memory.filtering import _filter_payloads_by_keyword
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
@@ -56,281 +67,13 @@ if debug_memory_client:
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
 
-
-class MemoryHTTPTransport:
-    """Encapsulates the HTTP/AsyncHTTP clients used by MemoryClient."""
-
-    def __init__(
-        self,
-        *,
-        base_url: str,
-        headers: dict,
-        limits: Optional[httpx.Limits],
-        retries: int,
-        logger: logging.Logger,
-    ) -> None:
-        self.base_url = base_url
-        self._headers = dict(headers)
-        self._limits = limits
-        self._retries = max(0, int(retries))
-        self._logger = logger
-        self._client: Optional[httpx.Client] = None
-        self._async_client: Optional[httpx.AsyncClient] = None
-        self._init_clients()
-
-    @property
-    def client(self) -> Optional[httpx.Client]:
-        return self._client
-
-    @property
-    def async_client(self) -> Optional[httpx.AsyncClient]:
-        return self._async_client
-
-    def _init_clients(self) -> None:
-        client_kwargs: dict[str, Any] = {
-            "base_url": self.base_url,
-            "headers": dict(self._headers),
-            "timeout": 10.0,
-        }
-        if self._limits is not None:
-            client_kwargs["limits"] = self._limits
-        try:
-            self._client = httpx.Client(**client_kwargs)
-        except Exception:
-            self._client = None
-        else:
-            try:
-                self._client.head("/health", timeout=0.5)
-            except Exception:
-                self._fallback_to_localhost(client_kwargs)
-
-        try:
-            transport = httpx.AsyncHTTPTransport(retries=self._retries)
-            async_kwargs = dict(client_kwargs)
-            async_kwargs["transport"] = transport
-            self._async_client = httpx.AsyncClient(**async_kwargs)
-        except Exception:
-            try:
-                self._async_client = httpx.AsyncClient(**client_kwargs)
-            except Exception:
-                self._async_client = None
-
-        if not self.base_url:
-            self._client = None
-            self._async_client = None
-
-    def _fallback_to_localhost(self, client_kwargs: dict) -> None:
-        try:
-            orig_url = client_kwargs.get("base_url", "")
-            parsed = httpx.URL(orig_url)
-            fallback = (
-                f"http://localhost:{parsed.port}" if parsed.port else "http://localhost"
-            )
-        except Exception:
-            fallback = "http://localhost"
-        client_kwargs["base_url"] = fallback
-        try:
-            self._client = httpx.Client(**client_kwargs)
-        except Exception:
-            self._client = None
-
-    def post_with_retries_sync(
-        self,
-        endpoint: str,
-        body: dict,
-        headers: dict,
-        *,
-        max_retries: int = 2,
-    ) -> tuple[bool, int, Any]:
-        if self._client is None:
-            return False, 0, None
-        status = 0
-        data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = self._client.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    time.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                time.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                time.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = MemoryClient._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
-
-    async def post_with_retries_async(
-        self,
-        endpoint: str,
-        body: dict,
-        headers: dict,
-        *,
-        max_retries: int = 2,
-    ) -> tuple[bool, int, Any]:
-        if self._async_client is None:
-            return False, 0, None
-        status = 0
-        data: Any = None
-        for attempt in range(max_retries + 1):
-            try:
-                resp = await self._async_client.post(endpoint, json=body, headers=headers)
-            except Exception:
-                if attempt < max_retries:
-                    await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            status = int(getattr(resp, "status_code", 0) or 0)
-            if status in (429, 503) and attempt < max_retries:
-                await asyncio.sleep(0.01 + random.random() * 0.02)
-                continue
-            if status >= 500 and attempt < max_retries:
-                await asyncio.sleep(0.05 + random.random() * 0.05)
-                continue
-            data = MemoryClient._response_json(resp)
-            return status < 300, status, data
-        return False, status, data
+# MemoryHTTPTransport and _http_setting moved to somabrain/memory/transport.py
 
 
-def _http_setting(attr: str, default_val: int) -> int:
-    """Fetch HTTP client tuning knobs from shared settings with default."""
-
-    if settings is not None:
-        try:
-            value = getattr(settings, attr)
-            if value is None:
-                return default_val
-            return int(value)
-        except Exception:
-            pass
-    return default_val
-
-
-def _stable_coord(key: str) -> Tuple[float, float, float]:
-    """Derive a deterministic 3D coordinate in [-1,1]^3 from a string key."""
-    h = hashlib.blake2b(key.encode("utf-8"), digest_size=12).digest()
-    a = int.from_bytes(h[0:4], "big") / 2**32
-    b = int.from_bytes(h[4:8], "big") / 2**32
-    c = int.from_bytes(h[8:12], "big") / 2**32
-    # spread over [-1, 1]
-    return (2 * a - 1, 2 * b - 1, 2 * c - 1)
-
-
-def _parse_coord_string(s: str) -> Tuple[float, float, float] | None:
-    try:
-        parts = [float(x.strip()) for x in str(s).split(",")]
-        if len(parts) >= 3:
-            return (parts[0], parts[1], parts[2])
-    except Exception:
-        return None
-    return None
-
-
-def _filter_payloads_by_keyword(payloads: Iterable[Any], keyword: str) -> List[dict]:
-    """Return payloads that include *keyword* in common string fields.
-
-    The filter is intentionally lightweight so it can run on every recall even
-    when the backend service does not support lexical search. If no payloads
-    match, the original list is returned to preserve behaviour.
-    """
-
-    items: List[dict] = [p for p in payloads if isinstance(p, dict)]
-    key = str(keyword or "").strip().lower()
-    if not key:
-        return items
-
-    filtered: List[dict] = []
-    fields = ("what", "headline", "text", "content", "who", "task", "session")
-    for entry in items:
-        for field in fields:
-            value = entry.get(field)
-            if isinstance(value, str) and key in value.lower():
-                filtered.append(entry)
-                break
-    return filtered or items
-
-
-def _extract_memory_coord(
-    resp: Any,
-    idempotency_key: str | None = None,
-) -> Tuple[float, float, float] | None:
-    """Try to derive a coordinate tuple from the memory-service response."""
-
-    if not resp:
-        return None
-
-    data = resp
-    json_attr = getattr(resp, "json", None)
-    if callable(json_attr):
-        try:
-            data = json_attr()
-        except (ValueError, TypeError):
-            data = resp
-
-    data_dict = data if isinstance(data, dict) else None
-
-    if data_dict is not None:
-        for key in ("coord", "coordinate"):
-            value = data_dict.get(key)
-            parsed: Optional[Tuple[float, float, float]] = None
-            if isinstance(value, str):
-                parsed = _parse_coord_string(value)
-            elif isinstance(value, (list, tuple)) and len(value) >= 3:
-                try:
-                    parsed = (float(value[0]), float(value[1]), float(value[2]))
-                except (TypeError, ValueError):
-                    parsed = None
-            if parsed:
-                return parsed
-
-        mem_section = data_dict.get("memory")
-        if isinstance(mem_section, dict):
-            for key in ("coordinate", "coord", "location"):
-                value = mem_section.get(key)
-                parsed = None
-                if isinstance(value, str):
-                    parsed = _parse_coord_string(value)
-                elif isinstance(value, (list, tuple)) and len(value) >= 3:
-                    try:
-                        parsed = (float(value[0]), float(value[1]), float(value[2]))
-                    except (TypeError, ValueError):
-                        parsed = None
-                if parsed:
-                    return parsed
-
-            mid = mem_section.get("id") or mem_section.get("memory_id")
-            if mid is not None:
-                try:
-                    return _stable_coord(str(mid))
-                except (TypeError, ValueError):
-                    pass
-
-        mid = data_dict.get("id") or data_dict.get("memory_id")
-        if mid is not None:
-            try:
-                return _stable_coord(str(mid))
-            except (TypeError, ValueError):
-                pass
-
-    if idempotency_key:
-        try:
-            return _stable_coord(f"idempotency:{idempotency_key}")
-        except (TypeError, ValueError):
-            return None
-    return None
-
-
-@dataclass
-class RecallHit:
-    """Represents a normalized memory recall hit from the SFM service."""
-
-    payload: Dict[str, Any]
-    score: float | None = None
-    coordinate: Tuple[float, float, float] | None = None
-    raw: Dict[str, Any] | None = None
+# Normalization and filtering functions moved to:
+# - somabrain/memory/normalization.py (_stable_coord, _parse_coord_string, _extract_memory_coord)
+# - somabrain/memory/filtering.py (_filter_payloads_by_keyword)
+# RecallHit dataclass moved to somabrain/memory/types.py
 
 
 class MemoryClient:
@@ -595,14 +338,9 @@ class MemoryClient:
     # Degradation helpers
     # ---------------------------------------------------------------------
     # --- HTTP helpers ---------------------------------------------------------
-    @staticmethod
-    def _response_json(resp: Any) -> Any:
-        try:
-            if hasattr(resp, "json") and callable(resp.json):
-                return resp.json()
-        except Exception:
-            return None
-        return None
+    # _response_json moved to somabrain/memory/transport.py
+    # Keeping static method for backward compatibility
+    _response_json = staticmethod(_response_json)
 
     def _http_post_with_retries_sync(
         self,

@@ -3,10 +3,11 @@
 This package provides comprehensive metrics collection and monitoring using
 Prometheus client library. Metrics are organized by domain:
 
-- core.py: HTTP, health, and system-level metrics
-- memory.py: Memory operation metrics (WM, LTM, retrieval)
+- core.py: Registry, factory functions, HTTP metrics
 - learning.py: Adaptation, tau, entropy, neuromodulator metrics
-- scorer.py: Scorer component metrics
+- memory_metrics.py: WM, LTM, retrieval, ANN metrics
+- outbox_metrics.py: Outbox and circuit breaker metrics
+- middleware.py: FastAPI integration (endpoint, timing middleware)
 - interface.py: Protocol-based interface for dependency injection
 
 All metrics are re-exported from this module for backward compatibility:
@@ -28,13 +29,8 @@ from somabrain.metrics.interface import (
     reset_metrics,
 )
 
-# Re-export everything from the original metrics module for backward compatibility
-# This ensures existing imports continue to work
-from somabrain.metrics_original import *  # noqa: F401, F403
-
-# Also explicitly export key items for IDE support
-from somabrain.metrics_original import (
-    # Registry and helpers
+# Core infrastructure
+from somabrain.metrics.core import (
     registry,
     Counter,
     Gauge,
@@ -43,28 +39,12 @@ from somabrain.metrics_original import (
     get_counter,
     get_gauge,
     get_histogram,
-    # Core HTTP metrics
     HTTP_COUNT,
     HTTP_LATENCY,
-    HTTP_FAILURES,
-    # OPA metrics
-    OPA_ALLOW_TOTAL,
-    OPA_DENY_TOTAL,
-    # Memory metrics
-    WM_HITS,
-    WM_MISSES,
-    WM_ADMIT,
-    WM_UTILIZATION,
-    WM_EVICTIONS,
-    MEMORY_ITEMS,
-    MEMORY_HTTP_REQUESTS,
-    MEMORY_HTTP_LATENCY,
-    RECALL_LATENCY,
-    RECALL_REQUESTS,
-    RETRIEVAL_REQUESTS,
-    RETRIEVAL_LATENCY,
-    RETRIEVAL_CANDIDATES,
-    # Learning metrics
+)
+
+# Learning metrics
+from somabrain.metrics.learning import (
     LEARNING_TAU,
     LEARNING_ENTROPY_CAP_HITS,
     LEARNING_RETRIEVAL_ALPHA,
@@ -79,57 +59,209 @@ from somabrain.metrics_original import (
     LEARNING_FEEDBACK_LATENCY,
     LEARNING_EFFECTIVE_LR,
     LEARNING_ROLLBACKS,
+    LEARNING_WM_LENGTH,
+    LEARNING_RETRIEVAL_ENTROPY,
+    LEARNING_REGRET,
+    LEARNING_REGRET_EWMA,
+    LEARNER_LAG_SECONDS,
     tau_decay_events,
     tau_anneal_events,
     entropy_cap_events,
+    update_learning_retrieval_weights,
+    update_learning_utility_weights,
+    update_learning_gains,
+    update_learning_bounds,
+    record_learning_feedback_applied,
+    record_learning_feedback_rejected,
+    record_learning_feedback_latency,
+    update_learning_effective_lr,
+    record_regret,
+    update_learning_retrieval_entropy,
+    record_learning_rollback,
+    update_learning_wm_length,
+)
+
+# Memory metrics
+from somabrain.metrics.memory_metrics import (
+    WM_HITS,
+    WM_MISSES,
+    WM_ADMIT,
+    WM_UTILIZATION,
+    WM_EVICTIONS,
+    RECALL_REQUESTS,
+    RECALL_LATENCY,
+    RETRIEVAL_REQUESTS,
+    RETRIEVAL_LATENCY,
+    RETRIEVAL_CANDIDATES,
+    RETRIEVAL_PERSIST,
+    RETRIEVAL_EMPTY,
+    RETRIEVER_HITS,
+    RETRIEVER_LATENCY,
+    ANN_LATENCY,
+    ANN_REBUILD_TOTAL,
+    ANN_REBUILD_SECONDS,
+    LTM_STORE_LAT,
+    MEMORY_HTTP_REQUESTS,
+    MEMORY_HTTP_LATENCY,
+    HTTP_FAILURES,
+    CIRCUIT_BREAKER_STATE,
+    MEMORY_ITEMS,
+    ETA_GAUGE,
+    SPARSITY_GAUGE,
+    MARGIN_MEAN,
+    CONFIG_VERSION,
+    CONTROLLER_CHANGES,
+    record_memory_snapshot,
+    observe_recall_latency,
+    observe_ann_latency,
+    mark_controller_change,
+)
+
+# Outbox metrics
+from somabrain.metrics.outbox_metrics import (
+    OUTBOX_PENDING,
+    OUTBOX_PROCESSED_TOTAL,
+    OUTBOX_REPLAYED_TOTAL,
+    CIRCUIT_STATE,
+    report_outbox_pending,
+    report_circuit_state,
+    report_outbox_processed,
+    report_outbox_replayed,
+)
+
+# Middleware
+from somabrain.metrics.middleware import (
+    EXTERNAL_METRICS_SCRAPE_STATUS,
+    metrics_endpoint,
+    timing_middleware,
+    mark_external_metric_scraped,
+    external_metrics_ready,
+    reset_external_metrics,
+)
+
+# Re-export everything from the original metrics module for full backward compatibility
+# This ensures existing imports continue to work (includes metrics not yet extracted)
+from somabrain.metrics_original import *  # noqa: F401, F403
+
+# Also explicitly import remaining items from metrics_original for IDE support
+from somabrain.metrics_original import (
+    # OPA metrics
+    OPA_ALLOW_TOTAL,
+    OPA_DENY_TOTAL,
+    # Reward metrics
+    REWARD_ALLOW_TOTAL,
+    REWARD_DENY_TOTAL,
+    # Constitution metrics
+    CONSTITUTION_VERIFIED,
+    CONSTITUTION_VERIFY_LATENCY,
+    # Utility metrics
+    UTILITY_NEGATIVE,
+    UTILITY_VALUE,
+    # Salience metrics
+    SALIENCE_STORE,
+    SALIENCE_HIST,
+    FD_ENERGY_CAPTURE,
+    FD_RESIDUAL,
+    FD_TRACE_ERROR,
+    FD_PSD_INVARIANT,
+    SALIENCE_THRESH_STORE,
+    SALIENCE_THRESH_ACT,
+    SALIENCE_STORE_RATE_OBS,
+    SALIENCE_ACT_RATE_OBS,
+    # Scorer metrics
+    SCORER_COMPONENT,
+    SCORER_FINAL,
+    SCORER_WEIGHT_CLAMPED,
+    # Attention
+    ATTENTION_LEVEL,
+    # HRR metrics
+    HRR_CLEANUP_USED,
+    HRR_CLEANUP_SCORE,
+    HRR_CLEANUP_CALLS,
+    HRR_ANCHOR_SIZE,
+    HRR_CONTEXT_SAT,
+    HRR_RERANK_APPLIED,
+    HRR_RERANK_LTM_APPLIED,
+    HRR_RERANK_WM_SKIPPED,
+    # Unbind metrics
+    UNBIND_PATH,
+    UNBIND_WIENER_FLOOR,
+    UNBIND_K_EST,
+    UNBIND_SPECTRAL_BINS_CLAMPED,
+    UNBIND_EPS_USED,
+    RECONSTRUCTION_COSINE,
+    # Predictor metrics
+    PREDICTOR_LATENCY,
+    PREDICTOR_LATENCY_BY,
+    PREDICTOR_ALTERNATIVE,
+    # Planning metrics
+    PLANNING_LATENCY,
+    PLANNING_LATENCY_P99,
+    record_planning_latency,
     # Neuromodulator metrics
     NEUROMOD_DOPAMINE,
     NEUROMOD_SEROTONIN,
     NEUROMOD_NORADRENALINE,
     NEUROMOD_ACETYLCHOLINE,
     NEUROMOD_UPDATE_COUNT,
-    # Scorer metrics
-    SCORER_COMPONENT,
-    SCORER_FINAL,
-    SCORER_WEIGHT_CLAMPED,
-    SALIENCE_HIST,
-    SALIENCE_STORE,
-    # Predictor metrics
-    PREDICTOR_LATENCY,
-    PREDICTOR_LATENCY_BY,
-    PREDICTOR_ALTERNATIVE,
     # Oak/Milvus metrics
     OPTION_UTILITY_AVG,
     OPTION_COUNT,
     MILVUS_SEARCH_LAT_P95,
     MILVUS_INGEST_LAT_P95,
+    MILVUS_SEGMENT_LOAD,
+    MILVUS_UPSERT_RETRY_TOTAL,
+    MILVUS_UPSERT_FAILURE_TOTAL,
+    MILVUS_RECONCILE_MISSING,
+    MILVUS_RECONCILE_ORPHAN,
     # Consolidation metrics
     CONSOLIDATION_RUNS,
     REPLAY_STRENGTH,
     REM_SYNTHESIZED,
-    # Helper functions
-    metrics_endpoint,
-    timing_middleware,
-    update_learning_retrieval_weights,
-    update_learning_utility_weights,
-    record_learning_feedback_applied,
-    record_learning_feedback_rejected,
-    record_learning_feedback_latency,
-    update_learning_effective_lr,
-    record_learning_rollback,
-    record_regret,
-    record_planning_latency,
-    record_memory_snapshot,
-    observe_recall_latency,
-    observe_ann_latency,
-    mark_controller_change,
-    mark_external_metric_scraped,
-    external_metrics_ready,
-    reset_external_metrics,
-    report_outbox_pending,
-    report_circuit_state,
-    report_outbox_processed,
-    report_outbox_replayed,
+    # Supervisor metrics
+    FREE_ENERGY,
+    SUPERVISOR_MODULATION,
+    # Executive metrics
+    EXEC_CONFLICT,
+    EXEC_USE_GRAPH,
+    EXEC_BANDIT_ARM,
+    EXEC_BANDIT_REWARD,
+    EXEC_K_SELECTED,
+    # Microcircuit metrics
+    MICRO_VOTE_ENTROPY,
+    MICRO_COLUMN_ADMIT,
+    MICRO_COLUMN_BEST,
+    # Embedding metrics
+    EMBED_LAT,
+    EMBED_CACHE_HIT,
+    # Index metrics
+    INDEX_PROFILE_USE,
+    # Audit metrics
+    AUDIT_KAFKA_PUBLISH,
+    # Rate limiting
+    RATE_LIMITED_TOTAL,
+    QUOTA_DENIED_TOTAL,
+    QUOTA_RESETS,
+    QUOTA_ADJUSTMENTS,
+    # Novelty/Error metrics
+    NOVELTY_RAW,
+    ERROR_RAW,
+    NOVELTY_NORM,
+    ERROR_NORM,
+    # SDR metrics
+    SDR_PREFILTER_LAT,
+    SDR_CANDIDATES,
+    # Tau gauge
+    tau_gauge,
+    # Segmentation metrics
+    SEGMENTATION_BOUNDARIES_PER_HOUR,
+    SEGMENTATION_DUPLICATE_RATIO,
+    SEGMENTATION_HMM_STATE_VOLATILE,
+    SEGMENTATION_MAX_DWELL_EXCEEDED,
+    # Fusion metrics
+    FUSION_WEIGHT_NORM_ERROR,
+    FUSION_ALPHA_ADAPTIVE,
+    FUSION_SOFTMAX_WEIGHT,
 )
 
 __all__ = [
@@ -140,7 +272,7 @@ __all__ = [
     "get_metrics",
     "set_metrics",
     "reset_metrics",
-    # Registry
+    # Registry and factories
     "registry",
     "Counter",
     "Gauge",
@@ -149,10 +281,11 @@ __all__ = [
     "get_counter",
     "get_gauge",
     "get_histogram",
-    # Core
+    # Core HTTP
     "HTTP_COUNT",
     "HTTP_LATENCY",
     "HTTP_FAILURES",
+    # OPA
     "OPA_ALLOW_TOTAL",
     "OPA_DENY_TOTAL",
     # Memory
@@ -169,6 +302,7 @@ __all__ = [
     "RETRIEVAL_REQUESTS",
     "RETRIEVAL_LATENCY",
     "RETRIEVAL_CANDIDATES",
+    "ANN_LATENCY",
     # Learning
     "LEARNING_TAU",
     "LEARNING_ENTROPY_CAP_HITS",
@@ -212,6 +346,13 @@ __all__ = [
     "CONSOLIDATION_RUNS",
     "REPLAY_STRENGTH",
     "REM_SYNTHESIZED",
+    # Outbox
+    "OUTBOX_PENDING",
+    "CIRCUIT_STATE",
+    "report_outbox_pending",
+    "report_circuit_state",
+    "report_outbox_processed",
+    "report_outbox_replayed",
     # Functions
     "metrics_endpoint",
     "timing_middleware",
@@ -231,8 +372,4 @@ __all__ = [
     "mark_external_metric_scraped",
     "external_metrics_ready",
     "reset_external_metrics",
-    "report_outbox_pending",
-    "report_circuit_state",
-    "report_outbox_processed",
-    "report_outbox_replayed",
 ]

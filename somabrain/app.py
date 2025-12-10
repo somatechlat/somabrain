@@ -19,19 +19,16 @@ Usage:
 from __future__ import annotations
 
 
-# Threading and time for sleep logic
-
-from typing import Any, Dict, Optional
-import asyncio
+from typing import Any, Optional
+# asyncio moved to somabrain/lifecycle/ modules
+# threading and time moved to somabrain/routers/sleep.py
 import importlib
 import logging
 import os
 import sys
-import threading as _thr
-import time
 
-import numpy as np
-from fastapi import FastAPI, HTTPException, Request, Depends, Query
+# numpy moved to somabrain/bootstrap/singletons.py
+from fastapi import FastAPI, HTTPException, Request
 # inspect moved to admin router
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -39,25 +36,27 @@ from cachetools import TTLCache
 # XMLRPCError moved to admin router
 
 # Additional imports required for application setup (must appear before any non‑import code)
-from somabrain.scoring import UnifiedScorer
+# UnifiedScorer moved to somabrain/bootstrap/singletons.py
 from somabrain.sdr import LSHIndex, SDREncoder
 # _eval_step and MemoryService moved to cognitive router
 
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
-from somabrain.tenant import get_tenant as get_tenant_async
+# get_tenant moved to routers
 from somabrain.version import API_VERSION
-from somabrain.healthchecks import check_kafka
+# check_kafka moved to somabrain/lifecycle/startup.py
 from somabrain.services.memory_service import MemoryService as _MemSvc
 from config.feature_flags import FeatureFlags
 
 # Import the metrics module as `M` – required for both the Prometheus `/metrics`
 # endpoint and the JSON health‑metrics endpoint (`/health/metrics`).
 # The alias is used throughout the file, so keeping it short avoids line‑wraps.
-from somabrain import consolidation as CONS, metrics as M, schemas as S
+# metrics (M) moved to somabrain/lifecycle/startup.py
+# consolidation moved to somabrain/routers/sleep.py
+from somabrain import schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
-from somabrain.auth import require_admin_auth, require_auth
+# require_admin_auth, require_auth moved to routers
 from somabrain.basal_ganglia import BasalGangliaPolicy
 
 # Use the unified Settings instance for configuration.
@@ -71,7 +70,7 @@ from somabrain.context_hrr import HRRContextConfig
 
 # Oak FastAPI router that now talks to Milvus
 from somabrain.oak.router import router as oak_router
-from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
+# milvus_reconcile moved to somabrain/lifecycle/startup.py
 
 # Cognitive Threads router (Phase 5)
 from somabrain.cognitive.thread_router import router as thread_router
@@ -85,6 +84,10 @@ from somabrain.middleware import (
 # Bootstrap components (extracted to somabrain/bootstrap/)
 from somabrain.bootstrap import setup_logging
 from somabrain.bootstrap.opa import create_opa_engine
+
+# Lifecycle components (extracted to somabrain/lifecycle/)
+from somabrain.lifecycle import startup as lifecycle_startup
+from somabrain.lifecycle import watchdog as lifecycle_watchdog
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +122,7 @@ from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 # assess_reality moved to memory router
 # coerce_to_epoch_seconds moved to memory router
-from somabrain.embeddings import make_embedder
+# make_embedder moved to somabrain/bootstrap/singletons.py
 # extract_event_fields moved to memory router
 from somabrain.exec_controller import ExecConfig, ExecutiveController
 from somabrain.hippocampus import ConsolidationConfig, Hippocampus
@@ -129,27 +132,17 @@ from somabrain.mt_context import MultiTenantHRRContext
 from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 # outbox_db moved to admin router
 from somabrain.neuromodulators import PerTenantNeuromodulators
-from somabrain.journal import init_journal, JournalConfig
-from somabrain.db.outbox import (
-    get_journal_events,
-    replay_journal_events,
-    get_journal_stats,
-    cleanup_journal,
-)
+# Journal imports moved to somabrain/routers/admin.py
 from somabrain.personality import PersonalityStore
 # plan_from_graph moved to cognitive router
-from somabrain.prediction import (
-    BudgetedPredictor,
-    LLMPredictor,
-    MahalanobisPredictor,
-    SlowPredictor,
-)
+# Predictor imports moved to somabrain/bootstrap/singletons.py
 
 # Prefrontal cortex component removed per VIBE hardening requirements.
-from somabrain.quantum import HRRConfig, QuantumLayer
+# HRRConfig moved to somabrain/bootstrap/singletons.py
+from somabrain.quantum import QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
-from somabrain.salience import FDSalienceSketch
+# FDSalienceSketch moved to somabrain/bootstrap/singletons.py
 
 # Use the new TenantManager for tenant resolution.
 
@@ -361,28 +354,7 @@ except Exception as e:
     if log:
         log.debug("Reward Gate middleware not registered: %s", e, exc_info=True)
 
-# Supervisor (cog) control client
-_SUPERVISOR_URL = settings.supervisor_url or None
-if not _SUPERVISOR_URL:
-    # Default to supervisor inet_http_server in somabrain_cog on internal network
-    user = settings.supervisor_http_user
-    pwd = settings.supervisor_http_pass
-    _SUPERVISOR_URL = f"http://{user}:{pwd}@somabrain_cog:9001/RPC2"
-
-
-def _supervisor() -> ServerProxy:
-    try:
-        return ServerProxy(_SUPERVISOR_URL, allow_none=True)
-    except Exception as e:
-        raise HTTPException(
-            status_code=503, detail=f"supervisor client init failed: {e}"
-        )
-
-
-def _admin_guard_dep(request: Request):
-    # FastAPI dependency wrapper for admin auth
-    return require_admin_auth(request, cfg)
-
+# Supervisor client and admin guard moved to somabrain/routers/admin.py
 
 # ---------------------------------------------------------------------------
 # Admin feature‑flag helper functions (used by the test suite)
@@ -430,142 +402,32 @@ async def admin_features_update(
 # They are included via: app.include_router(admin_router, tags=["admin"])
 
 
-# --- Startup self-check banner (Sprint 1) ---------------------------------------
+# --- Startup event handlers (delegating to somabrain/lifecycle/) ----------------
+# These thin wrappers delegate to the lifecycle module for the actual implementation.
+# The @app.on_event decorator requires the function to be defined here.
+
 @app.on_event("startup")
 async def _startup_mode_banner() -> None:
-    """Log mode, derived flags, and deprecation notices on boot.
-
-    This is informational only and does not mutate existing behavior. It helps
-    operators verify that SOMABRAIN_MODE is respected and surfaces any legacy
-    envs slated for removal.
-    """
-    try:
-        from common.config.settings import settings as _shared
-    except Exception:  # pragma: no cover
-        _shared = None
-    lg = logging.getLogger("somabrain")
-    try:
-        mode = getattr(_shared, "mode", "prod") if _shared else "prod"
-        mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
-        api_auth = (
-            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        )
-        mem_auth = (
-            bool(getattr(_shared, "mode_memory_auth_required", True))
-            if _shared
-            else True
-        )
-        opa_closed = True  # Strict: always fail-closed
-        log_level = (
-            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        )
-        bundle = (
-            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
-            if _shared
-            else "prod"
-        )
-        lg.warning(
-            "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s opa_fail_closed=%s log_level=%s opa_bundle=%s",
-            mode,
-            mode_norm,
-            api_auth,
-            mem_auth,
-            opa_closed,
-            log_level,
-            bundle,
-        )
-        if _shared is not None:
-            for note in getattr(_shared, "deprecation_notices", []) or []:
-                lg.warning("DEPRECATION: %s", note)
-    except Exception:
-        try:
-            lg.debug("Failed to emit startup mode banner", exc_info=True)
-        except Exception:
-            pass
+    """Log mode, derived flags, and deprecation notices on boot."""
+    await lifecycle_startup.startup_mode_banner(app)
 
 
 @app.on_event("startup")
 async def _init_constitution() -> None:
     """Load the constitution engine (if present) and publish metrics."""
-    app.state.constitution_engine = None
-    try:
-        M.CONSTITUTION_VERIFIED.set(0.0)
-    except Exception:
-        pass
-    if ConstitutionEngine is None:
-        return
-    start = time.perf_counter()
-    verified = False
-    try:
-        engine = ConstitutionEngine()
-        try:
-            engine.load()
-            verified = bool(engine.verify_signature())
-        except Exception as exc:
-            log = globals().get("logger")
-            if log:
-                log.warning("ConstitutionEngine load failed: %s", exc)
-            verified = False
-        app.state.constitution_engine = engine
-    except Exception:
-        app.state.constitution_engine = None
-        verified = False
-    duration = time.perf_counter() - start
-    try:
-        M.CONSTITUTION_VERIFIED.set(1.0 if verified else 0.0)
-        M.CONSTITUTION_VERIFY_LATENCY.observe(duration)
-    except Exception:
-        pass
+    await lifecycle_startup.init_constitution(app)
 
 
-# --- Enforce mandatory Kafka availability ------------------------------------------------
 @app.on_event("startup")
 async def _enforce_kafka_required() -> None:
-    """Fail fast if Kafka broker cannot be reached.
-
-    The coding rules require external services to be mandatory when the
-    application is running in production.  Previously the service would start
-    and merely report ``kafka_ok: false`` in the health endpoint.  This event
-    performs the same check during startup and raises an exception, causing the
-    container to exit with a non‑zero status so Docker will restart it.
-    """
-    try:
-        kafka_ok = check_kafka(settings.kafka_bootstrap_servers)
-        if not kafka_ok:
-            # Raising RuntimeError aborts the FastAPI startup sequence.
-            raise RuntimeError(
-                "Kafka broker unavailable – aborting startup as required by coding rules"
-            )
-    except Exception as exc:
-        # Ensure any unexpected error also aborts startup.
-        raise RuntimeError(f"Kafka health check failed during startup: {exc}")
+    """Fail fast if Kafka broker cannot be reached."""
+    await lifecycle_startup.enforce_kafka_required()
 
 
-# --- Enforce mandatory OPA and Postgres availability ---------------------------
 @app.on_event("startup")
 async def _enforce_opa_postgres_required() -> None:
-    """Fail fast if OPA or Postgres are not reachable.
-
-    The ``assert_ready`` helper in ``somabrain.common.infra`` performs the
-    actual connectivity checks. We call it with ``require_kafka=False`` because
-    Kafka is already enforced by ``_enforce_kafka_required``. If any check
-    fails, we log a clear error and raise ``RuntimeError`` so the container
-    exits, satisfying the coding rule that external services must be mandatory.
-    """
-    try:
-        from somabrain.common.infra import assert_ready
-
-        # OPA and Postgres are required; Kafka is already handled separately.
-        assert_ready(require_kafka=False, require_opa=True, require_postgres=True)
-    except Exception as exc:
-        # Log the failure before aborting – this makes the reason visible in
-        # container logs and matches the logging style used for the Kafka check.
-        import logging
-
-        logging.getLogger("somabrain").error(
-            f"Mandatory backend check failed (OPA/Postgres): {exc}"
-        )
-        raise RuntimeError(f"OPA or Postgres not ready: {exc}")
+    """Fail fast if OPA or Postgres are not reachable."""
+    await lifecycle_startup.enforce_opa_postgres_required()
 
 
 # Optional routers (strict posture; dependencies must be present for critical routes).
@@ -585,6 +447,8 @@ from somabrain.routers import (
     health_router,
     memory_router,
     neuromod_router,
+    proxy_router,
+    sleep_router,
 )
 
 app.include_router(admin_router, tags=["admin"])
@@ -592,6 +456,8 @@ app.include_router(cognitive_router, tags=["cognitive"])
 app.include_router(health_router, tags=["health"])
 app.include_router(memory_router, tags=["memory"])
 app.include_router(neuromod_router, tags=["neuromodulators"])
+app.include_router(proxy_router, tags=["proxy"])
+app.include_router(sleep_router, tags=["sleep"])
 
 # Oak-specific routes providing option management backed by Milvus.
 # The router is imported as ``oak_router`` earlier in this file.
@@ -808,102 +674,36 @@ if settings.pytest_current_test:
 BACKEND_ENFORCEMENT = False
 
 # Optional quantum layer (for HRR-based operations)
-quantum: Optional[QuantumLayer] = None
-if cfg.use_hrr:
-    try:
-        hrr_cfg = HRRConfig(
-            dim=cfg.hrr_dim,
-            seed=cfg.hrr_seed,
-            binding_method=cfg.math_binding_method,
-            sparsity=cfg.math_bhdc_sparsity,
-            binary_mode=cfg.math_bhdc_binary_mode,
-            mix=cfg.math_bhdc_mix,
-            binding_seed=cfg.math_binding_seed,
-            binding_model_version=cfg.math_binding_model_version,
-        )
-        quantum = QuantumLayer(hrr_cfg)
-    except Exception:
-        logger.exception("Failed to initialize quantum layer; HRR disabled.")
-        quantum = None
+# Factory function extracted to somabrain/bootstrap/singletons.py
+from somabrain.bootstrap.singletons import make_quantum_layer
+
+quantum: Optional[QuantumLayer] = make_quantum_layer(cfg)
 
 #
 # App-level singletons
+# Factory functions extracted to somabrain/bootstrap/singletons.py
 #
+from somabrain.bootstrap.singletons import (
+    make_predictor,
+    make_embedder_with_dim,
+    make_fd_sketch,
+    make_unified_scorer,
+)
+
 _EMBED_PROVIDER = getattr(cfg, "embed_provider", "tiny")
 _PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "mahal")
-embedder = make_embedder(cfg, quantum=quantum)
-try:
-    _EMBED_DIM = int(getattr(embedder, "dim"))
-except Exception:
-    try:
-        _EMBED_DIM = int(
-            np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
-        )
-    except Exception as exc:
-        raise RuntimeError("embedder failed to produce vector dimension") from exc
-# Ensure config reflects the actual embedder dimension at runtime
-if cfg.embed_dim != _EMBED_DIM:
-    logger.warning(
-        "config embed_dim=%s mismatch with provider dim=%s; overriding",
-        cfg.embed_dim,
-        _EMBED_DIM,
-    )
-    cfg.embed_dim = _EMBED_DIM
 
+# Create embedder and determine dimension
+embedder, _EMBED_DIM = make_embedder_with_dim(cfg, quantum=quantum)
 
-def _make_predictor() -> BudgetedPredictor:
-    """Create the configured predictor.
+# Create predictor
+predictor = make_predictor(cfg)
 
-    Disabled toy providers are no longer permitted: requesting a 'baseline'
-    provider will raise explicitly. The default provider is now
-    'mahal' (Mahalanobis).
-    """
-    provider_override = settings.predictor_provider
-    provider = str(
-        (provider_override or getattr(cfg, "predictor_provider", "mahal") or "mahal")
-    ).lower()
+# Create FD sketch (if configured)
+fd_sketch = make_fd_sketch(cfg)
 
-    if provider in ("stub", "baseline"):
-        # Always disallow toy providers — this enforces the real-backend policy.
-        raise RuntimeError(
-            "Predictor provider 'stub' is not permitted. Set SOMABRAIN_PREDICTOR_PROVIDER=mahal or llm."
-        )
-
-    if provider in ("mahal", "mahalanobis"):
-        base = MahalanobisPredictor(alpha=0.01)
-    elif provider == "slow":
-        base = SlowPredictor(delay_ms=cfg.predictor_timeout_ms * 2)
-    elif provider == "llm":
-        base = LLMPredictor(
-            endpoint=getattr(cfg, "predictor_llm_endpoint", None),
-            token=getattr(cfg, "predictor_llm_token", None),
-            timeout_ms=cfg.predictor_timeout_ms,
-        )
-    else:
-        # If an unknown provider is requested, fall back to Mahalanobis so we
-        # keep behaviour deterministic and production-ready.
-        base = MahalanobisPredictor(alpha=0.01)
-    return BudgetedPredictor(base, timeout_ms=cfg.predictor_timeout_ms)
-
-
-predictor = _make_predictor()
-fd_sketch = None
-if getattr(cfg, "salience_method", "dense").lower() == "fd":
-    fd_sketch = FDSalienceSketch(
-        dim=int(cfg.embed_dim),
-        rank=max(1, min(int(cfg.salience_fd_rank), int(cfg.embed_dim))),
-        decay=float(cfg.salience_fd_decay),
-    )
-
-unified_scorer = UnifiedScorer(
-    w_cosine=cfg.scorer_w_cosine,
-    w_fd=cfg.scorer_w_fd,
-    w_recency=cfg.scorer_w_recency,
-    weight_min=cfg.scorer_weight_min,
-    weight_max=cfg.scorer_weight_max,
-    recency_tau=cfg.scorer_recency_tau,
-    fd_backend=fd_sketch,
-)
+# Create unified scorer
+unified_scorer = make_unified_scorer(cfg, fd_sketch=fd_sketch)
 
 mt_wm = MultiTenantWM(
     dim=cfg.embed_dim,
@@ -1082,31 +882,14 @@ memory_service = _MemSvc(mt_memory, cfg.namespace)
 
 @app.on_event("startup")
 async def _start_memory_watchdog() -> None:
-    async def _watchdog_loop():
-        while True:
-            try:
-                # Attempt circuit reset periodically; updates circuit breaker metric internally
-                memory_service._reset_circuit_if_needed()
-            except Exception:
-                pass
-            await asyncio.sleep(5.0)
-
-    try:
-        task = asyncio.create_task(_watchdog_loop())
-        app.state._memory_watchdog = task
-    except Exception:
-        # best-effort; don't fail startup on watchdog init
-        pass
+    """Start the memory service watchdog loop."""
+    await lifecycle_watchdog.start_memory_watchdog(app, memory_service)
 
 
 @app.on_event("shutdown")
 async def _stop_memory_watchdog() -> None:
-    try:
-        task = getattr(app.state, "_memory_watchdog", None)
-        if task is not None:
-            task.cancel()
-    except Exception:
-        pass
+    """Stop the memory service watchdog loop."""
+    await lifecycle_watchdog.stop_memory_watchdog(app)
 
 
 # AutoScalingFractalIntelligence and ComplexityDetector extracted to somabrain/brain/
@@ -1130,16 +913,17 @@ exec_ctrl = (
     if cfg.use_exec_controller
     else None
 )
-_sleep_stop = _thr.Event()
-_sleep_thread: _thr.Thread | None = None
+# Sleep state and _sleep_loop moved to somabrain/routers/sleep.py
 
 # _milvus_metrics_for_tenant moved to somabrain/routers/health.py
 
-_sleep_last: dict[str, dict[str, float]] = {}
+# EWMA instances for monitoring (still used by other components)
 _nov_ewma = EWMA(alpha=0.05)
 _err_ewma = EWMA(alpha=0.05)
 _store_rate_ewma = EWMA(alpha=0.02)
 _act_rate_ewma = EWMA(alpha=0.02)
+
+# Drift monitor (still used by other components)
 drift_mon = (
     DriftMonitor(
         cfg.embed_dim,
@@ -1148,6 +932,8 @@ drift_mon = (
     if cfg.use_drift_monitor
     else None
 )
+
+# SDR encoder and index (still used by memory router)
 _sdr_enc = (
     SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density)
     if cfg.use_sdr_prefilter
@@ -1156,483 +942,62 @@ _sdr_enc = (
 _sdr_idx: dict[str, LSHIndex] = {}
 
 
-def _sleep_loop():
-    interval = max(0, int(cfg.sleep_interval_seconds))
-    if interval <= 0:
-        return
-    while not _sleep_stop.is_set():
-        try:
-            tenants = mt_wm.tenants() or ["public"]
-            for tid in tenants:
-                CONS.run_nrem(
-                    tid,
-                    cfg,
-                    mt_wm,
-                    mt_memory,
-                    top_k=cfg.nrem_batch_size,
-                    max_summaries=cfg.max_summaries_per_cycle,
-                )
-                _sleep_last.setdefault(tid, {})["nrem"] = _time.time()
-                CONS.run_rem(
-                    tid,
-                    cfg,
-                    mt_wm,
-                    mt_memory,
-                    recomb_rate=cfg.rem_recomb_rate,
-                    max_summaries=cfg.max_summaries_per_cycle,
-                )
-                _sleep_last.setdefault(tid, {})["rem"] = _time.time()
-        except Exception:
-            pass
-        _sleep_stop.wait(interval)
-
-
 # /health, /healthz, /diagnostics, /metrics endpoints moved to somabrain/routers/health.py
 # The health_router is included via app.include_router(health_router) above.
 
 # NOTE: The following large block of health endpoint code has been removed.
 # See somabrain/routers/health.py for the implementation.
 
-# Placeholder to maintain line references - this comment block replaces ~300 lines
-# of health endpoint code that was extracted to the health router.
+# Health endpoint code has been extracted to somabrain/routers/health.py
 
 _HEALTH_ENDPOINTS_MOVED = True  # Marker for code extraction
 
 
-if not _MINIMAL_API:
-
-    @app.get("/micro/diag")
-    async def micro_diag(request: Request):
-        require_auth(request, cfg)
-        # Retrieve tenant context
-        ctx = await get_tenant_async(request, cfg.namespace)
-        trace_id = request.headers.get("X-Request-ID") or str(id(request))
-        deadline_ms = request.headers.get("X-Deadline-MS")
-        idempotency_key = request.headers.get("X-Idempotency-Key")
-        if not cfg.use_microcircuits:
-            return {
-                "enabled": False,
-                "namespace": ctx.namespace,
-                "trace_id": trace_id,
-                "deadline_ms": deadline_ms,
-                "idempotency_key": idempotency_key,
-            }
-        try:
-            stats = mc_wm.stats(ctx.tenant_id)
-        except Exception:
-            stats = {}
-        return {
-            "enabled": True,
-            "tenant": ctx.tenant_id,
-            "columns": stats,
-            "namespace": ctx.namespace,
-            "trace_id": trace_id,
-            "deadline_ms": deadline_ms,
-            "idempotency_key": idempotency_key,
-        }
-
-    # --- Embedded service proxies (dev parity) -------------------------------
-    # These endpoints provide a stable surface for integration tests by
-    # proxying to the in-container services managed by Supervisor in the
-    # somabrain_cog container. They are lightweight and safe for dev/test.
-
-    def _cog_http_base() -> str:
-        return "http://somabrain_cog"
-
-    async def _probe_service_http(
-        path: str, port: int, *, timeout: float = 1.5
-    ) -> bool:
-        try:
-            import httpx
-
-            url = f"{_cog_http_base()}:{port}{path}"
-            async with httpx.AsyncClient(timeout=timeout) as cli:
-                r = await cli.get(url)
-                if int(getattr(r, "status_code", 0) or 0) != 200:
-                    return False
-                try:
-                    j = r.json()
-                except Exception:
-                    return True
-                return bool(j.get("ok", True)) if isinstance(j, dict) else True
-        except Exception:
-            return False
-
-    @app.get("/reward/health")
-    async def reward_health() -> dict:
-        # Prefer HTTP health of reward_producer (port 8083)
-        ok = await _probe_service_http("/health", 8083)
-        if not ok:
-            from fastapi import HTTPException as _HE
-
-            # Maintain test semantics: 404 means endpoint not mounted in this mode
-            raise _HE(
-                status_code=404,
-                detail="Embedded reward endpoint not mounted (non-dev mode)",
-            )
-        return {"ok": True}
-
-    @app.get("/learner/health")
-    async def learner_health() -> dict:
-        ok = await _probe_service_http("/health", 8084)
-        if not ok:
-            from fastapi import HTTPException as _HE
-
-            raise _HE(
-                status_code=404,
-                detail="Embedded learner endpoint not mounted (non-dev mode)",
-            )
-        return {"ok": True}
-
-    @app.post("/reward/reward/{frame_id}")
-    async def post_reward_proxy(frame_id: str, body: dict) -> dict:
-        # Forward to reward_producer HTTP in somabrain_cog on port 8083
-        try:
-            import httpx
-
-            url = f"{_cog_http_base()}:8083/reward/{frame_id}"
-            async with httpx.AsyncClient(timeout=2.0) as cli:
-                r = await cli.post(url, json=body)
-                if r.status_code == 503:
-                    # Preserve test's semantics: skip-worthy but we return 503 upstream
-                    from fastapi import HTTPException as _HE
-
-                    raise _HE(
-                        status_code=503,
-                        detail="Reward producer unavailable (Kafka not ready)",
-                    )
-                r.raise_for_status()
-                return r.json()
-        except Exception:
-            # Align with test skip semantics when the producer is not reachable
-            from fastapi import HTTPException as _HE
-
-            raise _HE(
-                status_code=503, detail="Reward producer unavailable (Kafka not ready)"
-            )
+# /micro/diag endpoint moved to somabrain/routers/cognitive.py
+# Embedded service proxies moved to somabrain/routers/proxy.py
+# /recall and /remember endpoints moved to somabrain/routers/memory.py
 
 
-# /recall and /remember endpoints have been moved to somabrain/routers/memory.py
-# They are included via: app.include_router(memory_router, tags=["memory"])
-
-
-if not _MINIMAL_API:
-
-    @app.post("/sleep/run", response_model=S.SleepRunResponse)
-    async def sleep_run(
-        body: S.SleepRunRequest, request: Request
-    ) -> S.SleepRunResponse:
-        require_auth(request, cfg)
-        # Retrieve tenant context
-        ctx = await get_tenant_async(request, cfg.namespace)
-        # Body is a Pydantic model; use attributes with defaults
-        do_nrem = getattr(body, "nrem", True) if hasattr(body, "nrem") else True
-        do_rem = getattr(body, "rem", True) if hasattr(body, "rem") else True
-        details: Dict[str, Any] = {}
-        if do_nrem:
-            details["nrem"] = CONS.run_nrem(
-                ctx.tenant_id,
-                cfg,
-                mt_wm,
-                mt_memory,
-                top_k=cfg.nrem_batch_size,
-                max_summaries=cfg.max_summaries_per_cycle,
-            )
-            _sleep_last.setdefault(ctx.tenant_id, {})["nrem"] = _time.time()
-        if do_rem:
-            details["rem"] = CONS.run_rem(
-                ctx.tenant_id,
-                cfg,
-                mt_wm,
-                mt_memory,
-                recomb_rate=cfg.rem_recomb_rate,
-                max_summaries=cfg.max_summaries_per_cycle,
-            )
-            _sleep_last.setdefault(ctx.tenant_id, {})["rem"] = _time.time()
-        run_id = f"sleep_{ctx.tenant_id}_{int(time.time() * 1000)}"
-        return S.SleepRunResponse(
-            ok=True,
-            run_id=run_id,
-            started_at_ms=int(time.time() * 1000),
-            mode=(
-                "nrem/rem"
-                if do_nrem and do_rem
-                else ("nrem" if do_nrem else ("rem" if do_rem else "none"))
-            ),
-            details=details,
-        )
-
-
-if not _MINIMAL_API:
-
-    @app.get("/sleep/status", response_model=S.SleepStatusResponse)
-    async def sleep_status(request: Request) -> S.SleepStatusResponse:
-        require_auth(request, cfg)
-        # Retrieve tenant context
-        ctx = await get_tenant_async(request, cfg.namespace)
-        ten = ctx.tenant_id
-        last = _sleep_last.get(ten, {})
-        return {
-            "enabled": bool(cfg.consolidation_enabled),
-            "interval_seconds": int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
-            "last": {"nrem": last.get("nrem"), "rem": last.get("rem")},
-        }
-
-
-if not _MINIMAL_API:
-
-    @app.get("/sleep/status/all", response_model=S.SleepStatusAllResponse)
-    async def sleep_status_all(request: Request) -> S.SleepStatusAllResponse:
-        """Admin view: list sleep status for all known tenants.
-
-        Returns { enabled, interval_seconds, tenants: { <tid>: {nrem, rem} } }
-        """
-        ctx = await get_tenant_async(request, cfg.namespace)
-        require_admin_auth(request, cfg)
-        try:
-            tenants = mt_wm.tenants() or [ctx.tenant_id or "public"]
-        except Exception:
-            tenants = [ctx.tenant_id or "public"]
-        out: dict[str, dict[str, float | None]] = {}
-        for tid in tenants:
-            last = _sleep_last.get(tid, {})
-            out[tid] = {"nrem": last.get("nrem"), "rem": last.get("rem")}
-        return {
-            "enabled": bool(cfg.consolidation_enabled),
-            "interval_seconds": int(getattr(cfg, "sleep_interval_seconds", 0) or 0),
-            "tenants": out,
-        }
+# Sleep endpoints (/sleep/run, /sleep/status, /sleep/status/all) moved to somabrain/routers/sleep.py
+# They are included via: app.include_router(sleep_router, tags=["sleep"])
 
 
 # Cognitive endpoints (/plan/suggest, /act, /personality) moved to somabrain/routers/cognitive.py
 # They are included via: app.include_router(cognitive_router, tags=["cognitive"])
 
-# Journal Admin Endpoints
-# =======================
+# Journal Admin Endpoints moved to somabrain/routers/admin.py
+# They are included via: app.include_router(admin_router, tags=["admin"])
 
-@app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
-async def admin_get_journal_stats():
-    """Get statistics about the local journal."""
-    try:
-        stats = get_journal_stats()
-        return {"success": True, "data": stats}
-    except Exception as e:
-        logger.error(f"Failed to get journal stats: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
-async def admin_list_journal_events(
-    tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    status: Optional[str] = Query(
-        None, description="Filter by status (pending|sent|failed)"
-    ),
-    topic: Optional[str] = Query(None, description="Filter by topic"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of events to return"
-    ),
-    since: Optional[str] = Query(
-        None, description="Only events after this ISO datetime"
-    ),
-):
-    """List journal events with filtering options."""
-    try:
-        since_dt = None
-        if since:
-            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-
-        events = get_journal_events(
-            tenant_id=tenant_id,
-            status=status,
-            topic=topic,
-            limit=limit,
-            since=since_dt,
-        )
-
-        return {
-            "success": True,
-            "data": {
-                "events": [
-                    {
-                        "id": ev.id,
-                        "topic": ev.topic,
-                        "tenant_id": ev.tenant_id,
-                        "status": ev.status,
-                        "retries": ev.retries,
-                        "last_error": ev.last_error,
-                        "timestamp": ev.timestamp.isoformat(),
-                    }
-                    for ev in events
-                ],
-                "count": len(events),
-            },
-        }
-    except Exception as e:
-        logger.error(f"Failed to list journal events: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
-async def admin_replay_journal_events(
-    tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of events to replay"
-    ),
-    mark_processed: bool = Query(
-        True, description="Mark replayed events as processed"
-    ),
-):
-    """Replay journal events to the database outbox."""
-    try:
-        replayed = replay_journal_events(
-            tenant_id=tenant_id, limit=limit, mark_processed=mark_processed
-        )
-
-        return {
-            "success": True,
-            "data": {
-                "replayed_count": replayed,
-                "message": f"Successfully replayed {replayed} events from journal to database",
-            },
-        }
-    except Exception as e:
-        logger.error(f"Failed to replay journal events: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
-async def admin_cleanup_journal():
-    """Clean up old journal files based on retention policy."""
-    try:
-        result = cleanup_journal()
-        return {"success": True, "data": result}
-    except Exception as e:
-        logger.error(f"Failed to cleanup journal: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
-async def admin_init_journal(
-    journal_dir: Optional[str] = Query(None, description="Journal directory path"),
-    max_file_size: Optional[int] = Query(
-        None, description="Max file size in bytes"
-    ),
-    max_files: Optional[int] = Query(None, description="Max number of files"),
-    retention_days: Optional[int] = Query(
-        None, description="Retention period in days"
-    ),
-):
-    """Initialize or reconfigure the journal."""
-    try:
-        # Get current config or create new one
-        config = JournalConfig.from_env()
-
-        # Update with provided parameters
-        if journal_dir is not None:
-            config.journal_dir = journal_dir
-        if max_file_size is not None:
-            config.max_file_size = max_file_size
-        if max_files is not None:
-            config.max_files = max_files
-        if retention_days is not None:
-            config.retention_days = retention_days
-
-        # Initialize journal with new config
-        journal = init_journal(config)
-
-        return {
-            "success": True,
-            "data": {
-                "config": {
-                    "journal_dir": config.journal_dir,
-                    "max_file_size": config.max_file_size,
-                    "max_files": config.max_files,
-                    "retention_days": config.retention_days,
-                },
-                "stats": journal.get_stats(),
-            },
-        }
-    except Exception as e:
-        logger.error(f"Failed to initialize journal: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# --- Lifecycle event handlers (delegating to somabrain/lifecycle/) ----------------
+# Health watchdog task holder for backward compatibility
+_health_watchdog_task_holder: dict = {}
 
 
 @app.on_event("startup")
 async def _init_health_watchdog():
     """Initialize health watchdog for per-tenant circuit breakers."""
-    global _health_watchdog_task
-    if cfg.memory_health_poll_interval > 0:
-        _health_watchdog_task = asyncio.create_task(_health_watchdog_coroutine())
+    await lifecycle_startup.init_health_watchdog(app, _health_watchdog_task_holder, cfg)
 
 
 @app.on_event("startup")
 async def _init_tenant_manager():
     """Initialize centralized tenant management system."""
-    try:
-        from somabrain.tenant_manager import get_tenant_manager
-
-        await get_tenant_manager()
-        logger.info("Tenant manager initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize tenant manager: {e}")
-        # Don't fail startup - tenant management can be initialized lazily
+    await lifecycle_startup.init_tenant_manager(logger)
 
 
 @app.on_event("startup")
 async def _start_outbox_sync():
-    """Launch the background outbox synchronization worker.
-
-    The worker runs forever, polling the ``outbox_events`` table and attempting
-    to forward pending rows to the external memory service. It respects the
-    ``outbox_sync_interval`` setting (seconds) and emits Prometheus metrics.
-    """
-    try:
-        # ``Config`` loads the same settings used elsewhere in the app.
-        from somabrain.config import Config
-        from somabrain.services.outbox_sync import outbox_sync_loop
-
-        cfg = Config()
-        interval = float(getattr(settings, "outbox_sync_interval", 10.0))
-        # fire‑and‑forget – FastAPI will keep the task alive as long as the app runs.
-        asyncio.create_task(outbox_sync_loop(cfg, poll_interval=interval))
-        logger.info("Outbox sync background task started (interval=%s s)", interval)
-    except Exception as exc:  # pragma: no cover – startup failures are logged
-        logger.error("Failed to start outbox sync task: %s", exc, exc_info=True)
+    """Launch the background outbox synchronization worker."""
+    await lifecycle_startup.start_outbox_sync(logger)
 
 
 @app.on_event("startup")
 async def _start_milvus_reconciliation_task():
     """Launch the Milvus reconciliation loop (Requirement 11.5)."""
-
-    interval = float(getattr(settings, "milvus_reconcile_interval", 3600.0))
-    if interval <= 0:
-        logging.getLogger("somabrain").info(
-            "Milvus reconciliation disabled (interval=%s)", interval
-        )
-        return
-
-    async def _runner() -> None:
-        log = logging.getLogger("somabrain")
-        while True:
-            try:
-                await asyncio.to_thread(milvus_reconcile)
-            except Exception as exc:
-                log.error("Milvus reconciliation run failed: %s", exc)
-            await asyncio.sleep(interval)
-
-    asyncio.create_task(_runner())
-    logging.getLogger("somabrain").info(
-        "Milvus reconciliation task started (interval=%s s)", interval
-    )
+    await lifecycle_startup.start_milvus_reconciliation_task()
 
 
 @app.on_event("shutdown")
 async def _shutdown_tenant_manager():
     """Shutdown tenant manager."""
-    try:
-        from somabrain.tenant_manager import close_tenant_manager
-
-        await close_tenant_manager()
-        logger.info("Tenant manager shutdown completed")
-    except Exception as e:
-        logger.error(f"Error shutting down tenant manager: {e}")
+    await lifecycle_watchdog.shutdown_tenant_manager(logger)
