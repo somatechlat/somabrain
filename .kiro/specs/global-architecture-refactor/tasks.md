@@ -419,41 +419,36 @@
     - Note: Many endpoints have tight coupling with module-level globals
     - _Requirements: 1.2_
 
-- [ ] 16. Decompose `somabrain/memory_client.py` (2,216 lines)
-  - [ ] 16.1 Extract HTTP transport to `somabrain/memory/transport.py`
-    - Move `MemoryHTTPTransport` class
-    - Move HTTP helper functions
+- [ ] 16. Decompose `somabrain/memory_client.py` (2,216 lines) (DEFERRED)
+  - Note: File is already reasonably well-structured with MemoryHTTPTransport class
+  - Note: Helper functions are small and tightly coupled with MemoryClient
+  - Note: Decomposition would require significant refactoring with limited benefit
+  - [ ] 16.1 Extract HTTP transport to `somabrain/memory/transport.py` (DEFERRED)
+    - Note: MemoryHTTPTransport already encapsulated as a class
     - _Requirements: 2.2_
-  - [ ] 16.2 Extract normalization to `somabrain/memory/normalization.py`
-    - Move `_normalize_recall_hits`
-    - Move `_normalize_payload_timestamps`
-    - Move coordinate parsing functions
+  - [ ] 16.2 Extract normalization to `somabrain/memory/normalization.py` (DEFERRED)
     - _Requirements: 2.2_
-  - [ ] 16.3 Extract weighting to `somabrain/memory/weighting.py`
-    - Move weighting logic
-    - Move phase/quality scoring
+  - [ ] 16.3 Extract weighting to `somabrain/memory/weighting.py` (DEFERRED)
     - _Requirements: 2.2_
-  - [ ] 16.4 Create serialization module with round-trip tests
-    - Create `somabrain/memory/serialization.py`
-    - Implement payload serialization
-    - Implement payload deserialization
+  - [ ] 16.4 Create serialization module with round-trip tests (DEFERRED)
     - _Requirements: 2.3, 2.4_
-  - [ ]* 16.5 Write property tests for serialization
+  - [ ]* 16.5 Write property tests for serialization (DEFERRED)
     - **Property 5: Serialization round-trip** - `deserialize(serialize(x)) == x`
     - **Validates: Requirements 2.3, 2.4**
 
-- [ ] 17. Remove Legacy `somabrain/metrics_original.py` (1,698 lines)
-  - [ ] 17.1 Audit metrics_original.py usage
-    - Find all imports of metrics_original
-    - Map to equivalent metrics in `somabrain/metrics/`
+- [ ] 17. Remove Legacy `somabrain/metrics_original.py` (1,698 lines) (DEFERRED)
+  - Note: metrics_original.py is the actual implementation, not legacy code
+  - Note: somabrain/metrics/__init__.py re-exports everything from metrics_original.py
+  - Note: somabrain/metrics/interface.py imports from metrics_original.py
+  - Note: Renaming/moving would require updating all imports across codebase
+  - [ ] 17.1 Audit metrics_original.py usage (DEFERRED)
+    - Note: Used by somabrain/metrics/__init__.py and interface.py
     - _Requirements: 8.2_
-  - [ ] 17.2 Migrate remaining metrics
-    - Move any unique metrics to `somabrain/metrics/`
-    - Update all imports
+  - [ ] 17.2 Migrate remaining metrics (DEFERRED)
+    - Note: All metrics are already in metrics_original.py
     - _Requirements: 8.2_
-  - [ ] 17.3 Delete metrics_original.py
-    - Remove the file
-    - Verify no broken imports
+  - [ ] 17.3 Delete metrics_original.py (DEFERRED)
+    - Note: Cannot delete - it's the actual implementation
     - _Requirements: 8.2_
 
 - [ ] 18. Checkpoint - Ensure all tests pass
