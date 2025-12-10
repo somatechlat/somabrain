@@ -103,8 +103,10 @@ def _get_app_state():
 
 def _ping(url: str) -> bool:
     """Ping a URL and return True if it responds with 2xx."""
+    # Timeout from settings, not hardcoded
+    ping_timeout = float(getattr(settings, "health_ping_timeout", 0.5) or 0.5)
     try:
-        with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
+        with urllib.request.urlopen(url, timeout=ping_timeout) as r:  # noqa: S310
             return 200 <= getattr(r, "status", 500) < 300
     except Exception:
         return False

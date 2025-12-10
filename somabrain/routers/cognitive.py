@@ -192,8 +192,11 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     # Run a single evaluation step
     wm_vec = embedder.embed(body.task) if embedder else None
 
+    # Initial novelty from config or body, not hardcoded
+    initial_novelty = float(getattr(body, "novelty", None) or getattr(cfg, "default_novelty", 0.0) or 0.0)
+
     step_result = _eval_step(
-        novelty=0.0,
+        novelty=initial_novelty,
         wm_vec=wm_vec,
         cfg=cfg,
         predictor=predictor,
@@ -204,16 +207,16 @@ async def act_endpoint(body: S.ActRequest, request: Request):
         tenant_id=ctx.tenant_id,
     )
 
-    # Build the response structure
+    # Build the response structure from step_result - no hardcoded defaults
     act_step = {
         "step": body.task,
-        "novelty": step_result.get("pred_error", 0.0),
-        "pred_error": step_result.get("pred_error", 0.0),
-        "salience": step_result.get("salience", 0.0),
+        "novelty": step_result.get("pred_error", initial_novelty),
+        "pred_error": step_result.get("pred_error", initial_novelty),
+        "salience": step_result.get("salience", getattr(cfg, "default_salience", 0.0) or 0.0),
         "stored": step_result.get("gate_store", False),
-        "wm_hits": 0,
-        "memory_hits": 0,
-        "policy": None,
+        "wm_hits": step_result.get("wm_hits", 0),
+        "memory_hits": step_result.get("memory_hits", 0),
+        "policy": step_result.get("policy"),
     }
 
     # Generate plan if planner is enabled
@@ -232,12 +235,16 @@ async def act_endpoint(body: S.ActRequest, request: Request):
         except Exception:
             plan_result = []
 
+    # Log truncation length from config
+    log_truncate_len = int(getattr(cfg, "log_task_truncate_len", 50) or 50)
+    task_preview = body.task[:log_truncate_len] if body.task else ""
+
     logger.debug(
         "%s Action executed | %s | task=%s | salience=%.3f",
         _LOG_PREFIX,
         _LOG_TENANT_FMT,
         ctx.tenant_id,
-        body.task[:50] if body.task else "",
+        task_preview,
         act_step.get("salience", 0.0),
     )
 

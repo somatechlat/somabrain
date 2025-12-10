@@ -192,21 +192,27 @@ def _score_memory_candidate(
     except Exception:
         base = 0.0
 
-    # Lexical reinforcement
+    # Lexical reinforcement - weights from settings
+    lex_exact_match = float(getattr(settings, "lex_exact_match_bonus", 0.05) or 0.05)
+    lex_partial_match = float(getattr(settings, "lex_partial_match_bonus", 0.02) or 0.02)
+    lex_token_match = float(getattr(settings, "lex_token_match_bonus", 0.01) or 0.01)
+    lex_domain_bonus = float(getattr(settings, "lex_domain_bonus", 0.02) or 0.02)
+    wm_support_factor = float(getattr(settings, "wm_support_factor", 0.05) or 0.05)
+
     lex_bonus = 0.0
     if query_lower and text_lower:
         if query_lower == text_lower:
-            lex_bonus += 0.05
+            lex_bonus += lex_exact_match
         elif query_lower in text_lower or text_lower in query_lower:
-            lex_bonus += 0.02
+            lex_bonus += lex_partial_match
         if query_tokens:
             seen_tokens = set()
             for token in query_tokens:
                 if token and token not in seen_tokens and token in text_lower:
-                    lex_bonus += 0.01
+                    lex_bonus += lex_token_match
                     seen_tokens.add(token)
     if any(k in text_lower for k in _MATH_DOMAIN_KEYWORDS):
-        lex_bonus += 0.02
+        lex_bonus += lex_domain_bonus
 
     # WM support boost
     wm_bonus = 0.0
@@ -215,7 +221,7 @@ def _score_memory_candidate(
         if support is not None:
             wm_bonus = max(wm_bonus, float(support))
     if wm_bonus > 0.0:
-        lex_bonus += 0.05 * wm_bonus
+        lex_bonus += wm_support_factor * wm_bonus
 
     score = max(0.0, base + lex_bonus)
 
@@ -637,8 +643,10 @@ async def recall(req: S.RecallRequest, request: Request):
         M.HRR_CLEANUP_USED.inc()
         M.HRR_CLEANUP_SCORE.observe(score)
 
-    # LTM recall with caching
-    cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=2048, ttl=2.0))
+    # LTM recall with caching - cache params from config
+    cache_maxsize = int(getattr(cfg, "recall_cache_maxsize", 2048) or 2048)
+    cache_ttl = float(getattr(cfg, "recall_cache_ttl", 2.0) or 2.0)
+    cache = _recall_cache.setdefault(ctx.tenant_id, TTLCache(maxsize=cache_maxsize, ttl=cache_ttl))
     ckey = f"{(universe or 'all')}:{text}:{req.top_k}"
     cached = cache.get(ckey)
 
