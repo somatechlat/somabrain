@@ -1,11 +1,17 @@
-"""Lightweight adaptation engine for utility/retrieval weights."""
+"""Lightweight adaptation engine for utility/retrieval weights.
+
+Architecture:
+    Uses DI container for state management. The TenantOverridesCache class
+    encapsulates per-tenant configuration override caching, registered with
+    the container for explicit lifecycle management.
+"""
 
 from __future__ import annotations
 
 import json
 import os
 from dataclasses import asdict, dataclass, replace
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from somabrain.feedback import Feedback
@@ -24,73 +30,116 @@ try:
 except Exception:  # pragma: no cover - optional dependency
     settings = None
 
+from somabrain.core.container import container
 from somabrain.infrastructure import get_redis_url
 
-# Module-level cache for per-tenant overrides and path used to load them
-_TENANT_OVERRIDES: dict[str, dict] | None = None
-_TENANT_OVERRIDES_PATH: str | None = None
 
-
-def _load_tenant_overrides() -> dict[str, dict]:
-    global _TENANT_OVERRIDES, _TENANT_OVERRIDES_PATH
-    path = settings.learning_tenants_file
-    # Reload if cache empty or path changed
-    if _TENANT_OVERRIDES is not None and path == _TENANT_OVERRIDES_PATH:
-        return _TENANT_OVERRIDES
-    overrides: dict[str, dict] = {}
-    # Attempt to load from YAML if available
-    if path and os.path.exists(path):
-        try:
-            import yaml
-
-            with open(path, "r", encoding="utf-8") as f:
-                data = yaml.safe_load(f) or {}
-            if isinstance(data, dict):
-                overrides = {
-                    str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
-                }
-        except Exception:
-            # Fallback to JSON parse if YAML not available or fails
+class TenantOverridesCache:
+    """Cache for per-tenant configuration overrides.
+    
+    This class encapsulates the caching logic for tenant-specific learning
+    configuration overrides. Overrides can be loaded from a YAML/JSON file
+    or from an environment variable.
+    
+    Cache Invalidation:
+        The cache is invalidated when the configured file path changes.
+        Call clear() to force a reload on next access.
+    """
+    
+    def __init__(self) -> None:
+        self._overrides: Dict[str, dict] | None = None
+        self._path: str | None = None
+    
+    def load(self) -> Dict[str, dict]:
+        """Load tenant overrides from file or environment.
+        
+        Returns cached overrides if available and path hasn't changed.
+        """
+        path = getattr(settings, "learning_tenants_file", None)
+        # Reload if cache empty or path changed
+        if self._overrides is not None and path == self._path:
+            return self._overrides
+        
+        overrides: Dict[str, dict] = {}
+        # Attempt to load from YAML if available
+        if path and os.path.exists(path):
             try:
-                import json as _json
-
+                import yaml
                 with open(path, "r", encoding="utf-8") as f:
-                    data = _json.load(f)
+                    data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
                     overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
+                        str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                     }
             except Exception:
-                overrides = {}
-    # Optional: overrides via env JSON string
-    if not overrides:
-        raw = settings.learning_tenants_overrides.strip()
-        if raw:
-            try:
-                import json as _json
+                # Fallback to JSON parse if YAML not available or fails
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    if isinstance(data, dict):
+                        overrides = {
+                            str(k): (v or {})
+                            for k, v in data.items()
+                            if isinstance(v, dict)
+                        }
+                except Exception:
+                    overrides = {}
+        
+        # Optional: overrides via env JSON string
+        if not overrides:
+            raw = getattr(settings, "learning_tenants_overrides", "") or ""
+            raw = raw.strip()
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    if isinstance(data, dict):
+                        overrides = {
+                            str(k): (v or {})
+                            for k, v in data.items()
+                            if isinstance(v, dict)
+                        }
+                except Exception:
+                    overrides = {}
+        
+        self._overrides = overrides
+        self._path = path
+        return overrides
+    
+    def get(self, tenant_id: str) -> dict:
+        """Get overrides for a specific tenant."""
+        try:
+            ov = self.load()
+            return ov.get(str(tenant_id), {})
+        except Exception:
+            return {}
+    
+    def clear(self) -> None:
+        """Clear the cache to force reload on next access."""
+        self._overrides = None
+        self._path = None
 
-                data = _json.loads(raw)
-                if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
-            except Exception:
-                overrides = {}
-    _TENANT_OVERRIDES = overrides
-    _TENANT_OVERRIDES_PATH = path
-    return overrides
+
+def _create_tenant_overrides_cache() -> TenantOverridesCache:
+    """Factory function for DI container registration."""
+    return TenantOverridesCache()
+
+
+container.register("tenant_overrides_cache", _create_tenant_overrides_cache)
+
+
+def get_tenant_overrides_cache() -> TenantOverridesCache:
+    """Get the tenant overrides cache from the DI container."""
+    return container.get("tenant_overrides_cache")
+
+
+def _load_tenant_overrides() -> Dict[str, dict]:
+    """Load tenant overrides from cache."""
+    return get_tenant_overrides_cache().load()
 
 
 def _get_tenant_override(tenant_id: str) -> dict:
-    try:
-        ov = _load_tenant_overrides()
-        return ov.get(str(tenant_id), {})
-    except Exception:
-        return {}
+    """Get overrides for a specific tenant."""
+    return get_tenant_overrides_cache().get(tenant_id)
 
 
 # Redis connection for state persistence

@@ -110,10 +110,11 @@ class DriftDetector:
             payload = {self._PERSIST_KEY: self._state}
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        except Exception:
-            # In production we would log the failure; for the lightweight
-            # implementation we silently ignore to keep the detector non‑blocking.
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to persist drift state to %s: %s", path, exc
+            )
 
     def _load_from_disk(self) -> None:
         path = Path(getattr(settings, "drift_store_path", ""))
@@ -124,9 +125,11 @@ class DriftDetector:
             if isinstance(data, dict) and self._PERSIST_KEY in data:
                 with self._lock:
                     self._state = dict(data[self._PERSIST_KEY])
-        except Exception:
-            # Corrupt files are ignored – a fresh in‑memory state will be used.
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to load drift state from %s (using fresh state): %s", path, exc
+            )
 
 
 # Export a singleton that matches the historic import pattern used throughout

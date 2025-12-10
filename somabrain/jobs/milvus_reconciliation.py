@@ -61,8 +61,8 @@ def _memory_pool():
         if runtime_mod is not None:
             try:
                 setattr(runtime_mod, "mt_memory", pool)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to cache mt_memory on runtime module: %s", exc)
     return pool
 
 

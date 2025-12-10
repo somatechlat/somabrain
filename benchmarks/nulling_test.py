@@ -5,6 +5,7 @@ Run under the project's venv with PYTHONPATH=. to validate imports and API.
 
 import numpy as np
 
+from somabrain.math import cosine_similarity
 from somabrain.numerics import irfft_norm, rfft_norm
 from somabrain.quantum import HRRConfig, QuantumLayer
 
@@ -31,12 +32,9 @@ def run_once(seed: int = 1234, D: int = 1024, null_frac: float = 0.2):
     est_robust = q.unbind(bound, b_null)
     est_wiener = q.unbind_wiener(bound, b_null)
 
-    def cosine(x, y):
-        return float(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
-
-    print("cosine_exact", cosine(a, est_exact))
-    print("cosine_robust", cosine(a, est_robust))
-    print("cosine_wiener", cosine(a, est_wiener))
+    print("cosine_exact", cosine_similarity(a, est_exact))
+    print("cosine_robust", cosine_similarity(a, est_robust))
+    print("cosine_wiener", cosine_similarity(a, est_wiener))
 
 
 if __name__ == "__main__":

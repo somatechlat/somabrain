@@ -27,6 +27,8 @@ from typing import Callable, List, Tuple, TYPE_CHECKING
 import numpy as np
 from common.config.settings import settings
 
+from somabrain.math import cosine_similarity, normalize_vector
+
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
     from .scoring import UnifiedScorer
@@ -154,28 +156,6 @@ class WorkingMemory:
             return float(default)
         return v
 
-    @staticmethod
-    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
-        """
-        Calculate cosine similarity between two vectors.
-
-        Args:
-            a (np.ndarray): First vector.
-            b (np.ndarray): Second vector.
-
-        Returns:
-            float: Cosine similarity score between 0.0 and 1.0.
-                   Returns 0.0 if either vector has zero norm.
-
-        Note:
-            Uses numpy for efficient computation with proper handling of edge cases.
-        """
-        na = float(np.linalg.norm(a))
-        nb = float(np.linalg.norm(b))
-        if na <= 0 or nb <= 0:
-            return 0.0
-        return float(np.dot(a, b) / (na * nb))
-
     def admit(
         self,
         vector: np.ndarray,
@@ -204,9 +184,7 @@ class WorkingMemory:
                 vector = np.concatenate([vector, pad])
             else:
                 vector = vector[: self.dim]
-        n = float(np.linalg.norm(vector))
-        if n > 0:
-            vector = vector / n
+        vector = normalize_vector(vector, dtype=np.float32)
         self._t += 1
         now = self._now()
         overlap = 0.0
@@ -240,7 +218,7 @@ class WorkingMemory:
         recency = 1.0
         if self._items:
             recent = self._items[-1]
-            recency = max(0.0, 1.0 - self._cosine(query_vec, recent.vector))
+            recency = max(0.0, 1.0 - cosine_similarity(query_vec, recent.vector))
         s = (
             self.alpha * float(novelty)
             + self.beta * float(reward)
@@ -296,7 +274,7 @@ class WorkingMemory:
         scored: List[Tuple[float, dict]] = []
         now = self._now()
         for it in self._items:
-            cos = self._cosine(query_vec, it.vector)
+            cos = cosine_similarity(query_vec, it.vector)
             if self._scorer is not None:
                 steps = self._recency_steps(now, it.admitted_at)
                 s = self._scorer.score(
@@ -339,7 +317,7 @@ class WorkingMemory:
             return 1.0
         best = 0.0
         for it in self._items:
-            best = max(best, self._cosine(query_vec, it.vector))
+            best = max(best, cosine_similarity(query_vec, it.vector))
         return max(0.0, 1.0 - best)
 
     def _recency_steps(self, now: float, admitted_at: float) -> float:

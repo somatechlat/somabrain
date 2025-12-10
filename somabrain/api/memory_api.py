@@ -4,20 +4,29 @@ Provides FastAPI endpoints for governed memory read/write operations against the
 real runtime singletons (working memory + multi-tenant memory pool). The
 endpoints are thin wrappers that keep all logic inside the production services
 so they stay in sync with the main application surface.
+
+Architecture:
+    Uses DI container for state management. The RecallSessionStore class
+    encapsulates session management with TTL-based expiration, registered
+    with the container for explicit lifecycle management.
 """
 
 from __future__ import annotations
 
 import copy
+import logging
 import time
 import uuid
 from threading import RLock
 from typing import Any, Dict, List, Optional, Tuple, Annotated
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Query, Request, Body
 from pydantic import BaseModel, Field
 
+from somabrain.core.container import container
 from somabrain.metrics import (
     observe_recall_latency,
     record_memory_snapshot,
@@ -42,9 +51,80 @@ from somabrain.db import outbox as outbox_db
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
-_RECALL_SESSIONS: Dict[str, Dict[str, Any]] = {}
-_RECALL_SESSION_LOCK = RLock()
-_RECALL_SESSION_TTL_SECONDS = 900
+
+class RecallSessionStore:
+    """Thread-safe store for recall sessions with TTL-based expiration.
+    
+    This class encapsulates the session management logic that was previously
+    using module-level global state. Sessions are stored in-memory with
+    automatic pruning of expired entries.
+    
+    Thread Safety:
+        All operations are protected by a reentrant lock to ensure thread safety.
+    """
+    
+    def __init__(self, ttl_seconds: int = 900) -> None:
+        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._lock = RLock()
+        self._ttl_seconds = ttl_seconds
+    
+    def store(
+        self,
+        session_id: str,
+        tenant: str,
+        namespace: str,
+        conversation_id: Optional[str],
+        scoring_mode: Optional[str],
+        results: List[Any],
+    ) -> None:
+        """Store a recall session with results."""
+        payload = {
+            "session_id": session_id,
+            "tenant": tenant,
+            "namespace": namespace,
+            "conversation_id": conversation_id,
+            "scoring_mode": scoring_mode,
+            "created_at": time.time(),
+            "results": [item.dict() if hasattr(item, "dict") else item for item in results],
+        }
+        with self._lock:
+            self._sessions[session_id] = payload
+    
+    def get(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """Get a session by ID, or None if not found."""
+        with self._lock:
+            return self._sessions.get(session_id)
+    
+    def prune(self) -> None:
+        """Remove expired sessions."""
+        now = time.time()
+        with self._lock:
+            expired = [
+                session_id
+                for session_id, state in self._sessions.items()
+                if now - state.get("created_at", 0.0) > self._ttl_seconds
+            ]
+            for session_id in expired:
+                self._sessions.pop(session_id, None)
+    
+    def clear(self) -> None:
+        """Clear all sessions (for testing)."""
+        with self._lock:
+            self._sessions.clear()
+
+
+def _create_recall_session_store() -> RecallSessionStore:
+    """Factory function for DI container registration."""
+    return RecallSessionStore(ttl_seconds=900)
+
+
+container.register("recall_session_store", _create_recall_session_store)
+
+
+def get_recall_session_store() -> RecallSessionStore:
+    """Get the recall session store from the DI container."""
+    return container.get("recall_session_store")
+
 
 _TIERED_REGISTRY = TieredMemoryRegistry()
 
@@ -63,8 +143,8 @@ def _handle_config_event(event) -> None:
             sparsity=metrics.get("sparsity"),
             config_version=event.version,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to record memory snapshot for config event: %s", e)
 
 
 register_config_listener(_handle_config_event)
@@ -398,15 +478,8 @@ def _serialize_coord(coord: Any) -> Optional[List[float]]:
 
 
 def _prune_sessions() -> None:
-    now = time.time()
-    with _RECALL_SESSION_LOCK:
-        expired = [
-            session_id
-            for session_id, state in _RECALL_SESSIONS.items()
-            if now - state.get("created_at", 0.0) > _RECALL_SESSION_TTL_SECONDS
-        ]
-        for session_id in expired:
-            _RECALL_SESSIONS.pop(session_id, None)
+    """Prune expired recall sessions from the store."""
+    get_recall_session_store().prune()
 
 
 def _compose_memory_payload(
@@ -493,17 +566,15 @@ def _store_recall_session(
     scoring_mode: Optional[str],
     results: List[MemoryRecallItem],
 ) -> None:
-    payload = {
-        "session_id": session_id,
-        "tenant": tenant,
-        "namespace": namespace,
-        "conversation_id": conversation_id,
-        "scoring_mode": scoring_mode,
-        "created_at": time.time(),
-        "results": [item.dict() for item in results],
-    }
-    with _RECALL_SESSION_LOCK:
-        _RECALL_SESSIONS[session_id] = payload
+    """Store a recall session with results."""
+    get_recall_session_store().store(
+        session_id=session_id,
+        tenant=tenant,
+        namespace=namespace,
+        conversation_id=conversation_id,
+        scoring_mode=scoring_mode,
+        results=results,
+    )
 
 
 @router.post("/remember", response_model=MemoryWriteResponse)
@@ -567,12 +638,13 @@ async def remember_memory(
 
     try:
         items = len(wm.items(payload.tenant))
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to get WM items count: %s", e)
         items = 0
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to record memory snapshot: %s", e)
 
     signal_feedback = MemorySignalFeedback(
         importance=signal_data.get("importance"),
@@ -698,8 +770,8 @@ async def remember_memory_batch(
         if coordinate is not None:
             try:
                 ctx["payload"]["coordinate"] = coordinate
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to set coordinate on payload: %s", e)
 
         promoted_to_wm = False
         if ctx["vector"] is not None:
@@ -750,12 +822,13 @@ async def remember_memory_batch(
 
     try:
         items = len(wm.items(payload.tenant))
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to get WM items count for batch: %s", e)
         items = 0
     try:
         record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to record memory snapshot for batch: %s", e)
 
     return MemoryBatchWriteResponse(
         ok=True,
@@ -879,8 +952,8 @@ async def _perform_recall(
                 from somabrain import metrics as M
 
                 M.RECALL_WM_LAT.labels(cohort="memory_api").observe(stage_dur)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to record WM recall latency metric: %s", e)
             for score, item_payload in hits:
                 if not isinstance(item_payload, dict):
                     continue
@@ -895,8 +968,8 @@ async def _perform_recall(
                     wm_hits.append(item)
         except HTTPException:
             raise
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("WM recall failed: %s", e)
 
     if layer in {"ltm", "all"}:
         pool = _get_memory_pool()
@@ -920,8 +993,8 @@ async def _perform_recall(
             from somabrain import metrics as M
 
             M.RECALL_LTM_LAT.labels(cohort="memory_api").observe(stage_dur)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to record LTM recall latency metric: %s", e)
         for hit in hits:
             payload_obj = getattr(hit, "payload", None)
             if not isinstance(payload_obj, dict):
@@ -1005,8 +1078,8 @@ async def _perform_recall(
     duration = time.perf_counter() - start
     try:
         observe_recall_latency(payload.namespace, duration)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to observe recall latency: %s", e)
 
     current_session = payload.session_id or str(uuid.uuid4())
     _prune_sessions()
@@ -1028,8 +1101,8 @@ async def _perform_recall(
                 eta=tiered_eta_value,
                 sparsity=tiered_sparsity_value,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to record tiered memory snapshot: %s", e)
 
     top_confidence = 0.0
     if all_results:
@@ -1050,8 +1123,8 @@ async def _perform_recall(
                 latency_p95_ms=duration * 1000.0,
             )
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to submit metrics snapshot: %s", e)
 
     # Cutover functionality has been removed; shadow metrics are no longer recorded.
 
@@ -1291,8 +1364,8 @@ async def recall_memory(
         from somabrain import metrics as M
 
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to increment recall requests metric: %s", e)
 
     # Prepare response
     return MemoryRecallResponse(
@@ -1336,8 +1409,7 @@ async def recall_memory_stream(
 @router.get("/context/{session_id}", response_model=MemoryRecallSessionResponse)
 async def get_recall_session(session_id: str) -> MemoryRecallSessionResponse:
     _prune_sessions()
-    with _RECALL_SESSION_LOCK:
-        state = _RECALL_SESSIONS.get(session_id)
+    state = get_recall_session_store().get(session_id)
     if state is None:
         raise HTTPException(status_code=404, detail="session not found or expired")
     results = [MemoryRecallItem(**item) for item in state.get("results", [])]
@@ -1372,8 +1444,8 @@ async def memory_metrics(
     # No local outbox/journal; fail-fast semantics only
     try:
         record_memory_snapshot(tenant, namespace, items=wm_items)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("Failed to record memory snapshot for metrics endpoint: %s", e)
 
     return MemoryMetricsResponse(
         tenant=tenant,

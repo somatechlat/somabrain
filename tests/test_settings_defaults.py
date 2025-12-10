@@ -73,6 +73,9 @@ def test_no_direct_getenv_outside_settings() -> None:
             continue
         if path.name.endswith("_pb2.py") or "/.venv/" in str(path):
             continue
+        # Allow test files to use os.getenv for test configuration
+        if "/tests/" in str(path) or str(path).startswith(str(root / "tests")):
+            continue
         text = path.read_text(encoding="utf-8", errors="ignore")
         if "os.getenv(" in text:
             offenders.append(str(path))

@@ -74,7 +74,8 @@ class DriftMonitor:
         var = self.M2 / max(1, self.n - 1)
         std = np.sqrt(np.maximum(var, 1e-9))
         z = (x - self.mean) / std
-        score = float(np.linalg.norm(z))
+        # Compute z-score norm (not unit normalization, just L2 norm of z-scores)
+        score = float(np.sqrt(np.sum(z * z)))
         try:
             DRIFT_SCORE.observe(max(0.0, score))
             if score >= float(self.cfg.threshold):

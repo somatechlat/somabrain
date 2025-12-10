@@ -7,12 +7,26 @@ Prometheus client library. Metrics are organized by domain:
 - memory.py: Memory operation metrics (WM, LTM, retrieval)
 - learning.py: Adaptation, tau, entropy, neuromodulator metrics
 - scorer.py: Scorer component metrics
+- interface.py: Protocol-based interface for dependency injection
 
 All metrics are re-exported from this module for backward compatibility:
     from somabrain.metrics import HTTP_COUNT, WM_HITS, ...
+
+For new code, prefer using the interface module to avoid circular imports:
+    from somabrain.metrics.interface import MetricsInterface, get_metrics
 """
 
 from __future__ import annotations
+
+# Export the interface module for dependency injection
+from somabrain.metrics.interface import (
+    MetricsInterface,
+    NullMetrics,
+    PrometheusMetrics,
+    get_metrics,
+    set_metrics,
+    reset_metrics,
+)
 
 # Re-export everything from the original metrics module for backward compatibility
 # This ensures existing imports continue to work
@@ -119,6 +133,13 @@ from somabrain.metrics_original import (
 )
 
 __all__ = [
+    # Interface (for dependency injection)
+    "MetricsInterface",
+    "NullMetrics",
+    "PrometheusMetrics",
+    "get_metrics",
+    "set_metrics",
+    "reset_metrics",
     # Registry
     "registry",
     "Counter",

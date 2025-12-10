@@ -199,13 +199,13 @@ class SegmentationService:
                         labelnames=["tenant"],
                     ).labels(tenant=self.tenant).set(1 if HMM_ENABLED else 0)
                     update_metrics(self.tenant, f1, false_rate, mean_latency)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Failed to update segmentation metrics: %s", exc)
         finally:
             try:
                 self.consumer.close()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Failed to close Kafka consumer: %s", exc)
 
 
 # ---------------------------------------------------------------------------

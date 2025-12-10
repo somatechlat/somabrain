@@ -42,6 +42,8 @@ from typing import Optional, Protocol
 
 import numpy as np
 
+from somabrain.math import cosine_error as _canonical_cosine_error
+
 
 @dataclass
 class PredictionResult:
@@ -88,28 +90,11 @@ class BasePredictor(Protocol):
 
 
 def cosine_error(a: np.ndarray, b: np.ndarray) -> float:
+    """Compute cosine error between two vectors.
+    
+    Delegates to canonical implementation in somabrain.math.similarity.
     """
-    Compute cosine error between two vectors.
-
-    Calculates 1 - cosine_similarity, providing an error metric where
-    0 indicates identical vectors and 1 indicates orthogonal vectors.
-
-    Args:
-        a (np.ndarray): First vector.
-        b (np.ndarray): Second vector.
-
-    Returns:
-        float: Cosine error in [0,1].
-
-    Note:
-        Returns 1.0 for zero-length vectors to avoid division by zero.
-    """
-    na = float(np.linalg.norm(a))
-    nb = float(np.linalg.norm(b))
-    if na <= 0 or nb <= 0:
-        return 1.0
-    sim = float(np.dot(a, b) / (na * nb))
-    return float(max(0.0, 1.0 - sim))
+    return _canonical_cosine_error(a, b)
 
 
 class SlowPredictor:

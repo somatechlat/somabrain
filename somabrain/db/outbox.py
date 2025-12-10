@@ -257,8 +257,11 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
         if report_outbox_replayed is not None and count > 0:
             try:
                 report_outbox_replayed(tenant_label, count)
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).debug(
+                    "Failed to report outbox replayed for tenant=%s: %s", tenant_label, exc
+                )
 
         return count
 
@@ -306,8 +309,11 @@ def mark_tenant_events_for_replay(
         if report_outbox_replayed is not None and count > 0:
             try:
                 report_outbox_replayed(tenant_id, count)
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).debug(
+                    "Failed to report outbox replayed for tenant=%s: %s", tenant_id, exc
+                )
 
         return count
 

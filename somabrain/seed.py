@@ -47,10 +47,12 @@ def random_unit_vector(
     dim: int, seed: Optional[Union[int, str, bytes]] = None, dtype=np.float32
 ) -> np.ndarray:
     """Return a random unit-length vector (L2-normalized) of shape (dim,)."""
+    from somabrain.math import normalize_vector
+    
     rng = rng_from_seed(seed)
     v = rng.standard_normal(size=(dim,)).astype(dtype)
-    norm = float(np.linalg.norm(v))
-    if norm == 0:
-        v[0] = 1.0
-        norm = 1.0
-    return (v / norm).astype(dtype)
+    result = normalize_vector(v, dtype=dtype)
+    # Handle edge case where all zeros (extremely unlikely with normal distribution)
+    if float(np.linalg.norm(result)) == 0:
+        result[0] = 1.0
+    return result

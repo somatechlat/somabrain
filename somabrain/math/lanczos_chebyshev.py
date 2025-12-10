@@ -23,14 +23,15 @@ def estimate_spectral_interval(
     m: number of Lanczos steps (small, e.g., 16)
     returns: (a,b) estimated min and max eigenvalues
     """
+    from somabrain.math import normalize_vector
+    
     if m <= 0:
         raise ValueError("m must be >= 1")
     q = np.zeros((n, m + 1), dtype=float)
     alphas = np.zeros(m, dtype=float)
     betas = np.zeros(m, dtype=float)
     rng = np.random.default_rng()
-    q[:, 0] = rng.normal(size=n)
-    q[:, 0] /= np.linalg.norm(q[:, 0])
+    q[:, 0] = normalize_vector(rng.normal(size=n), dtype=np.float64)
     for j in range(m):
         z = apply_A(q[:, j])
         alpha = np.dot(q[:, j], z)
@@ -113,11 +114,12 @@ def lanczos_expv(
     This is robust for small-to-moderate m and avoids needing Chebyshev
     coefficient estimation. Returns ||x|| * V * exp(-t T) e1.
     """
+    from somabrain.math import safe_normalize
+    
     n = x.shape[0]
-    normx = np.linalg.norm(x)
+    v, normx = safe_normalize(x, dtype=np.float64)
     if normx == 0:
         return np.zeros_like(x)
-    v = x / normx
     V = np.zeros((n, m), dtype=float)
     alphas = np.zeros(m, dtype=float)
     betas = np.zeros(m, dtype=float)

@@ -103,8 +103,8 @@ async def outbox_sync_loop(cfg: Config, poll_interval: float = 10.0) -> None:
                         per_tenant[tid] = per_tenant.get(tid, 0) + 1
                     for tid, cnt in per_tenant.items():
                         report_outbox_pending(tid, cnt)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Failed to update outbox pending metrics: %s", exc)
 
                 success_cnt = 0
                 for ev in pending:

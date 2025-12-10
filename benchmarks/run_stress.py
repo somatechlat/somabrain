@@ -10,6 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
+from somabrain.math import cosine_similarity
+
 OUT = Path(__file__).resolve().parent / "results_stress.json"
 
 
@@ -53,15 +55,6 @@ def run_stress(metrics_sink: str | None = None):
                 a_exact = q.unbind_exact_unitary(c_noisy, role_token)
                 a_wien = q.unbind_wiener(c_noisy, role_token, snr_db=snr_db)
 
-                def cosine(a1, b1):
-                    a1 = a1.astype(np.float64)
-                    b1 = b1.astype(np.float64)
-                    na = float(np.linalg.norm(a1))
-                    nb = float(np.linalg.norm(b1))
-                    if na == 0 or nb == 0:
-                        return 0.0
-                    return float(np.dot(a1, b1) / (na * nb))
-
                 all_rows.append(
                     {
                         "D": D,
@@ -69,11 +62,11 @@ def run_stress(metrics_sink: str | None = None):
                         "snr_db": float(snr_db),
                         "mean_power": mean_power,
                         "exact": {
-                            "cosine": cosine(a, a_exact),
+                            "cosine": cosine_similarity(a, a_exact),
                             "mse": float(np.mean((a - a_exact) ** 2)),
                         },
                         "wiener": {
-                            "cosine": cosine(a, a_wien),
+                            "cosine": cosine_similarity(a, a_wien),
                             "mse": float(np.mean((a - a_wien) ** 2)),
                         },
                     }

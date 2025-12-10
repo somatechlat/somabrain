@@ -1,4 +1,11 @@
-"""Evaluate/Feedback endpoints for SomaBrain."""
+"""Evaluate/Feedback endpoints for SomaBrain.
+
+Architecture:
+    Uses DI container for state management. The ContextRouteState class
+    encapsulates feedback store, token ledger, adaptation engines, and
+    rate limiting state, registered with the container for explicit
+    lifecycle management.
+"""
 
 from __future__ import annotations
 
@@ -6,11 +13,12 @@ import time
 import uuid
 import collections
 from dataclasses import asdict
-from typing import Optional
+from typing import Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
+from somabrain.core.container import container
 from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import (
     auth_guard,
@@ -51,6 +59,113 @@ from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
 
 
+class ContextRouteState:
+    """Encapsulates context route state for DI container management.
+    
+    This class holds:
+    - FeedbackStore (lazy-initialized)
+    - TokenLedger (lazy-initialized)
+    - Per-tenant AdaptationEngine cache
+    - Feedback counter
+    - Rate limiting windows
+    
+    Thread Safety:
+        The state uses simple dict operations which are atomic in CPython.
+        For production use with multiple threads, consider adding explicit
+        locking if state consistency is critical.
+    """
+    
+    def __init__(self) -> None:
+        self._feedback_store: Optional[FeedbackStore] = None
+        self._token_ledger: Optional[TokenLedger] = None
+        self._adaptation_engines: Dict[str, AdaptationEngine] = {}
+        self._feedback_counter: int = 0
+        self._feedback_rate_window: Dict[str, collections.deque] = collections.defaultdict(collections.deque)
+    
+    def get_feedback_store(self) -> FeedbackStore:
+        """Get or create the FeedbackStore instance."""
+        if self._feedback_store is None:
+            self._feedback_store = FeedbackStore()
+        return self._feedback_store
+    
+    def get_token_ledger(self) -> TokenLedger:
+        """Get or create the TokenLedger instance."""
+        if self._token_ledger is None:
+            self._token_ledger = TokenLedger()
+        return self._token_ledger
+    
+    def get_adaptation_engine(
+        self,
+        builder,
+        planner: ContextPlanner,
+        tenant_id: str = "default",
+    ) -> AdaptationEngine:
+        """Get or create a per-tenant AdaptationEngine instance."""
+        if tenant_id not in self._adaptation_engines:
+            adaptation = AdaptationEngine(
+                retrieval=builder.weights,
+                utility=planner.utility_weights,
+                tenant_id=tenant_id,
+                enable_dynamic_lr=True,
+            )
+            self._adaptation_engines[tenant_id] = adaptation
+        return self._adaptation_engines[tenant_id]
+    
+    @property
+    def feedback_counter(self) -> int:
+        """Get the current feedback counter value."""
+        return self._feedback_counter
+    
+    @feedback_counter.setter
+    def feedback_counter(self, value: int) -> None:
+        """Set the feedback counter value."""
+        self._feedback_counter = value
+    
+    def increment_feedback_counter(self) -> int:
+        """Increment and return the feedback counter."""
+        self._feedback_counter += 1
+        return self._feedback_counter
+    
+    def enforce_rate_limit(self, tenant_id: str) -> None:
+        """Enforce per-tenant rate limiting for feedback requests."""
+        limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
+        if limit <= 0:
+            return
+        now = time.time()
+        window = self._feedback_rate_window[tenant_id]
+        # Trim entries older than 60 seconds
+        while window and now - window[0] > 60.0:
+            window.popleft()
+        if len(window) >= limit:
+            raise HTTPException(
+                status_code=429,
+                detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
+            )
+        window.append(now)
+    
+    def reset(self) -> None:
+        """Reset all state (for testing)."""
+        self._feedback_store = None
+        self._token_ledger = None
+        self._adaptation_engines.clear()
+        self._feedback_counter = 0
+        self._feedback_rate_window.clear()
+
+
+def _create_context_route_state() -> ContextRouteState:
+    """Factory function for DI container registration."""
+    return ContextRouteState()
+
+
+# Register with DI container
+container.register("context_route_state", _create_context_route_state)
+
+
+def get_context_route_state() -> ContextRouteState:
+    """Get the context route state from the DI container."""
+    return container.get("context_route_state")
+
+
 # Register Prometheus gauges for each feature flag so they are exposed via
 # ``/metrics``. ``_metrics.get_gauge`` returns an existing gauge if one was
 # already created, making this safe to call multiple times (e.g., on module
@@ -66,73 +181,31 @@ def _register_flag_gauges() -> None:
         gauge.labels(flag=name).set(1 if enabled else 0)
 
 
-# Initialise gauges at import time.
 _register_flag_gauges()
 
 router = APIRouter()
-_feedback_rate_window = collections.defaultdict(collections.deque)
 
 
 def _enforce_feedback_rate_limit(tenant_id: str) -> None:
-    """Simple per-tenant sliding-window limiter (requests per minute)."""
-    limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
-    if limit <= 0:
-        return
-    now = time.time()
-    window = _feedback_rate_window[tenant_id]
-    # Trim entries older than 60 seconds
-    while window and now - window[0] > 60.0:
-        window.popleft()
-    if len(window) >= limit:
-        raise HTTPException(
-            status_code=429,
-            detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
-        )
-    window.append(now)
-
-
-# ---------------------------------------------------------------------------
-# Feature‑flags endpoint (centralised view)
-# ---------------------------------------------------------------------------
+    """Enforce per-tenant rate limiting for feedback requests."""
+    get_context_route_state().enforce_rate_limit(tenant_id)
 
 
 @router.get("/feature-flags")
 def feature_flags_endpoint() -> dict:
-    """Expose the current feature‑flag status.
-
-    The source of truth is ``FeatureFlags.get_status()`` which reads the
-    central ``somabrain.modes`` configuration and any runtime overrides.
-    Gauges are refreshed on each request to ensure Prometheus reflects the
-    latest flag values.
-    """
-    # Refresh gauges in case overrides have changed since import time.
+    """Expose the current feature-flag status."""
     _register_flag_gauges()
     return FeatureFlags.get_status()
 
 
-# Store initialization is lazy to avoid import-time failures that would
-# prevent the router from registering (and thus 404 the entire /context API).
-_feedback_store = None
-_token_ledger = None
-
-
 def _get_feedback_store() -> FeedbackStore:
-    global _feedback_store
-    if _feedback_store is None:
-        # Best-effort init; let endpoint-level try/except surface clear errors
-        _feedback_store = FeedbackStore()
-    return _feedback_store
+    """Get the FeedbackStore instance from DI container."""
+    return get_context_route_state().get_feedback_store()
 
 
 def _get_token_ledger() -> TokenLedger:
-    global _token_ledger
-    if _token_ledger is None:
-        _token_ledger = TokenLedger()
-    return _token_ledger
-
-
-# Global counter for feedback applications across requests
-_feedback_counter = 0
+    """Get the TokenLedger instance from DI container."""
+    return get_context_route_state().get_token_ledger()
 
 
 @router.post("/evaluate", response_model=EvaluateResponse)
@@ -264,12 +337,12 @@ async def feedback_endpoint(
         },
     }
     applied = adapter.apply_feedback(utility=payload.utility, reward=payload.reward)
-    # Increment global feedback counter if adaptation was applied
-    global _feedback_counter
+    # Increment feedback counter if adaptation was applied
+    route_state = get_context_route_state()
     if applied:
         adapter_count = getattr(adapter, "_feedback_count", 0)
-        # Track the highest observed count from either the adapter or module-level counter.
-        _feedback_counter = max(_feedback_counter + 1, adapter_count)
+        # Track the highest observed count from either the adapter or state counter.
+        route_state.feedback_counter = max(route_state.increment_feedback_counter(), adapter_count)
 
         # Record metrics on successful feedback application
         record_learning_feedback_applied(tenant_id)
@@ -376,7 +449,7 @@ async def feedback_endpoint(
         store = _get_feedback_store()
         store_total = store.total_count()
         adapter_total = getattr(adapter, "_feedback_count", 0)
-        _feedback_counter = max(_feedback_counter, adapter_total, store_total)
+        route_state.feedback_counter = max(route_state.feedback_counter, adapter_total, store_total)
 
     # Record feedback latency
     elapsed = time.perf_counter() - start_time
@@ -393,26 +466,19 @@ def _constitution_checksum() -> Optional[str]:
     return engine.get_checksum()
 
 
+# Backward compatibility: module-level reference (deprecated)
 _adaptation_engines: dict[str, AdaptationEngine] = {}
 
 
 def _get_adaptation(
     builder, planner: ContextPlanner, tenant_id: str = "default"
 ) -> AdaptationEngine:
+    """Get or create a per-tenant AdaptationEngine instance.
+    
+    Each tenant maintains independent learning state. Uses DI container
+    for state management.
     """
-    Get or create a per-tenant AdaptationEngine instance.
-    Each tenant maintains independent learning state.
-    """
-    global _adaptation_engines
-    if tenant_id not in _adaptation_engines:
-        adaptation = AdaptationEngine(
-            retrieval=builder.weights,
-            utility=planner.utility_weights,
-            tenant_id=tenant_id,
-            enable_dynamic_lr=True,  # Enable neuromod-driven learning rate
-        )
-        _adaptation_engines[tenant_id] = adaptation
-    return _adaptation_engines[tenant_id]
+    return get_context_route_state().get_adaptation_engine(builder, planner, tenant_id)
 
 
 def _make_event_id(session_id: str) -> str:
@@ -453,12 +519,13 @@ async def adaptation_state_endpoint(
     gains_state = AdaptationGainsState(**asdict(adapter._gains))
     constraints_state = AdaptationConstraintsState(**asdict(adapter._constraint_bounds))
     # Access protected members for observability (history length, lr)
-    # Use the module‑level feedback counter for a clean monotonic metric.
+    # Use the DI container state for a clean monotonic metric.
     # The counter is incremented on each successful feedback application.
+    route_state = get_context_route_state()
     adapter_count = getattr(adapter, "_feedback_count", 0)
     store = _get_feedback_store()
     store_total = int(store.total_count())
-    history_len = max(int(_feedback_counter), int(adapter_count), int(store_total))
+    history_len = max(int(route_state.feedback_counter), int(adapter_count), int(store_total))
     learning_rate = float(getattr(adapter, "_lr", 0.0))
     return AdaptationStateResponse(
         retrieval=retrieval_state,
@@ -574,9 +641,8 @@ async def adaptation_reset_endpoint(
         clear_history=bool(payload.reset_history),
     )
 
-    # Reset global counter view as well so state.history_len starts at 0
-    global _feedback_counter
-    _feedback_counter = 0
+    # Reset counter view as well so state.history_len starts at 0
+    get_context_route_state().feedback_counter = 0
 
     audit.publish_event(
         {

@@ -77,9 +77,13 @@ COPY proto /app/proto
 # ---------------------------------------------------------------------------
 # The entrypoint expects /app/scripts/start_server.py to launch the FastAPI
 # application. The original source resides in the repository's scripts/ folder
-# but is excluded from the build context via .dockerignore. We copy the single
-# required file explicitly.
+# but is excluded from the build context via .dockerignore. We copy the
+# required files explicitly.
 COPY scripts/start_server.py /app/scripts/start_server.py
+# Kafka smoke test is required by docker-entrypoint.sh for health checks
+COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
+# Runtime initialization script for setting up singletons before app start
+COPY scripts/initialize_runtime.py /app/scripts/initialize_runtime.py
 
 # Belt-and-suspenders: write the hippocampus module directly to the image to
 # avoid any context filtering issues. This mirrors the in-repo file exactly.

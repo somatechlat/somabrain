@@ -93,12 +93,11 @@ class TinyDeterministicEmbedder:
         The same text will always produce the same embedding vector.
         Mathematical invariant: always unit-norm, HRR_DTYPE, reproducible.
         """
+        from somabrain.math import normalize_vector
+        
         rng = np.random.default_rng(self._seed(text))
         v = rng.normal(0.0, 1.0, size=self.dim).astype("float32")
-        n = np.linalg.norm(v)
-        if n > 0:
-            v /= n
-        return v.astype("float32")
+        return normalize_vector(v, dtype=np.float32)
 
 
 class _JLProjector:
@@ -174,16 +173,15 @@ class _JLProjector:
         Returns:
             np.ndarray: Embedding vector, potentially reduced in dimensionality.
         """
+        from somabrain.math import normalize_vector
+        
         v = self.base(text)
         if self.k is None or self.k >= self.base_dim:
             return v
         self._ensure_P()
         P = self._P
         out = (v @ P).astype("float32")
-        n = np.linalg.norm(out)
-        if n > 0:
-            out /= n
-        return out
+        return normalize_vector(out, dtype=np.float32)
 
 
 class _CachedEmbedder:

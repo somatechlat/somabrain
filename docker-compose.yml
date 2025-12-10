@@ -143,11 +143,11 @@ services:
       # Expose only the EXTERNAL listener container port to the host
       - "${KAFKA_BROKER_HOST_PORT:-30102}:${KAFKA_BROKER_EXTERNAL_CONTAINER_PORT:-9094}"
     healthcheck:
-      test: [ "CMD", "bash", "-c", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server somabrain_kafka:${KAFKA_BROKER_CONTAINER_PORT} >/dev/null 2>&1" ]
-      interval: 20s
-      timeout: 20s
-      start_period: 60s
-      retries: 6
+      test: [ "CMD-SHELL", "bash -c 'echo > /dev/tcp/::1/9092' 2>/dev/null || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 10
     networks:
       - somabrain_net
 
@@ -195,7 +195,7 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${SCHEMA_REGISTRY_HOST_PORT:-30008}:8081"
+      - "${SCHEMA_REGISTRY_HOST_PORT:-30108}:8081"
     healthcheck:
       test: [ "CMD", "wget", "-qO", "/dev/null", "http://localhost:8081/subjects" ]
       interval: 30s
@@ -287,11 +287,11 @@ services:
     networks:
       - somabrain_net
     ports:
-      - "${JAEGER_HOST_PORT:-30011}:16686"
-      - "14250:14250"
-      - "14268:14268"
-      - "4317:4317"
-      - "4318:4318"
+      - "${JAEGER_HOST_PORT:-30111}:16686"
+      - "30112:14250"
+      - "30113:14268"
+      - "30114:4317"
+      - "30117:4318"
     environment:
       # Production-like Jaeger configuration (memory storage for constrained local dev)
       COLLECTOR_OTLP_ENABLED: "true"
@@ -473,7 +473,7 @@ services:
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
       # Disable Kafka readiness check for local dev (scripts/kafka_smoke_test.py not included)
     ports:
-      - "${SOMABRAIN_HOST_PORT:-9696}:${SOMABRAIN_PORT:-9696}"
+      - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-9696}"
     healthcheck:
       test: [ "CMD-SHELL", "curl -f http://localhost:${SOMABRAIN_PORT}/health || exit 1" ]
       interval: 30s
@@ -680,8 +680,8 @@ services:
     volumes:
       - minio_data:/minio_data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "30109:9000"
+      - "30110:9001"
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -724,8 +724,8 @@ services:
     volumes:
       - milvus_data:/var/lib/milvus
     ports:
-      - "${MILVUS_GRPC_HOST_PORT:-19530}:19530"
-      - "${MILVUS_HTTP_HOST_PORT:-9091}:9091"
+      - "${MILVUS_GRPC_HOST_PORT:-30119}:19530"
+      - "${MILVUS_HTTP_HOST_PORT:-30120}:9091"
     command: ["milvus", "run", "standalone"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]

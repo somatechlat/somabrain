@@ -128,8 +128,8 @@ def main() -> None:  # pragma: no cover
     try:
         signal.signal(signal.SIGINT, _sig_handler)
         signal.signal(signal.SIGTERM, _sig_handler)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"orchestrator: failed to register signal handlers: {e}")
 
     # Keep the main thread alive while workers run
     try:

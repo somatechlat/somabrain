@@ -119,10 +119,8 @@ class HRRContext:
         ContextMetrics.observe_state(self._context_id, anchor_count, capacity, snr_db)
 
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
-        norm = float(np.linalg.norm(vec))
-        if norm <= 1e-12:
-            return np.zeros_like(vec)
-        return (vec / norm).astype("float32", copy=False)
+        from somabrain.math import normalize_vector
+        return normalize_vector(vec, eps=1e-12, dtype=np.float32)
 
     # ------------------------------------------------------------------
     # Public API

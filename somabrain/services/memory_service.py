@@ -85,9 +85,13 @@ class MemoryService:
                 timestamp=None,
             )
             journal.append_event(ev)
-        except Exception:
-            # Journal is best-effort; do not raise.
-            return
+        except Exception as exc:
+            # Journal is best-effort; log but do not raise.
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to queue degraded write for tenant=%s action=%s: %s",
+                self.tenant_id, action, exc
+            )
 
     # ---------------------------------------------------------------------
     # Public API used by the application and tests
@@ -234,7 +238,11 @@ class MemoryService:
     def _health_check(self) -> bool:
         try:
             health = self.client().health()
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug(
+                "Health check failed for namespace=%s: %s", self.namespace, exc
+            )
             return False
         if isinstance(health, dict):
             if "http" in health:
@@ -345,8 +353,11 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception:
-            return None
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug(
+                "Failed to update OUTBOX_PENDING metric for tenant=%s: %s", tenant, exc
+            )
 
     @staticmethod
     def _update_tenant_outbox_metric(tenant: str, count: int) -> None:
@@ -356,5 +367,8 @@ class MemoryService:
             gauge = getattr(metrics, "OUTBOX_PENDING_BY_TENANT", None)
             if gauge is not None and hasattr(gauge, "labels"):
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
-        except Exception:
-            return None
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug(
+                "Failed to update OUTBOX_PENDING_BY_TENANT metric for tenant=%s: %s", tenant, exc
+            )

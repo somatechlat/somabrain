@@ -48,17 +48,28 @@ class Hippocampus:
             lambda: deque(maxlen=cfg.buffer_max)
         )
         # Lazy bind to runtime singletons if not provided
+        # Prefer DI container, fall back to runtime module for backward compatibility
         if mt_memory is None or mt_wm is None:
+            # Try DI container first (preferred pattern)
             try:
-                from . import runtime as _rt
+                from somabrain.core.container import container
+                if container.has("mt_memory") and mt_memory is None:
+                    mt_memory = container.get("mt_memory")
+                if container.has("mt_wm") and mt_wm is None:
+                    mt_wm = container.get("mt_wm")
             except Exception:
-                from importlib import import_module
-
-                _rt = import_module("somabrain.runtime_module")  # loaded by app
-            mt_memory = (
-                getattr(_rt, "mt_memory", None) if mt_memory is None else mt_memory
-            )
-            mt_wm = getattr(_rt, "mt_wm", None) if mt_wm is None else mt_wm
+                pass  # Container not available, fall back to runtime module
+            
+            # Fall back to runtime module if still not resolved
+            if mt_memory is None or mt_wm is None:
+                try:
+                    from . import runtime as _rt
+                    mt_memory = (
+                        getattr(_rt, "mt_memory", None) if mt_memory is None else mt_memory
+                    )
+                    mt_wm = getattr(_rt, "mt_wm", None) if mt_wm is None else mt_wm
+                except Exception:
+                    pass  # Runtime module not available
         self._mt_memory = mt_memory
         self._mt_wm = mt_wm
 

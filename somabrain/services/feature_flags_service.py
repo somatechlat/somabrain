@@ -47,10 +47,11 @@ def _register_flag_gauges() -> None:
                 labelnames=["flag"],
             )
             gauge.labels(flag=name).set(1 if enabled else 0)
-        except Exception:
-            # In strict mode we never hide errors, but metric registration
-            # failures should not crash the service.
-            pass
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to register/update feature flag gauge for %s: %s", name, exc
+            )
 
 
 def _periodic_update(stop_event: threading.Event, interval: float = 5.0) -> None:

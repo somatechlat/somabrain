@@ -7,6 +7,7 @@ from typing import Optional
 
 import numpy as np
 
+from .math import cosine_similarity
 from .salience import FDSalienceSketch
 
 _EPS = 1e-12
@@ -92,22 +93,16 @@ class UnifiedScorer:
 
     @staticmethod
     def _cosine(a: np.ndarray, b: np.ndarray) -> float:
-        na = float(np.linalg.norm(a))
-        nb = float(np.linalg.norm(b))
-        if na <= _EPS or nb <= _EPS:
-            return 0.0
-        return float(np.dot(a, b) / (na * nb))
+        """Delegate to canonical cosine_similarity implementation."""
+        return cosine_similarity(a, b)
 
     def _fd_component(self, query: np.ndarray, candidate: np.ndarray) -> float:
         if self._fd is None:
             return 0.0
         q_proj = self._fd.project(query)
         c_proj = self._fd.project(candidate)
-        nq = float(np.linalg.norm(q_proj))
-        nc = float(np.linalg.norm(c_proj))
-        if nq <= _EPS or nc <= _EPS:
-            return 0.0
-        return float(np.dot(q_proj, c_proj) / (nq * nc))
+        # Use canonical cosine_similarity for FD-projected vectors
+        return cosine_similarity(q_proj, c_proj)
 
     def _recency_component(self, recency_steps: Optional[int]) -> float:
         if recency_steps is None:

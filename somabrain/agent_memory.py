@@ -10,6 +10,7 @@ from typing import Any, List, Optional, Tuple, cast
 
 import numpy as np
 
+from somabrain.math import cosine_similarity
 from somabrain.nano_profile import HRR_DIM, HRR_DTYPE
 from somabrain.schemas import Memory, Observation, Thought
 
@@ -22,29 +23,15 @@ def _to_unit(vec: Any) -> Any:
     Pad/truncate to global HRR_DIM and unit-normalize (HRR_DTYPE).
     Enforces mathematical invariant: all vectors are unit-norm, HRR_DTYPE, and reproducible.
     """
-    # mypy's numpy type hints are strict about ndarray shape annotations; cast the
-    # runtime result to a generic ndarray to avoid shape-token complaints.
+    from somabrain.math import normalize_vector
+    
     v = cast(np.ndarray, np.asarray(vec, dtype=HRR_DTYPE).reshape(-1))
     if v.size != HRR_DIM:
         if v.size < HRR_DIM:
             v = np.pad(v, (0, HRR_DIM - v.size))
         else:
             v = v[:HRR_DIM]
-    n = float(np.linalg.norm(v))
-    dtype = np.dtype(HRR_DTYPE)
-    tiny_floor = float(np.finfo(dtype).eps) * max(1.0, float(HRR_DIM))
-    if n < tiny_floor:
-        # Return zero vector of expected shape
-        return np.zeros((HRR_DIM,), dtype=HRR_DTYPE)
-    return (v / n).astype(HRR_DTYPE)
-
-
-def _cosine(a: np.ndarray, b: np.ndarray) -> float:
-    na = float(np.linalg.norm(a))
-    nb = float(np.linalg.norm(b))
-    if na <= 0 or nb <= 0:
-        return 0.0
-    return float(np.dot(a, b) / (na * nb))
+    return normalize_vector(v, dtype=np.dtype(HRR_DTYPE))
 
 
 # --- Encode (store memory) ---
@@ -87,7 +74,7 @@ def recall_memory(query_vector: List[float], top_k: int = 3) -> List[Memory]:
     for mem in MEMORY_STORE:
         v = np.asarray(mem.vector, dtype=np.float32)
         v = _to_unit(v)
-        s = _cosine(q, v)
+        s = cosine_similarity(q, v)
         scored.append((mem, s))
     scored.sort(key=lambda x: x[1], reverse=True)
     return [m for m, _ in scored[:top_k]]

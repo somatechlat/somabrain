@@ -94,10 +94,8 @@ class BHDCFusionLayer:
         return a
 
     def _safe_l2_normalize(self, v: np.ndarray) -> np.ndarray:
-        n = float(np.linalg.norm(v))
-        if n <= self._epsilon:
-            return np.zeros_like(v)
-        return v / (n + self._epsilon)
+        from somabrain.math import normalize_vector
+        return normalize_vector(v, eps=self._epsilon, dtype=np.float64)
 
     # Optional math utilities (not required by current tests)
     def normalized_error(

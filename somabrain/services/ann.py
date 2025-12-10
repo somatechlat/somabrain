@@ -146,8 +146,11 @@ class HNSWAnnIndex(CleanupIndex):
         with self._lock:
             try:
                 self._index.set_ef(int(ef_search))
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Failed to set ef_search=%d on HNSW index: %s", ef_search, exc
+                )
 
 
 def create_cleanup_index(
@@ -185,13 +188,12 @@ def create_cleanup_index(
 
 
 def _normalize(vec: np.ndarray | Iterable[float], dim: int) -> np.ndarray:
+    from somabrain.math import normalize_vector
+    
     arr = np.asarray(vec, dtype=np.float32).reshape(-1)
     if arr.shape[0] != dim:
         raise ValueError(f"vector must have dimension {dim}, got {arr.shape[0]}")
-    norm = float(np.linalg.norm(arr))
-    if norm <= 0.0:
-        return np.zeros((dim,), dtype=np.float32)
-    return (arr / norm).astype(np.float32, copy=False)
+    return normalize_vector(arr, dtype=np.float32)
 
 
 __all__ = [

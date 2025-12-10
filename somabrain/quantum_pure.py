@@ -24,6 +24,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 
+from somabrain.math import cosine_similarity
 from somabrain.numerics import normalize_array
 from somabrain.quantum import HRRConfig
 from somabrain.seed import seed_to_uint64
@@ -136,11 +137,8 @@ class PureQuantumLayer:
 
     @staticmethod
     def cosine(a: np.ndarray, b: np.ndarray) -> float:
-        na = float(np.linalg.norm(a))
-        nb = float(np.linalg.norm(b))
-        if na <= 0 or nb <= 0:
-            return 0.0
-        return float(np.dot(a, b) / (na * nb))
+        """Delegate to canonical cosine_similarity implementation."""
+        return cosine_similarity(a, b)
 
     def cleanup(
         self, q: np.ndarray, anchors: Dict[str, np.ndarray]

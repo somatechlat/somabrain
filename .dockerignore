@@ -39,5 +39,7 @@ Log*.txt
 docs/
 scripts/
 !scripts/start_server.py
+!scripts/kafka_smoke_test.py
+!scripts/initialize_runtime.py
 examples/
 requirements-dev.txt

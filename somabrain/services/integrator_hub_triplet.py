@@ -259,8 +259,11 @@ class IntegratorHub:
                 w = math.exp(-alpha * float(max(err, 0.0)))
                 try:
                     INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    import logging
+                    logging.getLogger(__name__).debug(
+                        "Failed to observe INTEGRATOR_ERROR metric for domain=%s: %s", d, exc
+                    )
             else:
                 w = max(0.0, float(rec.get("confidence", 0.0)))
             weights[d] = w
@@ -268,7 +271,9 @@ class IntegratorHub:
         probs = {d: w / total_w for d, w in weights.items()}
         try:
             entropy = -sum(p * math.log(p) for p in probs.values() if p > 0)
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug("Failed to compute entropy: %s", exc)
             entropy = 0.0
         now = datetime.now(timezone.utc).isoformat()
         frame = {
@@ -295,8 +300,11 @@ class IntegratorHub:
             try:
                 self._redis_client.setex(f"globalframe:{leader}", 300, payload)
                 INTEGRATOR_REDIS_CACHE.labels(leader=leader).inc()
-            except Exception:
-                pass
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "Failed to cache global frame for leader=%s in Redis: %s", leader, exc
+                )
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
@@ -305,7 +313,11 @@ class IntegratorHub:
                 ):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
-            except Exception:
+            except Exception as exc:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "OPA request failed for leader=%s: %s", leader, exc
+                )
                 INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                 return
         self.producer.produce(self.topic_global, payload)
@@ -317,7 +329,11 @@ class IntegratorHub:
             if not resp.ok:
                 return False
             return bool(resp.json().get("result", False))
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug(
+                "OPA request to %s failed: %s", url, exc
+            )
             return False
 
     def run(self) -> None:  # pragma: no cover (I/O loop)

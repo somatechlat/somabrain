@@ -88,14 +88,14 @@ class MultiTenantWM:
             # LRU update – move the accessed tenant to the end (most‑recent)
             self._wms.move_to_end(tenant_id)
             # Evict oldest tenants if we exceed the configured limit
+            _logger = logging.getLogger(__name__)
             while len(self._wms) > self.cfg.max_tenants:
                 evicted_id, _ = self._wms.popitem(last=False)
                 try:
                     M.WM_EVICTIONS.inc()
-                except Exception:
-                    pass
-                logger = logging.getLogger(__name__)
-                logger.debug(
+                except Exception as exc:
+                    _logger.debug("Failed to increment WM_EVICTIONS metric: %s", exc)
+                _logger.debug(
                     "Evicted tenant %s from MultiTenantWM (max_tenants=%s)",
                     evicted_id,
                     self.cfg.max_tenants,
@@ -107,8 +107,8 @@ class MultiTenantWM:
                 M.WM_UTILIZATION.set(
                     total_items / total_capacity if total_capacity else 0.0
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                _logger.debug("Failed to update WM_UTILIZATION metric: %s", exc)
             return wm
 
     def admit(
@@ -129,8 +129,10 @@ class MultiTenantWM:
             self._ensure(tenant_id).admit(vec, payload, cleanup_overlap=cleanup_overlap)
         try:
             M.WM_ADMIT.labels(source=tenant_id[:50]).inc()
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).debug(
+                "Failed to increment WM_ADMIT metric for tenant %s: %s", tenant_id, exc
+            )
 
     def recall(
         self, tenant_id: str, vec: np.ndarray, top_k: int = 3
@@ -147,8 +149,10 @@ class MultiTenantWM:
                 M.WM_HITS.inc()
             else:
                 M.WM_MISSES.inc()
-        except Exception:
-            pass
+        except Exception as exc:
+            logging.getLogger(__name__).debug(
+                "Failed to update WM_HITS/WM_MISSES metric: %s", exc
+            )
         return results
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:

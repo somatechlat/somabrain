@@ -24,6 +24,7 @@ Feature gating is centralized (modes.feature_enabled("orchestrator")); legacy en
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
@@ -31,6 +32,8 @@ from typing import Any, Dict, Optional
 # Strict mode: use confluent-kafka Consumer
 from confluent_kafka import Consumer as CKConsumer
 from somabrain.modes import feature_enabled
+
+logger = logging.getLogger(__name__)
 
 # Central configuration import per VIBE rules
 from common.config.settings import settings
@@ -101,7 +104,8 @@ def _parse_global_frame(
             rationale=rationale,
             count=1,
         )
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to parse GlobalFrame: %s", e)
         return None
 
 
@@ -112,7 +116,8 @@ def _parse_segment_boundary(
         if serde is not None:
             return serde.deserialize(raw)
         return json.loads(raw.decode("utf-8"))
-    except Exception:
+    except Exception as e:
+        logger.debug("Failed to parse SegmentBoundary: %s", e)
         return None
 
 
@@ -123,18 +128,21 @@ class OrchestratorService:
         if load_schema is not None and AvroSerde is not None:
             try:
                 self._serde_gf = AvroSerde(load_schema("global_frame"))
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to load global_frame Avro schema: %s", e)
                 self._serde_gf = None
             try:
                 self._serde_sb = AvroSerde(load_schema("segment_boundary"))
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed to load segment_boundary Avro schema: %s", e)
                 self._serde_sb = None
         self._ns = getattr(settings, "orchestrator_namespace", None) or "cog"
         # Minimal leader->tools routing (JSON via env)
         try:
             routing_raw = getattr(settings, "orchestrator_routing", "") or ""
             self._routing = json.loads(routing_raw) if routing_raw else {}
-        except Exception:
+        except Exception as e:
+            logger.warning("Failed to parse orchestrator routing config: %s", e)
             self._routing = {}
         # per-tenant rolling context for current segment
         self._ctx: Dict[str, GlobalFrameCtx] = {}
@@ -144,8 +152,8 @@ class OrchestratorService:
 
             if _settings.health_port:
                 self._start_health_server()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Health server initialization skipped: %s", e)
 
     def _start_health_server(self) -> None:
         try:
@@ -172,8 +180,8 @@ class OrchestratorService:
             port = int(_settings.health_port)
             srv = HTTPServer(("", port), _Handler)
             threading.Thread(target=srv.serve_forever, daemon=True).start()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to start health server: %s", e)
 
     def _remember_snapshot(self, tenant: str, boundary: Dict[str, Any]) -> None:
         gf = self._ctx.get(tenant)
@@ -202,8 +210,8 @@ class OrchestratorService:
                 tools = self._routing.get(gf.leader)
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to apply routing tags for leader %s: %s", gf.leader, e)
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
@@ -220,9 +228,12 @@ class OrchestratorService:
                 dedupe_key=f"{tenant}:{key}",
                 tenant_id=tenant,
             )
-        except Exception:
-            # best-effort enqueue; drop on error
-            pass
+        except Exception as e:
+            # best-effort enqueue; log on error for visibility
+            logger.warning(
+                "Failed to enqueue episodic snapshot for tenant=%s key=%s: %s",
+                tenant, key, e
+            )
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop
         consumer = CKConsumer(
@@ -265,8 +276,8 @@ class OrchestratorService:
         finally:
             try:
                 consumer.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to close Kafka consumer: %s", e)
 
 
 def main() -> None:  # pragma: no cover - entrypoint
@@ -281,8 +292,8 @@ def main() -> None:  # pragma: no cover - entrypoint
                 "Count of orchestrator disabled exits",
             )
             _MX_ORCH_DISABLED.inc()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.debug("Failed to increment orchestrator_disabled metric: %s", e)
         return
     # Ensure Kafka and Postgres (for outbox) are reachable before starting
     assert_ready(

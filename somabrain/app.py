@@ -445,22 +445,6 @@ def _normalize_payload_timestamps(payload: Dict[str, Any]) -> Dict[str, Any]:
     return normalized
 
 
-def _cosine_similarity(a, b):
-    """Compute cosine similarity between two vectors, returning ``0.0`` for zero‑norm inputs."""
-    import numpy as np
-
-    a = np.array(a)
-    b = np.array(b)
-    if a.shape != b.shape or np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
-        return 0.0
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
-
-
-def _cosine_similarity_vectors(a, b):
-    """Alias for :func:`_cosine_similarity`."""
-    return _cosine_similarity(a, b)
-
-
 _MATH_DOMAIN_KEYWORDS = {
     "math",
     "mathematics",
@@ -1663,7 +1647,7 @@ async def _init_constitution() -> None:
 async def _enforce_kafka_required() -> None:
     """Fail fast if Kafka broker cannot be reached.
 
-    The VIBE coding rules require external services to be mandatory when the
+    The coding rules require external services to be mandatory when the
     application is running in production.  Previously the service would start
     and merely report ``kafka_ok: false`` in the health endpoint.  This event
     performs the same check during startup and raises an exception, causing the
@@ -1674,7 +1658,7 @@ async def _enforce_kafka_required() -> None:
         if not kafka_ok:
             # Raising RuntimeError aborts the FastAPI startup sequence.
             raise RuntimeError(
-                "Kafka broker unavailable – aborting startup as required by VIBE rules"
+                "Kafka broker unavailable – aborting startup as required by coding rules"
             )
     except Exception as exc:
         # Ensure any unexpected error also aborts startup.
@@ -1690,7 +1674,7 @@ async def _enforce_opa_postgres_required() -> None:
     actual connectivity checks. We call it with ``require_kafka=False`` because
     Kafka is already enforced by ``_enforce_kafka_required``. If any check
     fails, we log a clear error and raise ``RuntimeError`` so the container
-    exits, satisfying the VIBE rule that external services must be mandatory.
+    exits, satisfying the coding rule that external services must be mandatory.
     """
     try:
         from somabrain.common.infra import assert_ready
@@ -2704,11 +2688,10 @@ async def health(request: Request) -> S.HealthResponse:
         )
     except Exception:
         resp["external_backends_required"] = None
-    # Full‑stack mode flag (legacy)
-    try:
-        resp["full_stack"] = getattr(settings, "force_full_stack", None)
-    except Exception:
-        resp["full_stack"] = None
+    # Full‑stack mode flag - SINGLE SOURCE OF TRUTH
+    # SomaBrain runs in full-stack mode by default. Only "dev" or "test" modes disable it.
+    mode = getattr(settings, "mode", "full-local").lower().strip()
+    resp["full_stack"] = mode not in ("dev", "test", "minimal")
     # Memory item count – expose as top‑level field as well as component
     try:
         mem_count = int(getattr(ns_mem, "count", lambda: 0)())
@@ -2745,10 +2728,6 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_degrade_readonly"] = None
         resp["memory_degrade_topic"] = None
 
-    # External‑backend enforcement – use the central Settings flag.
-    # The previous stub‑audit implementation has been removed to satisfy VIBE
-    # Rule 1 (no stubs/placeholders). We now rely on the ``require_external_backends``
-    # setting which is already defined in ``common.config.settings``.
     try:
         resp["stub_counts"] = {}
         resp["external_backends_required"] = bool(getattr(settings, "require_external_backends", True))
@@ -2777,9 +2756,6 @@ async def health(request: Request) -> S.HealthResponse:
     # Constitution status – if still None, set to explicit "not-loaded".
     if resp.get("constitution_status") is None:
         resp["constitution_status"] = "not-loaded"
-    # Full‑stack flag – default to False when not configured.
-    if resp.get("full_stack") is None:
-        resp["full_stack"] = False
     # Retrieval readiness – derive from embedder health.
     if resp.get("retrieval_ready") is None:
         resp["retrieval_ready"] = bool(resp.get("embedder_ok"))

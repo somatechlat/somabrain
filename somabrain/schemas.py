@@ -45,8 +45,7 @@ def normalize_vector(vec_like, dim: int = HRR_DIM):
     Convert an input sequence/array to a unit-norm float32 list of length `dim`.
     Raises ValueError on invalid inputs.
     """
-    # Delegate to the canonical numeric helper for consistent behavior
-    from somabrain.numerics import normalize_array
+    from somabrain.math import normalize_vector as _canonical_normalize
 
     # Ensure we have a 1-D numpy array, pad or truncate to `dim` as needed
     arr = np.asarray(vec_like, dtype=HRR_DTYPE)
@@ -60,8 +59,8 @@ def normalize_vector(vec_like, dim: int = HRR_DIM):
     elif arr.size > dim:
         arr = arr[:dim]
 
-    # normalize_array expects the data array and keyword args
-    normed = normalize_array(arr, axis=-1, keepdims=False, dtype=HRR_DTYPE)
+    # Use canonical normalize_vector from somabrain.math
+    normed = _canonical_normalize(arr, dtype=np.dtype(HRR_DTYPE))
     return normed.tolist()
 
 
@@ -174,6 +173,8 @@ class Feedback(BaseModel):
             return cls(data={"vector": normalized}, timestamp=ts)
 
         def matches(self, thought: Any) -> bool:
+            from somabrain.math import cosine_similarity, normalize_vector as _norm
+            
             # Accept top-level Thought, nested Thought, or dict-like
             if hasattr(thought, "vector"):
                 query_vec = np.array(getattr(thought, "vector", []), dtype=np.float32)
@@ -183,12 +184,11 @@ class Feedback(BaseModel):
                     d.get("vector", d.get("context", {}).get("vector", [])),
                     dtype=np.float32,
                 )
-            query_vec = query_vec / (np.linalg.norm(query_vec) + 1e-8)
-            mem_vec = np.array(self.data.get("vector", []), dtype=np.float32)
-            mem_vec = mem_vec / (np.linalg.norm(mem_vec) + 1e-8)
+            query_vec = _norm(query_vec, dtype=np.float32)
+            mem_vec = _norm(np.array(self.data.get("vector", []), dtype=np.float32), dtype=np.float32)
             if query_vec.shape[0] != mem_vec.shape[0]:
                 return False
-            return float(np.dot(query_vec, mem_vec)) > 0.95
+            return cosine_similarity(query_vec, mem_vec) > 0.95
 
 
 class Metric(BaseModel):

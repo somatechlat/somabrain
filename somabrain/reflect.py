@@ -27,6 +27,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from somabrain.math import cosine_similarity
+
 STOP = set(
     "the a an and or of to in on for with at from by as is are was were be been it this that these those i you he she we they do did does not".split()
 )
@@ -146,30 +148,16 @@ def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
                 vocab[w] = len(vocab)
         # temporary row; fill later once vocab finalized
         rows.append(counts)
+    from somabrain.math import normalize_batch
+    
     mat = np.zeros((len(texts), len(vocab)), dtype="float32")
     for i, counts in enumerate(rows):
         for w, c in counts.items():
             j = vocab[w]
             mat[i, j] = float(c)
-    # l2 normalize rows
-    norms = np.linalg.norm(mat, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    mat = mat / norms
+    # l2 normalize rows using canonical batch normalization
+    mat = normalize_batch(mat, axis=-1, dtype=np.float32)
     return vocab, mat
-
-
-def _cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Internal function to compute cosine similarity between two vectors.
-
-    Args:
-        a (np.ndarray): First vector.
-        b (np.ndarray): Second vector.
-
-    Returns:
-        float: Cosine similarity score between 0.0 and 1.0.
-    """
-    return float(np.dot(a, b))
 
 
 def cluster_episodics(
@@ -203,6 +191,8 @@ def cluster_episodics(
     texts = [str(p.get("task") or p.get("fact") or "") for p in payloads]
     if not texts:
         return []
+    from somabrain.math import normalize_vector
+    
     _, mat = _vocab_and_vectors(texts)
     n = mat.shape[0]
     assigned = [-1] * n
@@ -218,13 +208,12 @@ def cluster_episodics(
         for j in range(i + 1, n):
             if assigned[j] != -1:
                 continue
-            if _cosine_sim(mat[j], centroid) >= sim_threshold:
+            if cosine_similarity(mat[j], centroid) >= sim_threshold:
                 members.append(j)
                 assigned[j] = assigned[i]
                 # update centroid (mean then normalize)
                 centroid = centroid + mat[j]
-                norm = np.linalg.norm(centroid) or 1.0
-                centroid = centroid / norm
+                centroid = normalize_vector(centroid, dtype=np.float32)
         if len(members) >= max(1, int(min_cluster_size)):
             clusters.append(members)
         else:

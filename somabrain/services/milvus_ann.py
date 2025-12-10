@@ -271,15 +271,14 @@ class MilvusAnnIndex(CleanupIndex):
 
     def _normalize(self, vec: np.ndarray) -> np.ndarray:
         """Normalize vector to unit length."""
+        from somabrain.math import normalize_vector
+        
         arr = np.asarray(vec, dtype=np.float32).reshape(-1)
         if arr.shape[0] != self._dim:
             raise ValueError(
                 f"Vector dimension mismatch: expected {self._dim}, got {arr.shape[0]}"
             )
-        norm = float(np.linalg.norm(arr))
-        if norm <= 0.0:
-            return np.zeros((self._dim,), dtype=np.float32)
-        return (arr / norm).astype(np.float32, copy=False)
+        return normalize_vector(arr, dtype=np.float32)
 
     def stats(self) -> Dict[str, object]:
         """Return index statistics."""

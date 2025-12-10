@@ -16,6 +16,7 @@ import numpy as np
 
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
+from somabrain.math import cosine_similarity
 from somabrain.memory_client import RecallHit
 from somabrain.memory_pool import MultiTenantMemory
 from somabrain.services.memory_service import MemoryService
@@ -265,7 +266,7 @@ class ContextBuilder:
         raw_scores: List[float] = []
         for mem in memories:
             vec = np.array(mem.embedding or [], dtype="float32")
-            cos = self._cosine(query, vec)
+            cos = cosine_similarity(query, vec)
             g_score = float(mem.metadata.get("graph_score", 0.0))
             ts = float(mem.metadata.get("timestamp", 0.0))
             age_penalty = self._temporal_decay(ts)
@@ -484,21 +485,6 @@ class ContextBuilder:
         if norm > 0:
             accum /= norm
         return accum.tolist()
-
-    @staticmethod
-    def _cosine(a: np.ndarray, b: np.ndarray) -> float:
-        if b.size == 0:
-            return 0.0
-        if a.shape != b.shape:
-            min_dim = min(a.size, b.size)
-            if min_dim == 0:
-                return 0.0
-            a = a[:min_dim]
-            b = b[:min_dim]
-        denom = np.linalg.norm(a) * np.linalg.norm(b)
-        if denom == 0:
-            return 0.0
-        return float(np.dot(a, b) / denom)
 
     def _temporal_decay(self, ts: float) -> float:
         if ts <= 0:
