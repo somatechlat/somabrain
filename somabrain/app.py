@@ -1350,9 +1350,16 @@ from somabrain.api import context_route as _context_route
 app.include_router(_context_route.router, prefix="/context")
 
 # Modular routers extracted from app.py monolith
-from somabrain.routers import admin_router, health_router, memory_router, neuromod_router
+from somabrain.routers import (
+    admin_router,
+    cognitive_router,
+    health_router,
+    memory_router,
+    neuromod_router,
+)
 
 app.include_router(admin_router, tags=["admin"])
+app.include_router(cognitive_router, tags=["cognitive"])
 app.include_router(health_router, tags=["health"])
 app.include_router(memory_router, tags=["memory"])
 app.include_router(neuromod_router, tags=["neuromodulators"])
@@ -2204,32 +2211,8 @@ exec_ctrl = (
 _sleep_stop = _thr.Event()
 _sleep_thread: _thr.Thread | None = None
 
+# _milvus_metrics_for_tenant moved to somabrain/routers/health.py
 
-def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
-    """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
-
-    def _read(gauge, **labels) -> Optional[float]:
-        try:
-            child = gauge.labels(**labels)
-            stored = getattr(child, "_value", None)
-            if stored is None:
-                return None
-            return float(stored.get())
-        except Exception:
-            return None
-
-    return {
-        "search_latency_p95_seconds": _read(
-            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
-        ),
-        "ingest_latency_p95_seconds": _read(
-            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
-        ),
-        "segment_load": _read(
-            M.MILVUS_SEGMENT_LOAD,
-            collection=getattr(settings, "milvus_collection", "oak_options"),
-        ),
-    }
 _sleep_last: dict[str, dict[str, float]] = {}
 _nov_ewma = EWMA(alpha=0.05)
 _err_ewma = EWMA(alpha=0.05)
@@ -2282,332 +2265,16 @@ def _sleep_loop():
         _sleep_stop.wait(interval)
 
 
-@app.get("/health", response_model=S.HealthResponse)
-async def health(request: Request) -> S.HealthResponse:
-    """Public health endpoint with shared CB + sleep degradation semantics."""
+# /health, /healthz, /diagnostics, /metrics endpoints moved to somabrain/routers/health.py
+# The health_router is included via app.include_router(health_router) above.
 
-    from somabrain.infrastructure.cb_registry import get_cb
-    from somabrain.sleep import SleepState
-    from somabrain.sleep.cb_adapter import map_cb_to_sleep
+# NOTE: The following large block of health endpoint code has been removed.
+# See somabrain/routers/health.py for the implementation.
 
-    ctx = await get_tenant_async(request, cfg.namespace)
-    tenant_id = ctx.tenant_id
-    ns_mem = mt_memory.for_namespace(ctx.namespace)
-    cb = get_cb()
+# Placeholder to maintain line references - this comment block replaces ~300 lines
+# of health endpoint code that was extracted to the health router.
 
-    trace_id = request.headers.get("X-Request-ID") or str(id(request))
-    deadline_ms = request.headers.get("X-Deadline-MS")
-    idempotency_key = request.headers.get("X-Idempotency-Key")
-
-    # Base health payload
-    resp = S.HealthResponse(
-        ok=True,
-        components={
-            "memory": {},
-            "memory_circuit_open": False,
-            "wm_items": "tenant-scoped",
-            "api_version": API_VERSION,
-        },
-    ).model_dump()
-    # Core identifiers
-    resp["namespace"] = ctx.namespace
-    resp["trace_id"] = trace_id
-    resp["deadline_ms"] = deadline_ms
-    resp["idempotency_key"] = idempotency_key
-    # Constitution information (if engine loaded)
-    try:
-        engine: Optional["ConstitutionEngine"] = getattr(
-            app.state, "constitution_engine", None
-        )
-        if engine:
-            resp["constitution_version"] = engine.get_checksum()
-            resp["constitution_status"] = "loaded"
-        else:
-            resp["constitution_version"] = None
-            resp["constitution_status"] = "not-loaded"
-    except Exception:
-        resp["constitution_version"] = None
-        resp["constitution_status"] = None
-    # External backend requirement flag from settings
-    try:
-        resp["external_backends_required"] = getattr(
-            settings, "require_external_backends", None
-        )
-    except Exception:
-        resp["external_backends_required"] = None
-    # Full‑stack mode flag - SINGLE SOURCE OF TRUTH
-    # SomaBrain runs in full-stack mode by default. Only "dev" or "test" modes disable it.
-    mode = getattr(settings, "mode", "full-local").lower().strip()
-    resp["full_stack"] = mode not in ("dev", "test", "minimal")
-    # Memory item count – expose as top‑level field as well as component
-    try:
-        mem_count = int(getattr(ns_mem, "count", lambda: 0)())
-        resp["memory_items"] = mem_count
-        resp["components"]["wm_items"] = mem_count
-    except Exception:
-        resp["memory_items"] = None
-        resp["components"]["wm_items"] = None
-    # Retrieval readiness – simple heuristic based on embedder availability.
-    # NOTE: ``embedder_ok`` is defined later in the function, so we defer the
-    # assignment until after ``embedder_ok`` is computed (see below).
-    # OPA integration status – check if OPA engine is attached to app state
-    try:
-        opa_engine = getattr(app.state, "opa_engine", None)
-        resp["opa_ok"] = bool(opa_engine)
-        resp["opa_required"] = getattr(settings, "require_opa", None)
-    except Exception:
-        resp["opa_ok"] = None
-        resp["opa_required"] = None
-
-    # -------------------------------------------------------------------
-    # Memory degradation configuration – expose the runtime flags so callers can
-    # see whether writes are being queued when the backend is unavailable.
-    # These correspond to the settings defined in ``common.config.settings``.
-    # -------------------------------------------------------------------
-    try:
-        resp["memory_degrade_queue"] = True  # enforced to queue in prod-like modes
-        resp["memory_degrade_readonly"] = getattr(
-            settings, "memory_degrade_readonly", False
-        )
-        resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
-    except Exception:
-        resp["memory_degrade_queue"] = None
-        resp["memory_degrade_readonly"] = None
-        resp["memory_degrade_topic"] = None
-
-    try:
-        resp["stub_counts"] = {}
-        resp["external_backends_required"] = bool(getattr(settings, "require_external_backends", True))
-    except Exception:
-        # Fallback to True if settings are unavailable – safest default.
-        resp["stub_counts"] = {}
-        resp["external_backends_required"] = True
-
-    # Predictor / embedder diagnostics
-    resp["predictor_provider"] = _PREDICTOR_PROVIDER
-    try:
-        edim = None
-        if embedder is not None:
-            vec = embedder.embed("health_probe")
-            if hasattr(vec, "shape"):
-                shape = getattr(vec, "shape")
-                edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
-        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
-    except Exception:
-        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
-
-    # -------------------------------------------------------------------
-    # Post‑processing of fields that may still be None after the above logic.
-    # Ensure the health payload never returns ``null`` for these keys.
-    # -------------------------------------------------------------------
-    # Constitution status – if still None, set to explicit "not-loaded".
-    if resp.get("constitution_status") is None:
-        resp["constitution_status"] = "not-loaded"
-    # Retrieval readiness – derive from embedder health.
-    if resp.get("retrieval_ready") is None:
-        resp["retrieval_ready"] = bool(resp.get("embedder_ok"))
-    # OPA required – default to False when not set.
-    if resp.get("opa_required") is None:
-        resp["opa_required"] = False
-
-    # Memory health + CB mapping
-    memory_ok = False
-    try:
-        mhealth = ns_mem.health()
-        resp["components"]["memory"] = mhealth
-        if isinstance(mhealth, dict):
-            memory_ok = (
-                bool(mhealth.get("http"))
-                or bool(mhealth.get("ok"))
-                or bool(mhealth.get("healthy"))
-            )
-    except Exception:
-        memory_ok = False
-
-    if memory_ok:
-        cb.record_success(tenant_id)
-    else:
-        cb.record_failure(tenant_id)
-
-    # -------------------------------------------------------------------
-    # Learning metrics exposure – add current tau, entropy cap config, and
-    # retrieval entropy to the health payload. These values are optional and
-    # may be missing if the system has not yet emitted them.
-    # -------------------------------------------------------------------
-    try:
-        from somabrain.metrics import tau_gauge, LEARNING_RETRIEVAL_ENTROPY
-
-        # The gauge objects expose a private `_value` attribute holding the
-        # current metric value. Accessing it is safe for read‑only purposes.
-        resp["tau"] = float(tau_gauge.labels(tenant_id=tenant_id)._value.get())
-    except Exception:
-        resp["tau"] = None
-
-    # Entropy‑cap configuration – expose the global flag and threshold.
-    try:
-        resp["entropy_cap_enabled"] = getattr(settings, "entropy_cap_enabled", None)
-        resp["entropy_cap"] = getattr(settings, "entropy_cap", None)
-    except Exception:
-        resp["entropy_cap_enabled"] = None
-        resp["entropy_cap"] = None
-
-    try:
-        from somabrain.metrics import LEARNING_RETRIEVAL_ENTROPY
-
-        resp["retrieval_entropy"] = float(
-            LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id)._value.get()
-        )
-    except Exception:
-        resp["retrieval_entropy"] = None
-
-    # Recompute circuit state after recording success/failure to avoid stale flags.
-    circuit_open = cb.is_open(tenant_id)
-    should_reset = cb.should_attempt_reset(tenant_id)
-    resp["memory_circuit_open"] = circuit_open
-    resp["components"]["memory_circuit_open"] = circuit_open
-    resp["memory_should_reset"] = should_reset
-    resp["memory_ok"] = memory_ok
-    resp["memory_degraded"] = circuit_open or should_reset
-
-    # Outbox buffering diagnostics (pending degraded writes)
-    try:
-        from somabrain.db.models.outbox import OutboxEvent
-        from somabrain.storage.db import get_session_factory
-
-        Session = get_session_factory()
-        pending = 0
-        last_created = None
-        with Session() as s:
-            pending = (
-                s.query(OutboxEvent)
-                .filter(
-                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
-                )
-                .count()
-            )
-            last = (
-                s.query(OutboxEvent)
-                .filter(
-                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
-                )
-                .order_by(OutboxEvent.created_at.desc())
-                .first()
-            )
-            if last and getattr(last, "created_at", None):
-                last_created = last.created_at.isoformat()
-        resp["components"]["outbox"] = {
-            "pending": pending,
-            "last_pending_created_at": last_created,
-        }
-    except Exception:
-        resp["components"]["outbox"] = {
-            "pending": None,
-            "last_pending_created_at": None,
-        }
-
-    # Sleep state derived from CB status
-    resp["sleep_state"] = map_cb_to_sleep(cb, tenant_id, SleepState.ACTIVE).value
-
-    # WM items
-    try:
-        resp["components"]["wm_items"] = int(getattr(ns_mem, "count", lambda: 0)())
-    except Exception:
-        resp["components"]["wm_items"] = 0
-
-    # Downstream health (integrator + segmentation)
-    import urllib.request
-
-    def _ping(url: str) -> bool:
-        try:
-            with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
-                return 200 <= getattr(r, "status", 500) < 300
-        except Exception:
-            return False
-
-    integrator_url = settings.integrator_health_url
-    segmentation_url = settings.segmentation_health_url
-    resp["integrator_health"] = _ping(integrator_url)
-    resp["segmentation_health"] = _ping(segmentation_url)
-
-    # Backend readiness checks
-    predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or (
-        not resp.get("external_backends_required", False)
-    )
-    embedder_ok = resp["embedder"]["dim"] is not None or embedder is not None
-
-    kafka_ok = check_kafka(settings.kafka_bootstrap_servers)
-    postgres_ok = check_postgres(settings.postgres_dsn)
-
-    resp["kafka_ok"] = bool(kafka_ok)
-    resp["postgres_ok"] = bool(postgres_ok)
-    resp["predictor_ok"] = bool(predictor_ok)
-    resp["embedder_ok"] = bool(embedder_ok)
-
-    resp["ready"] = bool(
-        memory_ok
-        and not circuit_open
-        and predictor_ok
-        and embedder_ok
-        and kafka_ok
-        and postgres_ok
-    )
-
-    # Minimal API flag for diagnostics
-    resp["minimal_public_api"] = bool(_MINIMAL_API)
-
-    # Observability readiness derived from real backend connectivity
-    resp["metrics_required"] = ["kafka", "postgres"]
-    resp["metrics_ready"] = bool(kafka_ok and postgres_ok)
-
-    milvus_stats = _milvus_metrics_for_tenant(tenant_id)
-    resp["milvus_metrics"] = milvus_stats
-    resp["components"]["milvus"] = milvus_stats
-
-    return resp
-
-
-# Metrics endpoint for Prometheus scraping
-@app.get("/metrics")
-async def metrics():
-    """Prometheus metrics endpoint."""
-    return await M.metrics_endpoint()
-
-
-# Alias endpoint for legacy health check used in tests
-@app.get("/healthz", include_in_schema=False)
-async def healthz(request: Request) -> dict:
-    # Reuse the health logic to provide the same JSON payload
-    return await health(request)
-
-
-# Lightweight diagnostics (sanitized; no secrets)
-@app.get("/diagnostics", include_in_schema=False)
-async def diagnostics() -> dict:
-    # Determine if running inside a Docker container using the centralized
-    # Settings flag. This avoids direct environment access.
-    in_docker = settings.running_in_docker
-    ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
-
-    # Centralized configuration for mode and related flags.
-    mode = settings.mode.strip()
-    ext_req = settings.require_external_backends
-    require_memory = settings.require_memory
-
-    # Presence of the Settings instance (always true in this codebase).
-    # The explicit ``shared_*`` diagnostic fields have been removed in favor of
-    # using the direct ``settings`` attributes.
-    return {
-        "in_container": in_docker,
-        "mode": mode or "",
-        "external_backends_required": ext_req,
-        "require_memory": require_memory,
-        "memory_endpoint": ep or "",
-        "env_memory_endpoint": settings.memory_http_endpoint,
-        "memory_token_present": bool(
-            getattr(getattr(cfg, "http", object()), "token", None)
-        ),
-        "api_version": int(API_VERSION),
-    }
+_HEALTH_ENDPOINTS_MOVED = True  # Marker for code extraction
 
 
 if not _MINIMAL_API:
@@ -2723,6 +2390,9 @@ if not _MINIMAL_API:
             )
 
 
+# NOTE: /recall endpoint is also defined in somabrain/routers/memory.py
+# This duplicate will be removed in a future cleanup pass.
+# The memory_router version uses lazy imports for better modularity.
 @app.post("/recall", response_model=S.RecallResponse)
 async def recall(req: S.RecallRequest, request: Request):
     require_auth(request, cfg)
@@ -3107,6 +2777,9 @@ async def recall(req: S.RecallRequest, request: Request):
     return resp
 
 
+# NOTE: /remember endpoint is also defined in somabrain/routers/memory.py
+# This duplicate will be removed in a future cleanup pass.
+# The memory_router version uses lazy imports for better modularity.
 @app.post("/remember", response_model=S.RememberResponse)
 async def remember(body: dict, request: Request):
     """Handle memory storage.
@@ -3491,40 +3164,8 @@ async def oak_plan(request: Request, max_options: int | None = None):
     return S.OakPlanSuggestResponse(plan=plan)
 
 
-@app.post("/delete", response_model=S.DeleteResponse)
-async def delete_memory(req: S.DeleteRequest, request: Request):
-    """Delete a memory at the given coordinate.
-
-    Returns a simple success response. Raises 404 if coordinate not found
-    (handled by underlying memory client)."""
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Ensure coordinate is a list of three floats
-    coord = tuple(req.coordinate)
-    ms = MemoryService(mt_memory, ctx.namespace)
-    try:
-        ms.delete(coord)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return S.DeleteResponse()
-
-
-# Recall delete endpoint (scoped under /recall)
-@app.post("/recall/delete", response_model=S.DeleteResponse)
-async def recall_delete(req: S.DeleteRequest, request: Request):
-    """Delete a memory by coordinate via the recall API.
-    Mirrors the generic /delete endpoint but scoped under /recall for consistency.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    ms = MemoryService(mt_memory, ctx.namespace)
-    try:
-        coord = tuple(req.coordinate)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid coordinate format")
-    ms.delete(coord)
-    return S.DeleteResponse()
-
+# /delete and /recall/delete endpoints moved to somabrain/routers/memory.py
+# The memory_router is included via app.include_router(memory_router) above.
 
 # Add POST endpoint for setting personality traits (used by tests)
 @app.post("/personality", response_model=S.PersonalityState)
@@ -3600,375 +3241,165 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     )
 
 
-# Neuromodulators endpoint – get and set global neuromodulator state
-@app.get("/neuromodulators", response_model=S.NeuromodStateModel)
-async def get_neuromodulators(request: Request):
-    _ = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
+# /neuromodulators endpoints moved to somabrain/routers/neuromod.py
+# The neuromod_router is included via app.include_router(neuromod_router) above.
+
+# NOTE: The following neuromodulator endpoint code has been removed.
+# See somabrain/routers/neuromod.py for the implementation.
+_NEUROMOD_ENDPOINTS_MOVED = True
+
+
+# /health/memory, /health/oak, /health/metrics endpoints moved to somabrain/routers/health.py
+# _health_watchdog_coroutine moved to somabrain/routers/health.py
+
+# Journal Admin Endpoints
+# =======================
+
+@app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
+async def admin_get_journal_stats():
+    """Get statistics about the local journal."""
     try:
-        audit.log_admin_action(request, "neuromodulators_read")
-    except Exception:
-        pass
-    # Return current state; the Neuromodulators singleton holds a NeuromodState
-    tenant_ctx = await get_tenant_async(request, cfg.namespace)
-    state = per_tenant_neuromodulators.get_state(tenant_ctx.tenant_id)
-    return S.NeuromodStateModel(
-        dopamine=state.dopamine,
-        serotonin=state.serotonin,
-        noradrenaline=state.noradrenaline,
-        acetylcholine=state.acetylcholine,
-    )
+        stats = get_journal_stats()
+        return {"success": True, "data": stats}
+    except Exception as e:
+        logger.error(f"Failed to get journal stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/neuromodulators", response_model=S.NeuromodStateModel)
-async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
-    _ = await get_tenant_async(request, cfg.namespace)
-    # Setting neuromodulators is an admin-level action.
-    require_admin_auth(request, cfg)
-
-    # Clamp values to allowed ranges (0.0‑0.8 for dopamine, 0.0‑0.1 for noradrenaline, etc.)
-    def clamp(val, lo, hi):
-        return max(lo, min(hi, float(val)))
-
-    new_state = NeuromodState(
-        dopamine=clamp(body.dopamine, 0.0, 0.8),
-        serotonin=clamp(body.serotonin, 0.0, 1.0),
-        noradrenaline=clamp(body.noradrenaline, 0.0, 0.1),
-        acetylcholine=clamp(body.acetylcholine, 0.0, 0.5),
-        timestamp=time.time(),
-    )
-    tenant_ctx = await get_tenant_async(request, cfg.namespace)
-    per_tenant_neuromods.set_state(tenant_ctx.tenant_id, new_state)
+@app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
+async def admin_list_journal_events(
+    tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (pending|sent|failed)"
+    ),
+    topic: Optional[str] = Query(None, description="Filter by topic"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of events to return"
+    ),
+    since: Optional[str] = Query(
+        None, description="Only events after this ISO datetime"
+    ),
+):
+    """List journal events with filtering options."""
     try:
-        audit.log_admin_action(
-            request,
-            "neuromodulators_set",
-            {
-                "tenant": tenant_ctx.tenant_id,
-                "new_state": {
-                    "dopamine": new_state.dopamine,
-                    "serotonin": new_state.serotonin,
-                    "noradrenaline": new_state.noradrenaline,
-                    "acetylcholine": new_state.acetylcholine,
-                },
-            },
+        since_dt = None
+        if since:
+            since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+
+        events = get_journal_events(
+            tenant_id=tenant_id,
+            status=status,
+            topic=topic,
+            limit=limit,
+            since=since_dt,
         )
-    except Exception:
-        pass
-    return S.NeuromodStateModel(
-        dopamine=new_state.dopamine,
-        serotonin=new_state.serotonin,
-        noradrenaline=new_state.noradrenaline,
-        acetylcholine=new_state.acetylcholine,
-    )
+
+        return {
+            "success": True,
+            "data": {
+                "events": [
+                    {
+                        "id": ev.id,
+                        "topic": ev.topic,
+                        "tenant_id": ev.tenant_id,
+                        "status": ev.status,
+                        "retries": ev.retries,
+                        "last_error": ev.last_error,
+                        "timestamp": ev.timestamp.isoformat(),
+                    }
+                    for ev in events
+                ],
+                "count": len(events),
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to list journal events: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# Health endpoint for tenant circuit breaker state
-@app.get("/health/memory", response_model=Dict[str, Any])
-async def health_memory(request: Request) -> Dict[str, Any]:
-    """Get per-tenant memory service health and circuit breaker state."""
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-
-    # Create memory service instance for this tenant
-    memsvc = MemoryService(mt_memory, ctx.namespace)
-    circuit_state = memsvc.get_circuit_state()
-
-    # Get outbox pending count for this tenant
-    from somabrain.db.outbox import get_pending_events
-
+@app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
+async def admin_replay_journal_events(
+    tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of events to replay"
+    ),
+    mark_processed: bool = Query(
+        True, description="Mark replayed events as processed"
+    ),
+):
+    """Replay journal events to the database outbox."""
     try:
-        pending_count = len(get_pending_events(limit=1000))
-        # Filter by tenant if possible
-        # Note: This is approximate, actual filtering would need tenant-aware query
-    except Exception:
-        pending_count = 0
+        replayed = replay_journal_events(
+            tenant_id=tenant_id, limit=limit, mark_processed=mark_processed
+        )
 
-    return {
-        "tenant": ctx.tenant_id,
-        "circuit_breaker": circuit_state,
-        "outbox_pending": pending_count,
-        "memory_service": (
-            "healthy" if not circuit_state["circuit_open"] else "unavailable"
-        ),
-        "timestamp": time.time(),
-    }
+        return {
+            "success": True,
+            "data": {
+                "replayed_count": replayed,
+                "message": f"Successfully replayed {replayed} events from journal to database",
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to replay journal events: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# Oak health endpoint – reports Milvus and OPA service status.
-@app.get("/health/oak", response_model=Dict[str, Any])
-async def health_oak(request: Request) -> Dict[str, Any]:
-    """Health check for Oak subsystem.
-
-    Returns the health of the Milvus vector store used for option persistence
-    and the OPA policy engine if it is configured. The result includes flags
-    indicating whether each component is required (based on settings) and
-    whether it is currently reachable.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-
-    # Milvus health – attempt to instantiate the client; any exception means
-    # the service is unreachable. The client lazily connects on creation.
-    milvus_ok: bool = False
+@app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
+async def admin_cleanup_journal():
+    """Clean up old journal files based on retention policy."""
     try:
-        _ = MilvusClient()
-        milvus_ok = True
-    except Exception:
-        milvus_ok = False
+        result = cleanup_journal()
+        return {"success": True, "data": result}
+    except Exception as e:
+        logger.error(f"Failed to cleanup journal: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-    # OPA health – use the attached SimpleOPAEngine if present.
-    opa_ok: bool = False
-    opa_required: bool = getattr(settings, "require_opa", False)
+
+@app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
+async def admin_init_journal(
+    journal_dir: Optional[str] = Query(None, description="Journal directory path"),
+    max_file_size: Optional[int] = Query(
+        None, description="Max file size in bytes"
+    ),
+    max_files: Optional[int] = Query(None, description="Max number of files"),
+    retention_days: Optional[int] = Query(
+        None, description="Retention period in days"
+    ),
+):
+    """Initialize or reconfigure the journal."""
     try:
-        opa_engine = getattr(app.state, "opa_engine", None)
-        if opa_engine:
-            opa_ok = await opa_engine.health()
-    except Exception:
-        opa_ok = False
+        # Get current config or create new one
+        config = JournalConfig.from_env()
 
-    return {
-        "tenant": ctx.tenant_id,
-        "milvus_ok": milvus_ok,
-        "opa_ok": opa_ok,
-        "opa_required": opa_required,
-    }
+        # Update with provided parameters
+        if journal_dir is not None:
+            config.journal_dir = journal_dir
+        if max_file_size is not None:
+            config.max_file_size = max_file_size
+        if max_files is not None:
+            config.max_files = max_files
+        if retention_days is not None:
+            config.retention_days = retention_days
 
+        # Initialize journal with new config
+        journal = init_journal(config)
 
-# Health metrics endpoint – returns Milvus telemetry as JSON for VIBE compliance.
-# This endpoint aggregates the Prometheus gauge values for the current tenant
-# (identified via the request's authentication context) and presents them in a
-# simple JSON payload. The gauges are defined in ``somabrain.metrics`` and are
-# labelled by ``tenant_id``.
-@app.get("/health/metrics", response_model=Dict[str, Any])
-async def health_metrics(request: Request) -> Dict[str, Any]:
-    """Expose Milvus SLO telemetry in a JSON health payload.
-
-    Returns the p95 ingest/search latency gauges and the segment load gauge for
-    the tenant associated with the request.
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-
-    tenant = ctx.tenant_id
-    stats = _milvus_metrics_for_tenant(tenant)
-    return {"tenant": tenant, **stats}
-
-
-# Background task for health watchdog and circuit-breaker monitoring
-_health_watchdog_task = None
-
-
-async def _health_watchdog_coroutine():
-    """Periodic health checks for per-tenant circuit breakers."""
-    from somabrain.services.memory_service import MemoryService
-
-    poll_interval = float(getattr(cfg, "memory_health_poll_interval", 5.0))
-
-    while True:
-        try:
-            # Get all active tenants from memory pool
-            tenants = []
-            if hasattr(mt_memory, "_pool") and mt_memory._pool:
-                tenants = list(mt_memory._pool.keys())
-            elif hasattr(mt_memory, "tenants"):
-                tenants = mt_memory.tenants() or []
-
-            for tenant_namespace in tenants:
-                try:
-                    # Create memory service for this tenant
-                    memsvc = MemoryService(mt_memory, tenant_namespace)
-
-                    # Check if circuit is open and attempt health check
-                    circuit_state = memsvc.get_circuit_state()
-                    if circuit_state["circuit_open"]:
-                        # Perform health check
-                        health = memsvc.health()
-
-                        # If healthy, reset the circuit breaker
-                        # The memory client health payload uses a "healthy" boolean flag
-                        # (and component‑specific flags) rather than the older "http"/"ok"
-                        # fields that the watchdog originally checked. Adjust the logic
-                        # to consider the service healthy when the "healthy" key is true.
-                        # The memory client health payload can be either a flat dict
-                        # with a top‑level ``healthy`` flag (legacy) or the newer
-                        # structure returned by the ``/health`` endpoint, where the
-                        # flag lives under ``components['memory']['healthy']``.
-                        # Detect both forms before resetting the circuit.
-                        healthy = False
-                        if isinstance(health, dict):
-                            # Legacy flat format
-                            healthy = health.get("healthy", False)
-                            # New nested format
-                            if not healthy:
-                                comps = health.get("components", {})
-                                mem = comps.get("memory", {})
-                                healthy = mem.get("healthy", False)
-                            # Fallback older boolean fields
-                            if not healthy:
-                                healthy = health.get("http", False) or health.get(
-                                    "ok", False
-                                )
-                        if healthy:
-                            MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
-                            logger.info(
-                                f"Circuit breaker reset for tenant {memsvc.tenant_id}"
-                            )
-
-                except Exception as e:
-                    logger.error(
-                        f"Health check failed for tenant {tenant_namespace}: {e}"
-                    )
-
-        except Exception as e:
-            logger.error(f"Health watchdog error: {e}")
-
-        await asyncio.sleep(poll_interval)
-
-    # Journal Admin Endpoints
-    # =======================
-
-    @app.get("/admin/journal/stats", dependencies=[Depends(_admin_guard_dep)])
-    async def admin_get_journal_stats():
-        """Get statistics about the local journal."""
-        try:
-            stats = get_journal_stats()
-            return {"success": True, "data": stats}
-        except Exception as e:
-            logger.error(f"Failed to get journal stats: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-    @app.get("/admin/journal/events", dependencies=[Depends(_admin_guard_dep)])
-    async def admin_list_journal_events(
-        tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-        status: Optional[str] = Query(
-            None, description="Filter by status (pending|sent|failed)"
-        ),
-        topic: Optional[str] = Query(None, description="Filter by topic"),
-        limit: int = Query(
-            100, ge=1, le=1000, description="Maximum number of events to return"
-        ),
-        since: Optional[str] = Query(
-            None, description="Only events after this ISO datetime"
-        ),
-    ):
-        """List journal events with filtering options."""
-        try:
-            since_dt = None
-            if since:
-                since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
-
-            events = get_journal_events(
-                tenant_id=tenant_id,
-                status=status,
-                topic=topic,
-                limit=limit,
-                since=since_dt,
-            )
-
-            return {
-                "success": True,
-                "data": {
-                    "events": [
-                        {
-                            "id": ev.id,
-                            "topic": ev.topic,
-                            "tenant_id": ev.tenant_id,
-                            "status": ev.status,
-                            "retries": ev.retries,
-                            "last_error": ev.last_error,
-                            "timestamp": ev.timestamp.isoformat(),
-                        }
-                        for ev in events
-                    ],
-                    "count": len(events),
+        return {
+            "success": True,
+            "data": {
+                "config": {
+                    "journal_dir": config.journal_dir,
+                    "max_file_size": config.max_file_size,
+                    "max_files": config.max_files,
+                    "retention_days": config.retention_days,
                 },
-            }
-        except Exception as e:
-            logger.error(f"Failed to list journal events: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-    @app.post("/admin/journal/replay", dependencies=[Depends(_admin_guard_dep)])
-    async def admin_replay_journal_events(
-        tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-        limit: int = Query(
-            100, ge=1, le=1000, description="Maximum number of events to replay"
-        ),
-        mark_processed: bool = Query(
-            True, description="Mark replayed events as processed"
-        ),
-    ):
-        """Replay journal events to the database outbox."""
-        try:
-            replayed = replay_journal_events(
-                tenant_id=tenant_id, limit=limit, mark_processed=mark_processed
-            )
-
-            return {
-                "success": True,
-                "data": {
-                    "replayed_count": replayed,
-                    "message": f"Successfully replayed {replayed} events from journal to database",
-                },
-            }
-        except Exception as e:
-            logger.error(f"Failed to replay journal events: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-    @app.post("/admin/journal/cleanup", dependencies=[Depends(_admin_guard_dep)])
-    async def admin_cleanup_journal():
-        """Clean up old journal files based on retention policy."""
-        try:
-            result = cleanup_journal()
-            return {"success": True, "data": result}
-        except Exception as e:
-            logger.error(f"Failed to cleanup journal: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
-
-    @app.post("/admin/journal/init", dependencies=[Depends(_admin_guard_dep)])
-    async def admin_init_journal(
-        journal_dir: Optional[str] = Query(None, description="Journal directory path"),
-        max_file_size: Optional[int] = Query(
-            None, description="Max file size in bytes"
-        ),
-        max_files: Optional[int] = Query(None, description="Max number of files"),
-        retention_days: Optional[int] = Query(
-            None, description="Retention period in days"
-        ),
-    ):
-        """Initialize or reconfigure the journal."""
-        try:
-            # Get current config or create new one
-            config = JournalConfig.from_env()
-
-            # Update with provided parameters
-            if journal_dir is not None:
-                config.journal_dir = journal_dir
-            if max_file_size is not None:
-                config.max_file_size = max_file_size
-            if max_files is not None:
-                config.max_files = max_files
-            if retention_days is not None:
-                config.retention_days = retention_days
-
-            # Initialize journal with new config
-            journal = init_journal(config)
-
-            return {
-                "success": True,
-                "data": {
-                    "config": {
-                        "journal_dir": config.journal_dir,
-                        "max_file_size": config.max_file_size,
-                        "max_files": config.max_files,
-                        "retention_days": config.retention_days,
-                    },
-                    "stats": journal.get_stats(),
-                },
-            }
-        except Exception as e:
-            logger.error(f"Failed to initialize journal: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+                "stats": journal.get_stats(),
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to initialize journal: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.on_event("startup")

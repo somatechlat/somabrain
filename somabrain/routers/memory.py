@@ -33,7 +33,17 @@ from somabrain.services.memory_service import MemoryService
 from somabrain.services.recall_service import recall_ltm_async as _recall_ltm
 from somabrain.tenant import get_tenant as get_tenant_async
 
-logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+logger = logging.getLogger("somabrain.routers.memory")
+
+# Log format constants for consistent output
+_LOG_PREFIX = "[MEMORY]"
+_LOG_TENANT_FMT = "tenant=%s"
+_LOG_OP_FMT = "op=%s"
+_LOG_KEY_FMT = "key=%s"
+_LOG_LAT_FMT = "latency_ms=%.2f"
 
 router = APIRouter(tags=["memory"])
 
@@ -293,7 +303,12 @@ def _apply_diversity_reranking(
         return [valid_candidates[idx] for idx in selected]
 
     except Exception as e:
-        logger.debug("Diversity re-ranking failed: %s", e, exc_info=True)
+        logger.debug(
+            "%s Diversity reranking FAILED | error=%s",
+            _LOG_PREFIX,
+            str(e),
+            exc_info=True,
+        )
         return candidates[:k]
 
 

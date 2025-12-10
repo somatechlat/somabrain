@@ -1,48 +1,421 @@
-"""Health Router - Health check, metrics, and diagnostics endpoints."""
+"""Health Router - Health check, metrics, and diagnostics endpoints.
+
+Extracted from somabrain/app.py per monolithic-decomposition spec.
+Provides /health, /healthz, /diagnostics, /metrics, /health/memory,
+/health/oak, and /health/metrics endpoints.
+"""
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import urllib.request
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Request
 
 from common.config.settings import settings
-from somabrain import metrics as M
+from somabrain import metrics as M, schemas as S
+from somabrain.auth import require_auth
+from somabrain.healthchecks import check_kafka, check_postgres
+from somabrain.tenant import get_tenant as get_tenant_async
 from somabrain.version import API_VERSION
 
-logger = logging.getLogger(__name__)
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+logger = logging.getLogger("somabrain.routers.health")
+
+# Log format constants for consistent output
+_LOG_PREFIX = "[HEALTH]"
+_LOG_TENANT_FMT = "tenant=%s"
+_LOG_STATUS_FMT = "status=%s"
+
 router = APIRouter(tags=["health"])
 
 
-def _get_runtime_singletons():
-    from somabrain import runtime as rt
-    return rt
+# ---------------------------------------------------------------------------
+# Lazy accessors for app-level singletons to avoid circular imports
+# ---------------------------------------------------------------------------
+
+
+def _get_runtime():
+    """Lazy import of runtime module to access singletons."""
+    import importlib.util
+    import os
+    import sys
+
+    _runtime_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
+    if _spec and _spec.name in sys.modules:
+        return sys.modules[_spec.name]
+    # Fallback: search loaded modules
+    for m in list(sys.modules.values()):
+        try:
+            mf = getattr(m, "__file__", "") or ""
+            if mf.endswith(os.path.join("somabrain", "runtime.py")):
+                return m
+        except Exception:
+            continue
+    return None
 
 
 def _get_app_config():
-    rt = _get_runtime_singletons()
-    return getattr(rt, "cfg", settings)
+    """Get the application configuration."""
+    return settings
+
+
+def _get_mt_memory():
+    """Get the multi-tenant memory singleton."""
+    rt = _get_runtime()
+    if rt:
+        return getattr(rt, "mt_memory", None)
+    return None
+
+
+
+def _get_embedder():
+    """Get the embedder singleton."""
+    rt = _get_runtime()
+    if rt:
+        return getattr(rt, "embedder", None)
+    return None
+
+
+def _get_app_state():
+    """Get the FastAPI app state for OPA engine access."""
+    try:
+        from somabrain.app import app
+        return app.state
+    except Exception:
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
 
 
 def _ping(url: str) -> bool:
+    """Ping a URL and return True if it responds with 2xx."""
     try:
-        with urllib.request.urlopen(url, timeout=0.5) as r:
+        with urllib.request.urlopen(url, timeout=0.5) as r:  # noqa: S310
             return 200 <= getattr(r, "status", 500) < 300
     except Exception:
         return False
 
 
-def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Any]:
+def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
+    """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
+
+    def _read(gauge, **labels) -> Optional[float]:
+        try:
+            child = gauge.labels(**labels)
+            stored = getattr(child, "_value", None)
+            if stored is None:
+                return None
+            return float(stored.get())
+        except Exception:
+            return None
+
+    return {
+        "search_latency_p95_seconds": _read(
+            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
+        ),
+        "ingest_latency_p95_seconds": _read(
+            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
+        ),
+        "segment_load": _read(
+            M.MILVUS_SEGMENT_LOAD,
+            collection=getattr(settings, "milvus_collection", "oak_options"),
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Health Endpoints
+# ---------------------------------------------------------------------------
+
+
+@router.get("/health", response_model=S.HealthResponse)
+async def health(request: Request) -> S.HealthResponse:
+    """Public health endpoint with shared CB + sleep degradation semantics."""
+    from somabrain.infrastructure.cb_registry import get_cb
+    from somabrain.sleep import SleepState
+    from somabrain.sleep.cb_adapter import map_cb_to_sleep
+
+    cfg = _get_app_config()
+    mt_memory = _get_mt_memory()
+    embedder = _get_embedder()
+    app_state = _get_app_state()
+
+    ctx = await get_tenant_async(request, cfg.namespace)
+    tenant_id = ctx.tenant_id
+    ns_mem = mt_memory.for_namespace(ctx.namespace) if mt_memory else None
+    cb = get_cb()
+
+    trace_id = request.headers.get("X-Request-ID") or str(id(request))
+    deadline_ms = request.headers.get("X-Deadline-MS")
+    idempotency_key = request.headers.get("X-Idempotency-Key")
+
+    # Base health payload
+    resp = S.HealthResponse(
+        ok=True,
+        components={
+            "memory": {},
+            "memory_circuit_open": False,
+            "wm_items": "tenant-scoped",
+            "api_version": API_VERSION,
+        },
+    ).model_dump()
+
+    # Core identifiers
+    resp["namespace"] = ctx.namespace
+    resp["trace_id"] = trace_id
+    resp["deadline_ms"] = deadline_ms
+    resp["idempotency_key"] = idempotency_key
+
+    # Constitution information (if engine loaded)
     try:
-        return {
-            "ingest_p95_ms": M.MILVUS_INGEST_P95.labels(tenant_id=tenant_id)._value.get(),
-            "search_p95_ms": M.MILVUS_SEARCH_P95.labels(tenant_id=tenant_id)._value.get(),
-            "segment_load": M.MILVUS_SEGMENT_LOAD.labels(tenant_id=tenant_id)._value.get(),
+        engine = getattr(app_state, "constitution_engine", None) if app_state else None
+        if engine:
+            resp["constitution_version"] = engine.get_checksum()
+            resp["constitution_status"] = "loaded"
+        else:
+            resp["constitution_version"] = None
+            resp["constitution_status"] = "not-loaded"
+    except Exception:
+        resp["constitution_version"] = None
+        resp["constitution_status"] = "not-loaded"
+
+    # External backend requirement flag from settings
+    try:
+        resp["external_backends_required"] = getattr(
+            settings, "require_external_backends", None
+        )
+    except Exception:
+        resp["external_backends_required"] = None
+
+    # Full-stack mode flag
+    mode = getattr(settings, "mode", "full-local").lower().strip()
+    resp["full_stack"] = mode not in ("dev", "test", "minimal")
+
+    # Memory item count
+    try:
+        if ns_mem:
+            mem_count = int(getattr(ns_mem, "count", lambda: 0)())
+            resp["memory_items"] = mem_count
+            resp["components"]["wm_items"] = mem_count
+        else:
+            resp["memory_items"] = None
+            resp["components"]["wm_items"] = None
+    except Exception:
+        resp["memory_items"] = None
+        resp["components"]["wm_items"] = None
+
+    # OPA integration status
+    try:
+        opa_engine = getattr(app_state, "opa_engine", None) if app_state else None
+        resp["opa_ok"] = bool(opa_engine)
+        resp["opa_required"] = getattr(settings, "require_opa", None)
+    except Exception:
+        resp["opa_ok"] = None
+        resp["opa_required"] = None
+
+    # Memory degradation configuration
+    try:
+        resp["memory_degrade_queue"] = True
+        resp["memory_degrade_readonly"] = getattr(
+            settings, "memory_degrade_readonly", False
+        )
+        resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
+    except Exception:
+        resp["memory_degrade_queue"] = None
+        resp["memory_degrade_readonly"] = None
+        resp["memory_degrade_topic"] = None
+
+    try:
+        resp["stub_counts"] = {}
+        resp["external_backends_required"] = bool(
+            getattr(settings, "require_external_backends", True)
+        )
+    except Exception:
+        resp["stub_counts"] = {}
+        resp["external_backends_required"] = True
+
+    # Predictor / embedder diagnostics
+    _PREDICTOR_PROVIDER = getattr(cfg, "predictor_provider", "mahal")
+    _EMBED_PROVIDER = getattr(cfg, "embed_provider", "tiny")
+    resp["predictor_provider"] = _PREDICTOR_PROVIDER
+
+    try:
+        edim = None
+        if embedder is not None:
+            vec = embedder.embed("health_probe")
+            if hasattr(vec, "shape"):
+                shape = getattr(vec, "shape")
+                edim = int(shape[0]) if isinstance(shape, (list, tuple)) else int(shape)
+        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
+    except Exception:
+        resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
+
+
+    # Post-processing of fields that may still be None
+    if resp.get("constitution_status") is None:
+        resp["constitution_status"] = "not-loaded"
+    if resp.get("retrieval_ready") is None:
+        resp["retrieval_ready"] = bool(resp.get("embedder_ok"))
+    if resp.get("opa_required") is None:
+        resp["opa_required"] = False
+
+    # Memory health + CB mapping
+    memory_ok = False
+    try:
+        if ns_mem:
+            mhealth = ns_mem.health()
+            resp["components"]["memory"] = mhealth
+            if isinstance(mhealth, dict):
+                memory_ok = (
+                    bool(mhealth.get("http"))
+                    or bool(mhealth.get("ok"))
+                    or bool(mhealth.get("healthy"))
+                )
+    except Exception:
+        memory_ok = False
+
+    if memory_ok:
+        cb.record_success(tenant_id)
+    else:
+        cb.record_failure(tenant_id)
+
+    # Learning metrics exposure
+    try:
+        from somabrain.metrics import tau_gauge
+
+        resp["tau"] = float(tau_gauge.labels(tenant_id=tenant_id)._value.get())
+    except Exception:
+        resp["tau"] = None
+
+    # Entropy-cap configuration
+    try:
+        resp["entropy_cap_enabled"] = getattr(settings, "entropy_cap_enabled", None)
+        resp["entropy_cap"] = getattr(settings, "entropy_cap", None)
+    except Exception:
+        resp["entropy_cap_enabled"] = None
+        resp["entropy_cap"] = None
+
+    try:
+        from somabrain.metrics import LEARNING_RETRIEVAL_ENTROPY
+
+        resp["retrieval_entropy"] = float(
+            LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id)._value.get()
+        )
+    except Exception:
+        resp["retrieval_entropy"] = None
+
+    # Recompute circuit state after recording success/failure
+    circuit_open = cb.is_open(tenant_id)
+    should_reset = cb.should_attempt_reset(tenant_id)
+    resp["memory_circuit_open"] = circuit_open
+    resp["components"]["memory_circuit_open"] = circuit_open
+    resp["memory_should_reset"] = should_reset
+    resp["memory_ok"] = memory_ok
+    resp["memory_degraded"] = circuit_open or should_reset
+
+    # Outbox buffering diagnostics
+    try:
+        from somabrain.db.models.outbox import OutboxEvent
+        from somabrain.storage.db import get_session_factory
+
+        Session = get_session_factory()
+        pending = 0
+        last_created = None
+        with Session() as s:
+            pending = (
+                s.query(OutboxEvent)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
+                .count()
+            )
+            last = (
+                s.query(OutboxEvent)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
+                .order_by(OutboxEvent.created_at.desc())
+                .first()
+            )
+            if last and getattr(last, "created_at", None):
+                last_created = last.created_at.isoformat()
+        resp["components"]["outbox"] = {
+            "pending": pending,
+            "last_pending_created_at": last_created,
         }
     except Exception:
-        return {"ingest_p95_ms": None, "search_p95_ms": None, "segment_load": None}
+        resp["components"]["outbox"] = {
+            "pending": None,
+            "last_pending_created_at": None,
+        }
+
+    # Sleep state derived from CB status
+    resp["sleep_state"] = map_cb_to_sleep(cb, tenant_id, SleepState.ACTIVE).value
+
+    # WM items
+    try:
+        if ns_mem:
+            resp["components"]["wm_items"] = int(getattr(ns_mem, "count", lambda: 0)())
+        else:
+            resp["components"]["wm_items"] = 0
+    except Exception:
+        resp["components"]["wm_items"] = 0
+
+    # Downstream health (integrator + segmentation)
+    integrator_url = settings.integrator_health_url
+    segmentation_url = settings.segmentation_health_url
+    resp["integrator_health"] = _ping(integrator_url)
+    resp["segmentation_health"] = _ping(segmentation_url)
+
+    # Backend readiness checks
+    predictor_ok = (_PREDICTOR_PROVIDER not in ("stub", "baseline")) or (
+        not resp.get("external_backends_required", False)
+    )
+    embedder_ok = resp["embedder"]["dim"] is not None or embedder is not None
+
+    kafka_ok = check_kafka(settings.kafka_bootstrap_servers)
+    postgres_ok = check_postgres(settings.postgres_dsn)
+
+    resp["kafka_ok"] = bool(kafka_ok)
+    resp["postgres_ok"] = bool(postgres_ok)
+    resp["predictor_ok"] = bool(predictor_ok)
+    resp["embedder_ok"] = bool(embedder_ok)
+
+    resp["ready"] = bool(
+        memory_ok
+        and not circuit_open
+        and predictor_ok
+        and embedder_ok
+        and kafka_ok
+        and postgres_ok
+    )
+
+    # Minimal API flag for diagnostics
+    resp["minimal_public_api"] = bool(settings.minimal_public_api)
+
+    # Observability readiness
+    resp["metrics_required"] = ["kafka", "postgres"]
+    resp["metrics_ready"] = bool(kafka_ok and postgres_ok)
+
+    milvus_stats = _milvus_metrics_for_tenant(tenant_id)
+    resp["milvus_metrics"] = milvus_stats
+    resp["components"]["milvus"] = milvus_stats
+
+    return resp
 
 
 @router.get("/metrics")
@@ -54,18 +427,211 @@ async def metrics():
 @router.get("/healthz", include_in_schema=False)
 async def healthz(request: Request) -> dict:
     """Alias for /health."""
-    return {"ok": True}
+    return await health(request)
 
 
 @router.get("/diagnostics", include_in_schema=False)
 async def diagnostics() -> dict:
-    """Lightweight diagnostics."""
+    """Lightweight diagnostics (sanitized; no secrets)."""
     cfg = _get_app_config()
+    in_docker = settings.running_in_docker
+    ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+
+    mode = settings.mode.strip()
+    ext_req = settings.require_external_backends
+    require_memory = settings.require_memory
+
     return {
-        "in_container": settings.running_in_docker,
-        "mode": settings.mode.strip() or "",
-        "external_backends_required": settings.require_external_backends,
-        "require_memory": settings.require_memory,
+        "in_container": in_docker,
+        "mode": mode or "",
+        "external_backends_required": ext_req,
+        "require_memory": require_memory,
+        "memory_endpoint": ep or "",
+        "env_memory_endpoint": settings.memory_http_endpoint,
+        "memory_token_present": bool(
+            getattr(getattr(cfg, "http", object()), "token", None)
+        ),
         "api_version": int(API_VERSION),
     }
 
+
+
+@router.get("/health/memory", response_model=Dict[str, Any])
+async def health_memory(request: Request) -> Dict[str, Any]:
+    """Get per-tenant memory service health and circuit breaker state."""
+    from somabrain.services.memory_service import MemoryService
+
+    cfg = _get_app_config()
+    mt_memory = _get_mt_memory()
+
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    # Create memory service instance for this tenant
+    memsvc = MemoryService(mt_memory, ctx.namespace)
+    circuit_state = memsvc.get_circuit_state()
+
+    # Get outbox pending count for this tenant
+    from somabrain.db.outbox import get_pending_events
+
+    try:
+        pending_count = len(get_pending_events(limit=1000))
+    except Exception:
+        pending_count = 0
+
+    return {
+        "tenant": ctx.tenant_id,
+        "circuit_breaker": circuit_state,
+        "outbox_pending": pending_count,
+        "memory_service": (
+            "healthy" if not circuit_state["circuit_open"] else "unavailable"
+        ),
+        "timestamp": time.time(),
+    }
+
+
+@router.get("/health/oak", response_model=Dict[str, Any])
+async def health_oak(request: Request) -> Dict[str, Any]:
+    """Health check for Oak subsystem.
+
+    Returns the health of the Milvus vector store used for option persistence
+    and the OPA policy engine if it is configured.
+    """
+    from somabrain.milvus_client import MilvusClient
+
+    cfg = _get_app_config()
+    app_state = _get_app_state()
+
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    # Milvus health
+    milvus_ok: bool = False
+    try:
+        _ = MilvusClient()
+        milvus_ok = True
+    except Exception:
+        milvus_ok = False
+
+    # OPA health
+    opa_ok: bool = False
+    opa_required: bool = getattr(settings, "require_opa", False)
+    try:
+        opa_engine = getattr(app_state, "opa_engine", None) if app_state else None
+        if opa_engine:
+            opa_ok = await opa_engine.health()
+    except Exception:
+        opa_ok = False
+
+    return {
+        "tenant": ctx.tenant_id,
+        "milvus_ok": milvus_ok,
+        "opa_ok": opa_ok,
+        "opa_required": opa_required,
+    }
+
+
+@router.get("/health/metrics", response_model=Dict[str, Any])
+async def health_metrics(request: Request) -> Dict[str, Any]:
+    """Expose Milvus SLO telemetry in a JSON health payload.
+
+    Returns the p95 ingest/search latency gauges and the segment load gauge for
+    the tenant associated with the request.
+    """
+    cfg = _get_app_config()
+
+    ctx = await get_tenant_async(request, cfg.namespace)
+    require_auth(request, cfg)
+
+    tenant = ctx.tenant_id
+    stats = _milvus_metrics_for_tenant(tenant)
+    return {"tenant": tenant, **stats}
+
+
+# ---------------------------------------------------------------------------
+# Health Watchdog Coroutine (for background monitoring)
+# ---------------------------------------------------------------------------
+
+_health_watchdog_task = None
+
+
+async def _health_watchdog_coroutine():
+    """Periodic health checks for per-tenant circuit breakers."""
+    from somabrain.services.memory_service import MemoryService
+
+    cfg = _get_app_config()
+    mt_memory = _get_mt_memory()
+    poll_interval = float(getattr(cfg, "memory_health_poll_interval", 5.0))
+
+    while True:
+        try:
+            # Get all active tenants from memory pool
+            tenants = []
+            if mt_memory:
+                if hasattr(mt_memory, "_pool") and mt_memory._pool:
+                    tenants = list(mt_memory._pool.keys())
+                elif hasattr(mt_memory, "tenants"):
+                    tenants = mt_memory.tenants() or []
+
+            for tenant_namespace in tenants:
+                try:
+                    memsvc = MemoryService(mt_memory, tenant_namespace)
+                    circuit_state = memsvc.get_circuit_state()
+
+                    if circuit_state["circuit_open"]:
+                        health_result = memsvc.health()
+                        healthy = False
+
+                        if isinstance(health_result, dict):
+                            healthy = health_result.get("healthy", False)
+                            if not healthy:
+                                comps = health_result.get("components", {})
+                                mem = comps.get("memory", {})
+                                healthy = mem.get("healthy", False)
+                            if not healthy:
+                                healthy = health_result.get(
+                                    "http", False
+                                ) or health_result.get("ok", False)
+
+                        if healthy:
+                            MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
+                            logger.info(
+                                "%s Circuit breaker RESET | %s | action=reset",
+                                _LOG_PREFIX,
+                                _LOG_TENANT_FMT,
+                                memsvc.tenant_id,
+                            )
+
+                except Exception as e:
+                    logger.error(
+                        "%s Health check FAILED | %s | error=%s",
+                        _LOG_PREFIX,
+                        _LOG_TENANT_FMT,
+                        tenant_namespace,
+                        str(e),
+                    )
+
+        except Exception as e:
+            logger.error(
+                "%s Watchdog ERROR | error=%s",
+                _LOG_PREFIX,
+                str(e),
+            )
+
+        await asyncio.sleep(poll_interval)
+
+
+def start_health_watchdog():
+    """Start the health watchdog background task."""
+    global _health_watchdog_task
+    if _health_watchdog_task is None:
+        _health_watchdog_task = asyncio.create_task(_health_watchdog_coroutine())
+    return _health_watchdog_task
+
+
+def stop_health_watchdog():
+    """Stop the health watchdog background task."""
+    global _health_watchdog_task
+    if _health_watchdog_task is not None:
+        _health_watchdog_task.cancel()
+        _health_watchdog_task = None
