@@ -373,20 +373,23 @@
     - Added `get_tenant_overrides_cache()` function for dependency injection access
     - _Requirements: 12.2_
 
-- [ ] 14. Checkpoint - Ensure all tests pass
+- [x] 14. Checkpoint - Ensure all tests pass ✅
   - Task 12 deferred due to high risk (app.py is main bootstrap)
   - Task 13 completed - all module-level state refactored to DI container
-  - Ensure all tests pass, ask the user if questions arise.
+  - All unit tests pass ✅
+  - No diagnostics issues in modified files ✅
 
 ## Phase 6: Monolithic File Decomposition (Weeks 7-8)
 
 - [ ] 15. Decompose `somabrain/app.py` (4,421 lines → <500 lines)
-  - [ ] 15.1 Extract middleware to `somabrain/middleware/`
-    - Create `somabrain/middleware/__init__.py`
-    - Move `CognitiveMiddleware` to `somabrain/middleware/cognitive.py`
-    - Move `SecurityMiddleware` to `somabrain/middleware/security.py`
-    - Move `CognitiveErrorHandler` to `somabrain/middleware/error_handler.py`
-    - Move `CognitiveInputValidator` to `somabrain/middleware/validation.py`
+  - [x] 15.1 Extract middleware to `somabrain/middleware/` ✅
+    - Created `somabrain/middleware/__init__.py` with exports
+    - Created `somabrain/middleware/cognitive.py` with `CognitiveMiddleware`
+    - Created `somabrain/middleware/security.py` with `SecurityMiddleware`
+    - Created `somabrain/middleware/error_handler.py` with `CognitiveErrorHandler`
+    - Created `somabrain/middleware/validation.py` with `CognitiveInputValidator`
+    - Updated `somabrain/app.py` to import from middleware module
+    - Removed ~280 lines of inline class definitions from app.py
     - _Requirements: 1.3_
   - [ ] 15.2 Extract bootstrap logic to `somabrain/bootstrap/`
     - Create `somabrain/bootstrap/__init__.py`

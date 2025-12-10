@@ -83,6 +83,14 @@ from somabrain.jobs.milvus_reconciliation import reconcile as milvus_reconcile
 # Cognitive Threads router (Phase 5)
 from somabrain.cognitive.thread_router import router as thread_router
 
+# Middleware components (extracted to somabrain/middleware/)
+from somabrain.middleware import (
+    CognitiveMiddleware,
+    SecurityMiddleware,
+    CognitiveErrorHandler,
+    CognitiveInputValidator,
+)
+
 
 # ---------------------------------------------------------------------------
 # Simple OPA engine wrapper – provides a minimal health check for the OPA
@@ -587,288 +595,16 @@ error_logger = None
 module_logger = logging.getLogger(__name__)
 
 
-class CognitiveErrorHandler:
-    """
-    Advanced error handling for brain-like cognitive processing.
+# Middleware classes moved to somabrain/middleware/
+# - CognitiveErrorHandler -> somabrain/middleware/error_handler.py
+# - CognitiveMiddleware -> somabrain/middleware/cognitive.py
+# - CognitiveInputValidator -> somabrain/middleware/validation.py
+# - SecurityMiddleware -> somabrain/middleware/security.py
 
-    Provides structured error info and recovery suggestions for API and internal errors.
-    """
-
-    @staticmethod
-    def handle_error(
-        error: Exception, context: str = "", request_id: str | None = None
-    ) -> dict:
-        """
-        Handle errors with brain-like analysis and recovery suggestions.
-
-        Parameters
-        ----------
-        error : Exception
-            The exception to handle.
-        context : str, optional
-            Context string for error location.
-        request_id : str, optional
-            Request identifier.
-
-        Returns
-        -------
-        dict
-            Structured error info and recovery suggestions.
-        """
-        error_info = {
-            "error_type": type(error).__name__,
-            "error_message": str(error),
-            "context": context,
-            "timestamp": time.time(),
-            "request_id": request_id,
-            "traceback": traceback.format_exc(),
-            "recovery_suggestions": [],
-        }
-
-        # Brain-like error analysis
-        if isinstance(error, HTTPException):
-            error_info["recovery_suggestions"] = [
-                "Check request parameters",
-                "Verify authentication",
-            ]
-        elif "embedding" in str(error).lower():
-            error_info["recovery_suggestions"] = [
-                "Check embedding service",
-                "Alternative simpler embeddings",
-            ]
-        elif "memory" in str(error).lower():
-            error_info["recovery_suggestions"] = [
-                "Check external memory backend",
-                "Verify SOMABRAIN_MEMORY_HTTP_ENDPOINT and token",
-            ]
-        elif "rate" in str(error).lower():
-            error_info["recovery_suggestions"] = [
-                "Implement backoff strategy",
-                "Check rate limits",
-            ]
-        else:
-            error_info["recovery_suggestions"] = [
-                "Log for analysis",
-                "Implement graceful degradation",
-            ]
-
-        # Log with cognitive context
-        if error_logger:
-            error_logger.error(f"Cognitive Error in {context}: {error_info}")
-
-        return error_info
-
-
-class CognitiveMiddleware:
-    """
-    Middleware for brain-like request processing and monitoring.
-
-    Logs request lifecycle, handles errors, and tracks processing time for each API call.
-    """
-
-    def __init__(self, app):
-        self.app = app
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        # Extract request info
-        request_id = f"{time.time()}_{hash(str(scope))}"
-        path = scope.get("path", "")
-        method = scope.get("method", "")
-
-        start_time = time.time()
-
-        # Log cognitive request initiation
-        if cognitive_logger:
-            cognitive_logger.info(
-                f"🧠 Request {request_id}: {method} {path} - Cognitive processing initiated"
-            )
-
-        # Process request with error handling
-        try:
-            await self.app(scope, receive, send)
-            processing_time = time.time() - start_time
-
-            if cognitive_logger:
-                cognitive_logger.info(
-                    f"🧠 Request {request_id}: {method} {path} - Processing completed in {processing_time:.4f}s"
-                )
-
-        except HTTPException:
-            # Allow FastAPI/Starlette to handle intentional HTTP errors (e.g. auth/validation).
-            raise
-        except Exception as e:
-            processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(
-                e, f"{method} {path}", request_id
-            )
-
-            # Send error response
-            error_response = JSONResponse(
-                status_code=500,
-                content={
-                    "error": "Cognitive processing error",
-                    "request_id": request_id,
-                    "recovery_suggestions": error_info["recovery_suggestions"],
-                },
-            )
-
-            await error_response(scope, receive, send)
-
-            if cognitive_logger:
-                cognitive_logger.error(
-                    f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}"
-                )
-            return
-
-        # Log successful completion
-        if cognitive_logger:
-            cognitive_logger.debug(f"✅ Request {request_id} completed successfully")
-
-
-class CognitiveInputValidator:
-    """
-    Advanced input validation for brain-like cognitive processing.
-
-    Validates text, embedding dimensions, and coordinates for safe cognitive operations.
-    """
-
-    # Brain-safe input patterns
-    SAFE_TEXT_PATTERN = re.compile(r"^[a-zA-Z0-9\s\.,!?\'\"()/:_@-]+$")
-    MAX_TEXT_LENGTH = 10000
-    MAX_EMBEDDING_DIM = 4096
-    MIN_EMBEDDING_DIM = 64
-
-    @staticmethod
-    def validate_text_input(text: str, field_name: str = "text") -> str:
-        """Validate text input for cognitive processing."""
-        if not text:
-            raise ValueError(f"{field_name} cannot be empty")
-
-        if len(text) > CognitiveInputValidator.MAX_TEXT_LENGTH:
-            raise ValueError(
-                f"{field_name} exceeds maximum length of {CognitiveInputValidator.MAX_TEXT_LENGTH}"
-            )
-
-        if not CognitiveInputValidator.SAFE_TEXT_PATTERN.match(text):
-            # Log potential security issue
-            if cognitive_logger:
-                cognitive_logger.warning(
-                    f"Potentially unsafe input detected in {field_name}: {text[:100]}..."
-                )
-            raise ValueError(f"{field_name} contains unsafe characters")
-
-        return text.strip()
-
-    @staticmethod
-    def validate_embedding_dim(dim: int) -> int:
-        """Validate embedding dimensions for brain safety."""
-        if not isinstance(dim, int) or dim < CognitiveInputValidator.MIN_EMBEDDING_DIM:
-            raise ValueError(
-                f"Embedding dimension must be at least {CognitiveInputValidator.MIN_EMBEDDING_DIM}"
-            )
-
-        if dim > CognitiveInputValidator.MAX_EMBEDDING_DIM:
-            raise ValueError(
-                f"Embedding dimension cannot exceed {CognitiveInputValidator.MAX_EMBEDDING_DIM}"
-            )
-
-        return dim
-
-    @staticmethod
-    def validate_coordinates(coords: tuple) -> tuple:
-        """Validate coordinate tuples for brain processing."""
-        if not isinstance(coords, (list, tuple)) or len(coords) != 3:
-            raise ValueError("Coordinates must be a tuple/list of exactly 3 floats")
-
-        validated_coords = []
-        for i, coord in enumerate(coords):
-            try:
-                coord_float = float(coord)
-                # Prevent extreme values that could cause numerical instability
-                if abs(coord_float) > 1e6:
-                    raise ValueError(f"Coordinate {i} value too extreme: {coord_float}")
-                validated_coords.append(coord_float)
-            except (ValueError, TypeError):
-                raise ValueError(f"Coordinate {i} must be a valid number")
-
-        return tuple(validated_coords)
-
-    @staticmethod
-    def sanitize_query(query: str) -> str:
-        """Sanitize and prepare query for cognitive processing."""
-        # Remove potentially harmful patterns
-        query = re.sub(r"[<>]", "", query)  # Remove angle brackets
-        query = re.sub(r"javascript:", "", query, flags=re.IGNORECASE)
-        query = re.sub(r"data:", "", query, flags=re.IGNORECASE)
-
-        return CognitiveInputValidator.validate_text_input(query, "query")
-
-
-class SecurityMiddleware:
-    """
-    Advanced security middleware for brain protection.
-
-    Blocks suspicious requests and patterns to protect the cognitive API.
-    """
-
-    def __init__(self, app):
-        self.app = app
-        self.suspicious_patterns = [
-            re.compile(r"union\s+select", re.IGNORECASE),
-            re.compile(r";\s*drop", re.IGNORECASE),
-            re.compile(r"<script", re.IGNORECASE),
-            re.compile(r"eval\s*\(", re.IGNORECASE),
-        ]
-
-    async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
-            await self.app(scope, receive, send)
-            return
-
-        # Extract request info for security analysis
-        path = scope.get("path", "")
-        method = scope.get("method", "")
-        headers = dict(scope.get("headers", []))
-
-        # Security checks
-        if self._is_suspicious_request(path, method, headers):
-            if cognitive_logger:
-                cognitive_logger.warning(
-                    f"🚨 Suspicious request blocked: {method} {path}"
-                )
-            response = JSONResponse(
-                status_code=403,
-                content={"error": "Request blocked for security reasons"},
-            )
-            await response(scope, receive, send)
-            return
-
-        await self.app(scope, receive, send)
-
-    def _is_suspicious_request(self, path: str, method: str, headers: dict) -> bool:
-        """Analyze request for suspicious patterns."""
-        # Check path for suspicious patterns
-        for pattern in self.suspicious_patterns:
-            if pattern.search(path):
-                return True
-
-        # Check for unusual headers
-        suspicious_headers = ["x-forwarded-for", "x-real-ip"]
-        for header in suspicious_headers:
-            if header in headers:
-                # Additional validation could be added here
-                pass
-
-        return False
-
-    #
-    # Application bootstrap
-    #
-    cfg = config
+#
+# Application bootstrap
+#
+cfg = config
 
 
 _MINIMAL_API = False
