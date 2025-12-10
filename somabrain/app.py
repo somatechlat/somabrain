@@ -41,8 +41,7 @@ from cachetools import TTLCache
 # Additional imports required for application setup (must appear before any non‑import code)
 from somabrain.scoring import UnifiedScorer
 from somabrain.sdr import LSHIndex, SDREncoder
-from somabrain.services.cognitive_loop_service import eval_step as _eval_step
-from somabrain.services.memory_service import MemoryService
+# _eval_step and MemoryService moved to cognitive router
 
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
@@ -138,7 +137,7 @@ from somabrain.db.outbox import (
     cleanup_journal,
 )
 from somabrain.personality import PersonalityStore
-from somabrain.planner import plan_from_graph
+# plan_from_graph moved to cognitive router
 from somabrain.prediction import (
     BudgetedPredictor,
     LLMPredictor,
@@ -1405,136 +1404,8 @@ if not _MINIMAL_API:
         }
 
 
-@app.post("/plan/suggest", response_model=S.PlanSuggestResponse)
-async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
-    """Suggest a small plan derived from the semantic graph around a task key.
-
-    Body: { task_key: str, max_steps?: int, rel_types?: [str], universe?: str }
-    Returns: { plan: [str] }
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    task_key = str(getattr(body, "task_key", None) or "").strip()
-    if not task_key:
-        raise HTTPException(status_code=400, detail="missing task_key")
-    max_steps = int(
-        getattr(body, "max_steps", None) or getattr(cfg, "plan_max_steps", 5) or 5
-    )
-    rel_types = getattr(body, "rel_types", None)
-    if rel_types is not None and not isinstance(rel_types, list):
-        raise HTTPException(
-            status_code=400, detail="rel_types must be a list of strings"
-        )
-    # Universe scoping: body value overrides header when set
-    header_u = request.headers.get("X-Universe", "").strip() or None
-    universe = getattr(body, "universe", None) or header_u
-    try:
-        # Use MemoryService to ensure any outbox or circuit logic is respected and to share the same client instance.
-        memsvc = MemoryService(mt_memory, ctx.namespace)
-        plan_result = plan_from_graph(
-            task_key,
-            memsvc.client(),
-            max_steps=max_steps,
-            rel_types=rel_types,
-            universe=universe,
-        )
-    except Exception:
-        plan_result = []
-    return {"plan": plan_result}
-
-
-# ---------------------------------------------------------------------------
-# Oak endpoints moved to somabrain/oak/router.py
-# The oak_router is included via app.include_router(oak_router, prefix="/oak")
-# ---------------------------------------------------------------------------
-
-# /delete and /recall/delete endpoints moved to somabrain/routers/memory.py
-# The memory_router is included via app.include_router(memory_router) above.
-
-# Add POST endpoint for setting personality traits (used by tests)
-@app.post("/personality", response_model=S.PersonalityState)
-async def set_personality(
-    state: S.PersonalityState, request: Request
-) -> S.PersonalityState:
-    raise HTTPException(status_code=404, detail="Not Found")
-
-
-# Act endpoint – performs a single cognitive step and returns result data
-@app.post("/act", response_model=S.ActResponse)
-async def act_endpoint(body: S.ActRequest, request: Request):
-    """Execute an action/task and return step results.
-
-    This simplified implementation runs a single evaluation step using the
-    existing cognitive loop service. It returns a minimal ``ActResponse``
-    compatible with the test suite (including ``task`` and a ``results`` list
-    containing at least one ``ActStepResult`` with a ``salience`` field).
-    """
-    ctx = await get_tenant_async(request, cfg.namespace)
-    require_auth(request, cfg)
-    # Retrieve the predictor, neuromodulators and personality store for the tenant
-    # Use the configured predictor factory instead of instantiating any fallback.
-    predictor = _make_predictor()
-    # Run a single evaluation step – use the cognitive loop service helper.
-    # For this simplified endpoint, novelty is computed as 0.0, but the real
-    # embedder is used to generate the working memory vector. The service
-    # will handle predictor alternatives and neuromodulation.
-    wm_vec = embedder.embed(body.task)
-    step_result = _eval_step(
-        novelty=0.0,
-        wm_vec=wm_vec,
-        cfg=cfg,
-        predictor=predictor,
-        neuromods=per_tenant_neuromodulators,
-        personality_store=personality_store,
-        supervisor=None,
-        amygdala=amygdala,
-        tenant_id=ctx.tenant_id,
-    )
-    # Build the response structure expected by the tests.
-    act_step = {
-        "step": body.task,
-        "novelty": step_result.get("pred_error", 0.0),
-        "pred_error": step_result.get("pred_error", 0.0),
-        "salience": step_result.get("salience", 0.0),
-        "stored": step_result.get("gate_store", False),
-        "wm_hits": 0,
-        "memory_hits": 0,
-        "policy": None,
-    }
-    # Generate plan if planner is enabled
-    plan_result: list[str] = []
-    if getattr(cfg, "use_planner", False):
-        try:
-            # Use the existing MultiTenantMemory client for planning to ensure graph visibility.
-            mem_client = mt_memory.for_namespace(ctx.namespace)
-            plan_result = plan_from_graph(
-                body.task,
-                mem_client,
-                max_steps=getattr(cfg, "plan_max_steps", 5),
-                rel_types=None,
-                universe=getattr(body, "universe", None),
-            )
-        except Exception:
-            plan_result = []
-    return S.ActResponse(
-        task=body.task,
-        results=[act_step],
-        # Return the list directly; empty list is acceptable for callers.
-        plan=plan_result,
-        plan_universe=body.universe,
-    )
-
-
-# /neuromodulators endpoints moved to somabrain/routers/neuromod.py
-# The neuromod_router is included via app.include_router(neuromod_router) above.
-
-# NOTE: The following neuromodulator endpoint code has been removed.
-# See somabrain/routers/neuromod.py for the implementation.
-_NEUROMOD_ENDPOINTS_MOVED = True
-
-
-# /health/memory, /health/oak, /health/metrics endpoints moved to somabrain/routers/health.py
-# _health_watchdog_coroutine moved to somabrain/routers/health.py
+# Cognitive endpoints (/plan/suggest, /act, /personality) moved to somabrain/routers/cognitive.py
+# They are included via: app.include_router(cognitive_router, tags=["cognitive"])
 
 # Journal Admin Endpoints
 # =======================
