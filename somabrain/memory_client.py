@@ -12,60 +12,28 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import time
 import uuid
 import httpx
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .config import Config
-
 from common.config.settings import settings
-
-from somabrain import metrics as M
-from somabrain.infrastructure import (
-    get_memory_http_endpoint,
-    resolve_memory_endpoint,
-)
+from somabrain.infrastructure import get_memory_http_endpoint, resolve_memory_endpoint
 from somabrain.interfaces.memory import MemoryBackend
-
-# Import extracted components from memory module
-from somabrain.memory.transport import (
-    MemoryHTTPTransport,
-    _http_setting,
-    _response_json,
-)
+from somabrain.memory.transport import MemoryHTTPTransport, _http_setting, _response_json
 from somabrain.memory.types import RecallHit
-from somabrain.memory.normalization import (
-    _stable_coord,
-    _extract_memory_coord,
-)
+from somabrain.memory.normalization import _stable_coord, _extract_memory_coord
 from somabrain.memory.filtering import _filter_payloads_by_keyword
 from somabrain.memory.hit_processing import (
-    normalize_recall_hits,
-    hit_identity,
-    hit_score,
-    hit_timestamp,
-    coerce_timestamp_value,
-    prefer_candidate_hit,
-    deduplicate_hits,
-    lexical_bonus,
+    normalize_recall_hits, hit_identity, hit_score, hit_timestamp,
+    coerce_timestamp_value, prefer_candidate_hit, deduplicate_hits, lexical_bonus,
 )
 from somabrain.memory.scoring import (
-    coerce_float,
-    parse_payload_timestamp,
-    get_recency_normalisation,
-    get_recency_profile,
-    compute_recency_features,
-    compute_density_factor,
-    extract_cleanup_margin,
-    rank_hits,
-    apply_weighting_to_hits,
-    rescore_and_rank_hits,
+    coerce_float, parse_payload_timestamp, get_recency_normalisation,
+    get_recency_profile, compute_recency_features, compute_density_factor,
+    extract_cleanup_margin, rank_hits, apply_weighting_to_hits, rescore_and_rank_hits,
 )
-from somabrain.memory.payload import (
-    enrich_payload,
-    prepare_memory_payload,
-)
+from somabrain.memory.payload import enrich_payload, prepare_memory_payload
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
@@ -86,14 +54,6 @@ if debug_memory_client:
     logger.setLevel(logging.DEBUG)
 
 _TRUE_VALUES = ("1", "true", "yes", "on")
-
-# MemoryHTTPTransport and _http_setting moved to somabrain/memory/transport.py
-
-
-# Normalization and filtering functions moved to:
-# - somabrain/memory/normalization.py (_stable_coord, _parse_coord_string, _extract_memory_coord)
-# - somabrain/memory/filtering.py (_filter_payloads_by_keyword)
-# RecallHit dataclass moved to somabrain/memory/types.py
 
 
 class MemoryClient:

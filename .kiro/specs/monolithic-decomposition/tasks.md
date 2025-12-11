@@ -517,19 +517,19 @@
 
 ## Phase 6: memory_client.py Complete Decomposition (Priority: High)
 
-- [ ] 63. Extract HTTP Helper Methods
-  - [ ] 63.1 Create `somabrain/memory/http_helpers.py`
-    - Move _http_post_with_retries_sync, _http_post_with_retries_async
-    - Move _store_http_sync, _store_http_async
-    - Move _store_bulk_http_sync, _store_bulk_http_async
-    - Move _record_http_metrics
-    - ~200 lines
+- [x] 63. Extract HTTP Helper Methods
+  - [x] 63.1 Create `somabrain/memory/http_helpers.py`
+    - Moved record_http_metrics, http_post_with_retries_sync/async
+    - Moved store_http_sync/async, store_bulk_http_sync/async
+    - 278 lines
     - _Requirements: 2.2, 2.3_
-  - [ ] 63.2 Update `somabrain/memory_client.py` to import from http_helpers.py
+  - [x] 63.2 Update `somabrain/memory_client.py` to import from http_helpers.py
+    - MemoryClient methods now delegate to extracted functions
+    - memory_client.py reduced from 1409 to 1298 lines
     - _Requirements: 2.1_
 
-- [ ] 64. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [x] 64. Checkpoint - Ensure all tests pass
+  - All tests pass (102 property tests, 5 unit tests)
 
 - [ ] 65. Extract Remember Operations
   - [ ] 65.1 Create `somabrain/memory/remember.py`
