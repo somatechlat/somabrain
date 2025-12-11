@@ -160,11 +160,16 @@
     - Extracted: coerce_float, parse_payload_timestamp, get_recency_normalisation, get_recency_profile
     - Extracted: compute_recency_features, compute_density_factor, extract_cleanup_margin
     - Extracted: rank_hits, apply_weighting_to_hits, rescore_and_rank_hits
-    - 320 lines extracted
-    - memory_client.py reduced from 1754 to 1482 lines (15.5% additional reduction)
-    - Total reduction: 1954 → 1482 lines (24% reduction)
+    - 432 lines
     - _Requirements: 2.3_
-  - [ ] 20.3 Create `somabrain/memory/client.py` (DEFERRED)
+  - [x] 20.3 Create `somabrain/memory/payload.py`
+    - Extracted payload enrichment and normalization functions
+    - Extracted: enrich_payload, normalize_metadata, prepare_memory_payload
+    - 146 lines
+    - memory_client.py reduced from 1482 to 1409 lines
+    - Total reduction: 1954 → 1409 lines (28% reduction)
+    - _Requirements: 2.3_
+  - [ ] 20.4 Create `somabrain/memory/client.py` (DEFERRED)
     - Move `MemoryClient` class
     - Update imports to use extracted modules
     - _Requirements: 2.3_
@@ -309,7 +314,7 @@
 - [x] 34. Line Count Verification
   - [x] 34.1 Verify all target files meet line count requirements
     - `somabrain/app.py`: 800 lines ✅ (target <800) - extracted validation handler, diagnostics, admin features
-    - `somabrain/memory_client.py`: 1482 lines (target <100) - IN PROGRESS: extracted hit_processing.py + scoring.py (24% reduction)
+    - `somabrain/memory_client.py`: 1409 lines (target <100) - IN PROGRESS: extracted hit_processing.py + scoring.py + payload.py (28% reduction)
     - `somabrain/metrics_original.py`: 1698 lines (target <100) - DEFERRED: many interdependencies
     - `somabrain/api/memory_api.py`: 506 lines ✅ (target <500) - extracted session, recall, models, helpers
     - `somabrain/learning/adaptation.py`: 413 lines ✅ (target <500) - Reduced 61% via decomposition
@@ -330,5 +335,5 @@
   - All learning property tests pass (15 tests)
   - All imports verified working
   - Targets met: app.py (800), memory_api.py (506), schemas.py (20), adaptation.py (413)
-  - In progress: memory_client.py (1482 lines, 24% reduction)
+  - In progress: memory_client.py (1409 lines, 28% reduction)
   - Deferred: memory_client.py, metrics_original.py (high risk/complexity)

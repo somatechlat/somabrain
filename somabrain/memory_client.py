@@ -62,6 +62,10 @@ from somabrain.memory.scoring import (
     apply_weighting_to_hits,
     rescore_and_rank_hits,
 )
+from somabrain.memory.payload import (
+    enrich_payload,
+    prepare_memory_payload,
+)
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
@@ -701,38 +705,12 @@ class MemoryClient:
         Ensures downstream HTTP memory services receive common fields that many
         implementations index on: text/content/id/universe. Does not mutate input.
         """
-        p = dict(payload or {})
-        # Universe scoping
-        universe = str(p.get("universe") or "real")
-        # Choose canonical text for indexing: prefer 'task' then 'text' then 'content' then 'what/fact'
-        text = None
-        for k in ("task", "text", "content", "what", "fact", "headline", "description"):
-            v = p.get(k)
-            if isinstance(v, str) and v.strip():
-                text = v.strip()
-                break
-        if not text:
-            # last resort – coord_key as text anchor
-            text = str(coord_key)
-        # Mirror into common keys if absent
-        p.setdefault("text", text)
-        p.setdefault("content", text)
-        # Provide a stable id if caller didn't specify one
-        p.setdefault("id", p.get("memory_id") or p.get("key") or coord_key)
-        # Provide a timestamp if missing
-        p.setdefault("timestamp", time.time())
-        # Ensure universe present
-        p.setdefault("universe", universe)
-        # Namespace (best-effort) – some services record this for tenancy
+        namespace = None
         try:
-            ns = getattr(self.cfg, "namespace", None)
-            if ns and not p.get("namespace"):
-                p["namespace"] = ns
+            namespace = getattr(self.cfg, "namespace", None)
         except Exception:
             pass
-        # Extra headers for HTTP calls
-        headers = {"X-Universe": universe}
-        return p, universe, headers
+        return enrich_payload(payload, coord_key, namespace)
 
     def _tenant_namespace(self) -> tuple[str, str]:
         """Resolve tenant and namespace from cfg/settings with hard requirements."""
@@ -783,58 +761,7 @@ class MemoryClient:
         coord = _stable_coord(f"{universe}::{coord_key}")
 
         # ensure we don't mutate caller's dict; copy and normalize metadata
-        payload = dict(enriched)
-        payload.setdefault("memory_type", "episodic")
-        payload.setdefault("timestamp", time.time())
-        payload.setdefault("universe", universe)
-
-        # --- Normalize optional metadata fields (light-touch) ---
-        try:
-            # phase
-            if "phase" in payload and isinstance(payload["phase"], str):
-                payload["phase"] = payload["phase"].strip().lower() or None
-            # quality_score
-            if "quality_score" in payload:
-                try:
-                    qs = float(payload["quality_score"])
-                    if qs < 0:
-                        qs = 0.0
-                    if qs > 1:
-                        qs = 1.0
-                    payload["quality_score"] = qs
-                except Exception:
-                    payload.pop("quality_score", None)
-            # domains
-            if "domains" in payload:
-                dval = payload["domains"]
-                if isinstance(dval, str):
-                    # split on comma or whitespace
-                    parts = [
-                        p.strip().lower()
-                        for p in dval.replace(",", " ").split()
-                        if p.strip()
-                    ]
-                    payload["domains"] = parts or []
-                elif isinstance(dval, (list, tuple)):
-                    cleaned = []
-                    for x in dval:
-                        if isinstance(x, str) and x.strip():
-                            cleaned.append(x.strip().lower())
-                    payload["domains"] = cleaned
-                else:
-                    payload.pop("domains", None)
-            # reasoning_chain: accept list[str] or single string -> keep
-            if "reasoning_chain" in payload and isinstance(
-                payload["reasoning_chain"], str
-            ):
-                rc = payload["reasoning_chain"].strip()
-                if rc:
-                    payload["reasoning_chain"] = [rc]
-                else:
-                    payload.pop("reasoning_chain", None)
-        except Exception:
-            # Never fail store because of metadata normalization
-            pass
+        payload = prepare_memory_payload(enriched, coord_key, universe)
 
         # Detect async context: if present, schedule background persistence
         try:

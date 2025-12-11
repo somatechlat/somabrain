@@ -33,6 +33,11 @@ from .scoring import (
     apply_weighting_to_hits,
     rescore_and_rank_hits,
 )
+from .payload import (
+    enrich_payload,
+    normalize_metadata,
+    prepare_memory_payload,
+)
 
 __all__ = [
     # Hierarchical memory
@@ -64,6 +69,10 @@ __all__ = [
     "rank_hits",
     "apply_weighting_to_hits",
     "rescore_and_rank_hits",
+    # Payload
+    "enrich_payload",
+    "normalize_metadata",
+    "prepare_memory_payload",
 ]
 
 
