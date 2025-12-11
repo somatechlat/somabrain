@@ -46,6 +46,16 @@ from somabrain.memory.normalization import (
     _extract_memory_coord,
 )
 from somabrain.memory.filtering import _filter_payloads_by_keyword
+from somabrain.memory.hit_processing import (
+    normalize_recall_hits,
+    hit_identity,
+    hit_score,
+    hit_timestamp,
+    coerce_timestamp_value,
+    prefer_candidate_hit,
+    deduplicate_hits,
+    lexical_bonus,
+)
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
@@ -468,240 +478,30 @@ class MemoryClient:
                 all_success = False
         return all_success, 200 if all_success else 500, {"items": results}
 
+    # Hit processing methods delegate to somabrain.memory.hit_processing
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
-        hits: List[RecallHit] = []
-        if isinstance(data, dict):
-            items = None
-            for key in ("matches", "results", "items", "memories", "entries", "hits"):
-                seq = data.get(key)
-                if isinstance(seq, list):
-                    items = seq
-                    break
-            if items is None and isinstance(data.get("data"), list):
-                items = data.get("data")
-            if items is not None:
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    payload = item.get("payload")
-                    if not isinstance(payload, dict):
-                        mem = item.get("memory")
-                        if isinstance(mem, dict):
-                            payload = mem.get("payload") or mem
-                    if not isinstance(payload, dict):
-                        payload = {
-                            k: v
-                            for k, v in item.items()
-                            if k
-                            not in (
-                                "score",
-                                "coord",
-                                "coordinate",
-                                "distance",
-                                "vector",
-                            )
-                        }
-                    payload = dict(payload or {})
-                    score = None
-                    try:
-                        score_val = item.get("score")
-                        if score_val is None:
-                            score_val = item.get("similarity")
-                        if score_val is None and isinstance(item.get("metadata"), dict):
-                            score_val = item["metadata"].get("score")
-                        if score_val is not None:
-                            score = float(score_val)
-                            payload.setdefault("_score", score)
-                    except Exception:
-                        score = None
-                    coord = _extract_memory_coord(item)
-                    if coord and "coordinate" not in payload:
-                        payload["coordinate"] = coord
-                    hits.append(
-                        RecallHit(
-                            payload=payload,
-                            score=score,
-                            coordinate=coord,
-                            raw=item,
-                        )
-                    )
-                return hits
-        if isinstance(data, list):
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                payload = dict(item)
-                coord = _extract_memory_coord(item)
-                if coord and "coordinate" not in payload:
-                    payload["coordinate"] = coord
-                hits.append(
-                    RecallHit(
-                        payload=payload,
-                        score=None,
-                        coordinate=coord,
-                        raw=item,
-                    )
-                )
-        return hits
+        return normalize_recall_hits(data)
 
     def _hit_identity(self, hit: RecallHit) -> str:
-        coord = hit.coordinate
-        if coord is None:
-            coord = _extract_memory_coord(hit.payload) or _extract_memory_coord(hit.raw)
-        if coord:
-            try:
-                return "coord:{:.6f},{:.6f},{:.6f}".format(coord[0], coord[1], coord[2])
-            except Exception:
-                pass
-        payload = hit.payload if isinstance(hit.payload, dict) else {}
-        if isinstance(payload, dict):
-            for key in ("id", "memory_id", "key", "coord_key"):
-                identifier = payload.get(key)
-                if identifier:
-                    return f"id:{identifier}"
-            for field in ("task", "text", "content", "what", "fact", "headline"):
-                value = payload.get(field)
-                if isinstance(value, str) and value.strip():
-                    return f"text:{value.strip().lower()}"
-        try:
-            raw = hit.raw or hit.payload
-            serial = json.dumps(raw, sort_keys=True, default=str)
-            digest = hashlib.blake2s(serial.encode("utf-8"), digest_size=16).hexdigest()
-            return f"hash:{digest}"
-        except Exception:
-            return f"obj:{id(hit)}"
+        return hit_identity(hit)
 
     def _hit_score(self, hit: RecallHit) -> float | None:
-        score = hit.score
-        if isinstance(score, (int, float)) and not math.isnan(score):
-            return float(score)
-        payload = hit.payload if isinstance(hit.payload, dict) else {}
-        if isinstance(payload, dict):
-            alt = payload.get("_score")
-            if isinstance(alt, (int, float)) and not math.isnan(alt):
-                return float(alt)
-        return None
+        return hit_score(hit)
 
     def _coerce_timestamp_value(self, value: Any) -> float | None:
-        if value is None:
-            return None
-        if isinstance(value, (int, float)):
-            try:
-                if math.isnan(float(value)):
-                    return None
-            except Exception:
-                return None
-            return float(value)
-        if isinstance(value, str):
-            text = value.strip()
-            if not text:
-                return None
-            try:
-                # ISO8601 handling; account for trailing Z
-                if text.endswith("Z"):
-                    dt = datetime.fromisoformat(text[:-1] + "+00:00")
-                else:
-                    dt = datetime.fromisoformat(text)
-                return dt.timestamp()
-            except Exception:
-                try:
-                    return float(text)
-                except Exception:
-                    return None
-        if isinstance(value, datetime):
-            if value.tzinfo is None:
-                value = value.replace(tzinfo=timezone.utc)
-            return value.timestamp()
-        return None
+        return coerce_timestamp_value(value)
 
     def _hit_timestamp(self, hit: RecallHit) -> float | None:
-        payload = hit.payload if isinstance(hit.payload, dict) else {}
-        candidate_keys = (
-            "timestamp",
-            "created_at",
-            "updated_at",
-            "ts",
-            "time",
-        )
-        if isinstance(payload, dict):
-            for key in candidate_keys:
-                value = payload.get(key)
-                ts = self._coerce_timestamp_value(value)
-                if ts is not None:
-                    return ts
-        raw = hit.raw
-        if isinstance(raw, dict):
-            meta = raw.get("metadata")
-            if isinstance(meta, dict):
-                for key in candidate_keys:
-                    ts = self._coerce_timestamp_value(meta.get(key))
-                    if ts is not None:
-                        return ts
-        return None
+        return hit_timestamp(hit)
 
     def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> bool:
-        curr_score = self._hit_score(current)
-        cand_score = self._hit_score(candidate)
-        if cand_score is not None or curr_score is not None:
-            curr_metric = curr_score if curr_score is not None else float("-inf")
-            cand_metric = cand_score if cand_score is not None else float("-inf")
-            if cand_metric > curr_metric + 1e-9:
-                return True
-            if cand_metric < curr_metric - 1e-9:
-                return False
-        curr_ts = self._hit_timestamp(current)
-        cand_ts = self._hit_timestamp(candidate)
-        if cand_ts is not None and curr_ts is not None:
-            if cand_ts > curr_ts + 1e-6:
-                return True
-            if cand_ts < curr_ts - 1e-6:
-                return False
-        elif cand_ts is not None:
-            return True
-        return False
+        return prefer_candidate_hit(current, candidate)
 
     def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
-        winners: dict[str, RecallHit] = {}
-        order: List[str] = []
-        for hit in hits:
-            ident = self._hit_identity(hit)
-            existing = winners.get(ident)
-            if existing is None:
-                winners[ident] = hit
-                order.append(ident)
-                continue
-            if self._prefer_candidate_hit(existing, hit):
-                winners[ident] = hit
-        return [winners[idx] for idx in order]
+        return deduplicate_hits(hits)
 
     def _lexical_bonus(self, payload: dict, query: str) -> float:
-        q = str(query or "").strip()
-        if not q or not isinstance(payload, dict):
-            return 0.0
-        ql = q.lower()
-        bonus = 0.0
-        fields = ("task", "text", "content", "what", "fact", "headline", "summary")
-        for field in fields:
-            value = payload.get(field)
-            if isinstance(value, str) and value:
-                vl = value.lower()
-                if vl == ql:
-                    bonus = max(bonus, 1.5)
-                elif ql in vl:
-                    bonus = max(bonus, 1.0)
-        token_matches = 0
-        for token in re.split(r"[\s,;:/-]+", q):
-            token = token.strip().lower()
-            if len(token) < 3:
-                continue
-            for field in fields:
-                value = payload.get(field)
-                if isinstance(value, str) and token in value.lower():
-                    token_matches += 1
-                    break
-        if token_matches:
-            bonus += min(0.25 * token_matches, 1.0)
-        return bonus
+        return lexical_bonus(payload, query)
 
     def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
         ranked: List[tuple[float, float, float, int, RecallHit]] = []

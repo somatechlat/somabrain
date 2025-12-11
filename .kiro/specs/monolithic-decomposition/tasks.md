@@ -148,12 +148,15 @@
   - [ ] 19.3 Update `somabrain/memory_client.py` to import helpers
     - _Requirements: 2.1_
 
-- [-] 20. Refactor MemoryClient (DEFERRED - HIGH RISK)
+- [-] 20. Refactor MemoryClient (IN PROGRESS)
   - Note: MemoryClient class is 1600+ lines with complex internal state
   - Note: Moving would require updating imports across entire codebase
-  - Note: Current extraction reduced file from 2216 to 1954 lines (12% reduction)
-  - Note: Extracted: MemoryHTTPTransport, RecallHit, normalization, filtering
-  - [ ] 20.1 Create `somabrain/memory/client.py` (DEFERRED)
+  - [x] 20.1 Create `somabrain/memory/hit_processing.py`
+    - Extracted hit processing functions (normalize_recall_hits, hit_identity, hit_score, etc.)
+    - 240 lines extracted
+    - memory_client.py reduced from 1954 to 1754 lines (10% reduction)
+    - _Requirements: 2.3_
+  - [ ] 20.2 Create `somabrain/memory/client.py` (DEFERRED)
     - Move `MemoryClient` class
     - Update imports to use extracted modules
     - _Requirements: 2.3_
@@ -297,7 +300,7 @@
 - [x] 34. Line Count Verification
   - [x] 34.1 Verify all target files meet line count requirements
     - `somabrain/app.py`: 800 lines ✅ (target <800) - extracted validation handler, diagnostics, admin features
-    - `somabrain/memory_client.py`: 1954 lines (target <100) - DEFERRED: high risk
+    - `somabrain/memory_client.py`: 1754 lines (target <100) - IN PROGRESS: extracted hit_processing.py
     - `somabrain/metrics_original.py`: 1698 lines (target <100) - DEFERRED: many interdependencies
     - `somabrain/api/memory_api.py`: 506 lines ✅ (target <500) - extracted session, recall, models, helpers
     - `somabrain/learning/adaptation.py`: 413 lines ✅ (target <500) - Reduced 61% via decomposition

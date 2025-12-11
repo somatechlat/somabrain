@@ -11,6 +11,16 @@ This module provides:
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .superposed_trace import SuperposedTrace, TraceConfig
 from .types import RecallHit
+from .hit_processing import (
+    normalize_recall_hits,
+    hit_identity,
+    hit_score,
+    hit_timestamp,
+    coerce_timestamp_value,
+    prefer_candidate_hit,
+    deduplicate_hits,
+    lexical_bonus,
+)
 
 __all__ = [
     # Hierarchical memory
@@ -22,6 +32,15 @@ __all__ = [
     "TraceConfig",
     # Memory client types
     "RecallHit",
+    # Hit processing
+    "normalize_recall_hits",
+    "hit_identity",
+    "hit_score",
+    "hit_timestamp",
+    "coerce_timestamp_value",
+    "prefer_candidate_hit",
+    "deduplicate_hits",
+    "lexical_bonus",
 ]
 
 
