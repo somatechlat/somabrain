@@ -268,87 +268,9 @@ HTTP_LATENCY = Histogram(
     ["method", "path"],
     registry=registry,
 )
-# OPA enforcement metrics – count allow and deny decisions
-OPA_ALLOW_TOTAL = get_counter(
-    "somabrain_opa_allow_total",
-    "Number of requests allowed by OPA",
-)
+# OPA enforcement metrics moved to somabrain/metrics/opa.py
 
-# ---------------------------------------------------------------------------
-# Oak‑specific observability (ROAMDP)
-# ---------------------------------------------------------------------------
-# Average utility of created Oak options, labelled by tenant.
-OPTION_UTILITY_AVG = get_gauge(
-    "somabrain_option_utility_avg",
-    "Average utility of created Oak options per tenant",
-    ["tenant_id"],
-)
-
-# Total number of Oak options stored per tenant.
-OPTION_COUNT = get_gauge(
-    "somabrain_option_count",
-    "Total number of Oak options stored per tenant",
-    ["tenant_id"],
-)
-OPA_DENY_TOTAL = get_counter(
-    "somabrain_opa_deny_total",
-    "Number of requests denied by OPA",
-)
-
-# ---------------------------------------------------------------------------
-# Milvus telemetry (VIBE task 19.4)
-# ---------------------------------------------------------------------------
-# p95 latency for Milvus search operations, labelled by tenant.
-MILVUS_SEARCH_LAT_P95 = get_gauge(
-    "somabrain_milvus_search_latency_p95_seconds",
-    "p95 search latency to Milvus",
-    ["tenant_id"],
-)
-
-# p95 latency for Milvus ingest (upsert) operations, labelled by tenant.
-MILVUS_INGEST_LAT_P95 = get_gauge(
-    "somabrain_milvus_ingest_latency_p95_seconds",
-    "p95 ingest latency to Milvus",
-    ["tenant_id"],
-)
-
-# Number of Milvus query segments loaded for a collection.
-MILVUS_SEGMENT_LOAD = get_gauge(
-    "somabrain_milvus_segment_load",
-    "Number of Milvus query segments currently loaded for a collection",
-    ["collection"],
-)
-
-# Counter for retry attempts performed during Milvus option upserts.
-MILVUS_UPSERT_RETRY_TOTAL = get_counter(
-    "somabrain_milvus_upsert_retry_total",
-    "Retry attempts while persisting Oak options to Milvus",
-    ["tenant_id"],
-)
-
-# Counter for Milvus option upserts that still failed after exhausting retries.
-MILVUS_UPSERT_FAILURE_TOTAL = get_counter(
-    "somabrain_milvus_upsert_failure_total",
-    "Number of Milvus option upserts that failed after all retries",
-    ["tenant_id"],
-)
-
-# ---------------------------------------------------------------------------
-# Milvus ↔ PostgreSQL reconciliation metrics (VIBE task 19.5)
-# ---------------------------------------------------------------------------
-# Counter for missing vectors that were inserted into Milvus during reconciliation.
-MILVUS_RECONCILE_MISSING = get_counter(
-    "somabrain_milvus_reconcile_missing_total",
-    "Number of missing option vectors inserted into Milvus during reconciliation",
-    ["tenant_id"],
-)
-
-# Counter for orphan vectors that were removed from Milvus during reconciliation.
-MILVUS_RECONCILE_ORPHAN = get_counter(
-    "somabrain_milvus_reconcile_orphan_total",
-    "Number of orphan option vectors removed from Milvus during reconciliation",
-    ["tenant_id"],
-)
+# Oak and Milvus metrics moved to somabrain/metrics/oak.py
 
 # Learning loop metrics (tau/entropy/feedback)
 LEARNING_TAU = get_gauge(
@@ -361,89 +283,11 @@ LEARNING_ENTROPY_CAP_HITS = get_counter(
     "Count of retrieval weight vectors that exceeded entropy cap",
     ["tenant_id"],
 )
-# Reward Gate metrics – count allow and deny decisions
-REWARD_ALLOW_TOTAL = get_counter(
-    "somabrain_reward_allow_total",
-    "Number of requests allowed by Reward Gate",
-)
-REWARD_DENY_TOTAL = get_counter(
-    "somabrain_reward_deny_total",
-    "Number of requests denied by Reward Gate",
-)
-# Constitution metrics (baseline)
-CONSTITUTION_VERIFIED = Gauge(
-    "somabrain_constitution_verified",
-    "Constitution verification status (1=verified, 0=unverified)",
-    registry=registry,
-)
-CONSTITUTION_VERIFY_LATENCY = Histogram(
-    "somabrain_constitution_verify_latency_seconds",
-    "Time spent verifying constitution signatures on startup",
-    registry=registry,
-)
-# Utility metrics (Phase A)
-UTILITY_NEGATIVE = Counter(
-    "somabrain_utility_negative_total",
-    "Times utility guard rejected a request (U < 0)",
-    registry=registry,
-)
-UTILITY_VALUE = Gauge(
-    "somabrain_utility_value",
-    "Last computed utility value (per process)",
-    registry=registry,
-)
+# Reward Gate metrics moved to somabrain/metrics/opa.py
+# Constitution and Utility metrics moved to somabrain/metrics/constitution.py
 WM_HITS = Counter("somabrain_wm_hits_total", "WM recall hits", registry=registry)
 WM_MISSES = Counter("somabrain_wm_misses_total", "WM recall misses", registry=registry)
-SALIENCE_STORE = Counter(
-    "somabrain_store_events_total", "Stores gated by salience", registry=registry
-)
-
-SALIENCE_HIST = _Hist(
-    "somabrain_salience_score",
-    "Salience score distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
-FD_ENERGY_CAPTURE = Gauge(
-    "somabrain_fd_energy_capture_ratio",
-    "FD salience sketch energy capture ratio",
-    registry=registry,
-)
-FD_RESIDUAL = _Hist(
-    "somabrain_fd_residual_ratio",
-    "Residual energy ratio per vector for FD salience",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
-FD_TRACE_ERROR = Gauge(
-    "somabrain_fd_trace_norm_error",
-    "Trace normalization error for FD sketch",
-    registry=registry,
-)
-FD_PSD_INVARIANT = Gauge(
-    "somabrain_fd_psd_invariant",
-    "PSD invariant flag for FD sketch (1=ok, 0=violation)",
-    registry=registry,
-)
-SCORER_COMPONENT = _Hist(
-    "somabrain_scorer_component",
-    "Unified scorer component values",
-    ["component"],
-    buckets=[i / 10.0 for i in range(-10, 11)],
-    registry=registry,
-)
-SCORER_FINAL = _Hist(
-    "somabrain_scorer_final",
-    "Unified scorer combined score",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
-SCORER_WEIGHT_CLAMPED = Counter(
-    "somabrain_scorer_weight_clamped_total",
-    "Unified scorer weight clamp events",
-    ["component", "bound"],
-    registry=registry,
-)
+# Salience, FD, and Scorer metrics moved to somabrain/metrics/salience.py
 
 EXTERNAL_METRICS_SCRAPE_STATUS = get_gauge(
     "somabrain_external_metrics_scraped",
@@ -464,36 +308,7 @@ ATTENTION_LEVEL = Gauge(
     registry=registry,
 )
 
-# HRR cleanup metrics
-HRR_CLEANUP_USED = Counter(
-    "somabrain_hrr_cleanup_used_total",
-    "Times HRR cleanup was applied",
-    registry=registry,
-)
-HRR_CLEANUP_SCORE = _Hist(
-    "somabrain_hrr_cleanup_score",
-    "HRR cleanup top-1 cosine score",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
-
-HRR_CLEANUP_CALLS = _PC(
-    "somabrain_hrr_cleanup_calls_total",
-    "Count of HRR cleanup invocations",
-    registry=registry,
-)
-HRR_ANCHOR_SIZE = _Hist(
-    "somabrain_hrr_anchor_size",
-    "Number of HRR anchors observed per tenant",
-    buckets=[1, 10, 100, 1_000, 10_000],
-    registry=registry,
-)
-HRR_CONTEXT_SAT = _Hist(
-    "somabrain_hrr_context_saturation",
-    "HRR context saturation (anchors/max_anchors)",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    registry=registry,
-)
+# HRR cleanup metrics moved to somabrain/metrics/hrr.py
 
 # Governance metrics (Sprint E1)
 MEMORY_ITEMS = get_gauge(
@@ -618,39 +433,7 @@ SDR_CANDIDATES = _PCounter(
     ["cohort"],
     registry=registry,
 )
-HRR_RERANK_APPLIED = Counter(
-    "somabrain_hrr_rerank_applied_total",
-    "Times HRR-first re-ranking was applied",
-    registry=registry,
-)
-HRR_RERANK_LTM_APPLIED = Counter(
-    "somabrain_hrr_rerank_ltm_applied_total",
-    "Times HRR-first LTM re-ranking was applied",
-    registry=registry,
-)
-HRR_RERANK_WM_SKIPPED = Counter(
-    "somabrain_hrr_rerank_wm_skipped_total",
-    "Times HRR WM rerank was skipped due to large margin",
-    registry=registry,
-)
-
-# Unbinding path + parameters
-UNBIND_PATH = Counter(
-    "somabrain_unbind_path_total",
-    "Unbind path selection counts",
-    ["path"],
-    registry=registry,
-)
-UNBIND_WIENER_FLOOR = Gauge(
-    "somabrain_unbind_wiener_floor",
-    "Wiener/MAP floor value used in denominator",
-    registry=registry,
-)
-UNBIND_K_EST = Gauge(
-    "somabrain_unbind_k_est",
-    "Estimated number of superposed items (k_est)",
-    registry=registry,
-)
+# HRR rerank and Unbind metrics moved to somabrain/metrics/hrr.py
 
 # --- Retrieval metrics ---
 RECALL_REQUESTS = get_counter(
@@ -710,73 +493,9 @@ RETRIEVAL_FUSION_SOURCES = Histogram(
     registry=registry,
 )
 
-# Additional unbind observability
-UNBIND_SPECTRAL_BINS_CLAMPED = Counter(
-    "somabrain_spectral_bins_clamped_total",
-    "Number of spectral bins clamped/nudged to avoid division by near-zero",
-    registry=registry,
-)
+# Additional unbind observability moved to somabrain/metrics/hrr.py
 
-UNBIND_EPS_USED = Gauge(
-    "somabrain_unbind_eps_used",
-    "Effective epsilon (power units) used in spectral denominator",
-    registry=registry,
-)
-
-RECONSTRUCTION_COSINE = Histogram(
-    "somabrain_reconstruction_cosine",
-    "Cosine similarity between original and reconstructed vector after unbind",
-    registry=registry,
-)
-
-# Predictor metrics
-PREDICTOR_LATENCY = Histogram(
-    "somabrain_predictor_latency_seconds",
-    "Predictor call latency",
-    registry=registry,
-)
-PREDICTOR_LATENCY_BY = Histogram(
-    "somabrain_predictor_latency_seconds_by",
-    "Predictor call latency by provider",
-    ["provider"],
-    registry=registry,
-)
-PREDICTOR_ALTERNATIVE = Counter(
-    "somabrain_predictor_alternative_total",
-    "Count of predictor timeouts/errors causing degrade",
-    registry=registry,
-)
-
-# --- Planning KPIs ---
-PLANNING_LATENCY = Histogram(
-    "somabrain_planning_latency_seconds",
-    "Planning generation latency seconds",
-    ["backend"],
-    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.075, 0.1, 0.2, 0.3, 0.5, 1.0),
-    registry=registry,
-)
-PLANNING_LATENCY_P99 = Gauge(
-    "somabrain_planning_latency_p99",
-    "Approximate p99 planning latency seconds (rolling)",
-    registry=registry,
-)
-
-_planning_samples: list[float] = []
-_MAX_PLANNING_SAMPLES = 1000
-
-
-def record_planning_latency(backend: str, latency_seconds: float) -> None:
-    try:
-        PLANNING_LATENCY.labels(backend=str(backend)).observe(float(latency_seconds))
-        _planning_samples.append(float(latency_seconds))
-        if len(_planning_samples) > _MAX_PLANNING_SAMPLES:
-            del _planning_samples[: len(_planning_samples) - _MAX_PLANNING_SAMPLES]
-        if _planning_samples:
-            ordered = sorted(_planning_samples)
-            idx = max(0, int(0.99 * (len(ordered) - 1)))
-            PLANNING_LATENCY_P99.set(ordered[idx])
-    except Exception:
-        pass
+# Predictor and Planning metrics moved to somabrain/metrics/predictor.py
 
 
 # Decision attribution / recall quality
@@ -935,27 +654,7 @@ MICRO_COLUMN_BEST = Counter(
     registry=registry,
 )
 
-# Adaptive salience gauges
-SALIENCE_THRESH_STORE = Gauge(
-    "somabrain_salience_threshold_store",
-    "Current store threshold",
-    registry=registry,
-)
-SALIENCE_THRESH_ACT = Gauge(
-    "somabrain_salience_threshold_act",
-    "Current act threshold",
-    registry=registry,
-)
-SALIENCE_STORE_RATE_OBS = Gauge(
-    "somabrain_salience_store_rate_obs",
-    "Observed EWMA store rate",
-    registry=registry,
-)
-SALIENCE_ACT_RATE_OBS = Gauge(
-    "somabrain_salience_act_rate_obs",
-    "Observed EWMA act rate",
-    registry=registry,
-)
+# Adaptive salience gauges moved to somabrain/metrics/salience.py
 
 # Embeddings
 EMBED_LAT = Histogram(
@@ -1102,47 +801,7 @@ else:
     )
 
 
-# Neuromodulator value gauges (ensure single registration)
-if "neuromod_dopamine" in REGISTRY._names_to_collectors:
-    NEUROMOD_DOPAMINE = REGISTRY._names_to_collectors["neuromod_dopamine"]
-else:
-    NEUROMOD_DOPAMINE = Gauge(
-        "neuromod_dopamine",
-        "Current dopamine level",
-        registry=REGISTRY,
-    )
-if "neuromod_serotonin" in REGISTRY._names_to_collectors:
-    NEUROMOD_SEROTONIN = REGISTRY._names_to_collectors["neuromod_serotonin"]
-else:
-    NEUROMOD_SEROTONIN = Gauge(
-        "neuromod_serotonin",
-        "Current serotonin level",
-        registry=REGISTRY,
-    )
-if "neuromod_noradrenaline" in REGISTRY._names_to_collectors:
-    NEUROMOD_NORADRENALINE = REGISTRY._names_to_collectors["neuromod_noradrenaline"]
-else:
-    NEUROMOD_NORADRENALINE = Gauge(
-        "neuromod_noradrenaline",
-        "Current noradrenaline level",
-        registry=REGISTRY,
-    )
-if "neuromod_acetylcholine" in REGISTRY._names_to_collectors:
-    NEUROMOD_ACETYLCHOLINE = REGISTRY._names_to_collectors["neuromod_acetylcholine"]
-else:
-    NEUROMOD_ACETYLCHOLINE = Gauge(
-        "neuromod_acetylcholine",
-        "Current acetylcholine level",
-        registry=REGISTRY,
-    )
-if "neuromod_updates_total" in REGISTRY._names_to_collectors:
-    NEUROMOD_UPDATE_COUNT = REGISTRY._names_to_collectors["neuromod_updates_total"]
-else:
-    NEUROMOD_UPDATE_COUNT = Counter(
-        "neuromod_updates_total",
-        "Total number of neuromodulator updates",
-        registry=REGISTRY,
-    )
+# Neuromodulator metrics moved to somabrain/metrics/neuromodulator.py
 
 # ==============================
 # Learning & Adaptation Metrics (Per-Tenant)

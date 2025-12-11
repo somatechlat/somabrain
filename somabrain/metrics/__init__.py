@@ -139,42 +139,41 @@ from somabrain.metrics.middleware import (
     reset_external_metrics,
 )
 
-# Re-export everything from the original metrics module for full backward compatibility
-# This ensures existing imports continue to work (includes metrics not yet extracted)
-from somabrain.metrics_original import *  # noqa: F401, F403
-
-# Also explicitly import remaining items from metrics_original for IDE support
-from somabrain.metrics_original import (
-    # OPA metrics
+# OPA and Reward metrics
+from somabrain.metrics.opa import (
     OPA_ALLOW_TOTAL,
     OPA_DENY_TOTAL,
-    # Reward metrics
     REWARD_ALLOW_TOTAL,
     REWARD_DENY_TOTAL,
-    # Constitution metrics
+)
+
+# Constitution and Utility metrics
+from somabrain.metrics.constitution import (
     CONSTITUTION_VERIFIED,
     CONSTITUTION_VERIFY_LATENCY,
-    # Utility metrics
     UTILITY_NEGATIVE,
     UTILITY_VALUE,
-    # Salience metrics
+)
+
+# Salience and Scorer metrics
+from somabrain.metrics.salience import (
     SALIENCE_STORE,
     SALIENCE_HIST,
-    FD_ENERGY_CAPTURE,
-    FD_RESIDUAL,
-    FD_TRACE_ERROR,
-    FD_PSD_INVARIANT,
     SALIENCE_THRESH_STORE,
     SALIENCE_THRESH_ACT,
     SALIENCE_STORE_RATE_OBS,
     SALIENCE_ACT_RATE_OBS,
-    # Scorer metrics
+    FD_ENERGY_CAPTURE,
+    FD_RESIDUAL,
+    FD_TRACE_ERROR,
+    FD_PSD_INVARIANT,
     SCORER_COMPONENT,
     SCORER_FINAL,
     SCORER_WEIGHT_CLAMPED,
-    # Attention
-    ATTENTION_LEVEL,
-    # HRR metrics
+)
+
+# HRR and Unbind metrics
+from somabrain.metrics.hrr import (
     HRR_CLEANUP_USED,
     HRR_CLEANUP_SCORE,
     HRR_CLEANUP_CALLS,
@@ -183,28 +182,37 @@ from somabrain.metrics_original import (
     HRR_RERANK_APPLIED,
     HRR_RERANK_LTM_APPLIED,
     HRR_RERANK_WM_SKIPPED,
-    # Unbind metrics
     UNBIND_PATH,
     UNBIND_WIENER_FLOOR,
     UNBIND_K_EST,
     UNBIND_SPECTRAL_BINS_CLAMPED,
     UNBIND_EPS_USED,
     RECONSTRUCTION_COSINE,
-    # Predictor metrics
+)
+
+# Predictor and Planning metrics
+from somabrain.metrics.predictor import (
     PREDICTOR_LATENCY,
     PREDICTOR_LATENCY_BY,
     PREDICTOR_ALTERNATIVE,
-    # Planning metrics
     PLANNING_LATENCY,
     PLANNING_LATENCY_P99,
     record_planning_latency,
-    # Neuromodulator metrics
+)
+
+# Re-export everything from the original metrics module for full backward compatibility
+# This ensures existing imports continue to work (includes metrics not yet extracted)
+# Neuromodulator metrics
+from somabrain.metrics.neuromodulator import (
     NEUROMOD_DOPAMINE,
     NEUROMOD_SEROTONIN,
     NEUROMOD_NORADRENALINE,
     NEUROMOD_ACETYLCHOLINE,
     NEUROMOD_UPDATE_COUNT,
-    # Oak/Milvus metrics
+)
+
+# Oak/Milvus metrics
+from somabrain.metrics.oak import (
     OPTION_UTILITY_AVG,
     OPTION_COUNT,
     MILVUS_SEARCH_LAT_P95,
@@ -214,6 +222,14 @@ from somabrain.metrics_original import (
     MILVUS_UPSERT_FAILURE_TOTAL,
     MILVUS_RECONCILE_MISSING,
     MILVUS_RECONCILE_ORPHAN,
+)
+
+from somabrain.metrics_original import *  # noqa: F401, F403
+
+# Also explicitly import remaining items from metrics_original for IDE support
+from somabrain.metrics_original import (
+    # Attention
+    ATTENTION_LEVEL,
     # Consolidation metrics
     CONSOLIDATION_RUNS,
     REPLAY_STRENGTH,
@@ -285,9 +301,11 @@ __all__ = [
     "HTTP_COUNT",
     "HTTP_LATENCY",
     "HTTP_FAILURES",
-    # OPA
+    # OPA and Reward
     "OPA_ALLOW_TOTAL",
     "OPA_DENY_TOTAL",
+    "REWARD_ALLOW_TOTAL",
+    "REWARD_DENY_TOTAL",
     # Memory
     "WM_HITS",
     "WM_MISSES",

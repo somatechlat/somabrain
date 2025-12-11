@@ -309,31 +309,305 @@
 - [x] 33. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-## Phase 5: Final Verification
+## Phase 5: metrics_original.py Complete Decomposition (Priority: High)
 
-- [x] 34. Line Count Verification
-  - [x] 34.1 Verify all target files meet line count requirements
-    - `somabrain/app.py`: 800 lines ✅ (target <800) - extracted validation handler, diagnostics, admin features
-    - `somabrain/memory_client.py`: 1409 lines (target <100) - IN PROGRESS: extracted hit_processing.py + scoring.py + payload.py (28% reduction)
-    - `somabrain/metrics_original.py`: 1698 lines (target <100) - DEFERRED: many interdependencies
-    - `somabrain/api/memory_api.py`: 506 lines ✅ (target <500) - extracted session, recall, models, helpers
-    - `somabrain/learning/adaptation.py`: 413 lines ✅ (target <500) - Reduced 61% via decomposition
-    - `somabrain/schemas.py`: 20 lines ✅ (target <200) - decomposed to schemas/
+- [x] 37. Extract OPA and Reward Metrics
+  - [x] 37.1 Create `somabrain/metrics/opa.py`
+    - Move OPA_ALLOW_TOTAL, OPA_DENY_TOTAL
+    - Move REWARD_ALLOW_TOTAL, REWARD_DENY_TOTAL
+    - ~30 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 37.2 Update `somabrain/metrics/__init__.py` to import from opa.py
+    - _Requirements: 3.4_
+  - [x] 37.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 38. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 39. Extract Constitution and Utility Metrics
+  - [x] 39.1 Create `somabrain/metrics/constitution.py`
+    - Move CONSTITUTION_VERIFIED, CONSTITUTION_VERIFY_LATENCY
+    - Move UTILITY_NEGATIVE, UTILITY_VALUE
+    - ~40 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 39.2 Update `somabrain/metrics/__init__.py` to import from constitution.py
+    - _Requirements: 3.4_
+  - [x] 39.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 40. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 41. Extract Salience and Scorer Metrics
+  - [x] 41.1 Create `somabrain/metrics/salience.py`
+    - Move SALIENCE_STORE, SALIENCE_HIST, SALIENCE_THRESH_STORE, SALIENCE_THRESH_ACT
+    - Move SALIENCE_STORE_RATE_OBS, SALIENCE_ACT_RATE_OBS
+    - Move FD_ENERGY_CAPTURE, FD_RESIDUAL, FD_TRACE_ERROR, FD_PSD_INVARIANT
+    - Move SCORER_COMPONENT, SCORER_FINAL, SCORER_WEIGHT_CLAMPED
+    - ~100 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 41.2 Update `somabrain/metrics/__init__.py` to import from salience.py
+    - _Requirements: 3.4_
+  - [x] 41.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 42. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 43. Extract HRR and Unbind Metrics
+  - [x] 43.1 Create `somabrain/metrics/hrr.py`
+    - Move HRR_CLEANUP_USED, HRR_CLEANUP_SCORE, HRR_CLEANUP_CALLS
+    - Move HRR_ANCHOR_SIZE, HRR_CONTEXT_SAT
+    - Move HRR_RERANK_APPLIED, HRR_RERANK_LTM_APPLIED, HRR_RERANK_WM_SKIPPED
+    - Move UNBIND_PATH, UNBIND_WIENER_FLOOR, UNBIND_K_EST
+    - Move UNBIND_SPECTRAL_BINS_CLAMPED, UNBIND_EPS_USED, RECONSTRUCTION_COSINE
+    - ~120 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 43.2 Update `somabrain/metrics/__init__.py` to import from hrr.py
+    - _Requirements: 3.4_
+  - [x] 43.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 44. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 45. Extract Predictor and Planning Metrics
+  - [x] 45.1 Create `somabrain/metrics/predictor.py`
+    - Move PREDICTOR_LATENCY, PREDICTOR_LATENCY_BY, PREDICTOR_ALTERNATIVE
+    - Move PLANNING_LATENCY, PLANNING_LATENCY_P99, record_planning_latency
+    - Move _planning_samples, _MAX_PLANNING_SAMPLES
+    - ~80 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 45.2 Update `somabrain/metrics/__init__.py` to import from predictor.py
+    - _Requirements: 3.4_
+  - [x] 45.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 46. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 47. Extract Neuromodulator Metrics
+  - [x] 47.1 Create `somabrain/metrics/neuromodulator.py`
+    - Move NEUROMOD_DOPAMINE, NEUROMOD_SEROTONIN, NEUROMOD_NORADRENALINE, NEUROMOD_ACETYLCHOLINE
+    - Move NEUROMOD_UPDATE_COUNT
+    - ~50 lines
+    - _Requirements: 3.2, 3.3_
+  - [x] 47.2 Update `somabrain/metrics/__init__.py` to import from neuromodulator.py
+    - _Requirements: 3.4_
+  - [x] 47.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [x] 48. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 49. Extract Oak/Milvus Metrics
+  - [ ] 49.1 Create `somabrain/metrics/oak.py`
+    - Move OPTION_UTILITY_AVG, OPTION_COUNT
+    - Move MILVUS_SEARCH_LAT_P95, MILVUS_INGEST_LAT_P95, MILVUS_SEGMENT_LOAD
+    - Move MILVUS_UPSERT_RETRY_TOTAL, MILVUS_UPSERT_FAILURE_TOTAL
+    - Move MILVUS_RECONCILE_MISSING, MILVUS_RECONCILE_ORPHAN
+    - ~80 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 49.2 Update `somabrain/metrics/__init__.py` to import from oak.py
+    - _Requirements: 3.4_
+  - [ ] 49.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 50. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 51. Extract Consolidation and Supervisor Metrics
+  - [ ] 51.1 Create `somabrain/metrics/consolidation.py`
+    - Move CONSOLIDATION_RUNS, REPLAY_STRENGTH, REM_SYNTHESIZED
+    - Move FREE_ENERGY, SUPERVISOR_MODULATION
+    - ~50 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 51.2 Update `somabrain/metrics/__init__.py` to import from consolidation.py
+    - _Requirements: 3.4_
+  - [ ] 51.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 52. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 53. Extract Executive and Microcircuit Metrics
+  - [ ] 53.1 Create `somabrain/metrics/executive.py`
+    - Move EXEC_CONFLICT, EXEC_USE_GRAPH, EXEC_BANDIT_ARM, EXEC_BANDIT_REWARD, EXEC_K_SELECTED
+    - Move MICRO_VOTE_ENTROPY, MICRO_COLUMN_ADMIT, MICRO_COLUMN_BEST
+    - Move ATTENTION_LEVEL
+    - ~80 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 53.2 Update `somabrain/metrics/__init__.py` to import from executive.py
+    - _Requirements: 3.4_
+  - [ ] 53.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 54. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 55. Extract Embedding and Index Metrics
+  - [ ] 55.1 Create `somabrain/metrics/embedding.py`
+    - Move EMBED_LAT, EMBED_CACHE_HIT
+    - Move INDEX_PROFILE_USE
+    - Move LINK_DECAY_PRUNED
+    - ~50 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 55.2 Update `somabrain/metrics/__init__.py` to import from embedding.py
+    - _Requirements: 3.4_
+  - [ ] 55.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 56. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 57. Extract Recall Quality and Capacity Metrics
+  - [ ] 57.1 Create `somabrain/metrics/recall_quality.py`
+    - Move RECALL_MARGIN_TOP12, RECALL_SIM_TOP1, RECALL_SIM_TOPK_MEAN
+    - Move RERANK_CONTRIB, DIVERSITY_PAIRWISE_MEAN
+    - Move STORAGE_REDUCTION_RATIO
+    - Move RATE_LIMITED_TOTAL, QUOTA_DENIED_TOTAL, QUOTA_RESETS, QUOTA_ADJUSTMENTS
+    - ~80 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 57.2 Update `somabrain/metrics/__init__.py` to import from recall_quality.py
+    - _Requirements: 3.4_
+  - [ ] 57.3 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 58. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 59. Extract Novelty/SDR and Segmentation Metrics
+  - [ ] 59.1 Create `somabrain/metrics/novelty.py`
+    - Move NOVELTY_RAW, ERROR_RAW, NOVELTY_NORM, ERROR_NORM
+    - Move SDR_PREFILTER_LAT, SDR_CANDIDATES
+    - Move RECALL_WM_LAT, RECALL_LTM_LAT, RECALL_CACHE_HIT, RECALL_CACHE_MISS
+    - ~80 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 59.2 Create `somabrain/metrics/segmentation.py`
+    - Move SEGMENTATION_BOUNDARIES_PER_HOUR, SEGMENTATION_DUPLICATE_RATIO
+    - Move SEGMENTATION_HMM_STATE_VOLATILE, SEGMENTATION_MAX_DWELL_EXCEEDED
+    - Move FUSION_WEIGHT_NORM_ERROR, FUSION_ALPHA_ADAPTIVE, FUSION_SOFTMAX_WEIGHT
+    - ~60 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 59.3 Update `somabrain/metrics/__init__.py` to import from novelty.py and segmentation.py
+    - _Requirements: 3.4_
+  - [ ] 59.4 Remove moved metrics from `somabrain/metrics_original.py`
+    - _Requirements: 3.1_
+
+- [ ] 60. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 61. Extract Remaining Metrics and Finalize
+  - [ ] 61.1 Move remaining metrics (tau_gauge, AUDIT_KAFKA_PUBLISH, FEATURE_FLAG_TOGGLE_TOTAL)
+    - Add to appropriate existing modules or create `somabrain/metrics/misc.py`
+    - ~30 lines
+    - _Requirements: 3.2, 3.3_
+  - [ ] 61.2 Reduce `somabrain/metrics_original.py` to re-export layer
+    - Remove all metric definitions (now in submodules)
+    - Keep only imports and re-exports for backward compatibility
+    - Target: <100 lines
+    - _Requirements: 3.1_
+  - [ ] 61.3 Update `somabrain/metrics/__init__.py` to remove wildcard import from metrics_original
+    - Import directly from submodules only
+    - _Requirements: 3.4_
+
+- [ ] 62. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 6: memory_client.py Complete Decomposition (Priority: High)
+
+- [ ] 63. Extract HTTP Helper Methods
+  - [ ] 63.1 Create `somabrain/memory/http_helpers.py`
+    - Move _http_post_with_retries_sync, _http_post_with_retries_async
+    - Move _store_http_sync, _store_http_async
+    - Move _store_bulk_http_sync, _store_bulk_http_async
+    - Move _record_http_metrics
+    - ~200 lines
+    - _Requirements: 2.2, 2.3_
+  - [ ] 63.2 Update `somabrain/memory_client.py` to import from http_helpers.py
+    - _Requirements: 2.1_
+
+- [ ] 64. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 65. Extract Remember Operations
+  - [ ] 65.1 Create `somabrain/memory/remember.py`
+    - Move remember(), aremember(), remember_bulk(), aremember_bulk()
+    - Move _remember_sync_persist(), _aremember_background()
+    - ~350 lines
+    - _Requirements: 2.3_
+  - [ ] 65.2 Update `somabrain/memory_client.py` to use remember.py functions
+    - MemoryClient delegates to extracted functions
+    - _Requirements: 2.1_
+
+- [ ] 66. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 67. Extract Recall Operations
+  - [ ] 67.1 Create `somabrain/memory/recall_ops.py`
+    - Move recall(), arecall(), recall_with_scores(), arecall_with_scores()
+    - Move _memories_search_sync(), _memories_search_async()
+    - Move _http_recall_aggregate_sync(), _http_recall_aggregate_async()
+    - ~300 lines
+    - _Requirements: 2.3_
+  - [ ] 67.2 Update `somabrain/memory_client.py` to use recall_ops.py functions
+    - MemoryClient delegates to extracted functions
+    - _Requirements: 2.1_
+
+- [ ] 68. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 69. Extract Utility Methods
+  - [ ] 69.1 Create `somabrain/memory/utils.py`
+    - Move coord_for_key(), fetch_by_coord(), store_from_payload()
+    - Move _tenant_namespace(), _compat_enrich_payload()
+    - ~150 lines
+    - _Requirements: 2.3_
+  - [ ] 69.2 Update `somabrain/memory_client.py` to use utils.py functions
+    - _Requirements: 2.1_
+
+- [ ] 70. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [ ] 71. Finalize MemoryClient Decomposition
+  - [ ] 71.1 Verify `somabrain/memory_client.py` is under 500 lines
+    - Run `wc -l somabrain/memory_client.py`
+    - Target: <500 lines
+    - _Requirements: 2.1_
+  - [ ] 71.2 Update `somabrain/memory/__init__.py` to export all new modules
+    - _Requirements: 2.3_
+  - [ ] 71.3 Verify backward compatibility
+    - Test `from somabrain.memory_client import MemoryClient` works
+    - Test all MemoryClient methods work correctly
+    - _Requirements: 2.3_
+
+- [ ] 72. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
+## Phase 7: Final Verification
+
+- [ ] 73. Line Count Verification
+  - [ ] 73.1 Verify all target files meet line count requirements
+    - `somabrain/app.py`: <800 lines ✅
+    - `somabrain/memory_client.py`: <500 lines (target)
+    - `somabrain/metrics_original.py`: <100 lines (target)
+    - `somabrain/api/memory_api.py`: <500 lines ✅
+    - `somabrain/learning/adaptation.py`: <500 lines ✅
+    - `somabrain/schemas.py`: <200 lines ✅
     - _Requirements: 1.1, 2.1, 3.1, 6.1-6.4_
 
-- [x] 35. Import Verification
-  - [x] 35.1 Verify all imports work correctly
-    - Test `from somabrain.app import *` - passes
-    - Test `from somabrain.memory_client import MemoryClient` - passes
-    - Test `from somabrain.metrics import *` - passes
-    - Test `from somabrain.schemas import *` - passes ✅
-    - Test `from somabrain.memory.scoring import *` - passes ✅
+- [ ] 74. Import Verification
+  - [ ] 74.1 Verify all imports work correctly
+    - Test `from somabrain.app import *` - must pass
+    - Test `from somabrain.memory_client import MemoryClient` - must pass
+    - Test `from somabrain.metrics import *` - must pass
+    - Test `from somabrain.schemas import *` - must pass
+    - Test `from somabrain.memory import *` - must pass
     - _Requirements: 1.4, 2.3, 3.4_
 
-- [x] 36. Final Checkpoint - All tests pass
-  - All unit tests pass (106 tests)
-  - All learning property tests pass (15 tests)
-  - All imports verified working
-  - Targets met: app.py (800), memory_api.py (506), schemas.py (20), adaptation.py (413)
-  - In progress: memory_client.py (1409 lines, 28% reduction)
-  - Deferred: memory_client.py, metrics_original.py (high risk/complexity)
+- [ ] 75. Final Checkpoint - All tests pass
+  - Run full test suite
+  - Verify all property tests pass
+  - Verify all unit tests pass
+  - Document final line counts
