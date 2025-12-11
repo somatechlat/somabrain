@@ -222,89 +222,14 @@ if not _sphinx_build:
     # Populate global logger references after setup
     logger, cognitive_logger, error_logger = get_loggers()
 
-# Emit concise startup diagnostics so operators can see effective backend wiring
-try:
-    import os as _os
-    import logging as _logging
+# Startup diagnostics and observability extracted to lifecycle module
+@app.on_event("startup")
+async def _startup_diagnostics() -> None:
+    await lifecycle_startup.startup_diagnostics(cfg)
 
-    @app.on_event("startup")
-    async def _startup_diagnostics() -> None:
-        try:
-            _log = _logging.getLogger("somabrain")
-            mem_ep = str(
-                getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
-            ).strip()
-            token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
-            # Use centralized Settings flag for Docker detection
-            in_docker = (
-                bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
-            )
-            # Prefer shared settings for mode and policy flags
-            try:
-                from common.config.settings import settings as _shared
-            except Exception:
-                _shared = None
-            mode = ""
-            ext_req = False
-            require_memory = True
-            try:
-                if _shared is not None:
-                    mode = str(getattr(_shared, "mode", "") or "").strip()
-                    ext_req = bool(
-                        getattr(_shared, "mode_require_external_backends", False)
-                    )
-                    require_memory = bool(getattr(_shared, "require_memory", True))
-                else:
-                    mode = settings.mode.strip()
-                    ext_req = settings.require_external_backends
-                    require_memory = settings.require_memory
-            except Exception:
-                pass
-
-            _log.info(
-                "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
-                mem_ep or "<unset>",
-                token_present,
-                in_docker,
-                mode or "prod",
-                ext_req,
-                require_memory,
-            )
-
-            if (
-                in_docker
-                and mem_ep
-                and (
-                    mem_ep.startswith("http://127.0.0.1")
-                    or mem_ep.startswith("http://localhost")
-                )
-            ):
-                _log.warning(
-                    "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
-                )
-        except Exception:
-            # never fail startup on diagnostics
-            pass
-
-except Exception:
-    pass
-
-# Initialize observability/tracing when available. Fail-open so the API still starts.
-try:
-    from somabrain.observability.provider import init_tracing
-
-    @app.on_event("startup")
-    async def _init_observability() -> None:
-        try:
-            init_tracing()
-        except Exception:
-            # Tracing is optional; log at debug level and continue.
-            log = globals().get("logger")
-            if log:
-                log.debug("Tracing initialization failed", exc_info=True)
-
-except Exception:
-    pass
+@app.on_event("startup")
+async def _init_observability() -> None:
+    await lifecycle_startup.init_observability()
 
 # Add timing middleware for request instrumentation
 try:
@@ -329,14 +254,6 @@ except Exception:
     if log:
         log.debug("Cognitive middleware not registered", exc_info=True)
 
-# Add timing middleware for request instrumentation
-try:
-    from somabrain.metrics import timing_middleware
-
-    app.middleware("http")(timing_middleware)
-except Exception:
-    pass
-
 try:
     from somabrain.api.middleware.opa import OpaMiddleware
 except Exception as e:
@@ -356,46 +273,8 @@ except Exception as e:
 
 # Supervisor client and admin guard moved to somabrain/routers/admin.py
 
-# ---------------------------------------------------------------------------
-# Admin feature‑flag helper functions (used by the test suite)
-# ---------------------------------------------------------------------------
-
-
-async def admin_features_state() -> S.FeatureFlagsResponse:
-    """Return the current feature‑flag status and any persisted overrides.
-
-    The function mirrors the legacy admin endpoint but is exposed as a plain
-    callable so tests can import it directly from ``somabrain.app``.
-    """
-    return S.FeatureFlagsResponse(
-        status=FeatureFlags.get_status(), overrides=FeatureFlags.get_overrides()
-    )
-
-
-async def admin_features_update(
-    body: S.FeatureFlagsUpdateRequest,
-) -> S.FeatureFlagsUpdateResponse:
-    """Validate and apply an admin feature‑flag update.
-
-    * Raises ``HTTPException`` with status 400 if any flag in ``body.disabled``
-      is not a known key (i.e., not present in ``FeatureFlags.KEYS``).
-    * Calls ``FeatureFlags.set_overrides``; if it returns ``False`` the update is
-      forbidden (e.g., not in ``full‑local`` mode) and a 403 is raised.
-    * On success, returns the current list of disabled overrides.
-    """
-    # Ensure only known flags are referenced
-    unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
-    if unknown:
-        raise HTTPException(
-            status_code=400, detail=f"unknown flags: {', '.join(unknown)}"
-        )
-
-    # Attempt to persist the overrides; ``False`` indicates the operation is not
-    # permitted in the current mode.
-    if not FeatureFlags.set_overrides(body.disabled):
-        raise HTTPException(status_code=403, detail="update forbidden")
-
-    return S.FeatureFlagsUpdateResponse(overrides=FeatureFlags.get_overrides())
+# Admin feature-flag helper functions moved to somabrain/routers/admin.py
+# They are available via the /admin/features endpoints.
 
 
 # Admin endpoints (services, outbox, quotas) moved to somabrain/routers/admin.py
@@ -540,68 +419,10 @@ except Exception as e:
     pass
 
 
-@app.exception_handler(RequestValidationError)
-async def _handle_validation_error(request: Request, exc: RequestValidationError):
-    """Surface validation errors with context for operators."""
-    try:
-        body = await request.body()
-        body_preview = body[:256].decode("utf-8", errors="ignore") if body else ""
-    except Exception:
-        body_preview = ""
-    ip = getattr(request.client, "host", None)
-    ua = request.headers.get("user-agent", "")
-    try:
-        logging.getLogger("somabrain").warning(
-            "422 validation on %s %s from %s UA=%s bodyPreview=%s",
-            request.method,
-            request.url.path,
-            ip,
-            ua,
-            body_preview,
-        )
-    except Exception:
-        pass
-    details = exc.errors() if hasattr(exc, "errors") else []
-    # Provide route‑specific hints to reduce confusion when validation fails
-    path = request.url.path if hasattr(request, "url") else ""
-    if "/recall" in str(path):
-        hint = {
-            "endpoint": "/recall",
-            "expected": {
-                "json": [
-                    'Either a JSON string body (e.g. "hello world")',
-                    {
-                        "query": "string",
-                        "top_k": 10,
-                        "retrievers": ["vector", "wm", "graph", "lexical"],
-                        "rerank": "auto|cosine|mmr|hrr",
-                        "persist": True,
-                        "universe": "optional",
-                    },
-                ]
-            },
-        }
-    elif "/remember" in str(path):
-        hint = {
-            "endpoint": "/remember",
-            "expected": {
-                "json": {
-                    "tenant": "string",
-                    "namespace": "string",
-                    "key": "string",
-                    "value": {"task": "string", "memory_type": "episodic"},
-                }
-            },
-        }
-    else:
-        hint = {
-            "endpoint": str(path) or "<unknown>",
-            "expected": {"json": "See OpenAPI schema for this route"},
-        }
-    return JSONResponse(
-        status_code=422,
-        content={"detail": details, "hint": hint, "client": ip},
-    )
+# Validation error handler extracted to somabrain/middleware/validation_handler.py
+from somabrain.middleware.validation_handler import handle_validation_error
+
+app.exception_handler(RequestValidationError)(handle_validation_error)
 
 
 #
@@ -942,33 +763,9 @@ _sdr_enc = (
 _sdr_idx: dict[str, LSHIndex] = {}
 
 
-# /health, /healthz, /diagnostics, /metrics endpoints moved to somabrain/routers/health.py
-# The health_router is included via app.include_router(health_router) above.
+# Endpoints extracted to routers: health, cognitive, memory, sleep, admin, proxy
 
-# NOTE: The following large block of health endpoint code has been removed.
-# See somabrain/routers/health.py for the implementation.
-
-# Health endpoint code has been extracted to somabrain/routers/health.py
-
-_HEALTH_ENDPOINTS_MOVED = True  # Marker for code extraction
-
-
-# /micro/diag endpoint moved to somabrain/routers/cognitive.py
-# Embedded service proxies moved to somabrain/routers/proxy.py
-# /recall and /remember endpoints moved to somabrain/routers/memory.py
-
-
-# Sleep endpoints (/sleep/run, /sleep/status, /sleep/status/all) moved to somabrain/routers/sleep.py
-# They are included via: app.include_router(sleep_router, tags=["sleep"])
-
-
-# Cognitive endpoints (/plan/suggest, /act, /personality) moved to somabrain/routers/cognitive.py
-# They are included via: app.include_router(cognitive_router, tags=["cognitive"])
-
-# Journal Admin Endpoints moved to somabrain/routers/admin.py
-# They are included via: app.include_router(admin_router, tags=["admin"])
-
-# --- Lifecycle event handlers (delegating to somabrain/lifecycle/) ----------------
+# --- Lifecycle event handlers ---
 # Health watchdog task holder for backward compatibility
 _health_watchdog_task_holder: dict = {}
 

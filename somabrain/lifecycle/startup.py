@@ -263,3 +263,79 @@ async def start_milvus_reconciliation_task() -> None:
     logging.getLogger("somabrain").info(
         "Milvus reconciliation task started (interval=%s s)", interval
     )
+
+
+async def startup_diagnostics(cfg: Any) -> None:
+    """Emit concise startup diagnostics so operators can see effective backend wiring.
+    
+    Args:
+        cfg: Configuration object with http settings
+    """
+    import os as _os
+    
+    try:
+        _log = logging.getLogger("somabrain")
+        mem_ep = str(
+            getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
+        ).strip()
+        token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
+        
+        # Use centralized Settings flag for Docker detection
+        from common.config.settings import settings
+        in_docker = bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
+        
+        # Prefer shared settings for mode and policy flags
+        try:
+            from common.config.settings import settings as _shared
+        except Exception:
+            _shared = None
+        
+        mode = ""
+        ext_req = False
+        require_memory = True
+        try:
+            if _shared is not None:
+                mode = str(getattr(_shared, "mode", "") or "").strip()
+                ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+                require_memory = bool(getattr(_shared, "require_memory", True))
+            else:
+                mode = settings.mode.strip()
+                ext_req = settings.require_external_backends
+                require_memory = settings.require_memory
+        except Exception:
+            pass
+
+        _log.info(
+            "Startup: memory_endpoint=%s token_present=%s in_container=%s mode=%s external_backends_required=%s require_memory=%s",
+            mem_ep or "<unset>",
+            token_present,
+            in_docker,
+            mode or "prod",
+            ext_req,
+            require_memory,
+        )
+
+        if (
+            in_docker
+            and mem_ep
+            and (
+                mem_ep.startswith("http://127.0.0.1")
+                or mem_ep.startswith("http://localhost")
+            )
+        ):
+            _log.warning(
+                "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
+            )
+    except Exception:
+        # never fail startup on diagnostics
+        pass
+
+
+async def init_observability() -> None:
+    """Initialize observability/tracing when available. Fail-open so the API still starts."""
+    try:
+        from somabrain.observability.provider import init_tracing
+        init_tracing()
+    except Exception:
+        # Tracing is optional; log at debug level and continue.
+        _logger.debug("Tracing initialization failed", exc_info=True)
