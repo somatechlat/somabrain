@@ -29,8 +29,7 @@ logger = logging.getLogger("somabrain.bootstrap.singletons")
 def make_predictor(cfg) -> "BudgetedPredictor":
     """Create the configured predictor.
 
-    Disabled toy providers are no longer permitted: requesting a 'baseline'
-    provider will raise explicitly. The default provider is now
+    Disabled toy providers are no longer permitted. The default provider is
     'mahal' (Mahalanobis).
 
     Args:
@@ -40,7 +39,7 @@ def make_predictor(cfg) -> "BudgetedPredictor":
         BudgetedPredictor: Configured predictor instance.
 
     Raises:
-        RuntimeError: If 'stub' or 'baseline' provider is requested.
+        RuntimeError: If a disabled provider is requested.
     """
     from somabrain.prediction import (
         BudgetedPredictor,
