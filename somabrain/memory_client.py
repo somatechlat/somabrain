@@ -384,33 +384,16 @@ class MemoryClient:
         tenant, _ = self._tenant_namespace()
         return await store_bulk_http_async(self._transport, batch_request, headers, tenant)
 
-    # Hit processing methods delegate to somabrain.memory.hit_processing
-    def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
-        return normalize_recall_hits(data)
-
-    def _hit_identity(self, hit: RecallHit) -> str:
-        return hit_identity(hit)
-
-    def _hit_score(self, hit: RecallHit) -> float | None:
-        return hit_score(hit)
-
-    def _coerce_timestamp_value(self, value: Any) -> float | None:
-        return coerce_timestamp_value(value)
-
-    def _hit_timestamp(self, hit: RecallHit) -> float | None:
-        return hit_timestamp(hit)
-
-    def _prefer_candidate_hit(self, current: RecallHit, candidate: RecallHit) -> bool:
-        return prefer_candidate_hit(current, candidate)
-
-    def _deduplicate_hits(self, hits: List[RecallHit]) -> List[RecallHit]:
-        return deduplicate_hits(hits)
-
-    def _lexical_bonus(self, payload: dict, query: str) -> float:
-        return lexical_bonus(payload, query)
-
-    def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
-        return rank_hits(hits, query)
+    # Hit processing - use module functions directly
+    _normalize_recall_hits = staticmethod(normalize_recall_hits)
+    _hit_identity = staticmethod(hit_identity)
+    _hit_score = staticmethod(hit_score)
+    _coerce_timestamp_value = staticmethod(coerce_timestamp_value)
+    _hit_timestamp = staticmethod(hit_timestamp)
+    _prefer_candidate_hit = staticmethod(prefer_candidate_hit)
+    _deduplicate_hits = staticmethod(deduplicate_hits)
+    _lexical_bonus = staticmethod(lexical_bonus)
+    _rank_hits = staticmethod(rank_hits)
 
     def _memories_search_sync(
         self,
@@ -558,39 +541,26 @@ class MemoryClient:
                 return narrowed
         return hits
 
-    # Recency and scoring methods delegate to somabrain.memory.scoring
+    # Scoring - static methods use module functions directly
+    _coerce_float = staticmethod(coerce_float)
+    _parse_payload_timestamp = staticmethod(parse_payload_timestamp)
+    _extract_cleanup_margin = staticmethod(extract_cleanup_margin)
+    _apply_weighting_to_hits = staticmethod(apply_weighting_to_hits)
+
     def _recency_normalisation(self) -> tuple[float, float]:
         return get_recency_normalisation(self.cfg)
 
     def _recency_profile(self) -> tuple[float, float, float, float]:
         return get_recency_profile(self.cfg)
 
-    def _recency_features(
-        self, ts_epoch: float | None, now_ts: float
-    ) -> tuple[float | None, float]:
+    def _recency_features(self, ts_epoch: float | None, now_ts: float) -> tuple[float | None, float]:
         return compute_recency_features(ts_epoch, now_ts, self.cfg)
-
-    @staticmethod
-    def _coerce_float(value: Any) -> float | None:
-        return coerce_float(value)
-
-    @staticmethod
-    def _parse_payload_timestamp(raw: Any) -> float | None:
-        return parse_payload_timestamp(raw)
-
-    def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
-        return extract_cleanup_margin(hit)
 
     def _density_factor(self, margin: float | None) -> float:
         return compute_density_factor(margin, self.cfg)
 
-    def _rescore_and_rank_hits(
-        self, hits: List[RecallHit], query: str
-    ) -> List[RecallHit]:
+    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
         return rescore_and_rank_hits(hits, query, self.cfg, self._scorer, self._embedder)
-
-    def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
-        apply_weighting_to_hits(hits)
 
     # --- HTTP helpers -------------------------------------------------
     def _compat_enrich_payload(
