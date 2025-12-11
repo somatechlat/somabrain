@@ -371,20 +371,13 @@ class MemoryClient:
         max_retries: int = 2,
         operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
-        if self._transport is None:
-            return False, 0, None
-        start = time.perf_counter()
-        success = False
-        status = 0
-        data: Any = None
-        try:
-            success, status, data = self._transport.post_with_retries_sync(
-                endpoint, body, headers, max_retries=max_retries
-            )
-            return success, status, data
-        finally:
-            duration = max(0.0, time.perf_counter() - start)
-            self._record_http_metrics(operation, success, status, duration)
+        # Delegate to extracted module
+        from somabrain.memory.http_helpers import http_post_with_retries_sync
+        tenant, _ = self._tenant_namespace()
+        return http_post_with_retries_sync(
+            self._transport, endpoint, body, headers, tenant,
+            max_retries=max_retries, operation=operation
+        )
 
     async def _http_post_with_retries_async(
         self,
@@ -395,98 +388,41 @@ class MemoryClient:
         max_retries: int = 2,
         operation: str = "unknown",
     ) -> tuple[bool, int, Any]:
-        if self._transport is None:
-            return False, 0, None
-        start = time.perf_counter()
-        success = False
-        status = 0
-        data: Any = None
-        try:
-            success, status, data = await self._transport.post_with_retries_async(
-                endpoint, body, headers, max_retries=max_retries
-            )
-            return success, status, data
-        finally:
-            duration = max(0.0, time.perf_counter() - start)
-            self._record_http_metrics(operation, success, status, duration)
+        # Delegate to extracted module
+        from somabrain.memory.http_helpers import http_post_with_retries_async
+        tenant, _ = self._tenant_namespace()
+        return await http_post_with_retries_async(
+            self._transport, endpoint, body, headers, tenant,
+            max_retries=max_retries, operation=operation
+        )
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
-        """POST a memory to the HTTP memory service.
-
-        The service's OpenAPI defines the endpoint ``POST /memories`` with a
-        ``MemoryStoreRequest`` payload. This method targets that endpoint and
-        returns the parsed JSON response when the request succeeds.
-        """
-        if self._transport is None:
-            return False, None
-
-        success, _, data = self._http_post_with_retries_sync(
-            "/memories", body, headers, operation="remember"
-        )
-        if success:
-            return True, data
-        return False, data
+        """POST a memory to the HTTP memory service."""
+        from somabrain.memory.http_helpers import store_http_sync
+        tenant, _ = self._tenant_namespace()
+        return store_http_sync(self._transport, body, headers, tenant)
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
-        """Asynchronous version of :meth:`_store_http_sync` targeting ``/memories``."""
-        if self._transport is None:
-            return False, None
-
-        success, _, data = await self._http_post_with_retries_async(
-            "/memories", body, headers, operation="remember"
-        )
-        if success:
-            return True, data
-        return False, data
+        """Async POST a memory to the HTTP memory service."""
+        from somabrain.memory.http_helpers import store_http_async
+        tenant, _ = self._tenant_namespace()
+        return await store_http_async(self._transport, body, headers, tenant)
 
     def _store_bulk_http_sync(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
-        """Store multiple memories by iterating over items.
-
-        The memory service API does not provide a batch endpoint. This method
-        iterates over the items in the batch request and stores each one
-        individually via POST /memories.
-        """
-        if self._transport is None:
-            return False, 0, None
-        items = batch_request.get("items", [])
-        if not items:
-            return False, 0, None
-        results = []
-        all_success = True
-        for idx, item in enumerate(items):
-            item_headers = dict(headers)
-            item_headers["X-Request-ID"] = (
-                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
-            )
-            success, data = self._store_http_sync(item, item_headers)
-            results.append(data if success else None)
-            if not success:
-                all_success = False
-        return all_success, 200 if all_success else 500, {"items": results}
+        """Store multiple memories by iterating over items."""
+        from somabrain.memory.http_helpers import store_bulk_http_sync
+        tenant, _ = self._tenant_namespace()
+        return store_bulk_http_sync(self._transport, batch_request, headers, tenant)
 
     async def _store_bulk_http_async(
         self, batch_request: dict, headers: dict
     ) -> tuple[bool, int, Any]:
-        """Async version of bulk store using individual POST /memories calls."""
-        if self._transport is None:
-            return False, 0, None
-        items = batch_request.get("items", [])
-        if not items:
-            return False, 0, None
-        results = []
-        all_success = True
-        for idx, item in enumerate(items):
-            item_headers = dict(headers)
-            item_headers["X-Request-ID"] = (
-                f"{headers.get('X-Request-ID', 'bulk')}:{idx}"
-            )
-            success, data = await self._store_http_async(item, item_headers)
-            results.append(data if success else None)
-            if not success:
-                all_success = False
-        return all_success, 200 if all_success else 500, {"items": results}
+        """Async bulk store via individual POST /memories calls."""
+        from somabrain.memory.http_helpers import store_bulk_http_async
+        tenant, _ = self._tenant_namespace()
+        return await store_bulk_http_async(self._transport, batch_request, headers, tenant)
 
     # Hit processing methods delegate to somabrain.memory.hit_processing
     def _normalize_recall_hits(self, data: Any) -> List[RecallHit]:
@@ -727,17 +663,10 @@ class MemoryClient:
     def _record_http_metrics(
         self, operation: str, success: bool, status: int, duration: float
     ) -> None:
-        try:
-            tenant, _ = self._tenant_namespace()
-            status_label = str(status or (200 if success else 0))
-            M.MEMORY_HTTP_REQUESTS.labels(
-                operation=operation, tenant=tenant, status=status_label
-            ).inc()
-            M.MEMORY_HTTP_LATENCY.labels(operation=operation, tenant=tenant).observe(
-                max(0.0, float(duration))
-            )
-        except Exception:
-            return
+        # Delegate to extracted module
+        from somabrain.memory.http_helpers import record_http_metrics
+        tenant, _ = self._tenant_namespace()
+        record_http_metrics(operation, tenant, success, status, duration)
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None

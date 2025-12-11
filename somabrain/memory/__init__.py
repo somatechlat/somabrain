@@ -38,6 +38,15 @@ from .payload import (
     normalize_metadata,
     prepare_memory_payload,
 )
+from .http_helpers import (
+    record_http_metrics,
+    http_post_with_retries_sync,
+    http_post_with_retries_async,
+    store_http_sync,
+    store_http_async,
+    store_bulk_http_sync,
+    store_bulk_http_async,
+)
 
 __all__ = [
     # Hierarchical memory
@@ -73,6 +82,14 @@ __all__ = [
     "enrich_payload",
     "normalize_metadata",
     "prepare_memory_payload",
+    # HTTP helpers
+    "record_http_metrics",
+    "http_post_with_retries_sync",
+    "http_post_with_retries_async",
+    "store_http_sync",
+    "store_http_async",
+    "store_bulk_http_sync",
+    "store_bulk_http_async",
 ]
 
 
