@@ -216,6 +216,27 @@ HTTP_LATENCY = Histogram(
     registry=registry,
 )
 
+# ---------------------------------------------------------------------------
+# Legacy tau_gauge - kept in core to avoid circular imports
+# ---------------------------------------------------------------------------
+
+if "soma_context_builder_tau" in REGISTRY._names_to_collectors:
+    tau_gauge = REGISTRY._names_to_collectors["soma_context_builder_tau"]
+else:
+    tau_gauge = Gauge(
+        "soma_context_builder_tau",
+        "Current tau value for diversity adaptation",
+        ["tenant_id"],
+        registry=REGISTRY,
+    )
+
+# Legacy next-event regret gauge
+soma_next_event_regret = get_gauge(
+    "soma_next_event_regret",
+    "Instantaneous next-event regret (0-1)",
+    labelnames=["tenant_id"],
+)
+
 # Re-export prometheus_client items needed by other modules
 __all__ = [
     # Protocol
@@ -243,4 +264,7 @@ __all__ = [
     # Core metrics
     "HTTP_COUNT",
     "HTTP_LATENCY",
+    # Legacy gauges
+    "tau_gauge",
+    "soma_next_event_regret",
 ]

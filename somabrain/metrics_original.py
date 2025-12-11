@@ -1,1357 +1,472 @@
 """
-Metrics Module for SomaBrain.
+Metrics Module for SomaBrain (Legacy Re-export Layer).
 
-This module provides comprehensive metrics collection and monitoring for the SomaBrain system
-using Prometheus client library. It includes HTTP request metrics, cognitive performance metrics,
-and system health monitoring with automatic FastAPI integration.
+This module provides backward compatibility for imports from somabrain.metrics_original.
+All metrics have been decomposed into domain-specific modules under somabrain/metrics/.
 
-Key Features:
-- Prometheus-compatible metrics collection
-- HTTP request latency and count tracking
-- Cognitive metrics (salience, novelty, prediction error)
-- Memory system performance monitoring
-- Embedding and indexing metrics
-- Consolidation and sleep cycle tracking
-- Automatic middleware integration for request timing
+For new code, import directly from somabrain.metrics:
+    from somabrain.metrics import HTTP_COUNT, WM_HITS, ...
 
-Metrics Categories:
-- HTTP Metrics: Request counts, latency, status codes
-- Working Memory: Hit/miss rates, latency
-- Salience: Score distributions, threshold tracking
-- HRR System: Cleanup usage, anchor saturation, reranking
-- Prediction: Latency by provider, alternative counts
-- Consolidation: Run counts, replay strength, REM synthesis
-- Supervisor: Free energy, neuromodulator modulation
-- Executive Controller: Conflict detection, bandit rewards
-- Microcircuits: Vote entropy, column admissions
-- Embeddings: Latency by provider, cache hits
-- Journal: Append/replay/skip counts, rotations
-
-Functions:
-    metrics_endpoint: FastAPI endpoint for exposing Prometheus metrics.
-    timing_middleware: FastAPI middleware for automatic request timing.
+Domain modules:
+- somabrain.metrics.core: Registry, factory functions, HTTP metrics
+- somabrain.metrics.learning: Adaptation, tau, entropy metrics
+- somabrain.metrics.memory_metrics: WM, LTM, retrieval, ANN metrics
+- somabrain.metrics.outbox_metrics: Outbox and circuit breaker metrics
+- somabrain.metrics.middleware: FastAPI integration
+- somabrain.metrics.opa: OPA/Reward metrics
+- somabrain.metrics.constitution: Constitution/Utility metrics
+- somabrain.metrics.salience: Salience/Scorer/FD metrics
+- somabrain.metrics.hrr: HRR/Unbind metrics
+- somabrain.metrics.predictor: Predictor/Planning metrics
+- somabrain.metrics.neuromodulator: Neuromodulator metrics
+- somabrain.metrics.oak: Oak/Milvus metrics
+- somabrain.metrics.consolidation: Consolidation/Supervisor metrics
+- somabrain.metrics.executive: Executive/Microcircuit metrics
+- somabrain.metrics.embedding: Embedding/Index metrics
+- somabrain.metrics.recall_quality: Recall quality/Capacity metrics
+- somabrain.metrics.novelty: Novelty/SDR metrics
+- somabrain.metrics.segmentation: Segmentation/Fusion metrics
 """
 
 from __future__ import annotations
 
-import time
-from threading import Lock
-from typing import Any, Awaitable, Callable, Iterable
-import builtins as _builtins
-
-try:
-    from prometheus_client import (
-        CONTENT_TYPE_LATEST,
-        REGISTRY,
-        CollectorRegistry,
-        Counter as _PromCounter,
-        Gauge as _PromGauge,
-        Histogram as _PromHistogram,
-        Summary as _PromSummary,
-        generate_latest,
-    )
-except Exception as e:  # pragma: no cover
-    # Strict mode: metrics are mandatory. No noop shims permitted.
-    raise ImportError(
-        f"prometheus_client is required for somabrain.metrics (strict mode). Missing dependency: {e}"
-    )
-
-# ---------------------------------------------------------------------------
-# Type helpers for static analysis
-# ---------------------------------------------------------------------------
-from typing import Protocol
-
-
-class _MetricProtocol(Protocol):
-    """Minimal protocol representing a Prometheus metric used in the code.
-
-    All concrete metric objects expose ``labels`` (returning a metric with the
-    same interface) and one of ``inc``, ``set`` or ``observe`` depending on the
-    metric type. The protocol captures the superset of those methods so the
-    type‑checker can validate calls such as ``metric.labels(...).inc()``.
-    """
-
-    def labels(self, *args: Any, **kwargs: Any) -> "_MetricProtocol": ...
-
-    def inc(self, amount: float = 1) -> None: ...  # noqa: D401
-
-    def set(self, value: float) -> None: ...
-
-    def observe(self, value: float) -> None: ...
-
-
-# Explicit return types for the factory helpers – they return objects that
-# conform to ``_MetricProtocol``. Using ``Any`` here would hide errors, so we
-# provide a concrete protocol.
-
-
-def _counter(
-    name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromCounter(name, documentation, *args, **kwargs)
-
-
-def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromGauge(name, documentation, *args, **kwargs)
-
-
-def _histogram(
-    name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromHistogram(name, documentation, *args, **kwargs)
-
-
-def _summary(
-    name: str, documentation: str, *args: Any, **kwargs: Any
-) -> _MetricProtocol:
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromSummary(name, documentation, *args, **kwargs)
-
-
-# Aliases used later (avoid interleaved imports)
-
-# Share a single registry across module reloads/process components.
-try:
-    _reg = getattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY")
-except Exception:
-    _reg = None
-if not _reg:
-    _reg = CollectorRegistry()
-    try:
-        setattr(_builtins, "_SOMABRAIN_METRICS_REGISTRY", _reg)
-    except Exception:
-        pass
-registry = _reg
-
-
-def _get_existing(name: str):
-    # Prefer the app registry mapping if present; fall back to global REGISTRY
-    try:
-        return registry._names_to_collectors.get(name)
-    except Exception:
-        try:
-            return REGISTRY._names_to_collectors.get(name)
-        except Exception:
-            return None
-
-
-def _counter(name: str, documentation: str, *args, **kwargs):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromCounter(name, documentation, *args, **kwargs)
-
-
-def _gauge(name: str, documentation: str, *args, **kwargs):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromGauge(name, documentation, *args, **kwargs)
-
-
-def _histogram(name: str, documentation: str, *args, **kwargs):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromHistogram(name, documentation, *args, **kwargs)
-
-
-def _summary(name: str, documentation: str, *args, **kwargs):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-    if "registry" not in kwargs:
-        kwargs["registry"] = registry
-    return _PromSummary(name, documentation, *args, **kwargs)
-
-
-def get_counter(name: str, documentation: str, labelnames: list | None = None):
-    """Get or create a Counter in the central registry.
-
-    Returns an existing collector if already registered, otherwise creates and
-    registers a new Counter attached to the central `registry`.
-    """
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if labelnames:
-        return _counter(name, documentation, labelnames, registry=registry)
-    return _counter(name, documentation, registry=registry)
-
-
-def get_gauge(name: str, documentation: str, labelnames: list | None = None):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if labelnames:
-        return _gauge(name, documentation, labelnames, registry=registry)
-    return _gauge(name, documentation, registry=registry)
-
-
-def get_histogram(
-    name: str, documentation: str, labelnames: list | None = None, **kwargs
-):
-    existing = _get_existing(name)
-    if existing is not None:
-        return existing
-
-    if labelnames:
-        return _histogram(name, documentation, labelnames, registry=registry, **kwargs)
-    return _histogram(name, documentation, registry=registry, **kwargs)
-
-
-_external_metrics_lock = Lock()
-_external_metrics_scraped: dict[str, float] = {}
-_DEFAULT_EXTERNAL_METRICS = ("kafka", "postgres", "opa")
-LEARNER_LAG_SECONDS = get_gauge(
-    "somabrain_learner_lag_seconds",
-    "Time since last next-event processed per tenant",
-    labelnames=["tenant_id"],
-)
-
-
-# Rebind public constructors to safe wrappers for in-module usage.
-Counter = _counter
-Gauge = _gauge
-Histogram = _histogram
-Summary = _summary
-
-# Aliases used later (avoid interleaved imports)
-_Hist = Histogram
-_PC = Counter
-_PHist = Histogram
-_PCounter = Counter
-
-
-HTTP_COUNT = Counter(
-    "somabrain_http_requests_total",
-    "HTTP requests",
-    ["method", "path", "status"],
-    registry=registry,
-)
-HTTP_LATENCY = Histogram(
-    "somabrain_http_latency_seconds",
-    "HTTP request latency",
-    ["method", "path"],
-    registry=registry,
-)
-# OPA enforcement metrics moved to somabrain/metrics/opa.py
-
-# Oak and Milvus metrics moved to somabrain/metrics/oak.py
-
-# Learning loop metrics (tau/entropy/feedback)
-LEARNING_TAU = get_gauge(
-    "somabrain_learning_tau",
-    "Current retrieval temperature per tenant",
-    ["tenant_id"],
-)
-LEARNING_ENTROPY_CAP_HITS = get_counter(
-    "somabrain_learning_entropy_cap_hits_total",
-    "Count of retrieval weight vectors that exceeded entropy cap",
-    ["tenant_id"],
-)
-# Reward Gate metrics moved to somabrain/metrics/opa.py
-# Constitution and Utility metrics moved to somabrain/metrics/constitution.py
-WM_HITS = Counter("somabrain_wm_hits_total", "WM recall hits", registry=registry)
-WM_MISSES = Counter("somabrain_wm_misses_total", "WM recall misses", registry=registry)
-# Salience, FD, and Scorer metrics moved to somabrain/metrics/salience.py
-
-EXTERNAL_METRICS_SCRAPE_STATUS = get_gauge(
-    "somabrain_external_metrics_scraped",
-    "Flag indicating that an external exporter has been scraped at least once",
-    ["source"],
-)
-
-# WM admissions and attention level
-WM_ADMIT = Counter(
-    "somabrain_wm_admit_total",
-    "Working Memory admissions",
-    ["source"],
-    registry=registry,
-)
-ATTENTION_LEVEL = Gauge(
-    "somabrain_attention_level",
-    "Current attention level as tracked by thalamus (0..1)",
-    registry=registry,
-)
-
-# HRR cleanup metrics moved to somabrain/metrics/hrr.py
-
-# Governance metrics (Sprint E1)
-MEMORY_ITEMS = get_gauge(
-    "somabrain_memory_items",
-    "Active items tracked per tenant/namespace",
-    ["tenant", "namespace"],
-)
-ETA_GAUGE = get_gauge(
-    "somabrain_eta",
-    "Effective learning rate per tenant/namespace",
-    ["tenant", "namespace"],
-)
-SPARSITY_GAUGE = get_gauge(
-    "somabrain_sparsity",
-    "Configured sparsity per tenant/namespace",
-    ["tenant", "namespace"],
-)
-MARGIN_MEAN = get_gauge(
-    "somabrain_cosine_margin_mean",
-    "Rolling cosine margin per tenant/namespace",
-    ["tenant", "namespace"],
-)
-CONFIG_VERSION = get_gauge(
-    "somabrain_config_version",
-    "Latest applied configuration version",
-    ["tenant", "namespace"],
-)
-CONTROLLER_CHANGES = get_counter(
-    "somabrain_controller_changes_total",
-    "Supervisor parameter adjustments",
-    ["parameter"],
-)
-RECALL_LATENCY = get_histogram(
-    "somabrain_recall_latency_seconds",
-    "End-to-end recall latency",
-    ["namespace"],
-    buckets=(0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
-ANN_LATENCY = get_histogram(
-    "somabrain_ann_latency_seconds",
-    "ANN lookup latency",
-    ["namespace"],
-    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5),
-)
-
-ANN_REBUILD_TOTAL = get_counter(
-    "somabrain_ann_rebuild_total",
-    "Number of ANN rebuild operations",
-    ["tenant", "namespace", "backend"],
-)
-ANN_REBUILD_SECONDS = get_histogram(
-    "somabrain_ann_rebuild_seconds",
-    "Duration of ANN rebuild operations",
-    ["tenant", "namespace"],
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
-
-# Phase 0 — A/B + stage metrics
-
-RECALL_WM_LAT = _PHist(
-    "somabrain_recall_wm_latency_seconds",
-    "Recall WM stage latency",
-    ["cohort"],
-    registry=registry,
-)
-RECALL_LTM_LAT = _PHist(
-    "somabrain_recall_ltm_latency_seconds",
-    "Recall LTM stage latency",
-    ["cohort"],
-    registry=registry,
-)
-
-RECALL_CACHE_HIT = _PCounter(
-    "somabrain_recall_cache_hit_total",
-    "Recall cache hits",
-    ["cohort"],
-    registry=registry,
-)
-RECALL_CACHE_MISS = _PCounter(
-    "somabrain_recall_cache_miss_total",
-    "Recall cache misses",
-    ["cohort"],
-    registry=registry,
-)
-NOVELTY_RAW = _Hist(
-    "somabrain_novelty_raw",
-    "Novelty raw distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    labelnames=["cohort"],
-    registry=registry,
-)
-ERROR_RAW = _Hist(
-    "somabrain_error_raw",
-    "Prediction error raw distribution",
-    buckets=[i / 20.0 for i in range(0, 21)],
-    labelnames=["cohort"],
-    registry=registry,
-)
-NOVELTY_NORM = _Hist(
-    "somabrain_novelty_norm",
-    "Novelty normalized (z-score) distribution",
-    buckets=[-5 + i * 0.5 for i in range(0, 21)],
-    labelnames=["cohort"],
-    registry=registry,
-)
-ERROR_NORM = _Hist(
-    "somabrain_error_norm",
-    "Prediction error normalized (z-score) distribution",
-    buckets=[-5 + i * 0.5 for i in range(0, 21)],
-    labelnames=["cohort"],
-    registry=registry,
-)
-SDR_PREFILTER_LAT = _PHist(
-    "somabrain_sdr_prefilter_latency_seconds",
-    "SDR prefilter latency",
-    ["cohort"],
-    registry=registry,
-)
-SDR_CANDIDATES = _PCounter(
-    "somabrain_sdr_candidates_total",
-    "SDR candidate coords selected",
-    ["cohort"],
-    registry=registry,
-)
-# HRR rerank and Unbind metrics moved to somabrain/metrics/hrr.py
-
-# --- Retrieval metrics ---
-RECALL_REQUESTS = get_counter(
-    "somabrain_recall_requests_total",
-    "Number of /recall requests",
-    labelnames=["namespace"],
-)
-RETRIEVAL_REQUESTS = get_counter(
-    "somabrain_retrieval_requests",
-    "Retrieval requests",
-    labelnames=["namespace", "retrievers"],
-)
-RETRIEVAL_LATENCY = get_histogram(
-    "somabrain_retrieval_latency_seconds",
-    "Retrieval pipeline latency",
-)
-RETRIEVAL_CANDIDATES = get_histogram(
-    "somabrain_retrieval_candidates_total",
-    "Retrieval candidate count after dedupe/rerank",
-    buckets=[1, 3, 5, 10, 20, 50],
-)
-RETRIEVAL_PERSIST = get_counter(
-    "somabrain_retrieval_persist_total",
-    "Retrieval session persistence outcomes",
-    labelnames=["status"],
-)
-RETRIEVAL_EMPTY = get_counter(
-    "somabrain_retrieval_empty_total",
-    "Retrieval requests returning zero candidates",
-    labelnames=["namespace", "retrievers"],
-)
-RETRIEVER_HITS = get_counter(
-    "somabrain_retriever_hits_total",
-    "Per-retriever non-empty candidate lists",
-    labelnames=["namespace", "retriever"],
-)
-
-# Per-retriever latency (adapter execution time)
-RETRIEVER_LATENCY = get_histogram(
-    "somabrain_retriever_latency_seconds",
-    "Latency of individual retriever adapters",
-    labelnames=["namespace", "retriever"],
-    buckets=(0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0),
-)
-
-# Fusion metrics (retrieval enhancements)
-RETRIEVAL_FUSION_APPLIED = Counter(
-    "somabrain_retrieval_fusion_applied_total",
-    "Times rank fusion was applied",
-    ["method"],
-    registry=registry,
-)
-RETRIEVAL_FUSION_SOURCES = Histogram(
-    "somabrain_retrieval_fusion_sources",
-    "Number of retriever sources fused",
-    buckets=[1, 2, 3, 4, 5, 6],
-    registry=registry,
-)
-
-# Additional unbind observability moved to somabrain/metrics/hrr.py
-
-# Predictor and Planning metrics moved to somabrain/metrics/predictor.py
-
-
-# Decision attribution / recall quality
-RECALL_MARGIN_TOP12 = Histogram(
-    "somabrain_recall_margin_top1_top2",
-    "Margin between top1 and top2 recall scores",
-    registry=registry,
-)
-RECALL_SIM_TOP1 = Histogram(
-    "somabrain_recall_sim_top1",
-    "Top-1 recall score/similarity",
-    registry=registry,
-)
-RECALL_SIM_TOPK_MEAN = Histogram(
-    "somabrain_recall_sim_topk_mean",
-    "Mean similarity of returned WM top-k",
-    registry=registry,
-)
-RERANK_CONTRIB = Histogram(
-    "somabrain_rerank_contrib",
-    "Approx. contribution of re-ranking to final score",
-    registry=registry,
-)
-DIVERSITY_PAIRWISE_MEAN = Histogram(
-    "somabrain_diversity_pairwise_mean",
-    "Mean pairwise cosine distance among returned set",
-    registry=registry,
-)
-
-# Storage efficiency KPI: ratio of post-compression bytes to pre-compression bytes
-STORAGE_REDUCTION_RATIO = Gauge(
-    "somabrain_storage_reduction_ratio",
-    "Observed storage reduction ratio (post/pre). Higher is better if defined as retained fraction; dashboards invert to show savings.",
-    registry=registry,
-)
-
-# Capacity / backpressure
-WM_UTILIZATION = Gauge(
-    "somabrain_wm_utilization",
-    "Working Memory utilization (items/capacity)",
-    registry=registry,
-)
-WM_EVICTIONS = Counter(
-    "somabrain_wm_evictions_total",
-    "Working Memory evictions (best-effort)",
-    registry=registry,
-)
-RATE_LIMITED_TOTAL = Counter(
-    "somabrain_rate_limited_total",
-    "Requests rejected by rate limiting",
-    ["path"],
-    registry=registry,
-)
-QUOTA_DENIED_TOTAL = Counter(
-    "somabrain_quota_denied_total",
-    "Write requests rejected by quota",
-    ["reason"],
-    registry=registry,
-)
-QUOTA_RESETS = Counter(
-    "somabrain_quota_resets_total",
-    "Admin quota reset operations",
-    ["tenant_id"],
-    registry=registry,
-)
-QUOTA_ADJUSTMENTS = Counter(
-    "somabrain_quota_adjustments_total",
-    "Admin quota adjustment operations",
-    ["tenant_id"],
-    registry=registry,
-)
-LTM_STORE_LAT = Histogram(
-    "somabrain_ltm_store_latency_seconds",
-    "Latency of LTM store operations",
-    registry=registry,
-)
-# Removed queued write semantics (fail-fast); metric deprecated.
-# (Previously: somabrain_ltm_store_queued_total)
-
-# Executive details
-EXEC_K_SELECTED = Histogram(
-    "somabrain_exec_k_selected",
-    "Final top_k selected by executive/policy",
-    registry=registry,
-)
-
-# Consolidation / Sleep metrics
-CONSOLIDATION_RUNS = Counter(
-    "somabrain_consolidation_runs_total",
-    "Consolidation runs by phase",
-    ["phase"],
-    registry=registry,
-)
-REPLAY_STRENGTH = Histogram(
-    "somabrain_consolidation_replay_strength",
-    "Distribution of replay reinforcement weights",
-    registry=registry,
-)
-REM_SYNTHESIZED = Counter(
-    "somabrain_consolidation_rem_synthesized_total",
-    "Count of REM synthesized semantic memories",
-    registry=registry,
-)
-
-# Supervisor / Energy metrics
-FREE_ENERGY = Histogram(
-    "somabrain_free_energy",
-    "Free-energy proxy values",
-    registry=registry,
-)
-SUPERVISOR_MODULATION = Histogram(
-    "somabrain_supervisor_modulation",
-    "Magnitude of neuromodulator adjustments",
-    registry=registry,
-)
-
-# Executive Controller metrics
-EXEC_CONFLICT = Histogram(
-    "somabrain_exec_conflict",
-    "Executive conflict proxy (1-mean recall strength)",
-    registry=registry,
-)
-EXEC_USE_GRAPH = Counter(
-    "somabrain_exec_use_graph_total",
-    "Times executive controller enabled graph augmentation",
-    registry=registry,
-)
-EXEC_BANDIT_ARM = Counter(
-    "somabrain_exec_bandit_arm_total",
-    "Executive bandit arm selection counts",
-    ["arm"],
-    registry=registry,
-)
-EXEC_BANDIT_REWARD = Histogram(
-    "somabrain_exec_bandit_reward",
-    "Executive bandit observed rewards",
-    registry=registry,
-)
-
-# Microcircuits
-MICRO_VOTE_ENTROPY = Histogram(
-    "somabrain_micro_vote_entropy",
-    "Entropy of column vote distribution",
-    registry=registry,
-)
-MICRO_COLUMN_ADMIT = Counter(
-    "somabrain_micro_column_admit_total",
-    "Admissions per microcircuit column",
-    ["column"],
-    registry=registry,
-)
-MICRO_COLUMN_BEST = Counter(
-    "somabrain_micro_column_best_total",
-    "Recall best-column selection counts",
-    ["column"],
-    registry=registry,
-)
-
-# Adaptive salience gauges moved to somabrain/metrics/salience.py
-
-# Embeddings
-EMBED_LAT = Histogram(
-    "somabrain_embed_latency_seconds",
-    "Embedding call latency",
-    ["provider"],
-    registry=registry,
-)
-EMBED_CACHE_HIT = Counter(
-    "somabrain_embed_cache_hit_total",
-    "Embedding cache hits",
-    ["provider"],
-    registry=registry,
-)
-
-# Index/Compression configuration usage (ablation labels kept small & numeric)
-INDEX_PROFILE_USE = Counter(
-    "somabrain_index_profile_use_total",
-    "Index/compression profile observed on startup",
-    [
-        "profile",
-        "pq_m",
-        "pq_bits",
-        "opq",
-        "anisotropic",
-        "imi_cells",
-        "hnsw_M",
-        "hnsw_efs",
-    ],
-    registry=registry,
-)
-
-# Graph/link maintenance
-LINK_DECAY_PRUNED = Counter(
-    "somabrain_link_decay_pruned_total",
-    "Count of graph links pruned by decay threshold",
-    registry=registry,
-)
-
-
-# Audit pipeline metrics: Kafka publish path only (no local alternatives)
-AUDIT_KAFKA_PUBLISH = Counter(
-    "somabrain_audit_kafka_publish_total",
-    "Audit events successfully published to Kafka (best-effort)",
-    registry=registry,
-)
-
-# New metrics for outbox and circuit breaker (per-tenant labeled gauges)
-DEFAULT_TENANT_LABEL = "default"
-
-
-def _normalize_tenant_label(tenant_id: str | None) -> str:
-    if not tenant_id:
-        return DEFAULT_TENANT_LABEL
-    return str(tenant_id)
-
-
-OUTBOX_PENDING = _gauge(
-    "memory_outbox_pending",
-    "Number of pending messages in the out-box queue",
-    ["tenant_id"],
-)
-
-CIRCUIT_STATE = _gauge(
-    "memory_circuit_state",
-    "Circuit breaker state for external memory service: 0=closed, 1=open",
-    ["tenant_id"],
-)
-
-OUTBOX_REPLAY_TRIGGERED = _counter(
-    "memory_outbox_replay_total",
-    "Admin-triggered outbox replays partitioned by outcome.",
-    ["result"],
-)
-
-OUTBOX_FAILED_TOTAL = _counter(
-    "memory_outbox_failed_seen_total",
-    "Count of failed outbox events observed via admin API endpoints.",
-    ["tenant_id"],
-)
-
-FEATURE_FLAG_TOGGLE_TOTAL = _counter(
-    "somabrain_feature_flag_toggle_total",
-    "Number of feature flag toggles grouped by action.",
-    ["action"],
-)
-
-OUTBOX_PROCESSED_TOTAL = _counter(
-    "somabrain_outbox_processed_total",
-    "Total number of outbox events successfully published to Kafka",
-    ["tenant_id", "topic"],
-)
-
-OUTBOX_REPLAYED_TOTAL = _counter(
-    "somabrain_outbox_replayed_total",
-    "Total number of outbox events marked for replay",
-    ["tenant_id"],
-)
-
-
-def report_outbox_pending(tenant_id: str | None, count: int) -> None:
-    try:
-        OUTBOX_PENDING.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(count)
-    except Exception:
-        pass
-
-
-def report_circuit_state(tenant_id: str | None, is_open: bool) -> None:
-    try:
-        CIRCUIT_STATE.labels(tenant_id=_normalize_tenant_label(tenant_id)).set(
-            1 if is_open else 0
-        )
-    except Exception:
-        pass
-
-
-def report_outbox_processed(tenant_id: str | None, topic: str, count: int = 1) -> None:
-    try:
-        OUTBOX_PROCESSED_TOTAL.labels(
-            tenant_id=_normalize_tenant_label(tenant_id),
-            topic=str(topic),
-        ).inc(max(0, int(count)))
-    except Exception:
-        pass
-
-
-def report_outbox_replayed(tenant_id: str | None, count: int = 1) -> None:
-    try:
-        OUTBOX_REPLAYED_TOTAL.labels(tenant_id=_normalize_tenant_label(tenant_id)).inc(
-            max(0, int(count))
-        )
-    except Exception:
-        pass
-
-
-# Ensure HTTP_FAILURES counter is only created once per process.
-if "memory_http_failures_total" in REGISTRY._names_to_collectors:
-    HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]
-else:
-    HTTP_FAILURES = Counter(
-        "memory_http_failures_total",
-        "Total number of failed HTTP calls to the external memory service",
-        registry=REGISTRY,
-    )
-
-
-# Neuromodulator metrics moved to somabrain/metrics/neuromodulator.py
-
-# ==============================
-# Learning & Adaptation Metrics (Per-Tenant)
-# ==============================
-
-# Retrieval weights (per-tenant adaptation state)
-LEARNING_RETRIEVAL_ALPHA = get_gauge(
-    "somabrain_learning_retrieval_alpha",
-    "Semantic weight in retrieval (α) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_RETRIEVAL_BETA = get_gauge(
-    "somabrain_learning_retrieval_beta",
-    "Graph weight in retrieval (β) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_RETRIEVAL_GAMMA = get_gauge(
-    "somabrain_learning_retrieval_gamma",
-    "Recent weight in retrieval (γ) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_RETRIEVAL_TAU = get_gauge(
-    "somabrain_learning_retrieval_tau",
-    "Temperature for diversity (τ) per tenant",
-    labelnames=["tenant_id"],
-)
-
-# Utility weights (per-tenant adaptation state)
-LEARNING_UTILITY_LAMBDA = get_gauge(
-    "somabrain_learning_utility_lambda",
-    "Semantic utility weight (λ) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_UTILITY_MU = get_gauge(
-    "somabrain_learning_utility_mu",
-    "Graph utility weight (μ) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_UTILITY_NU = get_gauge(
-    "somabrain_learning_utility_nu",
-    "Recent utility weight (ν) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_GAIN = get_gauge(
-    "somabrain_learning_gain",
-    "Configured adaptation gain per component",
-    labelnames=["tenant_id", "component"],
-)
-LEARNING_BOUND = get_gauge(
-    "somabrain_learning_bound",
-    "Adaptation bounds per component and side",
-    labelnames=["tenant_id", "component", "bound"],
-)
-
-# Feedback loop metrics
-LEARNING_FEEDBACK_APPLIED = get_counter(
-    "somabrain_learning_feedback_applied_total",
-    "Total feedback applications (success) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_FEEDBACK_REJECTED = get_counter(
-    "somabrain_learning_feedback_rejected_total",
-    "Feedback rejected due to outliers or bounds per tenant",
-    labelnames=["tenant_id", "reason"],
-)
-LEARNING_FEEDBACK_LATENCY = get_histogram(
-    "somabrain_learning_feedback_latency_seconds",
-    "Latency of feedback application (end-to-end) per tenant",
-    labelnames=["tenant_id"],
-    buckets=[0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1.0, 2.0],
-)
-
-# Learner (next-event) metrics
-LEARNER_EVENTS_CONSUMED = get_counter(
-    "somabrain_learner_events_consumed_total",
-    "Next-event messages consumed",
-    labelnames=["tenant_id"],
-)
-LEARNER_EVENTS_PRODUCED = get_counter(
-    "somabrain_learner_events_produced_total",
-    "Config updates produced by learner",
-    labelnames=["tenant_id"],
-)
-LEARNER_EVENTS_FAILED = get_counter(
-    "somabrain_learner_events_failed_total",
-    "Next-event processing failures",
-    labelnames=["tenant_id", "phase"],
-)
-LEARNER_EVENT_LATENCY = get_histogram(
-    "somabrain_learner_event_latency_seconds",
-    "End-to-end processing latency for next-event messages",
-    labelnames=["tenant_id"],
-    buckets=(0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0),
-)
-LEARNER_DLQ_TOTAL = get_counter(
-    "somabrain_learner_dlq_total",
-    "Learner DLQ writes",
-    labelnames=["tenant_id", "reason"],
-)
-
-# Adaptation dynamics
-LEARNING_EFFECTIVE_LR = get_gauge(
-    "somabrain_learning_effective_lr",
-    "Effective learning rate (lr_eff) per tenant",
-    labelnames=["tenant_id"],
-)
-LEARNING_ROLLBACKS = get_counter(
-    "somabrain_learning_rollbacks_total",
-    "Number of weight rollbacks triggered per tenant",
-    labelnames=["tenant_id"],
-)
-
-# Working memory growth
-LEARNING_WM_LENGTH = get_gauge(
-    "somabrain_learning_wm_length",
-    "Working memory length per session/tenant",
-    labelnames=["session_id", "tenant_id"],
-)
-
-# Autonomous experiments
-LEARNING_EXPERIMENT_ACTIVE = get_gauge(
-    "somabrain_learning_experiment_active",
-    "Number of active A/B experiments",
-    labelnames=["experiment_name"],
-)
-LEARNING_EXPERIMENT_PROMOTIONS = get_counter(
-    "somabrain_learning_experiment_promotions_total",
-    "Number of successful canary promotions",
-    labelnames=["experiment_name"],
-)
-
-
-# ==============================
-# Helper Functions for Learning Metrics
-# ==============================
-
-
-def update_learning_retrieval_weights(
-    tenant_id: str, alpha: float, beta: float, gamma: float, tau: float
-):
-    """Update per-tenant retrieval weight metrics."""
-    LEARNING_RETRIEVAL_ALPHA.labels(tenant_id=tenant_id).set(alpha)
-    LEARNING_RETRIEVAL_BETA.labels(tenant_id=tenant_id).set(beta)
-    LEARNING_RETRIEVAL_GAMMA.labels(tenant_id=tenant_id).set(gamma)
-    LEARNING_RETRIEVAL_TAU.labels(tenant_id=tenant_id).set(tau)
-
-
-def update_learning_utility_weights(
-    tenant_id: str, lambda_: float, mu: float, nu: float
-):
-    """Update per-tenant utility weight metrics."""
-    LEARNING_UTILITY_LAMBDA.labels(tenant_id=tenant_id).set(lambda_)
-    LEARNING_UTILITY_MU.labels(tenant_id=tenant_id).set(mu)
-    LEARNING_UTILITY_NU.labels(tenant_id=tenant_id).set(nu)
-
-
-def update_learning_gains(tenant_id: str, **gains: float) -> None:
-    """Record configured adaptation gains per component."""
-
-    for component, value in gains.items():
-        LEARNING_GAIN.labels(tenant_id=tenant_id, component=component).set(float(value))
-
-
-def update_learning_bounds(tenant_id: str, **bounds: float) -> None:
-    """Record adaptation bounds (min/max) for each component."""
-
-    for key, value in bounds.items():
-        if key.endswith("_min"):
-            component = key[:-4]
-            LEARNING_BOUND.labels(
-                tenant_id=tenant_id, component=component, bound="min"
-            ).set(float(value))
-        elif key.endswith("_max"):
-            component = key[:-4]
-            LEARNING_BOUND.labels(
-                tenant_id=tenant_id, component=component, bound="max"
-            ).set(float(value))
-
-
-def record_learning_feedback_applied(tenant_id: str):
-    """Increment feedback applied counter for tenant."""
-    LEARNING_FEEDBACK_APPLIED.labels(tenant_id=tenant_id).inc()
-
-
-def record_learning_feedback_rejected(tenant_id: str, reason: str):
-    """Increment feedback rejected counter for tenant."""
-    LEARNING_FEEDBACK_REJECTED.labels(tenant_id=tenant_id, reason=reason).inc()
-
-
-def record_learning_feedback_latency(tenant_id: str, latency_seconds: float):
-    """Record feedback latency for tenant."""
-    LEARNING_FEEDBACK_LATENCY.labels(tenant_id=tenant_id).observe(latency_seconds)
-
-
-def update_learning_effective_lr(tenant_id: str, lr_eff: float):
-    """Update effective learning rate metric for tenant."""
-    LEARNING_EFFECTIVE_LR.labels(tenant_id=tenant_id).set(lr_eff)
-
-
-# Phase‑1 adaptive knob metrics
-tau_decay_events = get_counter(
-    "somabrain_tau_decay_events_total",
-    "Tau decay applications per tenant",
-    labelnames=["tenant_id"],
-)
-tau_anneal_events = get_counter(
-    "somabrain_tau_anneal_events_total",
-    "Tau annealing applications per tenant (any schedule)",
-    labelnames=["tenant_id"],
-)
-entropy_cap_events = get_counter(
-    "somabrain_entropy_cap_events_total",
-    "Entropy cap sharpen events per tenant",
-    labelnames=["tenant_id"],
-)
-
-# Retrieval entropy gauge per tenant
-LEARNING_RETRIEVAL_ENTROPY = get_gauge(
-    "somabrain_learning_retrieval_entropy",
-    "Entropy of retrieval weight distribution per tenant",
-    labelnames=["tenant_id"],
-)
-
-# Regret KPIs (next-event + policy)
-LEARNING_REGRET = get_histogram(
-    "somabrain_learning_regret",
-    "Regret distribution per tenant",
-    labelnames=["tenant_id"],
-    buckets=[i / 20.0 for i in range(0, 21)],
-)
-LEARNING_REGRET_EWMA = get_gauge(
-    "somabrain_learning_regret_ewma",
-    "EWMA regret per tenant",
-    labelnames=["tenant_id"],
-)
-
-# Next-event regret gauge (legacy single-value view)
-soma_next_event_regret = get_gauge(
+# Re-export from core
+from somabrain.metrics.core import (
+    registry,
+    Counter,
+    Gauge,
+    Histogram,
+    Summary,
+    get_counter,
+    get_gauge,
+    get_histogram,
+    HTTP_COUNT,
+    HTTP_LATENCY,
+)
+
+# Re-export from learning
+from somabrain.metrics.learning import (
+    LEARNING_TAU,
+    LEARNING_ENTROPY_CAP_HITS,
+    LEARNING_RETRIEVAL_ALPHA,
+    LEARNING_RETRIEVAL_BETA,
+    LEARNING_RETRIEVAL_GAMMA,
+    LEARNING_RETRIEVAL_TAU,
+    LEARNING_UTILITY_LAMBDA,
+    LEARNING_UTILITY_MU,
+    LEARNING_UTILITY_NU,
+    LEARNING_FEEDBACK_APPLIED,
+    LEARNING_FEEDBACK_REJECTED,
+    LEARNING_FEEDBACK_LATENCY,
+    LEARNING_EFFECTIVE_LR,
+    LEARNING_ROLLBACKS,
+    LEARNING_WM_LENGTH,
+    LEARNING_RETRIEVAL_ENTROPY,
+    LEARNING_REGRET,
+    LEARNING_REGRET_EWMA,
+    LEARNER_LAG_SECONDS,
+    LEARNING_GAIN,
+    LEARNING_BOUND,
+    LEARNER_EVENTS_CONSUMED,
+    LEARNER_EVENTS_PRODUCED,
+    LEARNER_EVENTS_FAILED,
+    LEARNER_EVENT_LATENCY,
+    LEARNER_DLQ_TOTAL,
+    LEARNING_EXPERIMENT_ACTIVE,
+    LEARNING_EXPERIMENT_PROMOTIONS,
+    tau_decay_events,
+    tau_anneal_events,
+    entropy_cap_events,
+    update_learning_retrieval_weights,
+    update_learning_utility_weights,
+    update_learning_gains,
+    update_learning_bounds,
+    record_learning_feedback_applied,
+    record_learning_feedback_rejected,
+    record_learning_feedback_latency,
+    update_learning_effective_lr,
+    record_regret,
+    update_learning_retrieval_entropy,
+    record_learning_rollback,
+    update_learning_wm_length,
+)
+
+# Re-export from memory_metrics
+from somabrain.metrics.memory_metrics import (
+    WM_HITS,
+    WM_MISSES,
+    WM_ADMIT,
+    WM_UTILIZATION,
+    WM_EVICTIONS,
+    RECALL_REQUESTS,
+    RECALL_LATENCY,
+    RETRIEVAL_REQUESTS,
+    RETRIEVAL_LATENCY,
+    RETRIEVAL_CANDIDATES,
+    RETRIEVAL_PERSIST,
+    RETRIEVAL_EMPTY,
+    RETRIEVER_HITS,
+    RETRIEVER_LATENCY,
+    ANN_LATENCY,
+    ANN_REBUILD_TOTAL,
+    ANN_REBUILD_SECONDS,
+    LTM_STORE_LAT,
+    MEMORY_HTTP_REQUESTS,
+    MEMORY_HTTP_LATENCY,
+    HTTP_FAILURES,
+    CIRCUIT_BREAKER_STATE,
+    MEMORY_ITEMS,
+    ETA_GAUGE,
+    SPARSITY_GAUGE,
+    MARGIN_MEAN,
+    CONFIG_VERSION,
+    CONTROLLER_CHANGES,
+    MEMORY_OUTBOX_SYNC_TOTAL,
+    record_memory_snapshot,
+    observe_recall_latency,
+    observe_ann_latency,
+    mark_controller_change,
+)
+
+# Re-export from outbox_metrics
+from somabrain.metrics.outbox_metrics import (
+    OUTBOX_PENDING,
+    OUTBOX_PROCESSED_TOTAL,
+    OUTBOX_REPLAYED_TOTAL,
+    OUTBOX_REPLAY_TRIGGERED,
+    OUTBOX_FAILED_TOTAL,
+    CIRCUIT_STATE,
+    FEATURE_FLAG_TOGGLE_TOTAL,
+    DEFAULT_TENANT_LABEL,
+    report_outbox_pending,
+    report_circuit_state,
+    report_outbox_processed,
+    report_outbox_replayed,
+)
+
+# Re-export from middleware
+from somabrain.metrics.middleware import (
+    EXTERNAL_METRICS_SCRAPE_STATUS,
+    metrics_endpoint,
+    timing_middleware,
+    mark_external_metric_scraped,
+    external_metrics_ready,
+    reset_external_metrics,
+)
+
+# Re-export from opa
+from somabrain.metrics.opa import (
+    OPA_ALLOW_TOTAL,
+    OPA_DENY_TOTAL,
+    REWARD_ALLOW_TOTAL,
+    REWARD_DENY_TOTAL,
+)
+
+# Re-export from constitution
+from somabrain.metrics.constitution import (
+    CONSTITUTION_VERIFIED,
+    CONSTITUTION_VERIFY_LATENCY,
+    UTILITY_NEGATIVE,
+    UTILITY_VALUE,
+)
+
+# Re-export from salience
+from somabrain.metrics.salience import (
+    SALIENCE_STORE,
+    SALIENCE_HIST,
+    SALIENCE_THRESH_STORE,
+    SALIENCE_THRESH_ACT,
+    SALIENCE_STORE_RATE_OBS,
+    SALIENCE_ACT_RATE_OBS,
+    FD_ENERGY_CAPTURE,
+    FD_RESIDUAL,
+    FD_TRACE_ERROR,
+    FD_PSD_INVARIANT,
+    SCORER_COMPONENT,
+    SCORER_FINAL,
+    SCORER_WEIGHT_CLAMPED,
+)
+
+# Re-export from hrr
+from somabrain.metrics.hrr import (
+    HRR_CLEANUP_USED,
+    HRR_CLEANUP_SCORE,
+    HRR_CLEANUP_CALLS,
+    HRR_ANCHOR_SIZE,
+    HRR_CONTEXT_SAT,
+    HRR_RERANK_APPLIED,
+    HRR_RERANK_LTM_APPLIED,
+    HRR_RERANK_WM_SKIPPED,
+    UNBIND_PATH,
+    UNBIND_WIENER_FLOOR,
+    UNBIND_K_EST,
+    UNBIND_SPECTRAL_BINS_CLAMPED,
+    UNBIND_EPS_USED,
+    RECONSTRUCTION_COSINE,
+)
+
+# Re-export from predictor
+from somabrain.metrics.predictor import (
+    PREDICTOR_LATENCY,
+    PREDICTOR_LATENCY_BY,
+    PREDICTOR_ALTERNATIVE,
+    PLANNING_LATENCY,
+    PLANNING_LATENCY_P99,
+    record_planning_latency,
+)
+
+# Re-export from neuromodulator
+from somabrain.metrics.neuromodulator import (
+    NEUROMOD_DOPAMINE,
+    NEUROMOD_SEROTONIN,
+    NEUROMOD_NORADRENALINE,
+    NEUROMOD_ACETYLCHOLINE,
+    NEUROMOD_UPDATE_COUNT,
+)
+
+# Re-export from oak
+from somabrain.metrics.oak import (
+    OPTION_UTILITY_AVG,
+    OPTION_COUNT,
+    MILVUS_SEARCH_LAT_P95,
+    MILVUS_INGEST_LAT_P95,
+    MILVUS_SEGMENT_LOAD,
+    MILVUS_UPSERT_RETRY_TOTAL,
+    MILVUS_UPSERT_FAILURE_TOTAL,
+    MILVUS_RECONCILE_MISSING,
+    MILVUS_RECONCILE_ORPHAN,
+)
+
+# Re-export from consolidation
+from somabrain.metrics.consolidation import (
+    CONSOLIDATION_RUNS,
+    REPLAY_STRENGTH,
+    REM_SYNTHESIZED,
+    FREE_ENERGY,
+    SUPERVISOR_MODULATION,
+)
+
+# Re-export from executive
+from somabrain.metrics.executive import (
+    EXEC_CONFLICT,
+    EXEC_USE_GRAPH,
+    EXEC_BANDIT_ARM,
+    EXEC_BANDIT_REWARD,
+    EXEC_K_SELECTED,
+    MICRO_VOTE_ENTROPY,
+    MICRO_COLUMN_ADMIT,
+    MICRO_COLUMN_BEST,
+    ATTENTION_LEVEL,
+)
+
+# Re-export from embedding
+from somabrain.metrics.embedding import (
+    EMBED_LAT,
+    EMBED_CACHE_HIT,
+    INDEX_PROFILE_USE,
+    LINK_DECAY_PRUNED,
+    AUDIT_KAFKA_PUBLISH,
+)
+
+# Re-export from recall_quality
+from somabrain.metrics.recall_quality import (
+    RECALL_MARGIN_TOP12,
+    RECALL_SIM_TOP1,
+    RECALL_SIM_TOPK_MEAN,
+    RERANK_CONTRIB,
+    DIVERSITY_PAIRWISE_MEAN,
+    STORAGE_REDUCTION_RATIO,
+    RATE_LIMITED_TOTAL,
+    QUOTA_DENIED_TOTAL,
+    QUOTA_RESETS,
+    QUOTA_ADJUSTMENTS,
+    RETRIEVAL_FUSION_APPLIED,
+    RETRIEVAL_FUSION_SOURCES,
+)
+
+# Re-export from novelty
+from somabrain.metrics.novelty import (
+    NOVELTY_RAW,
+    ERROR_RAW,
+    NOVELTY_NORM,
+    ERROR_NORM,
+    SDR_PREFILTER_LAT,
+    SDR_CANDIDATES,
+    RECALL_WM_LAT,
+    RECALL_LTM_LAT,
+    RECALL_CACHE_HIT,
+    RECALL_CACHE_MISS,
+)
+
+# Re-export from segmentation
+from somabrain.metrics.segmentation import (
+    SEGMENTATION_BOUNDARIES_PER_HOUR,
+    SEGMENTATION_DUPLICATE_RATIO,
+    SEGMENTATION_HMM_STATE_VOLATILE,
+    SEGMENTATION_MAX_DWELL_EXCEEDED,
+    FUSION_WEIGHT_NORM_ERROR,
+    FUSION_ALPHA_ADAPTIVE,
+    FUSION_SOFTMAX_WEIGHT,
+)
+
+# Legacy gauges from core (to avoid circular imports)
+from somabrain.metrics.core import tau_gauge, soma_next_event_regret
+
+__all__ = [
+    # Core
+    "registry",
+    "Counter",
+    "Gauge",
+    "Histogram",
+    "Summary",
+    "get_counter",
+    "get_gauge",
+    "get_histogram",
+    "HTTP_COUNT",
+    "HTTP_LATENCY",
+    # Learning
+    "LEARNING_TAU",
+    "LEARNING_ENTROPY_CAP_HITS",
+    "LEARNING_RETRIEVAL_ALPHA",
+    "LEARNING_RETRIEVAL_BETA",
+    "LEARNING_RETRIEVAL_GAMMA",
+    "LEARNING_RETRIEVAL_TAU",
+    "LEARNING_UTILITY_LAMBDA",
+    "LEARNING_UTILITY_MU",
+    "LEARNING_UTILITY_NU",
+    "LEARNING_FEEDBACK_APPLIED",
+    "LEARNING_FEEDBACK_REJECTED",
+    "LEARNING_FEEDBACK_LATENCY",
+    "LEARNING_EFFECTIVE_LR",
+    "LEARNING_ROLLBACKS",
+    "LEARNING_WM_LENGTH",
+    "LEARNING_RETRIEVAL_ENTROPY",
+    "LEARNING_REGRET",
+    "LEARNING_REGRET_EWMA",
+    "LEARNER_LAG_SECONDS",
+    "tau_decay_events",
+    "tau_anneal_events",
+    "entropy_cap_events",
+    "tau_gauge",
     "soma_next_event_regret",
-    "Instantaneous next-event regret (0-1)",
-    labelnames=["tenant_id"],
-)
-
-_regret_ema: dict[str, float] = {}
-_REGRET_ALPHA = 0.15
-
-
-def record_regret(tenant_id: str, regret: float) -> None:
-    try:
-        t = tenant_id or "public"
-        r = max(0.0, min(1.0, float(regret)))
-        LEARNING_REGRET.labels(tenant_id=t).observe(r)
-        prev = _regret_ema.get(t)
-        if prev is None:
-            ema = r
-        else:
-            ema = _REGRET_ALPHA * r + (1.0 - _REGRET_ALPHA) * prev
-        _regret_ema[t] = ema
-        LEARNING_REGRET_EWMA.labels(tenant_id=t).set(ema)
-    except Exception:
-        pass
-
-
-def update_learning_retrieval_entropy(tenant_id: str, entropy: float) -> None:
-    try:
-        LEARNING_RETRIEVAL_ENTROPY.labels(tenant_id=tenant_id).set(float(entropy))
-    except Exception:
-        pass
-
-
-def record_learning_rollback(tenant_id: str):
-    """Increment rollback counter for tenant."""
-    LEARNING_ROLLBACKS.labels(tenant_id=tenant_id).inc()
-
-
-def update_learning_wm_length(session_id: str, tenant_id: str, length: int):
-    """Update working memory length metric for session/tenant."""
-    LEARNING_WM_LENGTH.labels(session_id=session_id, tenant_id=tenant_id).set(length)
-
-
-# Ensure tau_gauge for context builder is defined only once and shared across modules.
-if "soma_context_builder_tau" in REGISTRY._names_to_collectors:
-    tau_gauge = REGISTRY._names_to_collectors["soma_context_builder_tau"]
-else:
-    tau_gauge = Gauge(
-        "soma_context_builder_tau",
-        "Current tau value for diversity adaptation",
-        ["tenant_id"],
-        registry=REGISTRY,
-    )
-
-
-def mark_external_metric_scraped(source: str) -> None:
-    """Mark an external exporter as scraped for readiness gating."""
-
-    if not source:
-        return
-    label = str(source).strip().lower()
-    if not label:
-        return
-    now = time.time()
-    with _external_metrics_lock:
-        _external_metrics_scraped[label] = now
-    try:
-        EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(1)
-    except Exception:
-        pass
-
-
-def external_metrics_ready(
-    required: Iterable[str] | None = None, freshness_seconds: float | None = None
-) -> bool:
-    """Return True if all required exporters have reported a recent scrape."""
-
-    targets = (
-        [str(s).strip().lower() for s in required]
-        if required is not None
-        else list(_DEFAULT_EXTERNAL_METRICS)
-    )
-    now = time.time()
-    with _external_metrics_lock:
-        snapshot = dict(_external_metrics_scraped)
-    for label in targets:
-        if not label:
-            continue
-        ts = snapshot.get(label)
-        if ts is None:
-            return False
-        if freshness_seconds is not None and now - ts > freshness_seconds:
-            return False
-    return True
-
-
-def reset_external_metrics(sources: Iterable[str] | None = None) -> None:
-    """Reset tracked scrape state for the provided sources (or all)."""
-
-    if sources is None:
-        with _external_metrics_lock:
-            targets = list(_external_metrics_scraped.keys())
-            _external_metrics_scraped.clear()
-    else:
-        targets = [str(s).strip().lower() for s in sources if str(s).strip()]
-        with _external_metrics_lock:
-            for label in targets:
-                _external_metrics_scraped.pop(label, None)
-    for label in targets:
-        if not label:
-            continue
-        try:
-            EXTERNAL_METRICS_SCRAPE_STATUS.labels(source=label).set(0)
-        except Exception:
-            pass
-
-
-def record_memory_snapshot(
-    tenant: str,
-    namespace: str,
-    *,
-    items: float | int | None = None,
-    eta: float | None = None,
-    sparsity: float | None = None,
-    margin: float | None = None,
-    config_version: float | int | None = None,
-) -> None:
-    """Update governance metrics for a tenant/namespace pair."""
-
-    t = str(tenant or "").strip() or "unknown"
-    ns = str(namespace or "").strip() or "default"
-
-    try:
-        if items is not None:
-            MEMORY_ITEMS.labels(tenant=t, namespace=ns).set(float(items))
-        if eta is not None:
-            ETA_GAUGE.labels(tenant=t, namespace=ns).set(float(eta))
-        if sparsity is not None:
-            SPARSITY_GAUGE.labels(tenant=t, namespace=ns).set(float(sparsity))
-        if margin is not None:
-            MARGIN_MEAN.labels(tenant=t, namespace=ns).set(float(margin))
-        if config_version is not None:
-            CONFIG_VERSION.labels(tenant=t, namespace=ns).set(float(config_version))
-    except Exception:
-        pass
-
-
-def observe_recall_latency(namespace: str, latency_seconds: float) -> None:
-    """Record recall latency histogram sample for a namespace."""
-
-    ns = str(namespace or "").strip() or "default"
-    try:
-        RECALL_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception:
-        pass
-
-
-def observe_ann_latency(namespace: str, latency_seconds: float) -> None:
-    """Record ANN lookup latency for a namespace."""
-
-    ns = str(namespace or "").strip() or "default"
-    try:
-        ANN_LATENCY.labels(namespace=ns).observe(float(max(0.0, latency_seconds)))
-    except Exception:
-        pass
-
-
-def mark_controller_change(parameter: str) -> None:
-    """Increment supervisor change counter for a configuration parameter."""
-
-    name = str(parameter or "unknown").strip() or "unknown"
-    try:
-        CONTROLLER_CHANGES.labels(parameter=name).inc()
-    except Exception:
-        pass
-
-
-async def metrics_endpoint() -> Any:
-    """
-    FastAPI endpoint for exposing Prometheus metrics.
-
-    Returns the current metrics in Prometheus exposition format.
-    This endpoint can be scraped by Prometheus servers for monitoring.
-
-    Returns:
-        Response: FastAPI response with metrics data in Prometheus format.
-
-    Example:
-        >>> # Access via: GET /metrics
-        >>> response = await metrics_endpoint()
-        >>> print(response.media_type)  # 'text/plain; version=0.0.4; charset=utf-8'
-    """
-    # import Response locally to avoid hard dependency at module import time
-    try:
-        from fastapi import Response
-    except Exception:  # pragma: no cover - optional runtime dependency
-        # If FastAPI isn't present, return raw bytes from the shared registry
-        try:
-            return generate_latest(registry)
-        except Exception:
-            return b""
-
-    # Export only real counters from the shared registry – no synthetic increments.
-    try:
-        data = generate_latest(registry)
-    except Exception:
-        data = b""
-    return Response(content=data, media_type=CONTENT_TYPE_LATEST)
-
-
-async def timing_middleware(
-    request: Any, call_next: Callable[[Any], Awaitable[Any]]
-) -> Any:
-    """
-    FastAPI middleware for automatic request timing and metrics collection.
-
-    Intercepts all HTTP requests to measure latency and count requests by method,
-    path, and status code. Automatically updates Prometheus metrics.
-
-    Args:
-        request (Request): Incoming FastAPI request.
-        call_next (Callable[[Request], Awaitable[Response]]): Next middleware/endpoint in chain.
-
-    Returns:
-        Response: The response from the next handler in the chain.
-
-    Note:
-        This middleware should be added to the FastAPI app middleware stack
-        to enable automatic HTTP metrics collection.
-    """
-    start = time.perf_counter()
-    response: Any | None = None
-    try:
-        response = await call_next(request)
-        return response
-    finally:
-        elapsed = max(0.0, time.perf_counter() - start)
-        path = request.url.path
-        method = request.method
-        HTTP_LATENCY.labels(method=method, path=path).observe(elapsed)
-        status = getattr(
-            response, "status_code", 500 if response is None else response.status_code
-        )
-        HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
-
-
-CIRCUIT_BREAKER_STATE = Gauge(
-    "somabrain_memory_circuit_breaker_state",
-    "The state of the memory service circuit breaker (1=open, 0=closed).",
-    registry=registry,
-)
-MEMORY_OUTBOX_SYNC_TOTAL = Counter(
-    "somabrain_memory_outbox_sync_total",
-    "Total number of memory sync operations from the outbox (legacy gauge removed).",
-    ["status"],
-    registry=registry,
-)
-MEMORY_HTTP_REQUESTS = Counter(
-    "somabrain_memory_http_requests_total",
-    "Count of HTTP operations issued to the external memory service.",
-    ["operation", "tenant", "status"],
-    registry=registry,
-)
-MEMORY_HTTP_LATENCY = Histogram(
-    "somabrain_memory_http_latency_seconds",
-    "Latency distribution for memory HTTP operations.",
-    ["operation", "tenant"],
-    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
-    registry=registry,
-)
-
-# --- Segmentation HMM Metrics (Roadmap Completion) ---
-SEGMENTATION_BOUNDARIES_PER_HOUR = Gauge(
-    "somabrain_segmentation_boundaries_per_hour",
-    "Segmentation boundaries emitted per hour by tenant:domain",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
-SEGMENTATION_DUPLICATE_RATIO = Gauge(
-    "somabrain_segmentation_duplicate_ratio",
-    "Ratio of duplicate boundaries to total boundaries by tenant:domain",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
-SEGMENTATION_HMM_STATE_VOLATILE = Gauge(
-    "somabrain_segmentation_hmm_state_volatile",
-    "Current HMM state probability for VOLATILE (1=fully volatile, 0=fully stable)",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
-SEGMENTATION_MAX_DWELL_EXCEEDED = Counter(
-    "somabrain_segmentation_max_dwell_exceeded_total",
-    "Count of boundaries forced by max dwell threshold",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
-
-# --- Fusion Normalization Metrics (Roadmap Completion) ---
-FUSION_WEIGHT_NORM_ERROR = Gauge(
-    "somabrain_fusion_weight_norm_error",
-    "Normalized error per domain for fusion weighting",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
-FUSION_ALPHA_ADAPTIVE = Gauge(
-    "somabrain_fusion_alpha_adaptive",
-    "Current adaptive alpha parameter for fusion normalization",
-    labelnames=["tenant"],
-    registry=registry,
-)
-FUSION_SOFTMAX_WEIGHT = Gauge(
-    "somabrain_fusion_softmax_weight",
-    "Final softmax weight assigned to each domain",
-    labelnames=["tenant", "domain"],
-    registry=registry,
-)
+    # Memory
+    "WM_HITS",
+    "WM_MISSES",
+    "WM_ADMIT",
+    "WM_UTILIZATION",
+    "WM_EVICTIONS",
+    "MEMORY_ITEMS",
+    "RECALL_LATENCY",
+    "RECALL_REQUESTS",
+    "RETRIEVAL_REQUESTS",
+    "RETRIEVAL_LATENCY",
+    "RETRIEVAL_CANDIDATES",
+    "ANN_LATENCY",
+    "LTM_STORE_LAT",
+    "HTTP_FAILURES",
+    "CIRCUIT_BREAKER_STATE",
+    # OPA
+    "OPA_ALLOW_TOTAL",
+    "OPA_DENY_TOTAL",
+    "REWARD_ALLOW_TOTAL",
+    "REWARD_DENY_TOTAL",
+    # Constitution
+    "CONSTITUTION_VERIFIED",
+    "CONSTITUTION_VERIFY_LATENCY",
+    "UTILITY_NEGATIVE",
+    "UTILITY_VALUE",
+    # Salience
+    "SALIENCE_STORE",
+    "SALIENCE_HIST",
+    "SCORER_COMPONENT",
+    "SCORER_FINAL",
+    # HRR
+    "HRR_CLEANUP_USED",
+    "HRR_CLEANUP_SCORE",
+    "HRR_RERANK_APPLIED",
+    "UNBIND_PATH",
+    "RECONSTRUCTION_COSINE",
+    # Predictor
+    "PREDICTOR_LATENCY",
+    "PREDICTOR_LATENCY_BY",
+    "PREDICTOR_ALTERNATIVE",
+    "PLANNING_LATENCY",
+    # Neuromodulator
+    "NEUROMOD_DOPAMINE",
+    "NEUROMOD_SEROTONIN",
+    "NEUROMOD_NORADRENALINE",
+    "NEUROMOD_ACETYLCHOLINE",
+    # Oak/Milvus
+    "OPTION_UTILITY_AVG",
+    "OPTION_COUNT",
+    "MILVUS_SEARCH_LAT_P95",
+    "MILVUS_INGEST_LAT_P95",
+    # Consolidation
+    "CONSOLIDATION_RUNS",
+    "REPLAY_STRENGTH",
+    "REM_SYNTHESIZED",
+    "FREE_ENERGY",
+    "SUPERVISOR_MODULATION",
+    # Executive
+    "EXEC_CONFLICT",
+    "EXEC_USE_GRAPH",
+    "EXEC_BANDIT_ARM",
+    "EXEC_BANDIT_REWARD",
+    "EXEC_K_SELECTED",
+    "MICRO_VOTE_ENTROPY",
+    "MICRO_COLUMN_ADMIT",
+    "MICRO_COLUMN_BEST",
+    "ATTENTION_LEVEL",
+    # Embedding
+    "EMBED_LAT",
+    "EMBED_CACHE_HIT",
+    "INDEX_PROFILE_USE",
+    "AUDIT_KAFKA_PUBLISH",
+    # Recall quality
+    "RECALL_MARGIN_TOP12",
+    "RATE_LIMITED_TOTAL",
+    "QUOTA_DENIED_TOTAL",
+    "QUOTA_RESETS",
+    "QUOTA_ADJUSTMENTS",
+    # Novelty
+    "NOVELTY_RAW",
+    "ERROR_RAW",
+    "NOVELTY_NORM",
+    "ERROR_NORM",
+    "SDR_PREFILTER_LAT",
+    "SDR_CANDIDATES",
+    # Segmentation
+    "SEGMENTATION_BOUNDARIES_PER_HOUR",
+    "SEGMENTATION_DUPLICATE_RATIO",
+    "SEGMENTATION_HMM_STATE_VOLATILE",
+    "SEGMENTATION_MAX_DWELL_EXCEEDED",
+    "FUSION_WEIGHT_NORM_ERROR",
+    "FUSION_ALPHA_ADAPTIVE",
+    "FUSION_SOFTMAX_WEIGHT",
+    # Outbox
+    "OUTBOX_PENDING",
+    "CIRCUIT_STATE",
+    "report_outbox_pending",
+    "report_circuit_state",
+    "report_outbox_processed",
+    "report_outbox_replayed",
+    # Functions
+    "metrics_endpoint",
+    "timing_middleware",
+    "update_learning_retrieval_weights",
+    "update_learning_utility_weights",
+    "record_learning_feedback_applied",
+    "record_learning_feedback_rejected",
+    "record_learning_feedback_latency",
+    "update_learning_effective_lr",
+    "record_learning_rollback",
+    "record_regret",
+    "record_planning_latency",
+    "record_memory_snapshot",
+    "observe_recall_latency",
+    "observe_ann_latency",
+    "mark_controller_change",
+    "mark_external_metric_scraped",
+    "external_metrics_ready",
+    "reset_external_metrics",
+]
