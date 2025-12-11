@@ -21,6 +21,18 @@ from .hit_processing import (
     deduplicate_hits,
     lexical_bonus,
 )
+from .scoring import (
+    coerce_float,
+    parse_payload_timestamp,
+    get_recency_normalisation,
+    get_recency_profile,
+    compute_recency_features,
+    compute_density_factor,
+    extract_cleanup_margin,
+    rank_hits,
+    apply_weighting_to_hits,
+    rescore_and_rank_hits,
+)
 
 __all__ = [
     # Hierarchical memory
@@ -41,6 +53,17 @@ __all__ = [
     "prefer_candidate_hit",
     "deduplicate_hits",
     "lexical_bonus",
+    # Scoring
+    "coerce_float",
+    "parse_payload_timestamp",
+    "get_recency_normalisation",
+    "get_recency_profile",
+    "compute_recency_features",
+    "compute_density_factor",
+    "extract_cleanup_margin",
+    "rank_hits",
+    "apply_weighting_to_hits",
+    "rescore_and_rank_hits",
 ]
 
 

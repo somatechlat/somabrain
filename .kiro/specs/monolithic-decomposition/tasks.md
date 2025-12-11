@@ -154,16 +154,25 @@
   - [x] 20.1 Create `somabrain/memory/hit_processing.py`
     - Extracted hit processing functions (normalize_recall_hits, hit_identity, hit_score, etc.)
     - 240 lines extracted
-    - memory_client.py reduced from 1954 to 1754 lines (10% reduction)
     - _Requirements: 2.3_
-  - [ ] 20.2 Create `somabrain/memory/client.py` (DEFERRED)
+  - [x] 20.2 Create `somabrain/memory/scoring.py`
+    - Extracted scoring/recency functions (rescore_and_rank_hits, apply_weighting_to_hits, etc.)
+    - Extracted: coerce_float, parse_payload_timestamp, get_recency_normalisation, get_recency_profile
+    - Extracted: compute_recency_features, compute_density_factor, extract_cleanup_margin
+    - Extracted: rank_hits, apply_weighting_to_hits, rescore_and_rank_hits
+    - 320 lines extracted
+    - memory_client.py reduced from 1754 to 1482 lines (15.5% additional reduction)
+    - Total reduction: 1954 → 1482 lines (24% reduction)
+    - _Requirements: 2.3_
+  - [ ] 20.3 Create `somabrain/memory/client.py` (DEFERRED)
     - Move `MemoryClient` class
     - Update imports to use extracted modules
     - _Requirements: 2.3_
 
 - [x] 21. Checkpoint - Ensure all tests pass
-  - All imports verified working
-  - Syntax checks pass
+  - All unit/property tests pass (106 tests)
+  - All learning property tests pass (15 tests)
+  - Imports verified working
 
 ## Phase 3: metrics_original.py Decomposition (Priority: Medium)
 
@@ -300,7 +309,7 @@
 - [x] 34. Line Count Verification
   - [x] 34.1 Verify all target files meet line count requirements
     - `somabrain/app.py`: 800 lines ✅ (target <800) - extracted validation handler, diagnostics, admin features
-    - `somabrain/memory_client.py`: 1754 lines (target <100) - IN PROGRESS: extracted hit_processing.py
+    - `somabrain/memory_client.py`: 1482 lines (target <100) - IN PROGRESS: extracted hit_processing.py + scoring.py (24% reduction)
     - `somabrain/metrics_original.py`: 1698 lines (target <100) - DEFERRED: many interdependencies
     - `somabrain/api/memory_api.py`: 506 lines ✅ (target <500) - extracted session, recall, models, helpers
     - `somabrain/learning/adaptation.py`: 413 lines ✅ (target <500) - Reduced 61% via decomposition
@@ -313,10 +322,13 @@
     - Test `from somabrain.memory_client import MemoryClient` - passes
     - Test `from somabrain.metrics import *` - passes
     - Test `from somabrain.schemas import *` - passes ✅
+    - Test `from somabrain.memory.scoring import *` - passes ✅
     - _Requirements: 1.4, 2.3, 3.4_
 
 - [x] 36. Final Checkpoint - All tests pass
-  - All unit tests pass
+  - All unit tests pass (106 tests)
+  - All learning property tests pass (15 tests)
   - All imports verified working
   - Targets met: app.py (800), memory_api.py (506), schemas.py (20), adaptation.py (413)
+  - In progress: memory_client.py (1482 lines, 24% reduction)
   - Deferred: memory_client.py, metrics_original.py (high risk/complexity)

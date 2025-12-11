@@ -10,14 +10,8 @@ with the memory service directly.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
-
-import hashlib
-import json
 import logging
-import math
 import os
-import re
 import time
 import uuid
 import httpx
@@ -55,6 +49,18 @@ from somabrain.memory.hit_processing import (
     prefer_candidate_hit,
     deduplicate_hits,
     lexical_bonus,
+)
+from somabrain.memory.scoring import (
+    coerce_float,
+    parse_payload_timestamp,
+    get_recency_normalisation,
+    get_recency_profile,
+    compute_recency_features,
+    compute_density_factor,
+    extract_cleanup_margin,
+    rank_hits,
+    apply_weighting_to_hits,
+    rescore_and_rank_hits,
 )
 
 # logger for diagnostic output during tests
@@ -504,36 +510,7 @@ class MemoryClient:
         return lexical_bonus(payload, query)
 
     def _rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
-        ranked: List[tuple[float, float, float, int, RecallHit]] = []
-        for idx, hit in enumerate(hits):
-            payload = hit.payload if isinstance(hit.payload, dict) else {}
-            lex_bonus = self._lexical_bonus(payload, query)
-            base = 0.0
-            if hit.score is not None:
-                try:
-                    base = float(hit.score)
-                    if abs(base) > 1.0:
-                        base = math.copysign(math.log1p(abs(base)), base)
-                except Exception:
-                    base = 0.0
-            weight = 1.0
-            if isinstance(payload, dict):
-                try:
-                    wf = payload.get("_weight_factor")
-                    if isinstance(wf, (int, float)):
-                        weight = float(wf)
-                except Exception:
-                    weight = 1.0
-            final_score = (base * weight) + lex_bonus
-            if hit.score is None and lex_bonus > 0:
-                try:
-                    hit.score = lex_bonus
-                    payload.setdefault("_score", hit.score)
-                except Exception:
-                    pass
-            ranked.append((final_score, lex_bonus, weight, -idx, hit))
-        ranked.sort(key=lambda t: (t[0], t[1], t[2], t[3]), reverse=True)
-        return [item[-1] for item in ranked]
+        return rank_hits(hits, query)
 
     def _memories_search_sync(
         self,
@@ -681,288 +658,39 @@ class MemoryClient:
                 return narrowed
         return hits
 
+    # Recency and scoring methods delegate to somabrain.memory.scoring
     def _recency_normalisation(self) -> tuple[float, float]:
-        scale = getattr(self.cfg, "recall_recency_time_scale", 60.0)
-        if (
-            not isinstance(scale, (int, float))
-            or not math.isfinite(scale)
-            or scale <= 0
-        ):
-            scale = 60.0
-        cap = getattr(self.cfg, "recall_recency_max_steps", 4096.0)
-        if not isinstance(cap, (int, float)) or not math.isfinite(cap) or cap <= 0:
-            cap = 4096.0
-        return float(scale), float(cap)
+        return get_recency_normalisation(self.cfg)
 
     def _recency_profile(self) -> tuple[float, float, float, float]:
-        scale, cap = self._recency_normalisation()
-        sharpness = getattr(self.cfg, "recall_recency_sharpness", 1.2)
-        try:
-            sharpness = float(sharpness)
-        except Exception:
-            sharpness = 1.2
-        if not math.isfinite(sharpness) or sharpness <= 0:
-            sharpness = 1.0
-        floor = getattr(self.cfg, "recall_recency_floor", 0.05)
-        try:
-            floor = float(floor)
-        except Exception:
-            floor = 0.05
-        if not math.isfinite(floor) or floor < 0:
-            floor = 0.0
-        if floor >= 1.0:
-            floor = 0.99
-        return scale, cap, sharpness, floor
+        return get_recency_profile(self.cfg)
 
     def _recency_features(
         self, ts_epoch: float | None, now_ts: float
     ) -> tuple[float | None, float]:
-        if ts_epoch is None:
-            return None, 1.0
-        scale, cap, sharpness, floor = self._recency_profile()
-        age_seconds = max(0.0, now_ts - ts_epoch)
-        if age_seconds <= 0:
-            return 0.0, 1.0
-        normalised = age_seconds / max(scale, 1e-6)
-        damp_steps = math.log1p(normalised) * sharpness
-        recency_steps = min(damp_steps, cap)
-        try:
-            damp = math.exp(-(normalised**sharpness))
-        except Exception:
-            damp = 0.0
-        boost = max(floor, min(1.0, damp))
-        return recency_steps, boost
+        return compute_recency_features(ts_epoch, now_ts, self.cfg)
 
     @staticmethod
     def _coerce_float(value: Any) -> float | None:
-        if value is None:
-            return None
-        try:
-            numeric = float(value)
-        except Exception:
-            return None
-        if not math.isfinite(numeric):
-            return None
-        return numeric
+        return coerce_float(value)
 
     @staticmethod
     def _parse_payload_timestamp(raw: Any) -> float | None:
-        if raw is None:
-            return None
-        try:
-            if isinstance(raw, (int, float)):
-                value = float(raw)
-            elif isinstance(raw, str):
-                txt = raw.strip()
-                if not txt:
-                    return None
-                try:
-                    value = float(txt)
-                except ValueError:
-                    try:
-                        txt_norm = (
-                            txt.replace("Z", "+00:00") if txt.endswith("Z") else txt
-                        )
-                        dt = datetime.fromisoformat(txt_norm)
-                        if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=timezone.utc)
-                        else:
-                            dt = dt.astimezone(timezone.utc)
-                        return float(dt.timestamp())
-                    except Exception:
-                        return None
-            else:
-                return None
-        except Exception:
-            return None
-        if not math.isfinite(value):
-            return None
-        # Accept millisecond epoch values transparently
-        if value > 1e12:
-            value /= 1000.0
-        return value
+        return parse_payload_timestamp(raw)
 
     def _extract_cleanup_margin(self, hit: RecallHit) -> float | None:
-        payload = hit.payload if isinstance(hit.payload, dict) else {}
-        margin = None
-        if isinstance(payload, dict):
-            margin = payload.get("_cleanup_margin")
-            if margin is None:
-                margin = payload.get("cleanup_margin")
-        if margin is None and isinstance(hit.raw, dict):
-            metadata = hit.raw.get("metadata")
-            if isinstance(metadata, dict):
-                margin = metadata.get("cleanup_margin")
-        return self._coerce_float(margin)
+        return extract_cleanup_margin(hit)
 
     def _density_factor(self, margin: float | None) -> float:
-        if margin is None:
-            return 1.0
-        target = getattr(self.cfg, "recall_density_margin_target", 0.2)
-        floor = getattr(self.cfg, "recall_density_margin_floor", 0.6)
-        weight = getattr(self.cfg, "recall_density_margin_weight", 0.35)
-        try:
-            target = float(target)
-        except Exception:
-            target = 0.2
-        if not math.isfinite(target) or target <= 0:
-            target = 0.2
-        try:
-            floor = float(floor)
-        except Exception:
-            floor = 0.6
-        if not math.isfinite(floor) or floor < 0:
-            floor = 0.0
-        if floor > 1.0:
-            floor = 1.0
-        try:
-            weight = float(weight)
-        except Exception:
-            weight = 0.35
-        if not math.isfinite(weight) or weight < 0:
-            weight = 0.0
-        if margin >= target:
-            return 1.0
-        deficit = (target - margin) / target
-        penalty = 1.0 - (weight * deficit)
-        return max(floor, min(1.0, penalty))
+        return compute_density_factor(margin, self.cfg)
 
     def _rescore_and_rank_hits(
         self, hits: List[RecallHit], query: str
     ) -> List[RecallHit]:
-        if not self._scorer or not self._embedder:
-            # Use alternative logic if scorer is not available
-            self._apply_weighting_to_hits(hits)
-            return self._rank_hits(hits, query)
-
-        query_vec = self._embedder.embed(query)
-        now_ts = datetime.now(timezone.utc).timestamp()
-
-        def _text_of(p: dict) -> str:
-            return str(p.get("task") or p.get("fact") or p.get("content") or "").strip()
-
-        scored_hits = []
-        for hit in hits:
-            payload = hit.payload or {}
-            text = _text_of(payload)
-            if not text:
-                # Cannot score without text to embed, assign a low score
-                new_score = 0.0
-            else:
-                candidate_vec = self._embedder.embed(text)
-
-                # Calculate recency_steps from timestamp
-                recency_steps: float | None = None
-                recency_boost = 1.0
-                ts_epoch = None
-                for key in ("timestamp", "ts", "created_at"):
-                    if key in payload:
-                        ts_epoch = self._parse_payload_timestamp(payload.get(key))
-                        if ts_epoch is not None:
-                            break
-                if ts_epoch is not None:
-                    recency_steps, recency_boost = self._recency_features(
-                        ts_epoch, now_ts
-                    )
-
-                new_score = self._scorer.score(
-                    query_vec,
-                    candidate_vec,
-                    recency_steps=recency_steps,
-                    cosine=hit.score,  # Pass original score as cosine hint
-                )
-                new_score *= recency_boost
-                try:
-                    payload.setdefault("_recency_steps", recency_steps)
-                    payload.setdefault("_recency_boost", recency_boost)
-                except Exception:
-                    pass
-
-            margin = self._extract_cleanup_margin(hit)
-            density_factor = self._density_factor(margin)
-            new_score *= density_factor
-            if density_factor != 1.0:
-                try:
-                    payload.setdefault("_density_factor", density_factor)
-                except Exception:
-                    pass
-            new_score = max(0.0, min(1.0, float(new_score)))
-
-            hit.score = new_score
-            scored_hits.append(hit)
-
-        # Sort by the new score in descending order
-        scored_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
-        return scored_hits
+        return rescore_and_rank_hits(hits, query, self.cfg, self._scorer, self._embedder)
 
     def _apply_weighting_to_hits(self, hits: List[RecallHit]) -> None:
-        if not hits:
-            return
-        weighting_enabled = False
-        priors_env = ""
-        quality_exp = 1.0
-        if settings is not None:
-            try:
-                weighting_enabled = bool(
-                    getattr(settings, "memory_enable_weighting", False)
-                )
-                priors_env = getattr(settings, "memory_phase_priors", "") or ""
-                quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
-            except Exception:
-                weighting_enabled = False
-        else:
-            # Fallback to unified settings when legacy runtime is unavailable
-            try:
-                from common.config.settings import settings as _settings
-
-                weighting_enabled = bool(
-                    getattr(_settings, "memory_enable_weighting", False)
-                )
-                priors_env = getattr(_settings, "memory_phase_priors", "") or ""
-                quality_exp = float(
-                    getattr(_settings, "memory_quality_exp", 1.0) or 1.0
-                )
-            except Exception:
-                weighting_enabled = False
-        if not weighting_enabled:
-            return
-        try:
-            priors: dict[str, float] = {}
-            if priors_env:
-                for part in priors_env.split(","):
-                    if not part.strip() or ":" not in part:
-                        continue
-                    k, v = part.split(":", 1)
-                    try:
-                        priors[k.strip().lower()] = float(v)
-                    except Exception:
-                        pass
-            for hit in hits:
-                payload = hit.payload
-                phase_factor = 1.0
-                quality_factor = 1.0
-                try:
-                    phase = payload.get("phase") if isinstance(payload, dict) else None
-                    if phase and priors:
-                        phase_factor = float(priors.get(str(phase).lower(), 1.0))
-                except Exception:
-                    phase_factor = 1.0
-                try:
-                    if isinstance(payload, dict) and "quality_score" in payload:
-                        qs = float(payload.get("quality_score") or 0.0)
-                        if qs < 0:
-                            qs = 0.0
-                        if qs > 1:
-                            qs = 1.0
-                        quality_factor = (qs**quality_exp) if qs > 0 else 0.0
-                except Exception:
-                    quality_factor = 1.0
-                try:
-                    payload.setdefault("_weight_factor", phase_factor * quality_factor)
-                except Exception:
-                    pass
-        except Exception:
-            return
+        apply_weighting_to_hits(hits)
 
     # --- HTTP helpers -------------------------------------------------
     def _compat_enrich_payload(
