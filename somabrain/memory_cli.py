@@ -54,13 +54,13 @@ def _get(endpoint: str):
 # ----------------------------------------------------------------------
 def cmd_remember(args):
     payload = {"payload": {"text": args.text}}
-    result = _post("/remember", payload)
+    result = _post("/memory/remember", payload)
     print(json.dumps(result, indent=2))
 
 
 def cmd_recall(args):
     payload = {"query": args.query}
-    result = _post("/recall", payload)
+    result = _post("/memory/recall", payload)
     print(json.dumps(result, indent=2))
 
 

@@ -54,7 +54,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     ]
     for d in docs:
         client.post(
-            f"{base}/remember",
+            f"{base}/memory/remember",
             headers=headers,
             json={"payload": {"task": d, "memory_type": "episodic", "importance": 1}},
         )
@@ -69,7 +69,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     # Baseline vector-only
     t0 = time.perf_counter()
     r0 = client.post(
-        f"{base}/recall",
+        f"{base}/memory/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["vector"], "persist": False},
     ).json()
@@ -79,7 +79,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     # Persist session
     t1 = time.perf_counter()
     r1 = client.post(
-        f"{base}/recall",
+        f"{base}/memory/recall",
         headers=headers,
         json={
             "query": query,
@@ -94,7 +94,7 @@ def run(base: str = None, tenant: str = "benchdev") -> Dict:
     # Graph-only after persist (requires hops >= 1; to reach docs via session, planner uses edges)
     t2 = time.perf_counter()
     r2 = client.post(
-        f"{base}/recall",
+        f"{base}/memory/recall",
         headers=headers,
         json={"query": query, "top_k": 5, "retrievers": ["graph"], "persist": False},
     ).json()

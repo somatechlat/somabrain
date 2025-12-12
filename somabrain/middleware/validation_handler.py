@@ -43,9 +43,9 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
     # Provide route-specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
     
-    if "/recall" in str(path):
+    if "/memory/recall" in str(path):
         hint = {
-            "endpoint": "/recall",
+            "endpoint": "/memory/recall",
             "expected": {
                 "json": [
                     'Either a JSON string body (e.g. "hello world")',
@@ -60,9 +60,9 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
                 ]
             },
         }
-    elif "/remember" in str(path):
+    elif "/memory/remember" in str(path):
         hint = {
-            "endpoint": "/remember",
+            "endpoint": "/memory/remember",
             "expected": {
                 "json": {
                     "tenant": "string",

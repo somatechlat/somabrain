@@ -42,7 +42,7 @@ It ships as a FastAPI service with a documented REST surface, BHDC hyperdimensio
 
 ```
 HTTP Client
-   │  /remember /recall /context/evaluate /context/feedback …
+   │  /memory/remember /memory/recall /context/evaluate /context/feedback …
    ▼
 FastAPI Runtime (somabrain/app.py)
    │   ├─ Authentication & tenancy guards
@@ -117,8 +117,8 @@ All NodePort numbers are centralized in `infra/helm/charts/soma-apps/values.yaml
 | Endpoint | Description |
 |----------|-------------|
 | `GET /health` | Checks Redis, Postgres, Kafka, OPA, memory backend, embedder, and circuit breaker state.
-| `POST /remember` | Store a memory with signals (importance, novelty, ttl), attachments, links, and policy tags. Returns coordinate, WM promotion status, and signal feedback.
-| `POST /recall` | Unified retrieval backed by the full retrieval pipeline (vector, wm, graph, lexical retrievers). Supports streaming, session pinning, and tiered memory.
+| `POST /memory/remember` | Store a memory with signals (importance, novelty, ttl), attachments, links, and policy tags. Returns coordinate, WM promotion status, and signal feedback.
+| `POST /memory/recall` | Unified retrieval backed by the full retrieval pipeline (vector, wm, graph, lexical retrievers). Supports streaming, session pinning, and tiered memory.
 | `GET /memory/context/{session_id}` | Retrieve pinned recall session results.
 | `GET /memory/metrics` | Per-tenant memory metrics (WM items, circuit breaker state).
 
@@ -221,11 +221,11 @@ scripts/export_memory_env.sh && source scripts/.memory.env
 Store and recall a memory:
 
 ```bash
-$ curl -s http://localhost:9696/remember \
+$ curl -s http://localhost:9696/memory/remember \
     -H "Content-Type: application/json" \
     -d '{"payload": {"task": "kb.paris", "content": "Paris is the capital of France."}}'
 
-$ curl -s http://localhost:9696/recall \
+$ curl -s http://localhost:9696/memory/recall \
     -H "Content-Type: application/json" \
     -d '{"query": "capital of France", "top_k": 3}' | jq '.results'
 ```

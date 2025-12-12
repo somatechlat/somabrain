@@ -1,5 +1,5 @@
 """
-API Schemas Module for SomaBrain - Compatibility Shim.
+API Schemas Module for SomaBrain - Re-export Layer.
 
 This file re-exports all schemas from the decomposed schemas/ package
 for backward compatibility. All existing imports will continue to work.

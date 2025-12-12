@@ -62,7 +62,7 @@ def make_payload(i: int):
 
 
 async def post_remember(client: httpx.AsyncClient, i: int):
-    """Post a single /remember with configurable timeout via BENCH_TIMEOUT env var (seconds).
+    """Post a single /memory/remember with configurable timeout via BENCH_TIMEOUT env var (seconds).
 
     Adds a unique X-Request-ID header so the server logs can be correlated.
     Returns a tuple including the generated request id.
@@ -75,7 +75,7 @@ async def post_remember(client: httpx.AsyncClient, i: int):
     hdrs["X-Request-ID"] = rid
     try:
         r = await client.post(
-            "/remember", json=body, headers=hdrs, timeout=bench_timeout
+            "/memory/remember", json=body, headers=hdrs, timeout=bench_timeout
         )
         elapsed = (time.perf_counter() - start) * 1000.0
         return (i, rid, r.status_code, r.text[:200], elapsed)
@@ -87,7 +87,7 @@ async def post_remember(client: httpx.AsyncClient, i: int):
 async def run():
     async with httpx.AsyncClient(base_url=BASE) as client:
         tasks = [post_remember(client, i) for i in range(100)]
-        print(f"Posting 100 /remember to {BASE}/remember ...")
+        print(f"Posting 100 /memory/remember to {BASE}/memory/remember ...")
         results = await asyncio.gather(*tasks)
 
         # results are (i, rid, status, excerpt_or_err, elapsed_ms)
@@ -104,13 +104,13 @@ async def run():
             i, rid, status, excerpt, elapsed = r
             print(f"RID,{i},{rid},{status},{elapsed:.1f}")
 
-        # Now a /recall likely matching the "scale-memory" items
+        # Now a /memory/recall likely matching the "scale-memory" items
         print("Waiting 0.5s for async persistence...")
         await asyncio.sleep(0.5)
         qstart = time.perf_counter()
         try:
             r = await client.post(
-                "/recall",
+                "/memory/recall",
                 json={"query": "scale-memory", "top_k": 10},
                 headers=HEADERS,
                 timeout=20.0,

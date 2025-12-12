@@ -19,7 +19,7 @@ from somabrain.app import app
 
 def _remember(client: TestClient, task: str, headers: dict):
     r = client.post(
-        "/remember",
+        "/memory/remember",
         json={"payload": {"task": task, "memory_type": "episodic", "importance": 1}},
         headers=headers,
     )
@@ -75,7 +75,7 @@ def run():
 
     # Persist a recall session (vector + wm) to create query-linked edges
     r = client.post(
-        "/recall",
+        "/memory/recall",
         headers=headers,
         json={
             "query": query,

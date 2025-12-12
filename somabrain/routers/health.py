@@ -242,12 +242,10 @@ async def health(request: Request) -> S.HealthResponse:
         resp["memory_degrade_topic"] = None
 
     try:
-        resp["stub_counts"] = {}
         resp["external_backends_required"] = bool(
             getattr(settings, "require_external_backends", True)
         )
     except Exception:
-        resp["stub_counts"] = {}
         resp["external_backends_required"] = True
 
     # Predictor / embedder diagnostics

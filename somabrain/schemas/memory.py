@@ -135,6 +135,7 @@ class RetrievalRequest(BaseModel):
     id: Optional[str] = None
     key: Optional[str] = None
     coord: Optional[str] = None
+    layer: Optional[str] = None
 
 
 class RetrievalCandidate(BaseModel):

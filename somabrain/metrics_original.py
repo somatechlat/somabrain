@@ -1,5 +1,5 @@
 """
-Metrics Module for SomaBrain (Legacy Re-export Layer).
+Metrics Module for SomaBrain (Re-export Layer).
 
 This module provides backward compatibility for imports from somabrain.metrics_original.
 All metrics have been decomposed into domain-specific modules under somabrain/metrics/.

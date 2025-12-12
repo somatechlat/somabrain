@@ -3,8 +3,8 @@
 Dev-Prod Smoke Test
 
 Verifies live learning behavior against a running Somabrain API by:
-1) POST /remember to write a memory
-2) POST /recall to retrieve it
+1) POST /memory/remember to write a memory
+2) POST /memory/recall to retrieve it
 
 Usage:
   SOMA_API_URL=http://127.0.0.1:9696 python scripts/devprod_smoke.py
@@ -35,8 +35,8 @@ def post_json(url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run_smoke(base_url: str, universe: str | None = None) -> None:
-    remember_url = f"{base_url}/remember"
-    recall_url = f"{base_url}/recall"
+    remember_url = f"{base_url}/memory/remember"
+    recall_url = f"{base_url}/memory/recall"
     key_text = f"devprod smoke task {int(time.time()*1000)}"
     payload = {
         "coord": None,
@@ -51,7 +51,7 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
     # 1) remember
     rj = post_json(remember_url, payload)
     if not (rj.get("ok") and rj.get("success")):
-        raise SystemExit(f"/remember failed: {rj}")
+        raise SystemExit(f"/memory/remember failed: {rj}")
 
     # Small delay to allow WM admission and caches to settle in dev environments
     time.sleep(0.4)
@@ -78,10 +78,10 @@ def run_smoke(base_url: str, universe: str | None = None) -> None:
                 break
     if not found:
         raise SystemExit(
-            f"/recall did not include the freshly stored memory. Response: {r2}"
+            f"/memory/recall did not include the freshly stored memory. Response: {r2}"
         )
 
-    print("OK: remember/recall read-your-writes verified.")
+    print("OK: memory/remember and memory/recall read-your-writes verified.")
 
 
 def main():

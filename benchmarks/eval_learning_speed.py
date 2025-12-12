@@ -83,7 +83,7 @@ def autoseed(base: str, tenant: str, count: int) -> Dict:
             }
         }
         r = client.post(
-            base.rstrip("/") + "/remember", json=body, headers=_headers(tenant)
+            base.rstrip("/") + "/memory/remember", json=body, headers=_headers(tenant)
         )
         if r.status_code != 200:
             raise RuntimeError(f"/remember failed: {r.status_code} {r.text}")
@@ -106,7 +106,7 @@ def eval_precision_at_1(
     base_url: str, tenant: str, items: List[Dict], top_k: int
 ) -> Dict[str, int]:
     client = httpx.Client(timeout=20.0)
-    url = base_url.rstrip("/") + "/recall"
+    url = base_url.rstrip("/") + "/memory/recall"
     correct = 0
     total = 0
     for it in items:

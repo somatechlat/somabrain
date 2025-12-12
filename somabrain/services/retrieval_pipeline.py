@@ -14,13 +14,31 @@ while allowing tests to run without external services.
 
 from __future__ import annotations
 
+import importlib.util
+import os
+import sys
 from typing import Any, List, Optional
 
 from somabrain.schemas import RetrievalRequest, RetrievalResponse, RetrievalCandidate
 from somabrain.services.memory_service import MemoryService
-from somabrain import runtime as _rt
 from somabrain.scoring import UnifiedScorer
 from somabrain.embeddings import make_embedder
+
+# The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
+# and a ``runtime.py`` module that defines the core singleton utilities
+# (embedder, mt_wm, mt_memory, set_singletons, etc.). Importing ``runtime`` would
+# resolve to the package, causing ``AttributeError: module 'somabrain.runtime' has
+# no attribute 'mt_memory'``. To reliably load the module file, we import it via
+# ``importlib.util``.
+_runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
+_spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+assert _spec and _spec.loader
+if _spec.name in sys.modules:
+    _rt = sys.modules[_spec.name]
+else:
+    _rt = importlib.util.module_from_spec(_spec)
+    sys.modules[_spec.name] = _rt
+    _spec.loader.exec_module(_rt)
 
 
 def _as_namespace(ctx: Any) -> str:
@@ -163,6 +181,6 @@ async def run_retrieval_pipeline(
         candidates=candidates[: req.top_k or 10],
         session_coord=None,
         namespace=namespace,
-        trace_id=trace_id,
+        trace_id=trace_id or "",
         metrics=metrics,
     )

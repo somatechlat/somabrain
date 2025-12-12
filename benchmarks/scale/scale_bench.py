@@ -12,7 +12,7 @@ from somabrain.app import app
 
 TARGET_REQUESTS = 1000000  # 1M requests
 CONCURRENCY = 32  # Number of concurrent threads
-ENDPOINT = "/recall"  # Example endpoint to stress
+ENDPOINT = "/memory/recall"  # Canonical memory recall endpoint
 REQUEST_BODY = {"query": "benchmark", "top_k": 1}
 HEADERS = {}
 

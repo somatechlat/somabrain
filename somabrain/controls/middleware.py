@@ -86,7 +86,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             cfg.require_provenance
             and request.method.upper() == "POST"
             and (
-                str(ctx.get("path", "")).startswith("/remember")
+                str(ctx.get("path", "")).startswith("/memory/remember")
                 or str(ctx.get("path", "")).startswith("/act")
             )
         ):
@@ -104,12 +104,12 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             except Exception:
                 ctx["provenance_valid"] = None
 
-        # Compatibility guard: common mistake where clients send a list of chat turns to /remember
+        # Compatibility guard: common mistake where clients send a list of chat turns to /memory/remember
         # Provide a clear error before Pydantic's 422 to reduce log noise and guide integration.
         try:
             if (
                 request.method.upper() == "POST"
-                and str(ctx.get("path", ""))[:9] == "/remember"
+                and str(ctx.get("path", "")).startswith("/memory/remember")
             ):
                 b = (raw_body or b"").lstrip()
                 # tolerate UTF-8 BOM
@@ -119,7 +119,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(
                         status_code=400,
                         content={
-                            "error": "Invalid body for /remember: expected JSON object, received array",
+                            "error": "Invalid body for /memory/remember: expected JSON object, received array",
                             "hint": {
                                 "expected": {
                                     "coord": "optional string",
@@ -131,7 +131,7 @@ class ControlsMiddleware(BaseHTTPMiddleware):
                                 },
                                 "alternatives": [
                                     {
-                                        "endpoint": "/remember",
+                                        "endpoint": "/memory/remember",
                                         "body": {
                                             "payload": {
                                                 "task": "...",

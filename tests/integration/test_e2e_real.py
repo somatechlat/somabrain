@@ -164,7 +164,7 @@ class TestE2EMemoryFlow:
         with httpx.Client(timeout=30.0) as client:
             # Step 1: Remember
             remember_resp = client.post(
-                f"{SOMABRAIN_APP_URL}/remember",
+                f"{SOMABRAIN_APP_URL}/memory/remember",
                 headers=_get_test_headers(),
                 json={"payload": test_payload},
             )
@@ -183,7 +183,7 @@ class TestE2EMemoryFlow:
             
             # Step 2: Recall
             recall_resp = client.post(
-                f"{SOMABRAIN_APP_URL}/recall",
+                f"{SOMABRAIN_APP_URL}/memory/recall",
                 headers=_get_test_headers(),
                 json={
                     "query": f"e2e_test_{test_id}",
@@ -207,7 +207,7 @@ class TestE2EMemoryFlow:
 
         with httpx.Client(timeout=30.0) as client:
             resp = client.post(
-                f"{SOMABRAIN_APP_URL}/recall",
+                f"{SOMABRAIN_APP_URL}/memory/recall",
                 headers=_get_test_headers(),
                 json={
                     "query": "test",
@@ -289,7 +289,7 @@ class TestE2EAuthentication:
         with httpx.Client(timeout=10.0) as client:
             # Try to access recall without proper headers
             resp = client.post(
-                f"{SOMABRAIN_APP_URL}/recall",
+                f"{SOMABRAIN_APP_URL}/memory/recall",
                 json={"query": "test", "k": 1},
                 # No tenant headers
             )

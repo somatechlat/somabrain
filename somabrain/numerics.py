@@ -119,7 +119,7 @@ def normalize_array(
     tiny_floor_strategy: str = "sqrt",
     dtype: Any = np.float32,
     strict: bool = False,
-    mode: str = "legacy_zero",
+    mode: str = "robust",
     **kwargs,
 ) -> np.ndarray:
     """

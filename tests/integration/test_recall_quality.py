@@ -67,13 +67,13 @@ def http_client() -> httpx.Client:
 
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     payload = {"payload": {"task": text, "content": text, "memory_type": "episodic"}}
-    r = client.post("/remember", headers={"X-Tenant-ID": tenant}, json=payload)
+    r = client.post("/memory/remember", headers={"X-Tenant-ID": tenant}, json=payload)
     assert r.status_code == 200, r.text
 
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
     r = client.post(
-        "/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k}
+        "/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k}
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -141,7 +141,7 @@ def test_multi_tenant_isolation(http_client: httpx.Client) -> None:
 def test_recall_includes_degraded_flag(http_client: httpx.Client) -> None:
     tenant = "workbench-degraded"
     r = http_client.post(
-        "/recall", headers={"X-Tenant-ID": tenant}, json={"query": "noop", "top_k": 1}
+        "/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": "noop", "top_k": 1}
     )
     assert r.status_code == 200, r.text
     body = r.json()

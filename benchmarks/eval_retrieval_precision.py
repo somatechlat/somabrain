@@ -21,7 +21,7 @@ def load_manifest():
 
 def eval_precision_recall(base_url: str, items, k=5):
     client = httpx.Client(timeout=20.0)
-    url = base_url.rstrip("/") + "/recall"
+    url = base_url.rstrip("/") + "/memory/recall"
     results = []
     for it in items:
         query = f"Who wrote Book{it['i']}?"

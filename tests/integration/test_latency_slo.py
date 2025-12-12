@@ -61,7 +61,7 @@ def test_latency_slo_basic() -> None:
     # Warm-up to avoid cold-start skew
     for i in range(3):
         client.post(
-            "/remember",
+            "/memory/remember",
             headers=headers,
             json={"payload": {"task": f"warm-{i}", "content": f"warm-{i}"}},
         )
@@ -76,7 +76,7 @@ def test_latency_slo_basic() -> None:
             }
         }
         t0 = time.time()
-        r = client.post("/remember", headers=headers, json=payload)
+        r = client.post("/memory/remember", headers=headers, json=payload)
         assert r.status_code == 200, r.text
         remember_lat.append((time.time() - t0) * 1000)
 
@@ -85,7 +85,7 @@ def test_latency_slo_basic() -> None:
     for i in range(5):
         t0 = time.time()
         r = client.post(
-            "/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1}
+            "/memory/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1}
         )
         assert r.status_code == 200, r.text
         recall_lat.append((time.time() - t0) * 1000)

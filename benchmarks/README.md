@@ -38,7 +38,7 @@ This folder contains a mix of pure numerics/micro-benchmarks and live end-to-end
 - Recall live bench (defaults to http://127.0.0.1:9696):
   - SOMABRAIN_API_URL=http://127.0.0.1:9696 python benchmarks/recall_live_bench.py --output benchmarks/outputs/recall_live_results.json
 - HTTP harness (choose endpoint):
-- python benchmarks/http_bench.py --url http://127.0.0.1:9696/recall --concurrency 8 --requests 200
+- python benchmarks/http_bench.py --url http://127.0.0.1:9696/memory/recall --concurrency 8 --requests 200
 
 3) Micro-benches:
 - Cognition core:

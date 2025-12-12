@@ -324,7 +324,6 @@ from somabrain.routers import (
     admin_router,
     cognitive_router,
     health_router,
-    memory_router,
     neuromod_router,
     proxy_router,
     sleep_router,
@@ -333,7 +332,6 @@ from somabrain.routers import (
 app.include_router(admin_router, tags=["admin"])
 app.include_router(cognitive_router, tags=["cognitive"])
 app.include_router(health_router, tags=["health"])
-app.include_router(memory_router, tags=["memory"])
 app.include_router(neuromod_router, tags=["neuromodulators"])
 app.include_router(proxy_router, tags=["proxy"])
 app.include_router(sleep_router, tags=["sleep"])

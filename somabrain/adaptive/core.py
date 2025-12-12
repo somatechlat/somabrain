@@ -84,12 +84,11 @@ class AdaptiveParameter:
 
 
 class AdaptiveCore:
-    """Compatibility shim for the legacy ``AdaptiveCore`` API.
+    """Wrapper for the ``AdaptiveCore`` API.
 
-    The original ``AdaptiveCore`` coordinated multiple adaptive parameters and
-    exposed ``observe``/``get_system_stats``/``get_scorer`` methods.  The new
-    ``AdaptiveIntegrator`` already provides this behaviour, so ``AdaptiveCore``
-    simply delegates to an internal ``AdaptiveIntegrator`` instance.
+    The ``AdaptiveCore`` coordinates multiple adaptive parameters and
+    exposes ``observe``/``get_system_stats``/``get_scorer`` methods. It
+    delegates to an internal ``AdaptiveIntegrator`` instance.
     """
 
     def __init__(self) -> None:

@@ -77,7 +77,7 @@ async def post_remember(
                 start = time.perf_counter()
                 try:
                     r = await client.post(
-                        "/remember", json=body, headers=HEADERS, timeout=30.0
+                        "/memory/remember", json=body, headers=HEADERS, timeout=30.0
                     )
                     elapsed = (time.perf_counter() - start) * 1000.0
                     return {
@@ -116,7 +116,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
             asyncio.create_task(post_remember(client, i, sem)) for i in range(count)
         ]
         print(
-            f"Posting {count} /remember to {base_url}/remember with concurrency={concurrency} ..."
+            f"Posting {count} /memory/remember to {base_url}/memory/remember with concurrency={concurrency} ..."
         )
         start = time.perf_counter()
         try:
@@ -168,7 +168,7 @@ async def run_count(count: int, concurrency: int = 250, base: str | None = None)
         try:
             # use await for the POST call and then inspect/await the response methods
             r = await client.post(
-                "/recall",
+                "/memory/recall",
                 json={"query": "scale-memory", "top_k": 20},
                 headers=HEADERS,
                 timeout=30.0,

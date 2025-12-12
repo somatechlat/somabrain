@@ -1,11 +1,11 @@
 """
-Hippocampal consolidation shim that actually writes to the real memory backend.
+Hippocampal consolidation module that writes to the real memory backend.
 
 This module provides:
 - ``ConsolidationConfig``: tunable parameters for buffering and consolidation.
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the
-  existing consolidation routines without any fallback implementations.
+  existing consolidation routines.
 """
 
 from __future__ import annotations

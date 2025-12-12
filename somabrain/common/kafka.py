@@ -34,8 +34,8 @@ def _bootstrap_url() -> str:
     return bs.replace("kafka://", "")
 
 
-class _ProducerShim:
-    """Shim to emulate kafka-python Producer.send API on top of confluent-kafka."""
+class _KafkaProducerAdapter:
+    """Adapter to provide kafka-python Producer.send API on top of confluent-kafka."""
 
     def __init__(self, ck: CKProducer) -> None:
         self._ck = ck
@@ -69,10 +69,10 @@ class _ProducerShim:
             pass
 
 
-def make_producer() -> _ProducerShim:  # pragma: no cover - integration path
+def make_producer() -> _KafkaProducerAdapter:  # pragma: no cover - integration path
     # Strict: no disable flag pathway; Kafka must be reachable.
     ck = CKProducer({"bootstrap.servers": _bootstrap_url(), "compression.type": "none"})
-    return _ProducerShim(ck)
+    return _KafkaProducerAdapter(ck)
 
 
 @lru_cache(maxsize=32)

@@ -111,7 +111,11 @@ class MemoryHTTPTransport:
         return self._async_client
 
     def _init_clients(self) -> None:
-        """Initialize both sync and async HTTP clients."""
+        """Initialize both sync and async HTTP clients.
+        
+        Raises RuntimeError if the memory service is not reachable.
+        No fallback behavior - fail fast on connection errors.
+        """
         client_kwargs: dict[str, Any] = {
             "base_url": self.base_url,
             "headers": dict(self._headers),
@@ -120,16 +124,18 @@ class MemoryHTTPTransport:
         if self._limits is not None:
             client_kwargs["limits"] = self._limits
 
-        # Initialize sync client
+        # Disable clients if no base URL
+        if not self.base_url:
+            self._client = None
+            self._async_client = None
+            return
+
+        # Initialize sync client - fail fast if unreachable
         try:
             self._client = httpx.Client(**client_kwargs)
-        except Exception:
+        except Exception as e:
+            self._logger.error("Failed to create sync HTTP client: %s", e)
             self._client = None
-        else:
-            try:
-                self._client.head("/health", timeout=0.5)
-            except Exception:
-                self._fallback_to_localhost(client_kwargs)
 
         # Initialize async client
         try:
@@ -140,29 +146,9 @@ class MemoryHTTPTransport:
         except Exception:
             try:
                 self._async_client = httpx.AsyncClient(**client_kwargs)
-            except Exception:
+            except Exception as e:
+                self._logger.error("Failed to create async HTTP client: %s", e)
                 self._async_client = None
-
-        # Disable clients if no base URL
-        if not self.base_url:
-            self._client = None
-            self._async_client = None
-
-    def _fallback_to_localhost(self, client_kwargs: dict) -> None:
-        """Fall back to localhost if primary endpoint is unreachable."""
-        try:
-            orig_url = client_kwargs.get("base_url", "")
-            parsed = httpx.URL(orig_url)
-            fallback = (
-                f"http://localhost:{parsed.port}" if parsed.port else "http://localhost"
-            )
-        except Exception:
-            fallback = "http://localhost"
-        client_kwargs["base_url"] = fallback
-        try:
-            self._client = httpx.Client(**client_kwargs)
-        except Exception:
-            self._client = None
 
     def post_with_retries_sync(
         self,

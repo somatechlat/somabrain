@@ -10,7 +10,7 @@ import statistics
 from fastapi.testclient import TestClient
 from somabrain.app import app
 
-ENDPOINT = "/recall"
+ENDPOINT = "/memory/recall"
 REQUEST_BODY = {"query": "benchmark", "top_k": 1}
 HEADERS = {}
 

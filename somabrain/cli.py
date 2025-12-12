@@ -20,8 +20,7 @@ from common.config.settings import settings
 def get_config():
     """Compatibility wrapper returning the shared settings.
 
-    Legacy code expects a ``get_config`` callable that returns a configuration
-    object.  We simply return the ``settings`` instance imported above.
+    Returns the ``settings`` instance for configuration access.
     """
     return settings
 

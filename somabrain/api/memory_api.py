@@ -166,15 +166,29 @@ async def remember_memory(
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     persisted_to_ltm = False
-    memsvc._is_circuit_open()
+    queued_for_replay = False
+    coord = None
+    degraded_warnings: List[str] = []
 
-    try:
-        coord = await memsvc.aremember(payload.key, stored_payload)
-        persisted_to_ltm = True
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
+    # Check if circuit is open - if so, queue locally and continue with WM-only
+    circuit_open = memsvc._is_circuit_open()
+
+    if circuit_open:
+        # Queue to local journal for replay when backend recovers
+        memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
+        queued_for_replay = True
+        degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
+    else:
+        try:
+            coord = await memsvc.aremember(payload.key, stored_payload)
+            persisted_to_ltm = True
+        except RuntimeError as exc:
+            # Circuit just opened - queue locally
+            memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
+            queued_for_replay = True
+            degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
 
     coordinate_list = _serialize_coord(coord)
     if coordinate_list is not None:
@@ -219,13 +233,16 @@ async def remember_memory(
             payload=snapshot, coordinate=coordinate_list,
         )
 
+    # Combine degraded warnings with other warnings
+    all_warnings = degraded_warnings + warnings
+
     return MemoryWriteResponse(
         ok=True, tenant=payload.tenant, namespace=payload.namespace,
         coordinate=coordinate_list, promoted_to_wm=promoted_to_wm,
         persisted_to_ltm=persisted_to_ltm, deduplicated=False,
         importance=signal_feedback.importance, novelty=signal_feedback.novelty,
         ttl_applied=signal_feedback.ttl_seconds, trace_id=payload.trace_id,
-        request_id=request_id, warnings=warnings, signals=signal_feedback,
+        request_id=request_id, warnings=all_warnings, signals=signal_feedback,
     )
 
 
@@ -367,7 +384,7 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
     t0 = time.perf_counter()
     from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
     ret_resp = await run_retrieval_pipeline(
-        ret_req, ctx=ctx, cfg=cfg, universe=ret_req.universe,
+        ret_req, ctx=ctx, universe=ret_req.universe,
         trace_id=request.headers.get("X-Request-ID"),
     )
     dt_ms = round((time.perf_counter() - t0) * 1000.0, 3)

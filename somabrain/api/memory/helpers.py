@@ -430,17 +430,22 @@ def _coerce_to_retrieval_request(
         coord = d.get("coord")
         uni = d.get("universe")
         tk = int(d.get("top_k") or default_top_k)
+        # Use class field defaults directly instead of instantiating empty RetrievalRequest
+        # (RetrievalRequest requires 'query' field, so RetrievalRequest() would fail)
+        default_retrievers = RetrievalRequest.model_fields["retrievers"].default
+        default_rerank = RetrievalRequest.model_fields["rerank"].default
+        default_persist = RetrievalRequest.model_fields["persist"].default
         req = RetrievalRequest(
             query=str(q),
             top_k=tk,
             retrievers=(
-                list(retr) if isinstance(retr, list) else RetrievalRequest().retrievers
+                list(retr) if isinstance(retr, list) else default_retrievers
             ),
-            rerank=str(rk) if isinstance(rk, str) else RetrievalRequest().rerank,
+            rerank=str(rk) if isinstance(rk, str) else default_rerank,
             persist=(
                 bool(d.get("persist"))
                 if d.get("persist") is not None
-                else RetrievalRequest().persist
+                else default_persist
             ),
             universe=str(uni) if isinstance(uni, str) else None,
             mode=str(mode) if isinstance(mode, str) else None,

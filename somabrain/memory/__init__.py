@@ -4,13 +4,16 @@ This module provides:
 - TieredMemory: Hierarchical memory with layer policies
 - SuperposedTrace: Trace configuration for memory operations
 - RecallHit: Normalized memory recall hit from the SFM service
-- MemoryHTTPTransport: HTTP transport layer for memory service (lazy import)
+- MemoryHTTPTransport: HTTP transport layer for memory service
 - MemoryClient: Main client for memory operations (lazy import from memory_client)
 """
 
 from .hierarchical import LayerPolicy, RecallContext, TieredMemory
 from .superposed_trace import SuperposedTrace, TraceConfig
 from .types import RecallHit
+from .transport import MemoryHTTPTransport, _http_setting, _response_json
+from .normalization import _stable_coord, _parse_coord_string, _extract_memory_coord
+from .filtering import _filter_payloads_by_keyword
 from .hit_processing import (
     normalize_recall_hits,
     hit_identity,
@@ -47,6 +50,24 @@ from .http_helpers import (
     store_bulk_http_sync,
     store_bulk_http_async,
 )
+from .remember import (
+    remember_sync_persist,
+    aremember_background,
+    prepare_bulk_items,
+    process_bulk_response,
+)
+from .recall_ops import (
+    memories_search_sync,
+    memories_search_async,
+    filter_hits_by_keyword,
+    process_search_response,
+)
+from .utils import (
+    get_tenant_namespace,
+    coord_for_key,
+    fetch_by_coord,
+    store_from_payload,
+)
 
 __all__ = [
     # Hierarchical memory
@@ -58,6 +79,16 @@ __all__ = [
     "TraceConfig",
     # Memory client types
     "RecallHit",
+    # Transport
+    "MemoryHTTPTransport",
+    "_http_setting",
+    "_response_json",
+    # Normalization
+    "_stable_coord",
+    "_parse_coord_string",
+    "_extract_memory_coord",
+    # Filtering
+    "_filter_payloads_by_keyword",
     # Hit processing
     "normalize_recall_hits",
     "hit_identity",
@@ -90,6 +121,21 @@ __all__ = [
     "store_http_async",
     "store_bulk_http_sync",
     "store_bulk_http_async",
+    # Remember operations
+    "remember_sync_persist",
+    "aremember_background",
+    "prepare_bulk_items",
+    "process_bulk_response",
+    # Recall operations
+    "memories_search_sync",
+    "memories_search_async",
+    "filter_hits_by_keyword",
+    "process_search_response",
+    # Utility functions
+    "get_tenant_namespace",
+    "coord_for_key",
+    "fetch_by_coord",
+    "store_from_payload",
 ]
 
 
@@ -101,7 +147,5 @@ def get_memory_client():
 
 
 def get_memory_http_transport():
-    """Lazy import of MemoryHTTPTransport to avoid circular imports."""
-    from somabrain.memory_client import MemoryHTTPTransport
-
+    """Return MemoryHTTPTransport class (now directly imported)."""
     return MemoryHTTPTransport

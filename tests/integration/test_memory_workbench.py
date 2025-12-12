@@ -15,12 +15,12 @@ MEM_TOKEN = settings.memory_http_token
 
 def _remember(client: httpx.Client, tenant: str, text: str) -> None:
     payload = {"payload": {"task": text, "content": text, "memory_type": "episodic"}}
-    r = client.post("/remember", headers={"X-Tenant-ID": tenant}, json=payload)
+    r = client.post("/memory/remember", headers={"X-Tenant-ID": tenant}, json=payload)
     assert r.status_code == 200, r.text
 
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
-    r = client.post("/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k})
+    r = client.post("/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k})
     assert r.status_code == 200, r.text
     body = r.json()
     results = body.get("results") or body.get("memory") or []

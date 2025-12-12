@@ -79,13 +79,13 @@ class PolicyEngine:
         if (
             self._block_ua
             and self._block_ua.search(ua or "")
-            and path.startswith("/remember")
+            and path.startswith("/memory/remember")
         ):
             return PolicyDecision("deny", "ua_blocklist", {"ua": ua})
         provenance = headers.get("x-provenance", "")
         # Provenance enforcement only if required by config
         if ctx.get("require_provenance"):
-            if path.startswith("/remember") or (
+            if path.startswith("/memory/remember") or (
                 path.startswith("/act") and method == "POST"
             ):
                 # If middleware validated HMAC, rely on it; otherwise require header presence

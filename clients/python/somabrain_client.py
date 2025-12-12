@@ -207,7 +207,7 @@ class SomaBrainClient:
         beforehand.
         """
         body = {"coord": coord, "payload": payload}
-        r = self._http.post("/remember", json=body)
+        r = self._http.post("/memory/remember", json=body)
         r.raise_for_status()
         return r.json()
 
@@ -223,7 +223,7 @@ class SomaBrainClient:
         body: Dict[str, Any] = {"query": query, "top_k": int(top_k)}
         if universe:
             body["universe"] = universe
-        r = self._http.post("/recall", json=body)
+        r = self._http.post("/memory/recall", json=body)
         r.raise_for_status()
         return r.json()
 

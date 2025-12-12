@@ -20,7 +20,7 @@ import httpx
 def main(count: int, base_url: str, namespace: str | None = None):
     out = []
     client = httpx.Client(timeout=30.0)
-    remember_url = base_url.rstrip("/") + "/remember"
+    remember_url = base_url.rstrip("/") + "/memory/remember"
     for i in range(count):
         key = f"book:{i}"
         author = f"Author{i}"
