@@ -73,18 +73,18 @@ This document contains actionable implementation tasks for deep integration betw
 
 ### Task 2: Complete Health Check with SFM Components (E3)
 - [ ] **2.1** In `somabrain/somabrain/memory_client.py`: Modify `health()` to return structured component status
-- [ ] **2.2** In `somabrain/somabrain/healthchecks.py`: Add `check_sfm_integration_health()` function
-- [ ] **2.3** In `somabrain/somabrain/healthchecks.py`: Return degraded (not failed) when any SFM component unhealthy
-- [ ] **2.4** Add 2-second timeout to SFM health check call
+- [x] **2.2** In `somabrain/somabrain/healthchecks.py`: Add `check_sfm_integration_health()` function
+- [x] **2.3** In `somabrain/somabrain/healthchecks.py`: Return degraded (not failed) when any SFM component unhealthy
+- [x] **2.4** Add 2-second timeout to SFM health check call
 - [ ] **2.5** Write test: SFM partially unhealthy → SB health reports degraded with component list
 
 **Requirement References:** E3.1, E3.2, E3.3, E3.4, E3.5
 
 
 ### Task 3: Complete Degradation Mode (E1)
-- [ ] **3.1** Create `somabrain/somabrain/infrastructure/degradation.py` with `DegradationManager` class
-- [ ] **3.2** In `DegradationManager`: Track degraded_since timestamp per tenant
-- [ ] **3.3** In `DegradationManager`: Implement `check_alert()` returning True if degraded > 5 minutes
+- [x] **3.1** Create `somabrain/somabrain/infrastructure/degradation.py` with `DegradationManager` class
+- [x] **3.2** In `DegradationManager`: Track degraded_since timestamp per tenant
+- [x] **3.3** In `DegradationManager`: Implement `check_alert()` returning True if degraded > 5 minutes
 - [ ] **3.4** In `somabrain/somabrain/memory_client.py`: Wrap recall to return WM-only when circuit open
 - [ ] **3.5** In `somabrain/somabrain/memory_client.py`: Add `degraded=true` flag to recall response when in degraded mode
 - [ ] **3.6** Write test: SFM unreachable → recall returns WM-only with degraded=true
