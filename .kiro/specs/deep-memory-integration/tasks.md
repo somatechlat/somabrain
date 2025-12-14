@@ -109,22 +109,22 @@ This document contains actionable implementation tasks for deep integration betw
 **Requirement References:** A1.1, A1.2, A1.3, A1.4, A1.5
 
 ### Task 5: Full Hybrid Recall Integration (C1)
-- [ ] **5.1** In `somabrain/somabrain/memory_client.py`: Add `hybrid_recall()` method
-- [ ] **5.2** In `hybrid_recall()`: Extract keywords from query using `_extract_keywords()`
-- [ ] **5.3** In `hybrid_recall()`: Call SFM `/memories/hybrid_recall` endpoint
-- [ ] **5.4** In `hybrid_recall()`: Include importance scores in ranking
-- [ ] **5.5** In `hybrid_recall()`: Fallback to vector-only on failure with degraded=true
+- [x] **5.1** In `somabrain/somabrain/memory_client.py`: Add `hybrid_recall()` method
+- [x] **5.2** In `hybrid_recall()`: Extract keywords from query using `_extract_keywords()`
+- [x] **5.3** In `hybrid_recall()`: Call SFM `/memories/search` endpoint with filters
+- [x] **5.4** In `hybrid_recall()`: Include importance scores in ranking (via rescore_fn)
+- [x] **5.5** In `hybrid_recall()`: Fallback to vector-only on failure with degraded=true
 - [ ] **5.6** In `somabrain/somabrain/memory/recall_ops.py`: Update `memories_search_async` to use hybrid by default
 - [ ] **5.7** Write test: Query with keywords → hybrid recall used → results include keyword matches
 
 **Requirement References:** C1.1, C1.2, C1.3, C1.4, C1.5
 
 ### Task 6: Batch Store Optimization (F1)
-- [ ] **6.1** In `somabrain/somabrain/memory_client.py`: Add `remember_bulk_optimized()` method
-- [ ] **6.2** In `remember_bulk_optimized()`: Implement chunking (max 100 items per request)
-- [ ] **6.3** In `remember_bulk_optimized()`: Handle partial failures - commit successful, retry failed
-- [ ] **6.4** In `remember_bulk_optimized()`: Return `BulkStoreResult` with succeeded/failed counts
-- [ ] **6.5** Add metrics: batch_size, batch_latency_ms, success_rate
+- [x] **6.1** In `somabrain/somabrain/memory_client.py`: Add `remember_bulk_optimized()` method
+- [x] **6.2** In `remember_bulk_optimized()`: Implement chunking (max 100 items per request)
+- [x] **6.3** In `remember_bulk_optimized()`: Handle partial failures - commit successful, retry failed
+- [x] **6.4** In `remember_bulk_optimized()`: Return `BulkStoreResult` with succeeded/failed counts
+- [x] **6.5** Add metrics: batch_size, batch_latency_ms, success_rate
 - [ ] **6.6** Write test: 250 items → 3 chunks → partial failure in chunk 2 → 200+ succeeded
 
 **Requirement References:** F1.1, F1.2, F1.3, F1.4, F1.5
