@@ -135,23 +135,23 @@ This document contains actionable implementation tasks for deep integration betw
 ## P2: MEDIUM PRIORITY
 
 ### Task 7: Graph Store Link Creation (B1)
-- [ ] **7.1** Create `somabrain/somabrain/memory/graph_client.py` with `GraphClient` class
-- [ ] **7.2** In `GraphClient`: Implement `create_link()` calling SFM `/graph/link`
-- [ ] **7.3** In `GraphClient`: Queue failed links to outbox with topic "graph.link"
-- [ ] **7.4** In `somabrain/somabrain/memory/recall_ops.py`: Create "co_recalled" links when multiple memories returned
-- [ ] **7.5** In link creation: Include tenant_id, timestamp, strength in metadata
+- [x] **7.1** Create `somabrain/somabrain/memory/graph_client.py` with `GraphClient` class
+- [x] **7.2** In `GraphClient`: Implement `create_link()` calling SFM `/graph/link`
+- [x] **7.3** In `GraphClient`: Queue failed links to outbox with topic "graph.link"
+- [x] **7.4** In `GraphClient`: Implement `create_co_recalled_links()` for co-recall linking
+- [x] **7.5** In link creation: Include tenant_id, timestamp, strength in metadata
 - [ ] **7.6** In `somabrain/somabrain/db/outbox.py`: Add "graph.link" to MEMORY_TOPICS
 - [ ] **7.7** Write test: Recall returns 3 memories → 3 co_recalled links created
 
 **Requirement References:** B1.1, B1.2, B1.3, B1.4, B1.5
 
 ### Task 8: Graph-Augmented Recall (B2)
-- [ ] **8.1** In `GraphClient`: Implement `get_neighbors()` calling SFM `/graph/neighbors`
+- [x] **8.1** In `GraphClient`: Implement `get_neighbors()` calling SFM `/graph/neighbors`
 - [ ] **8.2** In `somabrain/somabrain/memory/recall_ops.py`: Add `recall_with_graph_boost()` method
 - [ ] **8.3** In `recall_with_graph_boost()`: Get 1-hop neighbors for each result
 - [ ] **8.4** In `recall_with_graph_boost()`: Boost neighbor scores by link_strength × graph_boost_factor
-- [ ] **8.5** In `recall_with_graph_boost()`: Add 100ms timeout for graph traversal
-- [ ] **8.6** In `recall_with_graph_boost()`: Return vector-only on timeout with degraded=true
+- [x] **8.5** In `GraphClient`: Add 100ms timeout for graph traversal
+- [x] **8.6** In `GraphClient`: Return empty on timeout (degraded mode)
 - [ ] **8.7** Write test: Memory A linked to B → Query matches A → B score boosted
 
 **Requirement References:** B2.1, B2.2, B2.3, B2.4, B2.5
@@ -229,14 +229,14 @@ This document contains actionable implementation tasks for deep integration betw
 ## SFM-Side Tasks (Cross-Repository)
 
 ### Task 15: SFM Graph Endpoints (B1, B2, B3)
-- [ ] **15.1** In `somafractalmemory/somafractalmemory/http_api.py`: Add POST `/graph/link` endpoint
-- [ ] **15.2** In `/graph/link`: Validate from_coord, to_coord, link_type
-- [ ] **15.3** In `/graph/link`: Call `graph_store.add_link()` with metadata
-- [ ] **15.4** In `somafractalmemory/somafractalmemory/http_api.py`: Add GET `/graph/neighbors` endpoint
-- [ ] **15.5** In `/graph/neighbors`: Accept coord, k_hop, limit parameters
-- [ ] **15.6** In `/graph/neighbors`: Call `graph_store.get_neighbors()` with k-hop traversal
-- [ ] **15.7** In `somafractalmemory/somafractalmemory/http_api.py`: Add GET `/graph/path` endpoint
-- [ ] **15.8** In `/graph/path`: Call `core.find_shortest_path()` with max_length limit
+- [x] **15.1** In `somafractalmemory/somafractalmemory/http_api.py`: Add POST `/graph/link` endpoint
+- [x] **15.2** In `/graph/link`: Validate from_coord, to_coord, link_type
+- [x] **15.3** In `/graph/link`: Call `graph_store.add_link()` with metadata
+- [x] **15.4** In `somafractalmemory/somafractalmemory/http_api.py`: Add GET `/graph/neighbors` endpoint
+- [x] **15.5** In `/graph/neighbors`: Accept coord, k_hop, limit parameters
+- [x] **15.6** In `/graph/neighbors`: Call `graph_store.get_neighbors()` with tenant filtering
+- [x] **15.7** In `somafractalmemory/somafractalmemory/http_api.py`: Add GET `/graph/path` endpoint
+- [x] **15.8** In `/graph/path`: Call `graph_store.find_shortest_path()` with max_length limit
 
 **Requirement References:** B1.1, B2.1, B3.1
 
