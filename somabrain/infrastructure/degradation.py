@@ -13,7 +13,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
-from common.config.settings import settings
 
 
 @dataclass

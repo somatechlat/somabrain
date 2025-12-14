@@ -72,7 +72,7 @@ This document contains actionable implementation tasks for deep integration betw
 **Requirement References:** D1.1, D1.2, D1.3, D1.4, D1.5
 
 ### Task 2: Complete Health Check with SFM Components (E3)
-- [ ] **2.1** In `somabrain/somabrain/memory_client.py`: Modify `health()` to return structured component status
+- [x] **2.1** In `somabrain/somabrain/memory_client.py`: Modify `health()` to return structured component status
 - [x] **2.2** In `somabrain/somabrain/healthchecks.py`: Add `check_sfm_integration_health()` function
 - [x] **2.3** In `somabrain/somabrain/healthchecks.py`: Return degraded (not failed) when any SFM component unhealthy
 - [x] **2.4** Add 2-second timeout to SFM health check call
@@ -85,8 +85,8 @@ This document contains actionable implementation tasks for deep integration betw
 - [x] **3.1** Create `somabrain/somabrain/infrastructure/degradation.py` with `DegradationManager` class
 - [x] **3.2** In `DegradationManager`: Track degraded_since timestamp per tenant
 - [x] **3.3** In `DegradationManager`: Implement `check_alert()` returning True if degraded > 5 minutes
-- [ ] **3.4** In `somabrain/somabrain/memory_client.py`: Wrap recall to return WM-only when circuit open
-- [ ] **3.5** In `somabrain/somabrain/memory_client.py`: Add `degraded=true` flag to recall response when in degraded mode
+- [x] **3.4** In `somabrain/somabrain/memory_client.py`: Wrap recall to return WM-only when circuit open
+- [x] **3.5** In `somabrain/somabrain/memory_client.py`: Add `degraded=true` flag to recall response when in degraded mode
 - [ ] **3.6** Write test: SFM unreachable → recall returns WM-only with degraded=true
 
 **Requirement References:** E1.1, E1.2, E1.3, E1.4, E1.5

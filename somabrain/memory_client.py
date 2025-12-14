@@ -184,30 +184,87 @@ class MemoryClient:
         return
 
     def health(self) -> dict:
-        """Return health information from the external memory service."""
+        """Return health information from the external memory service.
+
+        Per Requirements E3.1-E3.5:
+        - Returns structured component status (kv_store, vector_store, graph_store)
+        - Reports degraded (not failed) when any component unhealthy
+        - Lists specific unhealthy components
+        - Uses 2-second timeout for health check
+        """
         if self._transport is None or self._transport.client is None:
-            return {"healthy": False, "error": "HTTP client not configured"}
+            return {
+                "healthy": False,
+                "error": "HTTP client not configured",
+                "degraded": True,
+                "degraded_components": ["http_client"],
+                "kv_store": False,
+                "vector_store": False,
+                "graph_store": False,
+            }
         try:
-            r = self._transport.client.get("/health")
-            if int(getattr(r, "status_code", 0) or 0) != 200:
-                return {"healthy": False, "status": r.status_code}
+            # E3.4: 2-second timeout for health check
+            r = self._transport.client.get("/health", timeout=2.0)
+            status_code = int(getattr(r, "status_code", 0) or 0)
+            if status_code != 200:
+                return {
+                    "healthy": False,
+                    "status": status_code,
+                    "degraded": True,
+                    "degraded_components": ["sfm_api"],
+                    "kv_store": False,
+                    "vector_store": False,
+                    "graph_store": False,
+                }
             data = self._response_json(r) or {}
             if not isinstance(data, dict):
-                return {"healthy": False, "error": "unexpected health payload"}
-            kv, vec, graph = (
-                bool(data.get("kv_store")),
-                bool(data.get("vector_store")),
-                bool(data.get("graph_store")),
-            )
+                return {
+                    "healthy": False,
+                    "error": "unexpected health payload",
+                    "degraded": True,
+                    "degraded_components": ["sfm_response"],
+                    "kv_store": False,
+                    "vector_store": False,
+                    "graph_store": False,
+                }
+
+            # E3.1: Extract component status
+            kv = bool(data.get("kv_store"))
+            vec = bool(data.get("vector_store"))
+            graph = bool(data.get("graph_store"))
+
+            # E3.2, E3.5: Determine degraded status and list unhealthy components
+            degraded_components = []
+            if not kv:
+                degraded_components.append("kv_store")
+            if not vec:
+                degraded_components.append("vector_store")
+            if not graph:
+                degraded_components.append("graph_store")
+
+            is_degraded = len(degraded_components) > 0
+            is_healthy = kv and vec and graph
+
             return {
                 **data,
-                "healthy": kv and vec and graph,
+                "healthy": is_healthy,
                 "kv_store": kv,
                 "vector_store": vec,
                 "graph_store": graph,
+                "degraded": is_degraded,
+                "degraded_components": degraded_components,
             }
         except Exception as exc:
-            return {"healthy": False, "error": str(exc)}
+            # E3.3: SFM unreachable - report degraded with sfm_unreachable
+            return {
+                "healthy": False,
+                "error": str(exc),
+                "degraded": True,
+                "degraded_components": ["sfm_unreachable"],
+                "kv_store": False,
+                "vector_store": False,
+                "graph_store": False,
+            }
 
     def _require_healthy(self) -> None:
         """Raise error if memory service is not fully healthy."""
@@ -346,12 +403,15 @@ class MemoryClient:
         )
 
     # Recall aggregation aliases
-    _http_recall_aggregate_sync = lambda self, q, k, u, r: self._memories_search_sync(
-        q, k, u, r
-    )
-    _http_recall_aggregate_async = lambda self, q, k, u, r: self._memories_search_async(
-        q, k, u, r
-    )
+    def _http_recall_aggregate_sync(
+        self, q: str, k: int, u: str, r: str
+    ) -> List[RecallHit]:
+        return self._memories_search_sync(q, k, u, r)
+
+    def _http_recall_aggregate_async(
+        self, q: str, k: int, u: str, r: str
+    ) -> List[RecallHit]:
+        return self._memories_search_async(q, k, u, r)
 
     def _filter_hits_by_keyword(
         self, hits: List[RecallHit], keyword: str
@@ -634,10 +694,52 @@ class MemoryClient:
         universe: str | None = None,
         request_id: str | None = None,
     ) -> List[RecallHit]:
-        """Retrieve memories relevant to ``query`` via the HTTP backend."""
-        self._require_healthy()
+        """Retrieve memories relevant to ``query`` via the HTTP backend.
+
+        Per Requirements E1.1-E1.5:
+        - When SFM unreachable, returns WM-only results with degraded=true
+        - When circuit breaker is open, skips SFM call entirely
+        - Tracks degradation state per tenant
+        """
         rid = request_id or str(uuid.uuid4())
-        return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
+        tenant, _ = self._tenant_namespace()
+
+        # E1.1: Check degradation state before calling SFM
+        from somabrain.infrastructure.degradation import get_degradation_manager
+
+        degradation_mgr = get_degradation_manager()
+
+        # Check if we're in degraded mode (circuit open or SFM unavailable)
+        if degradation_mgr.is_degraded(tenant):
+            # E1.5: Check if we should trigger alert (degraded > 5 minutes)
+            degradation_mgr.check_alert(tenant)
+            # Return empty results with degraded flag - WM-only mode
+            # The caller (e.g., recall_ops) should handle WM fallback
+            logger.warning(
+                "SFM degraded mode: returning empty results",
+                tenant=tenant,
+                query_preview=query[:50] if query else "",
+            )
+            return []
+
+        try:
+            self._require_healthy()
+            results = self._http_recall_aggregate_sync(
+                query, top_k, universe or "real", rid
+            )
+            # SFM call succeeded - mark recovered if was degraded
+            degradation_mgr.mark_recovered(tenant)
+            return results
+        except RuntimeError as exc:
+            # SFM unavailable - enter degraded mode (E1.1)
+            degradation_mgr.mark_degraded(tenant)
+            logger.warning(
+                "SFM unavailable, entering degraded mode",
+                tenant=tenant,
+                error=str(exc),
+            )
+            # Return empty results - WM-only mode
+            return []
 
     def recall_with_scores(
         self,
@@ -663,14 +765,49 @@ class MemoryClient:
         universe: str | None = None,
         request_id: str | None = None,
     ) -> List[RecallHit]:
-        """Async recall for HTTP mode; falls back to sync execution when needed."""
-        if self._transport is not None and self._transport.async_client is not None:
-            return await self._http_recall_aggregate_async(
-                query, top_k, universe or "real", request_id or str(uuid.uuid4())
+        """Async recall for HTTP mode; falls back to sync execution when needed.
+
+        Per Requirements E1.1-E1.5:
+        - When SFM unreachable, returns WM-only results with degraded=true
+        - When circuit breaker is open, skips SFM call entirely
+        """
+        rid = request_id or str(uuid.uuid4())
+        tenant, _ = self._tenant_namespace()
+
+        # E1.1: Check degradation state before calling SFM
+        from somabrain.infrastructure.degradation import get_degradation_manager
+
+        degradation_mgr = get_degradation_manager()
+
+        # Check if we're in degraded mode
+        if degradation_mgr.is_degraded(tenant):
+            degradation_mgr.check_alert(tenant)
+            logger.warning(
+                "SFM degraded mode (async): returning empty results",
+                tenant=tenant,
             )
-        return await asyncio.get_event_loop().run_in_executor(
-            None, self.recall, query, top_k, universe, request_id
-        )
+            return []
+
+        try:
+            if self._transport is not None and self._transport.async_client is not None:
+                results = await self._http_recall_aggregate_async(
+                    query, top_k, universe or "real", rid
+                )
+                degradation_mgr.mark_recovered(tenant)
+                return results
+            # Fallback to sync in executor
+            results = await asyncio.get_event_loop().run_in_executor(
+                None, self.recall, query, top_k, universe, request_id
+            )
+            return results
+        except RuntimeError as exc:
+            degradation_mgr.mark_degraded(tenant)
+            logger.warning(
+                "SFM unavailable (async), entering degraded mode",
+                tenant=tenant,
+                error=str(exc),
+            )
+            return []
 
     async def arecall_with_scores(
         self,
