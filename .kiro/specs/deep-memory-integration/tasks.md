@@ -62,10 +62,10 @@ This document contains actionable implementation tasks for deep integration betw
 ## P0: CRITICAL FIXES
 
 ### Task 1: Fix Multi-Tenant Memory Isolation (D1)
-- [ ] **1.1** In `somafractalmemory/somafractalmemory/http_api.py`: Add `_get_tenant_from_request()` helper to extract tenant from X-Soma-Tenant header
-- [ ] **1.2** In `somafractalmemory/somafractalmemory/http_api.py`: Modify all `/memories/*` endpoints to scope operations by tenant prefix
-- [ ] **1.3** In `somabrain/somabrain/memory_client.py`: Ensure `_create_transport()` always sets X-Soma-Tenant header (never empty)
-- [ ] **1.4** In `somabrain/somabrain/memory_client.py`: Add tenant validation in `_tenant_namespace()` - return "default" if empty
+- [x] **1.1** In `somafractalmemory/somafractalmemory/http_api.py`: Add `_get_tenant_from_request()` helper to extract tenant from X-Soma-Tenant header
+- [x] **1.2** In `somafractalmemory/somafractalmemory/http_api.py`: Modify all `/memories/*` endpoints to scope operations by tenant prefix
+- [x] **1.3** In `somabrain/somabrain/memory_client.py`: Ensure `_create_transport()` always sets X-Soma-Tenant header (never empty)
+- [x] **1.4** In `somabrain/somabrain/memory_client.py`: Add tenant validation in `_tenant_namespace()` - return "default" if empty
 - [ ] **1.5** Write integration test: Tenant A stores → Tenant B recalls → MUST return empty
 - [ ] **1.6** Remove XFAIL markers from tests D1.1 and D1.2 after fix verified
 

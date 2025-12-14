@@ -23,18 +23,23 @@ def get_tenant_namespace(cfg: Any) -> tuple[str, str]:
     This function extracts the tenant from the namespace string if present.
 
     SECURITY: Correct tenant extraction is critical for multi-tenant isolation.
-    See Requirements D1.1, D1.2.
+    See Requirements D1.1, D1.2, D1.3, D1.4.
+
+    CRITICAL: This function MUST NEVER return an empty tenant string.
+    Empty tenant would cause cross-tenant data leakage.
     """
     from common.config.settings import settings
 
     # First try explicit tenant field
     tenant = getattr(cfg, "tenant", None)
+    if tenant:
+        tenant = str(tenant).strip()
 
     # Get namespace from config or settings
     namespace = getattr(cfg, "namespace", None) or getattr(
         settings, "namespace", "public"
     )
-    namespace = str(namespace or "public")
+    namespace = str(namespace or "public").strip()
 
     # If no explicit tenant, try to extract from namespace string
     # Namespace format: 'base:tenant:namespace' or 'base:tenant' or just 'namespace'
@@ -42,15 +47,24 @@ def get_tenant_namespace(cfg: Any) -> tuple[str, str]:
         parts = namespace.split(":")
         if len(parts) >= 2:
             # Format is 'base:tenant:namespace' or 'base:tenant'
-            tenant = parts[1]  # Second part is tenant
+            tenant = parts[1].strip()  # Second part is tenant
         elif len(parts) == 1:
-            tenant = parts[0]
+            tenant = parts[0].strip()
 
-    # Fallback to default tenant
+    # Fallback to default tenant from settings
     if not tenant:
-        tenant = getattr(settings, "default_tenant", "public")
+        tenant = getattr(settings, "default_tenant", None)
+        if tenant:
+            tenant = str(tenant).strip()
 
-    tenant = str(tenant or "public")
+    # CRITICAL: Final fallback - NEVER return empty tenant
+    # This prevents cross-tenant data leakage (D1.4)
+    if not tenant:
+        tenant = "default"
+
+    # Double-check: ensure tenant is never empty or whitespace-only
+    tenant = tenant if tenant and tenant.strip() else "default"
+
     return tenant, namespace
 
 

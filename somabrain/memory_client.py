@@ -89,10 +89,16 @@ class MemoryClient:
             headers["Authorization"] = f"Bearer {token_value}"
             headers["X-API-Key"] = token_value
 
-        ns = str(getattr(self.cfg, "namespace", ""))
-        if ns:
-            headers["X-Soma-Namespace"] = ns
-            headers["X-Soma-Tenant"] = ns.split(":")[-1] if ":" in ns else ns
+        # TENANT ISOLATION (D1.3): Always set tenant headers for isolation
+        # Get tenant and namespace using the centralized function
+        from somabrain.memory.utils import get_tenant_namespace
+
+        tenant, namespace = get_tenant_namespace(self.cfg)
+
+        # CRITICAL: Always set both headers - never leave empty
+        # This ensures SFM can enforce tenant isolation (D1.1, D1.2)
+        headers["X-Soma-Namespace"] = namespace or "default"
+        headers["X-Soma-Tenant"] = tenant or "default"  # Never empty per D1.4
 
         max_conns = (
             int(
