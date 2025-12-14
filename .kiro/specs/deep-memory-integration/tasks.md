@@ -157,10 +157,10 @@ This document contains actionable implementation tasks for deep integration betw
 **Requirement References:** B2.1, B2.2, B2.3, B2.4, B2.5
 
 ### Task 9: Serialization Alignment (G1)
-- [ ] **9.1** Create `somabrain/somabrain/memory/serialization.py` with `serialize_for_sfm()`
-- [ ] **9.2** In `serialize_for_sfm()`: Convert tuples to lists
-- [ ] **9.3** In `serialize_for_sfm()`: Convert numpy arrays to lists
-- [ ] **9.4** In `serialize_for_sfm()`: Convert epoch timestamps to ISO 8601 strings
+- [x] **9.1** Create `somabrain/somabrain/memory/serialization.py` with `serialize_for_sfm()`
+- [x] **9.2** In `serialize_for_sfm()`: Convert tuples to lists
+- [x] **9.3** In `serialize_for_sfm()`: Convert numpy arrays to lists
+- [x] **9.4** In `serialize_for_sfm()`: Convert epoch timestamps to ISO 8601 strings
 - [ ] **9.5** In `somabrain/somabrain/memory_client.py`: Use `serialize_for_sfm()` before all SFM calls
 - [ ] **9.6** Write test: Payload with tuple, ndarray, epoch → serialized correctly for SFM
 
