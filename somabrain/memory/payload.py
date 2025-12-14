@@ -14,16 +14,21 @@ def enrich_payload(
     payload: Dict[str, Any],
     coord_key: str,
     namespace: str | None = None,
+    tenant: str | None = None,
 ) -> Tuple[Dict[str, Any], str, Dict[str, str]]:
     """Enrich a payload with common fields for memory storage.
 
     Ensures downstream HTTP memory services receive common fields that many
     implementations index on: text/content/id/universe. Does not mutate input.
 
+    SECURITY: The tenant field is critical for multi-tenant isolation.
+    See Requirements D1.1, D1.2.
+
     Args:
         payload: The original payload dictionary.
         coord_key: The coordinate key for this memory.
         namespace: Optional namespace for tenancy.
+        tenant: Optional tenant ID for multi-tenant isolation.
 
     Returns:
         Tuple of (enriched_payload, universe, extra_headers).
@@ -53,6 +58,9 @@ def enrich_payload(
     # Namespace (best-effort)
     if namespace and not p.get("namespace"):
         p["namespace"] = namespace
+    # SECURITY: Store tenant for multi-tenant isolation (D1.1, D1.2)
+    if tenant and not p.get("tenant"):
+        p["tenant"] = tenant
     # Extra headers for HTTP calls
     headers = {"X-Universe": universe}
     return p, universe, headers
@@ -108,9 +116,7 @@ def normalize_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 payload.pop("domains", None)
         # reasoning_chain: accept list[str] or single string -> keep
-        if "reasoning_chain" in payload and isinstance(
-            payload["reasoning_chain"], str
-        ):
+        if "reasoning_chain" in payload and isinstance(payload["reasoning_chain"], str):
             rc = payload["reasoning_chain"].strip()
             if rc:
                 payload["reasoning_chain"] = [rc]

@@ -17,18 +17,25 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Configuration - REAL Docker ports
+# Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
 
-REDIS_PORT = 30100
-KAFKA_PORT = 30102
-POSTGRES_PORT = 30106
-MILVUS_GRPC_PORT = 30119
-MILVUS_HTTP_PORT = 30120
-OPA_PORT = 30104
-APP_PORT = 9696
-PROMETHEUS_PORT = 30105
-JAEGER_PORT = 30111
+import os
+
+REDIS_PORT = int(os.getenv("REDIS_HOST_PORT", "30100"))
+KAFKA_PORT = int(os.getenv("KAFKA_BROKER_HOST_PORT", "30102"))
+POSTGRES_PORT = int(os.getenv("POSTGRES_HOST_PORT", "30106"))
+MILVUS_GRPC_PORT = int(os.getenv("MILVUS_GRPC_HOST_PORT", "30119"))
+MILVUS_HTTP_PORT = int(os.getenv("MILVUS_HTTP_HOST_PORT", "30120"))
+OPA_PORT = int(os.getenv("OPA_HOST_PORT", "30104"))
+APP_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
+PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_HOST_PORT", "30105"))
+JAEGER_PORT = int(os.getenv("JAEGER_HOST_PORT", "30111"))
+
+# Database credentials from environment
+POSTGRES_USER = os.getenv("POSTGRES_USER", "soma")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "soma_pass")
+POSTGRES_DB = os.getenv("POSTGRES_DB", "somabrain")
 
 
 def _check_tcp_port(host: str, port: int, timeout: float = 5.0) -> bool:
@@ -161,13 +168,13 @@ class TestDockerInfrastructureSetup:
         """
         import psycopg2
 
-        # Connect to Postgres with correct credentials
+        # Connect to Postgres with credentials from environment
         conn = psycopg2.connect(
             host="localhost",
             port=POSTGRES_PORT,
-            user="soma",
-            password="soma_pass",
-            database="somabrain",
+            user=POSTGRES_USER,
+            password=POSTGRES_PASSWORD,
+            database=POSTGRES_DB,
         )
 
         # Verify connection

@@ -207,7 +207,50 @@ class WorkingMemory:
             )
         )
         if len(self._items) > self.capacity:
-            self._items = self._items[-self.capacity :]
+            self._evict_lowest_salience()
+
+    def _evict_lowest_salience(self) -> None:
+        """Evict the item with the lowest salience score.
+
+        Salience is computed as a combination of:
+        - Novelty: How different the item is from other items in WM
+        - Recency: How recently the item was admitted (based on tick/time)
+
+        Per Requirement B1.1: WHEN WM reaches capacity THEN the system SHALL
+        evict the item with lowest salience score.
+        """
+        if len(self._items) <= self.capacity:
+            return
+
+        now = self._now()
+        min_salience = float("inf")
+        min_idx = 0
+
+        for idx, item in enumerate(self._items):
+            # Compute novelty for this item relative to other items
+            # (how unique is this item compared to the rest of WM)
+            novelty = 1.0
+            for other_idx, other in enumerate(self._items):
+                if other_idx != idx:
+                    sim = cosine_similarity(item.vector, other.vector)
+                    novelty = min(novelty, max(0.0, 1.0 - sim))
+
+            # Compute recency based on time since admission
+            # More recent items have higher recency scores
+            age = max(0.0, now - item.admitted_at)
+            recency_decay = math.exp(-age / self._recency_scale) if age > 0 else 1.0
+            recency = float(recency_decay)
+
+            # Compute salience: alpha * novelty + gamma * recency
+            # (beta * reward is not available at eviction time, so we use 0)
+            salience = self.alpha * novelty + self.gamma * recency
+
+            if salience < min_salience:
+                min_salience = salience
+                min_idx = idx
+
+        # Remove the item with lowest salience
+        del self._items[min_idx]
 
     def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
         """Compute salience = alpha·novelty + beta·reward + gamma·recency.

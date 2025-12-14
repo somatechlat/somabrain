@@ -17,16 +17,40 @@ if TYPE_CHECKING:
 
 
 def get_tenant_namespace(cfg: Any) -> tuple[str, str]:
-    """Resolve tenant and namespace from cfg/settings with hard requirements."""
+    """Resolve tenant and namespace from cfg/settings with hard requirements.
+
+    The namespace string may be in format 'base:tenant:namespace' or just 'namespace'.
+    This function extracts the tenant from the namespace string if present.
+
+    SECURITY: Correct tenant extraction is critical for multi-tenant isolation.
+    See Requirements D1.1, D1.2.
+    """
     from common.config.settings import settings
-    tenant = getattr(cfg, "tenant", None) or getattr(
-        settings, "default_tenant", "public"
-    )
+
+    # First try explicit tenant field
+    tenant = getattr(cfg, "tenant", None)
+
+    # Get namespace from config or settings
     namespace = getattr(cfg, "namespace", None) or getattr(
         settings, "namespace", "public"
     )
-    tenant = str(tenant or "public")
     namespace = str(namespace or "public")
+
+    # If no explicit tenant, try to extract from namespace string
+    # Namespace format: 'base:tenant:namespace' or 'base:tenant' or just 'namespace'
+    if not tenant and ":" in namespace:
+        parts = namespace.split(":")
+        if len(parts) >= 2:
+            # Format is 'base:tenant:namespace' or 'base:tenant'
+            tenant = parts[1]  # Second part is tenant
+        elif len(parts) == 1:
+            tenant = parts[0]
+
+    # Fallback to default tenant
+    if not tenant:
+        tenant = getattr(settings, "default_tenant", "public")
+
+    tenant = str(tenant or "public")
     return tenant, namespace
 
 

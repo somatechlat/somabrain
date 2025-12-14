@@ -20,19 +20,28 @@ from .config import Config
 from common.config.settings import settings
 from somabrain.infrastructure import get_memory_http_endpoint, resolve_memory_endpoint
 from somabrain.interfaces.memory import MemoryBackend
-from somabrain.memory.transport import MemoryHTTPTransport, _http_setting, _response_json
+from somabrain.memory.transport import (
+    MemoryHTTPTransport,
+    _http_setting,
+    _response_json,
+)
 from somabrain.memory.types import RecallHit
 from somabrain.memory.normalization import _stable_coord, _extract_memory_coord
 from somabrain.memory.hit_processing import normalize_recall_hits, deduplicate_hits
 from somabrain.memory.scoring import (
-    get_recency_normalisation, get_recency_profile, compute_recency_features,
-    compute_density_factor, rescore_and_rank_hits,
+    get_recency_normalisation,
+    get_recency_profile,
+    compute_recency_features,
+    compute_density_factor,
+    rescore_and_rank_hits,
 )
 from somabrain.memory.payload import enrich_payload, prepare_memory_payload
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
-debug_memory_client = bool(getattr(settings, "debug_memory_client", False)) if settings else False
+debug_memory_client = (
+    bool(getattr(settings, "debug_memory_client", False)) if settings else False
+)
 if debug_memory_client and not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
@@ -56,7 +65,11 @@ class MemoryClient:
         self._mode = "http"
         self._local = None
         self._transport: Optional[MemoryHTTPTransport] = None
-        db_path = str(getattr(settings, "memory_db_path", "./data/memory.db")) if settings else "./data/memory.db"
+        db_path = (
+            str(getattr(settings, "memory_db_path", "./data/memory.db"))
+            if settings
+            else "./data/memory.db"
+        )
         try:
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
         except Exception:
@@ -81,12 +94,38 @@ class MemoryClient:
             headers["X-Soma-Namespace"] = ns
             headers["X-Soma-Tenant"] = ns.split(":")[-1] if ":" in ns else ns
 
-        max_conns = int(getattr(settings, "http_max_connections", _http_setting("http_max_connections", 64))) if settings else 64
-        keepalive = int(getattr(settings, "http_keepalive_connections", _http_setting("http_keepalive_connections", 32))) if settings else 32
-        retries = int(getattr(settings, "http_retries", _http_setting("http_retries", 1))) if settings else 1
+        max_conns = (
+            int(
+                getattr(
+                    settings,
+                    "http_max_connections",
+                    _http_setting("http_max_connections", 64),
+                )
+            )
+            if settings
+            else 64
+        )
+        keepalive = (
+            int(
+                getattr(
+                    settings,
+                    "http_keepalive_connections",
+                    _http_setting("http_keepalive_connections", 32),
+                )
+            )
+            if settings
+            else 32
+        )
+        retries = (
+            int(getattr(settings, "http_retries", _http_setting("http_retries", 1)))
+            if settings
+            else 1
+        )
 
         try:
-            limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
+            limits = httpx.Limits(
+                max_connections=max_conns, max_keepalive_connections=keepalive
+            )
         except Exception:
             limits = None
 
@@ -97,18 +136,32 @@ class MemoryClient:
             pass
 
         cfg_endpoint = str(getattr(self.cfg, "memory_http_endpoint", "") or "")
-        base_url = cfg_endpoint.strip() if cfg_endpoint else (resolved.url if resolved else get_memory_http_endpoint() or "")
+        base_url = (
+            cfg_endpoint.strip()
+            if cfg_endpoint
+            else (resolved.url if resolved else get_memory_http_endpoint() or "")
+        )
         if not base_url:
             raise RuntimeError("Memory HTTP endpoint required but not configured")
         if base_url.endswith("/openapi.json"):
-            base_url = base_url[:-len("/openapi.json")]
+            base_url = base_url[: -len("/openapi.json")]
         base_url = base_url.rstrip("/")
 
-        transport = MemoryHTTPTransport(base_url=base_url, headers=headers, limits=limits, retries=retries, logger=logger)
+        transport = MemoryHTTPTransport(
+            base_url=base_url,
+            headers=headers,
+            limits=limits,
+            retries=retries,
+            logger=logger,
+        )
         if transport.client is None:
-            raise RuntimeError("MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT.")
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT."
+            )
         if not token_value:
-            logger.warning("Memory HTTP client initialized without token; proceeding without auth.")
+            logger.warning(
+                "Memory HTTP client initialized without token; proceeding without auth."
+            )
         return transport
 
     def _get_http_client(self) -> Optional[httpx.Client]:
@@ -135,8 +188,18 @@ class MemoryClient:
             data = self._response_json(r) or {}
             if not isinstance(data, dict):
                 return {"healthy": False, "error": "unexpected health payload"}
-            kv, vec, graph = bool(data.get("kv_store")), bool(data.get("vector_store")), bool(data.get("graph_store"))
-            return {**data, "healthy": kv and vec and graph, "kv_store": kv, "vector_store": vec, "graph_store": graph}
+            kv, vec, graph = (
+                bool(data.get("kv_store")),
+                bool(data.get("vector_store")),
+                bool(data.get("graph_store")),
+            )
+            return {
+                **data,
+                "healthy": kv and vec and graph,
+                "kv_store": kv,
+                "vector_store": vec,
+                "graph_store": graph,
+            }
         except Exception as exc:
             return {"healthy": False, "error": str(exc)}
 
@@ -144,83 +207,194 @@ class MemoryClient:
         """Raise error if memory service is not fully healthy."""
         health = self.health()
         if not health.get("healthy"):
-            missing = [c for c in ("kv_store", "vector_store", "graph_store") if not health.get(c)]
-            raise RuntimeError(f"Memory service unavailable: {', '.join(missing) or 'unknown'}")
+            missing = [
+                c
+                for c in ("kv_store", "vector_store", "graph_store")
+                if not health.get(c)
+            ]
+            raise RuntimeError(
+                f"Memory service unavailable: {', '.join(missing) or 'unknown'}"
+            )
 
     # HTTP helpers - delegate to extracted module
     _response_json = staticmethod(_response_json)
 
-    def _http_post_with_retries_sync(self, endpoint: str, body: dict, headers: dict, *, max_retries: int = 2, operation: str = "unknown") -> tuple[bool, int, Any]:
+    def _http_post_with_retries_sync(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+        operation: str = "unknown",
+    ) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import http_post_with_retries_sync
-        return http_post_with_retries_sync(self._transport, endpoint, body, headers, self._tenant_namespace()[0], max_retries=max_retries, operation=operation)
 
-    async def _http_post_with_retries_async(self, endpoint: str, body: dict, headers: dict, *, max_retries: int = 2, operation: str = "unknown") -> tuple[bool, int, Any]:
+        return http_post_with_retries_sync(
+            self._transport,
+            endpoint,
+            body,
+            headers,
+            self._tenant_namespace()[0],
+            max_retries=max_retries,
+            operation=operation,
+        )
+
+    async def _http_post_with_retries_async(
+        self,
+        endpoint: str,
+        body: dict,
+        headers: dict,
+        *,
+        max_retries: int = 2,
+        operation: str = "unknown",
+    ) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import http_post_with_retries_async
-        return await http_post_with_retries_async(self._transport, endpoint, body, headers, self._tenant_namespace()[0], max_retries=max_retries, operation=operation)
+
+        return await http_post_with_retries_async(
+            self._transport,
+            endpoint,
+            body,
+            headers,
+            self._tenant_namespace()[0],
+            max_retries=max_retries,
+            operation=operation,
+        )
 
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_sync
-        return store_http_sync(self._transport, body, headers, self._tenant_namespace()[0])
+
+        return store_http_sync(
+            self._transport, body, headers, self._tenant_namespace()[0]
+        )
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_async
-        return await store_http_async(self._transport, body, headers, self._tenant_namespace()[0])
 
-    def _store_bulk_http_sync(self, batch_request: dict, headers: dict) -> tuple[bool, int, Any]:
+        return await store_http_async(
+            self._transport, body, headers, self._tenant_namespace()[0]
+        )
+
+    def _store_bulk_http_sync(
+        self, batch_request: dict, headers: dict
+    ) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import store_bulk_http_sync
-        return store_bulk_http_sync(self._transport, batch_request, headers, self._tenant_namespace()[0])
 
-    async def _store_bulk_http_async(self, batch_request: dict, headers: dict) -> tuple[bool, int, Any]:
+        return store_bulk_http_sync(
+            self._transport, batch_request, headers, self._tenant_namespace()[0]
+        )
+
+    async def _store_bulk_http_async(
+        self, batch_request: dict, headers: dict
+    ) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import store_bulk_http_async
-        return await store_bulk_http_async(self._transport, batch_request, headers, self._tenant_namespace()[0])
+
+        return await store_bulk_http_async(
+            self._transport, batch_request, headers, self._tenant_namespace()[0]
+        )
 
     # Hit processing - static method aliases for backward compatibility
     _normalize_recall_hits = staticmethod(normalize_recall_hits)
     _deduplicate_hits = staticmethod(deduplicate_hits)
 
     def _memories_search_sync(
-        self, query: str, top_k: int, universe: str, request_id: str,
+        self,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
     ) -> List[RecallHit]:
         from somabrain.memory.recall_ops import memories_search_sync
+
+        tenant, _ = self._tenant_namespace()
         return memories_search_sync(
-            self._transport, query, top_k, universe, request_id,
+            self._transport,
+            query,
+            top_k,
+            universe,
+            request_id,
             http_post_fn=self._http_post_with_retries_sync,
             rescore_fn=self._rescore_and_rank_hits,
+            tenant=tenant,
         )
 
     async def _memories_search_async(
-        self, query: str, top_k: int, universe: str, request_id: str,
+        self,
+        query: str,
+        top_k: int,
+        universe: str,
+        request_id: str,
     ) -> List[RecallHit]:
         from somabrain.memory.recall_ops import memories_search_async
+
+        tenant, _ = self._tenant_namespace()
         return await memories_search_async(
-            self._transport, query, top_k, universe, request_id,
+            self._transport,
+            query,
+            top_k,
+            universe,
+            request_id,
             http_post_fn=self._http_post_with_retries_async,
             rescore_fn=self._rescore_and_rank_hits,
+            tenant=tenant,
         )
 
     # Recall aggregation aliases
-    _http_recall_aggregate_sync = lambda self, q, k, u, r: self._memories_search_sync(q, k, u, r)
-    _http_recall_aggregate_async = lambda self, q, k, u, r: self._memories_search_async(q, k, u, r)
+    _http_recall_aggregate_sync = lambda self, q, k, u, r: self._memories_search_sync(
+        q, k, u, r
+    )
+    _http_recall_aggregate_async = lambda self, q, k, u, r: self._memories_search_async(
+        q, k, u, r
+    )
 
-    def _filter_hits_by_keyword(self, hits: List[RecallHit], keyword: str) -> List[RecallHit]:
+    def _filter_hits_by_keyword(
+        self, hits: List[RecallHit], keyword: str
+    ) -> List[RecallHit]:
         from somabrain.memory.recall_ops import filter_hits_by_keyword
+
         return filter_hits_by_keyword(hits, keyword)
 
     # Scoring/recency helpers
-    def _recency_normalisation(self) -> tuple[float, float]: return get_recency_normalisation(self.cfg)
-    def _recency_profile(self) -> tuple[float, float, float, float]: return get_recency_profile(self.cfg)
-    def _recency_features(self, ts_epoch: float | None, now_ts: float) -> tuple[float | None, float]: return compute_recency_features(ts_epoch, now_ts, self.cfg)
-    def _density_factor(self, margin: float | None) -> float: return compute_density_factor(margin, self.cfg)
-    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]: return rescore_and_rank_hits(hits, query, self.cfg, self._scorer, self._embedder)
-    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]: return enrich_payload(payload, coord_key, getattr(self.cfg, "namespace", None))
+    def _recency_normalisation(self) -> tuple[float, float]:
+        return get_recency_normalisation(self.cfg)
+
+    def _recency_profile(self) -> tuple[float, float, float, float]:
+        return get_recency_profile(self.cfg)
+
+    def _recency_features(
+        self, ts_epoch: float | None, now_ts: float
+    ) -> tuple[float | None, float]:
+        return compute_recency_features(ts_epoch, now_ts, self.cfg)
+
+    def _density_factor(self, margin: float | None) -> float:
+        return compute_density_factor(margin, self.cfg)
+
+    def _rescore_and_rank_hits(
+        self, hits: List[RecallHit], query: str
+    ) -> List[RecallHit]:
+        return rescore_and_rank_hits(
+            hits, query, self.cfg, self._scorer, self._embedder
+        )
+
+    def _compat_enrich_payload(
+        self, payload: dict, coord_key: str
+    ) -> tuple[dict, str, dict]:
+        tenant, namespace = self._tenant_namespace()
+        return enrich_payload(payload, coord_key, namespace, tenant=tenant)
 
     def _tenant_namespace(self) -> tuple[str, str]:
         from somabrain.memory.utils import get_tenant_namespace
+
         return get_tenant_namespace(self.cfg)
 
-    def _record_http_metrics(self, operation: str, success: bool, status: int, duration: float) -> None:
+    def _record_http_metrics(
+        self, operation: str, success: bool, status: int, duration: float
+    ) -> None:
         from somabrain.memory.http_helpers import record_http_metrics
-        record_http_metrics(operation, self._tenant_namespace()[0], success, status, duration)
+
+        record_http_metrics(
+            operation, self._tenant_namespace()[0], success, status, duration
+        )
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -249,10 +423,14 @@ class MemoryClient:
             return coord
 
         # Check fast-ack mode for sync callers
-        fast_ack = bool(getattr(settings, "memory_fast_ack", False)) if settings else False
+        fast_ack = (
+            bool(getattr(settings, "memory_fast_ack", False)) if settings else False
+        )
         if fast_ack:
             try:
-                asyncio.get_event_loop().run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                asyncio.get_event_loop().run_in_executor(
+                    None, self._remember_sync_persist, coord_key, payload, rid
+                )
             except Exception:
                 try:
                     self._remember_sync_persist(coord_key, payload, rid)
@@ -270,16 +448,24 @@ class MemoryClient:
                 pass
         return coord
 
-    def _schedule_async_persist(self, coord_key: str, payload: dict, rid: str, loop) -> None:
+    def _schedule_async_persist(
+        self, coord_key: str, payload: dict, rid: str, loop
+    ) -> None:
         """Schedule async or executor-based persistence."""
         try:
             if self._transport is not None and self._transport.async_client is not None:
                 try:
-                    loop.create_task(self._aremember_background(coord_key, payload, rid))
+                    loop.create_task(
+                        self._aremember_background(coord_key, payload, rid)
+                    )
                 except Exception:
-                    loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                    loop.run_in_executor(
+                        None, self._remember_sync_persist, coord_key, payload, rid
+                    )
             else:
-                loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                loop.run_in_executor(
+                    None, self._remember_sync_persist, coord_key, payload, rid
+                )
         except Exception:
             try:
                 self._remember_sync_persist(coord_key, payload, rid)
@@ -293,14 +479,19 @@ class MemoryClient:
     ) -> List[Tuple[float, float, float]]:
         """Store multiple memories in a single HTTP round-trip."""
         from somabrain.memory.remember import prepare_bulk_items, process_bulk_response
+
         self._require_healthy()
 
-        prepared, universes, coords, tenant, namespace = prepare_bulk_items(self.cfg, items)
+        prepared, universes, coords, tenant, namespace = prepare_bulk_items(
+            self.cfg, items
+        )
         if not prepared:
             return []
 
         if self._transport is None or self._transport.client is None:
-            raise RuntimeError("MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember).")
+            raise RuntimeError(
+                "MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember)."
+            )
 
         rid = request_id or str(uuid.uuid4())
         headers = {"X-Request-ID": rid}
@@ -309,7 +500,8 @@ class MemoryClient:
         if batch_universe:
             headers["X-Universe"] = batch_universe
         batch_payload = {
-            "tenant": tenant, "namespace": namespace,
+            "tenant": tenant,
+            "namespace": namespace,
             "items": [entry["body"] for entry in prepared],
         }
         if batch_universe:
@@ -325,7 +517,9 @@ class MemoryClient:
                 single_headers["X-Request-ID"] = f"{rid}:{idx}"
                 ok, resp = self._store_http_sync(entry["body"], single_headers)
                 if ok and resp is not None:
-                    server_coord = _extract_memory_coord(resp, idempotency_key=single_headers["X-Request-ID"])
+                    server_coord = _extract_memory_coord(
+                        resp, idempotency_key=single_headers["X-Request-ID"]
+                    )
                     if server_coord:
                         coords[idx] = server_coord
             return coords
@@ -339,18 +533,28 @@ class MemoryClient:
         self._require_healthy()
         if self._transport is not None and self._transport.async_client is not None:
             try:
-                enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
+                enriched, universe, compat_hdr = self._compat_enrich_payload(
+                    payload, coord_key
+                )
                 coord = _stable_coord(f"{universe}::{coord_key}")
                 enriched = dict(enriched)
                 enriched.setdefault("coordinate", coord)
-                memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
-                body = {"coord": f"{coord[0]},{coord[1]},{coord[2]}", "payload": enriched, "memory_type": memory_type}
+                memory_type = str(
+                    enriched.get("memory_type") or enriched.get("type") or "episodic"
+                )
+                body = {
+                    "coord": f"{coord[0]},{coord[1]},{coord[2]}",
+                    "payload": enriched,
+                    "memory_type": memory_type,
+                }
                 rid = request_id or str(uuid.uuid4())
                 rid_hdr = {"X-Request-ID": rid}
                 rid_hdr.update(compat_hdr)
                 ok, response_data = await self._store_http_async(body, rid_hdr)
                 if ok and response_data is not None:
-                    server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
+                    server_coord = _extract_memory_coord(
+                        response_data, idempotency_key=rid
+                    )
                     if server_coord:
                         return server_coord
                 return coord
@@ -366,13 +570,16 @@ class MemoryClient:
     ) -> List[Tuple[float, float, float]]:
         """Async companion to remember_bulk using the async HTTP client."""
         from somabrain.memory.remember import prepare_bulk_items, process_bulk_response
+
         self._require_healthy()
 
         records = list(items)
         if not records:
             return []
 
-        prepared, universes, coords, tenant, namespace = prepare_bulk_items(self.cfg, records)
+        prepared, universes, coords, tenant, namespace = prepare_bulk_items(
+            self.cfg, records
+        )
         if not prepared:
             return []
 
@@ -385,11 +592,17 @@ class MemoryClient:
         batch_universe = unique_universes[0] if len(unique_universes) == 1 else None
         if batch_universe:
             headers["X-Universe"] = batch_universe
-        batch_payload = {"tenant": tenant, "namespace": namespace, "items": [entry["body"] for entry in prepared]}
+        batch_payload = {
+            "tenant": tenant,
+            "namespace": namespace,
+            "items": [entry["body"] for entry in prepared],
+        }
         if batch_universe:
             batch_payload["universe"] = batch_universe
 
-        success, status, response = await self._store_bulk_http_async(batch_payload, headers)
+        success, status, response = await self._store_bulk_http_async(
+            batch_payload, headers
+        )
         if success and response is not None:
             return process_bulk_response(response, prepared, coords, rid)
 
@@ -399,7 +612,9 @@ class MemoryClient:
                 single_headers["X-Request-ID"] = f"{rid}:{idx}"
                 ok, resp = await self._store_http_async(entry["body"], single_headers)
                 if ok and resp is not None:
-                    server_coord = _extract_memory_coord(resp, idempotency_key=single_headers["X-Request-ID"])
+                    server_coord = _extract_memory_coord(
+                        resp, idempotency_key=single_headers["X-Request-ID"]
+                    )
                     if server_coord:
                         coords[idx] = server_coord
             return coords
@@ -419,38 +634,61 @@ class MemoryClient:
         return self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
 
     def recall_with_scores(
-        self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None,
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
     ) -> List[RecallHit]:
         """Recall memories including similarity scores."""
         self._require_healthy()
         if self._transport is not None and self._transport.client is not None:
-            hits = self._http_recall_aggregate_sync(query, top_k, universe or "real", request_id or str(uuid.uuid4()))
+            hits = self._http_recall_aggregate_sync(
+                query, top_k, universe or "real", request_id or str(uuid.uuid4())
+            )
             if hits:
                 return hits
         return self.recall(query, top_k, universe, request_id)
 
     async def arecall(
-        self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None,
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
     ) -> List[RecallHit]:
         """Async recall for HTTP mode; falls back to sync execution when needed."""
         if self._transport is not None and self._transport.async_client is not None:
-            return await self._http_recall_aggregate_async(query, top_k, universe or "real", request_id or str(uuid.uuid4()))
-        return await asyncio.get_event_loop().run_in_executor(None, self.recall, query, top_k, universe, request_id)
+            return await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", request_id or str(uuid.uuid4())
+            )
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self.recall, query, top_k, universe, request_id
+        )
 
     async def arecall_with_scores(
-        self, query: str, top_k: int = 3, universe: str | None = None, request_id: str | None = None,
+        self,
+        query: str,
+        top_k: int = 3,
+        universe: str | None = None,
+        request_id: str | None = None,
     ) -> List[RecallHit]:
         """Async companion to recall_with_scores."""
         if self._transport is not None and self._transport.async_client is not None:
-            hits = await self._http_recall_aggregate_async(query, top_k, universe or "real", request_id or str(uuid.uuid4()))
+            hits = await self._http_recall_aggregate_async(
+                query, top_k, universe or "real", request_id or str(uuid.uuid4())
+            )
             if hits:
                 return hits
         return await self.arecall(query, top_k, universe, request_id)
 
     # --- Compatibility helper methods ---
-    def coord_for_key(self, key: str, universe: str | None = None) -> Tuple[float, float, float]:
+    def coord_for_key(
+        self, key: str, universe: str | None = None
+    ) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*."""
         from somabrain.memory.utils import coord_for_key
+
         return coord_for_key(key, universe)
 
     def fetch_by_coord(
@@ -458,20 +696,29 @@ class MemoryClient:
     ) -> List[Dict[str, Any]]:
         """Fetch memory payloads by coordinate using GET /memories/{coord}."""
         from somabrain.memory.utils import fetch_by_coord
+
         return fetch_by_coord(self._get_http_client(), coord)
 
     def store_from_payload(self, payload: dict, request_id: str | None = None) -> bool:
         """Store a payload dict into the memory backend."""
         from somabrain.memory.utils import store_from_payload
-        return store_from_payload(payload, request_id, self._store_http_sync, self.remember)
+
+        return store_from_payload(
+            payload, request_id, self._store_http_sync, self.remember
+        )
 
     def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None
     ) -> Tuple[float, float, float] | None:
         """Synchronous persistence implementation."""
         from somabrain.memory.remember import remember_sync_persist
+
         return remember_sync_persist(
-            self._transport, self.cfg, coord_key, payload, request_id,
+            self._transport,
+            self.cfg,
+            coord_key,
+            payload,
+            request_id,
             self._store_http_sync,
         )
 
@@ -480,8 +727,13 @@ class MemoryClient:
     ) -> None:
         """Async background persistence using the AsyncClient."""
         from somabrain.memory.remember import aremember_background
+
         await aremember_background(
-            self._transport, self.cfg, coord_key, payload, request_id,
+            self._transport,
+            self.cfg,
+            coord_key,
+            payload,
+            request_id,
             self._store_http_async,
         )
 

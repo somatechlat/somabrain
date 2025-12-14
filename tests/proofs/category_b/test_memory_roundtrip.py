@@ -18,10 +18,12 @@ import pytest
 
 
 # ---------------------------------------------------------------------------
-# Configuration - REAL Docker ports
+# Configuration - REAL Docker ports from environment or defaults
 # ---------------------------------------------------------------------------
 
-APP_PORT = 9696
+import os
+
+APP_PORT = int(os.getenv("SOMABRAIN_PORT", "9696"))
 APP_URL = f"http://localhost:{APP_PORT}"
 
 
@@ -249,6 +251,11 @@ class TestTenantMemoryIsolation:
     """Tests for tenant memory isolation against REAL backends.
 
     **Feature: full-capacity-testing, Category D1: Memory Isolation**
+
+    SECURITY FIX APPLIED: Tenant isolation is now enforced via:
+    1. Client-side filtering in somabrain/memory/recall_ops.py (_filter_by_tenant)
+    2. Server-side filtering via tenant field in search request body
+    3. Defense-in-depth: both client and server filter by tenant_id
     """
 
     def test_tenant_a_invisible_to_tenant_b(self) -> None:
@@ -259,6 +266,9 @@ class TestTenantMemoryIsolation:
 
         WHEN tenant A stores a memory THEN tenant B's recall SHALL NOT
         return it.
+
+        FIX APPLIED: Added tenant_id filtering to recall_ops.py (client-side)
+        and included tenant in search request body (server-side).
         """
         tenant_a = f"tenant_a_{uuid.uuid4().hex[:8]}"
         tenant_b = f"tenant_b_{uuid.uuid4().hex[:8]}"
@@ -331,6 +341,9 @@ class TestTenantMemoryIsolation:
 
         WHEN tenant A queries with tenant B's content THEN results
         SHALL be empty.
+
+        FIX APPLIED: Added tenant_id filtering to recall_ops.py (client-side)
+        and included tenant in search request body (server-side).
         """
         tenant_a = f"tenant_a_{uuid.uuid4().hex[:8]}"
         tenant_b = f"tenant_b_{uuid.uuid4().hex[:8]}"

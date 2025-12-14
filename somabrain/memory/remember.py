@@ -24,8 +24,13 @@ logger = logging.getLogger(__name__)
 def _get_tenant_namespace(cfg: Any) -> tuple[str, str]:
     """Resolve tenant and namespace from cfg/settings."""
     from common.config.settings import settings
-    tenant = getattr(cfg, "tenant", None) or getattr(settings, "default_tenant", "public")
-    namespace = getattr(cfg, "namespace", None) or getattr(settings, "namespace", "public")
+
+    tenant = getattr(cfg, "tenant", None) or getattr(
+        settings, "default_tenant", "public"
+    )
+    namespace = getattr(cfg, "namespace", None) or getattr(
+        settings, "namespace", "public"
+    )
     return str(tenant or "public"), str(namespace or "public")
 
 
@@ -41,8 +46,10 @@ def remember_sync_persist(
     if transport is None or transport.client is None:
         raise RuntimeError("HTTP memory service required for persistence")
 
-    namespace = getattr(cfg, "namespace", None)
-    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace)
+    tenant, namespace = _get_tenant_namespace(cfg)
+    enriched, uni, compat_hdr = enrich_payload(
+        payload, coord_key, namespace, tenant=tenant
+    )
     sc = _stable_coord(f"{uni}::{coord_key}")
 
     coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
@@ -91,10 +98,12 @@ async def aremember_background(
 
     rid = request_id
     rid_hdr = {"X-Request-ID": rid} if rid else {}
-    namespace = getattr(cfg, "namespace", None)
-    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace)
+    tenant, namespace = _get_tenant_namespace(cfg)
+    enriched, uni, compat_hdr = enrich_payload(
+        payload, coord_key, namespace, tenant=tenant
+    )
     rid_hdr.update(compat_hdr)
-    tenant, ns = _get_tenant_namespace(cfg)
+    ns = namespace
 
     body: dict[str, Any] = {
         "tenant": tenant,
@@ -105,8 +114,15 @@ async def aremember_background(
         "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
     }
     for optional_key in (
-        "meta", "ttl_seconds", "tags", "policy_tags", "attachments",
-        "links", "signals", "importance", "novelty",
+        "meta",
+        "ttl_seconds",
+        "tags",
+        "policy_tags",
+        "attachments",
+        "links",
+        "signals",
+        "importance",
+        "novelty",
     ):
         if isinstance(payload, dict) and optional_key in payload:
             body[optional_key] = payload.get(optional_key)
@@ -129,7 +145,7 @@ def prepare_bulk_items(
     items: Iterable[tuple[str, dict[str, Any]]],
 ) -> tuple[List[dict], List[str], List[Tuple[float, float, float]], str, str]:
     """Prepare bulk items for remember_bulk operations.
-    
+
     Returns: (prepared, universes, coords, tenant, namespace)
     """
     records = list(items)
@@ -143,7 +159,9 @@ def prepare_bulk_items(
     cfg_namespace = getattr(cfg, "namespace", None)
 
     for coord_key, payload in records:
-        enriched, universe, _ = enrich_payload(payload, coord_key, cfg_namespace)
+        enriched, universe, _ = enrich_payload(
+            payload, coord_key, cfg_namespace, tenant=tenant
+        )
         coord = _stable_coord(f"{universe}::{coord_key}")
         body: dict[str, Any] = {
             "tenant": tenant,
@@ -153,18 +171,28 @@ def prepare_bulk_items(
             "universe": universe,
         }
         for optional_key in (
-            "meta", "ttl_seconds", "tags", "policy_tags", "attachments",
-            "links", "signals", "importance", "novelty", "trace_id",
+            "meta",
+            "ttl_seconds",
+            "tags",
+            "policy_tags",
+            "attachments",
+            "links",
+            "signals",
+            "importance",
+            "novelty",
+            "trace_id",
         ):
             if isinstance(payload, dict) and optional_key in payload:
                 body[optional_key] = payload.get(optional_key)
         universes.append(universe)
         coords.append(coord)
-        prepared.append({
-            "coord_key": coord_key,
-            "body": body,
-            "universe": universe,
-        })
+        prepared.append(
+            {
+                "coord_key": coord_key,
+                "body": body,
+                "universe": universe,
+            }
+        )
 
     return prepared, universes, coords, tenant, namespace
 
@@ -185,10 +213,10 @@ def process_bulk_response(
                 break
     elif isinstance(response, list):
         returned = response
-    
+
     for idx, entry in enumerate(returned[: len(prepared)]):
         server_coord = _extract_memory_coord(entry, idempotency_key=f"{rid}:{idx}")
         if server_coord:
             coords[idx] = server_coord
-    
+
     return coords
