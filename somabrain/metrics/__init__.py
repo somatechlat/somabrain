@@ -120,6 +120,7 @@ from somabrain.metrics.memory_metrics import (
 
 # Outbox metrics
 from somabrain.metrics.outbox_metrics import (
+    DEFAULT_TENANT_LABEL,
     OUTBOX_PENDING,
     OUTBOX_PROCESSED_TOTAL,
     OUTBOX_REPLAYED_TOTAL,

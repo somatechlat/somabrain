@@ -125,16 +125,13 @@ class AdaptationEngine:
     def _init_dynamic_lr(self, enable_dynamic_lr: bool) -> bool:
         dyn_lr = bool(enable_dynamic_lr)
         if settings is not None:
-            try:
-                dyn_lr = dyn_lr or bool(getattr(settings, "learning_rate_dynamic", False))
-            except Exception:
-                pass
+            try: dyn_lr = dyn_lr or bool(getattr(settings, "learning_rate_dynamic", False))
+            except Exception: pass
         else:
             try:
                 from somabrain import runtime_config as _rt
                 dyn_lr = dyn_lr or _rt.get_bool("learning_rate_dynamic", False)
-            except Exception:
-                pass
+            except Exception: pass
         return dyn_lr
 
     def _init_tau_metric(self) -> None:
@@ -142,8 +139,7 @@ class AdaptationEngine:
             from somabrain.metrics import tau_gauge
             offset = (hash(self._tenant_id) % 100) / 1000.0
             tau_gauge.labels(tenant_id=self._tenant_id).set(self._retrieval.tau + offset)
-        except Exception:
-            pass
+        except Exception: pass
 
     def _maybe_load_state(self) -> None:
         if (self._redis and self._tenant_id and settings and
@@ -158,10 +154,8 @@ class AdaptationEngine:
         self._gains = gains
 
     def set_base_learning_rate(self, base_lr: float) -> None:
-        try:
-            self._base_lr = float(base_lr)
-        except Exception:
-            return
+        try: self._base_lr = float(base_lr)
+        except Exception: return
         self._lr = self._base_lr
 
     def reset(self, retrieval_defaults: Optional[RetrievalWeights] = None, utility_defaults: Optional[UtilityWeights] = None,
@@ -181,10 +175,8 @@ class AdaptationEngine:
             self._utility.lambda_, self._utility.mu, self._utility.nu = float(utility_defaults.lambda_), float(utility_defaults.mu), float(utility_defaults.nu)
         else:
             self._utility.lambda_, self._utility.mu, self._utility.nu = 1.0, 0.1, 0.05
-        if base_lr is not None:
-            self.set_base_learning_rate(float(base_lr))
-        else:
-            self._lr = self._base_lr
+        if base_lr is not None: self.set_base_learning_rate(float(base_lr))
+        else: self._lr = self._base_lr
         if clear_history:
             self._history.clear()
             self._feedback_count = 0
@@ -229,22 +221,17 @@ class AdaptationEngine:
         return float(self._retrieval.alpha)
 
     def apply_feedback(self, utility: float | Feedback, reward: Optional[float] = None) -> bool:
-        if hasattr(utility, "score"):
-            utility_val = float(getattr(utility, "score"))
-        else:
-            utility_val = float(utility)
+        if hasattr(utility, "score"): utility_val = float(getattr(utility, "score"))
+        else: utility_val = float(utility)
         signal = reward if reward is not None else utility_val
-        if signal is None:
-            return False
+        if signal is None: return False
         self._update_learning_rate()
         self._save_history()
         semantic_signal, utility_signal = float(signal), float(reward) if reward is not None else float(signal)
         self._apply_weight_updates(semantic_signal, utility_signal)
         self._apply_tau_and_entropy()
-        try:
-            self._feedback_count = getattr(self, "_feedback_count", 0) + 1
-        except Exception:
-            pass
+        try: self._feedback_count = getattr(self, "_feedback_count", 0) + 1
+        except Exception: pass
         self._persist_if_enabled()
         self._update_metrics()
         return True
@@ -255,8 +242,7 @@ class AdaptationEngine:
             dopamine = self._get_dopamine_level()
             lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
             self._lr = self._base_lr * lr_scale
-        else:
-            self._lr = self._base_lr
+        else: self._lr = self._base_lr
         self._lr_eff = self._lr
 
     def _apply_weight_updates(self, semantic_signal: float, utility_signal: float) -> None:
@@ -280,26 +266,21 @@ class AdaptationEngine:
         try:
             from somabrain.neuromodulators import PerTenantNeuromodulators
             return PerTenantNeuromodulators().get_state(self._tenant_id).dopamine
-        except Exception:
-            return 0.0
+        except Exception: return 0.0
 
     def _constrain(self, name: str, value: float) -> float:
         lower, upper = self._constraints.get(name, (None, None))
-        if lower is not None and value < lower:
-            return lower
-        if upper is not None and value > upper:
-            return upper
+        if lower is not None and value < lower: return lower
+        if upper is not None and value > upper: return upper
         return value
 
     def _save_history(self) -> None:
-        if len(self._history) >= self._max_history:
-            self._history.pop(0)
+        if len(self._history) >= self._max_history: self._history.pop(0)
         self._history.append(({"alpha": self._retrieval.alpha, "beta": self._retrieval.beta, "gamma": self._retrieval.gamma, "tau": self._retrieval.tau},
                               {"lambda_": self._utility.lambda_, "mu": self._utility.mu, "nu": self._utility.nu}))
 
     def rollback(self) -> bool:
-        if not self._history:
-            return False
+        if not self._history: return False
         prev_retrieval, prev_utility = self._history.pop()
         self._retrieval.alpha, self._retrieval.beta = prev_retrieval["alpha"], prev_retrieval["beta"]
         self._retrieval.gamma, self._retrieval.tau = prev_retrieval["gamma"], prev_retrieval["tau"]
@@ -313,8 +294,7 @@ class AdaptationEngine:
             _metrics.update_learning_utility_weights(tenant_id=self._tenant_id, lambda_=self._utility.lambda_, mu=self._utility.mu, nu=self._utility.nu)
             _metrics.update_learning_gains(tenant_id=self._tenant_id, **asdict(self._gains))
             _metrics.update_learning_bounds(tenant_id=self._tenant_id, **asdict(self._constraint_bounds))
-        except Exception:
-            pass
+        except Exception: pass
 
     def _persist_if_enabled(self) -> None:
         if is_persistence_enabled():
@@ -322,15 +302,13 @@ class AdaptationEngine:
             self._persist_state()
 
     def _persist_state(self) -> None:
-        if not self._redis:
-            return
+        if not self._redis: return
         persist_state(self._redis, self._tenant_id, {"alpha": self._retrieval.alpha, "beta": self._retrieval.beta, "gamma": self._retrieval.gamma, "tau": self._retrieval.tau},
                       {"lambda_": self._utility.lambda_, "mu": self._utility.mu, "nu": self._utility.nu}, getattr(self, "_feedback_count", 0), float(self._lr))
 
     def _load_state(self) -> None:
         state = load_state(self._redis, self._tenant_id)
-        if not state:
-            return
+        if not state: return
         if "retrieval" in state:
             r = state["retrieval"]
             self._retrieval.alpha, self._retrieval.beta = r.get("alpha", self._retrieval.alpha), r.get("beta", self._retrieval.beta)
@@ -350,12 +328,9 @@ class AdaptationEngine:
 
     def set_curriculum_stage(self, stage: str) -> None:
         key, base = str(stage).strip().lower(), float(self._base_lr)
-        if key == "easy":
-            self._lr = _clamp(base * 1.2, 0.001, 1.0)
-        elif key == "hard":
-            self._lr = _clamp(base * 0.5, 0.001, 1.0)
-        else:
-            self._lr = _clamp(base, 0.001, 1.0)
+        if key == "easy": self._lr = _clamp(base * 1.2, 0.001, 1.0)
+        elif key == "hard": self._lr = _clamp(base * 0.5, 0.001, 1.0)
+        else: self._lr = _clamp(base, 0.001, 1.0)
 
     def _monitor_performance(self, metrics: dict) -> None:
         try:
@@ -364,47 +339,33 @@ class AdaptationEngine:
             self.performance_history = performance_history
             reward = float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception:
-            pass
+        except Exception: pass
 
     def update_parameters(self, feedback: dict) -> None:
         reward, error = 0.0, 0.0
-        try:
-            reward = float(feedback.get("reward", 0.0))
-        except Exception:
-            pass
-        try:
-            error = float(feedback.get("error", 0.0))
-        except Exception:
-            pass
+        try: reward = float(feedback.get("reward", 0.0))
+        except Exception: pass
+        try: error = float(feedback.get("error", 0.0))
+        except Exception: pass
         try:
             self.apply_feedback(utility=reward, reward=reward)
             self._retrieval.tau = _clamp(self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0)
-        except Exception:
-            pass
+        except Exception: pass
 
     def update_from_experience(self, exp: dict) -> None:
-        try:
-            self.total_experiences = int(getattr(self, "total_experiences", 0) + 1)
-        except Exception:
-            self.total_experiences = 1
+        try: self.total_experiences = int(getattr(self, "total_experiences", 0) + 1)
+        except Exception: self.total_experiences = 1
         try:
             reward = float(exp.get("reward", 0.0)) if isinstance(exp, dict) else 0.0
             self.apply_feedback(utility=reward, reward=reward)
-        except Exception:
-            pass
+        except Exception: pass
 
     def initialize_from_prior(self, prior_params: dict) -> None:
-        if not isinstance(prior_params, dict):
-            return
-        try:
-            self._lr = float(prior_params.get("learning_rate", self._lr))
-        except Exception:
-            pass
-        try:
-            self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
-        except Exception:
-            pass
+        if not isinstance(prior_params, dict): return
+        try: self._lr = float(prior_params.get("learning_rate", self._lr))
+        except Exception: pass
+        try: self._retrieval.tau = float(prior_params.get("tau", self._retrieval.tau))
+        except Exception: pass
 
     def linear_decay(self, tau_0: float, tau_min: float, alpha: float, t: int) -> float:
         return linear_decay(tau_0, tau_min, alpha, t)
