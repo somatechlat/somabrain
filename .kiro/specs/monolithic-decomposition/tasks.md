@@ -12,9 +12,10 @@
     - Add `app.include_router(health_router)`
     - Remove extracted endpoint definitions
     - _Requirements: 1.1_
-  - [ ]* 1.3 Write property test for route preservation
+  - [x]* 1.3 Write property test for route preservation
     - **Property 2: API Route Preservation**
     - **Validates: Requirements 1.2**
+    - Created `tests/property/test_route_preservation.py`
 
 - [x] 2. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
