@@ -54,6 +54,4 @@ class RewardGateMiddleware(BaseHTTPMiddleware):
             # Continue with request processing.
             from starlette.responses import JSONResponse
 
-            return JSONResponse(
-                status_code=500, content={"message": "Internal Server Error"}
-            )
+            return JSONResponse(status_code=500, content={"message": "Internal Server Error"})

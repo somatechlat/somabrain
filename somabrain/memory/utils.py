@@ -36,9 +36,7 @@ def get_tenant_namespace(cfg: Any) -> tuple[str, str]:
         tenant = str(tenant).strip()
 
     # Get namespace from config or settings
-    namespace = getattr(cfg, "namespace", None) or getattr(
-        settings, "namespace", "public"
-    )
+    namespace = getattr(cfg, "namespace", None) or getattr(settings, "namespace", "public")
     namespace = str(namespace or "public").strip()
 
     # If no explicit tenant, try to extract from namespace string
@@ -144,9 +142,7 @@ def store_from_payload(
             body = {
                 "coord": f"{c[0]},{c[1]},{c[2]}",
                 "payload": dict(payload),
-                "memory_type": str(
-                    payload.get("memory_type") or payload.get("type") or "episodic"
-                ),
+                "memory_type": str(payload.get("memory_type") or payload.get("type") or "episodic"),
             }
             success, _ = store_http_sync_fn(body, headers)
             return success

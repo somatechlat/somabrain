@@ -23,7 +23,9 @@ class CognitiveInputValidator:
             raise ValueError(f"{field_name} cannot be empty")
 
         if len(text) > CognitiveInputValidator.MAX_TEXT_LENGTH:
-            raise ValueError(f"{field_name} exceeds maximum length of {CognitiveInputValidator.MAX_TEXT_LENGTH}")
+            raise ValueError(
+                f"{field_name} exceeds maximum length of {CognitiveInputValidator.MAX_TEXT_LENGTH}"
+            )
 
         if not CognitiveInputValidator.SAFE_TEXT_PATTERN.match(text):
             logger.warning(f"Potentially unsafe input detected in {field_name}: {text[:100]}...")
@@ -35,10 +37,14 @@ class CognitiveInputValidator:
     def validate_embedding_dim(dim: int) -> int:
         """Validate embedding dimensions for brain safety."""
         if not isinstance(dim, int) or dim < CognitiveInputValidator.MIN_EMBEDDING_DIM:
-            raise ValueError(f"Embedding dimension must be at least {CognitiveInputValidator.MIN_EMBEDDING_DIM}")
+            raise ValueError(
+                f"Embedding dimension must be at least {CognitiveInputValidator.MIN_EMBEDDING_DIM}"
+            )
 
         if dim > CognitiveInputValidator.MAX_EMBEDDING_DIM:
-            raise ValueError(f"Embedding dimension cannot exceed {CognitiveInputValidator.MAX_EMBEDDING_DIM}")
+            raise ValueError(
+                f"Embedding dimension cannot exceed {CognitiveInputValidator.MAX_EMBEDDING_DIM}"
+            )
 
         return dim
 
@@ -67,4 +73,3 @@ class CognitiveInputValidator:
         query = re.sub(r"javascript:", "", query, flags=re.IGNORECASE)
         query = re.sub(r"data:", "", query, flags=re.IGNORECASE)
         return CognitiveInputValidator.validate_text_input(query, "query")
-

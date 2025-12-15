@@ -54,9 +54,7 @@ class PredictorBase:
       - confidence(error) = exp(-alpha * error)
     """
 
-    def __init__(
-        self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None
-    ):
+    def __init__(self, apply_A: ApplyOp, dim: int, cfg: Optional[PredictorConfig] = None):
         self.apply_A = apply_A
         self.dim = int(dim)
         self.cfg = cfg or PredictorConfig()
@@ -96,9 +94,7 @@ class HeatDiffusionPredictor(PredictorBase):
     It expects callers to supply a one-hot source vector and an observed vector.
     """
 
-    def step(
-        self, source_idx: int, observed: np.ndarray
-    ) -> Tuple[np.ndarray, float, float]:
+    def step(self, source_idx: int, observed: np.ndarray) -> Tuple[np.ndarray, float, float]:
         x0 = np.zeros(self.dim, dtype=float)
         x0[max(0, min(self.dim - 1, int(source_idx)))] = 1.0
         y = self.salience(x0)

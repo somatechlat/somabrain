@@ -37,12 +37,11 @@ try:
         connections,
         utility,
     )
+
     try:  # pymilvus 2.4 exposes exceptions as a module attribute
         from pymilvus import exceptions as _milvus_exceptions
 
-        MilvusException = getattr(
-            _milvus_exceptions, "MilvusException", Exception
-        )
+        MilvusException = getattr(_milvus_exceptions, "MilvusException", Exception)
     except Exception:  # pragma: no cover - compatibility shim
         try:
             from pymilvus.exceptions import MilvusException  # type: ignore
@@ -155,15 +154,11 @@ class MilvusClient:
                 timeout=timeout,
             )
             if not utility.has_collection(self.collection_name):
-                logger.info(
-                    "Milvus collection %s missing – creating", self.collection_name
-                )
+                logger.info("Milvus collection %s missing – creating", self.collection_name)
                 self._create_collection()
             self.collection = Collection(self.collection_name)  # type: ignore[arg-type]
         except MilvusException as exc:
-            logger.warning(
-                "Milvus connection failed (%s); collection operations unavailable", exc
-            )
+            logger.warning("Milvus connection failed (%s); collection operations unavailable", exc)
             self.collection = None
 
         if self.collection is not None:
@@ -203,28 +198,26 @@ class MilvusClient:
         except AttributeError:
             schema_obj = getattr(self.collection, "schema", None)
             if schema_obj is None:
-                logger.warning(
-                    "Milvus Collection schema attribute missing; skipping verification"
-                )
+                logger.warning("Milvus Collection schema attribute missing; skipping verification")
                 return
             raw_fields = []
             for field in getattr(schema_obj, "fields", []):
                 try:
                     raw_fields.append(field.to_dict())
                 except Exception:
-                    raw_fields.append({
-                        "name": getattr(field, "name", "unknown"),
-                        "data_type": getattr(field, "dtype", None),
-                        "params": {
-                            "max_length": getattr(field, "max_length", None),
-                            "dim": getattr(field, "dim", None),
-                        },
-                        "is_primary": getattr(field, "is_primary", False),
-                    })
+                    raw_fields.append(
+                        {
+                            "name": getattr(field, "name", "unknown"),
+                            "data_type": getattr(field, "dtype", None),
+                            "params": {
+                                "max_length": getattr(field, "max_length", None),
+                                "dim": getattr(field, "dim", None),
+                            },
+                            "is_primary": getattr(field, "is_primary", False),
+                        }
+                    )
             if not raw_fields:
-                logger.warning(
-                    "Milvus schema inspection yielded no fields; skipping verification"
-                )
+                logger.warning("Milvus schema inspection yielded no fields; skipping verification")
                 return
             desc = {"fields": raw_fields}
         try:
@@ -262,9 +255,7 @@ class MilvusClient:
                             f"does not match expected {param_val}"
                         )
         except Exception as exc:
-            raise RuntimeError(
-                f"Milvus collection schema verification failed: {exc}"
-            ) from exc
+            raise RuntimeError(f"Milvus collection schema verification failed: {exc}") from exc
 
     def _refresh_segment_load_metric(self, *, force: bool = False) -> None:
         """Update the segment-load gauge using live Milvus query-segment info."""
@@ -279,9 +270,7 @@ class MilvusClient:
             if not force and (now - self._segment_last_refresh) < interval:
                 return
             try:
-                segments = utility.get_query_segment_info(
-                    collection_name=self.collection_name
-                )
+                segments = utility.get_query_segment_info(collection_name=self.collection_name)
             except Exception as exc:
                 logger.debug("Milvus segment info query failed: %s", exc)
                 return
@@ -349,11 +338,7 @@ class MilvusClient:
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot search")
 
-        top_k = (
-            top_k
-            if top_k is not None
-            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
-        )
+        top_k = top_k if top_k is not None else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
         similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None

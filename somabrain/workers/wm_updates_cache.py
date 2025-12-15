@@ -39,9 +39,7 @@ except Exception:  # pragma: no cover
 def _bootstrap() -> str:
     url = getattr(settings, "kafka_bootstrap_servers", "")
     if not url:
-        raise ValueError(
-            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
-        )
+        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
     return url.replace("kafka://", "")
 
 

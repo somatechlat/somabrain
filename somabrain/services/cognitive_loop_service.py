@@ -27,26 +27,27 @@ from somabrain.storage.db import get_session_factory
 
 class CognitiveLoopState:
     """Encapsulates cognitive loop state for DI container management."""
-    
+
     def __init__(self) -> None:
         self._bu_publisher = None
         self._sleep_state_cache: Dict[str, tuple[SleepState, float]] = {}
         self._sleep_cache_ttl = 5.0
-        
+
         if feature_enabled("integrator"):
             try:
                 from somabrain.cog.producer import BeliefUpdatePublisher
+
                 publisher = BeliefUpdatePublisher()
                 if getattr(publisher, "enabled", False):
                     self._bu_publisher = publisher
             except Exception:
                 pass
-    
+
     @property
     def bu_publisher(self):
         """Get the BeliefUpdate publisher (may be None if disabled)."""
         return self._bu_publisher
-    
+
     def get_sleep_state(self, tenant_id: str) -> SleepState:
         """Fetch the current sleep state for a tenant with short TTL caching."""
         now = _t.time()
@@ -65,12 +66,13 @@ class CognitiveLoopState:
                     state = SleepState.ACTIVE
         except Exception as exc:
             from common.logging import logger
+
             logger.exception("Failed to retrieve sleep state from DB: %s", exc)
             state = SleepState.ACTIVE
 
         self._sleep_state_cache[tenant_id] = (state, now)
         return state
-    
+
     def clear_cache(self) -> None:
         """Clear the sleep state cache."""
         self._sleep_state_cache.clear()
@@ -102,7 +104,7 @@ def eval_step(
 ) -> Dict[str, Any]:
     """Evaluate one /act step: predictor, neuromod modulation, salience, gates."""
     loop_state = get_cognitive_loop_state()
-    
+
     sleep_state = loop_state.get_sleep_state(tenant_id)
     sleep_mgr = SleepStateManager()
     sleep_params = sleep_mgr.compute_parameters(sleep_state)
@@ -128,12 +130,15 @@ def eval_step(
     except Exception as exc:
         try:
             from .. import metrics as M
+
             M.PREDICTOR_ALTERNATIVE.inc()
         except Exception as metric_exc:
             from common.logging import logger
+
             logger.debug("Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc)
         pred = type("PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0})()
         from common.logging import logger
+
         logger.exception("Predictor failed, falling back to zero-error recovery path: %s", exc)
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
@@ -147,7 +152,10 @@ def eval_step(
                 traits = personality_store.get("public")
     except Exception as trait_fetch_exc:
         from common.logging import logger
-        logger.debug("Failed to fetch personality traits for tenant=%s: %s", tenant_id, trait_fetch_exc)
+
+        logger.debug(
+            "Failed to fetch personality traits for tenant=%s: %s", tenant_id, trait_fetch_exc
+        )
         traits = None
     nm = personality_store.modulate_neuromods(base_nm, traits) if traits else base_nm
     F = None
@@ -155,10 +163,12 @@ def eval_step(
     if supervisor is not None:
         try:
             from typing import Any, cast
+
             if hasattr(supervisor, "adjust"):
                 nm, F, mag = cast(Any, supervisor).adjust(nm, float(novelty), float(pred.error))
         except Exception as exc:
             from common.logging import logger
+
             logger.exception("Supervisor adjustment failed: %s", exc)
 
     s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
@@ -167,6 +177,7 @@ def eval_step(
             s = 1.0
     except Exception as trait_exc:
         from common.logging import logger
+
         logger.debug("Failed to apply trait-driven salience uplift: %s", trait_exc)
     store_gate, act_gate = amygdala.gates(s, nm)
 
@@ -196,6 +207,7 @@ def eval_step(
             )
         except Exception as exc:
             from common.logging import logger
+
             logger.exception("Telemetry publishing failed: %s", exc)
 
     return {

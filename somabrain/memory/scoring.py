@@ -161,9 +161,7 @@ def compute_recency_features(
     return recency_steps, boost
 
 
-def compute_density_factor(
-    margin: float | None, cfg: Any
-) -> float:
+def compute_density_factor(margin: float | None, cfg: Any) -> float:
     """Compute density factor based on cleanup margin.
 
     Args:
@@ -285,9 +283,7 @@ def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
     quality_exp = 1.0
     if settings is not None:
         try:
-            weighting_enabled = bool(
-                getattr(settings, "memory_enable_weighting", False)
-            )
+            weighting_enabled = bool(getattr(settings, "memory_enable_weighting", False))
             priors_env = getattr(settings, "memory_phase_priors", "") or ""
             quality_exp = float(getattr(settings, "memory_quality_exp", 1.0) or 1.0)
         except Exception:
@@ -297,13 +293,9 @@ def apply_weighting_to_hits(hits: List[RecallHit]) -> None:
         try:
             from common.config.settings import settings as _settings
 
-            weighting_enabled = bool(
-                getattr(_settings, "memory_enable_weighting", False)
-            )
+            weighting_enabled = bool(getattr(_settings, "memory_enable_weighting", False))
             priors_env = getattr(_settings, "memory_phase_priors", "") or ""
-            quality_exp = float(
-                getattr(_settings, "memory_quality_exp", 1.0) or 1.0
-            )
+            quality_exp = float(getattr(_settings, "memory_quality_exp", 1.0) or 1.0)
         except Exception:
             weighting_enabled = False
     if not weighting_enabled:
@@ -397,9 +389,7 @@ def rescore_and_rank_hits(
                     if ts_epoch is not None:
                         break
             if ts_epoch is not None:
-                recency_steps, recency_boost = compute_recency_features(
-                    ts_epoch, now_ts, cfg
-                )
+                recency_steps, recency_boost = compute_recency_features(ts_epoch, now_ts, cfg)
 
             new_score = scorer.score(
                 query_vec,

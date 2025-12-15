@@ -112,7 +112,7 @@ class MemoryHTTPTransport:
 
     def _init_clients(self) -> None:
         """Initialize both sync and async HTTP clients.
-        
+
         Raises RuntimeError if the memory service is not reachable.
         No fallback behavior - fail fast on connection errors.
         """
@@ -216,9 +216,7 @@ class MemoryHTTPTransport:
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                resp = await self._async_client.post(
-                    endpoint, json=body, headers=headers
-                )
+                resp = await self._async_client.post(endpoint, json=body, headers=headers)
             except Exception:
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)

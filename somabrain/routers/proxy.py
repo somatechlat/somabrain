@@ -27,9 +27,7 @@ def _cog_http_base() -> str:
     return "http://somabrain_cog"
 
 
-async def _probe_service_http(
-    path: str, port: int, *, timeout: float = 1.5
-) -> bool:
+async def _probe_service_http(path: str, port: int, *, timeout: float = 1.5) -> bool:
     """Probe a service HTTP endpoint for health."""
     try:
         import httpx
@@ -91,6 +89,4 @@ async def post_reward_proxy(frame_id: str, body: dict) -> dict:
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(
-            status_code=503, detail="Reward producer unavailable (Kafka not ready)"
-        )
+        raise HTTPException(status_code=503, detail="Reward producer unavailable (Kafka not ready)")

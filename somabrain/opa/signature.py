@@ -42,9 +42,7 @@ def sign_policy(policy: str, private_key_path: str) -> str:
         from cryptography.hazmat.primitives.asymmetric import padding
         from cryptography.hazmat.primitives.serialization import load_pem_private_key
     except Exception as e:
-        raise ImportError(
-            "cryptography library required for signing OPA policies"
-        ) from e
+        raise ImportError("cryptography library required for signing OPA policies") from e
 
     key_path = pathlib.Path(private_key_path).expanduser()
     with key_path.open("rb") as f:
@@ -79,9 +77,7 @@ def verify_policy(policy: str, signature_hex: str, public_key_path: str) -> bool
         from cryptography.hazmat.primitives.asymmetric import padding
         from cryptography.hazmat.primitives.serialization import load_pem_public_key
     except Exception as e:
-        raise ImportError(
-            "cryptography library required for verifying OPA policies"
-        ) from e
+        raise ImportError("cryptography library required for verifying OPA policies") from e
 
     key_path = pathlib.Path(public_key_path).expanduser()
     with key_path.open("rb") as f:

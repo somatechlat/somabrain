@@ -78,9 +78,7 @@ class TieredMemoryRegistry:
         """Return the latest in‑process records for a tenant, if any."""
         return self._records.get(tenant)
 
-    def rebuild(
-        self, tenant: str, namespace: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def rebuild(self, tenant: str, namespace: Optional[str] = None) -> Dict[str, Any]:
         """Rebuild ANN indexes for a tenant/namespace.
 
         This is a no-op in the in-memory implementation.

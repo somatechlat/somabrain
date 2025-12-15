@@ -8,11 +8,10 @@ This document contains actionable implementation tasks for deep integration betw
 
 ## Current Status (Updated 2024-12-14)
 
-### Code Quality Status
-- **SomaBrain (SB)**: ✅ Ruff passes (0 errors)
-- **SomaFractalMemory (SFM)**: ✅ Ruff passes (24 E402 warnings - expected due to warnings filter)
-- **Black**: Pending
-- **Pyright**: Pending
+### Code Quality Status (Updated 2024-12-15)
+- **SomaBrain (SB)**: ✅ Ruff passes (0 errors), ✅ Black formatted (175 files)
+- **SomaFractalMemory (SFM)**: ✅ Ruff passes (24 E402 warnings - expected due to warnings filter), ✅ Black formatted
+- **Pyright**: ⚠️ 684 errors (pre-existing SQLAlchemy type stubs issues, not runtime bugs)
 
 ### Key Implementations Verified
 - `somabrain/somabrain/memory/graph_client.py` - GraphClient with Prometheus metrics and OpenTelemetry spans
@@ -86,6 +85,12 @@ This document contains actionable implementation tasks for deep integration betw
   - Additional metrics: SFM_DEGRADATION_EVENTS, SFM_GRAPH_OPERATIONS, SFM_BULK_STORE_*, SFM_HYBRID_RECALL_*
   - Helper functions: `record_sfm_request()`, `update_circuit_breaker_state()`, `record_wm_promotion()`, etc.
   - Exported all metrics in `somabrain/somabrain/metrics/__init__.py`
+- **Code Quality Fixes (2024-12-15)**:
+  - Fixed 45 F401 (unused import) warnings in `somabrain/somabrain/metrics/__init__.py` by adding missing exports to `__all__`
+  - Fixed F841 (unused variable `queued_for_replay`) in `somabrain/somabrain/api/memory_api.py`
+  - Fixed F811 (datetime redefinition) in `somabrain/somabrain/sleep/models.py`
+  - Ran Black formatter on SomaBrain (175 files reformatted)
+  - Ran Black formatter on SomaFractalMemory (1 file reformatted)
 
 ### Implementation Progress Summary
 | Category | Completed | Remaining | Status |

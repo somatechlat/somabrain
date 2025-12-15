@@ -144,9 +144,7 @@ async def run_retrieval_pipeline(
             try:
                 q_vec = embedder.embed(req.query)
                 # Compare against any memory we can fetch
-                hits = memsvc.recall(
-                    req.query, top_k=req.top_k or 3, universe=universe
-                )
+                hits = memsvc.recall(req.query, top_k=req.top_k or 3, universe=universe)
                 for h in hits:
                     pvec = embedder.embed(str(h.get("payload", {})))
                     score = max(score, float(scorer.score(q_vec, pvec)))

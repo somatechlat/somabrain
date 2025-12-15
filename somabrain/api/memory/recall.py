@@ -47,18 +47,21 @@ logger = logging.getLogger(__name__)
 def _get_tiered_registry():
     """Lazy import of tiered registry to avoid circular imports."""
     from somabrain.api.memory_api import _TIERED_REGISTRY
+
     return _TIERED_REGISTRY
 
 
 def _tiered_enabled() -> bool:
     """Check if tiered memory feature is enabled."""
     from somabrain.modes import feature_enabled
+
     return feature_enabled("tiered_memory")
 
 
 def _get_recall_session_store():
     """Get the recall session store from the DI container."""
     from somabrain.api.memory_api import get_recall_session_store
+
     return get_recall_session_store()
 
 
@@ -151,7 +154,7 @@ def _decorated_item(
     if min_score is not None and score_val is not None:
         if score_val < min_score:
             return None
-    
+
     signals = candidate_payload.get("signals")
     importance = None
     novelty = None
@@ -167,7 +170,7 @@ def _decorated_item(
     if affinity is None:
         affinity = candidate_payload.get("affinity")
     confidence = float(score_val) if score_val is not None else importance
-    
+
     return MemoryRecallItem(
         layer=layer_name,
         score=float(score_val) if score_val is not None else None,
@@ -186,7 +189,7 @@ async def perform_recall(
     default_chunk_size: Optional[int] = None,
 ) -> MemoryRecallResponse:
     """Perform memory recall across WM, LTM, and tiered memory.
-    
+
     This is the core recall implementation that handles:
     - Working memory (WM) recall via embeddings
     - Long-term memory (LTM) recall via MemoryService
@@ -195,7 +198,7 @@ async def perform_recall(
     - Session management and chunking
     """
     from fastapi import HTTPException
-    
+
     await _ensure_config_runtime_started()
     layer = (payload.layer or "all").lower()
     if layer not in {"wm", "ltm", "all"}:
@@ -230,6 +233,7 @@ async def perform_recall(
             stage_dur = time.perf_counter() - stage_start
             try:
                 from somabrain import metrics as M
+
                 M.RECALL_WM_LAT.labels(cohort="memory_api").observe(stage_dur)
             except Exception as e:
                 logger.debug("Failed to record WM recall latency metric: %s", e)
@@ -237,10 +241,14 @@ async def perform_recall(
                 if not isinstance(item_payload, dict):
                     continue
                 item = _decorated_item(
-                    "wm", "working_memory",
+                    "wm",
+                    "working_memory",
                     float(score) if score is not None else None,
-                    item_payload, item_payload.get("coordinate"),
-                    payload.tags, payload.max_age_seconds, payload.min_score,
+                    item_payload,
+                    item_payload.get("coordinate"),
+                    payload.tags,
+                    payload.max_age_seconds,
+                    payload.min_score,
                 )
                 if item is not None:
                     wm_hits.append(item)
@@ -268,6 +276,7 @@ async def perform_recall(
         stage_dur = time.perf_counter() - stage_start
         try:
             from somabrain import metrics as M
+
             M.RECALL_LTM_LAT.labels(cohort="memory_api").observe(stage_dur)
         except Exception as e:
             logger.debug("Failed to record LTM recall latency metric: %s", e)
@@ -278,10 +287,14 @@ async def perform_recall(
             coord = getattr(hit, "coordinate", None) or payload_obj.get("coordinate")
             score_val = getattr(hit, "score", None)
             item = _decorated_item(
-                "ltm", "long_term_memory",
+                "ltm",
+                "long_term_memory",
                 float(score_val) if score_val is not None else None,
-                payload_obj, coord,
-                payload.tags, payload.max_age_seconds, payload.min_score,
+                payload_obj,
+                coord,
+                payload.tags,
+                payload.max_age_seconds,
+                payload.min_score,
             )
             if item is not None:
                 ltm_hits.append(item)
@@ -295,7 +308,9 @@ async def perform_recall(
         try:
             tiered_registry = _get_tiered_registry()
             tiered_hit = tiered_registry.recall(
-                payload.tenant, payload.namespace, query_vector=query_vec,
+                payload.tenant,
+                payload.namespace,
+                query_vector=query_vec,
             )
         except Exception:
             tiered_hit = None
@@ -305,9 +320,14 @@ async def perform_recall(
             payload_copy.setdefault("cleanup_backend", tiered_hit.backend)
             coord_obj = tiered_hit.coordinate or payload_copy.get("coordinate")
             item = _decorated_item(
-                tiered_hit.context.layer, "tiered_memory",
-                tiered_hit.context.score, payload_copy, coord_obj,
-                payload.tags, payload.max_age_seconds, payload.min_score,
+                tiered_hit.context.layer,
+                "tiered_memory",
+                tiered_hit.context.score,
+                payload_copy,
+                coord_obj,
+                payload.tags,
+                payload.max_age_seconds,
+                payload.min_score,
             )
             if item is not None:
                 tiered_item = item
@@ -357,15 +377,20 @@ async def perform_recall(
     _prune_sessions()
     if payload.pin_results or chunk_size is not None or payload.session_id:
         _store_recall_session(
-            current_session, payload.tenant, payload.namespace,
-            payload.conversation_id, payload.scoring_mode, all_results,
+            current_session,
+            payload.tenant,
+            payload.namespace,
+            payload.conversation_id,
+            payload.scoring_mode,
+            all_results,
         )
 
     # Record tiered metrics
     if tiered_margin_value is not None:
         try:
             record_memory_snapshot(
-                payload.tenant, payload.namespace,
+                payload.tenant,
+                payload.namespace,
                 margin=tiered_margin_value,
                 eta=tiered_eta_value,
                 sparsity=tiered_sparsity_value,

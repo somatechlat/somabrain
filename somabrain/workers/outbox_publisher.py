@@ -138,9 +138,9 @@ def _publish_record(
         raise RuntimeError("Kafka producer not available")
     try:
         # Serialize payload
-        payload_bytes = json.dumps(
-            payload, separators=(",", ":"), ensure_ascii=False
-        ).encode("utf-8")
+        payload_bytes = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
+            "utf-8"
+        )
 
         # Handle key encoding with validation
         key_bytes = None
@@ -165,9 +165,7 @@ def _publish_record(
         header_items.append(("x-schema-version", "1.0".encode("utf-8")))
 
         # Add producer identification
-        header_items.append(
-            ("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8"))
-        )
+        header_items.append(("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8")))
 
         # Add custom headers
         if headers:
@@ -235,9 +233,7 @@ class TenantQuotaManager:
             # Check quota
             if len(recent_usage) + count > self.quota_limit:
                 # Apply backoff
-                backoff_duration = min(
-                    self.quota_window, max(5.0, self.quota_window * 0.1)
-                )
+                backoff_duration = min(self.quota_window, max(5.0, self.quota_window * 0.1))
                 self.tenant_backoff[tenant] = now + backoff_duration
                 return False
 
@@ -321,9 +317,7 @@ def get_quota_manager() -> TenantQuotaManager:
     """Get or create the global quota manager instance."""
     global _quota_manager
     if _quota_manager is None:
-        _quota_manager = TenantQuotaManager(
-            _PER_TENANT_QUOTA_LIMIT, _PER_TENANT_QUOTA_WINDOW
-        )
+        _quota_manager = TenantQuotaManager(_PER_TENANT_QUOTA_LIMIT, _PER_TENANT_QUOTA_WINDOW)
     return _quota_manager
 
 
@@ -348,9 +342,7 @@ def _update_outbox_pending_metrics() -> None:
     _known_pending_tenants.update(current_tenants)
 
 
-def _process_batch(
-    session: Session, producer, batch_size: int, max_retries: int
-) -> int:
+def _process_batch(session: Session, producer, batch_size: int, max_retries: int) -> int:
     # Get quota manager for tenant rate limiting
     quota_manager = get_quota_manager()
 
@@ -395,9 +387,7 @@ def _process_batch(
                     "dedupe-key": ev.dedupe_key or "",
                     "event-id": str(ev.id),
                     "event-topic": ev.topic,
-                    "event-created-at": (
-                        ev.created_at.isoformat() if ev.created_at else ""
-                    ),
+                    "event-created-at": (ev.created_at.isoformat() if ev.created_at else ""),
                     "retry-count": str(ev.retries or 0),
                     "processing-attempt": str(ev.retries + 1),
                 }
@@ -447,7 +437,9 @@ def _process_batch(
             except Exception as exc:
                 logging.debug(
                     "Failed to report outbox processed for tenant=%s topic=%s: %s",
-                    tenant_label, topic, exc
+                    tenant_label,
+                    topic,
+                    exc,
                 )
                 continue
 
@@ -486,9 +478,7 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
     # Robust startup: retry until producer is available
     while producer is None:
-        logging.warning(
-            "outbox_publisher: Kafka unavailable; retrying producer init..."
-        )
+        logging.warning("outbox_publisher: Kafka unavailable; retrying producer init...")
         time.sleep(create_retry_ms / 1000.0)
         producer = _make_producer()
 

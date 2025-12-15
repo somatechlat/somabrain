@@ -71,14 +71,10 @@ class NeuromodState:
         default_factory=lambda: float(getattr(settings, "neuromod_serotonin_base", 0.5))
     )
     noradrenaline: float = field(
-        default_factory=lambda: float(
-            getattr(settings, "neuromod_noradrenaline_base", 0.0)
-        )
+        default_factory=lambda: float(getattr(settings, "neuromod_noradrenaline_base", 0.0))
     )
     acetylcholine: float = field(
-        default_factory=lambda: float(
-            getattr(settings, "neuromod_acetylcholine_base", 0.0)
-        )
+        default_factory=lambda: float(getattr(settings, "neuromod_acetylcholine_base", 0.0))
     )
     timestamp: float = field(default_factory=lambda: time.time())
 
@@ -230,43 +226,29 @@ class AdaptiveNeuromodulators:
         return self.get_current_state()
 
 
-def _calculate_dopamine_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_dopamine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
-    boost = (
-        settings.neuromod_dopamine_reward_boost
-        if task_type == "reward_learning"
-        else 0.0
-    )
+    boost = settings.neuromod_dopamine_reward_boost if task_type == "reward_learning" else 0.0
     return performance.success_rate + settings.neuromod_dopamine_bias + boost
 
 
-def _calculate_serotonin_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_serotonin_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate serotonin feedback based on emotional stability."""
     # Higher serotonin for stable, consistent performance
     return 1.0 - performance.error_rate
 
 
-def _calculate_noradrenaline_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
     floor = max(0.0, min(1.0, float(settings.neuromod_latency_floor or 0.1)))
-    latency_term = (
-        1.0 / max(floor, performance.latency)
-    ) * settings.neuromod_latency_scale
+    latency_term = (1.0 / max(floor, performance.latency)) * settings.neuromod_latency_scale
     return min(settings.neuromod_noradrenaline_max, latency_term + urgency_factor)
 
 
-def _calculate_acetylcholine_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
     memory_factor = settings.neuromod_memory_factor if task_type == "memory" else 0.0

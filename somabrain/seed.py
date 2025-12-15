@@ -48,7 +48,7 @@ def random_unit_vector(
 ) -> np.ndarray:
     """Return a random unit-length vector (L2-normalized) of shape (dim,)."""
     from somabrain.math import normalize_vector
-    
+
     rng = rng_from_seed(seed)
     v = rng.standard_normal(size=(dim,)).astype(dtype)
     result = normalize_vector(v, dtype=dtype)

@@ -74,21 +74,24 @@ class UnifiedBrainCore:
         combined = []
 
         for i, (node, resonance) in enumerate(fractal_results[: top_k // 2]):
-            combined.append({
-                "content": node.memory_trace,
-                "score": float(resonance),
-                "system": "fractal",
-                "rank": i + 1,
-            })
+            combined.append(
+                {
+                    "content": node.memory_trace,
+                    "score": float(resonance),
+                    "system": "fractal",
+                    "rank": i + 1,
+                }
+            )
 
         for i, (trace, similarity) in enumerate(fnom_results[: top_k // 2]):
-            combined.append({
-                "content": trace.content,
-                "score": float(similarity),
-                "system": "fnom",
-                "rank": i + 1,
-            })
+            combined.append(
+                {
+                    "content": trace.content,
+                    "score": float(similarity),
+                    "system": "fnom",
+                    "rank": i + 1,
+                }
+            )
 
         combined.sort(key=lambda x: x["score"], reverse=True)
         return combined[:top_k]
-

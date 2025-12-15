@@ -17,7 +17,9 @@ from somabrain.schemas import Memory, Observation, Thought
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
+
 
 # In-memory store for demonstration (replace with DB/service in production)
 MEMORY_STORE: List[Memory] = []
@@ -29,11 +31,11 @@ def _to_unit(vec: Any) -> Any:
     Enforces mathematical invariant: all vectors are unit-norm, hrr_dtype, and reproducible.
     """
     from somabrain.math import normalize_vector
-    
+
     s = _get_settings()
     hrr_dim = s.hrr_dim
     hrr_dtype = s.hrr_dtype
-    
+
     v = cast(np.ndarray, np.asarray(vec, dtype=hrr_dtype).reshape(-1))
     if v.size != hrr_dim:
         if v.size < hrr_dim:
@@ -108,9 +110,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
         )
         MEMORY_STORE.append(consolidated)
         return consolidated
-    weights = np.asarray(
-        [max(1e-6, float(m.strength)) for m in memories], dtype=np.float32
-    )
+    weights = np.asarray([max(1e-6, float(m.strength)) for m in memories], dtype=np.float32)
     # mypy's numpy type hints are strict about array shape typing here; the runtime
     # behavior is correct and we normalize shapes via _to_unit — silence the
     # complaint for now and consider a more precise typing later.
@@ -118,9 +118,7 @@ def consolidate_memories(memories: List[Memory]) -> Memory:
     # numpy type hints are strict about tuple shapes; the runtime behavior is
     # correct and validated by _to_unit. Silence the precise shape typing
     # complaint for now with a narrow ignore.
-    vecs = np.stack(
-        [_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0
-    )
+    vecs = np.stack([_to_unit(np.asarray(m.vector, dtype=np.float32)) for m in memories], axis=0)
     w = weights / float(weights.sum())
     avg = (w[:, None] * vecs).sum(axis=0)
     avg = _to_unit(avg)

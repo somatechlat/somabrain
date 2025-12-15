@@ -6,7 +6,7 @@ This module has been removed. All configuration values are now in:
 
 Import directly from Settings:
     from common.config.settings import settings
-    
+
     # Access values:
     settings.hrr_dim          # was HRR_DIM
     settings.hrr_dtype        # was HRR_DTYPE
@@ -30,28 +30,28 @@ from __future__ import annotations
 
 class _RemovedConstant:
     """Sentinel that raises error on any access to removed constants."""
-    
+
     def __init__(self, name: str):
         self._name = name
-    
+
     def __repr__(self) -> str:
         raise AttributeError(self._error_msg())
-    
+
     def __str__(self) -> str:
         raise AttributeError(self._error_msg())
-    
+
     def __bool__(self) -> bool:
         raise AttributeError(self._error_msg())
-    
+
     def __int__(self) -> int:
         raise AttributeError(self._error_msg())
-    
+
     def __float__(self) -> float:
         raise AttributeError(self._error_msg())
-    
+
     def __getitem__(self, key):
         raise AttributeError(self._error_msg())
-    
+
     def _error_msg(self) -> str:
         return (
             f"somabrain.nano_profile.{self._name} has been removed. "

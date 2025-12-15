@@ -35,6 +35,7 @@ def _get_app_config():
     """Get app-level configuration."""
     try:
         from somabrain import runtime as rt
+
         return getattr(rt, "cfg", settings)
     except Exception:
         return settings

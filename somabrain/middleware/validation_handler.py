@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Surface validation errors with context for operators.
-    
+
     Provides route-specific hints to reduce confusion when validation fails.
     """
     try:
@@ -22,10 +22,10 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         body_preview = body[:256].decode("utf-8", errors="ignore") if body else ""
     except Exception:
         body_preview = ""
-    
+
     ip = getattr(request.client, "host", None)
     ua = request.headers.get("user-agent", "")
-    
+
     try:
         logging.getLogger("somabrain").warning(
             "422 validation on %s %s from %s UA=%s bodyPreview=%s",
@@ -37,12 +37,12 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
         )
     except Exception:
         pass
-    
+
     details = exc.errors() if hasattr(exc, "errors") else []
-    
+
     # Provide route-specific hints to reduce confusion when validation fails
     path = request.url.path if hasattr(request, "url") else ""
-    
+
     if "/memory/recall" in str(path):
         hint = {
             "endpoint": "/memory/recall",
@@ -77,7 +77,7 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
             "endpoint": str(path) or "<unknown>",
             "expected": {"json": "See OpenAPI schema for this route"},
         }
-    
+
     return JSONResponse(
         status_code=422,
         content={"detail": details, "hint": hint, "client": ip},

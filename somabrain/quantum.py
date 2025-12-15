@@ -35,13 +35,14 @@ except Exception:  # pragma: no cover - optional dependency
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 
 @dataclass
 class HRRConfig:
     """Configuration for BHDC hyperdimensional operations.
-    
+
     Defaults are sourced from centralized Settings configuration.
     """
 
@@ -71,7 +72,7 @@ class HRRConfig:
             self.renorm = s.hrr_renorm
         if self.sparsity is None:
             self.sparsity = s.quantum_sparsity
-        
+
         # Validation
         if self.dim <= 0:
             raise ValueError("HRRConfig.dim must be a positive integer")
@@ -94,7 +95,7 @@ class HRRConfig:
 
 class QuantumLayer:
     """BHDC-powered hyperdimensional operations.
-    
+
     Implements Binary Hyperdimensional Computing (BHDC) operations for
     cognitive vector manipulation. Provides binding, unbinding, superposition,
     and role-based operations with mathematical guarantees on spectral
@@ -103,16 +104,16 @@ class QuantumLayer:
 
     def __init__(self, cfg: HRRConfig) -> None:
         """Initialize the QuantumLayer with BHDC encoder and permutation binder.
-        
+
         Args:
             cfg: HRRConfig instance specifying dimension, seed, dtype, sparsity,
                  binding method, and role configuration. Defaults are sourced
                  from centralized Settings.
-        
+
         Raises:
             ValueError: If cfg contains invalid parameters (e.g., non-positive
                         dimension, unsupported dtype or binding method).
-        
+
         Notes:
             - Creates a BHDCEncoder for vector encoding with configurable sparsity
             - Creates a PermutationBinder for invertible bind/unbind operations
@@ -154,9 +155,7 @@ class QuantumLayer:
         if arr.ndim != 1:
             arr = arr.reshape(-1)
         if arr.shape[0] != self.cfg.dim:
-            raise ValueError(
-                f"{name} must be 1-D of length {self.cfg.dim}, got {arr.shape}"
-            )
+            raise ValueError(f"{name} must be 1-D of length {self.cfg.dim}, got {arr.shape}")
         return arr
 
     def _renorm(self, v: np.ndarray) -> np.ndarray:
@@ -263,9 +262,7 @@ class QuantumLayer:
             )
             self._validate_unitary_role(role, self._role_fft_cache[token])
         else:
-            seed64 = np.uint64(
-                int(seed_to_uint64(f"role|{token}")) ^ int(self.cfg.seed)
-            )
+            seed64 = np.uint64(int(seed_to_uint64(f"role|{token}")) ^ int(self.cfg.seed))
             rng = np.random.default_rng(seed64)
             role = rng.normal(0.0, 1.0, size=self.cfg.dim).astype(self.cfg.dtype)
             role = self._renorm(role)
@@ -278,9 +275,7 @@ class QuantumLayer:
 
             for existing_token, existing_role in self._role_cache.items():
                 cosine_sim = self.cosine(existing_role, role)
-                MathematicalMetrics.verify_role_orthogonality(
-                    token, existing_token, cosine_sim
-                )
+                MathematicalMetrics.verify_role_orthogonality(token, existing_token, cosine_sim)
                 AdvancedMathematicalMetrics.check_orthogonality(cosine_sim)
 
         self._role_cache[token] = role
@@ -307,9 +302,7 @@ class QuantumLayer:
 
         # Check frame properties if we have enough roles
         if len(self._role_cache) > 1:
-            AdvancedMathematicalMetrics.measure_frame_properties(
-                list(self._role_cache.values())
-            )
+            AdvancedMathematicalMetrics.measure_frame_properties(list(self._role_cache.values()))
 
         return result
 
@@ -373,8 +366,7 @@ class QuantumLayer:
             if density_matrix is not None:
                 try:
                     score = (
-                        alpha * float(density_matrix.score(query, candidate))
-                        + (1 - alpha) * score
+                        alpha * float(density_matrix.score(query, candidate)) + (1 - alpha) * score
                     )
                 except Exception:
                     pass
@@ -386,15 +378,11 @@ class QuantumLayer:
     # ------------------------------------------------------------------
     # Validation helpers
     # ------------------------------------------------------------------
-    def _validate_unitary_role(
-        self, role: np.ndarray, spectrum: Optional[np.ndarray]
-    ) -> None:
+    def _validate_unitary_role(self, role: np.ndarray, spectrum: Optional[np.ndarray]) -> None:
         """Record invariants that prove a role remains unitary."""
 
         norm = float(np.linalg.norm(role))
-        MathematicalMetrics.verify_mathematical_invariant(
-            "unitary_role_norm", abs(norm - 1.0)
-        )
+        MathematicalMetrics.verify_mathematical_invariant("unitary_role_norm", abs(norm - 1.0))
 
         from somabrain.metrics_extra.advanced_math_metrics import (
             AdvancedMathematicalMetrics,
@@ -402,9 +390,7 @@ class QuantumLayer:
 
         AdvancedMathematicalMetrics.record_numerical_error(abs(norm - 1.0))
 
-        magnitudes = (
-            np.abs(spectrum) if spectrum is not None else np.abs(np.fft.rfft(role))
-        )
+        magnitudes = np.abs(spectrum) if spectrum is not None else np.abs(np.fft.rfft(role))
         MathematicalMetrics.verify_spectral_property("unitary_role", magnitudes)
 
         # Track worst-case deviation for spectral gap diagnostics

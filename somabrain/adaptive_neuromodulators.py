@@ -141,27 +141,19 @@ class AdaptivePerTenantNeuromodulators:
         return self.get_adaptive_system(tenant_id).get_adaptation_stats()
 
 
-def _calculate_dopamine_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_dopamine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate dopamine feedback based on reward prediction errors."""
     # Higher dopamine for successful reward-based learning
-    return (
-        performance.success_rate - 0.5 + (0.1 if task_type == "reward_learning" else 0)
-    )
+    return performance.success_rate - 0.5 + (0.1 if task_type == "reward_learning" else 0)
 
 
-def _calculate_serotonin_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_serotonin_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate serotonin feedback based on emotional stability."""
     # Higher serotonin for stable, consistent performance
     return 1.0 - performance.error_rate
 
 
-def _calculate_noradrenaline_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_noradrenaline_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate noradrenaline feedback based on urgency/arousal needs."""
     # Higher noradrenaline for high-stakes/time-critical tasks
     urgency_factor = settings.neuromod_urgency_factor if task_type == "urgent" else 0.0
@@ -171,9 +163,7 @@ def _calculate_noradrenaline_feedback(
     )
 
 
-def _calculate_acetylcholine_feedback(
-    performance: PerformanceMetrics, task_type: str
-) -> float:
+def _calculate_acetylcholine_feedback(performance: PerformanceMetrics, task_type: str) -> float:
     """Calculate acetylcholine feedback based on attention/memory formation."""
     # Higher acetylcholine for memory-intensive tasks
     memory_factor = settings.neuromod_memory_factor if task_type == "memory" else 0.0

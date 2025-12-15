@@ -23,12 +23,13 @@ except Exception:  # pragma: no cover - optional dependency
 @dataclass
 class UtilityWeights:
     """Weights for utility trade-off calculations.
-    
+
     Attributes:
         lambda_: Primary utility weight (default from settings or 1.0)
         mu: Secondary utility weight (default from settings or 0.1)
         nu: Tertiary utility weight (default from settings or 0.05)
     """
+
     lambda_: float = float(getattr(settings, "utility_lambda", 1.0) if settings else 1.0)
     mu: float = float(getattr(settings, "utility_mu", 0.1) if settings else 0.1)
     nu: float = float(getattr(settings, "utility_nu", 0.05) if settings else 0.05)
@@ -57,11 +58,11 @@ class UtilityWeights:
 @dataclass(frozen=True)
 class AdaptationGains:
     """Per-parameter gains applied to the learning signal (settings-driven).
-    
+
     These gains control how strongly each parameter responds to feedback signals.
     Positive gains increase the parameter on positive feedback, negative gains
     decrease it.
-    
+
     Attributes:
         alpha: Gain for retrieval alpha parameter
         gamma: Gain for retrieval gamma parameter
@@ -69,6 +70,7 @@ class AdaptationGains:
         mu: Gain for utility mu parameter
         nu: Gain for utility nu parameter
     """
+
     alpha: float = float(getattr(settings, "adaptation_gain_alpha", 1.0) if settings else 1.0)
     gamma: float = float(getattr(settings, "adaptation_gain_gamma", -0.5) if settings else -0.5)
     lambda_: float = float(getattr(settings, "adaptation_gain_lambda", 1.0) if settings else 1.0)
@@ -90,10 +92,10 @@ class AdaptationGains:
 @dataclass(frozen=True)
 class AdaptationConstraints:
     """Bounds for parameter values during adaptation.
-    
+
     These constraints prevent parameters from drifting too far from reasonable
     values during online learning.
-    
+
     Attributes:
         alpha_min/max: Bounds for retrieval alpha
         gamma_min/max: Bounds for retrieval gamma
@@ -101,6 +103,7 @@ class AdaptationConstraints:
         mu_min/max: Bounds for utility mu
         nu_min/max: Bounds for utility nu
     """
+
     alpha_min: float = float(getattr(settings, "adaptation_alpha_min", 0.1) if settings else 0.1)
     alpha_max: float = float(getattr(settings, "adaptation_alpha_max", 5.0) if settings else 5.0)
     gamma_min: float = float(getattr(settings, "adaptation_gamma_min", 0.0) if settings else 0.0)

@@ -134,9 +134,7 @@ async def metrics_endpoint() -> Any:
     return Response(content=data, media_type=CONTENT_TYPE_LATEST)
 
 
-async def timing_middleware(
-    request: Any, call_next: Callable[[Any], Awaitable[Any]]
-) -> Any:
+async def timing_middleware(request: Any, call_next: Callable[[Any], Awaitable[Any]]) -> Any:
     """
     FastAPI middleware for automatic request timing and metrics collection.
 
@@ -164,9 +162,7 @@ async def timing_middleware(
         path = request.url.path
         method = request.method
         HTTP_LATENCY.labels(method=method, path=path).observe(elapsed)
-        status = getattr(
-            response, "status_code", 500 if response is None else response.status_code
-        )
+        status = getattr(response, "status_code", 500 if response is None else response.status_code)
         HTTP_COUNT.labels(method=method, path=path, status=str(status)).inc()
 
 

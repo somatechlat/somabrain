@@ -41,23 +41,11 @@ async def startup_mode_banner(app: "FastAPI") -> None:
     try:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
-        api_auth = (
-            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        )
-        mem_auth = (
-            bool(getattr(_shared, "mode_memory_auth_required", True))
-            if _shared
-            else True
-        )
+        api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+        mem_auth = bool(getattr(_shared, "mode_memory_auth_required", True)) if _shared else True
         opa_closed = True  # Strict: always fail-closed
-        log_level = (
-            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        )
-        bundle = (
-            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
-            if _shared
-            else "prod"
-        )
+        log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
+        bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
         lg.warning(
             "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s "
             "opa_fail_closed=%s log_level=%s opa_bundle=%s",
@@ -267,29 +255,28 @@ async def start_milvus_reconciliation_task() -> None:
 
 async def startup_diagnostics(cfg: Any) -> None:
     """Emit concise startup diagnostics so operators can see effective backend wiring.
-    
+
     Args:
         cfg: Configuration object with http settings
     """
     import os as _os
-    
+
     try:
         _log = logging.getLogger("somabrain")
-        mem_ep = str(
-            getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
-        ).strip()
+        mem_ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
         token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
-        
+
         # Use centralized Settings flag for Docker detection
         from common.config.settings import settings
+
         in_docker = bool(_os.path.exists("/.dockerenv")) or settings.running_in_docker
-        
+
         # Prefer shared settings for mode and policy flags
         try:
             from common.config.settings import settings as _shared
         except Exception:
             _shared = None
-        
+
         mode = ""
         ext_req = False
         require_memory = True
@@ -318,10 +305,7 @@ async def startup_diagnostics(cfg: Any) -> None:
         if (
             in_docker
             and mem_ep
-            and (
-                mem_ep.startswith("http://127.0.0.1")
-                or mem_ep.startswith("http://localhost")
-            )
+            and (mem_ep.startswith("http://127.0.0.1") or mem_ep.startswith("http://localhost"))
         ):
             _log.warning(
                 "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."
@@ -335,6 +319,7 @@ async def init_observability() -> None:
     """Initialize observability/tracing when available. Fail-open so the API still starts."""
     try:
         from somabrain.observability.provider import init_tracing
+
         init_tracing()
     except Exception:
         # Tracing is optional; log at debug level and continue.

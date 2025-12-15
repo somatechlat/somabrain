@@ -50,12 +50,8 @@ class MTWMConfig:
         default_factory=lambda: max(1, int(settings.wm_per_tenant_capacity))
     )
     max_tenants: int = field(default_factory=lambda: int(settings.mtwm_max_tenants))
-    recency_time_scale: float = field(
-        default_factory=lambda: float(settings.wm_recency_time_scale)
-    )
-    recency_max_steps: float = field(
-        default_factory=lambda: float(settings.wm_recency_max_steps)
-    )
+    recency_time_scale: float = field(default_factory=lambda: float(settings.wm_recency_time_scale))
+    recency_max_steps: float = field(default_factory=lambda: float(settings.wm_recency_max_steps))
 
 
 class MultiTenantWM:
@@ -104,9 +100,7 @@ class MultiTenantWM:
             try:
                 total_items = sum(len(w._items) for w in self._wms.values())
                 total_capacity = self.cfg.max_tenants * self.cfg.per_tenant_capacity
-                M.WM_UTILIZATION.set(
-                    total_items / total_capacity if total_capacity else 0.0
-                )
+                M.WM_UTILIZATION.set(total_items / total_capacity if total_capacity else 0.0)
             except Exception as exc:
                 _logger.debug("Failed to update WM_UTILIZATION metric: %s", exc)
             return wm
@@ -134,9 +128,7 @@ class MultiTenantWM:
                 "Failed to increment WM_ADMIT metric for tenant %s: %s", tenant_id, exc
             )
 
-    def recall(
-        self, tenant_id: str, vec: np.ndarray, top_k: int = 3
-    ) -> List[Tuple[float, dict]]:
+    def recall(self, tenant_id: str, vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
         """Retrieve up to *top_k* items for *tenant_id*.
 
         ``WM_HITS`` is incremented when the call returns at least one result;
@@ -150,9 +142,7 @@ class MultiTenantWM:
             else:
                 M.WM_MISSES.inc()
         except Exception as exc:
-            logging.getLogger(__name__).debug(
-                "Failed to update WM_HITS/WM_MISSES metric: %s", exc
-            )
+            logging.getLogger(__name__).debug("Failed to update WM_HITS/WM_MISSES metric: %s", exc)
         return results
 
     def novelty(self, tenant_id: str, vec: np.ndarray) -> float:

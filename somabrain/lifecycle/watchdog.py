@@ -33,6 +33,7 @@ async def start_memory_watchdog(
         app: The FastAPI application instance for storing the watchdog task
         memory_service: The MemoryService instance to monitor
     """
+
     async def _watchdog_loop() -> None:
         while True:
             try:

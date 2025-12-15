@@ -38,12 +38,8 @@ class MemoryService:
         self._cb = get_cb()
         # Enforce production-like degradation defaults: always queue, never silently drop.
         self._degrade_queue = True
-        self._degrade_readonly = bool(
-            getattr(settings, "memory_degrade_readonly", False)
-        )
-        self._degrade_topic = getattr(
-            settings, "memory_degrade_topic", "memory.degraded"
-        )
+        self._degrade_readonly = bool(getattr(settings, "memory_degrade_readonly", False))
+        self._degrade_topic = getattr(settings, "memory_degrade_topic", "memory.degraded")
 
     # ---------------------------------------------------------------------
     # Backend accessor helpers
@@ -88,9 +84,12 @@ class MemoryService:
         except Exception as exc:
             # Journal is best-effort; log but do not raise.
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to queue degraded write for tenant=%s action=%s: %s",
-                self.tenant_id, action, exc
+                self.tenant_id,
+                action,
+                exc,
             )
 
     # ---------------------------------------------------------------------
@@ -138,9 +137,7 @@ class MemoryService:
         client = self.client()
         try:
             if hasattr(client, "recall_with_scores"):
-                hits = client.recall_with_scores(
-                    query, top_k=top_k, universe=universe
-                )
+                hits = client.recall_with_scores(query, top_k=top_k, universe=universe)
             else:
                 hits = client.recall(query, top_k=top_k, universe=universe)
             self._mark_success()
@@ -167,9 +164,7 @@ class MemoryService:
             self._mark_failure()
             raise RuntimeError("Memory service unavailable") from e
 
-    async def arecall(
-        self, query: str, top_k: int = 3, universe: str | None = None
-    ):
+    async def arecall(self, query: str, top_k: int = 3, universe: str | None = None):
         self._reset_circuit_if_needed()
         if self._is_circuit_open():
             raise RuntimeError("Memory service unavailable (circuit open)")
@@ -192,9 +187,7 @@ class MemoryService:
         client = self.client()
         try:
             if hasattr(client, "arecall_with_scores"):
-                hits = await client.arecall_with_scores(
-                    query, top_k=top_k, universe=universe
-                )
+                hits = await client.arecall_with_scores(query, top_k=top_k, universe=universe)
             else:
                 hits = await client.arecall(query, top_k=top_k, universe=universe)
             self._mark_success()
@@ -240,6 +233,7 @@ class MemoryService:
             health = self.client().health()
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).debug(
                 "Health check failed for namespace=%s: %s", self.namespace, exc
             )
@@ -355,6 +349,7 @@ class MemoryService:
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).debug(
                 "Failed to update OUTBOX_PENDING metric for tenant=%s: %s", tenant, exc
             )
@@ -369,6 +364,7 @@ class MemoryService:
                 gauge.labels(tenant_id=str(tenant)).set(float(count))
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).debug(
                 "Failed to update OUTBOX_PENDING_BY_TENANT metric for tenant=%s: %s", tenant, exc
             )

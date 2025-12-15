@@ -15,20 +15,20 @@ from somabrain.core.container import container
 
 class RecallSessionStore:
     """Thread-safe store for recall sessions with TTL-based expiration.
-    
+
     This class encapsulates the session management logic that was previously
     using module-level global state. Sessions are stored in-memory with
     automatic pruning of expired entries.
-    
+
     Thread Safety:
         All operations are protected by a reentrant lock to ensure thread safety.
     """
-    
+
     def __init__(self, ttl_seconds: int = 900) -> None:
         self._sessions: Dict[str, Dict[str, Any]] = {}
         self._lock = RLock()
         self._ttl_seconds = ttl_seconds
-    
+
     def store(
         self,
         session_id: str,
@@ -50,12 +50,12 @@ class RecallSessionStore:
         }
         with self._lock:
             self._sessions[session_id] = payload
-    
+
     def get(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Get a session by ID, or None if not found."""
         with self._lock:
             return self._sessions.get(session_id)
-    
+
     def prune(self) -> None:
         """Remove expired sessions."""
         now = time.time()
@@ -67,7 +67,7 @@ class RecallSessionStore:
             ]
             for session_id in expired:
                 self._sessions.pop(session_id, None)
-    
+
     def clear(self) -> None:
         """Clear all sessions (for testing)."""
         with self._lock:

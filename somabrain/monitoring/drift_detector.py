@@ -112,6 +112,7 @@ class DriftDetector:
             path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to persist drift state to %s: %s", path, exc
             )
@@ -127,6 +128,7 @@ class DriftDetector:
                     self._state = dict(data[self._PERSIST_KEY])
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to load drift state from %s (using fresh state): %s", path, exc
             )

@@ -148,13 +148,9 @@ def make_embedder_with_dim(cfg, quantum=None):
         embed_dim = int(getattr(embedder, "dim"))
     except Exception:
         try:
-            embed_dim = int(
-                np.asarray(embedder.embed("___dim_probe___"), dtype=float).size
-            )
+            embed_dim = int(np.asarray(embedder.embed("___dim_probe___"), dtype=float).size)
         except Exception as exc:
-            raise RuntimeError(
-                "embedder failed to produce vector dimension"
-            ) from exc
+            raise RuntimeError("embedder failed to produce vector dimension") from exc
 
     # Ensure config reflects the actual embedder dimension at runtime
     if cfg.embed_dim != embed_dim:

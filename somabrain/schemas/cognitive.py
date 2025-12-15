@@ -16,8 +16,10 @@ from somabrain.schemas.memory import normalize_vector, _get_settings
 
 # === Canonical Agent Brain Contracts (Nano Profile) ===
 
+
 class Observation(BaseModel):
     """Observation schema for nano profile."""
+
     who: str
     where: str
     when: str  # ISO 8601
@@ -35,6 +37,7 @@ class Observation(BaseModel):
 
 class Thought(BaseModel):
     """Thought schema for nano profile."""
+
     id: str
     causeIds: List[str] = []
     text: str
@@ -51,6 +54,7 @@ class Thought(BaseModel):
 
 class Memory(BaseModel):
     """Memory schema for nano profile."""
+
     id: str
     type: str  # "episodic"|"semantic"|"procedural"
     vector: List[float]
@@ -66,6 +70,7 @@ class Memory(BaseModel):
 
 class ToolCall(BaseModel):
     """Tool call schema for nano profile."""
+
     toolId: str
     schemaVersion: str
     args: Dict[str, Any]
@@ -77,6 +82,7 @@ class ToolCall(BaseModel):
 
 class PlanStep(BaseModel):
     """Plan step schema for nano profile."""
+
     id: str
     preconds: List[str] = []
     action: str
@@ -87,6 +93,7 @@ class PlanStep(BaseModel):
 
 class Action(BaseModel):
     """Action schema for nano profile."""
+
     channel: str
     toolId: str
     content: str
@@ -97,6 +104,7 @@ class Action(BaseModel):
 
 class Feedback(BaseModel):
     """Feedback schema for nano profile."""
+
     signal: str  # "success"|"fail"|"reward"
     reason: str
     metrics: Dict[str, Any] = {}
@@ -130,7 +138,7 @@ class Feedback(BaseModel):
 
         def matches(self, thought: Any) -> bool:
             from somabrain.math import cosine_similarity, normalize_vector as _norm
-            
+
             if hasattr(thought, "vector"):
                 query_vec = np.array(getattr(thought, "vector", []), dtype=np.float32)
             else:
@@ -140,7 +148,9 @@ class Feedback(BaseModel):
                     dtype=np.float32,
                 )
             query_vec = _norm(query_vec, dtype=np.float32)
-            mem_vec = _norm(np.array(self.data.get("vector", []), dtype=np.float32), dtype=np.float32)
+            mem_vec = _norm(
+                np.array(self.data.get("vector", []), dtype=np.float32), dtype=np.float32
+            )
             if query_vec.shape[0] != mem_vec.shape[0]:
                 return False
             return cosine_similarity(query_vec, mem_vec) > 0.95
@@ -148,6 +158,7 @@ class Feedback(BaseModel):
 
 class Metric(BaseModel):
     """Metric schema for nano profile."""
+
     name: str
     value: float
     unit: str
@@ -157,8 +168,10 @@ class Metric(BaseModel):
 
 # === Action/Planning Schemas ===
 
+
 class ActRequest(BaseModel):
     """Schema for action execution requests."""
+
     task: str
     top_k: int = 3
     universe: Optional[str] = None
@@ -166,6 +179,7 @@ class ActRequest(BaseModel):
 
 class ActStepResult(BaseModel):
     """Schema for individual action step results."""
+
     step: str
     novelty: float
     pred_error: float
@@ -178,6 +192,7 @@ class ActStepResult(BaseModel):
 
 class ActResponse(BaseModel):
     """Schema for action execution responses."""
+
     task: str
     results: List[ActStepResult]
     plan: Optional[List[str]] = None
@@ -186,6 +201,7 @@ class ActResponse(BaseModel):
 
 class PlanSuggestRequest(BaseModel):
     """Request for plan suggestions."""
+
     task_key: str
     max_steps: Optional[int] = None
     rel_types: Optional[List[str]] = None
@@ -194,26 +210,32 @@ class PlanSuggestRequest(BaseModel):
 
 class PlanSuggestResponse(BaseModel):
     """Response for plan suggestions."""
+
     plan: List[str]
 
 
 # === Oak (ROAMDP) Schemas ===
 
+
 class OakOptionCreateRequest(BaseModel):
     """Request body for creating a new Oak option."""
+
     option_id: Optional[str] = None
     payload: str = Field(..., description="Base64‑encoded option payload")
 
 
 class OakPlanSuggestResponse(BaseModel):
     """Response model for Oak endpoints."""
+
     plan: List[str]
 
 
 # === Neuromodulator/Personality Schemas ===
 
+
 class NeuromodStateModel(BaseModel):
     """Schema for neuromodulator state representation."""
+
     dopamine: float = 0.4
     serotonin: float = 0.5
     noradrenaline: float = 0.0
@@ -222,6 +244,7 @@ class NeuromodStateModel(BaseModel):
 
 class PersonalityState(BaseModel):
     """Schema for personality trait states."""
+
     traits: Dict[str, float] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -241,6 +264,7 @@ class PersonalityState(BaseModel):
 
 class Persona(BaseModel):
     """Persona record schema."""
+
     id: str
     display_name: str | None = None
     properties: dict[str, Any] = {}

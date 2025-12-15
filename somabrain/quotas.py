@@ -55,6 +55,7 @@ class QuotaInfo:
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 
@@ -77,11 +78,11 @@ class QuotaManager:
 
     def __init__(self, cfg: QuotaConfig) -> None:
         """Initialize the quota manager with configuration.
-        
+
         Args:
             cfg: QuotaConfig instance specifying daily write limits. Defaults
                  are sourced from centralized Settings (write_daily_limit).
-        
+
         Notes:
             - Quotas are tracked in-memory and reset at UTC day boundaries
             - Exempt tenants (e.g., AGENT_ZERO) bypass quota checks entirely
@@ -175,9 +176,7 @@ class QuotaManager:
         if cur_day != day:
             cnt = 0
         now = datetime.now(timezone.utc)
-        reset_time = datetime(
-            now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc
-        )
+        reset_time = datetime(now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc)
         # Move to next day safely
         reset_time = reset_time + timedelta(days=1)
         return QuotaInfo(

@@ -149,7 +149,7 @@ def _vocab_and_vectors(texts: List[str]) -> Tuple[Dict[str, int], np.ndarray]:
         # temporary row; fill later once vocab finalized
         rows.append(counts)
     from somabrain.math import normalize_batch
-    
+
     mat = np.zeros((len(texts), len(vocab)), dtype="float32")
     for i, counts in enumerate(rows):
         for w, c in counts.items():
@@ -192,7 +192,7 @@ def cluster_episodics(
     if not texts:
         return []
     from somabrain.math import normalize_vector
-    
+
     _, mat = _vocab_and_vectors(texts)
     n = mat.shape[0]
     assigned = [-1] * n
@@ -228,9 +228,7 @@ def cluster_episodics(
     return clusters
 
 
-def summarize_cluster(
-    payloads: List[dict], indices: List[int], max_keywords: int = 8
-) -> str:
+def summarize_cluster(payloads: List[dict], indices: List[int], max_keywords: int = 8) -> str:
     """
     Generate a keyword-based summary for a cluster of memory payloads.
 
@@ -253,8 +251,6 @@ def summarize_cluster(
         >>> summary = summarize_cluster(payloads, [0, 1])
         >>> print(summary)  # "machine, learning, neural, network"
     """
-    texts = [
-        str(payloads[i].get("task") or payloads[i].get("fact") or "") for i in indices
-    ]
+    texts = [str(payloads[i].get("task") or payloads[i].get("fact") or "") for i in indices]
     keys = top_keywords(texts, k=max_keywords)
     return ", ".join(keys) if keys else "summary"

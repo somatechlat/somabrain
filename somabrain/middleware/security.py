@@ -42,9 +42,7 @@ class SecurityMiddleware:
 
         # Security checks
         if self._is_suspicious_request(path, method, headers):
-            _cognitive_log.warning(
-                "🚨 Suspicious request blocked: %s %s", method, path
-            )
+            _cognitive_log.warning("🚨 Suspicious request blocked: %s %s", method, path)
             response = JSONResponse(
                 status_code=403,
                 content={"error": "Request blocked for security reasons"},

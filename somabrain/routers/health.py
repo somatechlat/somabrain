@@ -46,12 +46,8 @@ def _get_runtime():
     import os
     import sys
 
-    _runtime_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     # Fallback: search loaded modules
@@ -78,7 +74,6 @@ def _get_mt_memory():
     return None
 
 
-
 def _get_embedder():
     """Get the embedder singleton."""
     rt = _get_runtime()
@@ -91,6 +86,7 @@ def _get_app_state():
     """Get the FastAPI app state for OPA engine access."""
     try:
         from somabrain.app import app
+
         return app.state
     except Exception:
         return None
@@ -126,12 +122,8 @@ def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
             return None
 
     return {
-        "search_latency_p95_seconds": _read(
-            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
-        ),
-        "ingest_latency_p95_seconds": _read(
-            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
-        ),
+        "search_latency_p95_seconds": _read(M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id),
+        "ingest_latency_p95_seconds": _read(M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id),
         "segment_load": _read(
             M.MILVUS_SEGMENT_LOAD,
             collection=getattr(settings, "milvus_collection", "oak_options"),
@@ -197,9 +189,7 @@ async def health(request: Request) -> S.HealthResponse:
 
     # External backend requirement flag from settings
     try:
-        resp["external_backends_required"] = getattr(
-            settings, "require_external_backends", None
-        )
+        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
     except Exception:
         resp["external_backends_required"] = None
 
@@ -232,9 +222,7 @@ async def health(request: Request) -> S.HealthResponse:
     # Memory degradation configuration
     try:
         resp["memory_degrade_queue"] = True
-        resp["memory_degrade_readonly"] = getattr(
-            settings, "memory_degrade_readonly", False
-        )
+        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", False)
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
         resp["memory_degrade_queue"] = None
@@ -263,7 +251,6 @@ async def health(request: Request) -> S.HealthResponse:
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": edim}
     except Exception:
         resp["embedder"] = {"provider": _EMBED_PROVIDER, "dim": None}
-
 
     # Post-processing of fields that may still be None
     if resp.get("constitution_status") is None:
@@ -338,16 +325,12 @@ async def health(request: Request) -> S.HealthResponse:
         with Session() as s:
             pending = (
                 s.query(OutboxEvent)
-                .filter(
-                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
-                )
+                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
                 .count()
             )
             last = (
                 s.query(OutboxEvent)
-                .filter(
-                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
-                )
+                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
                 .order_by(OutboxEvent.created_at.desc())
                 .first()
             )
@@ -396,12 +379,7 @@ async def health(request: Request) -> S.HealthResponse:
     resp["embedder_ok"] = bool(embedder_ok)
 
     resp["ready"] = bool(
-        memory_ok
-        and not circuit_open
-        and predictor_ok
-        and embedder_ok
-        and kafka_ok
-        and postgres_ok
+        memory_ok and not circuit_open and predictor_ok and embedder_ok and kafka_ok and postgres_ok
     )
 
     # Minimal API flag for diagnostics
@@ -448,12 +426,9 @@ async def diagnostics() -> dict:
         "require_memory": require_memory,
         "memory_endpoint": ep or "",
         "env_memory_endpoint": settings.memory_http_endpoint,
-        "memory_token_present": bool(
-            getattr(getattr(cfg, "http", object()), "token", None)
-        ),
+        "memory_token_present": bool(getattr(getattr(cfg, "http", object()), "token", None)),
         "api_version": int(API_VERSION),
     }
-
 
 
 @router.get("/health/memory", response_model=Dict[str, Any])
@@ -483,9 +458,7 @@ async def health_memory(request: Request) -> Dict[str, Any]:
         "tenant": ctx.tenant_id,
         "circuit_breaker": circuit_state,
         "outbox_pending": pending_count,
-        "memory_service": (
-            "healthy" if not circuit_state["circuit_open"] else "unavailable"
-        ),
+        "memory_service": ("healthy" if not circuit_state["circuit_open"] else "unavailable"),
         "timestamp": time.time(),
     }
 
@@ -589,9 +562,9 @@ async def _health_watchdog_coroutine():
                                 mem = comps.get("memory", {})
                                 healthy = mem.get("healthy", False)
                             if not healthy:
-                                healthy = health_result.get(
-                                    "http", False
-                                ) or health_result.get("ok", False)
+                                healthy = health_result.get("http", False) or health_result.get(
+                                    "ok", False
+                                )
 
                         if healthy:
                             MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)

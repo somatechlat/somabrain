@@ -24,9 +24,7 @@ class CalibrationPipeline:
         self.calibration_params: dict = {}
 
     # --- Metrics ---
-    def calculate_ece(
-        self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10
-    ) -> float:
+    def calculate_ece(self, predictions: np.ndarray, actual: np.ndarray, n_bins: int = 10) -> float:
         p = np.asarray(predictions, dtype=float).reshape(-1)
         a = np.asarray(actual, dtype=float).reshape(-1)
         a = np.clip(a, 0.0, 1.0)

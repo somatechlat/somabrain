@@ -34,9 +34,7 @@ async def version(request: Request):
 async def validate(req: ValidateRequest, request: Request):
     engine: ConstitutionEngine = request.app.state.constitution_engine
     if not engine:
-        raise HTTPException(
-            status_code=503, detail="Constitution engine not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Constitution engine not initialized")
     try:
         result = engine.validate(req.input)
         # Emit audit event (non-blocking, best-effort)
@@ -46,13 +44,10 @@ async def validate(req: ValidateRequest, request: Request):
                 "timestamp": int(__import__("time").time()),
                 "request_id": request.headers.get("X-Request-Id") or str(uuid4()),
                 "remote_addr": request.client.host if request.client else None,
-                "user": request.headers.get("X-User")
-                or request.headers.get("Authorization"),
+                "user": request.headers.get("X-User") or request.headers.get("Authorization"),
                 "input": req.input,
                 "decision": result.get("allowed") if isinstance(result, dict) else None,
-                "violated": (
-                    result.get("violations") if isinstance(result, dict) else None
-                ),
+                "violated": (result.get("violations") if isinstance(result, dict) else None),
                 "constitution_sha": engine.get_checksum(),
                 "constitution_sig": engine.get_signature(),
             }
@@ -75,9 +70,7 @@ async def load_constitution(payload: dict, request: Request):
     """
     engine: ConstitutionEngine = request.app.state.constitution_engine
     if not engine:
-        raise HTTPException(
-            status_code=503, detail="Constitution engine not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Constitution engine not initialized")
     try:
         engine.save(payload)
         return {"status": "saved", "checksum": engine.get_checksum()}

@@ -27,4 +27,3 @@ class ComplexityDetector:
         complexity_score *= 0.5 + importance
 
         return min(1.0, complexity_score)
-

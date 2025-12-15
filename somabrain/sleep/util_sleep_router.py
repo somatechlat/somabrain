@@ -119,9 +119,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             "max_seconds": settings.sleep_max_seconds,
         }
         if not opa_client.evaluate(opa_input):
-            raise HTTPException(
-                status_code=403, detail="OPA policy denied sleep request"
-            )
+            raise HTTPException(status_code=403, detail="OPA policy denied sleep request")
 
         # 4. Validate transition using the manager.
         manager = SleepStateManager()
@@ -139,10 +137,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 session.commit()
             current_state = SleepState(ss.current_state.upper())
             # Validate TTL against the configured maximum.
-            if (
-                body.ttl_seconds is not None
-                and body.ttl_seconds > settings.sleep_max_seconds
-            ):
+            if body.ttl_seconds is not None and body.ttl_seconds > settings.sleep_max_seconds:
                 raise HTTPException(
                     status_code=400,
                     detail=f"ttl_seconds exceeds maximum of {settings.sleep_max_seconds} seconds",
@@ -158,9 +153,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             ss.current_state = target_state.value
             ss.target_state = target_state.value
             if body.ttl_seconds is not None:
-                ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
-                    seconds=body.ttl_seconds
-                )
+                ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
                 ss.ttl = ttl_dt
                 ss.scheduled_wake = ttl_dt
             else:

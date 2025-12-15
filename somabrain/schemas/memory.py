@@ -18,6 +18,7 @@ from somabrain.datetime_utils import coerce_to_epoch_seconds
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 
@@ -52,6 +53,7 @@ TimestampInput = Union[float, int, str, datetime]
 
 class RecallRequest(BaseModel):
     """Schema for memory recall API requests."""
+
     query: str
     top_k: int = 3
     universe: Optional[str] = None
@@ -59,6 +61,7 @@ class RecallRequest(BaseModel):
 
 class MemoryPayload(BaseModel):
     """Schema for episodic memory payloads."""
+
     task: Optional[str] = None
     content: Optional[str] = None
     phase: Optional[str] = None
@@ -88,18 +91,21 @@ class MemoryPayload(BaseModel):
 
 class RememberRequest(BaseModel):
     """Schema for memory storage requests."""
+
     coord: Optional[str] = Field(None, description="x,y,z; optional — auto if omitted")
     payload: MemoryPayload
 
 
 class WMHit(BaseModel):
     """Working memory hit result."""
+
     score: float
     payload: Dict[str, Any]
 
 
 class RecallResponse(BaseModel):
     """Canonical response model for the /recall endpoint."""
+
     wm: List[WMHit]
     memory: List[Dict[str, Any]]
     namespace: str
@@ -115,6 +121,7 @@ class RecallResponse(BaseModel):
 
 class RememberResponse(BaseModel):
     """Canonical response model for the /remember endpoint."""
+
     ok: bool
     success: bool
     namespace: str
@@ -125,6 +132,7 @@ class RememberResponse(BaseModel):
 
 class RetrievalRequest(BaseModel):
     """Request model for retrieval operations."""
+
     query: str
     top_k: int = 10
     retrievers: List[str] = ["vector", "wm", "graph", "lexical"]
@@ -140,6 +148,7 @@ class RetrievalRequest(BaseModel):
 
 class RetrievalCandidate(BaseModel):
     """Single retrieval candidate."""
+
     coord: Optional[str] = None
     key: Optional[str] = None
     score: float
@@ -149,6 +158,7 @@ class RetrievalCandidate(BaseModel):
 
 class RetrievalResponse(BaseModel):
     """Response model for retrieval operations."""
+
     candidates: List[RetrievalCandidate]
     session_coord: Optional[str] = None
     namespace: str
@@ -158,16 +168,19 @@ class RetrievalResponse(BaseModel):
 
 class DeleteRequest(BaseModel):
     """Schema for delete memory requests."""
+
     coordinate: List[float]
 
 
 class DeleteResponse(BaseModel):
     """Simple response indicating delete success."""
+
     ok: bool = True
 
 
 class LinkRequest(BaseModel):
     """Request for creating memory links."""
+
     from_key: Optional[str] = None
     to_key: Optional[str] = None
     from_coord: Optional[str] = None
@@ -179,6 +192,7 @@ class LinkRequest(BaseModel):
 
 class GraphLinksRequest(BaseModel):
     """Request for querying graph links."""
+
     from_key: Optional[str] = None
     from_coord: Optional[str] = None
     type: Optional[str] = None
@@ -188,12 +202,14 @@ class GraphLinksRequest(BaseModel):
 
 class GraphLinksResponse(BaseModel):
     """Response for graph links query."""
+
     edges: List[Dict[str, Any]]
     universe: Optional[str] = None
 
 
 class LinkResponse(BaseModel):
     """Response for link operations."""
+
     ok: bool
 
 

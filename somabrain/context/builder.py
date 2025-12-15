@@ -217,9 +217,7 @@ class ContextBuilder:
             self._memory_service = MemoryService(self._memory_backend, namespace)
         return self._memory_service
 
-    def _search(
-        self, query_text: str, embedding: List[float], top_k: int
-    ) -> List[Dict[str, Any]]:
+    def _search(self, query_text: str, embedding: List[float], top_k: int) -> List[Dict[str, Any]]:
         memory_component = self._memory_component()
         try:
             if hasattr(memory_component, "recall_with_scores"):
@@ -271,9 +269,7 @@ class ContextBuilder:
             ts = float(mem.metadata.get("timestamp", 0.0))
             age_penalty = self._temporal_decay(ts)
             density_factor = self._density_factor(mem.metadata)
-            combined = (
-                alpha * cos + beta * g_score + gamma * age_penalty
-            ) * density_factor
+            combined = (alpha * cos + beta * g_score + gamma * age_penalty) * density_factor
             if density_factor != 1.0:
                 try:
                     mem.metadata.setdefault("_density_factor", density_factor)
@@ -418,11 +414,7 @@ class ContextBuilder:
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {})
-                        for k, v in data.items()
-                        if isinstance(v, dict)
-                    }
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
             except Exception:
                 try:
                     import json as _json
@@ -431,9 +423,7 @@ class ContextBuilder:
                         data = _json.load(f)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}
@@ -446,9 +436,7 @@ class ContextBuilder:
                     data = _json.loads(raw)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}

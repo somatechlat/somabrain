@@ -63,4 +63,3 @@ def setup_logging():
         cognitive_logger.addHandler(cognitive_handler)
 
     logger.info("🧠 SomaBrain cognitive logging initialized")
-

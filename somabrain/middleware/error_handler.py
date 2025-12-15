@@ -22,9 +22,7 @@ class CognitiveErrorHandler:
     """
 
     @staticmethod
-    def handle_error(
-        error: Exception, context: str = "", request_id: str | None = None
-    ) -> dict:
+    def handle_error(error: Exception, context: str = "", request_id: str | None = None) -> dict:
         """Handle errors with brain-like analysis and recovery suggestions.
 
         Parameters

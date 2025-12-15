@@ -23,6 +23,7 @@ __all__ = ["CircuitBreaker"]
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 
@@ -51,7 +52,7 @@ class CircuitBreaker:
         ``global_cooldown_interval`` (seconds) adds an extra wait time after a
         reset attempt before another attempt may be made. ``0`` disables the
         extra cooldown, preserving historic behaviour.
-        
+
         All parameters default to values from centralized Settings if not provided.
         """
         # Apply Settings defaults for None values
@@ -62,7 +63,7 @@ class CircuitBreaker:
             global_reset_interval = s.circuit_reset_interval
         if global_cooldown_interval is None:
             global_cooldown_interval = s.circuit_cooldown_interval
-        
+
         self._global_failure_threshold = max(1, int(global_failure_threshold))
         self._global_reset_interval = max(1.0, float(global_reset_interval))
         self._global_cooldown_interval = max(0.0, float(global_cooldown_interval))
@@ -148,9 +149,7 @@ class CircuitBreaker:
             self._ensure_tenant(tenant)
             self._failure_count[tenant] += 1
             self._last_failure_time[tenant] = now
-            threshold = self._failure_threshold.get(
-                tenant, self._global_failure_threshold
-            )
+            threshold = self._failure_threshold.get(tenant, self._global_failure_threshold)
             if self._failure_count[tenant] >= max(1, int(threshold)):
                 self._circuit_open[tenant] = True
             self._set_metrics(tenant)
@@ -167,9 +166,7 @@ class CircuitBreaker:
                 return False
             now = time.monotonic()
             interval = self._reset_interval.get(tenant, self._global_reset_interval)
-            if now - self._last_failure_time.get(tenant, 0.0) < max(
-                1.0, float(interval)
-            ):
+            if now - self._last_failure_time.get(tenant, 0.0) < max(1.0, float(interval)):
                 return False
             if now - self._last_reset_attempt.get(tenant, 0.0) < 5.0:
                 return False

@@ -25,9 +25,7 @@ class CalibrationService:
     _counts: Dict[Tuple[str, str], int] = field(default_factory=dict, init=False)
     _temperature: Dict[Tuple[str, str], float] = field(default_factory=dict, init=False)
 
-    def record_prediction(
-        self, domain: str, tenant: str, confidence: float, correct: bool
-    ) -> None:
+    def record_prediction(self, domain: str, tenant: str, confidence: float, correct: bool) -> None:
         if not self.enabled:
             return
         key = (domain, tenant)

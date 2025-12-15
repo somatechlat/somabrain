@@ -25,9 +25,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class WMPersistenceEntry:
     """Persisted WM item in SFM.
-    
+
     Per Requirement A1.1: WM items are serialized with memory_type="working_memory"
     """
+
     tenant_id: str
     item_id: str
     vector: List[float]
@@ -42,13 +43,13 @@ class WMPersistenceEntry:
 
 class WMPersister:
     """Persists WM items to SFM asynchronously.
-    
+
     Per Requirements A1.1-A1.5:
     - A1.1: Serializes WM items to SFM with memory_type="working_memory"
     - A1.3: Async persistence within 1 second (eventual consistency)
     - A1.4: Marks evicted items as evicted (not deleted)
     """
-    
+
     def __init__(
         self,
         memory_client: "MemoryClient",
@@ -57,7 +58,7 @@ class WMPersister:
         flush_interval_ms: int = 100,
     ):
         """Initialize WMPersister.
-        
+
         Args:
             memory_client: MemoryClient for SFM communication.
             tenant_id: Tenant ID for isolation.
@@ -71,12 +72,12 @@ class WMPersister:
         self._running = False
         self._task: Optional[asyncio.Task] = None
         self._item_counter = 0
-    
+
     def _generate_item_id(self, tick: int) -> str:
         """Generate unique item ID for WM entry."""
         self._item_counter += 1
         return f"wm_{self._tenant_id}_{tick}_{self._item_counter}_{int(time.time() * 1000)}"
-    
+
     async def start(self) -> None:
         """Start the background persistence task."""
         if self._running:
@@ -84,7 +85,7 @@ class WMPersister:
         self._running = True
         self._task = asyncio.create_task(self._flush_loop())
         logger.info("WMPersister started", tenant=self._tenant_id)
-    
+
     async def stop(self) -> None:
         """Stop the background persistence task and flush remaining items."""
         self._running = False
@@ -97,15 +98,15 @@ class WMPersister:
         # Flush any remaining items
         await self._flush_queue()
         logger.info("WMPersister stopped", tenant=self._tenant_id)
-    
+
     async def queue_persist(self, item: "WMItem") -> str:
         """Queue a WM item for persistence.
-        
+
         Per Requirement A1.3: Async persistence within 1 second.
-        
+
         Args:
             item: WMItem to persist.
-            
+
         Returns:
             Generated item_id for tracking.
         """
@@ -133,15 +134,15 @@ class WMPersister:
                 pass
             self._queue.put_nowait(entry)
         return item_id
-    
+
     async def mark_evicted(self, item_id: str) -> bool:
         """Mark a WM item as evicted in SFM.
-        
+
         Per Requirement A1.4: Evicted items are marked, not deleted.
-        
+
         Args:
             item_id: ID of the item to mark as evicted.
-            
+
         Returns:
             True if successfully marked.
         """
@@ -161,7 +162,7 @@ class WMPersister:
         except Exception as exc:
             logger.error("Failed to mark WM item as evicted", item_id=item_id, error=str(exc))
             return False
-    
+
     async def _flush_loop(self) -> None:
         """Background loop that flushes queue to SFM."""
         while self._running:
@@ -172,16 +173,16 @@ class WMPersister:
                 break
             except Exception as exc:
                 logger.error("WM persistence flush error", error=str(exc))
-    
+
     async def _flush_queue(self) -> int:
         """Flush all queued items to SFM.
-        
+
         Returns:
             Number of items flushed.
         """
         flushed = 0
         batch: List[WMPersistenceEntry] = []
-        
+
         # Drain queue
         while not self._queue.empty():
             try:
@@ -189,10 +190,10 @@ class WMPersister:
                 batch.append(entry)
             except asyncio.QueueEmpty:
                 break
-        
+
         if not batch:
             return 0
-        
+
         # Persist each item
         for entry in batch:
             try:
@@ -212,19 +213,19 @@ class WMPersister:
                 flushed += 1
             except Exception as exc:
                 logger.error("Failed to persist WM item", item_id=entry.item_id, error=str(exc))
-        
+
         if flushed > 0:
             logger.debug("Flushed WM items to SFM", count=flushed, tenant=self._tenant_id)
-        
+
         return flushed
 
 
 class WMRestorer:
     """Restores WM state from SFM on startup.
-    
+
     Per Requirement A1.2: Restores WM state within 5 seconds.
     """
-    
+
     def __init__(
         self,
         memory_client: "MemoryClient",
@@ -232,7 +233,7 @@ class WMRestorer:
         timeout_s: float = 5.0,
     ):
         """Initialize WMRestorer.
-        
+
         Args:
             memory_client: MemoryClient for SFM communication.
             tenant_id: Tenant ID for isolation.
@@ -241,54 +242,54 @@ class WMRestorer:
         self._client = memory_client
         self._tenant_id = tenant_id
         self._timeout = timeout_s
-    
+
     async def restore(self, wm: "WorkingMemory") -> int:
         """Restore WM state from SFM.
-        
+
         Per Requirement A1.2: Restores within 5 seconds.
         Per Requirement A1.7: Filters by evicted=false.
-        
+
         Args:
             wm: WorkingMemory instance to restore into.
-            
+
         Returns:
             Number of items restored.
         """
         import numpy as np
-        
+
         start_time = time.time()
         restored = 0
-        
+
         try:
             # Query SFM for non-evicted WM items for this tenant
             # Use hybrid recall with memory_type filter
             query = f"memory_type:working_memory tenant_id:{self._tenant_id}"
-            
+
             async with asyncio.timeout(self._timeout):
                 results = await self._client.arecall(
                     query,
                     top_k=wm.capacity * 2,  # Over-fetch to account for evicted items
                 )
-            
+
             # Filter and restore non-evicted items
             for score, payload in results:
                 # Check timeout
                 if time.time() - start_time > self._timeout:
                     logger.warning("WM restoration timeout", restored=restored)
                     break
-                
+
                 # Skip evicted items (A1.7)
                 if payload.get("evicted", False):
                     continue
-                
+
                 # Skip items from other tenants
                 if payload.get("tenant_id") != self._tenant_id:
                     continue
-                
+
                 # Skip non-WM items
                 if payload.get("memory_type") != "working_memory":
                     continue
-                
+
                 # Restore item
                 try:
                     vector_data = payload.get("vector", [])
@@ -296,17 +297,17 @@ class WMRestorer:
                         vector = np.array(vector_data, dtype=np.float32)
                     else:
                         continue
-                    
+
                     item_payload = payload.get("payload", {})
                     cleanup_overlap = float(payload.get("cleanup_overlap", 0.0))
-                    
+
                     wm.admit(vector, item_payload, cleanup_overlap=cleanup_overlap)
                     restored += 1
-                    
+
                 except Exception as exc:
                     logger.warning("Failed to restore WM item", error=str(exc))
                     continue
-            
+
             elapsed = time.time() - start_time
             logger.info(
                 "WM restoration complete",
@@ -314,12 +315,14 @@ class WMRestorer:
                 restored=restored,
                 elapsed_s=elapsed,
             )
-            
+
         except asyncio.TimeoutError:
-            logger.warning("WM restoration timed out", tenant=self._tenant_id, timeout=self._timeout)
+            logger.warning(
+                "WM restoration timed out", tenant=self._tenant_id, timeout=self._timeout
+            )
         except Exception as exc:
             logger.error("WM restoration failed", tenant=self._tenant_id, error=str(exc))
-        
+
         return restored
 
 
@@ -343,12 +346,12 @@ async def restore_wm_state(
     tenant_id: str = "default",
 ) -> int:
     """Convenience function to restore WM state.
-    
+
     Args:
         wm: WorkingMemory to restore into.
         memory_client: MemoryClient for SFM communication.
         tenant_id: Tenant ID.
-        
+
     Returns:
         Number of items restored.
     """

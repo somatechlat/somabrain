@@ -65,9 +65,7 @@ class SoftmaxIntegrator:
                 recent[dom] = obs
         self._data[tenant] = recent
 
-    def snapshot(
-        self, tenant: str
-    ) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
+    def snapshot(self, tenant: str) -> Tuple[str, Dict[str, float], Dict[str, DomainObs]]:
         """Return ``(leader, weights, raw)`` for *tenant*.
 
         *leader* – domain with highest softmax weight (or ``"state"`` if no data).

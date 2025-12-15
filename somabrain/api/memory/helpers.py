@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 def _get_runtime():
     """Lazy import of runtime module to access singletons.
-    
+
     Returns:
         The runtime module containing embedder, mt_wm, mt_memory singletons,
         or None if not found.
@@ -44,9 +44,7 @@ def _get_runtime():
     _runtime_path = os.path.join(
         os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "runtime.py"
     )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -65,7 +63,7 @@ def _get_app_config():
     Mirrors the logic used in other modules: attempt to reuse an existing
     ``cfg`` attribute on the runtime module; if missing, fall back to the
     unified ``settings`` instance and store it for future calls.
-    
+
     Returns:
         The application configuration object.
     """
@@ -81,10 +79,10 @@ def _get_app_config():
 
 def _get_embedder():
     """Retrieve the global embedder instance from the runtime module.
-    
+
     Returns:
         The embedder instance for text-to-vector conversion.
-    
+
     Raises:
         HTTPException: 503 if embedder is not initialized.
     """
@@ -97,10 +95,10 @@ def _get_embedder():
 
 def _get_wm():
     """Retrieve the global working memory instance from the runtime module.
-    
+
     Returns:
         The multi-tenant working memory (mt_wm) instance.
-    
+
     Raises:
         HTTPException: 503 if working memory is not initialized.
     """
@@ -113,10 +111,10 @@ def _get_wm():
 
 def _get_memory_pool():
     """Retrieve the global memory pool instance from the runtime module.
-    
+
     Returns:
         The multi-tenant memory pool (mt_memory) instance.
-    
+
     Raises:
         HTTPException: 503 if memory pool is not initialized.
     """
@@ -129,11 +127,11 @@ def _get_memory_pool():
 
 def _resolve_namespace(tenant: str, namespace: str) -> str:
     """Construct a fully-qualified namespace string for memory operations.
-    
+
     Args:
         tenant: Tenant identifier; defaults to 'public' if empty.
         namespace: Logical namespace within the tenant scope.
-    
+
     Returns:
         Colon-separated namespace string in format 'base:tenant:namespace'.
     """
@@ -146,10 +144,10 @@ def _resolve_namespace(tenant: str, namespace: str) -> str:
 
 def _serialize_coord(coord: Any) -> Optional[List[float]]:
     """Convert a coordinate tuple to a serializable list of floats.
-    
+
     Args:
         coord: A 3-element tuple or list representing spatial coordinates.
-    
+
     Returns:
         List of 3 floats if conversion succeeds, None otherwise.
     """
@@ -181,10 +179,10 @@ def _compose_memory_payload(
     actor: str,
 ) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
     """Compose a complete memory payload from request parameters.
-    
+
     Merges the provided value with metadata, tags, attachments, links, and
     signal data to create a fully-formed payload ready for storage.
-    
+
     Args:
         tenant: Tenant identifier for the memory.
         namespace: Logical namespace within the tenant.
@@ -202,7 +200,7 @@ def _compose_memory_payload(
         ttl_seconds: Time-to-live hint for automatic cleanup.
         trace_id: Correlation identifier for observability.
         actor: Identity of the actor performing the write.
-    
+
     Returns:
         Tuple of (stored_payload, signal_data, seed_text) where:
         - stored_payload: Complete payload ready for storage
@@ -215,9 +213,7 @@ def _compose_memory_payload(
     stored_payload.setdefault("namespace", namespace)
     stored_payload.setdefault("tenant", tenant)
     stored_payload.setdefault("key", key)
-    stored_payload.setdefault(
-        "memory_type", stored_payload.get("memory_type", "episodic")
-    )
+    stored_payload.setdefault("memory_type", stored_payload.get("memory_type", "episodic"))
     if meta:
         incoming_meta = dict(meta)
         existing_meta = stored_payload.get("meta")
@@ -283,12 +279,12 @@ __all__ = [
 
 def _as_float_list(coord: object) -> Optional[List[float]]:
     """Convert coordinate to a list of floats.
-    
+
     Handles list/tuple and comma-separated string formats.
-    
+
     Args:
         coord: Coordinate in various formats (list, tuple, or comma-separated string).
-    
+
     Returns:
         List of 3 floats if conversion succeeds, None otherwise.
     """
@@ -312,11 +308,11 @@ def _map_retrieval_to_memory_items(
     MemoryRecallItem,
 ) -> List:
     """Map retrieval candidates to MemoryRecallItem instances.
-    
+
     Args:
         candidates: List of candidate dictionaries from retrieval pipeline.
         MemoryRecallItem: The MemoryRecallItem class to instantiate.
-    
+
     Returns:
         List of MemoryRecallItem instances.
     """
@@ -347,19 +343,20 @@ def _coerce_to_retrieval_request(
     MemoryRecallRequest,
 ):
     """Coerce various input types to a RetrievalRequest.
-    
+
     Handles string queries, MemoryRecallRequest objects, and dict payloads.
     Applies environment-backed defaults for retrieval configuration.
-    
+
     Args:
         obj: Input object (string, MemoryRecallRequest, or dict).
         default_top_k: Default top_k value if not specified.
         RetrievalRequest: The RetrievalRequest class to instantiate.
         MemoryRecallRequest: The MemoryRecallRequest class for type checking.
-    
+
     Returns:
         RetrievalRequest instance with appropriate defaults applied.
     """
+
     def _env(name: str, default: str | None = None) -> str | None:
         try:
             v = getattr(settings, name.lower(), None)
@@ -395,14 +392,12 @@ def _coerce_to_retrieval_request(
         req = RetrievalRequest(query=obj, top_k=default_top_k)
         req.rerank = eff_rerank or req.rerank
         req.persist = (
-            eff_persist
-            if req.persist is None or isinstance(req.persist, bool)
-            else req.persist
+            eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
         )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
         return req
-    
+
     if isinstance(obj, MemoryRecallRequest):
         req = RetrievalRequest(
             query=obj.query,
@@ -411,14 +406,12 @@ def _coerce_to_retrieval_request(
         )
         req.rerank = eff_rerank or req.rerank
         req.persist = (
-            eff_persist
-            if req.persist is None or isinstance(req.persist, bool)
-            else req.persist
+            eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
         )
         if not req.retrievers:
             req.retrievers = eff_retrievers or req.retrievers
         return req
-    
+
     if isinstance(obj, dict):
         d = dict(obj)
         q = d.get("query") or d.get("q") or ""
@@ -438,15 +431,9 @@ def _coerce_to_retrieval_request(
         req = RetrievalRequest(
             query=str(q),
             top_k=tk,
-            retrievers=(
-                list(retr) if isinstance(retr, list) else default_retrievers
-            ),
+            retrievers=(list(retr) if isinstance(retr, list) else default_retrievers),
             rerank=str(rk) if isinstance(rk, str) else default_rerank,
-            persist=(
-                bool(d.get("persist"))
-                if d.get("persist") is not None
-                else default_persist
-            ),
+            persist=(bool(d.get("persist")) if d.get("persist") is not None else default_persist),
             universe=str(uni) if isinstance(uni, str) else None,
             mode=str(mode) if isinstance(mode, str) else None,
             id=str(idv) if isinstance(idv, str) else None,
@@ -460,13 +447,11 @@ def _coerce_to_retrieval_request(
         if d.get("persist") is None:
             req.persist = eff_persist
         return req
-    
+
     req = RetrievalRequest(query=str(obj), top_k=default_top_k)
     req.rerank = eff_rerank or req.rerank
     req.persist = (
-        eff_persist
-        if req.persist is None or isinstance(req.persist, bool)
-        else req.persist
+        eff_persist if req.persist is None or isinstance(req.persist, bool) else req.persist
     )
     if not req.retrievers:
         req.retrievers = eff_retrievers or req.retrievers

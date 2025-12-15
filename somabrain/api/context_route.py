@@ -61,39 +61,41 @@ from somabrain import metrics as _metrics
 
 class ContextRouteState:
     """Encapsulates context route state for DI container management.
-    
+
     This class holds:
     - FeedbackStore (lazy-initialized)
     - TokenLedger (lazy-initialized)
     - Per-tenant AdaptationEngine cache
     - Feedback counter
     - Rate limiting windows
-    
+
     Thread Safety:
         The state uses simple dict operations which are atomic in CPython.
         For production use with multiple threads, consider adding explicit
         locking if state consistency is critical.
     """
-    
+
     def __init__(self) -> None:
         self._feedback_store: Optional[FeedbackStore] = None
         self._token_ledger: Optional[TokenLedger] = None
         self._adaptation_engines: Dict[str, AdaptationEngine] = {}
         self._feedback_counter: int = 0
-        self._feedback_rate_window: Dict[str, collections.deque] = collections.defaultdict(collections.deque)
-    
+        self._feedback_rate_window: Dict[str, collections.deque] = collections.defaultdict(
+            collections.deque
+        )
+
     def get_feedback_store(self) -> FeedbackStore:
         """Get or create the FeedbackStore instance."""
         if self._feedback_store is None:
             self._feedback_store = FeedbackStore()
         return self._feedback_store
-    
+
     def get_token_ledger(self) -> TokenLedger:
         """Get or create the TokenLedger instance."""
         if self._token_ledger is None:
             self._token_ledger = TokenLedger()
         return self._token_ledger
-    
+
     def get_adaptation_engine(
         self,
         builder,
@@ -110,22 +112,22 @@ class ContextRouteState:
             )
             self._adaptation_engines[tenant_id] = adaptation
         return self._adaptation_engines[tenant_id]
-    
+
     @property
     def feedback_counter(self) -> int:
         """Get the current feedback counter value."""
         return self._feedback_counter
-    
+
     @feedback_counter.setter
     def feedback_counter(self, value: int) -> None:
         """Set the feedback counter value."""
         self._feedback_counter = value
-    
+
     def increment_feedback_counter(self) -> int:
         """Increment and return the feedback counter."""
         self._feedback_counter += 1
         return self._feedback_counter
-    
+
     def enforce_rate_limit(self, tenant_id: str) -> None:
         """Enforce per-tenant rate limiting for feedback requests."""
         limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
@@ -142,7 +144,7 @@ class ContextRouteState:
                 detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
             )
         window.append(now)
-    
+
     def reset(self) -> None:
         """Reset all state (for testing)."""
         self._feedback_store = None
@@ -239,13 +241,9 @@ async def evaluate_endpoint(
     if len(bundle.memories) > 20:
         raise HTTPException(status_code=400, detail="memories exceeds 20 items")
     if len(bundle.prompt) > 4096:
-        raise HTTPException(
-            status_code=400, detail="prompt length exceeds 4096 characters"
-        )
+        raise HTTPException(status_code=400, detail="prompt length exceeds 4096 characters")
     if len(bundle.residual_vector) > 2048:
-        raise HTTPException(
-            status_code=400, detail="residual vector exceeds 2048 floats"
-        )
+        raise HTTPException(status_code=400, detail="residual vector exceeds 2048 floats")
     if len(bundle.working_memory_snapshot) > 10:
         raise HTTPException(status_code=400, detail="working memory exceeds 10 items")
     import json
@@ -292,9 +290,7 @@ async def feedback_endpoint(
         payload.response_text,
     ]:
         if field and len(field) > 1024:
-            raise HTTPException(
-                status_code=400, detail="input field exceeds 1024 characters"
-            )
+            raise HTTPException(status_code=400, detail="input field exceeds 1024 characters")
     import json
 
     if payload.metadata is not None:
@@ -367,9 +363,7 @@ async def feedback_endpoint(
         update_learning_effective_lr(tenant_id, lr_eff)
     else:
         # Feedback rejected - determine reason
-        reason = (
-            "bounds" if payload.utility is None or payload.reward is None else "outlier"
-        )
+        reason = "bounds" if payload.utility is None or payload.reward is None else "outlier"
         record_learning_feedback_rejected(tenant_id, reason)
     # Capture weights after adaptation
     after = {
@@ -388,12 +382,9 @@ async def feedback_endpoint(
     # Compute deltas
     delta = {
         "retrieval": {
-            k: after["retrieval"][k] - before["retrieval"][k]
-            for k in before["retrieval"]
+            k: after["retrieval"][k] - before["retrieval"][k] for k in before["retrieval"]
         },
-        "utility": {
-            k: after["utility"][k] - before["utility"][k] for k in before["utility"]
-        },
+        "utility": {k: after["utility"][k] - before["utility"][k] for k in before["utility"]},
     }
     event_id = _make_event_id(payload.session_id)
     try:
@@ -410,9 +401,7 @@ async def feedback_endpoint(
         )
         tokens = None
         if isinstance(payload.metadata, dict):
-            tokens = payload.metadata.get("tokens") or payload.metadata.get(
-                "tokens_used"
-            )
+            tokens = payload.metadata.get("tokens") or payload.metadata.get("tokens_used")
         if tokens is not None:
             ledger = _get_token_ledger()
             ledger.record(
@@ -421,9 +410,7 @@ async def feedback_endpoint(
                 tokens=float(tokens),
                 tenant_id=tenant_id,
                 model=(
-                    payload.metadata.get("model")
-                    if isinstance(payload.metadata, dict)
-                    else None
+                    payload.metadata.get("model") if isinstance(payload.metadata, dict) else None
                 ),
             )
         audit.publish_event(
@@ -474,7 +461,7 @@ def _get_adaptation(
     builder, planner: ContextPlanner, tenant_id: str = "default"
 ) -> AdaptationEngine:
     """Get or create a per-tenant AdaptationEngine instance.
-    
+
     Each tenant maintains independent learning state. Uses DI container
     for state management.
     """
@@ -578,9 +565,7 @@ async def adaptation_reset_endpoint(
                     status_code=403, detail="adaptation reset blocked (no mode info)"
                 )
         except Exception:
-            raise HTTPException(
-                status_code=403, detail="adaptation reset blocked (no mode info)"
-            )
+            raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
     builder = get_context_builder()
     planner = get_context_planner()
     default_tenant = await get_default_tenant_async()
@@ -611,9 +596,7 @@ async def adaptation_reset_endpoint(
 
         g = payload.gains
         adapter.set_gains(
-            AdaptationGains(
-                alpha=g.alpha, gamma=g.gamma, lambda_=g.lambda_, mu=g.mu, nu=g.nu
-            )
+            AdaptationGains(alpha=g.alpha, gamma=g.gamma, lambda_=g.lambda_, mu=g.mu, nu=g.nu)
         )
     if payload.base_lr is not None:
         adapter.set_base_learning_rate(float(payload.base_lr))

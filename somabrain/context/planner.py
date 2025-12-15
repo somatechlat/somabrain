@@ -31,14 +31,10 @@ class ContextPlanner:
         self._memory_penalty_scale = 10.0
         # Load configuration from Settings if present
         self._length_penalty_scale = float(
-            getattr(
-                settings, "planner_length_penalty_scale", self._length_penalty_scale
-            )
+            getattr(settings, "planner_length_penalty_scale", self._length_penalty_scale)
         )
         self._memory_penalty_scale = float(
-            getattr(
-                settings, "planner_memory_penalty_scale", self._memory_penalty_scale
-            )
+            getattr(settings, "planner_memory_penalty_scale", self._memory_penalty_scale)
         )
 
         def _env_float(name: str, current: float) -> float:
@@ -77,9 +73,7 @@ class ContextPlanner:
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
     def _generate_candidates(self, bundle) -> List[PlanCandidate]:
-        base = PlanCandidate(
-            prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt)
-        )
+        base = PlanCandidate(prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt))
         summaries = self._memory_highlights(bundle)
         candidates = [base]
         candidates.extend(summaries)
@@ -97,9 +91,7 @@ class ContextPlanner:
                 "Respond succinctly using the cited memory."
             )
             util = self._score(bundle, prompt, emphasis=weight)
-            results.append(
-                PlanCandidate(prompt=prompt, utility=util, notes=f"highlight:{mem.id}")
-            )
+            results.append(PlanCandidate(prompt=prompt, utility=util, notes=f"highlight:{mem.id}"))
         return results
 
     def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:

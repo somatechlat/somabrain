@@ -56,9 +56,7 @@ async def oak_option_create(body: OakOptionCreateRequest, request: Request):
 
 
 @router.put("/option/{option_id}", response_model=OakPlanSuggestResponse)
-async def oak_option_update(
-    option_id: str, body: OakOptionCreateRequest, request: Request
-):
+async def oak_option_update(option_id: str, body: OakOptionCreateRequest, request: Request):
     """Replace the payload of an existing Oak option.
 
     The request body is base64‑encoded. The endpoint resolves the tenant, decodes

@@ -30,15 +30,27 @@ class CognitiveErrorHandler:
         }
 
         if isinstance(error, HTTPException):
-            error_info["recovery_suggestions"] = ["Check request parameters", "Verify authentication"]
+            error_info["recovery_suggestions"] = [
+                "Check request parameters",
+                "Verify authentication",
+            ]
         elif "embedding" in str(error).lower():
-            error_info["recovery_suggestions"] = ["Check embedding service", "Alternative simpler embeddings"]
+            error_info["recovery_suggestions"] = [
+                "Check embedding service",
+                "Alternative simpler embeddings",
+            ]
         elif "memory" in str(error).lower():
-            error_info["recovery_suggestions"] = ["Check external memory backend", "Verify SOMABRAIN_MEMORY_HTTP_ENDPOINT"]
+            error_info["recovery_suggestions"] = [
+                "Check external memory backend",
+                "Verify SOMABRAIN_MEMORY_HTTP_ENDPOINT",
+            ]
         elif "rate" in str(error).lower():
             error_info["recovery_suggestions"] = ["Implement backoff strategy", "Check rate limits"]
         else:
-            error_info["recovery_suggestions"] = ["Log for analysis", "Implement graceful degradation"]
+            error_info["recovery_suggestions"] = [
+                "Log for analysis",
+                "Implement graceful degradation",
+            ]
 
         logger.error(f"Cognitive Error in {context}: {error_info}")
         return error_info
@@ -65,7 +77,9 @@ class CognitiveMiddleware:
         try:
             await self.app(scope, receive, send)
             processing_time = time.time() - start_time
-            logger.info(f"🧠 Request {request_id}: {method} {path} - Processing completed in {processing_time:.4f}s")
+            logger.info(
+                f"🧠 Request {request_id}: {method} {path} - Processing completed in {processing_time:.4f}s"
+            )
 
         except HTTPException:
             raise
@@ -82,8 +96,9 @@ class CognitiveMiddleware:
                 },
             )
             await error_response(scope, receive, send)
-            logger.error(f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}")
+            logger.error(
+                f"🧠 Request {request_id}: {method} {path} - Error after {processing_time:.4f}s: {str(e)}"
+            )
             return
 
         logger.debug(f"✅ Request {request_id} completed successfully")
-

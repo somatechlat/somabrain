@@ -44,6 +44,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # Supervisor client
 # ---------------------------------------------------------------------------
 
+
 def _get_supervisor_url() -> str:
     """Get the supervisor XML-RPC URL from settings."""
     url = settings.supervisor_url or None
@@ -59,9 +60,7 @@ def _supervisor() -> ServerProxy:
     try:
         return ServerProxy(_get_supervisor_url(), allow_none=True)
     except Exception as e:
-        raise HTTPException(
-            status_code=503, detail=f"supervisor client init failed: {e}"
-        )
+        raise HTTPException(status_code=503, detail=f"supervisor client init failed: {e}")
 
 
 def _admin_guard_dep(request: Request):
@@ -72,6 +71,7 @@ def _admin_guard_dep(request: Request):
 # ---------------------------------------------------------------------------
 # Service management endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/services", dependencies=[Depends(_admin_guard_dep)])
 async def list_services():
@@ -146,6 +146,7 @@ async def service_restart(name: str):
 # Outbox management endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/outbox", dependencies=[Depends(_admin_guard_dep)])
 async def admin_list_outbox(
     status: str = Query("pending", description="pending|failed|sent"),
@@ -168,9 +169,7 @@ async def admin_list_outbox(
 
     if status.lower().strip() == "failed":
         for ev in events:
-            tenant_label = (
-                (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
-            )
+            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception:
@@ -197,9 +196,7 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
         raise exc
     if count == 0:
         try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
-                len(body.event_ids)
-            )
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
         except Exception:
             pass
         raise HTTPException(status_code=404, detail="No matching events to replay")
@@ -299,9 +296,7 @@ async def admin_get_outbox_summary():
 
         tenant_summaries = []
         all_tenants = (
-            set(pending_counts.keys())
-            | set(failed_counts.keys())
-            | set(sent_counts.keys())
+            set(pending_counts.keys()) | set(failed_counts.keys()) | set(sent_counts.keys())
         )
 
         for tenant in sorted(all_tenants):
@@ -328,23 +323,20 @@ async def admin_get_outbox_summary():
         )
 
     except Exception as exc:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to get outbox summary: {exc}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to get outbox summary: {exc}")
 
 
 # ---------------------------------------------------------------------------
 # Quota management endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/quotas", dependencies=[Depends(_admin_guard_dep)])
 async def admin_list_quotas(
     request: Request,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    tenant_filter: Optional[str] = Query(
-        None, description="Filter by tenant ID prefix"
-    ),
+    tenant_filter: Optional[str] = Query(None, description="Filter by tenant ID prefix"),
 ):
     """List quota status for all tenants."""
     from somabrain.quotas import QuotaManager, QuotaConfig
@@ -357,9 +349,7 @@ async def admin_list_quotas(
             all_quotas = await all_quotas
 
         if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [
-                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
-            ]
+            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
 
         total_count = len(all_quotas)
         paginated_quotas = all_quotas[offset : offset + limit]
@@ -494,6 +484,7 @@ async def admin_adjust_quota(
 # Feature flags endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/features", dependencies=[Depends(_admin_guard_dep)])
 async def admin_features_state() -> S.FeatureFlagsResponse:
     """Return the current feature-flag status and any persisted overrides."""
@@ -509,9 +500,7 @@ async def admin_features_update(
     """Validate and apply an admin feature-flag update."""
     unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
     if unknown:
-        raise HTTPException(
-            status_code=400, detail=f"unknown flags: {', '.join(unknown)}"
-        )
+        raise HTTPException(status_code=400, detail=f"unknown flags: {', '.join(unknown)}")
 
     if not FeatureFlags.set_overrides(body.disabled):
         raise HTTPException(status_code=403, detail="update forbidden")
@@ -522,6 +511,7 @@ async def admin_features_update(
 # ---------------------------------------------------------------------------
 # Journal management endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.get("/journal/stats", dependencies=[Depends(_admin_guard_dep)])
 async def admin_get_journal_stats():
@@ -537,16 +527,10 @@ async def admin_get_journal_stats():
 @router.get("/journal/events", dependencies=[Depends(_admin_guard_dep)])
 async def admin_list_journal_events(
     tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    status: Optional[str] = Query(
-        None, description="Filter by status (pending|sent|failed)"
-    ),
+    status: Optional[str] = Query(None, description="Filter by status (pending|sent|failed)"),
     topic: Optional[str] = Query(None, description="Filter by topic"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of events to return"
-    ),
-    since: Optional[str] = Query(
-        None, description="Only events after this ISO datetime"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return"),
+    since: Optional[str] = Query(None, description="Only events after this ISO datetime"),
 ):
     """List journal events with filtering options."""
     try:
@@ -588,12 +572,8 @@ async def admin_list_journal_events(
 @router.post("/journal/replay", dependencies=[Depends(_admin_guard_dep)])
 async def admin_replay_journal_events(
     tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    limit: int = Query(
-        100, ge=1, le=1000, description="Maximum number of events to replay"
-    ),
-    mark_processed: bool = Query(
-        True, description="Mark replayed events as processed"
-    ),
+    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to replay"),
+    mark_processed: bool = Query(True, description="Mark replayed events as processed"),
 ):
     """Replay journal events to the database outbox."""
     try:
@@ -627,13 +607,9 @@ async def admin_cleanup_journal():
 @router.post("/journal/init", dependencies=[Depends(_admin_guard_dep)])
 async def admin_init_journal(
     journal_dir: Optional[str] = Query(None, description="Journal directory path"),
-    max_file_size: Optional[int] = Query(
-        None, description="Max file size in bytes"
-    ),
+    max_file_size: Optional[int] = Query(None, description="Max file size in bytes"),
     max_files: Optional[int] = Query(None, description="Max number of files"),
-    retention_days: Optional[int] = Query(
-        None, description="Retention period in days"
-    ),
+    retention_days: Optional[int] = Query(None, description="Retention period in days"),
 ):
     """Initialize or reconfigure the journal."""
     try:

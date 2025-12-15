@@ -7,13 +7,11 @@ target sleep states, optional TTL for auto‑wake, and additional parameters.
 
 from __future__ import annotations
 
-import datetime
 import json
+from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import String, DateTime, Text, func
-# Import the datetime class directly for type annotations
-from datetime import datetime
 from sqlalchemy.orm import Mapped, mapped_column
 
 from somabrain.storage.db import Base
@@ -41,7 +39,9 @@ class TenantSleepState(Base):
     current_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
     target_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
     ttl: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    scheduled_wake: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    scheduled_wake: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     circuit_breaker_state: Mapped[str] = mapped_column(String(50), nullable=False, default="closed")
     parameters_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(

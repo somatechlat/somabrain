@@ -16,10 +16,10 @@ from typing import Any
 
 class SomaBrainError(Exception):
     """Base exception for all SomaBrain errors.
-    
+
     All custom exceptions in the SomaBrain system inherit from this class,
     allowing callers to catch all application-specific errors.
-    
+
     Attributes:
         message: Human-readable error description
         context: Optional dictionary with additional error context
@@ -39,7 +39,7 @@ class SomaBrainError(Exception):
 
 class ConfigurationError(SomaBrainError):
     """Configuration is invalid or missing.
-    
+
     Raised when:
     - Required configuration values are missing
     - Configuration values fail validation
@@ -49,7 +49,7 @@ class ConfigurationError(SomaBrainError):
 
 class ValidationError(SomaBrainError):
     """Input validation failed.
-    
+
     Raised when:
     - Request payload fails schema validation
     - Function arguments are invalid
@@ -59,17 +59,17 @@ class ValidationError(SomaBrainError):
 
 class MemoryServiceError(SomaBrainError):
     """Memory service operation failed.
-    
+
     Base class for all memory-related errors.
     """
 
 
 class CircuitBreakerOpen(MemoryServiceError):
     """Circuit breaker is open, service unavailable.
-    
+
     Raised when the circuit breaker has tripped due to repeated failures
     and the service is temporarily unavailable.
-    
+
     Attributes:
         reset_after_seconds: Estimated time until circuit breaker resets
     """

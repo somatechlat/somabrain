@@ -89,7 +89,8 @@ def _handle_config_event(event) -> None:
     namespace = event.namespace or "default"
     try:
         record_memory_snapshot(
-            tenant, namespace,
+            tenant,
+            namespace,
             eta=metrics.get("eta"),
             sparsity=metrics.get("sparsity"),
             config_version=event.version,
@@ -110,6 +111,7 @@ async def _ensure_config_runtime_started() -> None:
 def _tiered_enabled() -> bool:
     """Check if tiered memory feature is enabled."""
     from somabrain.modes import feature_enabled
+
     return feature_enabled("tiered_memory")
 
 
@@ -141,10 +143,9 @@ def _store_recall_session(
 # REMEMBER ENDPOINTS
 # ============================================================================
 
+
 @router.post("/remember", response_model=MemoryWriteResponse)
-async def remember_memory(
-    payload: MemoryWriteRequest, request: Request
-) -> MemoryWriteResponse:
+async def remember_memory(payload: MemoryWriteRequest, request: Request) -> MemoryWriteResponse:
     """Store a memory in both WM and LTM."""
     await _ensure_config_runtime_started()
     pool = _get_memory_pool()
@@ -156,17 +157,26 @@ async def remember_memory(
 
     actor = request.headers.get("X-Actor") or "memory-api"
     stored_payload, signal_data, seed_text = _compose_memory_payload(
-        tenant=payload.tenant, namespace=payload.namespace, key=payload.key,
-        value=payload.value, meta=payload.meta, universe=payload.universe,
-        attachments=payload.attachments, links=payload.links, tags=payload.tags,
-        policy_tags=payload.policy_tags, signals=payload.signals,
-        importance=payload.importance, novelty=payload.novelty,
-        ttl_seconds=payload.ttl_seconds, trace_id=payload.trace_id, actor=actor,
+        tenant=payload.tenant,
+        namespace=payload.namespace,
+        key=payload.key,
+        value=payload.value,
+        meta=payload.meta,
+        universe=payload.universe,
+        attachments=payload.attachments,
+        links=payload.links,
+        tags=payload.tags,
+        policy_tags=payload.policy_tags,
+        signals=payload.signals,
+        importance=payload.importance,
+        novelty=payload.novelty,
+        ttl_seconds=payload.ttl_seconds,
+        trace_id=payload.trace_id,
+        actor=actor,
     )
 
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     persisted_to_ltm = False
-    queued_for_replay = False
     coord = None
     degraded_warnings: List[str] = []
 
@@ -176,7 +186,6 @@ async def remember_memory(
     if circuit_open:
         # Queue to local journal for replay when backend recovers
         memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
-        queued_for_replay = True
         degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
     else:
         try:
@@ -185,7 +194,6 @@ async def remember_memory(
         except RuntimeError as exc:
             # Circuit just opened - queue locally
             memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
-            queued_for_replay = True
             degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
@@ -228,21 +236,33 @@ async def remember_memory(
     if tiered_vector is not None:
         snapshot = copy.deepcopy(stored_payload)
         _TIERED_REGISTRY.remember(
-            payload.tenant, payload.namespace, anchor_id=anchor_id,
-            key_vector=tiered_vector, value_vector=tiered_vector,
-            payload=snapshot, coordinate=coordinate_list,
+            payload.tenant,
+            payload.namespace,
+            anchor_id=anchor_id,
+            key_vector=tiered_vector,
+            value_vector=tiered_vector,
+            payload=snapshot,
+            coordinate=coordinate_list,
         )
 
     # Combine degraded warnings with other warnings
     all_warnings = degraded_warnings + warnings
 
     return MemoryWriteResponse(
-        ok=True, tenant=payload.tenant, namespace=payload.namespace,
-        coordinate=coordinate_list, promoted_to_wm=promoted_to_wm,
-        persisted_to_ltm=persisted_to_ltm, deduplicated=False,
-        importance=signal_feedback.importance, novelty=signal_feedback.novelty,
-        ttl_applied=signal_feedback.ttl_seconds, trace_id=payload.trace_id,
-        request_id=request_id, warnings=all_warnings, signals=signal_feedback,
+        ok=True,
+        tenant=payload.tenant,
+        namespace=payload.namespace,
+        coordinate=coordinate_list,
+        promoted_to_wm=promoted_to_wm,
+        persisted_to_ltm=persisted_to_ltm,
+        deduplicated=False,
+        importance=signal_feedback.importance,
+        novelty=signal_feedback.novelty,
+        ttl_applied=signal_feedback.ttl_seconds,
+        trace_id=payload.trace_id,
+        request_id=request_id,
+        warnings=all_warnings,
+        signals=signal_feedback,
     )
 
 
@@ -265,12 +285,22 @@ async def remember_memory_batch(
 
     for item in payload.items:
         stored_payload, signal_data, seed_text = _compose_memory_payload(
-            tenant=payload.tenant, namespace=payload.namespace, key=item.key,
-            value=item.value, meta=item.meta, universe=item.universe or payload.universe,
-            attachments=item.attachments, links=item.links, tags=item.tags,
-            policy_tags=item.policy_tags, signals=item.signals,
-            importance=item.importance, novelty=item.novelty,
-            ttl_seconds=item.ttl_seconds, trace_id=item.trace_id, actor=actor,
+            tenant=payload.tenant,
+            namespace=payload.namespace,
+            key=item.key,
+            value=item.value,
+            meta=item.meta,
+            universe=item.universe or payload.universe,
+            attachments=item.attachments,
+            links=item.links,
+            tags=item.tags,
+            policy_tags=item.policy_tags,
+            signals=item.signals,
+            importance=item.importance,
+            novelty=item.novelty,
+            ttl_seconds=item.ttl_seconds,
+            trace_id=item.trace_id,
+            actor=actor,
         )
         vector = None
         warnings: List[str] = []
@@ -278,17 +308,27 @@ async def remember_memory_batch(
             vector = np.asarray(embedder.embed(seed_text), dtype=np.float32)
         except Exception as exc:
             warnings.append(f"working-memory-embed-failed:{exc}")
-        item_contexts.append({
-            "key": item.key, "payload": stored_payload, "signal_data": signal_data,
-            "seed_text": seed_text, "trace_id": item.trace_id, "vector": vector,
-            "warnings": warnings,
-        })
+        item_contexts.append(
+            {
+                "key": item.key,
+                "payload": stored_payload,
+                "signal_data": signal_data,
+                "seed_text": seed_text,
+                "trace_id": item.trace_id,
+                "vector": vector,
+                "warnings": warnings,
+            }
+        )
 
     if not item_contexts:
-        return MemoryBatchWriteResponse(ok=True, tenant=payload.tenant, namespace=payload.namespace, results=[])
+        return MemoryBatchWriteResponse(
+            ok=True, tenant=payload.tenant, namespace=payload.namespace, results=[]
+        )
 
     try:
-        coords = await memsvc.aremember_bulk([(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None)
+        coords = await memsvc.aremember_bulk(
+            [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
+        )
         persisted_to_ltm = True
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
@@ -314,9 +354,13 @@ async def remember_memory_batch(
                 ctx["warnings"].append(f"working-memory-admit-failed:{exc}")
             snapshot = copy.deepcopy(ctx["payload"])
             _TIERED_REGISTRY.remember(
-                payload.tenant, payload.namespace, anchor_id=ctx["key"],
-                key_vector=ctx["vector"], value_vector=ctx["vector"],
-                payload=snapshot, coordinate=coordinate,
+                payload.tenant,
+                payload.namespace,
+                anchor_id=ctx["key"],
+                key_vector=ctx["vector"],
+                value_vector=ctx["vector"],
+                payload=snapshot,
+                coordinate=coordinate,
             )
 
         signal_feedback = MemorySignalFeedback(
@@ -325,15 +369,25 @@ async def remember_memory_batch(
             ttl_seconds=ctx["signal_data"].get("ttl_seconds"),
             reinforcement=ctx["signal_data"].get("reinforcement"),
             recall_bias=ctx["signal_data"].get("recall_bias"),
-            promoted_to_wm=promoted_to_wm, persisted_to_ltm=persisted_to_ltm,
+            promoted_to_wm=promoted_to_wm,
+            persisted_to_ltm=persisted_to_ltm,
         )
-        results.append(MemoryBatchWriteResult(
-            key=ctx["key"], coordinate=coordinate, promoted_to_wm=promoted_to_wm,
-            persisted_to_ltm=persisted_to_ltm, deduplicated=False,
-            importance=signal_feedback.importance, novelty=signal_feedback.novelty,
-            ttl_applied=signal_feedback.ttl_seconds, trace_id=ctx["trace_id"],
-            request_id=f"{request_id}:{idx}", warnings=ctx["warnings"], signals=signal_feedback,
-        ))
+        results.append(
+            MemoryBatchWriteResult(
+                key=ctx["key"],
+                coordinate=coordinate,
+                promoted_to_wm=promoted_to_wm,
+                persisted_to_ltm=persisted_to_ltm,
+                deduplicated=False,
+                importance=signal_feedback.importance,
+                novelty=signal_feedback.novelty,
+                ttl_applied=signal_feedback.ttl_seconds,
+                trace_id=ctx["trace_id"],
+                request_id=f"{request_id}:{idx}",
+                warnings=ctx["warnings"],
+                signals=signal_feedback,
+            )
+        )
 
     try:
         items = len(wm.items(payload.tenant))
@@ -341,12 +395,15 @@ async def remember_memory_batch(
     except Exception:
         pass
 
-    return MemoryBatchWriteResponse(ok=True, tenant=payload.tenant, namespace=payload.namespace, results=results)
+    return MemoryBatchWriteResponse(
+        ok=True, tenant=payload.tenant, namespace=payload.namespace, results=results
+    )
 
 
 # ============================================================================
 # RECALL ENDPOINTS
 # ============================================================================
+
 
 def _map_retrieval_to_memory_items(candidates: List[dict]) -> List[MemoryRecallItem]:
     """Map retrieval candidates to MemoryRecallItem instances."""
@@ -359,7 +416,9 @@ def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> Retrie
 
 
 @router.post("/recall", response_model=MemoryRecallResponse)
-async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
+async def recall_memory(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
     """Unified recall endpoint backed by the retrieval pipeline."""
     await _ensure_config_runtime_started()
     cfg = settings
@@ -383,8 +442,11 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
 
     t0 = time.perf_counter()
     from somabrain.services.retrieval_pipeline import run_retrieval_pipeline
+
     ret_resp = await run_retrieval_pipeline(
-        ret_req, ctx=ctx, universe=ret_req.universe,
+        ret_req,
+        ctx=ctx,
+        universe=ret_req.universe,
         trace_id=request.headers.get("X-Request-ID"),
     )
     dt_ms = round((time.perf_counter() - t0) * 1000.0, 3)
@@ -398,21 +460,33 @@ async def recall_memory(payload: Annotated[Any, Body(...)], request: Request) ->
 
     try:
         from somabrain import metrics as M
+
         M.RECALL_REQUESTS.labels(namespace=ctx.namespace).inc()
     except Exception:
         pass
 
     return MemoryRecallResponse(
-        tenant=ctx.tenant_id, namespace=ctx.namespace, results=items,
-        wm_hits=wm_hits, ltm_hits=ltm_hits, duration_ms=dt_ms,
-        session_id=str(ret_dict.get("session_coord") or ""), scoring_mode=None,
-        chunk_index=0, has_more=False, total_results=len(items),
-        chunk_size=None, conversation_id=None, degraded=degraded,
+        tenant=ctx.tenant_id,
+        namespace=ctx.namespace,
+        results=items,
+        wm_hits=wm_hits,
+        ltm_hits=ltm_hits,
+        duration_ms=dt_ms,
+        session_id=str(ret_dict.get("session_coord") or ""),
+        scoring_mode=None,
+        chunk_index=0,
+        has_more=False,
+        total_results=len(items),
+        chunk_size=None,
+        conversation_id=None,
+        degraded=degraded,
     )
 
 
 @router.post("/recall/stream", response_model=MemoryRecallResponse)
-async def recall_memory_stream(payload: Annotated[Any, Body(...)], request: Request) -> MemoryRecallResponse:
+async def recall_memory_stream(
+    payload: Annotated[Any, Body(...)], request: Request
+) -> MemoryRecallResponse:
     """Streaming recall with chunking."""
     ret_req = _coerce_to_retrieval_request(payload, default_top_k=10)
     chunk_size = min(max(1, int(ret_req.top_k)), 5)
@@ -435,16 +509,20 @@ async def get_recall_session(session_id: str) -> MemoryRecallSessionResponse:
         raise HTTPException(status_code=404, detail="session not found or expired")
     results = [MemoryRecallItem(**item) for item in state.get("results", [])]
     return MemoryRecallSessionResponse(
-        session_id=session_id, tenant=state.get("tenant", ""),
-        namespace=state.get("namespace", ""), scoring_mode=state.get("scoring_mode"),
+        session_id=session_id,
+        tenant=state.get("tenant", ""),
+        namespace=state.get("namespace", ""),
+        scoring_mode=state.get("scoring_mode"),
         conversation_id=state.get("conversation_id"),
-        created_at=state.get("created_at", 0.0), results=results,
+        created_at=state.get("created_at", 0.0),
+        results=results,
     )
 
 
 # ============================================================================
 # METRICS AND ADMIN ENDPOINTS
 # ============================================================================
+
 
 @router.get("/metrics", response_model=MemoryMetricsResponse)
 async def memory_metrics(
@@ -470,7 +548,9 @@ async def memory_metrics(
         pass
 
     return MemoryMetricsResponse(
-        tenant=tenant, namespace=namespace, wm_items=wm_items,
+        tenant=tenant,
+        namespace=namespace,
+        wm_items=wm_items,
         circuit_open=memsvc._is_circuit_open(),
     )
 
@@ -495,19 +575,28 @@ async def list_outbox_events(
     cfg = getattr(request.app.state, "cfg", None)
     require_admin_auth(request, cfg)
     try:
-        events = outbox_db.list_events_by_status(status=status, tenant_id=tenant, limit=limit, offset=offset)
+        events = outbox_db.list_events_by_status(
+            status=status, tenant_id=tenant, limit=limit, offset=offset
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     summaries: List[OutboxEventSummary] = []
     for ev in events:
         created_ts = ev.created_at.timestamp() if ev.created_at else 0.0
-        summaries.append(OutboxEventSummary(
-            id=int(ev.id), tenant_id=ev.tenant_id, topic=ev.topic, status=ev.status,
-            retries=int(ev.retries or 0), created_at=float(created_ts),
-            dedupe_key=str(ev.dedupe_key), last_error=ev.last_error,
-            payload=ev.payload if isinstance(ev.payload, dict) else {},
-        ))
+        summaries.append(
+            OutboxEventSummary(
+                id=int(ev.id),
+                tenant_id=ev.tenant_id,
+                topic=ev.topic,
+                status=ev.status,
+                retries=int(ev.retries or 0),
+                created_at=float(created_ts),
+                dedupe_key=str(ev.dedupe_key),
+                last_error=ev.last_error,
+                payload=ev.payload if isinstance(ev.payload, dict) else {},
+            )
+        )
     return summaries
 
 

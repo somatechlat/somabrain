@@ -108,8 +108,7 @@ def process_search_response(
         filtered_hits = [
             hit
             for hit in hits
-            if str((hit.payload or {}).get("universe") or universe_value)
-            == universe_value
+            if str((hit.payload or {}).get("universe") or universe_value) == universe_value
         ]
         hits = filtered_hits
         if not hits:
@@ -172,9 +171,7 @@ def memories_search_sync(
     if tenant:
         body["tenant"] = str(tenant)
 
-    success, status, data = http_post_fn(
-        "/memories/search", body, headers, operation="recall"
-    )
+    success, status, data = http_post_fn("/memories/search", body, headers, operation="recall")
     if success:
         # SECURITY: Filter by tenant client-side as defense-in-depth
         return process_search_response(
@@ -250,7 +247,6 @@ async def memories_search_async(
     return []
 
 
-
 def recall_with_graph_boost(
     hits: List[RecallHit],
     graph_client: "GraphClient",
@@ -303,9 +299,7 @@ def recall_with_graph_boost(
 
         try:
             # B2.5: 100ms timeout is handled by GraphClient
-            neighbors = graph_client.get_neighbors(
-                coord, k_hop=1, limit=max_neighbors
-            )
+            neighbors = graph_client.get_neighbors(coord, k_hop=1, limit=max_neighbors)
 
             # B2.2: Boost neighbor scores
             for neighbor in neighbors:

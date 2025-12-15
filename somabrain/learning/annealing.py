@@ -24,24 +24,35 @@ from somabrain.learning.tenant_cache import get_tenant_override
 
 def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) -> dict:
     """Get tau annealing configuration from settings and tenant overrides.
-    
+
     Args:
         tenant_id: Tenant identifier
         tenant_override: Optional pre-loaded tenant override dict
-        
+
     Returns:
         Dict with anneal_mode, anneal_rate, anneal_step_interval, tau_min
     """
     try:
         from somabrain import runtime_config as _rt
+
         env_mode = getattr(settings, "tau_anneal_mode", None) if settings else None
         env_rate = getattr(settings, "tau_anneal_rate", None) if settings else None
         env_step = getattr(settings, "tau_anneal_step_interval", None) if settings else None
         env_tau_min = getattr(settings, "tau_min", None) if settings else None
-        
-        anneal_mode = str(env_mode).strip().lower() if env_mode is not None else _rt.get_str("tau_anneal_mode", "").strip().lower()
-        anneal_rate = float(env_rate) if env_rate is not None else _rt.get_float("tau_anneal_rate", 0.0)
-        anneal_step_interval = int(env_step) if env_step is not None else int(_rt.get_float("tau_anneal_step_interval", 10))
+
+        anneal_mode = (
+            str(env_mode).strip().lower()
+            if env_mode is not None
+            else _rt.get_str("tau_anneal_mode", "").strip().lower()
+        )
+        anneal_rate = (
+            float(env_rate) if env_rate is not None else _rt.get_float("tau_anneal_rate", 0.0)
+        )
+        anneal_step_interval = (
+            int(env_step)
+            if env_step is not None
+            else int(_rt.get_float("tau_anneal_step_interval", 10))
+        )
         tau_min = float(env_tau_min) if env_tau_min is not None else _rt.get_float("tau_min", 0.05)
     except Exception:
         anneal_mode = ""
@@ -70,11 +81,11 @@ def get_annealing_config(tenant_id: str, tenant_override: dict | None = None) ->
 
 def get_decay_config(tenant_id: str, tenant_override: dict | None = None) -> dict:
     """Get tau decay configuration from settings and tenant overrides.
-    
+
     Args:
         tenant_id: Tenant identifier
         tenant_override: Optional pre-loaded tenant override dict
-        
+
     Returns:
         Dict with enable_tau_decay, tau_decay_rate
     """
@@ -82,13 +93,17 @@ def get_decay_config(tenant_id: str, tenant_override: dict | None = None) -> dic
     tau_decay_rate = 0.0
     try:
         from somabrain import runtime_config as _rt
+
         env_enable = getattr(settings, "tau_decay_enabled", None) if settings else None
         env_rate = getattr(settings, "tau_decay_rate", None) if settings else None
         enable_tau_decay = (
             (str(env_enable).strip().lower() in {"1", "true", "yes", "on"})
-            if env_enable is not None else _rt.get_bool("tau_decay_enabled", False)
+            if env_enable is not None
+            else _rt.get_bool("tau_decay_enabled", False)
         )
-        tau_decay_rate = float(env_rate) if env_rate is not None else _rt.get_float("tau_decay_rate", 0.0)
+        tau_decay_rate = (
+            float(env_rate) if env_rate is not None else _rt.get_float("tau_decay_rate", 0.0)
+        )
     except Exception:
         pass
 
@@ -109,13 +124,13 @@ def apply_tau_annealing(
     tenant_override: dict | None = None,
 ) -> tuple[float, bool]:
     """Apply tau annealing based on configuration.
-    
+
     Args:
         current_tau: Current tau value
         tenant_id: Tenant identifier
         feedback_count: Number of feedback events (for step-based annealing)
         tenant_override: Optional pre-loaded tenant override dict
-        
+
     Returns:
         Tuple of (new_tau, was_annealed)
     """
@@ -148,6 +163,7 @@ def apply_tau_annealing(
         new_tau = max(tau_min, new_tau)
         try:
             from somabrain import metrics as _metrics
+
             _metrics.tau_anneal_events.labels(tenant_id=tenant_id).inc()
         except Exception:
             pass
@@ -163,14 +179,14 @@ def apply_tau_decay(
     was_annealed: bool = False,
 ) -> float:
     """Apply tau decay if enabled.
-    
+
     Args:
         current_tau: Current tau value
         tenant_id: Tenant identifier
         tenant_override: Optional pre-loaded tenant override dict
         skip_if_annealed: Skip decay if annealing was already applied
         was_annealed: Whether annealing was applied this cycle
-        
+
     Returns:
         New tau value
     """
@@ -190,6 +206,7 @@ def apply_tau_decay(
 
     try:
         from somabrain import metrics as _metrics
+
         _metrics.tau_decay_events.labels(tenant_id=tenant_id).inc()
     except Exception:
         pass
@@ -199,15 +216,16 @@ def apply_tau_decay(
 
 def get_entropy_cap(tenant_id: str) -> float:
     """Get entropy cap configuration.
-    
+
     Args:
         tenant_id: Tenant identifier
-        
+
     Returns:
         Entropy cap value (0.0 means disabled)
     """
     try:
         from somabrain import runtime_config as _rt
+
         env_cap = getattr(settings, "entropy_cap", None) if settings else None
         entropy_cap = float(env_cap) if env_cap is not None else _rt.get_float("entropy_cap", 0.0)
     except Exception:
@@ -228,11 +246,11 @@ def check_entropy_cap(
     tenant_id: str,
 ) -> None:
     """Check if retrieval weights exceed entropy cap.
-    
+
     Args:
         alpha, beta, gamma, tau: Retrieval weight values
         tenant_id: Tenant identifier
-        
+
     Raises:
         RuntimeError: If entropy exceeds configured cap
     """
@@ -253,6 +271,7 @@ def check_entropy_cap(
     if entropy > entropy_cap:
         try:
             from somabrain import metrics as _metrics
+
             _metrics.update_learning_retrieval_entropy(tenant_id, entropy)
             _metrics.entropy_cap_events.labels(tenant_id=tenant_id).inc()
         except Exception:
@@ -264,15 +283,16 @@ def check_entropy_cap(
 
 # Utility functions for manual tau annealing calculations
 
+
 def linear_decay(tau_0: float, tau_min: float, alpha: float, t: int) -> float:
     """Linear tau annealing.
-    
+
     Args:
         tau_0: Initial tau value
         tau_min: Minimum tau value
         alpha: Decay rate
         t: Time step
-        
+
     Returns:
         Annealed tau value
     """
@@ -281,12 +301,12 @@ def linear_decay(tau_0: float, tau_min: float, alpha: float, t: int) -> float:
 
 def exponential_decay(tau_0: float, gamma: float, t: int) -> float:
     """Exponential tau annealing.
-    
+
     Args:
         tau_0: Initial tau value
         gamma: Decay factor (0 < gamma < 1)
         t: Time step
-        
+
     Returns:
         Annealed tau value
     """

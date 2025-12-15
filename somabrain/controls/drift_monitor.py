@@ -45,6 +45,7 @@ from .metrics import DRIFT_ALERT, DRIFT_SCORE
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 

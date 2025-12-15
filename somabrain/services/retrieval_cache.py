@@ -23,20 +23,20 @@ _log = logging.getLogger(__name__)
 
 class RetrievalCache:
     """Thread-safe cache for retrieval candidates.
-    
+
     Stores candidates keyed by (namespace, query) tuples. All access is
     protected by a lock to ensure thread safety.
     """
-    
+
     def __init__(self) -> None:
         self._cache: Dict[_CacheKey, List[_CandidateRecord]] = {}
         self._lock = Lock()
-    
+
     def _normalize(self, namespace: str | None, query: str | None) -> _CacheKey:
         ns = (namespace or "").strip().lower()
         q = (query or "").strip().lower()
         return (ns, q)
-    
+
     def store(
         self,
         namespace: str | None,
@@ -53,7 +53,7 @@ class RetrievalCache:
             key[1],
             len(self._cache.get(key, [])),
         )
-    
+
     def get(self, namespace: str | None, query: str | None) -> List[_CandidateRecord]:
         """Return a copy of the cached candidates for (namespace, query)."""
         key = self._normalize(namespace, query)
@@ -67,7 +67,7 @@ class RetrievalCache:
             len(out),
         )
         return out
-    
+
     def get_any(self, namespace: str | None) -> List[_CandidateRecord]:
         """Return a merged copy of all cached candidates for a namespace."""
         ns, _ = self._normalize(namespace, None)
@@ -78,7 +78,7 @@ class RetrievalCache:
                     out.extend([dict(c) for c in entries])
         _log.debug("retrieval_cache.get_any: ns=%r total=%d", ns, len(out))
         return out
-    
+
     def clear(self) -> None:
         """Clear all cached entries."""
         with self._lock:

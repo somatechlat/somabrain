@@ -20,6 +20,7 @@ from __future__ import annotations
 
 
 from typing import Any, Optional
+
 # asyncio moved to somabrain/lifecycle/ modules
 # threading and time moved to somabrain/routers/sleep.py
 import importlib
@@ -29,21 +30,26 @@ import sys
 
 # numpy moved to somabrain/bootstrap/singletons.py
 from fastapi import FastAPI
+
 # inspect moved to admin router
 from fastapi.exceptions import RequestValidationError
 from cachetools import TTLCache
+
 # XMLRPCError moved to admin router
 
 # Additional imports required for application setup (must appear before any non‑import code)
 # UnifiedScorer moved to somabrain/bootstrap/singletons.py
 from somabrain.sdr import LSHIndex, SDREncoder
+
 # _eval_step and MemoryService moved to cognitive router
 
 from somabrain.stats import EWMA
 from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
+
 # get_tenant moved to routers
 from somabrain.version import API_VERSION
+
 # check_kafka moved to somabrain/lifecycle/startup.py
 from somabrain.services.memory_service import MemoryService as _MemSvc
 
@@ -53,6 +59,7 @@ from somabrain.services.memory_service import MemoryService as _MemSvc
 # metrics (M) moved to somabrain/lifecycle/startup.py
 # consolidation moved to somabrain/routers/sleep.py
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
+
 # require_admin_auth, require_auth moved to routers
 from somabrain.basal_ganglia import BasalGangliaPolicy
 
@@ -67,6 +74,7 @@ from somabrain.context_hrr import HRRContextConfig
 
 # Oak FastAPI router that now talks to Milvus
 from somabrain.oak.router import router as oak_router
+
 # milvus_reconcile moved to somabrain/lifecycle/startup.py
 
 # Cognitive Threads router (Phase 5)
@@ -117,6 +125,7 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
 
 from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
+
 # assess_reality moved to memory router
 # coerce_to_epoch_seconds moved to memory router
 # make_embedder moved to somabrain/bootstrap/singletons.py
@@ -127,10 +136,13 @@ from somabrain.memory_pool import MultiTenantMemory
 from somabrain.microcircuits import MCConfig, MultiColumnWM
 from somabrain.mt_context import MultiTenantHRRContext
 from somabrain.mt_wm import MTWMConfig, MultiTenantWM
+
 # outbox_db moved to admin router
 from somabrain.neuromodulators import PerTenantNeuromodulators
+
 # Journal imports moved to somabrain/routers/admin.py
 from somabrain.personality import PersonalityStore
+
 # plan_from_graph moved to cognitive router
 # Predictor imports moved to somabrain/bootstrap/singletons.py
 
@@ -139,6 +151,7 @@ from somabrain.personality import PersonalityStore
 from somabrain.quantum import QuantumLayer
 from somabrain.quotas import QuotaConfig, QuotaManager
 from somabrain.ratelimit import RateConfig, RateLimiter
+
 # FDSalienceSketch moved to somabrain/bootstrap/singletons.py
 
 # Use the new TenantManager for tenant resolution.
@@ -219,14 +232,17 @@ if not _sphinx_build:
     # Populate global logger references after setup
     logger, cognitive_logger, error_logger = get_loggers()
 
+
 # Startup diagnostics and observability extracted to lifecycle module
 @app.on_event("startup")
 async def _startup_diagnostics() -> None:
     await lifecycle_startup.startup_diagnostics(cfg)
 
+
 @app.on_event("startup")
 async def _init_observability() -> None:
     await lifecycle_startup.init_observability()
+
 
 # Add timing middleware for request instrumentation
 try:
@@ -281,6 +297,7 @@ except Exception as e:
 # --- Startup event handlers (delegating to somabrain/lifecycle/) ----------------
 # These thin wrappers delegate to the lifecycle module for the actual implementation.
 # The @app.on_event decorator requires the function to be defined here.
+
 
 @app.on_event("startup")
 async def _startup_mode_banner() -> None:
@@ -434,9 +451,7 @@ if settings is not None:
         if mode_policy:
             BACKEND_ENFORCEMENT = True
         else:
-            BACKEND_ENFORCEMENT = bool(
-                getattr(settings, "require_external_backends", False)
-            )
+            BACKEND_ENFORCEMENT = bool(getattr(settings, "require_external_backends", False))
     except Exception:
         pass
 if not BACKEND_ENFORCEMENT:
@@ -563,9 +578,7 @@ mc_wm = MultiColumnWM(
 # Load the ``runtime.py`` file as a distinct module to avoid colliding with the
 # ``somabrain.runtime`` package (which only re‑exports ``WorkingMemoryBuffer``).
 _runtime_path = os.path.join(os.path.dirname(__file__), "runtime.py")
-_spec = importlib.util.spec_from_file_location(
-    "somabrain.runtime_module", _runtime_path
-)
+_spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
 assert _spec and _spec.loader  # sanity check
 # If an initializer already loaded the runtime module into sys.modules, reuse it
 if _spec.name in sys.modules:
@@ -750,11 +763,7 @@ drift_mon = (
 )
 
 # SDR encoder and index (still used by memory router)
-_sdr_enc = (
-    SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density)
-    if cfg.use_sdr_prefilter
-    else None
-)
+_sdr_enc = SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density) if cfg.use_sdr_prefilter else None
 _sdr_idx: dict[str, LSHIndex] = {}
 
 

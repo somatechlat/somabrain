@@ -22,7 +22,7 @@ from somabrain.infrastructure import get_redis_url
 
 def get_redis() -> "Redis | None":
     """Get Redis client for per-tenant state persistence.
-    
+
     Strict mode: requires real Redis (SOMABRAIN_REDIS_URL).
     Returns None if Redis is not available or not required.
     """
@@ -53,12 +53,15 @@ def is_persistence_enabled() -> bool:
     _persist_enabled = False
     try:
         from somabrain import runtime_config as _rt
+
         _persist_enabled = _rt.get_bool("learning_state_persistence", False)
     except Exception:
         pass
     if not _persist_enabled:
         if settings:
-            _persist_enabled = str(getattr(settings, "enable_learning_state_persistence", "")).strip().lower() in {"1", "true", "yes", "on"}
+            _persist_enabled = str(
+                getattr(settings, "enable_learning_state_persistence", "")
+            ).strip().lower() in {"1", "true", "yes", "on"}
     return _persist_enabled
 
 
@@ -72,7 +75,7 @@ def persist_state(
     ttl_seconds: int = 7 * 24 * 3600,
 ) -> None:
     """Persist adaptation state to Redis.
-    
+
     Args:
         redis_client: Redis client instance (or None to skip)
         tenant_id: Tenant identifier
@@ -85,31 +88,33 @@ def persist_state(
     if not redis_client:
         return
     state_key = f"adaptation:state:{tenant_id}"
-    state_data = json.dumps({
-        "retrieval": {
-            "alpha": float(retrieval.get("alpha", 1.0)),
-            "beta": float(retrieval.get("beta", 0.2)),
-            "gamma": float(retrieval.get("gamma", 0.1)),
-            "tau": float(retrieval.get("tau", 0.7)),
-        },
-        "utility": {
-            "lambda_": float(utility.get("lambda_", 1.0)),
-            "mu": float(utility.get("mu", 0.1)),
-            "nu": float(utility.get("nu", 0.05)),
-        },
-        "feedback_count": int(feedback_count),
-        "learning_rate": float(learning_rate),
-    })
+    state_data = json.dumps(
+        {
+            "retrieval": {
+                "alpha": float(retrieval.get("alpha", 1.0)),
+                "beta": float(retrieval.get("beta", 0.2)),
+                "gamma": float(retrieval.get("gamma", 0.1)),
+                "tau": float(retrieval.get("tau", 0.7)),
+            },
+            "utility": {
+                "lambda_": float(utility.get("lambda_", 1.0)),
+                "mu": float(utility.get("mu", 0.1)),
+                "nu": float(utility.get("nu", 0.05)),
+            },
+            "feedback_count": int(feedback_count),
+            "learning_rate": float(learning_rate),
+        }
+    )
     redis_client.setex(state_key, ttl_seconds, state_data)
 
 
 def load_state(redis_client: "Redis | None", tenant_id: str) -> dict[str, Any] | None:
     """Load adaptation state from Redis.
-    
+
     Args:
         redis_client: Redis client instance (or None)
         tenant_id: Tenant identifier
-        
+
     Returns:
         State dict with retrieval, utility, feedback_count, learning_rate
         or None if not found/error

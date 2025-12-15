@@ -62,9 +62,7 @@ class BulkStoreResult:
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
-debug_memory_client = (
-    bool(getattr(settings, "debug_memory_client", False)) if settings else False
-)
+debug_memory_client = bool(getattr(settings, "debug_memory_client", False)) if settings else False
 if debug_memory_client and not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
@@ -79,9 +77,7 @@ class MemoryClient:
     Requires healthy HTTP backend; fails fast if unavailable.
     """
 
-    def __init__(
-        self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None
-    ):
+    def __init__(self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None):
         self.cfg = cfg
         self._scorer = scorer
         self._embedder = embedder
@@ -152,9 +148,7 @@ class MemoryClient:
         )
 
         try:
-            limits = httpx.Limits(
-                max_connections=max_conns, max_keepalive_connections=keepalive
-            )
+            limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
         except Exception:
             limits = None
 
@@ -188,9 +182,7 @@ class MemoryClient:
                 "MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT."
             )
         if not token_value:
-            logger.warning(
-                "Memory HTTP client initialized without token; proceeding without auth."
-            )
+            logger.warning("Memory HTTP client initialized without token; proceeding without auth.")
         return transport
 
     def _get_http_client(self) -> Optional[httpx.Client]:
@@ -293,14 +285,8 @@ class MemoryClient:
         """Raise error if memory service is not fully healthy."""
         health = self.health()
         if not health.get("healthy"):
-            missing = [
-                c
-                for c in ("kv_store", "vector_store", "graph_store")
-                if not health.get(c)
-            ]
-            raise RuntimeError(
-                f"Memory service unavailable: {', '.join(missing) or 'unknown'}"
-            )
+            missing = [c for c in ("kv_store", "vector_store", "graph_store") if not health.get(c)]
+            raise RuntimeError(f"Memory service unavailable: {', '.join(missing) or 'unknown'}")
 
     # HTTP helpers - delegate to extracted module
     _response_json = staticmethod(_response_json)
@@ -350,20 +336,14 @@ class MemoryClient:
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_sync
 
-        return store_http_sync(
-            self._transport, body, headers, self._tenant_namespace()[0]
-        )
+        return store_http_sync(self._transport, body, headers, self._tenant_namespace()[0])
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_async
 
-        return await store_http_async(
-            self._transport, body, headers, self._tenant_namespace()[0]
-        )
+        return await store_http_async(self._transport, body, headers, self._tenant_namespace()[0])
 
-    def _store_bulk_http_sync(
-        self, batch_request: dict, headers: dict
-    ) -> tuple[bool, int, Any]:
+    def _store_bulk_http_sync(self, batch_request: dict, headers: dict) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import store_bulk_http_sync
 
         return store_bulk_http_sync(
@@ -426,19 +406,13 @@ class MemoryClient:
         )
 
     # Recall aggregation aliases
-    def _http_recall_aggregate_sync(
-        self, q: str, k: int, u: str, r: str
-    ) -> List[RecallHit]:
+    def _http_recall_aggregate_sync(self, q: str, k: int, u: str, r: str) -> List[RecallHit]:
         return self._memories_search_sync(q, k, u, r)
 
-    def _http_recall_aggregate_async(
-        self, q: str, k: int, u: str, r: str
-    ) -> List[RecallHit]:
+    def _http_recall_aggregate_async(self, q: str, k: int, u: str, r: str) -> List[RecallHit]:
         return self._memories_search_async(q, k, u, r)
 
-    def _filter_hits_by_keyword(
-        self, hits: List[RecallHit], keyword: str
-    ) -> List[RecallHit]:
+    def _filter_hits_by_keyword(self, hits: List[RecallHit], keyword: str) -> List[RecallHit]:
         from somabrain.memory.recall_ops import filter_hits_by_keyword
 
         return filter_hits_by_keyword(hits, keyword)
@@ -458,16 +432,10 @@ class MemoryClient:
     def _density_factor(self, margin: float | None) -> float:
         return compute_density_factor(margin, self.cfg)
 
-    def _rescore_and_rank_hits(
-        self, hits: List[RecallHit], query: str
-    ) -> List[RecallHit]:
-        return rescore_and_rank_hits(
-            hits, query, self.cfg, self._scorer, self._embedder
-        )
+    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
+        return rescore_and_rank_hits(hits, query, self.cfg, self._scorer, self._embedder)
 
-    def _compat_enrich_payload(
-        self, payload: dict, coord_key: str
-    ) -> tuple[dict, str, dict]:
+    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]:
         tenant, namespace = self._tenant_namespace()
         return enrich_payload(payload, coord_key, namespace, tenant=tenant)
 
@@ -481,9 +449,7 @@ class MemoryClient:
     ) -> None:
         from somabrain.memory.http_helpers import record_http_metrics
 
-        record_http_metrics(
-            operation, self._tenant_namespace()[0], success, status, duration
-        )
+        record_http_metrics(operation, self._tenant_namespace()[0], success, status, duration)
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -512,9 +478,7 @@ class MemoryClient:
             return coord
 
         # Check fast-ack mode for sync callers
-        fast_ack = (
-            bool(getattr(settings, "memory_fast_ack", False)) if settings else False
-        )
+        fast_ack = bool(getattr(settings, "memory_fast_ack", False)) if settings else False
         if fast_ack:
             try:
                 asyncio.get_event_loop().run_in_executor(
@@ -537,24 +501,16 @@ class MemoryClient:
                 pass
         return coord
 
-    def _schedule_async_persist(
-        self, coord_key: str, payload: dict, rid: str, loop
-    ) -> None:
+    def _schedule_async_persist(self, coord_key: str, payload: dict, rid: str, loop) -> None:
         """Schedule async or executor-based persistence."""
         try:
             if self._transport is not None and self._transport.async_client is not None:
                 try:
-                    loop.create_task(
-                        self._aremember_background(coord_key, payload, rid)
-                    )
+                    loop.create_task(self._aremember_background(coord_key, payload, rid))
                 except Exception:
-                    loop.run_in_executor(
-                        None, self._remember_sync_persist, coord_key, payload, rid
-                    )
+                    loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
             else:
-                loop.run_in_executor(
-                    None, self._remember_sync_persist, coord_key, payload, rid
-                )
+                loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
         except Exception:
             try:
                 self._remember_sync_persist(coord_key, payload, rid)
@@ -571,9 +527,7 @@ class MemoryClient:
 
         self._require_healthy()
 
-        prepared, universes, coords, tenant, namespace = prepare_bulk_items(
-            self.cfg, items
-        )
+        prepared, universes, coords, tenant, namespace = prepare_bulk_items(self.cfg, items)
         if not prepared:
             return []
 
@@ -673,10 +627,7 @@ class MemoryClient:
             )
 
         # F1.1: Chunk items into batches
-        chunks = [
-            items_list[i : i + chunk_size]
-            for i in range(0, total_items, chunk_size)
-        ]
+        chunks = [items_list[i : i + chunk_size] for i in range(0, total_items, chunk_size)]
 
         all_coords: List[Tuple[float, float, float]] = []
         failed_indices: List[int] = []
@@ -688,9 +639,7 @@ class MemoryClient:
 
             try:
                 # Prepare this chunk
-                prepared, universes, coords, _, namespace = prepare_bulk_items(
-                    self.cfg, chunk
-                )
+                prepared, universes, coords, _, namespace = prepare_bulk_items(self.cfg, chunk)
                 if not prepared:
                     # All items in chunk failed preparation
                     for i in range(len(chunk)):
@@ -714,15 +663,11 @@ class MemoryClient:
                     batch_payload["universe"] = batch_universe
 
                 # F1.2: Try to store the chunk
-                success, status, response = self._store_bulk_http_sync(
-                    batch_payload, headers
-                )
+                success, status, response = self._store_bulk_http_sync(batch_payload, headers)
 
                 if success and response is not None:
                     # Process successful response
-                    chunk_coords = process_bulk_response(
-                        response, prepared, coords, chunk_rid
-                    )
+                    chunk_coords = process_bulk_response(response, prepared, coords, chunk_rid)
                     all_coords.extend(chunk_coords)
                     succeeded_count += len(chunk)
                 elif status in (404, 405):
@@ -828,15 +773,11 @@ class MemoryClient:
         self._require_healthy()
         if self._transport is not None and self._transport.async_client is not None:
             try:
-                enriched, universe, compat_hdr = self._compat_enrich_payload(
-                    payload, coord_key
-                )
+                enriched, universe, compat_hdr = self._compat_enrich_payload(payload, coord_key)
                 coord = _stable_coord(f"{universe}::{coord_key}")
                 enriched = dict(enriched)
                 enriched.setdefault("coordinate", coord)
-                memory_type = str(
-                    enriched.get("memory_type") or enriched.get("type") or "episodic"
-                )
+                memory_type = str(enriched.get("memory_type") or enriched.get("type") or "episodic")
                 body = {
                     "coord": f"{coord[0]},{coord[1]},{coord[2]}",
                     "payload": enriched,
@@ -847,9 +788,7 @@ class MemoryClient:
                 rid_hdr.update(compat_hdr)
                 ok, response_data = await self._store_http_async(body, rid_hdr)
                 if ok and response_data is not None:
-                    server_coord = _extract_memory_coord(
-                        response_data, idempotency_key=rid
-                    )
+                    server_coord = _extract_memory_coord(response_data, idempotency_key=rid)
                     if server_coord:
                         return server_coord
                 return coord
@@ -872,9 +811,7 @@ class MemoryClient:
         if not records:
             return []
 
-        prepared, universes, coords, tenant, namespace = prepare_bulk_items(
-            self.cfg, records
-        )
+        prepared, universes, coords, tenant, namespace = prepare_bulk_items(self.cfg, records)
         if not prepared:
             return []
 
@@ -895,9 +832,7 @@ class MemoryClient:
         if batch_universe:
             batch_payload["universe"] = batch_universe
 
-        success, status, response = await self._store_bulk_http_async(
-            batch_payload, headers
-        )
+        success, status, response = await self._store_bulk_http_async(batch_payload, headers)
         if success and response is not None:
             return process_bulk_response(response, prepared, coords, rid)
 
@@ -953,9 +888,7 @@ class MemoryClient:
 
         try:
             self._require_healthy()
-            results = self._http_recall_aggregate_sync(
-                query, top_k, universe or "real", rid
-            )
+            results = self._http_recall_aggregate_sync(query, top_k, universe or "real", rid)
             # SFM call succeeded - mark recovered if was degraded
             degradation_mgr.mark_recovered(tenant)
             return results
@@ -1063,25 +996,135 @@ class MemoryClient:
         """
         # Common English stopwords to filter out
         stopwords = {
-            "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could",
-            "should", "may", "might", "must", "shall", "can", "need", "dare",
-            "ought", "used", "to", "of", "in", "for", "on", "with", "at", "by",
-            "from", "as", "into", "through", "during", "before", "after", "above",
-            "below", "between", "under", "again", "further", "then", "once", "here",
-            "there", "when", "where", "why", "how", "all", "each", "few", "more",
-            "most", "other", "some", "such", "no", "nor", "not", "only", "own",
-            "same", "so", "than", "too", "very", "just", "and", "but", "if", "or",
-            "because", "until", "while", "about", "against", "what", "which", "who",
-            "whom", "this", "that", "these", "those", "am", "i", "me", "my", "myself",
-            "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
-            "he", "him", "his", "himself", "she", "her", "hers", "herself", "it",
-            "its", "itself", "they", "them", "their", "theirs", "themselves",
+            "a",
+            "an",
+            "the",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "dare",
+            "ought",
+            "used",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "and",
+            "but",
+            "if",
+            "or",
+            "because",
+            "until",
+            "while",
+            "about",
+            "against",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "this",
+            "that",
+            "these",
+            "those",
+            "am",
+            "i",
+            "me",
+            "my",
+            "myself",
+            "we",
+            "our",
+            "ours",
+            "ourselves",
+            "you",
+            "your",
+            "yours",
+            "yourself",
+            "he",
+            "him",
+            "his",
+            "himself",
+            "she",
+            "her",
+            "hers",
+            "herself",
+            "it",
+            "its",
+            "itself",
+            "they",
+            "them",
+            "their",
+            "theirs",
+            "themselves",
         }
         # Tokenize and filter
         tokens = query.lower().split()
         keywords = [
-            t.strip(".,!?;:'\"()[]{}") for t in tokens
+            t.strip(".,!?;:'\"()[]{}")
+            for t in tokens
             if t.strip(".,!?;:'\"()[]{}") and t.lower() not in stopwords and len(t) > 2
         ]
         return keywords
@@ -1269,9 +1312,7 @@ class MemoryClient:
             return []
 
     # --- Compatibility helper methods ---
-    def coord_for_key(
-        self, key: str, universe: str | None = None
-    ) -> Tuple[float, float, float]:
+    def coord_for_key(self, key: str, universe: str | None = None) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*."""
         from somabrain.memory.utils import coord_for_key
 
@@ -1289,9 +1330,7 @@ class MemoryClient:
         """Store a payload dict into the memory backend."""
         from somabrain.memory.utils import store_from_payload
 
-        return store_from_payload(
-            payload, request_id, self._store_http_sync, self.remember
-        )
+        return store_from_payload(payload, request_id, self._store_http_sync, self.remember)
 
     def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None

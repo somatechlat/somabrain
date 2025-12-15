@@ -115,9 +115,7 @@ class PureQuantumLayer:
         if np.any(zero_mask):
             # Provide diagnostic detail: indices of zeros
             idxs = np.nonzero(zero_mask)[0].tolist()
-            raise ZeroDivisionError(
-                f"Pure unbind: zero frequency components at indices {idxs}"
-            )
+            raise ZeroDivisionError(f"Pure unbind: zero frequency components at indices {idxs}")
 
         fa_est = fc / fb
         a_est = np.fft.irfft(fa_est, n=self.cfg.dim)
@@ -140,9 +138,7 @@ class PureQuantumLayer:
         """Delegate to canonical cosine_similarity implementation."""
         return cosine_similarity(a, b)
 
-    def cleanup(
-        self, q: np.ndarray, anchors: Dict[str, np.ndarray]
-    ) -> Tuple[str, float]:
+    def cleanup(self, q: np.ndarray, anchors: Dict[str, np.ndarray]) -> Tuple[str, float]:
         q = self._ensure_vector(q, name="cleanup.query")
         best_id = ""
         best = -1.0

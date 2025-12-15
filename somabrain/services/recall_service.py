@@ -74,18 +74,15 @@ def recall_ltm(
             qbits = sdr_enc.encode(text)
             t2 = _t.perf_counter()
             cand_coords = idx.query(qbits, limit=graph_limit)
-            M.SDR_PREFILTER_LAT.labels(cohort=cohort).observe(
-                max(0.0, _t.perf_counter() - t2)
-            )
+            M.SDR_PREFILTER_LAT.labels(cohort=cohort).observe(max(0.0, _t.perf_counter() - t2))
             for _ in cand_coords:
                 M.SDR_CANDIDATES.labels(cohort=cohort).inc()
             # SDR prefilter found candidates but payloads_for_coords is not available
             did_sdr = False
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).debug(
-                "SDR prefilter failed for cohort=%s: %s", cohort, exc
-            )
+
+            logging.getLogger(__name__).debug("SDR prefilter failed for cohort=%s: %s", cohort, exc)
             did_sdr = False
     if not did_sdr:
         hits = getattr(mem_client, "recall")(text, top_k=top_k)
@@ -95,6 +92,7 @@ def recall_ltm(
             mem_hits = hits
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to extract payloads from recall hits: %s", exc
             )
@@ -107,11 +105,7 @@ def recall_ltm(
         def _lex_match(p: dict) -> bool:
             for k in ("task", "text", "content", "what", "fact"):
                 v = p.get(k)
-                if (
-                    isinstance(v, str)
-                    and v
-                    and (ql in v.lower() or v.lower() in ql)
-                ):
+                if isinstance(v, str) and v and (ql in v.lower() or v.lower() in ql):
                     return True
             return False
 
@@ -126,11 +120,10 @@ def recall_ltm(
                 try:
                     coord = mem_client.coord_for_key(raw_query, universe)
                     fetched = mem_client.fetch_by_coord(coord, universe)
-                    fallback_payloads = [
-                        p for p in fetched if isinstance(p, dict)
-                    ]
+                    fallback_payloads = [p for p in fetched if isinstance(p, dict)]
                 except Exception as exc:
                     import logging
+
                     logging.getLogger(__name__).debug(
                         "Fallback coord lookup failed for query=%r: %s", raw_query[:50], exc
                     )
@@ -144,9 +137,8 @@ def recall_ltm(
                         mem_payloads = deduped + mem_payloads
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).debug(
-                "Read-your-writes fallback failed: %s", exc
-            )
+
+            logging.getLogger(__name__).debug("Read-your-writes fallback failed: %s", exc)
     # Lexical/token-aware boost: if the query looks like a short unique token or
     # if any payload contains the exact query string, promote those payloads to
     # the top so users don't need manual tuning to find label-like memories.
@@ -154,14 +146,14 @@ def recall_ltm(
     ql_boost = q.lower()
 
     def _is_token_like(s: str) -> bool:
-            # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
-            if not s or len(s) < 6 or len(s) > 64:
-                return False
-            if not re.match(r"^[A-Za-z0-9_-]+$", s):
-                return False
-            has_alpha = any(c.isalpha() for c in s)
-            has_digit = any(c.isdigit() for c in s)
-            return has_alpha and has_digit
+        # Heuristic: alnum/_/- only, length 6-64, includes both letters and digits
+        if not s or len(s) < 6 or len(s) > 64:
+            return False
+        if not re.match(r"^[A-Za-z0-9_-]+$", s):
+            return False
+        has_alpha = any(c.isalpha() for c in s)
+        has_digit = any(c.isdigit() for c in s)
+        return has_alpha and has_digit
 
     def _lexical_score(p: dict) -> int:
         # Score by exact contains in common fields; higher for exact token-like
@@ -177,19 +169,14 @@ def recall_ltm(
 
     try:
         if mem_payloads and q:
-            scored = [
-                (p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)
-            ]
+            scored = [(p, _lexical_score(p)) for p in mem_payloads if isinstance(p, dict)]
             if any(s > 0 for _, s in scored):
                 # Stable sort: keep original relative order for equal scores
-                mem_payloads = [
-                    p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)
-                ]
+                mem_payloads = [p for p, _ in sorted(scored, key=lambda t: t[1], reverse=True)]
     except Exception as exc:
         import logging
-        logging.getLogger(__name__).debug(
-            "Lexical boost scoring failed: %s", exc
-        )
+
+        logging.getLogger(__name__).debug("Lexical boost scoring failed: %s", exc)
     # Filter by universe if any
     if universe:
         mem_payloads = [
@@ -256,6 +243,7 @@ def diversify_payloads(
         return ordered
     except Exception as exc:
         import logging
+
         logging.getLogger(__name__).warning(
             "MMR diversification failed, returning original order: %s", exc
         )
@@ -302,7 +290,6 @@ async def recall_ltm_async(
             hits = ahits
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).debug(
-                "Async recall fallback failed: %s", exc
-            )
+
+            logging.getLogger(__name__).debug("Async recall fallback failed: %s", exc)
     return payloads, hits

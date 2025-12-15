@@ -49,6 +49,7 @@ def _register_flag_gauges() -> None:
             gauge.labels(flag=name).set(1 if enabled else 0)
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).warning(
                 "Failed to register/update feature flag gauge for %s: %s", name, exc
             )

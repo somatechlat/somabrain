@@ -49,12 +49,8 @@ def _get_runtime():
     import os
     import sys
 
-    _runtime_path = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
-    )
-    _spec = importlib.util.spec_from_file_location(
-        "somabrain.runtime_module", _runtime_path
-    )
+    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
+    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -92,17 +88,15 @@ def _get_app_singletons():
     """Get app-level singletons."""
     try:
         from somabrain import app as app_module
+
         return {
             "predictor_factory": getattr(app_module, "_make_predictor", None),
-            "per_tenant_neuromodulators": getattr(
-                app_module, "per_tenant_neuromodulators", None
-            ),
+            "per_tenant_neuromodulators": getattr(app_module, "per_tenant_neuromodulators", None),
             "personality_store": getattr(app_module, "personality_store", None),
             "amygdala": getattr(app_module, "amygdala", None),
         }
     except Exception:
         return {}
-
 
 
 # ---------------------------------------------------------------------------
@@ -127,15 +121,11 @@ async def plan_suggest(body: S.PlanSuggestRequest, request: Request):
     if not task_key:
         raise HTTPException(status_code=400, detail="missing task_key")
 
-    max_steps = int(
-        getattr(body, "max_steps", None) or getattr(cfg, "plan_max_steps", 5) or 5
-    )
+    max_steps = int(getattr(body, "max_steps", None) or getattr(cfg, "plan_max_steps", 5) or 5)
 
     rel_types = getattr(body, "rel_types", None)
     if rel_types is not None and not isinstance(rel_types, list):
-        raise HTTPException(
-            status_code=400, detail="rel_types must be a list of strings"
-        )
+        raise HTTPException(status_code=400, detail="rel_types must be a list of strings")
 
     # Universe scoping: body value overrides header when set
     header_u = request.headers.get("X-Universe", "").strip() or None
@@ -193,7 +183,9 @@ async def act_endpoint(body: S.ActRequest, request: Request):
     wm_vec = embedder.embed(body.task) if embedder else None
 
     # Initial novelty from config or body, not hardcoded
-    initial_novelty = float(getattr(body, "novelty", None) or getattr(cfg, "default_novelty", 0.0) or 0.0)
+    initial_novelty = float(
+        getattr(body, "novelty", None) or getattr(cfg, "default_novelty", 0.0) or 0.0
+    )
 
     step_result = _eval_step(
         novelty=initial_novelty,
@@ -257,9 +249,7 @@ async def act_endpoint(body: S.ActRequest, request: Request):
 
 
 @router.post("/personality", response_model=S.PersonalityState)
-async def set_personality(
-    state: S.PersonalityState, request: Request
-) -> S.PersonalityState:
+async def set_personality(state: S.PersonalityState, request: Request) -> S.PersonalityState:
     """Set personality traits (reserved for future implementation)."""
     # This endpoint is reserved for future personality trait management
     raise HTTPException(status_code=404, detail="Not Found")
@@ -292,6 +282,7 @@ async def micro_diag(request: Request):
     # Get mc_wm from app module
     try:
         from somabrain import app as app_module
+
         mc_wm = getattr(app_module, "mc_wm", None)
         stats = mc_wm.stats(ctx.tenant_id) if mc_wm else {}
     except Exception:

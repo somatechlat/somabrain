@@ -38,9 +38,7 @@ def require_http_service(
     return resp
 
 
-def post_json(
-    url: str, payload: dict, *, timeout: float = 10.0
-) -> Callable[[], requests.Response]:
+def post_json(url: str, payload: dict, *, timeout: float = 10.0) -> Callable[[], requests.Response]:
     """Return a thunk that posts JSON and raises on network failure."""
 
     def _caller() -> requests.Response:

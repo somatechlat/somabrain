@@ -46,12 +46,8 @@ def _load_schema(path: str):
 
 
 _ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-SCHEMA_PREDICTOR_UPDATE = _load_schema(
-    os.path.join(_ROOT, "proto", "cog", "predictor_update.avsc")
-)
-SCHEMA_GLOBAL_FRAME = _load_schema(
-    os.path.join(_ROOT, "proto", "cog", "global_frame.avsc")
-)
+SCHEMA_PREDICTOR_UPDATE = _load_schema(os.path.join(_ROOT, "proto", "cog", "predictor_update.avsc"))
+SCHEMA_GLOBAL_FRAME = _load_schema(os.path.join(_ROOT, "proto", "cog", "global_frame.avsc"))
 
 # Metrics
 INTEGRATOR_LEADER = metrics.get_counter(
@@ -99,9 +95,7 @@ class IntegratorHub:
             alpha = getattr(ss, "predictor_alpha", 2.0)
         self.alpha = float(alpha)
         self.domains = domains or ["state", "agent", "action"]
-        self._initial_temperature = float(
-            getattr(ss, "integrator_softmax_temperature", 1.0)
-        )
+        self._initial_temperature = float(getattr(ss, "integrator_softmax_temperature", 1.0))
         self._initial_enable_flag = bool(getattr(ss, "enable_cog_threads", False))
         self._initial_opa_url = (getattr(ss, "opa_url", "") or "").strip()
         # Determine Kafka bootstrap configuration. If external backends are not required,
@@ -119,9 +113,7 @@ class IntegratorHub:
             "agent": getattr(ss, "topic_agent_updates", "cog.agent.updates"),
             "action": getattr(ss, "topic_action_updates", "cog.action.updates"),
         }
-        self.topic_global = topic_global or getattr(
-            ss, "topic_global_frame", "cog.global.frame"
-        )
+        self.topic_global = topic_global or getattr(ss, "topic_global_frame", "cog.global.frame")
         self.consumer = None
         self.producer = producer
         # Initialise Kafka consumer/producer only when I/O is required and a bootstrap server is configured.
@@ -215,9 +207,7 @@ class IntegratorHub:
             except Exception:
                 return default
 
-        alpha = _get_float(
-            "predictor_alpha", getattr(settings, "predictor_alpha", self.alpha)
-        )
+        alpha = _get_float("predictor_alpha", getattr(settings, "predictor_alpha", self.alpha))
         temp = _get_float("integrator_temperature", self._initial_temperature)
         flag = _get_bool("enable_cog_threads", self._initial_enable_flag)
         opa_url = _get_str("opa_url", self._initial_opa_url).strip()
@@ -261,6 +251,7 @@ class IntegratorHub:
                     INTEGRATOR_ERROR.labels(domain=d).observe(float(err))
                 except Exception as exc:
                     import logging
+
                     logging.getLogger(__name__).debug(
                         "Failed to observe INTEGRATOR_ERROR metric for domain=%s: %s", d, exc
                     )
@@ -273,6 +264,7 @@ class IntegratorHub:
             entropy = -sum(p * math.log(p) for p in probs.values() if p > 0)
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).debug("Failed to compute entropy: %s", exc)
             entropy = 0.0
         now = datetime.now(timezone.utc).isoformat()
@@ -287,9 +279,7 @@ class IntegratorHub:
                 "election_time": now,
                 "leader_tenure_seconds": 0.0,
                 "min_dwell_ms": 0,
-                "entropy_cap": float(
-                    getattr(settings, "integrator_entropy_cap", 0.0) or 0.0
-                ),
+                "entropy_cap": float(getattr(settings, "integrator_entropy_cap", 0.0) or 0.0),
                 "current_entropy": float(entropy),
                 "dwell_satisfied": True,
                 "transition_allowed": True,
@@ -302,19 +292,19 @@ class IntegratorHub:
                 INTEGRATOR_REDIS_CACHE.labels(leader=leader).inc()
             except Exception as exc:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "Failed to cache global frame for leader=%s in Redis: %s", leader, exc
                 )
         opa_url = cfg["opa_url"]
         if opa_url:
             try:
-                if not self._opa_request(
-                    opa_url, {"leader": leader, "weights": weights}
-                ):
+                if not self._opa_request(opa_url, {"leader": leader, "weights": weights}):
                     INTEGRATOR_OPA_REJECT.labels(leader=leader).inc()
                     return
             except Exception as exc:
                 import logging
+
                 logging.getLogger(__name__).warning(
                     "OPA request failed for leader=%s: %s", leader, exc
                 )
@@ -331,9 +321,8 @@ class IntegratorHub:
             return bool(resp.json().get("result", False))
         except Exception as exc:
             import logging
-            logging.getLogger(__name__).debug(
-                "OPA request to %s failed: %s", url, exc
-            )
+
+            logging.getLogger(__name__).debug("OPA request to %s failed: %s", url, exc)
             return False
 
     def run(self) -> None:  # pragma: no cover (I/O loop)

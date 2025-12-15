@@ -21,7 +21,7 @@ Float64Array = NDArray[np.float64]
 @runtime_checkable
 class MetricsInterface(Protocol):
     """Protocol for metrics recording.
-    
+
     This interface allows metrics to be injected without creating
     circular import dependencies. Components depend on this protocol
     rather than concrete metrics implementations.
@@ -39,16 +39,14 @@ class MetricsInterface(Protocol):
         """Record an observation in a histogram."""
         ...
 
-    def set_gauge(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         """Set a gauge metric value."""
         ...
 
 
 class NullMetrics:
     """No-op metrics implementation for testing and fallback.
-    
+
     This implementation satisfies MetricsInterface but performs no operations,
     useful for testing or when metrics are disabled.
     """
@@ -63,9 +61,7 @@ class NullMetrics:
     ) -> None:
         pass
 
-    def set_gauge(
-        self, name: str, value: float, labels: dict[str, str] | None = None
-    ) -> None:
+    def set_gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
         pass
 
 

@@ -113,9 +113,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
             timeout_seconds = 2.0
             if settings is not None:
                 try:
-                    timeout_seconds = float(
-                        getattr(settings, "opa_timeout_seconds", 2.0)
-                    )
+                    timeout_seconds = float(getattr(settings, "opa_timeout_seconds", 2.0))
                 except Exception:
                     timeout_seconds = 2.0
             async with httpx.AsyncClient(timeout=timeout_seconds) as client:
@@ -161,9 +159,7 @@ class OpaMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-async def opa_enforcement(
-    request: Request, call_next: Callable[[Request], Awaitable[Any]]
-) -> Any:
+async def opa_enforcement(request: Request, call_next: Callable[[Request], Awaitable[Any]]) -> Any:
     """FastAPI middleware that sends request data to OPA for allow/deny.
 
     The input payload includes:
@@ -198,9 +194,7 @@ async def opa_enforcement(
             app_metrics.OPA_DENY_TOTAL.inc()
             LOGGER.info("OPA denied request %s %s", request.method, request.url.path)
             # Return JSON response instead of raising HTTPException to avoid 500 errors in middleware chain
-            return JSONResponse(
-                status_code=403, content={"detail": "OPA policy denied request"}
-            )
+            return JSONResponse(status_code=403, content={"detail": "OPA policy denied request"})
         else:
             # Increment allow counter
             app_metrics.OPA_ALLOW_TOTAL.inc()

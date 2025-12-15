@@ -334,9 +334,7 @@ class ConstitutionEngine:
                 import tempfile
 
                 with tempfile.NamedTemporaryFile("w+", delete=False) as t:
-                    json.dump(
-                        {"constitution": self._constitution, "instance": instance}, t
-                    )
+                    json.dump({"constitution": self._constitution, "instance": instance}, t)
                     t.flush()
                     cmd = [
                         "opa",
@@ -348,17 +346,11 @@ class ConstitutionEngine:
                         "--input",
                         t.name,
                     ]
-                    proc = subprocess.run(
-                        cmd, capture_output=True, text=True, timeout=5
-                    )
+                    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
                 if proc.returncode == 0:
                     body = json.loads(proc.stdout)
                     # parse expected result shape
-                    res = (
-                        (body.get("result") or [{}])[0]
-                        .get("expressions", [{}])[0]
-                        .get("value")
-                    )
+                    res = (body.get("result") or [{}])[0].get("expressions", [{}])[0].get("value")
                     if isinstance(res, dict):
                         result = {"allowed": bool(res.get("allow")), "explain": res}
                     else:
@@ -427,10 +419,7 @@ class ConstitutionEngine:
 
         # Basic rule enforcement: if instance has 'forbidden' flag true and constitution disallows it
         rules = self._constitution.get("rules", {})
-        if (
-            instance.get("forbidden")
-            and rules.get("allow_forbidden", False) is not True
-        ):
+        if instance.get("forbidden") and rules.get("allow_forbidden", False) is not True:
             result = {
                 "allowed": False,
                 "explain": "instance marked forbidden by constitution",
@@ -493,9 +482,7 @@ class ConstitutionEngine:
         # If we loaded from storage but Redis signature set is empty, push current values
         if self._signatures and self._constitution:
             try:
-                self._storage._write_redis(
-                    self._constitution, self._checksum, self._signatures
-                )
+                self._storage._write_redis(self._constitution, self._checksum, self._signatures)
             except Exception:
                 pass
 

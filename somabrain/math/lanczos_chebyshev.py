@@ -24,7 +24,7 @@ def estimate_spectral_interval(
     returns: (a,b) estimated min and max eigenvalues
     """
     from somabrain.math import normalize_vector
-    
+
     if m <= 0:
         raise ValueError("m must be >= 1")
     q = np.zeros((n, m + 1), dtype=float)
@@ -115,7 +115,7 @@ def lanczos_expv(
     coefficient estimation. Returns ||x|| * V * exp(-t T) e1.
     """
     from somabrain.math import safe_normalize
-    
+
     n = x.shape[0]
     v, normx = safe_normalize(x, dtype=np.float64)
     if normx == 0:

@@ -20,41 +20,40 @@ from somabrain.core.container import container
 
 class TenantOverridesCache:
     """Cache for per-tenant configuration overrides.
-    
+
     This class encapsulates the caching logic for tenant-specific learning
     configuration overrides. Overrides can be loaded from a YAML/JSON file
     or from an environment variable.
-    
+
     Cache Invalidation:
         The cache is invalidated when the configured file path changes.
         Call clear() to force a reload on next access.
     """
-    
+
     def __init__(self) -> None:
         self._overrides: Dict[str, dict] | None = None
         self._path: str | None = None
-    
+
     def load(self) -> Dict[str, dict]:
         """Load tenant overrides from file or environment.
-        
+
         Returns cached overrides if available and path hasn't changed.
         """
         path = getattr(settings, "learning_tenants_file", None) if settings else None
         # Reload if cache empty or path changed
         if self._overrides is not None and path == self._path:
             return self._overrides
-        
+
         overrides: Dict[str, dict] = {}
         # Attempt to load from YAML if available
         if path and os.path.exists(path):
             try:
                 import yaml
+
                 with open(path, "r", encoding="utf-8") as f:
                     data = yaml.safe_load(f) or {}
                 if isinstance(data, dict):
-                    overrides = {
-                        str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
-                    }
+                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
             except Exception:
                 # Fallback to JSON parse if YAML not available or fails
                 try:
@@ -62,13 +61,11 @@ class TenantOverridesCache:
                         data = json.load(f)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}
-        
+
         # Optional: overrides via env JSON string
         if not overrides:
             raw = getattr(settings, "learning_tenants_overrides", "") if settings else ""
@@ -78,17 +75,15 @@ class TenantOverridesCache:
                     data = json.loads(raw)
                     if isinstance(data, dict):
                         overrides = {
-                            str(k): (v or {})
-                            for k, v in data.items()
-                            if isinstance(v, dict)
+                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
                         }
                 except Exception:
                     overrides = {}
-        
+
         self._overrides = overrides
         self._path = path
         return overrides
-    
+
     def get(self, tenant_id: str) -> dict:
         """Get overrides for a specific tenant."""
         try:
@@ -96,7 +91,7 @@ class TenantOverridesCache:
             return ov.get(str(tenant_id), {})
         except Exception:
             return {}
-    
+
     def clear(self) -> None:
         """Clear the cache to force reload on next access."""
         self._overrides = None

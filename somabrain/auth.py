@@ -31,9 +31,7 @@ def _get_jwt_key(cfg: Config) -> Optional[str]:
     if cfg.jwt_public_key_path:
         if _JWT_PUBLIC_CACHE is None:
             try:
-                _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(
-                    encoding="utf-8"
-                )
+                _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(encoding="utf-8")
             except Exception:
                 return None
         return _JWT_PUBLIC_CACHE

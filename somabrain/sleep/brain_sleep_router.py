@@ -114,9 +114,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
             "max_seconds": settings.sleep_max_seconds,
         }
         if not opa_client.evaluate(opa_input):
-            raise HTTPException(
-                status_code=403, detail="OPA policy denied cognitive sleep request"
-            )
+            raise HTTPException(status_code=403, detail="OPA policy denied cognitive sleep request")
 
         manager = SleepStateManager()
         cb = get_cb()
@@ -150,9 +148,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                         status_code=400,
                         detail=f"ttl_seconds exceeds maximum of {settings.sleep_max_seconds} seconds",
                     )
-                ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
-                    seconds=body.ttl_seconds
-                )
+                ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
                 ss.ttl = ttl_dt
                 ss.scheduled_wake = ttl_dt
             else:
@@ -167,9 +163,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
         _sleep_state_gauge.labels(tenant=tenant_id, state=str(state_int)).set(1)
         # Increment metrics counters
         _sleep_calls_counter.labels(tenant=tenant_id, mode="brain").inc()
-        _sleep_toggle_counter.labels(
-            tenant=tenant_id, new_state=target_state.value
-        ).inc()
+        _sleep_toggle_counter.labels(tenant=tenant_id, new_state=target_state.value).inc()
         # Log trace_id if provided.
         if getattr(body, "trace_id", None):
             logger.info(

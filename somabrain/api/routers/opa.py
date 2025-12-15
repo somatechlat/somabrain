@@ -53,9 +53,7 @@ async def update_policy(request: Request):
         )
     constitution = engine.get_constitution()
     if not constitution:
-        raise HTTPException(
-            status_code=500, detail="Constitution not loaded; cannot build policy"
-        )
+        raise HTTPException(status_code=500, detail="Constitution not loaded; cannot build policy")
     # Build policy from constitution
     policy_str = build_policy(constitution)
     # Sign policy – private key path from env (optional for testing)
@@ -81,7 +79,5 @@ async def update_policy(request: Request):
             )
     except Exception:
         # Defensive: ensure any unexpected error does not abort the request.
-        logging.getLogger("somabrain.opa").exception(
-            "Exception during OPA reload – ignoring"
-        )
+        logging.getLogger("somabrain.opa").exception("Exception during OPA reload – ignoring")
     return {"detail": "OPA policy updated and reloaded", "signature": sig}

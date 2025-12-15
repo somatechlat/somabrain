@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 
-
 @dataclass
 class DegradationState:
     """State for a single tenant's degradation."""

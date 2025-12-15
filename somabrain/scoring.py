@@ -35,9 +35,7 @@ def _gain_setting(name: str) -> float:
         return float(value)
     env_name = f"SOMABRAIN_SCORER_{name.upper()}"
     env_val = (
-        getattr(settings, env_name.lower(), None)
-        if hasattr(settings, env_name.lower())
-        else None
+        getattr(settings, env_name.lower(), None) if hasattr(settings, env_name.lower()) else None
     )
     if env_val is not None:
         return float(env_val)
@@ -132,9 +130,7 @@ class UnifiedScorer:
             M.SCORER_COMPONENT.labels(component="recency").observe(rec)
 
         total = (
-            self._weights.w_cosine * cos
-            + self._weights.w_fd * fd
-            + self._weights.w_recency * rec
+            self._weights.w_cosine * cos + self._weights.w_fd * fd + self._weights.w_recency * rec
         )
         total_score = max(0.0, min(1.0, float(total)))
 

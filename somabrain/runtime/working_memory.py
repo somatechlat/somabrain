@@ -61,9 +61,7 @@ class WorkingMemoryBuffer:
         else:
             self._redis = None
         if require_redis and not self._use_redis:
-            raise RuntimeError(
-                "WorkingMemoryBuffer requires Redis connectivity (strict mode)."
-            )
+            raise RuntimeError("WorkingMemoryBuffer requires Redis connectivity (strict mode).")
 
     def record(self, session_id: str, item: Dict) -> None:
         if self._use_redis and self._redis is not None:

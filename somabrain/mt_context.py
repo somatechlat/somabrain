@@ -41,14 +41,10 @@ from .quantum import QuantumLayer
 
 
 class MultiTenantHRRContext:
-    def __init__(
-        self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None
-    ):
+    def __init__(self, q: QuantumLayer, cfg: HRRContextConfig, max_tenants: int | None = None):
         self.q = q
         self.cfg = cfg
-        self.max_tenants = int(
-            settings.mtwm_max_tenants if max_tenants is None else max_tenants
-        )
+        self.max_tenants = int(settings.mtwm_max_tenants if max_tenants is None else max_tenants)
         self._ctxs: OrderedDict[str, HRRContext] = OrderedDict()
 
     def _ensure(self, tenant_id: str) -> HRRContext:

@@ -51,9 +51,7 @@ from .mt_wm import MultiTenantWM
 from .reflect import top_keywords
 
 
-def _episodics_from_wm(
-    mtwm: MultiTenantWM, tenant_id: str, limit: int = 256
-) -> List[dict]:
+def _episodics_from_wm(mtwm: MultiTenantWM, tenant_id: str, limit: int = 256) -> List[dict]:
     items = mtwm.items(tenant_id, limit=limit)
     return [p for p in items if (p.get("memory_type") == "episodic")]
 

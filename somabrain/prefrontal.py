@@ -94,8 +94,7 @@ class PrefrontalCortex:
         if isinstance(data, dict):
             # Scale only numeric entries, preserve others.
             transformed = {
-                k: (v * threshold if isinstance(v, (int, float)) else v)
-                for k, v in data.items()
+                k: (v * threshold if isinstance(v, (int, float)) else v) for k, v in data.items()
             }
             return transformed
         if isinstance(data, (int, float)):

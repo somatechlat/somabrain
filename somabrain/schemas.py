@@ -6,7 +6,7 @@ for backward compatibility. All existing imports will continue to work.
 
 The actual schema definitions are now in:
 - somabrain/schemas/memory.py - Memory operation schemas
-- somabrain/schemas/cognitive.py - Cognitive/planning schemas  
+- somabrain/schemas/cognitive.py - Cognitive/planning schemas
 - somabrain/schemas/health.py - Health, admin, and operational schemas
 
 For new code, prefer importing from the specific submodules:

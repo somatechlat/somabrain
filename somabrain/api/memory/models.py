@@ -25,27 +25,21 @@ from pydantic import BaseModel, Field
 
 class MemoryAttachment(BaseModel):
     """Attachment descriptor for memory entries."""
-    
+
     kind: str = Field(..., description="Attachment type identifier")
     uri: Optional[str] = Field(None, description="External location reference")
-    content_type: Optional[str] = Field(
-        None, description="MIME type for the attachment"
-    )
-    checksum: Optional[str] = Field(
-        None, description="Integrity checksum for validation"
-    )
+    content_type: Optional[str] = Field(None, description="MIME type for the attachment")
+    checksum: Optional[str] = Field(None, description="Integrity checksum for validation")
     data: Optional[str] = Field(
         None,
         description="Inline base64-encoded payload; use sparingly for small blobs",
     )
-    meta: Optional[Dict[str, Any]] = Field(
-        None, description="Attachment metadata annotations"
-    )
+    meta: Optional[Dict[str, Any]] = Field(None, description="Attachment metadata annotations")
 
 
 class MemoryLink(BaseModel):
     """Link descriptor for memory relationships."""
-    
+
     rel: str = Field(..., description="Relationship descriptor (e.g. causes, follows)")
     target: str = Field(..., description="Target memory key or URI")
     weight: Optional[float] = Field(None, ge=0.0, description="Optional link strength")
@@ -54,16 +48,10 @@ class MemoryLink(BaseModel):
 
 class MemorySignalPayload(BaseModel):
     """Agent-provided signals guiding storage priorities."""
-    
-    importance: Optional[float] = Field(
-        None, ge=0.0, description="Relative importance weight"
-    )
-    novelty: Optional[float] = Field(
-        None, ge=0.0, description="Novelty score from agent"
-    )
-    ttl_seconds: Optional[int] = Field(
-        None, ge=0, description="Soft time-to-live for cleanup"
-    )
+
+    importance: Optional[float] = Field(None, ge=0.0, description="Relative importance weight")
+    novelty: Optional[float] = Field(None, ge=0.0, description="Novelty score from agent")
+    ttl_seconds: Optional[int] = Field(None, ge=0, description="Soft time-to-live for cleanup")
     reinforcement: Optional[str] = Field(
         None, description="Working-memory reinforcement hint (e.g. boost, suppress)"
     )
@@ -74,7 +62,7 @@ class MemorySignalPayload(BaseModel):
 
 class MemorySignalFeedback(BaseModel):
     """Feedback on signal processing results."""
-    
+
     importance: Optional[float] = None
     novelty: Optional[float] = None
     ttl_seconds: Optional[int] = Field(None, ge=0, description="Applied ttl in seconds")
@@ -86,14 +74,10 @@ class MemorySignalFeedback(BaseModel):
 
 class MemoryWriteRequest(BaseModel):
     """Request model for single memory write operations."""
-    
+
     tenant: str = Field(..., min_length=1, description="Tenant identifier")
-    namespace: str = Field(
-        ..., min_length=1, description="Logical namespace (e.g. wm, ltm)"
-    )
-    key: str = Field(
-        ..., min_length=1, description="Stable key used to derive coordinates"
-    )
+    namespace: str = Field(..., min_length=1, description="Logical namespace (e.g. wm, ltm)")
+    key: str = Field(..., min_length=1, description="Stable key used to derive coordinates")
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(
         None, description="Optional metadata blended into the stored payload"
@@ -104,9 +88,7 @@ class MemoryWriteRequest(BaseModel):
     ttl_seconds: Optional[int] = Field(
         None, ge=0, description="Desired time-to-live hint for automatic cleanup"
     )
-    tags: List[str] = Field(
-        default_factory=list, description="Arbitrary agent-supplied tags"
-    )
+    tags: List[str] = Field(default_factory=list, description="Arbitrary agent-supplied tags")
     policy_tags: List[str] = Field(
         default_factory=list, description="Policy or governance tags for this memory"
     )
@@ -119,12 +101,8 @@ class MemoryWriteRequest(BaseModel):
     signals: Optional[MemorySignalPayload] = Field(
         None, description="Agent-provided signals guiding storage priorities"
     )
-    importance: Optional[float] = Field(
-        None, ge=0.0, description="Shortcut for signals.importance"
-    )
-    novelty: Optional[float] = Field(
-        None, ge=0.0, description="Shortcut for signals.novelty"
-    )
+    importance: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.importance")
+    novelty: Optional[float] = Field(None, ge=0.0, description="Shortcut for signals.novelty")
     trace_id: Optional[str] = Field(
         None, description="Agent correlation identifier for downstream observability"
     )
@@ -132,7 +110,7 @@ class MemoryWriteRequest(BaseModel):
 
 class MemoryWriteResponse(BaseModel):
     """Response model for single memory write operations."""
-    
+
     ok: bool
     tenant: str
     namespace: str
@@ -151,18 +129,14 @@ class MemoryWriteResponse(BaseModel):
 
 class MemoryRecallRequest(BaseModel):
     """Request model for memory recall operations."""
-    
+
     tenant: str = Field(..., min_length=1)
     namespace: str = Field(..., min_length=1)
     query: str = Field(..., min_length=1)
     top_k: int = Field(3, ge=1, le=50)
-    layer: Optional[str] = Field(
-        None, description="Set to 'wm', 'ltm', or omit for both"
-    )
+    layer: Optional[str] = Field(None, description="Set to 'wm', 'ltm', or omit for both")
     universe: Optional[str] = None
-    tags: List[str] = Field(
-        default_factory=list, description="Filter hits containing these tags"
-    )
+    tags: List[str] = Field(default_factory=list, description="Filter hits containing these tags")
     min_score: Optional[float] = Field(
         None, ge=0.0, description="Drop hits with score below this threshold"
     )
@@ -200,7 +174,7 @@ class MemoryRecallRequest(BaseModel):
 
 class MemoryRecallItem(BaseModel):
     """Individual recall result item."""
-    
+
     layer: str
     score: Optional[float] = None
     payload: Dict[str, Any]
@@ -219,7 +193,7 @@ class MemoryRecallItem(BaseModel):
 
 class MemoryRecallResponse(BaseModel):
     """Response model for memory recall operations."""
-    
+
     tenant: str
     namespace: str
     results: List[MemoryRecallItem]
@@ -238,7 +212,7 @@ class MemoryRecallResponse(BaseModel):
 
 class MemoryMetricsResponse(BaseModel):
     """Response model for memory metrics."""
-    
+
     tenant: str
     namespace: str
     wm_items: int
@@ -247,13 +221,11 @@ class MemoryMetricsResponse(BaseModel):
 
 class MemoryBatchWriteItem(BaseModel):
     """Individual item in a batch write request."""
-    
+
     key: str = Field(..., min_length=1)
     value: Dict[str, Any] = Field(..., description="Payload stored in memory")
     meta: Optional[Dict[str, Any]] = Field(None, description="Optional metadata")
-    ttl_seconds: Optional[int] = Field(
-        None, ge=0, description="TTL override for this item"
-    )
+    ttl_seconds: Optional[int] = Field(None, ge=0, description="TTL override for this item")
     tags: List[str] = Field(default_factory=list, description="Optional tags")
     policy_tags: List[str] = Field(default_factory=list, description="Policy tags")
     attachments: List[MemoryAttachment] = Field(default_factory=list)
@@ -267,7 +239,7 @@ class MemoryBatchWriteItem(BaseModel):
 
 class MemoryBatchWriteRequest(BaseModel):
     """Request model for batch memory write operations."""
-    
+
     tenant: str = Field(..., min_length=1)
     namespace: str = Field(..., min_length=1)
     items: List[MemoryBatchWriteItem] = Field(
@@ -281,7 +253,7 @@ class MemoryBatchWriteRequest(BaseModel):
 
 class MemoryBatchWriteResult(BaseModel):
     """Individual result in a batch write response."""
-    
+
     key: str
     coordinate: Optional[List[float]] = None
     promoted_to_wm: bool = False
@@ -298,7 +270,7 @@ class MemoryBatchWriteResult(BaseModel):
 
 class MemoryBatchWriteResponse(BaseModel):
     """Response model for batch memory write operations."""
-    
+
     ok: bool
     tenant: str
     namespace: str
@@ -307,7 +279,7 @@ class MemoryBatchWriteResponse(BaseModel):
 
 class MemoryRecallSessionResponse(BaseModel):
     """Response model for recall session creation."""
-    
+
     session_id: str
     tenant: str
 
@@ -333,9 +305,10 @@ __all__ = [
 
 # Admin/Outbox models
 
+
 class OutboxEventSummary(BaseModel):
     """Summary of an outbox event for admin listing."""
-    
+
     id: int
     tenant_id: str
     topic: str
@@ -349,20 +322,22 @@ class OutboxEventSummary(BaseModel):
 
 class OutboxReplayRequest(BaseModel):
     """Request to replay specific outbox events."""
-    
+
     ids: List[int] = Field(..., min_length=1, description="Event IDs to replay")
 
 
 class AnnRebuildRequest(BaseModel):
     """Request to rebuild ANN indexes."""
-    
+
     tenant: str
     namespace: Optional[str] = None
 
 
 # Update __all__ to include new models
-__all__.extend([
-    "OutboxEventSummary",
-    "OutboxReplayRequest",
-    "AnnRebuildRequest",
-])
+__all__.extend(
+    [
+        "OutboxEventSummary",
+        "OutboxReplayRequest",
+        "AnnRebuildRequest",
+    ]
+)

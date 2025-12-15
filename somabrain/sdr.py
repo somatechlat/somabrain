@@ -72,9 +72,7 @@ class SDREncoder:
         """
         import re
 
-        return [
-            t for t in re.findall(r"[A-Za-z0-9_]+", (text or "").lower()) if len(t) >= 2
-        ]
+        return [t for t in re.findall(r"[A-Za-z0-9_]+", (text or "").lower()) if len(t) >= 2]
 
     def encode(self, text: str) -> Set[int]:
         """
@@ -104,9 +102,7 @@ class SDREncoder:
         h = hashlib.blake2b
         while len(idx) < self.k:
             for t in toks:
-                hv = int.from_bytes(
-                    h(f"{t}:{salt}".encode(), digest_size=8).digest(), "big"
-                )
+                hv = int.from_bytes(h(f"{t}:{salt}".encode(), digest_size=8).digest(), "big")
                 idx.add(hv % self.dim)
                 if len(idx) >= self.k:
                     break
@@ -205,9 +201,7 @@ class LSHIndex:
             bucket = self.tables[b].setdefault(hv, set())
             bucket.add(coord)
 
-    def query(
-        self, bits: Set[int], limit: int = 100
-    ) -> List[Tuple[float, float, float]]:
+    def query(self, bits: Set[int], limit: int = 100) -> List[Tuple[float, float, float]]:
         """
         Query the index for coordinates with similar SDRs.
 

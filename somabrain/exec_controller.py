@@ -42,6 +42,7 @@ from typing import Deque, Dict, Optional, Tuple
 def _get_settings():
     """Lazy settings access to avoid circular imports."""
     from common.config.settings import settings
+
     return settings
 
 
@@ -85,12 +86,12 @@ class ExecutiveController:
 
     def __init__(self, cfg: ExecConfig) -> None:
         """Initialize the executive controller with configuration.
-        
+
         Args:
             cfg: ExecConfig instance specifying window size, conflict threshold,
                  exploration boost, and bandit parameters. Defaults are sourced
                  from centralized Settings.
-        
+
         Notes:
             - Creates per-tenant sliding windows for recall strength tracking
             - Initializes two-armed bandit state for exploration vs exploitation
@@ -182,9 +183,7 @@ class ExecutiveController:
             try:
                 from . import metrics as _mx
 
-                _mx.EXEC_BANDIT_ARM.labels(
-                    arm=("explore" if use_graph else "baseline")
-                ).inc()
+                _mx.EXEC_BANDIT_ARM.labels(arm=("explore" if use_graph else "baseline")).inc()
             except Exception:
                 pass
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))

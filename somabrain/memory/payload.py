@@ -101,11 +101,7 @@ def normalize_metadata(payload: Dict[str, Any]) -> Dict[str, Any]:
             dval = payload["domains"]
             if isinstance(dval, str):
                 # split on comma or whitespace
-                parts = [
-                    p.strip().lower()
-                    for p in dval.replace(",", " ").split()
-                    if p.strip()
-                ]
+                parts = [p.strip().lower() for p in dval.replace(",", " ").split() if p.strip()]
                 payload["domains"] = parts or []
             elif isinstance(dval, (list, tuple)):
                 cleaned = []
@@ -148,7 +144,7 @@ def prepare_memory_payload(
         A new payload dictionary with all required fields set and serialized for SFM.
     """
     from somabrain.memory.serialization import serialize_for_sfm
-    
+
     p = dict(payload or {})
     p.setdefault("memory_type", memory_type)
     p.setdefault("timestamp", time.time())

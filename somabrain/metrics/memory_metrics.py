@@ -256,6 +256,7 @@ from somabrain.metrics.core import REGISTRY
 
 try:
     from prometheus_client import Counter as _PromCounter
+
     if "memory_http_failures_total" in REGISTRY._names_to_collectors:
         HTTP_FAILURES = REGISTRY._names_to_collectors["memory_http_failures_total"]
     else:

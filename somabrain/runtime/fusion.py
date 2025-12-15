@@ -95,12 +95,11 @@ class BHDCFusionLayer:
 
     def _safe_l2_normalize(self, v: np.ndarray) -> np.ndarray:
         from somabrain.math import normalize_vector
+
         return normalize_vector(v, eps=self._epsilon, dtype=np.float64)
 
     # Optional math utilities (not required by current tests)
-    def normalized_error(
-        self, errors: np.ndarray, mu: float, sigma: float
-    ) -> np.ndarray:
+    def normalized_error(self, errors: np.ndarray, mu: float, sigma: float) -> np.ndarray:
         """Compute e_norm = (errors - mu) / (sigma + eps)."""
         e = np.asarray(errors, dtype=np.float64)
         return (e - float(mu)) / (float(sigma) + self._epsilon)

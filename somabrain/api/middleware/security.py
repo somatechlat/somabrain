@@ -48,4 +48,3 @@ class SecurityMiddleware:
             if pattern.search(path):
                 return True
         return False
-
