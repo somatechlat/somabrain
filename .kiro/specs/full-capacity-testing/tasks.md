@@ -120,13 +120,13 @@ Fix any issues before marking the task complete.
 
 ### Task 3.1: Working Memory Capacity and Eviction (B1)
 - [x] Create `tests/proofs/category_b/test_wm_capacity.py`
-- [x] Implement `test_capacity_limit_enforced` - B1.1 (NOTE: actual impl uses FIFO, not salience)
+- [x] Implement `test_capacity_limit_enforced` - B1.1 (NOTE: actual impl uses salience-based eviction)
 - [x] Implement `test_recency_set_on_admission` - B1.2
-- [ ] Implement `test_recency_decays_exponentially` - B1.3 (not implemented in WM)
-- [ ] Implement `test_duplicate_updates_existing` - B1.4 (not implemented in WM)
+- [x] Implement `test_recency_decays_exponentially` - B1.3
+- [x] Implement `test_duplicate_updates_existing` - B1.4
 - [x] Implement `test_recall_ranking_by_similarity` - B1.5
 - [x] **Run Black, Ruff, Pyright after completion**
-- **NOTE**: WM uses FIFO eviction, not salience-based as specified in requirements
+- **NOTE**: WM now uses salience-based eviction with exponential recency decay and duplicate detection
 
 ### Task 3.2: Long-Term Memory Vector Search (B2)
 - [x] Create `tests/proofs/category_b/test_ltm_search.py`

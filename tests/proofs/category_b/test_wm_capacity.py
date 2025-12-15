@@ -345,3 +345,213 @@ class TestWMPropertyBased:
         novelty = wm.novelty(query)
 
         assert 0.0 <= novelty <= 1.0, f"Novelty out of bounds: {novelty}"
+
+
+# ---------------------------------------------------------------------------
+# B1.3: Exponential Recency Decay Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.memory_proof
+class TestRecencyDecay:
+    """Tests for exponential recency decay (B1.3).
+
+    **Feature: full-capacity-testing, Category B1**
+    **Validates: Requirements B1.3**
+    """
+
+    def test_recency_decays_exponentially(self) -> None:
+        """B1.3: Recency decays exponentially over time.
+
+        **Feature: full-capacity-testing, Property B1.3**
+        **Validates: Requirements B1.3**
+
+        WHEN time passes THEN recency score SHALL decay exponentially.
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        # Admit an item
+        vec = make_random_vector(128, seed=42)
+        wm.admit("test_item", vec, {"test": "decay"})
+
+        # Initial recency should be 1.0
+        initial_recency = wm.get_item_recency("test_item")
+        assert initial_recency == 1.0, f"Initial recency should be 1.0, got {initial_recency}"
+
+        # Apply decay for 1 second
+        wm.decay_recency(elapsed_seconds=1.0)
+        recency_after_1s = wm.get_item_recency("test_item")
+
+        # Recency should have decayed
+        assert recency_after_1s is not None
+        assert recency_after_1s < initial_recency, (
+            f"Recency should decay: {recency_after_1s} should be < {initial_recency}"
+        )
+
+        # Apply more decay
+        wm.decay_recency(elapsed_seconds=1.0)
+        recency_after_2s = wm.get_item_recency("test_item")
+
+        # Should continue decaying
+        assert recency_after_2s is not None
+        assert recency_after_2s < recency_after_1s, (
+            f"Recency should continue decaying: {recency_after_2s} < {recency_after_1s}"
+        )
+
+    def test_recency_bounded_zero_one(self) -> None:
+        """B1.3: Recency stays bounded in [0, 1].
+
+        **Feature: full-capacity-testing**
+        **Validates: Requirements B1.3**
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        vec = make_random_vector(128, seed=42)
+        wm.admit("bounded_item", vec, {"test": "bounds"})
+
+        # Apply heavy decay
+        for _ in range(100):
+            wm.decay_recency(elapsed_seconds=10.0)
+
+        recency = wm.get_item_recency("bounded_item")
+        assert recency is not None
+        assert 0.0 <= recency <= 1.0, f"Recency out of bounds: {recency}"
+
+    def test_recency_reset_on_update(self) -> None:
+        """B1.3: Recency resets to 1.0 when item is updated.
+
+        **Feature: full-capacity-testing**
+        **Validates: Requirements B1.3, B1.4**
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        vec = make_random_vector(128, seed=42)
+        wm.admit("reset_item", vec, {"version": 1})
+
+        # Decay the recency
+        wm.decay_recency(elapsed_seconds=5.0)
+        decayed_recency = wm.get_item_recency("reset_item")
+        assert decayed_recency is not None
+        assert decayed_recency < 1.0, "Recency should have decayed"
+
+        # Update the item (same ID triggers duplicate handling)
+        wm.admit("reset_item", vec, {"version": 2})
+
+        # Recency should be reset to 1.0
+        reset_recency = wm.get_item_recency("reset_item")
+        assert reset_recency == 1.0, f"Recency should reset to 1.0, got {reset_recency}"
+
+
+# ---------------------------------------------------------------------------
+# B1.4: Duplicate Handling Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.memory_proof
+class TestDuplicateHandling:
+    """Tests for duplicate detection and update (B1.4).
+
+    **Feature: full-capacity-testing, Category B1**
+    **Validates: Requirements B1.4**
+    """
+
+    def test_duplicate_updates_existing(self) -> None:
+        """B1.4: Duplicate items update existing instead of adding new.
+
+        **Feature: full-capacity-testing, Property B1.4**
+        **Validates: Requirements B1.4**
+
+        WHEN an item with same ID is admitted THEN the system SHALL update
+        the existing item instead of adding a duplicate.
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        vec1 = make_random_vector(128, seed=42)
+        wm.admit("dup_item", vec1, {"version": 1})
+
+        initial_count = len(wm._items)
+        assert initial_count == 1, f"Should have 1 item, got {initial_count}"
+
+        # Admit with same ID - should update, not add
+        vec2 = make_random_vector(128, seed=43)
+        result = wm.admit("dup_item", vec2, {"version": 2})
+
+        # Should return False (updated existing, not added new)
+        assert result is False, "Should return False when updating existing item"
+
+        # Count should still be 1
+        assert len(wm._items) == 1, f"Should still have 1 item, got {len(wm._items)}"
+
+        # Payload should be updated
+        item = wm._items[0]
+        assert item.payload["version"] == 2, "Payload should be updated to version 2"
+
+    def test_similar_vector_detected_as_duplicate(self) -> None:
+        """B1.4: Very similar vectors are detected as duplicates.
+
+        **Feature: full-capacity-testing**
+        **Validates: Requirements B1.4**
+
+        WHEN a vector with similarity > 0.95 is admitted THEN the system SHALL
+        treat it as a duplicate and update the existing item.
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        vec1 = make_random_vector(128, seed=42)
+        wm.admit("original", vec1, {"version": 1})
+
+        # Create a very similar vector (add small noise)
+        vec2 = vec1 + np.random.randn(128).astype(np.float32) * 0.01
+        vec2 = vec2 / np.linalg.norm(vec2)
+
+        # Verify similarity is high
+        from somabrain.math import cosine_similarity
+        sim = cosine_similarity(vec1, vec2)
+        assert sim > 0.95, f"Vectors should be very similar, got sim={sim}"
+
+        # Admit similar vector with different ID
+        result = wm.admit("similar", vec2, {"version": 2})
+
+        # Should detect as duplicate and update
+        assert result is False, "Should detect similar vector as duplicate"
+        assert len(wm._items) == 1, "Should still have 1 item"
+
+    def test_different_vectors_not_duplicates(self) -> None:
+        """B1.4: Different vectors are not treated as duplicates.
+
+        **Feature: full-capacity-testing**
+        **Validates: Requirements B1.4**
+        """
+        wm = make_wm(capacity=10, dim=128)
+
+        vec1 = make_random_vector(128, seed=42)
+        wm.admit("item1", vec1, {"index": 1})
+
+        vec2 = make_random_vector(128, seed=999)  # Very different seed
+        result = wm.admit("item2", vec2, {"index": 2})
+
+        # Should add as new item
+        assert result is True, "Different vector should be added as new"
+        assert len(wm._items) == 2, f"Should have 2 items, got {len(wm._items)}"
+
+    @given(st.integers(min_value=1, max_value=50))
+    @settings(max_examples=20, deadline=None)
+    def test_duplicate_detection_preserves_capacity(self, num_duplicates: int) -> None:
+        """Property: Duplicate detection doesn't exceed capacity.
+
+        **Feature: full-capacity-testing, Property B1.4**
+        **Validates: Requirements B1.4**
+
+        *For any* number of duplicate admissions, WM size SHALL not exceed 1.
+        """
+        wm = WorkingMemory(capacity=10, dim=64)
+
+        vec = np.random.randn(64).astype(np.float32)
+        vec = vec / np.linalg.norm(vec)
+
+        # Admit same item multiple times
+        for i in range(num_duplicates):
+            wm.admit("same_id", vec, {"iteration": i})
+
+        # Should only have 1 item
+        assert len(wm._items) == 1, f"Should have 1 item after {num_duplicates} duplicates"
