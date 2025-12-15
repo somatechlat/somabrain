@@ -95,17 +95,21 @@ class TestWMCapacityAndEviction:
             wm.admit(vec, {"index": i})
 
         # Verify capacity is maintained
-        assert len(wm._items) == capacity, f"Expected {capacity} items, got {len(wm._items)}"
+        assert (
+            len(wm._items) == capacity
+        ), f"Expected {capacity} items, got {len(wm._items)}"
 
         # The most recent items should generally be retained due to recency boost
         # The exact items retained depend on the salience calculation
         indices = [item.payload["index"] for item in wm._items]
-        
+
         # Most recent item (4) should definitely be retained (highest recency)
         assert 4 in indices, f"Most recent item (4) should be retained, got {indices}"
-        
+
         # Second most recent (3) should also likely be retained
-        assert 3 in indices, f"Second most recent item (3) should be retained, got {indices}"
+        assert (
+            3 in indices
+        ), f"Second most recent item (3) should be retained, got {indices}"
 
     def test_recency_set_on_admission(self) -> None:
         """B1.2: Recency score is set on admission.

@@ -262,6 +262,7 @@ class TestSerializationForSFM:
 
         try:
             import numpy as np
+
             has_numpy = True
         except ImportError:
             has_numpy = False
@@ -431,4 +432,3 @@ class TestCoordinateSerialization:
         deserialized = deserialize_coordinate(serialized)
 
         assert deserialized == original
-

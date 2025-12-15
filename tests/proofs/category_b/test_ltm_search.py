@@ -102,11 +102,7 @@ def recall_memories(
         return []
 
     data = response.json()
-    return (
-        data.get("results")
-        or data.get("memories")
-        or data.get("hits", [])
-    )
+    return data.get("results") or data.get("memories") or data.get("hits", [])
 
 
 # ---------------------------------------------------------------------------
@@ -313,9 +309,9 @@ class TestLTMVectorSearch:
                 if score is not None:
                     # Cosine similarity should be in [-1, 1]
                     # But often systems use [0, 1] or distance metrics
-                    assert -1.5 <= float(score) <= 1.5, (
-                        f"Score {score} out of expected bounds"
-                    )
+                    assert (
+                        -1.5 <= float(score) <= 1.5
+                    ), f"Score {score} out of expected bounds"
 
 
 # ---------------------------------------------------------------------------
@@ -385,4 +381,3 @@ class TestLTMSearchEdgeCases:
 
         # Should return at most 3 (corpus size)
         assert len(results) <= 3, "Should not return more than corpus size"
-

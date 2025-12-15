@@ -110,7 +110,9 @@ class TestThroughputCapacity:
         elapsed = time.perf_counter() - start
 
         # Should complete within 10 seconds
-        assert elapsed < 10, f"Storing 1000 memories took {elapsed:.2f}s, exceeds 10s SLO"
+        assert (
+            elapsed < 10
+        ), f"Storing 1000 memories took {elapsed:.2f}s, exceeds 10s SLO"
 
         # Verify no data loss (check WM has items)
         # Note: WM may have evicted some due to capacity, but should have stored all
@@ -225,7 +227,8 @@ class TestThroughputCapacity:
             vec = vec / np.linalg.norm(vec)
             wm.admit(f"spike_{i}", vec, {"phase": "spike"})
 
-        spike_duration = time.perf_counter() - spike_start
+        # Spike completed (duration not needed for assertion)
+        _ = time.perf_counter() - spike_start
 
         # Recovery check - latency should return to normal
         recovery_latencies: List[float] = []
@@ -240,9 +243,9 @@ class TestThroughputCapacity:
         recovery_avg = sum(recovery_latencies) / len(recovery_latencies)
 
         # Recovery latency should be within 2x of normal
-        assert recovery_avg < normal_avg * 2, (
-            f"Recovery latency {recovery_avg:.4f}s exceeds 2x normal {normal_avg:.4f}s"
-        )
+        assert (
+            recovery_avg < normal_avg * 2
+        ), f"Recovery latency {recovery_avg:.4f}s exceeds 2x normal {normal_avg:.4f}s"
 
 
 # ---------------------------------------------------------------------------
@@ -308,4 +311,6 @@ class TestConcurrentOperations:
                     successes += 1
 
         success_rate = successes / total
-        assert success_rate >= 0.95, f"Mixed ops success rate {success_rate:.2%} below 95%"
+        assert (
+            success_rate >= 0.95
+        ), f"Mixed ops success rate {success_rate:.2%} below 95%"

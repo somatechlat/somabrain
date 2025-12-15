@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from typing import Any, Dict
 
 import pytest
 
@@ -391,4 +390,3 @@ class TestOutboxBackpressure:
             assert result is True
         else:
             assert result is False
-

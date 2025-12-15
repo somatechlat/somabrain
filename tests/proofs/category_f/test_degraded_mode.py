@@ -159,7 +159,13 @@ class TestDegradedModeOperation:
         from somabrain.db.outbox import MEMORY_TOPICS
 
         # Verify all memory topics are defined
-        expected_topics = ["memory.store", "memory.bulk_store", "graph.link", "wm.persist", "wm.evict"]
+        expected_topics = [
+            "memory.store",
+            "memory.bulk_store",
+            "graph.link",
+            "wm.persist",
+            "wm.evict",
+        ]
         for topic in expected_topics:
             assert topic in MEMORY_TOPICS, f"Topic {topic} should be defined"
 
@@ -260,10 +266,14 @@ class TestDegradationManager:
         cb.reset("tenant_recovery")
 
         # Should no longer be degraded
-        assert not dm.is_degraded("tenant_recovery"), "Should not be degraded after reset"
+        assert not dm.is_degraded(
+            "tenant_recovery"
+        ), "Should not be degraded after reset"
 
         # Alert should not trigger
-        assert not dm.check_alert("tenant_recovery"), "Alert should not trigger after recovery"
+        assert not dm.check_alert(
+            "tenant_recovery"
+        ), "Alert should not trigger after recovery"
 
 
 # ---------------------------------------------------------------------------

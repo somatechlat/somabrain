@@ -250,4 +250,3 @@ class TestGraphClientTracing:
         assert "sb_graph_link" in source, "Should have link span"
         assert "sb_graph_neighbors" in source, "Should have neighbors span"
         assert "sb_graph_path" in source, "Should have path span"
-

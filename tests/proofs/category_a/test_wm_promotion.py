@@ -13,9 +13,8 @@ Test Coverage:
 from __future__ import annotations
 
 import os
-import time
 import uuid
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pytest
 
@@ -220,7 +219,7 @@ class TestWMLTMPromoter:
         **Feature: deep-memory-integration**
         **Validates: Requirements A2.1**
         """
-        from somabrain.memory.promotion import WMLTMPromoter, PromotionTracker
+        from somabrain.memory.promotion import WMLTMPromoter
 
         # Create a minimal memory client for testing
         class TestMemoryClient:
@@ -368,4 +367,3 @@ class TestPromotionMetrics:
         # Verify metric names
         assert "sb_wm_promotion_total" in str(WM_PROMOTION_TOTAL)
         assert "sb_wm_promotion_latency" in str(WM_PROMOTION_LATENCY)
-

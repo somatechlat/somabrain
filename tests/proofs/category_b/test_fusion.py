@@ -102,11 +102,7 @@ def recall_memories(
         return []
 
     data = response.json()
-    return (
-        data.get("results")
-        or data.get("memories")
-        or data.get("hits", [])
-    )
+    return data.get("results") or data.get("memories") or data.get("hits", [])
 
 
 # ---------------------------------------------------------------------------
@@ -363,4 +359,3 @@ class TestFusionEdgeCases:
 
         # Should not exceed corpus size
         assert len(results) <= 20, "Should not exceed corpus size"
-

@@ -17,8 +17,7 @@ Test Coverage:
 from __future__ import annotations
 
 import os
-import uuid
-from typing import Any, Dict
+from typing import Dict
 
 import pytest
 
@@ -70,9 +69,9 @@ class TestMemoryIsolation:
         results_b = wm_tenant_b.recall(vec_a, top_k=5)
 
         # Tenant B should get empty results
-        assert len(results_b) == 0, (
-            f"Tenant B should not see tenant A's memory: got {len(results_b)} results"
-        )
+        assert (
+            len(results_b) == 0
+        ), f"Tenant B should not see tenant A's memory: got {len(results_b)} results"
 
     def test_cross_tenant_query_returns_empty(self) -> None:
         """D1.2: Cross-tenant query returns empty.
@@ -101,9 +100,9 @@ class TestMemoryIsolation:
         results_a = wm_tenant_a.recall(vec_b, top_k=5)
 
         # Should be empty (cross-tenant isolation)
-        assert len(results_a) == 0, (
-            f"Cross-tenant query should return empty: got {len(results_a)} results"
-        )
+        assert (
+            len(results_a) == 0
+        ), f"Cross-tenant query should return empty: got {len(results_a)} results"
 
     def test_namespace_scopes_queries(self) -> None:
         """D1.3: Namespace scopes queries.
@@ -193,7 +192,9 @@ class TestMemoryIsolation:
             tenant_vecs[tenant_id] = vec
 
             # Store tenant-specific data
-            wm.admit(f"item_{tenant_id}", vec, {"tenant": tenant_id, "secret": f"secret_{i}"})
+            wm.admit(
+                f"item_{tenant_id}", vec, {"tenant": tenant_id, "secret": f"secret_{i}"}
+            )
 
         # Verify isolation: each tenant should only see their own data
         leakage_count = 0
@@ -211,7 +212,9 @@ class TestMemoryIsolation:
                 if payload.get("tenant") != tenant_id:
                     leakage_count += 1
 
-        assert leakage_count == 0, f"Cross-tenant leakage detected: {leakage_count} items leaked"
+        assert (
+            leakage_count == 0
+        ), f"Cross-tenant leakage detected: {leakage_count} items leaked"
 
 
 # ---------------------------------------------------------------------------
@@ -259,9 +262,9 @@ class TestPerTenantNeuromodulatorIsolation:
 
         # Tenant B should still have baseline values (global default)
         # Note: baseline_b and state_b may be the same object (global default)
-        assert state_b.dopamine != 0.9 or state_b is baseline_b, (
-            "Tenant B should not be affected by tenant A's changes"
-        )
+        assert (
+            state_b.dopamine != 0.9 or state_b is baseline_b
+        ), "Tenant B should not be affected by tenant A's changes"
 
 
 # ---------------------------------------------------------------------------
@@ -300,7 +303,9 @@ class TestWorkingMemoryTenantIsolation:
             wm_a.admit(f"item_a_{i}", vec, {"tenant": "A"})
 
         # Tenant A should have at most capacity items
-        assert len(wm_a._items) <= 5, f"Tenant A should have at most 5 items: {len(wm_a._items)}"
+        assert (
+            len(wm_a._items) <= 5
+        ), f"Tenant A should have at most 5 items: {len(wm_a._items)}"
 
         # Tenant B should still have full capacity available
         for i in range(5):
@@ -309,4 +314,6 @@ class TestWorkingMemoryTenantIsolation:
             wm_b.admit(f"item_b_{i}", vec, {"tenant": "B"})
 
         # Tenant B should have all 5 items
-        assert len(wm_b._items) == 5, f"Tenant B should have 5 items: {len(wm_b._items)}"
+        assert (
+            len(wm_b._items) == 5
+        ), f"Tenant B should have 5 items: {len(wm_b._items)}"

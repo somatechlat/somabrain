@@ -285,4 +285,3 @@ class TestAdditionalMetrics:
         assert SFM_CIRCUIT_BREAKER_STATE is not None
         assert SFM_OUTBOX_PENDING is not None
         assert SFM_WM_PROMOTION_TOTAL is not None
-

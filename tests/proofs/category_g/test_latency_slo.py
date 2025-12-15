@@ -171,7 +171,9 @@ class TestLatencySLOs:
         from somabrain.infrastructure.circuit_breaker import CircuitBreaker
         from somabrain.infrastructure.degradation import DegradationManager
 
-        cb = CircuitBreaker(failure_threshold=5, recovery_timeout=60.0, half_open_max_calls=1)
+        cb = CircuitBreaker(
+            failure_threshold=5, recovery_timeout=60.0, half_open_max_calls=1
+        )
         dm = DegradationManager(cb)
 
         latencies: List[float] = []
@@ -213,8 +215,8 @@ class TestLatencySLOs:
 
             start = time.perf_counter()
 
-            # Get state
-            state = per_tenant.get_state(tenant)
+            # Get state (verify it works)
+            _ = per_tenant.get_state(tenant)
 
             # Set state
             new_state = NeuromodState(
