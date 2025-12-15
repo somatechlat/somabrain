@@ -121,8 +121,8 @@ class QuotaManager:
     def _is_exempt(self, tenant_id: str) -> bool:
         """Return True if the tenant should bypass quota checks.
 
-        Uses the (now synchronous) tenant manager. Falls back to legacy
-        behaviour for exempt tenants such as ``AGENT_ZERO``.
+        Uses the tenant manager to check exemption status for tenants
+        such as ``AGENT_ZERO``.
         """
         try:
             tenant_manager = self._get_tenant_manager()

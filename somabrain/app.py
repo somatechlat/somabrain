@@ -324,7 +324,7 @@ async def _enforce_opa_postgres_required() -> None:
 
 
 # Optional routers (strict posture; dependencies must be present for critical routes).
-# NOTE: Legacy retrieval router has been fully removed in favor of unified /recall.
+# NOTE: Retrieval is handled by the unified /memory/recall endpoint in memory_api.py.
 
 # The context router is a required component of the full‑stack deployment.
 # If it cannot be imported the application must fail fast – this guarantees that

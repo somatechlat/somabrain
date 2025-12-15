@@ -190,17 +190,17 @@
   - [x] 22.2 Update `somabrain/cli.py`
     - Remove "Legacy code expects" comment
     - _Requirements: 10.2_
-  - [ ] 22.3 Update `somabrain/quotas.py`
-    - Remove "Falls back to legacy" comment (not found - already clean)
+  - [x] 22.3 Update `somabrain/quotas.py`
+    - Removed "Falls back to legacy" from docstring
     - _Requirements: 10.3_
-  - [ ] 22.4 Update `somabrain/common/kafka.py`
-    - Remove "legacy environment variables" comment (not found - already clean)
+  - [x] 22.4 Update `somabrain/common/kafka.py`
+    - Removed "legacy environment variables" from docstring
     - _Requirements: 10.4_
   - [x] 22.5 Update `somabrain/numerics.py`
     - Change `mode: str = "legacy_zero"` to `mode: str = "robust"`
     - _Requirements: 10.5, 10.6_
-  - [ ] 22.6 Update `somabrain/app.py`
-    - Test environment bypass comments remain for pytest compatibility
+  - [x] 22.6 Update `somabrain/app.py`
+    - Removed "Legacy retrieval router" comment, updated to reference unified endpoint
     - _Requirements: 16.1, 16.2_
 
 - [x] 23. Checkpoint - Verify no legacy comments
@@ -226,8 +226,9 @@
     - Change `/remember` to `/memory/remember`
     - Change `/recall` to `/memory/recall`
     - _Requirements: 7.1, 7.2_
-  - [ ] 26.2 Update `docs/development-manual/testing-guidelines.md`
-    - Update all endpoint references (if needed)
+  - [x] 26.2 Update `docs/development-manual/testing-guidelines.md`
+    - Updated `/remember` to `/memory/remember`
+    - Updated `/recall` to `/memory/recall`
     - _Requirements: 7.3_
   - [x] 26.3 Update `benchmarks/README.md`
     - Update all endpoint references

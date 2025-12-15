@@ -290,7 +290,7 @@ class TestAPIIntegration:
 
         # Store a memory
         remember_response = api_client.post(
-            "/remember",
+            "/memory/remember",
             json={
                 "payload": {
                     "task": unique_content,
@@ -306,7 +306,7 @@ class TestAPIIntegration:
 
         # Recall memories
         recall_response = api_client.post(
-            "/recall",
+            "/memory/recall",
             json={
                 "query": unique_content,
                 "top_k": 5
@@ -477,7 +477,7 @@ def test_with_real_database(require_postgres):
 # CORRECT - Generate real test data
 def test_store_memory(api_client):
     real_content = f"Test content {uuid.uuid4()}"
-    response = api_client.post("/remember", json={"content": real_content})
+    response = api_client.post("/memory/remember", json={"content": real_content})
     assert response.status_code == 200
 ```
 
