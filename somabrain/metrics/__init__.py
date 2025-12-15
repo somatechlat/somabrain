@@ -298,6 +298,31 @@ from somabrain.metrics.segmentation import (
     FUSION_SOFTMAX_WEIGHT,
 )
 
+# Integration metrics (SB↔SFM) per H2.1-H2.5
+from somabrain.metrics.integration import (
+    SFM_REQUEST_TOTAL,
+    SFM_REQUEST_DURATION,
+    SFM_CIRCUIT_BREAKER_STATE,
+    SFM_OUTBOX_PENDING,
+    SFM_WM_PROMOTION_TOTAL,
+    SFM_DEGRADATION_EVENTS,
+    SFM_GRAPH_OPERATIONS,
+    SFM_GRAPH_LATENCY,
+    SFM_BULK_STORE_TOTAL,
+    SFM_BULK_STORE_ITEMS,
+    SFM_BULK_STORE_LATENCY,
+    SFM_HYBRID_RECALL_TOTAL,
+    SFM_HYBRID_RECALL_LATENCY,
+    record_sfm_request,
+    update_circuit_breaker_state,
+    update_outbox_pending,
+    record_wm_promotion,
+    record_degradation_event,
+    record_graph_operation,
+    record_bulk_store,
+    record_hybrid_recall,
+)
+
 # Legacy tau_gauge from core (to avoid circular imports)
 from somabrain.metrics.core import tau_gauge, soma_next_event_regret  # noqa: F401
 
@@ -477,4 +502,26 @@ __all__ = [
     "mark_external_metric_scraped",
     "external_metrics_ready",
     "reset_external_metrics",
+    # Integration metrics (SB↔SFM)
+    "SFM_REQUEST_TOTAL",
+    "SFM_REQUEST_DURATION",
+    "SFM_CIRCUIT_BREAKER_STATE",
+    "SFM_OUTBOX_PENDING",
+    "SFM_WM_PROMOTION_TOTAL",
+    "SFM_DEGRADATION_EVENTS",
+    "SFM_GRAPH_OPERATIONS",
+    "SFM_GRAPH_LATENCY",
+    "SFM_BULK_STORE_TOTAL",
+    "SFM_BULK_STORE_ITEMS",
+    "SFM_BULK_STORE_LATENCY",
+    "SFM_HYBRID_RECALL_TOTAL",
+    "SFM_HYBRID_RECALL_LATENCY",
+    "record_sfm_request",
+    "update_circuit_breaker_state",
+    "update_outbox_pending",
+    "record_wm_promotion",
+    "record_degradation_event",
+    "record_graph_operation",
+    "record_bulk_store",
+    "record_hybrid_recall",
 ]

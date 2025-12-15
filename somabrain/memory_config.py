@@ -2,7 +2,6 @@ from __future__ import annotations
 from common.config.settings import settings
 from dataclasses import dataclass
 from typing import Optional
-from common.config.settings import settings
 
 """Configuration dataclass for the memory client/adapter.
 

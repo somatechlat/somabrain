@@ -21,8 +21,6 @@ from somabrain.metrics.core import (
     Counter,
     Gauge,
     Histogram,
-    get_counter,
-    get_histogram,
     registry,
 )
 

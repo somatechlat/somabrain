@@ -3,17 +3,22 @@
 This module contains the core remember (store) operations extracted from
 MemoryClient to reduce file size while maintaining the same functionality.
 Functions accept transport and config directly for simpler integration.
+
+Per Requirements E2.1-E2.4:
+- E2.1: Record to outbox before SFM call
+- E2.2: Mark "sent" on success
+- E2.3: Remain "pending" on failure for retry
+- E2.4: Duplicate detection via idempotency key
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import uuid
-from typing import Any, Iterable, List, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Iterable, List, Optional, Tuple, TYPE_CHECKING
 
 from somabrain.memory.normalization import _stable_coord, _extract_memory_coord
-from somabrain.memory.payload import enrich_payload, prepare_memory_payload
+from somabrain.memory.payload import enrich_payload
 
 if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
@@ -21,16 +26,81 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _record_to_outbox(
+    coord: Tuple[float, float, float],
+    payload: dict,
+    tenant: str,
+    request_id: str,
+) -> Optional[int]:
+    """Record memory operation to outbox before SFM call.
+
+    Per Requirement E2.1: Record to outbox before SFM call.
+
+    Args:
+        coord: Memory coordinate
+        payload: Memory payload
+        tenant: Tenant ID
+        request_id: Request ID for tracking
+
+    Returns:
+        Outbox event ID if recorded, None if outbox unavailable
+    """
+    try:
+        from somabrain.db.outbox import (
+            enqueue_memory_event,
+            OutboxBackpressureError,
+        )
+
+        dedupe_key = enqueue_memory_event(
+            topic="memory.store",
+            payload={
+                "coord": list(coord),
+                "payload": payload,
+                "request_id": request_id,
+            },
+            tenant_id=tenant,
+            coord=coord,
+            extra_key=request_id,
+            check_backpressure_flag=True,
+        )
+
+        # Get the event ID for later marking
+        from somabrain.db.outbox import get_event_by_dedupe_key
+
+        event = get_event_by_dedupe_key(dedupe_key, tenant)
+        return event.id if event else None
+
+    except OutboxBackpressureError as exc:
+        logger.warning(
+            "Outbox backpressure, skipping outbox recording",
+            pending_count=exc.pending_count,
+            threshold=exc.threshold,
+        )
+        return None
+    except Exception as exc:
+        logger.debug(f"Outbox recording failed (non-critical): {exc}")
+        return None
+
+
+def _mark_outbox_sent(event_id: int) -> None:
+    """Mark outbox event as sent after successful SFM call.
+
+    Per Requirement E2.2: Mark "sent" on success.
+    """
+    try:
+        from somabrain.db.outbox import mark_event_sent
+
+        mark_event_sent(event_id)
+    except Exception as exc:
+        logger.debug(f"Failed to mark outbox event sent: {exc}")
+
+
 def _get_tenant_namespace(cfg: Any) -> tuple[str, str]:
     """Resolve tenant and namespace from cfg/settings."""
     from common.config.settings import settings
 
-    tenant = getattr(cfg, "tenant", None) or getattr(
-        settings, "default_tenant", "public"
-    )
-    namespace = getattr(cfg, "namespace", None) or getattr(
-        settings, "namespace", "public"
-    )
+    tenant = getattr(cfg, "tenant", None) or getattr(settings, "default_tenant", "public")
+    namespace = getattr(cfg, "namespace", None) or getattr(settings, "namespace", "public")
     return str(tenant or "public"), str(namespace or "public")
 
 
@@ -40,30 +110,35 @@ def remember_sync_persist(
     coord_key: str,
     payload: dict,
     request_id: str | None,
-    store_http_sync_fn: callable,
+    store_http_sync_fn: Callable,
 ) -> Tuple[float, float, float] | None:
-    """Synchronous persistence implementation for remember operations."""
+    """Synchronous persistence implementation for remember operations.
+
+    Per Requirements E2.1-E2.4:
+    - Records to outbox before SFM call
+    - Marks "sent" on success
+    - Leaves "pending" on failure for retry
+    """
     if transport is None or transport.client is None:
         raise RuntimeError("HTTP memory service required for persistence")
 
     tenant, namespace = _get_tenant_namespace(cfg)
-    enriched, uni, compat_hdr = enrich_payload(
-        payload, coord_key, namespace, tenant=tenant
-    )
+    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace, tenant=tenant)
     sc = _stable_coord(f"{uni}::{coord_key}")
 
     coord_str = f"{sc[0]},{sc[1]},{sc[2]}"
     body: dict[str, Any] = {
         "coord": coord_str,
         "payload": dict(enriched),
-        "memory_type": str(
-            payload.get("memory_type") or payload.get("type") or "episodic"
-        ),
+        "memory_type": str(payload.get("memory_type") or payload.get("type") or "episodic"),
     }
 
     rid = request_id or str(uuid.uuid4())
     rid_hdr = {"X-Request-ID": rid}
     rid_hdr.update(compat_hdr)
+
+    # E2.1: Record to outbox before SFM call
+    outbox_event_id = _record_to_outbox(sc, enriched, tenant, rid)
 
     stored = False
     response_payload: Any = None
@@ -79,6 +154,11 @@ def remember_sync_persist(
         except Exception:
             server_coord = None
 
+        # E2.2: Mark outbox event as sent on success
+        if outbox_event_id is not None:
+            _mark_outbox_sent(outbox_event_id)
+
+    # E2.3: If not stored, outbox entry remains "pending" for retry
     if not stored:
         raise RuntimeError("Memory service unavailable (remember persist failed)")
     return server_coord
@@ -90,20 +170,27 @@ async def aremember_background(
     coord_key: str,
     payload: dict,
     request_id: str | None,
-    store_http_async_fn: callable,
+    store_http_async_fn: Callable,
 ) -> None:
-    """Async background persistence using the AsyncClient."""
+    """Async background persistence using the AsyncClient.
+
+    Per Requirements E2.1-E2.4:
+    - Records to outbox before SFM call
+    - Marks "sent" on success
+    - Leaves "pending" on failure for retry
+    """
     if transport is None or transport.async_client is None:
         return
 
-    rid = request_id
-    rid_hdr = {"X-Request-ID": rid} if rid else {}
+    rid = request_id or str(uuid.uuid4())
+    rid_hdr = {"X-Request-ID": rid}
     tenant, namespace = _get_tenant_namespace(cfg)
-    enriched, uni, compat_hdr = enrich_payload(
-        payload, coord_key, namespace, tenant=tenant
-    )
+    enriched, uni, compat_hdr = enrich_payload(payload, coord_key, namespace, tenant=tenant)
     rid_hdr.update(compat_hdr)
     ns = namespace
+
+    # Compute stable coordinate for outbox recording
+    sc = _stable_coord(f"{uni}::{coord_key}")
 
     body: dict[str, Any] = {
         "tenant": tenant,
@@ -127,6 +214,9 @@ async def aremember_background(
         if isinstance(payload, dict) and optional_key in payload:
             body[optional_key] = payload.get(optional_key)
 
+    # E2.1: Record to outbox before SFM call
+    outbox_event_id = _record_to_outbox(sc, enriched, tenant, rid)
+
     try:
         ok, response_data = await store_http_async_fn(body, rid_hdr)
         if ok and response_data is not None:
@@ -136,7 +226,12 @@ async def aremember_background(
                     payload["coordinate"] = server_coord
                 except Exception:
                     pass
+
+            # E2.2: Mark outbox event as sent on success
+            if outbox_event_id is not None:
+                _mark_outbox_sent(outbox_event_id)
     except Exception:
+        # E2.3: Outbox entry remains "pending" for retry
         logger.exception("Background memory persist failed")
 
 
@@ -159,9 +254,7 @@ def prepare_bulk_items(
     cfg_namespace = getattr(cfg, "namespace", None)
 
     for coord_key, payload in records:
-        enriched, universe, _ = enrich_payload(
-            payload, coord_key, cfg_namespace, tenant=tenant
-        )
+        enriched, universe, _ = enrich_payload(payload, coord_key, cfg_namespace, tenant=tenant)
         coord = _stable_coord(f"{universe}::{coord_key}")
         body: dict[str, Any] = {
             "tenant": tenant,

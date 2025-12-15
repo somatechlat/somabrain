@@ -65,30 +65,17 @@ from somabrain.metrics.learning import (
     LEARNING_REGRET,
     LEARNING_REGRET_EWMA,
     LEARNER_LAG_SECONDS,
-    LEARNING_GAIN,
-    LEARNING_BOUND,
-    LEARNER_EVENTS_CONSUMED,
-    LEARNER_EVENTS_PRODUCED,
-    LEARNER_EVENTS_FAILED,
-    LEARNER_EVENT_LATENCY,
-    LEARNER_DLQ_TOTAL,
-    LEARNING_EXPERIMENT_ACTIVE,
-    LEARNING_EXPERIMENT_PROMOTIONS,
     tau_decay_events,
     tau_anneal_events,
     entropy_cap_events,
     update_learning_retrieval_weights,
     update_learning_utility_weights,
-    update_learning_gains,
-    update_learning_bounds,
     record_learning_feedback_applied,
     record_learning_feedback_rejected,
     record_learning_feedback_latency,
     update_learning_effective_lr,
     record_regret,
-    update_learning_retrieval_entropy,
     record_learning_rollback,
-    update_learning_wm_length,
 )
 
 # Re-export from memory_metrics
@@ -103,25 +90,11 @@ from somabrain.metrics.memory_metrics import (
     RETRIEVAL_REQUESTS,
     RETRIEVAL_LATENCY,
     RETRIEVAL_CANDIDATES,
-    RETRIEVAL_PERSIST,
-    RETRIEVAL_EMPTY,
-    RETRIEVER_HITS,
-    RETRIEVER_LATENCY,
     ANN_LATENCY,
-    ANN_REBUILD_TOTAL,
-    ANN_REBUILD_SECONDS,
     LTM_STORE_LAT,
-    MEMORY_HTTP_REQUESTS,
-    MEMORY_HTTP_LATENCY,
     HTTP_FAILURES,
     CIRCUIT_BREAKER_STATE,
     MEMORY_ITEMS,
-    ETA_GAUGE,
-    SPARSITY_GAUGE,
-    MARGIN_MEAN,
-    CONFIG_VERSION,
-    CONTROLLER_CHANGES,
-    MEMORY_OUTBOX_SYNC_TOTAL,
     record_memory_snapshot,
     observe_recall_latency,
     observe_ann_latency,
@@ -131,13 +104,7 @@ from somabrain.metrics.memory_metrics import (
 # Re-export from outbox_metrics
 from somabrain.metrics.outbox_metrics import (
     OUTBOX_PENDING,
-    OUTBOX_PROCESSED_TOTAL,
-    OUTBOX_REPLAYED_TOTAL,
-    OUTBOX_REPLAY_TRIGGERED,
-    OUTBOX_FAILED_TOTAL,
     CIRCUIT_STATE,
-    FEATURE_FLAG_TOGGLE_TOTAL,
-    DEFAULT_TENANT_LABEL,
     report_outbox_pending,
     report_circuit_state,
     report_outbox_processed,
@@ -146,7 +113,6 @@ from somabrain.metrics.outbox_metrics import (
 
 # Re-export from middleware
 from somabrain.metrics.middleware import (
-    EXTERNAL_METRICS_SCRAPE_STATUS,
     metrics_endpoint,
     timing_middleware,
     mark_external_metric_scraped,
@@ -174,34 +140,16 @@ from somabrain.metrics.constitution import (
 from somabrain.metrics.salience import (
     SALIENCE_STORE,
     SALIENCE_HIST,
-    SALIENCE_THRESH_STORE,
-    SALIENCE_THRESH_ACT,
-    SALIENCE_STORE_RATE_OBS,
-    SALIENCE_ACT_RATE_OBS,
-    FD_ENERGY_CAPTURE,
-    FD_RESIDUAL,
-    FD_TRACE_ERROR,
-    FD_PSD_INVARIANT,
     SCORER_COMPONENT,
     SCORER_FINAL,
-    SCORER_WEIGHT_CLAMPED,
 )
 
 # Re-export from hrr
 from somabrain.metrics.hrr import (
     HRR_CLEANUP_USED,
     HRR_CLEANUP_SCORE,
-    HRR_CLEANUP_CALLS,
-    HRR_ANCHOR_SIZE,
-    HRR_CONTEXT_SAT,
     HRR_RERANK_APPLIED,
-    HRR_RERANK_LTM_APPLIED,
-    HRR_RERANK_WM_SKIPPED,
     UNBIND_PATH,
-    UNBIND_WIENER_FLOOR,
-    UNBIND_K_EST,
-    UNBIND_SPECTRAL_BINS_CLAMPED,
-    UNBIND_EPS_USED,
     RECONSTRUCTION_COSINE,
 )
 
@@ -211,7 +159,6 @@ from somabrain.metrics.predictor import (
     PREDICTOR_LATENCY_BY,
     PREDICTOR_ALTERNATIVE,
     PLANNING_LATENCY,
-    PLANNING_LATENCY_P99,
     record_planning_latency,
 )
 
@@ -221,7 +168,6 @@ from somabrain.metrics.neuromodulator import (
     NEUROMOD_SEROTONIN,
     NEUROMOD_NORADRENALINE,
     NEUROMOD_ACETYLCHOLINE,
-    NEUROMOD_UPDATE_COUNT,
 )
 
 # Re-export from oak
@@ -230,11 +176,6 @@ from somabrain.metrics.oak import (
     OPTION_COUNT,
     MILVUS_SEARCH_LAT_P95,
     MILVUS_INGEST_LAT_P95,
-    MILVUS_SEGMENT_LOAD,
-    MILVUS_UPSERT_RETRY_TOTAL,
-    MILVUS_UPSERT_FAILURE_TOTAL,
-    MILVUS_RECONCILE_MISSING,
-    MILVUS_RECONCILE_ORPHAN,
 )
 
 # Re-export from consolidation
@@ -264,24 +205,16 @@ from somabrain.metrics.embedding import (
     EMBED_LAT,
     EMBED_CACHE_HIT,
     INDEX_PROFILE_USE,
-    LINK_DECAY_PRUNED,
     AUDIT_KAFKA_PUBLISH,
 )
 
 # Re-export from recall_quality
 from somabrain.metrics.recall_quality import (
     RECALL_MARGIN_TOP12,
-    RECALL_SIM_TOP1,
-    RECALL_SIM_TOPK_MEAN,
-    RERANK_CONTRIB,
-    DIVERSITY_PAIRWISE_MEAN,
-    STORAGE_REDUCTION_RATIO,
     RATE_LIMITED_TOTAL,
     QUOTA_DENIED_TOTAL,
     QUOTA_RESETS,
     QUOTA_ADJUSTMENTS,
-    RETRIEVAL_FUSION_APPLIED,
-    RETRIEVAL_FUSION_SOURCES,
 )
 
 # Re-export from novelty
@@ -292,10 +225,6 @@ from somabrain.metrics.novelty import (
     ERROR_NORM,
     SDR_PREFILTER_LAT,
     SDR_CANDIDATES,
-    RECALL_WM_LAT,
-    RECALL_LTM_LAT,
-    RECALL_CACHE_HIT,
-    RECALL_CACHE_MISS,
 )
 
 # Re-export from segmentation

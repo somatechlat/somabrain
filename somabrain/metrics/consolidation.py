@@ -13,7 +13,7 @@ Metrics:
 
 from __future__ import annotations
 
-from somabrain.metrics.core import get_counter, get_histogram, registry
+from somabrain.metrics.core import get_counter, get_histogram
 
 # Consolidation / Sleep metrics
 CONSOLIDATION_RUNS = get_counter(

@@ -895,7 +895,7 @@ pytest.mark.cross_repo      # Requires both SB and SFM
 
 ## Category I: Vector Backend Architecture
 
-### I1: Qdrant vs Milvus Selection
+### I1: Milvus Exclusive Backend
 
 **Current State:**
 - SomaBrain: Milvus ONLY (hardcoded in `services/ann.py`)
@@ -908,18 +908,17 @@ pytest.mark.cross_repo      # Requires both SB and SFM
 | SomaBrain | Milvus | N/A | Raises error if not Milvus |
 | SomaFractalMemory | Milvus | `SOMA_VECTOR_BACKEND` | Factory selects implementation |
 
-### I2: Implementation Comparison
+### I2: Milvus Implementation Details
 
-| Feature | QdrantVectorStore | MilvusVectorStore |
-|---------|-------------------|-------------------|
-| Client Library | `qdrant-client` | `pymilvus` |
-| Default Port | 6333 (HTTP) | 19530 (gRPC) |
-| Distance Metric | COSINE | IP (Inner Product) |
-| Index Type | Auto (HNSW) | IVF_FLAT |
-| Schema | Dynamic payload | Fixed (id, embedding, payload) |
-| Scroll/Pagination | Native `scroll()` | Emulated with offset |
-| On-Disk Mode | Yes (`path=...`) | No (server only) |
-| TLS Support | `qdrant_tls=True` | `secure=True` |
+| Feature | MilvusVectorStore |
+|---------|-------------------|
+| Client Library | `pymilvus` |
+| Default Port | 19530 (gRPC) |
+| Distance Metric | IP (Inner Product) |
+| Index Type | IVF_FLAT |
+| Schema | Fixed (id, embedding, payload) |
+| Scroll/Pagination | Emulated with offset |
+| TLS Support | `secure=True` |
 
 ### I3: Production Deployment
 
@@ -961,35 +960,34 @@ SOMA_MILVUS_PORT=19530
 SOMA_MILVUS_COLLECTION=memories
 ```
 
-### I5: Test Environment (Qdrant OPTIONAL - Test Only)
+### I5: Test Environment (Milvus Only)
 
-> **IMPORTANT:** Qdrant is ONLY supported for local testing in SomaFractalMemory.
-> Production deployments MUST use Milvus.
+> **IMPORTANT:** Milvus is the ONLY supported vector backend for all environments.
+> No other vector backends are supported.
 
-For SFM tests, Qdrant on-disk mode is used for isolation:
+For SFM tests, Milvus test collections are used for isolation:
 ```python
 config = {
-    "qdrant": {"path": str(tmp_path / "qdrant.db")},
+    "milvus": {"host": "localhost", "port": 19530, "collection": f"test_{uuid4().hex[:8]}"},
     "redis": {"host": "localhost", "port": 40022},
 }
 ```
 
-### I6: Production Validation Requirement
+### I6: Backend Validation Requirement
 
-**Requirement:** SomaFractalMemory SHOULD validate vector backend at startup and reject Qdrant in production environments.
+**Requirement:** SomaFractalMemory SHALL validate that Milvus is the configured vector backend at startup.
 
 **Implementation:**
 ```python
 # In somafractalmemory/somafractalmemory/factory.py
 def create_memory_system(...):
-    env = os.getenv("SOMA_ENV", "development")
     vector_backend = getattr(_settings, "vector_backend", "milvus")
     
-    # Production validation: Qdrant not supported in production
-    if env == "production" and vector_backend == "qdrant":
+    # Milvus is the only supported backend
+    if vector_backend != "milvus":
         raise RuntimeError(
-            "Qdrant vector backend is not supported in production. "
-            "Set SOMA_VECTOR_BACKEND=milvus for production deployments."
+            f"Vector backend '{vector_backend}' is not supported. "
+            "Only Milvus is supported. Set SOMA_VECTOR_BACKEND=milvus."
         )
     
     # ... rest of factory logic
@@ -997,8 +995,8 @@ def create_memory_system(...):
 
 **Rationale:**
 - Milvus provides production-grade features: clustering, replication, persistence
-- Qdrant on-disk mode is convenient for tests but lacks production guarantees
-- Explicit validation prevents accidental misconfiguration in production
+- Single backend simplifies operations, testing, and maintenance
+- Consistent behavior across all environments
 
 ---
 
@@ -1043,7 +1041,7 @@ All violations are tracked in `tasks.md` under section **P0-VIBE: VIBE CODING RU
 
 ### J4: Compliant Aspects
 
-- ✅ Real servers used (Postgres, Redis, Milvus, Qdrant)
+- ✅ Real servers used (Postgres, Redis, Milvus)
 - ✅ No TODOs or stubs in production code
 - ✅ Documentation accurately reflects implementation
 - ✅ Circuit breaker pattern correctly implemented
@@ -1225,8 +1223,8 @@ class SomaSettings(BaseSettings):
         
     @validator("vector_backend")
     def validate_vector_backend(cls, v, values):
-        if values.get("soma_env") == "production" and v == "qdrant":
-            raise ValueError("Qdrant not supported in production")
+        if v != "milvus":
+            raise ValueError(f"Vector backend '{v}' not supported. Only 'milvus' is allowed.")
         return v
 ```
 
@@ -1235,7 +1233,7 @@ class SomaSettings(BaseSettings):
 **Development:**
 ```bash
 SOMA_ENV=development
-SOMA_VECTOR_BACKEND=qdrant  # OK for local testing
+SOMA_VECTOR_BACKEND=milvus
 SOMA_MILVUS_HOST=localhost
 ```
 
@@ -1249,7 +1247,7 @@ SOMA_MILVUS_HOST=milvus-staging.internal
 **Production:**
 ```bash
 SOMA_ENV=production
-SOMA_VECTOR_BACKEND=milvus  # REQUIRED - Qdrant will fail
+SOMA_VECTOR_BACKEND=milvus
 SOMA_MILVUS_HOST=milvus-prod.internal
 SOMA_MILVUS_SECURE=true
 ```

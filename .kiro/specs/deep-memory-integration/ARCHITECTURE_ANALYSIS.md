@@ -323,14 +323,14 @@ class SomaFractalMemoryEnterprise:
 
 ---
 
-### 0.3 QDRANT vs MILVUS: Vector Backend Analysis
+### 0.3 MILVUS: Exclusive Vector Backend
 
-#### Configuration Selection
+#### Configuration
 
-| System | Default | Config Variable | Selection Logic |
+| System | Backend | Config Variable | Selection Logic |
 |--------|---------|-----------------|-----------------|
 | **SomaBrain** | Milvus | N/A (hardcoded) | `ann.py` raises error if not Milvus |
-| **SomaFractalMemory** | Milvus | `SOMA_VECTOR_BACKEND` | Factory checks setting |
+| **SomaFractalMemory** | Milvus | `SOMA_VECTOR_BACKEND` | Factory validates Milvus-only |
 
 #### SomaBrain: Milvus Only (Hardcoded)
 **Location:** `somabrain/somabrain/services/ann.py`
@@ -341,109 +341,82 @@ def create_cleanup_index(...) -> CleanupIndex:
     
     if backend != "milvus":
         raise ValueError(
-            f"Milvus backend is required; configured backend '{backend}' is not
+            f"Milvus backend is required; configured backend '{backend}' is not supported"
         )
     
     from somabrain.services.milvus_ann import MilvusAnnIndex
     return MilvusAnnIndex(dim, tenant_id=tenant_id, ...)
 ```
 
-**SB Milvus Components:**
-| Component | File | Collection | Purpose |
-|-----------|------|------------|---------|
-| `
-anup |
-
-
-**Locatio
+#### SomaFractalMemory: Milvus Only
+**Location:** `somafractalmemory/somafractalmemory/factory.py`
 
 ```python
-# Vector store selection – honour the `vector_bac
-if getattr(_settings, "vector_backend", "qdrant":
-Store
-    vector_store e(
-        collection_name=namespace,
-        host=_settings.milvus_host,
+# Vector store selection - Milvus only
+vector_backend = getattr(_settings, "vector_backend", "milvus")
+if vector_backend != "milvus":
+    raise RuntimeError(f"Vector backend '{vector_backend}' not supported. Only 'milvus' is allowed.")
 
-    )
-else:
-   tore
+from .implementations.storage import MilvusVectorStore
+vector_store = MilvusVectorStore(
+    collection_name=namespace,
+    host=_settings.milvus_host,
+    port=_settings.milvus_port,
 )
 ```
 
-#### Impl
+#### Milvus Implementation Details
 
-| Feature | QdrantVecto|
-|---------|-------------------|-------------------|
-| **Client Library** | `qdrant-client` | `pymilvus` |
-| **Default Port** | 6333 (HTTP) ) |
-| **Distance Metric** | COSINE | IP (In
-| **Index Type** | T |
-) |
-| **Scroll/Pagination** | Nt |
-| **On-Disk Mode** | Yes (`path=...`) | No (server only) |
-| **TLS Support** | `qdrant_tls=Tue` |
-| **Connection Pooling** | Client-level cache | Coalias |
+| Feature | MilvusVectorStore |
+|---------|-------------------|
+| **Client Library** | `pymilvus` |
+| **Default Port** | 19530 (gRPC) |
+| **Distance Metric** | IP (Inner Product) |
+| **Index Type** | IVF_FLAT |
+| **Schema** | Fixed (id, embedding, payload) |
+| **Scroll/Pagination** | Emulated with offset |
+| **TLS Support** | `secure=True` |
+| **Connection Pooling** | Connection alias |
 
-###
+#### Production Deployment
 
 ```
-
-│                    PRODUCT   │
-  │
-│  SomaBrain (Port 9696)            
-│  ├── Oak Options → Milvus (collectio
-│  └── TieredMemory → Milvus (collect
-│                                       │
-     │
-│  └── Memory Vectors → Milvus (col   │
-│                       OR Qdrant │
-│                                    │
-│  Shared Milvus Cluster         │
-   │
-│  ├── Port: 19530 (gRPC) / 9091 (HTT     │
-│  └── Collections:              │
-│      ├── oak_options (SB Oak)           │
-│      ├── soma_cleanup_* (SB   │
-
-└───────────────────────────────────────┘
-
-┌───────────────────────────────┐
-│                    TEST ENVIRO │
-
-│   │
-} │
-│      - Isolated per      │
-        │
-│      - Fast teardown            
-─┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    PRODUCTION DEPLOYMENT                         │
+│                                                                  │
+│  SomaBrain (Port 9696)                                          │
+│  ├── Oak Options → Milvus (collection: oak_options)             │
+│  └── TieredMemory → Milvus (collection: soma_cleanup_{tenant})  │
+│                                                                  │
+│  SomaFractalMemory (Port 9595)                                  │
+│  └── Memory Vectors → Milvus (collection: {namespace})          │
+│                                                                  │
+│  Shared Milvus Cluster                                          │
+│  ├── Host: milvus (Docker network alias)                        │
+│  ├── Port: 19530 (gRPC)                                         │
+│  └── Collections:                                                │
+│      ├── oak_options (SB Oak)                                   │
+│      ├── soma_cleanup_* (SB TieredMemory)                       │
+│      └── api_ns, test_ns (SFM memories)                         │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-#### Unified Configuration for Production
+#### Unified Configuration
 
-`:**
+**SomaBrain `.env`:**
 ```bash
-# Milvus (required - hardcoded)
 SOMA_MILVUS_HOST=milvus
-530
-SOMA_MILVUS_COLLECTION=oak_opti
+SOMA_MILVUS_PORT=19530
+SOMA_MILVUS_COLLECTION=oak_options
 ```
 
-*
+**SomaFractalMemory `.env`:**
 ```bash
-# Vector backend selection
 SOMA_VECTOR_BACKEND=milvus
-
-
 SOMA_MILVUS_HOST=milvus
-
-SOMA_MILVN=memories
-
-# Qdrant settings (when vector_backend=qdr)
-QDRANT_URL=http://qdrant:6333
-
-QDRANT_PORT=6333
-```HOST=qdrantT_QDRANantOLLECTIOUS_CT=19530US_PORMA_MILVSOus)kend=milv vector_bacngs (whenvus settiMil# `:*Memory `.envtalac*SomaFr*onsUS_PORT=19MA_MILVSOrain `.env*SomaB*──────────────────────────────────────────────────────────└──────          │                                            edr requirernal serve No ext   -│                             t run     tesb"}"qdrant.dmp_path/": t {"pathant":k: {"qdrn-dis── Qdrant o│  └                                      mory Tests lMeSomaFracta      │                                                     │                                  T  NMEN────────────────────────────────────────────────────────────          │  s)FM memorient}:* (Sns, {tenat_s, tes└── api_n│                          ) moryTieredMe                                                                    h)    P healt                 alias)    network us (Docker ost: milv│  ├── H                                                               drant) ND=qVECTOR_BACKEOMA_(if S       space}) {namelection:                         )    (Port 9595emory lMaFractaom S│                            ant})  │_{teneanupa_clsomion:    │          k_options)n: oa  │                                                                                         │                       PLOYMENT   DEION──────────┐───────────────────────────────────────────────┌────────sedIs UEach # When on ectinnecure=True` | `srth offse Emulated wil()` |rolscive `atng, payload embeddi (id,ad | Fixedynamic payloa** | Dchem**S| W) | IVF_FLAAuto (HNSuct) |rodr Pne(gRPC| 19530 Store torecusVMilvrStore | Comparisonation ntemewargst_kace, **qdrannamespn_name=collectioectorStore( QdrantVe =ector_stor    vdrantVectorSrt Qimporage ntations.stoom .impleme frrt,pongs.milvus_ port=_setti       StorusVector Milv=usVectorimport Milvs.storage ionntatm .impleme    fros"ilvu"m= ) =ng.d` settikenctory.py`talmemory/fary/somafracmemosomafractaln:** `: Milvus)(Defaultonfigurable Memory: CctalaFra#### Somemory cleTieredM{tenant}` | _{ns}_` | `somailvus_ann.pyervices/m `snnIndex` |sA| `Milvurs |on vecto | Oak optioptions`ak_.py` | `os_client` | `milvuMilvusClient"ted suppor────────────────────────────────────────────────────└─────                  pub/sub   ks,                 ries    ueCID, SQL qility, A Durab Postgres: -│                                             s:    Benefit     │             │──────┘────────────────────────────────────l)   │   tgres (locaosted) OR Pis (distribu Red │     ─────┐  ─────────────────────────────────────        │                                                ──────┘──   k)    │ ac ───┐    │───────────────────────────────────────                                                        ┘    │──────────────────────────────────────────────ache) │   ) → Redis (ccanonicalstgres ( → Povalue), (keyset│      │                h              Write Pat                 │  │         │                                                    │             e)        (CompositidStorebr─────────────────────────────────────────────────┌────────y`ctory.p/falmemoryactay/somafrctalmemor** `somafran:ocatioStore`bridgresRedisHyost`Pern - mposite Pattern 4: Co#### Patt──────┘────────────────────                 ncy) consistetual enites (ev wrblocking- Non-│                                                                                            │           ───┘   ────────────── │      │    │         s e │erval   │   sh_intlureached OR fbatch_size : es when- Flush│  │                                     │              rker     Flush Wo Background         │  │       │                    ────┘           │            ]]   │               es         mory Queu-Me        In             ││                 │                                  ┐────────────────────────────────────────────────────────────────┌─e.py`ions/storagat- `Batchedtore(...torSVec= Qdrantector_store     vrant or  store (Qdte Vectors appropria 3. Create   ov + one = Noner, Any] | N: dict[stignf   co Mod: Memory    modey`y.ptorac/flmemorytaystem()`emory_s  │               │  │         │  │                ││ Store  │  torStore  lvusVec   │  │ MisKVStoreostgre│ Pph   ra│ NetworkXGrStore   │  ntVectoe│  │ QdraeStorluyVaedisKe│              │  │                  ───────────────┐  ┌──────────┌───────────  ──┐  ──────────────────┼───────────────┼───────────────┼─────           │                      │                  │clear()  - │     │()  movere- eighbors│et_n │  - g    │ () chsear - │  │      ete() del│  │  -ink()   ││  - add_l│  ert()      - ups  ory() │mem  │  - add_      │ - setup() │  │         - set()│  │ re    phSto IGra │  │ orStore  ───┐ ─────────┐  ┌────────────────────┐  ┌──────────────│  ┌─────                                                                           C)      (ABcesract Interfast         Ab          │ corombined snk by c# Re-ra    lugg```pythong.py`emory/scorinain/mn/somabr`somabrai:** **Locationg/Rankingrn - Scorine──────────────────────────────────────────────────────────────└───    .* wm.link,re, graphulk_stoemory.bstore, mry.opics: memoTmsmechanisk allbacdes fovirnt token, tenaBearer headers (tion henticaautages Man- lssport detairanes HTTP tulat- Encapsicationcommunvice eral memory sall externint for le entry pose:** Singurpoce``MemoryServittern - çade Pa Fa Pattern 1:#
+SOMA_MILVUS_PORT=19530
+SOMA_MILVUS_COLLECTION=memories
+```
 
 ---
 
@@ -555,11 +528,11 @@ QDRANT_PORT=6333
 │           ▼                                                             ▼    │
 │  ┌──────────────────┐                                    ┌──────────────────┐│
 │  │ KV Store         │                                    │ Vector Store     ││
-│  │ (Postgres+Redis) │                                    │ (Qdrant/Milvus)  ││
+│  │ (Postgres+Redis) │                                    │ (Milvus)         ││
 │  │                  │                                    │                  ││
-│  │ PostgresRedis-   │                                    │ QdrantVectorStore││
-│  │ HybridStore:     │                                    │ or               ││
-│  │ - set(data_key,  │                                    │ MilvusVectorStore││
+│  │ PostgresRedis-   │                                    │ MilvusVectorStore││
+│  │ HybridStore:     │                                    │                  ││
+│  │ - set(data_key,  │                                    │                  ││
 │  │   serialized)    │                                    │                  ││
 │  │ - hset(meta_key, │                                    │ - embed_text()   ││
 │  │   timestamps)    │                                    │ - upsert(points) ││
@@ -568,7 +541,7 @@ QDRANT_PORT=6333
 │           │                                                       │          │
 │           ▼                                                       ▼          │
 │  ┌──────────────────┐                                    ┌──────────────────┐│
-│  │ PostgreSQL       │                                    │ Qdrant/Milvus    ││
+│  │ PostgreSQL       │                                    │ Milvus           ││
 │  │ (Canonical KV)   │                                    │ (Vector DB)      ││
 │  │                  │                                    │                  ││
 │  │ Table: kv_store  │                                    │ Collection:      ││
@@ -619,7 +592,7 @@ QDRANT_PORT=6333
 | Core | `core.py` | SomaFractalMemoryEnterprise | ✅ EXISTS |
 | Factory | `factory.py` | Memory system creation | ✅ EXISTS |
 | KV Store | `implementations/storage.py` | PostgresRedisHybridStore | ✅ EXISTS |
-| Vector Store | `implementations/storage.py` | QdrantVectorStore, MilvusVectorStore | ✅ EXISTS |
+| Vector Store | `implementations/storage.py` | MilvusVectorStore | ✅ EXISTS |
 | Graph Store | `implementations/graph.py` | NetworkXGraphStore | ✅ EXISTS |
 | Serialization | `serialization.py` | JSON serialize/deserialize | ✅ EXISTS |
 
@@ -785,7 +758,7 @@ soma-contracts/
 │  │  │              Storage Layer     │                                ││    │
 │  │  │  ┌─────────────┐  ┌────────────▼───────┐  ┌─────────────┐       ││    │
 │  │  │  │ KV Store    │  │ Vector Store       │  │ Graph Store │       ││    │
-│  │  │  │ (Postgres+  │  │ (Qdrant/Milvus)    │  │ (NetworkX/  │       ││    │
+│  │  │  │ (Postgres+  │  │ (Milvus)           │  │ (NetworkX/  │       ││    │
 │  │  │  │  Redis)     │  │                    │  │  Neo4j)     │       ││    │
 │  │  │  └─────────────┘  └────────────────────┘  └─────────────┘       ││    │
 │  │  └─────────────────────────────────────────────────────────────────┘│    │

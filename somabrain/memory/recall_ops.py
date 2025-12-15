@@ -248,3 +248,106 @@ async def memories_search_async(
         )
 
     return []
+
+
+
+def recall_with_graph_boost(
+    hits: List[RecallHit],
+    graph_client: "GraphClient",
+    graph_boost_factor: float = 0.3,
+    max_neighbors: int = 5,
+) -> List[RecallHit]:
+    """Boost recall results using graph neighbor relationships.
+
+    Per Requirements B2.1-B2.5:
+    - B2.1: Gets 1-hop neighbors for each result
+    - B2.2: Boosts neighbor scores by link_strength × graph_boost_factor
+    - B2.3: Returns vector-only results on timeout (degraded mode)
+
+    Args:
+        hits: Initial recall hits from vector search.
+        graph_client: GraphClient instance for neighbor queries.
+        graph_boost_factor: Multiplier for graph-based score boost (default 0.3).
+        max_neighbors: Maximum neighbors to fetch per hit.
+
+    Returns:
+        List of RecallHit with boosted scores, sorted by final score.
+    """
+    if not hits or graph_client is None:
+        return hits
+
+    # Build a map of coordinate -> hit for quick lookup
+    coord_to_hit: dict = {}
+    for hit in hits:
+        coord = hit.payload.get("coordinate") if hit.payload else None
+        if coord:
+            # Normalize coordinate to tuple
+            if isinstance(coord, (list, tuple)):
+                coord_key = tuple(coord)
+            else:
+                coord_key = coord
+            coord_to_hit[coord_key] = hit
+
+    # Track score boosts from graph relationships
+    score_boosts: dict = {}
+
+    # B2.1: Get 1-hop neighbors for each result
+    for hit in hits:
+        coord = hit.payload.get("coordinate") if hit.payload else None
+        if not coord:
+            continue
+
+        # Normalize coordinate
+        if isinstance(coord, list):
+            coord = tuple(coord)
+
+        try:
+            # B2.5: 100ms timeout is handled by GraphClient
+            neighbors = graph_client.get_neighbors(
+                coord, k_hop=1, limit=max_neighbors
+            )
+
+            # B2.2: Boost neighbor scores
+            for neighbor in neighbors:
+                neighbor_coord = neighbor.coord
+                if neighbor_coord in coord_to_hit:
+                    # Calculate boost: link_strength × graph_boost_factor
+                    boost = neighbor.strength * graph_boost_factor
+                    if neighbor_coord not in score_boosts:
+                        score_boosts[neighbor_coord] = 0.0
+                    score_boosts[neighbor_coord] += boost
+
+        except Exception as exc:
+            # B2.3: On error/timeout, continue without graph boost
+            logger.warning(
+                "Graph neighbor query failed, continuing without boost",
+                error=str(exc),
+            )
+            continue
+
+    # Apply boosts to hits
+    boosted_hits = []
+    for hit in hits:
+        coord = hit.payload.get("coordinate") if hit.payload else None
+        if coord:
+            if isinstance(coord, list):
+                coord = tuple(coord)
+            boost = score_boosts.get(coord, 0.0)
+            if boost > 0:
+                # Create new hit with boosted score
+                new_score = (hit.score or 0.0) + boost
+                boosted_hit = RecallHit(
+                    payload=hit.payload,
+                    score=new_score,
+                    coordinate=hit.coordinate,
+                )
+                boosted_hits.append(boosted_hit)
+            else:
+                boosted_hits.append(hit)
+        else:
+            boosted_hits.append(hit)
+
+    # Sort by score descending
+    boosted_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
+
+    return boosted_hits

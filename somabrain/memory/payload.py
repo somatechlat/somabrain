@@ -136,6 +136,8 @@ def prepare_memory_payload(
 ) -> Dict[str, Any]:
     """Prepare a payload for memory storage with all required fields.
 
+    Per Requirement G1: Uses serialize_for_sfm to ensure JSON compatibility.
+
     Args:
         payload: The original payload dictionary.
         coord_key: The coordinate key for this memory.
@@ -143,10 +145,14 @@ def prepare_memory_payload(
         memory_type: The type of memory (default: "episodic").
 
     Returns:
-        A new payload dictionary with all required fields set.
+        A new payload dictionary with all required fields set and serialized for SFM.
     """
+    from somabrain.memory.serialization import serialize_for_sfm
+    
     p = dict(payload or {})
     p.setdefault("memory_type", memory_type)
     p.setdefault("timestamp", time.time())
     p.setdefault("universe", universe)
-    return normalize_metadata(p)
+    normalized = normalize_metadata(p)
+    # G1: Serialize for SFM compatibility (tuples→lists, numpy→lists, epoch→ISO8601)
+    return serialize_for_sfm(normalized)

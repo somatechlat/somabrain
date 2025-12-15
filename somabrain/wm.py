@@ -19,10 +19,11 @@ Classes:
 
 from __future__ import annotations
 
+import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Callable, List, Tuple, TYPE_CHECKING
+from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 from common.config.settings import settings
@@ -32,6 +33,8 @@ from somabrain.math import cosine_similarity, normalize_vector
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
     from .scoring import UnifiedScorer
+    from somabrain.memory.wm_persistence import WMPersister
+    from somabrain.memory.promotion import WMLTMPromoter
 
 
 @dataclass
@@ -103,6 +106,8 @@ class WorkingMemory:
         recency_max_steps: float | None = None,
         now_fn: Callable[[], float] | None = None,
         salience_threshold: float | None = None,
+        persister: "Optional[WMPersister]" = None,
+        promoter: "Optional[WMLTMPromoter]" = None,
     ):
         """
         Initialize working memory with specified capacity and vector dimension.
@@ -110,6 +115,8 @@ class WorkingMemory:
         Args:
             capacity (int): Maximum number of items to store in working memory.
             dim (int): Fixed dimension for all vector representations.
+            persister: Optional WMPersister for async persistence to SFM (A1.3).
+            promoter: Optional WMLTMPromoter for WM→LTM promotion (A2.1-A2.5).
 
         Raises:
             ValueError: If capacity or dimension are not positive integers.
@@ -127,24 +134,20 @@ class WorkingMemory:
         self._scorer = scorer
         self._now: Callable[[], float] = now_fn or time.time
         r_scale = (
-            settings.wm_recency_time_scale
-            if recency_time_scale is None
-            else recency_time_scale
+            settings.wm_recency_time_scale if recency_time_scale is None else recency_time_scale
         )
-        r_cap = (
-            settings.wm_recency_max_steps
-            if recency_max_steps is None
-            else recency_max_steps
-        )
-        self._recency_scale = self._validate_scale(
-            r_scale, settings.wm_recency_time_scale
-        )
+        r_cap = settings.wm_recency_max_steps if recency_max_steps is None else recency_max_steps
+        self._recency_scale = self._validate_scale(r_scale, settings.wm_recency_time_scale)
         self._recency_cap = self._validate_scale(r_cap, settings.wm_recency_max_steps)
         self._default_salience_threshold = float(
-            settings.wm_salience_threshold
-            if salience_threshold is None
-            else salience_threshold
+            settings.wm_salience_threshold if salience_threshold is None else salience_threshold
         )
+        # WM Persistence (A1.3): Optional persister for async SFM persistence
+        self._persister: Optional["WMPersister"] = persister
+        # Track item IDs for eviction marking
+        self._item_ids: List[str] = []
+        # WM-LTM Promotion (A2.1-A2.5): Optional promoter for salient items
+        self._promoter: Optional["WMLTMPromoter"] = promoter
 
     @staticmethod
     def _validate_scale(value: float, default: float) -> float:
@@ -197,15 +200,35 @@ class WorkingMemory:
                 overlap = 0.0
             overlap = min(overlap, 1.0)
 
-        self._items.append(
-            WMItem(
-                vector=vector.astype("float32"),
-                payload=dict(payload),
-                tick=self._t,
-                admitted_at=float(now),
-                cleanup_overlap=float(overlap),
-            )
+        item = WMItem(
+            vector=vector.astype("float32"),
+            payload=dict(payload),
+            tick=self._t,
+            admitted_at=float(now),
+            cleanup_overlap=float(overlap),
         )
+        self._items.append(item)
+
+        # WM Persistence (A1.3): Queue item for async persistence to SFM
+        item_id = ""
+        if self._persister is not None:
+            try:
+                # Schedule persistence without blocking
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self._persister.queue_persist(item))
+                else:
+                    item_id = loop.run_until_complete(self._persister.queue_persist(item))
+            except RuntimeError:
+                # No event loop - try to create one
+                try:
+                    item_id = asyncio.run(self._persister.queue_persist(item))
+                except Exception:
+                    pass  # Persistence is best-effort
+            except Exception:
+                pass  # Persistence is best-effort
+        self._item_ids.append(item_id)
+
         if len(self._items) > self.capacity:
             self._evict_lowest_salience()
 
@@ -249,6 +272,25 @@ class WorkingMemory:
                 min_salience = salience
                 min_idx = idx
 
+        # WM Persistence (A1.4): Mark evicted item in SFM (not delete)
+        if self._persister is not None and min_idx < len(self._item_ids):
+            item_id = self._item_ids[min_idx]
+            if item_id:
+                try:
+                    loop = asyncio.get_event_loop()
+                    if loop.is_running():
+                        asyncio.create_task(self._persister.mark_evicted(item_id))
+                    else:
+                        loop.run_until_complete(self._persister.mark_evicted(item_id))
+                except RuntimeError:
+                    try:
+                        asyncio.run(self._persister.mark_evicted(item_id))
+                    except Exception:
+                        pass  # Eviction marking is best-effort
+                except Exception:
+                    pass  # Eviction marking is best-effort
+            del self._item_ids[min_idx]
+
         # Remove the item with lowest salience
         del self._items[min_idx]
 
@@ -262,11 +304,7 @@ class WorkingMemory:
         if self._items:
             recent = self._items[-1]
             recency = max(0.0, 1.0 - cosine_similarity(query_vec, recent.vector))
-        s = (
-            self.alpha * float(novelty)
-            + self.beta * float(reward)
-            + self.gamma * float(recency)
-        )
+        s = self.alpha * float(novelty) + self.beta * float(reward) + self.gamma * float(recency)
         return float(max(0.0, min(1.0, s)))
 
     def admit_if_salient(
@@ -301,6 +339,9 @@ class WorkingMemory:
         by cosine similarity score. Returns the top-k most similar items with their
         similarity scores and payloads.
 
+        Also checks for WM→LTM promotion eligibility per Requirement A2.1:
+        Items with salience >= 0.85 for 3+ consecutive ticks are promoted.
+
         Args:
             query_vec (np.ndarray): Query vector for similarity search.
             top_k (int, optional): Number of top similar items to return. Defaults to 3.
@@ -316,7 +357,7 @@ class WorkingMemory:
         """
         scored: List[Tuple[float, dict]] = []
         now = self._now()
-        for it in self._items:
+        for idx, it in enumerate(self._items):
             cos = cosine_similarity(query_vec, it.vector)
             if self._scorer is not None:
                 steps = self._recency_steps(now, it.admitted_at)
@@ -333,8 +374,72 @@ class WorkingMemory:
             density_factor = max(0.1, 1.0 - overlap)
             adjusted = float(s) * density_factor
             scored.append((adjusted, it.payload))
+
+            # WM-LTM Promotion (A2.1): Check for promotion eligibility
+            # Use adjusted score as salience proxy for promotion check
+            if self._promoter is not None:
+                item_id = (
+                    self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{it.tick}"
+                )
+                self._check_promotion(item_id, adjusted, it)
+
         scored.sort(key=lambda x: x[0], reverse=True)
         return scored[: max(0, int(top_k))]
+
+    def _check_promotion(self, item_id: str, salience: float, item: WMItem) -> None:
+        """Check if item should be promoted to LTM.
+
+        Per Requirement A2.1: Items with salience >= 0.85 for 3+ consecutive
+        ticks are promoted to LTM.
+
+        Args:
+            item_id: Unique identifier for the WM item.
+            salience: Current salience score (0.0-1.0).
+            item: The WMItem to potentially promote.
+        """
+        if self._promoter is None:
+            return
+
+        try:
+            # Schedule async promotion check without blocking recall
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(
+                    self._promoter.check_and_promote(
+                        item_id=item_id,
+                        salience=salience,
+                        tick=self._t,
+                        vector=item.vector.tolist(),
+                        payload=item.payload,
+                    )
+                )
+            else:
+                # No running loop - run synchronously
+                loop.run_until_complete(
+                    self._promoter.check_and_promote(
+                        item_id=item_id,
+                        salience=salience,
+                        tick=self._t,
+                        vector=item.vector.tolist(),
+                        payload=item.payload,
+                    )
+                )
+        except RuntimeError:
+            # No event loop available - try asyncio.run
+            try:
+                asyncio.run(
+                    self._promoter.check_and_promote(
+                        item_id=item_id,
+                        salience=salience,
+                        tick=self._t,
+                        vector=item.vector.tolist(),
+                        payload=item.payload,
+                    )
+                )
+            except Exception:
+                pass  # Promotion is best-effort, don't block recall
+        except Exception:
+            pass  # Promotion is best-effort, don't block recall
 
     def novelty(self, query_vec: np.ndarray) -> float:
         """
@@ -371,3 +476,62 @@ class WorkingMemory:
         if steps <= 0.0:
             return 0.0
         return min(steps, self._recency_cap)
+
+    def set_promoter(self, promoter: "WMLTMPromoter") -> None:
+        """Set the WM-LTM promoter for this working memory instance.
+
+        Per Requirement A2.1: Enables WM→LTM promotion for salient items.
+
+        Args:
+            promoter: WMLTMPromoter instance for handling promotions.
+        """
+        self._promoter = promoter
+
+    def tick(self) -> None:
+        """Advance the tick counter and check all items for promotion.
+
+        Per Requirement A2.1: Items with salience >= 0.85 for 3+ consecutive
+        ticks are promoted to LTM. This method should be called each cognitive
+        cycle to advance the tick and check promotion eligibility.
+        """
+        self._t += 1
+
+        if self._promoter is None:
+            return
+
+        # Check all items for promotion eligibility
+        now = self._now()
+        for idx, item in enumerate(self._items):
+            # Compute salience for this item
+            salience = self._compute_item_salience(item, now)
+            item_id = self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{item.tick}"
+            self._check_promotion(item_id, salience, item)
+
+    def _compute_item_salience(self, item: WMItem, now: float) -> float:
+        """Compute salience score for a single WM item.
+
+        Salience combines novelty and recency per the salience formula:
+        salience = alpha * novelty + gamma * recency
+
+        Args:
+            item: The WMItem to compute salience for.
+            now: Current timestamp.
+
+        Returns:
+            Salience score between 0.0 and 1.0.
+        """
+        # Compute novelty: how different is this item from others
+        novelty = 1.0
+        for other in self._items:
+            if other is not item:
+                sim = cosine_similarity(item.vector, other.vector)
+                novelty = min(novelty, max(0.0, 1.0 - sim))
+
+        # Compute recency based on time since admission
+        age = max(0.0, now - item.admitted_at)
+        recency_decay = math.exp(-age / self._recency_scale) if age > 0 else 1.0
+        recency = float(recency_decay)
+
+        # Combine: alpha * novelty + gamma * recency
+        salience = self.alpha * novelty + self.gamma * recency
+        return float(max(0.0, min(1.0, salience)))

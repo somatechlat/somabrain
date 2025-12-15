@@ -308,19 +308,18 @@ This spec affects BOTH repositories:
 
 ## CATEGORY I: VECTOR BACKEND ARCHITECTURE
 
-### Requirement I1: Milvus Required, Qdrant Optional (Test-Only)
+### Requirement I1: Milvus Required (Exclusive Vector Backend)
 
-**User Story:** As a platform architect, I want Milvus as the required production vector backend with Qdrant available only for local testing, so that operational complexity is minimized while maintaining test flexibility.
+**User Story:** As a platform architect, I want Milvus as the exclusive vector backend for both SomaBrain and SomaFractalMemory, so that operational complexity is minimized and consistency is guaranteed.
 
 #### Acceptance Criteria
 
 1. WHEN SomaBrain initializes vector operations THEN it SHALL use Milvus exclusively (hardcoded, no alternatives)
-2. WHEN SomaFractalMemory initializes THEN it SHALL default to Milvus via SOMA_VECTOR_BACKEND=milvus
-3. WHEN SOMA_ENV=production AND SOMA_VECTOR_BACKEND=qdrant THEN startup SHALL fail with RuntimeError
-4. WHEN SOMA_VECTOR_BACKEND=qdrant in non-production THEN a warning SHALL be logged indicating test-only usage
-5. WHEN Milvus is unavailable in production THEN the system SHALL fail fast with clear error (no silent degradation)
-6. WHEN vector operations are performed in production THEN they SHALL use pymilvus client library
-7. WHEN collections are created THEN they SHALL follow naming convention: {namespace}_{tenant}
+2. WHEN SomaFractalMemory initializes THEN it SHALL use Milvus exclusively (no other backends supported)
+3. WHEN Milvus is unavailable THEN the system SHALL fail fast with clear error (no silent degradation)
+4. WHEN vector operations are performed THEN they SHALL use pymilvus client library
+5. WHEN collections are created THEN they SHALL follow naming convention: {namespace}_{tenant}
+6. WHEN any non-Milvus vector backend is configured THEN startup SHALL fail with RuntimeError
 
 ### Requirement I2: Milvus Connection Management
 
@@ -448,9 +447,9 @@ This spec affects BOTH repositories:
 
 #### Acceptance Criteria
 
-1. WHEN running in development THEN SOMA_VECTOR_BACKEND MAY be "qdrant" for local testing
-2. WHEN running in production THEN SOMA_VECTOR_BACKEND SHALL be "milvus" (enforced)
-3. WHEN running tests THEN temporary on-disk storage SHALL be used for isolation
+1. WHEN running in any environment THEN SOMA_VECTOR_BACKEND SHALL be "milvus" (exclusive)
+2. WHEN running tests THEN Milvus test collections SHALL be used for isolation
+3. WHEN any non-Milvus backend is configured THEN startup SHALL fail with RuntimeError
 4. WHEN config file is provided THEN it SHALL be merged with environment variables
 5. WHEN config validation fails THEN detailed error message SHALL indicate which field failed
 

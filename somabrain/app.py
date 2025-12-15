@@ -28,10 +28,9 @@ import os
 import sys
 
 # numpy moved to somabrain/bootstrap/singletons.py
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI
 # inspect moved to admin router
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from cachetools import TTLCache
 # XMLRPCError moved to admin router
 
@@ -47,14 +46,12 @@ from somabrain.thalamus import ThalamusRouter
 from somabrain.version import API_VERSION
 # check_kafka moved to somabrain/lifecycle/startup.py
 from somabrain.services.memory_service import MemoryService as _MemSvc
-from config.feature_flags import FeatureFlags
 
 # Import the metrics module as `M` – required for both the Prometheus `/metrics`
 # endpoint and the JSON health‑metrics endpoint (`/health/metrics`).
 # The alias is used throughout the file, so keeping it short avoids line‑wraps.
 # metrics (M) moved to somabrain/lifecycle/startup.py
 # consolidation moved to somabrain/routers/sleep.py
-from somabrain import schemas as S
 from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 # require_admin_auth, require_auth moved to routers
 from somabrain.basal_ganglia import BasalGangliaPolicy
