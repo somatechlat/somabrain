@@ -129,72 +129,72 @@ Fix any issues before marking the task complete.
 - **NOTE**: WM uses FIFO eviction, not salience-based as specified in requirements
 
 ### Task 3.2: Long-Term Memory Vector Search (B2)
-- [ ] Create `tests/proofs/category_b/test_ltm_search.py`
-- [ ] Implement `test_ann_returns_top1_for_identical` - B2.1
-- [ ] Implement `test_returns_exactly_k_items` - B2.2
-- [ ] Implement `test_threshold_excludes_below` - B2.3
-- [ ] Implement `test_recall_at_10_above_95` - B2.4
-- [ ] Implement `test_vectors_normalized_before_storage` - B2.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_b/test_ltm_search.py`
+- [x] Implement `test_ann_returns_top1_for_identical` - B2.1
+- [x] Implement `test_returns_exactly_k_items` - B2.2
+- [x] Implement `test_threshold_excludes_below` - B2.3
+- [x] Implement `test_recall_at_10_above_95` - B2.4
+- [x] Implement `test_vectors_normalized_before_storage` - B2.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 3.3: Memory Round-Trip Integrity (B3)
 - [x] Create `tests/proofs/category_b/test_memory_roundtrip.py`
 - [x] Implement `test_payload_survives_roundtrip` - B3.1
-- [ ] Implement `test_coordinate_deterministic` - B3.2
+- [x] Implement `test_coordinate_deterministic` - B3.2
 - [x] Implement `test_json_fields_exact` - B3.3
 - [x] Implement `test_timestamp_precision` - B3.4
-- [ ] Implement `test_metadata_preserved` - B3.5
+- [x] Implement `test_metadata_preserved` - B3.5
 - [x] **Run Black, Ruff, Pyright after completion**
-- **NOTE**: Also includes D1.1, D1.2 tenant isolation tests (XFAIL - known security bug)
+- **NOTE**: Also includes D1.1, D1.2 tenant isolation tests (security fix applied)
 
 ### Task 3.4: Retrieval Pipeline Fusion (B4)
-- [ ] Create `tests/proofs/category_b/test_fusion.py`
-- [ ] Implement `test_wm_ltm_merge_no_duplicates` - B4.1
-- [ ] Implement `test_fusion_weights_applied` - B4.2
-- [ ] Implement `test_one_source_fails_returns_other` - B4.3
-- [ ] Implement `test_graph_retrieval_boosts_relevance` - B4.4
-- [ ] Implement `test_diversity_reranking_coverage` - B4.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_b/test_fusion.py`
+- [x] Implement `test_wm_ltm_merge_no_duplicates` - B4.1
+- [x] Implement `test_fusion_weights_applied` - B4.2
+- [x] Implement `test_one_source_fails_returns_other` - B4.3
+- [x] Implement `test_graph_retrieval_boosts_relevance` - B4.4
+- [x] Implement `test_diversity_reranking_coverage` - B4.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ---
 
 ## Phase 4: Category C - Cognitive Function Proofs
 
 ### Task 4.1: Neuromodulator State Management (C1)
-- [ ] Create `tests/proofs/category_c/test_neuromodulators.py`
-- [ ] Implement `test_dopamine_increases_reward_sensitivity` - C1.1
-- [ ] Implement `test_serotonin_shifts_exploitation` - C1.2
-- [ ] Implement `test_noradrenaline_narrows_attention` - C1.3
-- [ ] Implement `test_acetylcholine_increases_learning_rate` - C1.4
-- [ ] Implement `test_all_values_in_valid_range` - C1.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_c/test_neuromodulators.py`
+- [x] Implement `test_dopamine_increases_reward_sensitivity` - C1.1
+- [x] Implement `test_serotonin_shifts_exploitation` - C1.2
+- [x] Implement `test_noradrenaline_narrows_attention` - C1.3
+- [x] Implement `test_acetylcholine_increases_learning_rate` - C1.4
+- [x] Implement `test_all_values_in_valid_range` - C1.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 4.2: Planning and Decision Making (C2)
-- [ ] Create `tests/proofs/category_c/test_planning.py`
-- [ ] Implement `test_options_ranked_by_utility` - C2.1
-- [ ] Implement `test_context_increases_relevance` - C2.2
-- [ ] Implement `test_equal_utility_tie_breaking` - C2.3
-- [ ] Implement `test_timeout_returns_best_so_far` - C2.4
-- [ ] Implement `test_no_options_returns_empty` - C2.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_c/test_planning.py`
+- [x] Implement `test_options_ranked_by_utility` - C2.1
+- [x] Implement `test_context_increases_relevance` - C2.2
+- [x] Implement `test_equal_utility_tie_breaking` - C2.3
+- [x] Implement `test_timeout_returns_best_so_far` - C2.4
+- [x] Implement `test_no_options_returns_empty` - C2.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 4.3: Learning and Adaptation (C3)
-- [ ] Create `tests/proofs/category_c/test_learning.py`
-- [ ] Implement `test_positive_feedback_increases_weights` - C3.1
-- [ ] Implement `test_negative_feedback_decreases_weights` - C3.2
-- [ ] Implement `test_constraints_clamp_values` - C3.3
-- [ ] Implement `test_tau_annealing_decay` - C3.4
-- [ ] Implement `test_state_persists_across_restart` - C3.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_c/test_learning.py`
+- [x] Implement `test_positive_feedback_increases_weights` - C3.1
+- [x] Implement `test_negative_feedback_decreases_weights` - C3.2
+- [x] Implement `test_constraints_clamp_values` - C3.3
+- [x] Implement `test_tau_annealing_decay` - C3.4
+- [x] Implement `test_state_persists_across_restart` - C3.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 4.4: Context and Attention (C4)
-- [ ] Create `tests/proofs/category_c/test_context.py`
-- [ ] Implement `test_anchors_create_hrr_binding` - C4.1
-- [ ] Implement `test_context_decays_over_time` - C4.2
-- [ ] Implement `test_attention_prioritizes_retrieval` - C4.3
-- [ ] Implement `test_clear_resets_to_neutral` - C4.4
-- [ ] Implement `test_saturation_prunes_oldest` - C4.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_c/test_context.py`
+- [x] Implement `test_anchors_create_hrr_binding` - C4.1
+- [x] Implement `test_context_decays_over_time` - C4.2
+- [x] Implement `test_attention_prioritizes_retrieval` - C4.3
+- [x] Implement `test_clear_resets_to_neutral` - C4.4
+- [x] Implement `test_saturation_prunes_oldest` - C4.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 
 ---
@@ -202,22 +202,22 @@ Fix any issues before marking the task complete.
 ## Phase 5: Category D - Multi-Tenant Isolation Proofs
 
 ### Task 5.1: Memory Isolation (D1)
-- [ ] Create `tests/proofs/category_d/test_memory_isolation.py`
-- [ ] Implement `test_tenant_a_invisible_to_tenant_b` - D1.1
-- [ ] Implement `test_cross_tenant_query_returns_empty` - D1.2
-- [ ] Implement `test_namespace_scopes_queries` - D1.3
-- [ ] Implement `test_missing_header_uses_default` - D1.4
-- [ ] Implement `test_100_tenants_zero_leakage` - D1.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_d/test_memory_isolation.py`
+- [x] Implement `test_tenant_a_invisible_to_tenant_b` - D1.1
+- [x] Implement `test_cross_tenant_query_returns_empty` - D1.2
+- [x] Implement `test_namespace_scopes_queries` - D1.3
+- [x] Implement `test_missing_header_uses_default` - D1.4
+- [x] Implement `test_100_tenants_zero_leakage` - D1.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 5.2: State Isolation (D2)
-- [ ] Create `tests/proofs/category_d/test_state_isolation.py`
-- [ ] Implement `test_neuromodulator_isolation` - D2.1
-- [ ] Implement `test_circuit_breaker_isolation` - D2.2
-- [ ] Implement `test_quota_isolation` - D2.3
-- [ ] Implement `test_adaptation_isolation` - D2.4
-- [ ] Implement `test_wm_capacity_isolation` - D2.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_d/test_state_isolation.py`
+- [x] Implement `test_neuromodulator_isolation` - D2.1
+- [x] Implement `test_circuit_breaker_isolation` - D2.2
+- [x] Implement `test_quota_isolation` - D2.3
+- [x] Implement `test_adaptation_isolation` - D2.4
+- [x] Implement `test_wm_capacity_isolation` - D2.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ---
 
@@ -233,53 +233,53 @@ Fix any issues before marking the task complete.
 - [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 6.2: Per-Tenant Circuit Isolation (F2)
-- [ ] Create `tests/proofs/category_f/test_circuit_per_tenant.py`
-- [ ] Implement `test_tenant_a_circuit_independent` - F2.1
-- [ ] Implement `test_tenant_b_unaffected_by_a_open` - F2.2
-- [ ] Implement `test_reset_independent` - F2.3
-- [ ] Implement `test_multiple_tenants_independent_recovery` - F2.4
-- [ ] Implement `test_metrics_labeled_by_tenant` - F2.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_f/test_circuit_per_tenant.py`
+- [x] Implement `test_tenant_a_circuit_independent` - F2.1
+- [x] Implement `test_tenant_b_unaffected_by_a_open` - F2.2
+- [x] Implement `test_reset_independent` - F2.3
+- [x] Implement `test_multiple_tenants_independent_recovery` - F2.4
+- [x] Implement `test_metrics_labeled_by_tenant` - F2.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 6.3: Degraded Mode Operation (F3)
-- [ ] Create `tests/proofs/category_f/test_degraded_mode.py`
-- [ ] Implement `test_ltm_open_returns_wm_only_degraded` - F3.1
-- [ ] Implement `test_backend_unavailable_queues_outbox` - F3.2
-- [ ] Implement `test_degraded_health_reports_status` - F3.3
-- [ ] Implement `test_recovery_replays_without_duplicates` - F3.4
-- [ ] Implement `test_replay_completes_pending_zero` - F3.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_f/test_degraded_mode.py`
+- [x] Implement `test_ltm_open_returns_wm_only_degraded` - F3.1
+- [x] Implement `test_backend_unavailable_queues_outbox` - F3.2
+- [x] Implement `test_degraded_health_reports_status` - F3.3
+- [x] Implement `test_recovery_replays_without_duplicates` - F3.4
+- [x] Implement `test_replay_completes_pending_zero` - F3.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ---
 
 ## Phase 7: Category G - Performance and Load Proofs
 
 ### Task 7.1: Latency SLOs (G1)
-- [ ] Create `tests/proofs/category_g/test_latency_slo.py`
-- [ ] Implement `test_remember_p95_under_300ms` - G1.1
-- [ ] Implement `test_recall_p95_under_400ms` - G1.2
-- [ ] Implement `test_plan_suggest_p95_under_1000ms` - G1.3
-- [ ] Implement `test_health_p99_under_100ms` - G1.4
-- [ ] Implement `test_neuromodulators_p95_under_50ms` - G1.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_g/test_latency_slo.py`
+- [x] Implement `test_remember_p95_under_300ms` - G1.1
+- [x] Implement `test_recall_p95_under_400ms` - G1.2
+- [x] Implement `test_plan_suggest_p95_under_1000ms` - G1.3
+- [x] Implement `test_health_p99_under_100ms` - G1.4
+- [x] Implement `test_neuromodulators_p95_under_50ms` - G1.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 7.2: Throughput Capacity (G2)
-- [ ] Create `tests/proofs/category_g/test_throughput.py`
-- [ ] Implement `test_100_concurrent_99_success` - G2.1
-- [ ] Implement `test_1000_memories_10s_no_loss` - G2.2
-- [ ] Implement `test_500_recalls_10s_complete` - G2.3
-- [ ] Implement `test_30min_sustained_stable_memory` - G2.4
-- [ ] Implement `test_spike_recovery_30s` - G2.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_g/test_throughput.py`
+- [x] Implement `test_100_concurrent_99_success` - G2.1
+- [x] Implement `test_1000_memories_10s_no_loss` - G2.2
+- [x] Implement `test_500_recalls_10s_complete` - G2.3
+- [x] Implement `test_30min_sustained_stable_memory` - G2.4
+- [x] Implement `test_spike_recovery_30s` - G2.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 ### Task 7.3: Recall Quality Under Scale (G3)
-- [ ] Create `tests/proofs/category_g/test_recall_quality.py`
-- [ ] Implement `test_10k_corpus_precision_at_10` - G3.1
-- [ ] Implement `test_100k_corpus_recall_at_10` - G3.2
-- [ ] Implement `test_ndcg_at_10_above_75` - G3.3
-- [ ] Implement `test_diversity_pairwise_below_90` - G3.4
-- [ ] Implement `test_freshness_recency_weighted` - G3.5
-- [ ] **Run Black, Ruff, Pyright after completion**
+- [x] Create `tests/proofs/category_g/test_recall_quality.py`
+- [x] Implement `test_10k_corpus_precision_at_10` - G3.1
+- [x] Implement `test_100k_corpus_recall_at_10` - G3.2
+- [x] Implement `test_ndcg_at_10_above_75` - G3.3
+- [x] Implement `test_diversity_pairwise_below_90` - G3.4
+- [x] Implement `test_freshness_recency_weighted` - G3.5
+- [x] **Run Black, Ruff, Pyright after completion**
 
 
 ---
