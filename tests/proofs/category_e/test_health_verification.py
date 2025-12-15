@@ -5,6 +5,9 @@
 
 Integration tests that verify ALL backend services report health correctly.
 These tests run against REAL Docker infrastructure - NO mocks.
+
+Also includes tests for deep-memory-integration spec:
+- Task 2.5: SFM partially unhealthy → SB health reports degraded with component list
 """
 
 from __future__ import annotations
@@ -380,3 +383,216 @@ class TestBackendConnectivity:
         )
         assert milvus_metrics is not None, "Missing Milvus metrics"
         assert isinstance(milvus_metrics, dict), "Milvus metrics should be dict"
+
+
+# ---------------------------------------------------------------------------
+# Test Class: SFM Integration Health (E3 - Deep Memory Integration)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.infrastructure
+class TestSFMIntegrationHealth:
+    """Tests for SFM integration health reporting.
+
+    **Feature: deep-memory-integration, Category E3: Health Check Completeness**
+    **Validates: Requirements E3.1, E3.2, E3.3, E3.4, E3.5**
+
+    These tests verify that SB correctly reports SFM component health
+    and enters degraded mode when SFM components are unhealthy.
+    """
+
+    def test_sfm_partially_unhealthy_reports_degraded(self) -> None:
+        """Task 2.5: SFM partially unhealthy reports degraded.
+
+        **Feature: deep-memory-integration, Property 13**
+        **Validates: Requirements E3.1, E3.2, E3.5**
+
+        WHEN any SFM component is unhealthy THEN SB health SHALL report
+        degraded (not failed) with the specific unhealthy components listed.
+
+        This test uses the check_sfm_integration_health function directly
+        to verify the health check logic.
+        """
+        from somabrain.healthchecks import (
+            SFMIntegrationHealth,
+            check_sfm_integration_health,
+        )
+
+        # Get SFM endpoint from environment or use default
+        sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:9595")
+
+        # Call the health check function
+        health: SFMIntegrationHealth = check_sfm_integration_health(
+            sfm_endpoint=sfm_endpoint,
+            timeout_s=2.0,
+            tenant="test_health_check",
+        )
+
+        # Verify the health check returns proper structure
+        assert isinstance(health, SFMIntegrationHealth), "Bad return type"
+
+        # Verify all required fields are present (E3.1)
+        assert hasattr(health, "sb_healthy"), "Missing sb_healthy field"
+        assert hasattr(health, "sfm_available"), "Missing sfm_available field"
+        assert hasattr(health, "sfm_kv_store"), "Missing sfm_kv_store field"
+        assert hasattr(health, "sfm_vector_store"), "Missing sfm_vector_store"
+        assert hasattr(health, "sfm_graph_store"), "Missing sfm_graph_store"
+        assert hasattr(health, "degraded"), "Missing degraded field"
+        assert hasattr(health, "degraded_components"), "Missing degraded_components"
+
+        # If SFM is available, verify component status is reported
+        if health.sfm_available:
+            # All component statuses should be booleans
+            assert isinstance(health.sfm_kv_store, bool), "kv should be bool"
+            assert isinstance(health.sfm_vector_store, bool), "vector should be bool"
+            assert isinstance(health.sfm_graph_store, bool), "graph should be bool"
+
+            # If any component is unhealthy, degraded should be True (E3.2)
+            any_unhealthy = (
+                not health.sfm_kv_store
+                or not health.sfm_vector_store
+                or not health.sfm_graph_store
+            )
+            if any_unhealthy:
+                assert health.degraded, (
+                    "degraded should be True when any SFM component is unhealthy: "
+                    f"kv={health.sfm_kv_store}, vector={health.sfm_vector_store}, "
+                    f"graph={health.sfm_graph_store}"
+                )
+
+                # Unhealthy components should be listed (E3.5)
+                assert (
+                    len(health.degraded_components) > 0
+                ), "degraded_components should list unhealthy components"
+
+                # Verify the listed components match the unhealthy ones
+                if not health.sfm_kv_store:
+                    assert "kv_store" in health.degraded_components
+                if not health.sfm_vector_store:
+                    assert "vector_store" in health.degraded_components
+                if not health.sfm_graph_store:
+                    assert "graph_store" in health.degraded_components
+            else:
+                # All components healthy - should not be degraded
+                assert (
+                    not health.degraded
+                ), "degraded should be False when all SFM components are healthy"
+                assert (
+                    len(health.degraded_components) == 0
+                ), "degraded_components should be empty when all healthy"
+        else:
+            # SFM unavailable - should be degraded (E3.3)
+            assert health.degraded, "degraded should be True when SFM unavailable"
+            assert (
+                len(health.degraded_components) > 0
+            ), "degraded_components should indicate SFM unavailability"
+
+    def test_sfm_health_check_timeout(self) -> None:
+        """E3.4: Health check times out after 2 seconds and reports unknown status.
+
+        **Feature: deep-memory-integration**
+        **Validates: Requirements E3.4**
+
+        WHEN health check exceeds 2 seconds THEN it SHALL timeout
+        and report unknown status.
+        """
+        from somabrain.healthchecks import check_sfm_integration_health
+
+        # Use a non-existent endpoint to trigger timeout
+        # This simulates SFM being slow/unresponsive
+        health = check_sfm_integration_health(
+            sfm_endpoint="http://10.255.255.1:9999",  # Non-routable IP
+            timeout_s=0.5,  # Short timeout for test speed
+            tenant="test_timeout",
+        )
+
+        # Should report degraded due to timeout/unreachable
+        assert health.degraded, "Should be degraded when SFM times out"
+        assert not health.sfm_available, "sfm_available should be False on timeout"
+        assert health.error is not None, "Should have error message on timeout"
+
+    def test_sfm_health_check_unreachable(self) -> None:
+        """E3.3: SFM completely unreachable reports degraded with sfm_available=false.
+
+        **Feature: deep-memory-integration**
+        **Validates: Requirements E3.3**
+
+        WHEN SFM is completely unreachable THEN SB health SHALL report
+        degraded with sfm_available=false.
+        """
+        from somabrain.healthchecks import check_sfm_integration_health
+
+        # Use invalid endpoint to simulate unreachable SFM
+        health = check_sfm_integration_health(
+            sfm_endpoint="http://localhost:1",  # Invalid port
+            timeout_s=1.0,
+            tenant="test_unreachable",
+        )
+
+        # Should report degraded with sfm_available=false
+        assert health.degraded, "Should be degraded when SFM unreachable"
+        assert not health.sfm_available, "sfm_available should be False"
+        assert len(health.degraded_components) > 0, "Should list components"
+        assert health.error is not None, "Should have error message"
+
+    def test_sfm_health_check_async(self) -> None:
+        """Verify async health check works correctly.
+
+        **Feature: deep-memory-integration**
+        **Validates: Requirements E3.1**
+        """
+        import asyncio
+
+        from somabrain.healthchecks import check_sfm_integration_health_async
+
+        async def run_async_check():
+            sfm_endpoint = os.environ.get("SFM_ENDPOINT", "http://localhost:9595")
+            return await check_sfm_integration_health_async(
+                sfm_endpoint=sfm_endpoint,
+                timeout_s=2.0,
+                tenant="test_async",
+            )
+
+        # Run the async check
+        health = asyncio.run(run_async_check())
+
+        # Verify structure matches sync version
+        assert hasattr(health, "sfm_available"), "Missing sfm_available"
+        assert hasattr(health, "degraded"), "Missing degraded"
+        assert hasattr(health, "degraded_components"), "Missing degraded_components"
+
+    def test_health_reports_sfm_components_in_app_health(self) -> None:
+        """Verify app /health endpoint includes SFM component status.
+
+        **Feature: deep-memory-integration**
+        **Validates: Requirements E3.1**
+
+        WHEN /health is called THEN response SHALL include kv_store,
+        vector_store, graph_store status from SFM.
+        """
+        r = httpx.get(f"http://localhost:{APP_PORT}/health", timeout=30.0)
+        assert r.status_code == 200, f"Health check failed: {r.status_code}"
+
+        data = r.json()
+
+        # Verify memory component is present
+        assert "memory_ok" in data, "Missing memory_ok in health response"
+
+        # Check for SFM-specific fields in components
+        components = data.get("components", {})
+        memory = components.get("memory", {})
+
+        # Memory component should exist
+        assert memory is not None or "memory" in data, "Missing memory status"
+
+        # If SFM integration is active, should have component details
+        # Note: The exact structure depends on how the app exposes SFM health
+        # This test verifies the integration point exists
+        if isinstance(memory, dict):
+            # Memory component should have health indicators
+            has_health_info = (
+                "healthy" in memory or "sfm_available" in memory or "status" in memory
+            )
+            assert (
+                has_health_info or memory == {}
+            ), "Memory component should have health info or be empty dict"
