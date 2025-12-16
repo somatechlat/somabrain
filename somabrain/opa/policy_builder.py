@@ -33,7 +33,9 @@ def build_policy(constitution: Dict) -> str:
     try:
         return template_path.read_text(encoding="utf-8")
     except Exception as e:
-        raise RuntimeError(f"Failed to read OPA policy template at {template_path}: {e}")
+        raise RuntimeError(
+            f"Failed to read OPA policy template at {template_path}: {e}"
+        )
 
 
 __all__ = ["build_policy"]

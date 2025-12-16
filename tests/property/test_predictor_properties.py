@@ -25,7 +25,9 @@ from typing import Callable
 dim_strategy = st.sampled_from([8, 16, 32])
 
 # Time parameter for heat kernel
-time_strategy = st.floats(min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False)
+time_strategy = st.floats(
+    min_value=0.1, max_value=1.0, allow_nan=False, allow_infinity=False
+)
 
 # Chebyshev degree K
 chebyshev_K_strategy = st.sampled_from([10, 20, 30, 40])
@@ -173,7 +175,9 @@ class TestChebyshevHeatApproximation:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=50, deadline=10000)
-    def test_chebyshev_error_decreases_with_K(self, n: int, t: float, seed: int) -> None:
+    def test_chebyshev_error_decreases_with_K(
+        self, n: int, t: float, seed: int
+    ) -> None:
         """Verify Chebyshev error decreases as K increases."""
         L = make_line_graph_laplacian(n)
         apply_A = matvec_from_matrix(L)
@@ -205,7 +209,8 @@ class TestChebyshevHeatApproximation:
             # Error should generally decrease (allow some tolerance for numerical noise)
             # At minimum, K=40 should be better than K=10
             assert errors[2] <= errors[0] * 1.5, (
-                f"Error did not decrease: K=10 MSE={errors[0]:.6e}, " f"K=40 MSE={errors[2]:.6e}"
+                f"Error did not decrease: K=10 MSE={errors[0]:.6e}, "
+                f"K=40 MSE={errors[2]:.6e}"
             )
 
     @given(
@@ -370,7 +375,9 @@ class TestLanczosSpectralBounds:
 
         # Verify convergence
         rel_err = relative_error(y_lanc, y_exact)
-        assert rel_err < 0.1, f"Lanczos relative error {rel_err:.6f} > 0.1 " f"(n={n}, t={t}, m=32)"
+        assert rel_err < 0.1, (
+            f"Lanczos relative error {rel_err:.6f} > 0.1 " f"(n={n}, t={t}, m=32)"
+        )
 
     @given(
         n=dim_strategy,
@@ -447,7 +454,9 @@ class TestChebyshevLanczosConsistency:
 
         # They should agree reasonably well
         rel_diff = relative_error(y_cheb, y_lanc)
-        assert rel_diff < 0.2, f"Chebyshev and Lanczos disagree: relative diff={rel_diff:.6f}"
+        assert (
+            rel_diff < 0.2
+        ), f"Chebyshev and Lanczos disagree: relative diff={rel_diff:.6f}"
 
     @given(
         n=dim_strategy,

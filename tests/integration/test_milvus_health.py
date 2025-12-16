@@ -188,7 +188,10 @@ def test_milvus_collection_schema_and_index() -> None:
     coll.search(
         data=[[0.0, 0.0, 0.0, 0.0][: vector_field.params["dim"]]],
         anns_field=vector_field.name,
-        param={"metric_type": idx_params.get("metric_type", "COSINE"), "params": {"nprobe": 4}},
+        param={
+            "metric_type": idx_params.get("metric_type", "COSINE"),
+            "params": {"nprobe": 4},
+        },
         limit=1,
         expr=None,
     )

@@ -41,11 +41,23 @@ async def startup_mode_banner(app: "FastAPI") -> None:
     try:
         mode = getattr(_shared, "mode", "prod") if _shared else "prod"
         mode_norm = getattr(_shared, "mode_normalized", "prod") if _shared else "prod"
-        api_auth = bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
-        mem_auth = bool(getattr(_shared, "mode_memory_auth_required", True)) if _shared else True
+        api_auth = (
+            bool(getattr(_shared, "mode_api_auth_enabled", True)) if _shared else True
+        )
+        mem_auth = (
+            bool(getattr(_shared, "mode_memory_auth_required", True))
+            if _shared
+            else True
+        )
         opa_closed = True  # Strict: always fail-closed
-        log_level = str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
-        bundle = str(getattr(_shared, "mode_opa_policy_bundle", "prod")) if _shared else "prod"
+        log_level = (
+            str(getattr(_shared, "mode_log_level", "WARNING")) if _shared else "WARNING"
+        )
+        bundle = (
+            str(getattr(_shared, "mode_opa_policy_bundle", "prod"))
+            if _shared
+            else "prod"
+        )
         lg.warning(
             "SomaBrain startup: mode=%s (norm=%s) api_auth=%s memory_auth=%s "
             "opa_fail_closed=%s log_level=%s opa_bundle=%s",
@@ -263,7 +275,9 @@ async def startup_diagnostics(cfg: Any) -> None:
 
     try:
         _log = logging.getLogger("somabrain")
-        mem_ep = str(getattr(getattr(cfg, "http", object()), "endpoint", "") or "").strip()
+        mem_ep = str(
+            getattr(getattr(cfg, "http", object()), "endpoint", "") or ""
+        ).strip()
         token_present = bool(getattr(getattr(cfg, "http", object()), "token", None))
 
         # Use centralized Settings flag for Docker detection
@@ -283,7 +297,9 @@ async def startup_diagnostics(cfg: Any) -> None:
         try:
             if _shared is not None:
                 mode = str(getattr(_shared, "mode", "") or "").strip()
-                ext_req = bool(getattr(_shared, "mode_require_external_backends", False))
+                ext_req = bool(
+                    getattr(_shared, "mode_require_external_backends", False)
+                )
                 require_memory = bool(getattr(_shared, "require_memory", True))
             else:
                 mode = settings.mode.strip()
@@ -305,7 +321,10 @@ async def startup_diagnostics(cfg: Any) -> None:
         if (
             in_docker
             and mem_ep
-            and (mem_ep.startswith("http://127.0.0.1") or mem_ep.startswith("http://localhost"))
+            and (
+                mem_ep.startswith("http://127.0.0.1")
+                or mem_ep.startswith("http://localhost")
+            )
         ):
             _log.warning(
                 "Memory endpoint is localhost inside container; use host.docker.internal:9595 for Docker Desktop or a service DNS name."

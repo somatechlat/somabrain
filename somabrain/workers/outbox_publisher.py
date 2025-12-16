@@ -25,7 +25,6 @@ from __future__ import annotations
 import json
 import os
 import time
-import threading
 from typing import Any, Dict, Optional
 import logging
 
@@ -44,7 +43,7 @@ from somabrain.journal import get_journal
 from somabrain.db.outbox import replay_journal_events
 from somabrain.storage.db import get_session_factory
 from somabrain.common.infra import assert_ready
-from somabrain.workers.quota_manager import TenantQuotaManager, get_quota_manager
+from somabrain.workers.quota_manager import get_quota_manager
 from common.config.settings import settings
 
 # Per-tenant batch processing configuration
@@ -123,9 +122,9 @@ def _publish_record(
         raise RuntimeError("Kafka producer not available")
     try:
         # Serialize payload
-        payload_bytes = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode(
-            "utf-8"
-        )
+        payload_bytes = json.dumps(
+            payload, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
 
         # Handle key encoding with validation
         key_bytes = None
@@ -150,7 +149,9 @@ def _publish_record(
         header_items.append(("x-schema-version", "1.0".encode("utf-8")))
 
         # Add producer identification
-        header_items.append(("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8")))
+        header_items.append(
+            ("x-producer-id", f"somabrain-outbox-{os.getpid()}".encode("utf-8"))
+        )
 
         # Add custom headers
         if headers:
@@ -202,7 +203,9 @@ def _update_outbox_pending_metrics() -> None:
     _known_pending_tenants.update(current_tenants)
 
 
-def _process_batch(session: Session, producer, batch_size: int, max_retries: int) -> int:
+def _process_batch(
+    session: Session, producer, batch_size: int, max_retries: int
+) -> int:
     # Get quota manager for tenant rate limiting
     quota_manager = get_quota_manager()
 
@@ -247,7 +250,9 @@ def _process_batch(session: Session, producer, batch_size: int, max_retries: int
                     "dedupe-key": ev.dedupe_key or "",
                     "event-id": str(ev.id),
                     "event-topic": ev.topic,
-                    "event-created-at": (ev.created_at.isoformat() if ev.created_at else ""),
+                    "event-created-at": (
+                        ev.created_at.isoformat() if ev.created_at else ""
+                    ),
                     "retry-count": str(ev.retries or 0),
                     "processing-attempt": str(ev.retries + 1),
                 }
@@ -338,7 +343,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
 
     # Robust startup: retry until producer is available
     while producer is None:
-        logging.warning("outbox_publisher: Kafka unavailable; retrying producer init...")
+        logging.warning(
+            "outbox_publisher: Kafka unavailable; retrying producer init..."
+        )
         time.sleep(create_retry_ms / 1000.0)
         producer = _make_producer()
 

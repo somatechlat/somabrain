@@ -54,7 +54,6 @@ async def _ensure_config_runtime_started() -> None:
     await ensure_supervisor_worker()
 
 
-
 def create_remember_endpoints(tiered_registry: TieredMemoryRegistry) -> APIRouter:
     """Create remember endpoints with the given tiered registry.
 
@@ -108,7 +107,9 @@ def create_remember_endpoints(tiered_registry: TieredMemoryRegistry) -> APIRoute
 
         if circuit_open:
             # Queue to local journal for replay when backend recovers
-            memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
+            memsvc._queue_degraded(
+                "remember", {"key": payload.key, "payload": stored_payload}
+            )
             degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
         else:
             try:
@@ -119,9 +120,13 @@ def create_remember_endpoints(tiered_registry: TieredMemoryRegistry) -> APIRoute
                 memsvc._queue_degraded(
                     "remember", {"key": payload.key, "payload": stored_payload}
                 )
-                degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
+                degraded_warnings.append(
+                    f"memory-backend-failed:queued-for-replay:{exc}"
+                )
             except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
+                raise HTTPException(
+                    status_code=502, detail=f"store failed: {exc}"
+                ) from exc
 
         coordinate_list = _serialize_coord(coord)
         if coordinate_list is not None:

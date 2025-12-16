@@ -118,7 +118,9 @@ class OptionManager:
         with self._lock:
             tenant_opts = self._store.setdefault(tenant_id, {})
             if option_id in tenant_opts:
-                raise ValueError(f"Option {option_id!r} already exists for tenant {tenant_id!r}")
+                raise ValueError(
+                    f"Option {option_id!r} already exists for tenant {tenant_id!r}"
+                )
 
             opt = Option(option_id=option_id, tenant_id=tenant_id, payload=payload)
             tenant_opts[option_id] = opt
@@ -135,12 +137,19 @@ class OptionManager:
                 # Increment option count per tenant
                 self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id).inc()
                 # Recompute average utility (simple incremental avg)
-                count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
+                count = self._metrics.OPTION_COUNT.labels(
+                    tenant_id=tenant_id
+                )._value.get()
                 prev_avg = (
-                    self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id)._value.get() or 0.0
+                    self._metrics.OPTION_UTILITY_AVG.labels(
+                        tenant_id=tenant_id
+                    )._value.get()
+                    or 0.0
                 )
                 new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
-                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
+                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(
+                    new_avg
+                )
             except Exception as exc:  # pragma: no cover – defensive
                 logger.error("Failed to update Oak metrics for %s: %s", option_id, exc)
             return opt
@@ -151,7 +160,9 @@ class OptionManager:
 
     def list_options(self, tenant_id: str) -> List[Option]:
         """Return all options for a tenant, sorted by creation time."""
-        return sorted(self._store.get(tenant_id, {}).values(), key=lambda o: o.created_ts)
+        return sorted(
+            self._store.get(tenant_id, {}).values(), key=lambda o: o.created_ts
+        )
 
     # ---------------------------------------------------------------------
     # Update API – modifies an existing option payload and recomputes utility.
@@ -164,7 +175,9 @@ class OptionManager:
         with self._lock:
             tenant_opts = self._store.get(tenant_id, {})
             if option_id not in tenant_opts:
-                raise ValueError(f"Option {option_id!r} not found for tenant {tenant_id!r}")
+                raise ValueError(
+                    f"Option {option_id!r} not found for tenant {tenant_id!r}"
+                )
             opt = tenant_opts[option_id]
             opt.payload = payload
             # Re‑compute utility and tau using the shared helper.
@@ -177,12 +190,19 @@ class OptionManager:
             self._publish_update(opt)
             # Update metrics (same logic as creation)
             try:
-                count = self._metrics.OPTION_COUNT.labels(tenant_id=tenant_id)._value.get()
+                count = self._metrics.OPTION_COUNT.labels(
+                    tenant_id=tenant_id
+                )._value.get()
                 prev_avg = (
-                    self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id)._value.get() or 0.0
+                    self._metrics.OPTION_UTILITY_AVG.labels(
+                        tenant_id=tenant_id
+                    )._value.get()
+                    or 0.0
                 )
                 new_avg = ((prev_avg * (count - 1)) + opt.utility) / count
-                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(new_avg)
+                self._metrics.OPTION_UTILITY_AVG.labels(tenant_id=tenant_id).set(
+                    new_avg
+                )
             except Exception as exc:  # pragma: no cover
                 logger.error(
                     "Failed to update Oak metrics after option update %s: %s",
@@ -225,7 +245,9 @@ class OptionManager:
             }
             memsvc.remember(key=tenant_id, payload=payload)
         except Exception as exc:  # pragma: no cover – defensive
-            logger.error("Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc)
+            logger.error(
+                "Failed to persist Oak OptionModel for tenant %s: %s", tenant_id, exc
+            )
 
     # ---------------------------------------------------------------------
     # Internal helpers
@@ -290,7 +312,9 @@ class OptionManager:
             }
             memsvc.remember(key=f"{topic}:{option.option_id}", payload=payload)
         except Exception as exc:  # pragma: no cover – defensive
-            logger.error("Failed to persist %s event for %s: %s", topic, option.option_id, exc)
+            logger.error(
+                "Failed to persist %s event for %s: %s", topic, option.option_id, exc
+            )
 
 
 # Export a singleton used by the FastAPI routes.

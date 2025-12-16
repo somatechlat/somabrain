@@ -12,7 +12,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 
-async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def handle_validation_error(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     """Surface validation errors with context for operators.
 
     Provides route-specific hints to reduce confusion when validation fails.

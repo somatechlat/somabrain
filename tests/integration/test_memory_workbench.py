@@ -20,7 +20,9 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
     r = client.post(
-        "/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k}
+        "/memory/recall",
+        headers={"X-Tenant-ID": tenant},
+        json={"query": query, "top_k": k},
     )
     assert r.status_code == 200, r.text
     body = r.json()
@@ -63,7 +65,9 @@ def test_memory_workbench(http_client: httpx.Client, tenant, corpus) -> None:
         relevant: Set[str] = meta["relevant"]
         precisions.append(precision_at_k(relevant, retrieved, k=5))
         recalls.append(recall_at_k(relevant, retrieved, k=5))
-        ndcgs.append(ndcg_at_k([1 if item in relevant else 0 for item in retrieved[:5]], k=5))
+        ndcgs.append(
+            ndcg_at_k([1 if item in relevant else 0 for item in retrieved[:5]], k=5)
+        )
     assert all(p >= 0.2 for p in precisions), f"Precision too low: {precisions}"
     assert all(r >= 0.8 for r in recalls), f"Recall too low: {recalls}"
     assert all(n >= 0.2 for n in ndcgs), f"nDCG too low: {ndcgs}"

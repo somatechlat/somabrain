@@ -30,6 +30,7 @@ async def _ensure_config_runtime_started() -> None:
         ensure_config_dispatcher,
         ensure_supervisor_worker,
     )
+
     await ensure_config_dispatcher()
     await ensure_supervisor_worker()
 
@@ -37,6 +38,7 @@ async def _ensure_config_runtime_started() -> None:
 def _get_tiered_registry():
     """Get the tiered memory registry singleton."""
     from somabrain.api.memory_api import _TIERED_REGISTRY
+
     return _TIERED_REGISTRY
 
 
@@ -87,7 +89,9 @@ async def list_outbox_events(
 
 
 @router.post("/outbox/replay")
-async def replay_outbox_events(request: Request, payload: OutboxReplayRequest) -> Dict[str, Any]:
+async def replay_outbox_events(
+    request: Request, payload: OutboxReplayRequest
+) -> Dict[str, Any]:
     """Admin: Replay outbox events."""
     cfg = getattr(request.app.state, "cfg", None)
     require_admin_auth(request, cfg)

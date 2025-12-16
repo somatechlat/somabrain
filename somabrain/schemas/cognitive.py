@@ -149,7 +149,8 @@ class Feedback(BaseModel):
                 )
             query_vec = _norm(query_vec, dtype=np.float32)
             mem_vec = _norm(
-                np.array(self.data.get("vector", []), dtype=np.float32), dtype=np.float32
+                np.array(self.data.get("vector", []), dtype=np.float32),
+                dtype=np.float32,
             )
             if query_vec.shape[0] != mem_vec.shape[0]:
                 return False

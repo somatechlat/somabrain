@@ -43,8 +43,12 @@ def load_runtime_module():
     Raises:
         AssertionError: If the module spec cannot be loaded.
     """
-    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+    _runtime_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
     assert _spec and _spec.loader, "Failed to load runtime.py module spec"
 
     # If an initializer already loaded the runtime module into sys.modules, reuse it
@@ -203,7 +207,9 @@ def should_enforce_backends(settings: Any) -> bool:
     if settings is not None:
         try:
             # Prefer new mode-derived enforcement (always true under Sprint policy)
-            mode_policy = bool(getattr(settings, "mode_require_external_backends", True))
+            mode_policy = bool(
+                getattr(settings, "mode_require_external_backends", True)
+            )
             if mode_policy:
                 return True
             return bool(getattr(settings, "require_external_backends", False))

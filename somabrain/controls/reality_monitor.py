@@ -37,7 +37,9 @@ from typing import Any, Dict, List
 from .metrics import REALITY_LOW, REALITY_OK
 
 
-def assess_reality(mem_payloads: List[Dict[str, Any]], min_sources: int = 1) -> Dict[str, Any]:
+def assess_reality(
+    mem_payloads: List[Dict[str, Any]], min_sources: int = 1
+) -> Dict[str, Any]:
     """Simple truthfulness check: count sources and emit a confidence heuristic.
 
     - ok: True if len(mem_payloads) >= min_sources

@@ -48,12 +48,16 @@ from .provenance import verify_hmac_sha256
 
 
 class ControlsMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, engine: PolicyEngine | None = None, audit: AuditLogger | None = None):
+    def __init__(
+        self, app, engine: PolicyEngine | None = None, audit: AuditLogger | None = None
+    ):
         super().__init__(app)
         self.engine = engine or PolicyEngine()
         self.audit = audit or AuditLogger()
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ):
         raw_body = b""
         try:
             if request.method.upper() in ("POST", "PUT", "PATCH"):
@@ -87,7 +91,9 @@ class ControlsMiddleware(BaseHTTPMiddleware):
             )
         ):
             # mypy: headers may contain atypical types; coerce to str safely
-            header_val = headers.get("X-Provenance") or headers.get("x-provenance") or ""
+            header_val = (
+                headers.get("X-Provenance") or headers.get("x-provenance") or ""
+            )
             header_str = str(header_val)
             try:
                 ctx["provenance_valid"] = verify_hmac_sha256(

@@ -84,7 +84,9 @@ class AbstractMemoryBackend(abc.ABC):
         """Delete a memory coordinate via DELETE /memories/{coord}."""
 
     @abc.abstractmethod
-    def coord_for_key(self, key: str, universe: Optional[str] = None) -> Tuple[float, float, float]:
+    def coord_for_key(
+        self, key: str, universe: Optional[str] = None
+    ) -> Tuple[float, float, float]:
         """Return the deterministic coordinate associated with *key*."""
 
     @abc.abstractmethod

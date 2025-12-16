@@ -63,7 +63,9 @@ class InfraSettingsMixin(BaseSettings):
         default=_int_env("SOMABRAIN_KAFKA_PORT", _int_env("KAFKA_PORT", 0))
     )
     kafka_scheme: Optional[str] = Field(
-        default=_str_env("SOMABRAIN_KAFKA_SCHEME") or _str_env("KAFKA_SCHEME") or "kafka"
+        default=_str_env("SOMABRAIN_KAFKA_SCHEME")
+        or _str_env("KAFKA_SCHEME")
+        or "kafka"
     )
     kafka_url: str = Field(default_factory=lambda: _str_env("SOMABRAIN_KAFKA_URL", ""))
     kafka_bootstrap: str = Field(

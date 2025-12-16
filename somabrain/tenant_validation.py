@@ -102,7 +102,10 @@ def validate_tenant_id_strict(tenant_id: str) -> tuple[bool, str]:
 
     # Validate format
     if not TENANT_ID_PATTERN.match(tenant_id):
-        return False, "Tenant ID must contain only alphanumeric characters, underscores, and hyphens"
+        return (
+            False,
+            "Tenant ID must contain only alphanumeric characters, underscores, and hyphens",
+        )
 
     return True, ""
 

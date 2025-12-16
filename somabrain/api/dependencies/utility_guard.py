@@ -11,14 +11,20 @@ from somabrain.constitution import ConstitutionEngine
 from common.config.settings import settings
 
 
-def compute_utility(p_confidence: float, cost: float, latency: float, const_params: dict) -> float:
+def compute_utility(
+    p_confidence: float, cost: float, latency: float, const_params: dict
+) -> float:
     # default params
     lam = const_params.get("lambda", const_params.get("lam", 1.0))
     mu = const_params.get("mu", 0.0)
     nu = const_params.get("nu", 0.0)
     import math
 
-    return lam * math.log(max(1e-12, p_confidence)) - mu * float(cost) - nu * float(latency)
+    return (
+        lam * math.log(max(1e-12, p_confidence))
+        - mu * float(cost)
+        - nu * float(latency)
+    )
 
 
 def _get_constitution_engine(request: Request) -> Optional[ConstitutionEngine]:

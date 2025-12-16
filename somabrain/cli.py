@@ -55,7 +55,9 @@ def run_api() -> None:
     try:
         import uvicorn
     except Exception:
-        print("uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr)
+        print(
+            "uvicorn is required to run the API (pip install uvicorn)", file=sys.stderr
+        )
         raise
     # Use centralized Settings for HOST/PORT configuration
     host = settings.cli_host

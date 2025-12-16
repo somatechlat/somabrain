@@ -76,7 +76,9 @@ def _bootstrap() -> str:
     return url.replace("kafka://", "")
 
 
-def _parse_global_frame(raw: bytes, serde: Optional[AvroSerde]) -> Optional[GlobalFrameCtx]:
+def _parse_global_frame(
+    raw: bytes, serde: Optional[AvroSerde]
+) -> Optional[GlobalFrameCtx]:
     try:
         data: Dict[str, Any]
         if serde is not None:
@@ -107,7 +109,9 @@ def _parse_global_frame(raw: bytes, serde: Optional[AvroSerde]) -> Optional[Glob
         return None
 
 
-def _parse_segment_boundary(raw: bytes, serde: Optional[AvroSerde]) -> Optional[Dict[str, Any]]:
+def _parse_segment_boundary(
+    raw: bytes, serde: Optional[AvroSerde]
+) -> Optional[Dict[str, Any]]:
     try:
         if serde is not None:
             return serde.deserialize(raw)
@@ -207,7 +211,9 @@ class OrchestratorService:
                 if isinstance(tools, list) and tools:
                     value["route"] = {"tools": [str(t) for t in tools]}
             except Exception as e:
-                logger.debug("Failed to apply routing tags for leader %s: %s", gf.leader, e)
+                logger.debug(
+                    "Failed to apply routing tags for leader %s: %s", gf.leader, e
+                )
         tags = ["cog", "segment", str(boundary.get("domain") or "?")]
         payload = {
             "tenant": tenant,
@@ -227,7 +233,10 @@ class OrchestratorService:
         except Exception as e:
             # best-effort enqueue; log on error for visibility
             logger.warning(
-                "Failed to enqueue episodic snapshot for tenant=%s key=%s: %s", tenant, key, e
+                "Failed to enqueue episodic snapshot for tenant=%s key=%s: %s",
+                tenant,
+                key,
+                e,
             )
 
     def run_forever(self) -> None:  # pragma: no cover - integration loop

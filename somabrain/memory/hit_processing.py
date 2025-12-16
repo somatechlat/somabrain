@@ -42,7 +42,8 @@ def normalize_recall_hits(data: Any) -> List[RecallHit]:
                     payload = {
                         k: v
                         for k, v in item.items()
-                        if k not in ("score", "coord", "coordinate", "distance", "vector")
+                        if k
+                        not in ("score", "coord", "coordinate", "distance", "vector")
                     }
                 payload = dict(payload or {})
                 score = None
@@ -60,7 +61,9 @@ def normalize_recall_hits(data: Any) -> List[RecallHit]:
                 coord = _extract_memory_coord(item)
                 if coord and "coordinate" not in payload:
                     payload["coordinate"] = coord
-                hits.append(RecallHit(payload=payload, score=score, coordinate=coord, raw=item))
+                hits.append(
+                    RecallHit(payload=payload, score=score, coordinate=coord, raw=item)
+                )
             return hits
     if isinstance(data, list):
         for item in data:
@@ -70,7 +73,9 @@ def normalize_recall_hits(data: Any) -> List[RecallHit]:
             coord = _extract_memory_coord(item)
             if coord and "coordinate" not in payload:
                 payload["coordinate"] = coord
-            hits.append(RecallHit(payload=payload, score=None, coordinate=coord, raw=item))
+            hits.append(
+                RecallHit(payload=payload, score=None, coordinate=coord, raw=item)
+            )
     return hits
 
 

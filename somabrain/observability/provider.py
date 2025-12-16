@@ -24,7 +24,9 @@ from typing import Optional
 from common.config.settings import settings
 
 
-def init_tracing(service_name: Optional[str] = None, *, console_export: bool = False) -> None:
+def init_tracing(
+    service_name: Optional[str] = None, *, console_export: bool = False
+) -> None:
     """Initialize OpenTelemetry tracer provider.
 
     The original implementation required a mandatory ``service_name`` argument,

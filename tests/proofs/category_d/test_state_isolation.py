@@ -217,7 +217,9 @@ class TestStateIsolation:
             wm_a.admit(f"item_a_{i}", vec, {"tenant": "A"})
 
         # Tenant A should have at most capacity items (FIFO eviction)
-        assert len(wm_a._items) <= 5, f"Tenant A should have at most 5 items: {len(wm_a._items)}"
+        assert (
+            len(wm_a._items) <= 5
+        ), f"Tenant A should have at most 5 items: {len(wm_a._items)}"
 
         # Tenant B should have full capacity available
         for i in range(5):
@@ -225,7 +227,9 @@ class TestStateIsolation:
             vec = vec / np.linalg.norm(vec)
             wm_b.admit(f"item_b_{i}", vec, {"tenant": "B"})
 
-        assert len(wm_b._items) == 5, f"Tenant B should have 5 items: {len(wm_b._items)}"
+        assert (
+            len(wm_b._items) == 5
+        ), f"Tenant B should have 5 items: {len(wm_b._items)}"
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +260,9 @@ class TestAdaptivePerTenantNeuromodulators:
         system_b = adaptive.get_adaptive_system("tenant_b")
 
         # Should be different instances
-        assert system_a is not system_b, "Each tenant should have their own adaptive system"
+        assert (
+            system_a is not system_b
+        ), "Each tenant should have their own adaptive system"
 
     def test_adaptive_state_isolation(self) -> None:
         """Adaptive state changes are isolated per tenant.
@@ -346,7 +352,9 @@ class TestCircuitBreakerPerTenant:
         cb.reset("tenant_a")
 
         # Tenant A should be closed, tenant B still open
-        assert not cb.is_open("tenant_a"), "Tenant A circuit should be closed after reset"
+        assert not cb.is_open(
+            "tenant_a"
+        ), "Tenant A circuit should be closed after reset"
         assert cb.is_open("tenant_b"), "Tenant B circuit should still be open"
 
     def test_success_closes_circuit(self) -> None:

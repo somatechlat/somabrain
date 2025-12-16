@@ -30,7 +30,9 @@ class UtilityWeights:
         nu: Tertiary utility weight (default from settings or 0.05)
     """
 
-    lambda_: float = float(getattr(settings, "utility_lambda", 1.0) if settings else 1.0)
+    lambda_: float = float(
+        getattr(settings, "utility_lambda", 1.0) if settings else 1.0
+    )
     mu: float = float(getattr(settings, "utility_mu", 0.1) if settings else 0.1)
     nu: float = float(getattr(settings, "utility_nu", 0.05) if settings else 0.05)
 
@@ -71,21 +73,41 @@ class AdaptationGains:
         nu: Gain for utility nu parameter
     """
 
-    alpha: float = float(getattr(settings, "adaptation_gain_alpha", 1.0) if settings else 1.0)
-    gamma: float = float(getattr(settings, "adaptation_gain_gamma", -0.5) if settings else -0.5)
-    lambda_: float = float(getattr(settings, "adaptation_gain_lambda", 1.0) if settings else 1.0)
-    mu: float = float(getattr(settings, "adaptation_gain_mu", -0.25) if settings else -0.25)
-    nu: float = float(getattr(settings, "adaptation_gain_nu", -0.25) if settings else -0.25)
+    alpha: float = float(
+        getattr(settings, "adaptation_gain_alpha", 1.0) if settings else 1.0
+    )
+    gamma: float = float(
+        getattr(settings, "adaptation_gain_gamma", -0.5) if settings else -0.5
+    )
+    lambda_: float = float(
+        getattr(settings, "adaptation_gain_lambda", 1.0) if settings else 1.0
+    )
+    mu: float = float(
+        getattr(settings, "adaptation_gain_mu", -0.25) if settings else -0.25
+    )
+    nu: float = float(
+        getattr(settings, "adaptation_gain_nu", -0.25) if settings else -0.25
+    )
 
     @classmethod
     def from_settings(cls) -> "AdaptationGains":
         """Construct gains from centralized settings only."""
         return cls(
-            alpha=float(getattr(settings, "adaptation_gain_alpha", 1.0) if settings else 1.0),
-            gamma=float(getattr(settings, "adaptation_gain_gamma", -0.5) if settings else -0.5),
-            lambda_=float(getattr(settings, "adaptation_gain_lambda", 1.0) if settings else 1.0),
-            mu=float(getattr(settings, "adaptation_gain_mu", -0.25) if settings else -0.25),
-            nu=float(getattr(settings, "adaptation_gain_nu", -0.25) if settings else -0.25),
+            alpha=float(
+                getattr(settings, "adaptation_gain_alpha", 1.0) if settings else 1.0
+            ),
+            gamma=float(
+                getattr(settings, "adaptation_gain_gamma", -0.5) if settings else -0.5
+            ),
+            lambda_=float(
+                getattr(settings, "adaptation_gain_lambda", 1.0) if settings else 1.0
+            ),
+            mu=float(
+                getattr(settings, "adaptation_gain_mu", -0.25) if settings else -0.25
+            ),
+            nu=float(
+                getattr(settings, "adaptation_gain_nu", -0.25) if settings else -0.25
+            ),
         )
 
 
@@ -104,29 +126,69 @@ class AdaptationConstraints:
         nu_min/max: Bounds for utility nu
     """
 
-    alpha_min: float = float(getattr(settings, "adaptation_alpha_min", 0.1) if settings else 0.1)
-    alpha_max: float = float(getattr(settings, "adaptation_alpha_max", 5.0) if settings else 5.0)
-    gamma_min: float = float(getattr(settings, "adaptation_gamma_min", 0.0) if settings else 0.0)
-    gamma_max: float = float(getattr(settings, "adaptation_gamma_max", 1.0) if settings else 1.0)
-    lambda_min: float = float(getattr(settings, "adaptation_lambda_min", 0.1) if settings else 0.1)
-    lambda_max: float = float(getattr(settings, "adaptation_lambda_max", 5.0) if settings else 5.0)
-    mu_min: float = float(getattr(settings, "adaptation_mu_min", 0.01) if settings else 0.01)
-    mu_max: float = float(getattr(settings, "adaptation_mu_max", 5.0) if settings else 5.0)
-    nu_min: float = float(getattr(settings, "adaptation_nu_min", 0.01) if settings else 0.01)
-    nu_max: float = float(getattr(settings, "adaptation_nu_max", 5.0) if settings else 5.0)
+    alpha_min: float = float(
+        getattr(settings, "adaptation_alpha_min", 0.1) if settings else 0.1
+    )
+    alpha_max: float = float(
+        getattr(settings, "adaptation_alpha_max", 5.0) if settings else 5.0
+    )
+    gamma_min: float = float(
+        getattr(settings, "adaptation_gamma_min", 0.0) if settings else 0.0
+    )
+    gamma_max: float = float(
+        getattr(settings, "adaptation_gamma_max", 1.0) if settings else 1.0
+    )
+    lambda_min: float = float(
+        getattr(settings, "adaptation_lambda_min", 0.1) if settings else 0.1
+    )
+    lambda_max: float = float(
+        getattr(settings, "adaptation_lambda_max", 5.0) if settings else 5.0
+    )
+    mu_min: float = float(
+        getattr(settings, "adaptation_mu_min", 0.01) if settings else 0.01
+    )
+    mu_max: float = float(
+        getattr(settings, "adaptation_mu_max", 5.0) if settings else 5.0
+    )
+    nu_min: float = float(
+        getattr(settings, "adaptation_nu_min", 0.01) if settings else 0.01
+    )
+    nu_max: float = float(
+        getattr(settings, "adaptation_nu_max", 5.0) if settings else 5.0
+    )
 
     @classmethod
     def from_settings(cls) -> "AdaptationConstraints":
         """Construct constraints from centralized settings only."""
         return cls(
-            alpha_min=float(getattr(settings, "adaptation_alpha_min", 0.1) if settings else 0.1),
-            alpha_max=float(getattr(settings, "adaptation_alpha_max", 5.0) if settings else 5.0),
-            gamma_min=float(getattr(settings, "adaptation_gamma_min", 0.0) if settings else 0.0),
-            gamma_max=float(getattr(settings, "adaptation_gamma_max", 1.0) if settings else 1.0),
-            lambda_min=float(getattr(settings, "adaptation_lambda_min", 0.1) if settings else 0.1),
-            lambda_max=float(getattr(settings, "adaptation_lambda_max", 5.0) if settings else 5.0),
-            mu_min=float(getattr(settings, "adaptation_mu_min", 0.01) if settings else 0.01),
-            mu_max=float(getattr(settings, "adaptation_mu_max", 5.0) if settings else 5.0),
-            nu_min=float(getattr(settings, "adaptation_nu_min", 0.01) if settings else 0.01),
-            nu_max=float(getattr(settings, "adaptation_nu_max", 5.0) if settings else 5.0),
+            alpha_min=float(
+                getattr(settings, "adaptation_alpha_min", 0.1) if settings else 0.1
+            ),
+            alpha_max=float(
+                getattr(settings, "adaptation_alpha_max", 5.0) if settings else 5.0
+            ),
+            gamma_min=float(
+                getattr(settings, "adaptation_gamma_min", 0.0) if settings else 0.0
+            ),
+            gamma_max=float(
+                getattr(settings, "adaptation_gamma_max", 1.0) if settings else 1.0
+            ),
+            lambda_min=float(
+                getattr(settings, "adaptation_lambda_min", 0.1) if settings else 0.1
+            ),
+            lambda_max=float(
+                getattr(settings, "adaptation_lambda_max", 5.0) if settings else 5.0
+            ),
+            mu_min=float(
+                getattr(settings, "adaptation_mu_min", 0.01) if settings else 0.01
+            ),
+            mu_max=float(
+                getattr(settings, "adaptation_mu_max", 5.0) if settings else 5.0
+            ),
+            nu_min=float(
+                getattr(settings, "adaptation_nu_min", 0.01) if settings else 0.01
+            ),
+            nu_max=float(
+                getattr(settings, "adaptation_nu_max", 5.0) if settings else 5.0
+            ),
         )

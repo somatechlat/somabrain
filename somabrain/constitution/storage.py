@@ -54,19 +54,25 @@ class ConstitutionVersion(storage_db.Base):
     checksum = Column(String(128), primary_key=True)
     document = Column(JSON, nullable=False)
     meta = Column("metadata", JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     is_active = Column(Boolean, nullable=False, default=True)
 
 
 class ConstitutionSignature(storage_db.Base):
     __tablename__ = "constitution_signatures"
-    __table_args__ = (UniqueConstraint("checksum", "signer_id", name="uq_constitution_signature"),)
+    __table_args__ = (
+        UniqueConstraint("checksum", "signer_id", name="uq_constitution_signature"),
+    )
 
     id = Column(String(256), primary_key=True)
     checksum = Column(String(128), nullable=False, index=True)
     signer_id = Column(String(128), nullable=False)
     signature = Column(String(1024), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class ConstitutionStorage:
@@ -90,7 +96,9 @@ class ConstitutionStorage:
         self._ensure_schema()
 
     # ------------------------------------------------------------------
-    def save_new(self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> str:
+    def save_new(
+        self, document: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None
+    ) -> str:
         checksum = self._compute_checksum(document)
         metadata = metadata or {}
         now = dt.datetime.now(dt.timezone.utc)
@@ -98,7 +106,9 @@ class ConstitutionStorage:
             session.execute(update(ConstitutionVersion).values(is_active=False))
             version = session.get(ConstitutionVersion, checksum)
             if version is None:
-                version = ConstitutionVersion(checksum=checksum, document=document, meta=metadata)
+                version = ConstitutionVersion(
+                    checksum=checksum, document=document, meta=metadata
+                )
                 session.add(version)
             else:
                 version.document = document
@@ -315,14 +325,18 @@ class ConstitutionStorage:
         except Exception as exc:
             LOGGER.debug("Failed to write constitution cache to redis: %s", exc)
 
-    def _write_redis_metadata(self, metadata: Dict[str, Any], created_at: dt.datetime) -> None:
+    def _write_redis_metadata(
+        self, metadata: Dict[str, Any], created_at: dt.datetime
+    ) -> None:
         client = self._connect_redis()
         if client is None:
             return
         try:
             client.set(
                 self._redis_meta_key,
-                json.dumps({"metadata": metadata, "created_at": created_at.isoformat()}),
+                json.dumps(
+                    {"metadata": metadata, "created_at": created_at.isoformat()}
+                ),
             )
         except Exception as exc:
             LOGGER.debug("Failed to write constitution metadata to redis: %s", exc)
@@ -341,7 +355,9 @@ class ConstitutionStorage:
             return None
         checksum_raw = client.get(self._redis_checksum_key)
         checksum = (
-            checksum_raw.decode("utf-8") if checksum_raw else self._compute_checksum(document)
+            checksum_raw.decode("utf-8")
+            if checksum_raw
+            else self._compute_checksum(document)
         )
         raw_meta = client.get(self._redis_meta_key)
         metadata: Optional[Dict[str, Any]] = None
@@ -378,7 +394,9 @@ class ConstitutionStorage:
 
     @staticmethod
     def _compute_checksum(document: Dict[str, Any]) -> str:
-        payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        payload = json.dumps(document, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )
         return hashlib.sha3_512(payload).hexdigest()
 
     @staticmethod

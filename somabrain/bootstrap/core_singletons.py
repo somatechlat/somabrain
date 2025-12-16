@@ -10,7 +10,7 @@ across all request handlers.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
     from somabrain.quantum import QuantumLayer

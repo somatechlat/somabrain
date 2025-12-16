@@ -99,7 +99,11 @@ class HRRContext:
 
     def _record_state_metrics(self) -> None:
         anchor_count = len(self._anchors)
-        capacity = 0.0 if self.cfg.max_anchors <= 0 else anchor_count / float(self.cfg.max_anchors)
+        capacity = (
+            0.0
+            if self.cfg.max_anchors <= 0
+            else anchor_count / float(self.cfg.max_anchors)
+        )
 
         if anchor_count == 0:
             snr_db = 0.0
@@ -122,7 +126,9 @@ class HRRContext:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def admit(self, anchor_id: str, vec: np.ndarray, *, timestamp: float | None = None) -> None:
+    def admit(
+        self, anchor_id: str, vec: np.ndarray, *, timestamp: float | None = None
+    ) -> None:
         """Admit a new anchor vector and update the context state."""
 
         ts = float(timestamp) if timestamp is not None else self._now()

@@ -54,7 +54,9 @@ class ContextPlanner:
         return PlanResult(prompt=best.prompt, utility=best.utility, candidates=ranked)
 
     def _generate_candidates(self, bundle) -> List[PlanCandidate]:
-        base = PlanCandidate(prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt))
+        base = PlanCandidate(
+            prompt=bundle.prompt, utility=self._score(bundle, bundle.prompt)
+        )
         summaries = self._memory_highlights(bundle)
         candidates = [base]
         candidates.extend(summaries)
@@ -72,7 +74,9 @@ class ContextPlanner:
                 "Respond succinctly using the cited memory."
             )
             util = self._score(bundle, prompt, emphasis=weight)
-            results.append(PlanCandidate(prompt=prompt, utility=util, notes=f"highlight:{mem.id}"))
+            results.append(
+                PlanCandidate(prompt=prompt, utility=util, notes=f"highlight:{mem.id}")
+            )
         return results
 
     def _score(self, bundle, prompt: str, emphasis: float = 1.0) -> float:

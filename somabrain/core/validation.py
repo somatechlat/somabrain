@@ -28,7 +28,9 @@ class CognitiveInputValidator:
             )
 
         if not CognitiveInputValidator.SAFE_TEXT_PATTERN.match(text):
-            logger.warning(f"Potentially unsafe input detected in {field_name}: {text[:100]}...")
+            logger.warning(
+                f"Potentially unsafe input detected in {field_name}: {text[:100]}..."
+            )
             raise ValueError(f"{field_name} contains unsafe characters")
 
         return text.strip()

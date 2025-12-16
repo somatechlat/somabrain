@@ -23,7 +23,7 @@ from common.config.settings.base import (
 
 class CognitiveSettingsMixin(BaseSettings):
     """Cognitive/mathematical component settings mixin.
-    
+
     These settings were previously hardcoded in somabrain/nano_profile.py.
     Moving them here centralizes configuration and allows environment-based overrides.
     """
@@ -42,7 +42,8 @@ class CognitiveSettingsMixin(BaseSettings):
         description="Always unit-norm after every HRR operation",
     )
     hrr_vector_family: str = Field(
-        default_factory=lambda: _str_env("SOMABRAIN_HRR_VECTOR_FAMILY", "bhdc") or "bhdc",
+        default_factory=lambda: _str_env("SOMABRAIN_HRR_VECTOR_FAMILY", "bhdc")
+        or "bhdc",
         description="Binary hypervectors with deterministic permutation binding",
     )
 
@@ -180,7 +181,9 @@ class CognitiveSettingsMixin(BaseSettings):
         description="Maximum text length for cognitive input validation",
     )
     validation_max_embedding_dim: int = Field(
-        default_factory=lambda: _int_env("SOMABRAIN_VALIDATION_MAX_EMBEDDING_DIM", 4096),
+        default_factory=lambda: _int_env(
+            "SOMABRAIN_VALIDATION_MAX_EMBEDDING_DIM", 4096
+        ),
         description="Maximum embedding dimension for validation",
     )
     validation_min_embedding_dim: int = Field(
@@ -190,10 +193,14 @@ class CognitiveSettingsMixin(BaseSettings):
 
     # Context planner configuration (from context/planner.py)
     planner_length_penalty_scale: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE", 1024.0),
+        default_factory=lambda: _float_env(
+            "SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE", 1024.0
+        ),
         description="Scale factor for prompt length penalty in planner",
     )
     planner_memory_penalty_scale: float = Field(
-        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE", 10.0),
+        default_factory=lambda: _float_env(
+            "SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE", 10.0
+        ),
         description="Scale factor for memory count penalty in planner",
     )

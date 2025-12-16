@@ -34,7 +34,9 @@ def _memory_available() -> bool:
 @pytest.mark.integration
 def test_outbox_event_replays_when_memory_available() -> None:
     if not MEM_TOKEN:
-        pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for outbox durability test")
+        pytest.skip(
+            "SOMABRAIN_MEMORY_HTTP_TOKEN must be set for outbox durability test"
+        )
     if not _memory_available():
         pytest.skip("Memory service not reachable for outbox durability test")
 

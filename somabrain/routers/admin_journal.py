@@ -49,10 +49,16 @@ async def admin_get_journal_stats():
 @router.get("/events", dependencies=[Depends(_admin_guard_dep)])
 async def admin_list_journal_events(
     tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    status: Optional[str] = Query(None, description="Filter by status (pending|sent|failed)"),
+    status: Optional[str] = Query(
+        None, description="Filter by status (pending|sent|failed)"
+    ),
     topic: Optional[str] = Query(None, description="Filter by topic"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to return"),
-    since: Optional[str] = Query(None, description="Only events after this ISO datetime"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of events to return"
+    ),
+    since: Optional[str] = Query(
+        None, description="Only events after this ISO datetime"
+    ),
 ):
     """List journal events with filtering options."""
     try:
@@ -94,7 +100,9 @@ async def admin_list_journal_events(
 @router.post("/replay", dependencies=[Depends(_admin_guard_dep)])
 async def admin_replay_journal_events(
     tenant_id: Optional[str] = Query(None, description="Filter by tenant ID"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximum number of events to replay"),
+    limit: int = Query(
+        100, ge=1, le=1000, description="Maximum number of events to replay"
+    ),
     mark_processed: bool = Query(True, description="Mark replayed events as processed"),
 ):
     """Replay journal events to the database outbox."""

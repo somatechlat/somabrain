@@ -61,7 +61,9 @@ class EmotionModel:
     def __init__(self, decay_rate: float | None = None):
         self.state = EmotionVector()
         # Use Settings default if not explicitly provided
-        rate = decay_rate if decay_rate is not None else float(settings.emotion_decay_rate)
+        rate = (
+            decay_rate if decay_rate is not None else float(settings.emotion_decay_rate)
+        )
         self.decay_rate = max(min(rate, 1.0), 0.0)
         logger.info("EmotionModel initialised with decay_rate=%s", self.decay_rate)
 

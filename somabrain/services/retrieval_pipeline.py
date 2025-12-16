@@ -31,7 +31,9 @@ from somabrain.embeddings import make_embedder
 # no attribute 'mt_memory'``. To reliably load the module file, we import it via
 # ``importlib.util``.
 _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-_spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+_spec = importlib.util.spec_from_file_location(
+    "somabrain.runtime_module", _runtime_path
+)
 assert _spec and _spec.loader
 if _spec.name in sys.modules:
     _rt = sys.modules[_spec.name]

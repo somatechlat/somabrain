@@ -59,10 +59,11 @@ def _get_settings():
 @dataclass
 class ExecConfig:
     """Executive controller configuration.
-    
+
     Fields default to None, which triggers Settings lookup in __post_init__.
     After initialization, all fields are guaranteed to have non-None values.
     """
+
     window: Optional[int] = None
     conflict_threshold: Optional[float] = None
     explore_boost_k: int = 2
@@ -124,7 +125,9 @@ class ExecutiveController:
         """Get or create the per-tenant sliding window of recall strengths."""
         w = self._recall_strength.get(tenant)
         if w is None:
-            w = deque(maxlen=max(1, int(self.cfg.window)))
+            # After __post_init__, window is guaranteed non-None
+            window_size = self.cfg.window or 8
+            w = deque(maxlen=max(1, int(window_size)))
             self._recall_strength[tenant] = w
         return w
 
@@ -151,7 +154,9 @@ class ExecutiveController:
         c, r = self._bandit_state(tenant)
         import random
 
-        if random.random() < max(0.0, min(1.0, float(self.cfg.bandit_eps))):
+        # After __post_init__, bandit_eps is guaranteed non-None
+        eps = self.cfg.bandit_eps or 0.1
+        if random.random() < max(0.0, min(1.0, float(eps))):
             return random.choice([0, 1])
         avg0 = 0.0 if c[0] <= 0 else r[0] / c[0]
         avg1 = 0.0 if c[1] <= 0 else r[1] / c[1]
@@ -190,13 +195,17 @@ class ExecutiveController:
         - Can suggest a universe switch when conflict exceeds threshold
         """
         c = self.conflict(tenant)
-        use_graph = c >= self.cfg.conflict_threshold
+        # After __post_init__, conflict_threshold is guaranteed non-None
+        threshold = self.cfg.conflict_threshold or 0.0
+        use_graph = c >= threshold
         if self.cfg.use_bandits:
             # choose between baseline and explore arm
             arm = self.choose_arm(tenant)
             use_graph = bool(arm == 1)
             try:
-                EXEC_BANDIT_ARM.labels(arm=("explore" if use_graph else "baseline")).inc()
+                EXEC_BANDIT_ARM.labels(
+                    arm=("explore" if use_graph else "baseline")
+                ).inc()
             except Exception as exc:
                 logger.debug("Failed to record EXEC_BANDIT_ARM metric: %s", exc)
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))

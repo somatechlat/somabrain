@@ -134,7 +134,9 @@ class MilvusClient:
             )
 
         self.dim: int = int(getattr(settings, "milvus_dim", 128))
-        self.collection_name: str = getattr(settings, "milvus_collection", "oak_options")
+        self.collection_name: str = getattr(
+            settings, "milvus_collection", "oak_options"
+        )
         host = getattr(settings, "milvus_host", None) or "localhost"
         port = int(getattr(settings, "milvus_port", 19530))
         user = getattr(settings, "milvus_user", None)
@@ -158,11 +160,15 @@ class MilvusClient:
                 timeout=timeout,
             )
             if not utility.has_collection(self.collection_name):
-                logger.info("Milvus collection %s missing – creating", self.collection_name)
+                logger.info(
+                    "Milvus collection %s missing – creating", self.collection_name
+                )
                 self._create_collection()
             self.collection = Collection(self.collection_name)  # type: ignore[arg-type]
         except MilvusException as exc:
-            logger.warning("Milvus connection failed (%s); collection operations unavailable", exc)
+            logger.warning(
+                "Milvus connection failed (%s); collection operations unavailable", exc
+            )
             self.collection = None
 
         if self.collection is not None:
@@ -197,13 +203,17 @@ class MilvusClient:
 
     def _verify_collection_schema(self) -> None:
         if self.collection is None:
-            raise RuntimeError("Cannot verify schema: Milvus collection is not initialized")
+            raise RuntimeError(
+                "Cannot verify schema: Milvus collection is not initialized"
+            )
         try:
             desc = self.collection.describe()
         except AttributeError:
             schema_obj = getattr(self.collection, "schema", None)
             if schema_obj is None:
-                logger.warning("Milvus Collection schema attribute missing; skipping verification")
+                logger.warning(
+                    "Milvus Collection schema attribute missing; skipping verification"
+                )
                 return
             raw_fields = []
             for field in getattr(schema_obj, "fields", []):
@@ -222,7 +232,9 @@ class MilvusClient:
                         }
                     )
             if not raw_fields:
-                logger.warning("Milvus schema inspection yielded no fields; skipping verification")
+                logger.warning(
+                    "Milvus schema inspection yielded no fields; skipping verification"
+                )
                 return
             desc = {"fields": raw_fields}
         try:
@@ -260,7 +272,9 @@ class MilvusClient:
                             f"does not match expected {param_val}"
                         )
         except Exception as exc:
-            raise RuntimeError(f"Milvus collection schema verification failed: {exc}") from exc
+            raise RuntimeError(
+                f"Milvus collection schema verification failed: {exc}"
+            ) from exc
 
     def _refresh_segment_load_metric(self, *, force: bool = False) -> None:
         """Update the segment-load gauge using live Milvus query-segment info."""
@@ -275,7 +289,9 @@ class MilvusClient:
             if not force and (now - self._segment_last_refresh) < interval:
                 return
             try:
-                segments = utility.get_query_segment_info(collection_name=self.collection_name)
+                segments = utility.get_query_segment_info(
+                    collection_name=self.collection_name
+                )
             except Exception as exc:
                 logger.debug("Milvus segment info query failed: %s", exc)
                 return
@@ -284,7 +300,12 @@ class MilvusClient:
                 state = str(
                     getattr(segment, "state", getattr(segment, "segment_state", ""))
                 ).lower()
-                if not state or state in {"sealed", "growing", "loaded", "fully_loaded"}:
+                if not state or state in {
+                    "sealed",
+                    "growing",
+                    "loaded",
+                    "fully_loaded",
+                }:
                     loaded += 1
             if not loaded and segments:
                 loaded = len(segments)
@@ -343,7 +364,11 @@ class MilvusClient:
         if self.collection is None:
             raise RuntimeError("Milvus collection unavailable – cannot search")
 
-        top_k = top_k if top_k is not None else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
+        top_k = (
+            top_k
+            if top_k is not None
+            else int(getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10))
+        )
         similarity_threshold = (
             similarity_threshold
             if similarity_threshold is not None

@@ -108,11 +108,15 @@ class TestMemoryRoundTripIntegrity:
 
         # Verify we got results
         assert (
-            "results" in recall_data or "memories" in recall_data or "hits" in recall_data
+            "results" in recall_data
+            or "memories" in recall_data
+            or "hits" in recall_data
         ), f"No results in recall response: {recall_data}"
 
         results = (
-            recall_data.get("results") or recall_data.get("memories") or recall_data.get("hits", [])
+            recall_data.get("results")
+            or recall_data.get("memories")
+            or recall_data.get("hits", [])
         )
         assert len(results) > 0, f"No memories recalled: {recall_data}"
 
@@ -184,7 +188,9 @@ class TestMemoryRoundTripIntegrity:
 
         recall_data = recall_response.json()
         results = (
-            recall_data.get("results") or recall_data.get("memories") or recall_data.get("hits", [])
+            recall_data.get("results")
+            or recall_data.get("memories")
+            or recall_data.get("hits", [])
         )
 
         # Verify we got results
@@ -229,7 +235,9 @@ class TestMemoryRoundTripIntegrity:
         # Verify response contains coordinate info
         remember_data = remember_response.json()
         assert (
-            "coordinate" in remember_data or "id" in remember_data or "key" in remember_data
+            "coordinate" in remember_data
+            or "id" in remember_data
+            or "key" in remember_data
         ), f"No coordinate/id/key in response: {remember_data}"
 
 
@@ -313,7 +321,9 @@ class TestTenantMemoryIsolation:
 
         recall_data = recall_response.json()
         results = (
-            recall_data.get("results") or recall_data.get("memories") or recall_data.get("hits", [])
+            recall_data.get("results")
+            or recall_data.get("memories")
+            or recall_data.get("hits", [])
         )
 
         # Verify tenant B does NOT see tenant A's memory
@@ -386,7 +396,9 @@ class TestTenantMemoryIsolation:
 
         recall_data = recall_response.json()
         results = (
-            recall_data.get("results") or recall_data.get("memories") or recall_data.get("hits", [])
+            recall_data.get("results")
+            or recall_data.get("memories")
+            or recall_data.get("hits", [])
         )
 
         # Verify tenant A does NOT see tenant B's memory
@@ -518,7 +530,9 @@ class TestTenantMemoryIsolation:
 
         recall_data = recall_response.json()
         results = (
-            recall_data.get("results") or recall_data.get("memories") or recall_data.get("hits", [])
+            recall_data.get("results")
+            or recall_data.get("memories")
+            or recall_data.get("hits", [])
         )
 
         # Verify we got results

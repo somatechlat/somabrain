@@ -62,9 +62,10 @@ def _get_settings():
 @dataclass
 class QuotaConfig:
     """Quota configuration with Settings-backed defaults.
-    
+
     Fields default to None, which triggers Settings lookup in __post_init__.
     """
+
     daily_writes: Optional[int] = None
 
     def __post_init__(self) -> None:
@@ -157,7 +158,8 @@ class QuotaManager:
 
     def remaining(self, tenant_id: str) -> int:
         if self._is_exempt(tenant_id):
-            return float("inf")
+            # Exempt tenants have unlimited quota - return max int
+            return 2**31 - 1  # Max 32-bit signed int
         tenant_limit = self._get_tenant_quota_limit(tenant_id)
         day = self._day_key()
         cur_day, cnt = self._counts.get(tenant_id, (day, 0))
@@ -180,13 +182,15 @@ class QuotaManager:
         if cur_day != day:
             cnt = 0
         now = datetime.now(timezone.utc)
-        reset_time = datetime(now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc)
+        reset_time = datetime(
+            now.year, now.month, now.day, 0, 0, 0, tzinfo=timezone.utc
+        )
         # Move to next day safely
         reset_time = reset_time + timedelta(days=1)
         return QuotaInfo(
             tenant_id=tenant_id,
             daily_limit=tenant_limit,
-            remaining=float("inf") if is_exempt else max(0, tenant_limit - cnt),
+            remaining=2**31 - 1 if is_exempt else max(0, tenant_limit - cnt),
             used_today=cnt,
             reset_at=reset_time,
             is_exempt=is_exempt,
@@ -224,6 +228,8 @@ class QuotaManager:
 
     def _get_tenant_quota_limit(self, tenant_id: str) -> int:
         """Get tenant-specific quota limit, falling back to global config."""
+        # After __post_init__, daily_writes is guaranteed non-None
+        default_limit = self.cfg.daily_writes or 100000
         try:
             tenant_manager = self._get_tenant_manager()
             try:
@@ -234,6 +240,6 @@ class QuotaManager:
             quota_config = loop.run_until_complete(
                 tenant_manager.get_tenant_quota_config(tenant_id)
             )
-            return quota_config.get("daily_quota", self.cfg.daily_writes)
+            return int(quota_config.get("daily_quota", default_limit))
         except Exception:
-            return self.cfg.daily_writes
+            return default_limit

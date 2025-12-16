@@ -93,7 +93,9 @@ class ContextBuilder:
         # Per-tenant overrides cache (learning.tenants.yaml)
         # Uses somabrain.context.tenant_overrides for loading
         # Bounded TTLCache: max 1000 tenants, 5 minute TTL for config reload
-        self._tenant_overrides_cache: TTLCache[str, Dict] = TTLCache(maxsize=1000, ttl=300)
+        self._tenant_overrides_cache: TTLCache[str, Dict] = TTLCache(
+            maxsize=1000, ttl=300
+        )
 
         def _env_float(name: str, current: float) -> float:
             # Use Settings attribute if available; fall back to None.
@@ -223,7 +225,9 @@ class ContextBuilder:
             self._memory_service = MemoryService(self._memory_backend, namespace)
         return self._memory_service
 
-    def _search(self, query_text: str, embedding: List[float], top_k: int) -> List[Dict[str, Any]]:
+    def _search(
+        self, query_text: str, embedding: List[float], top_k: int
+    ) -> List[Dict[str, Any]]:
         memory_component = self._memory_component()
         try:
             if hasattr(memory_component, "recall_with_scores"):
@@ -275,7 +279,9 @@ class ContextBuilder:
             ts = float(mem.metadata.get("timestamp", 0.0))
             age_penalty = self._temporal_decay(ts)
             density_factor = self._density_factor(mem.metadata)
-            combined = (alpha * cos + beta * g_score + gamma * age_penalty) * density_factor
+            combined = (
+                alpha * cos + beta * g_score + gamma * age_penalty
+            ) * density_factor
             if density_factor != 1.0:
                 try:
                     mem.metadata.setdefault("_density_factor", density_factor)
@@ -468,6 +474,3 @@ class ContextBuilder:
         deficit = (target - margin_val) / target
         penalty = 1.0 - (weight * deficit)
         return float(max(floor, min(1.0, penalty)))
-
-
-

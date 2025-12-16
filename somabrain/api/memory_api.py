@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Annotated
+from typing import Any, List, Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Request, Body
 
@@ -138,9 +138,13 @@ def _map_retrieval_to_memory_items(candidates: List[dict]) -> List[MemoryRecallI
     return _map_retrieval_items_helper(candidates, MemoryRecallItem)
 
 
-def _coerce_to_retrieval_request(obj: object, default_top_k: int = 10) -> RetrievalRequest:
+def _coerce_to_retrieval_request(
+    obj: object, default_top_k: int = 10
+) -> RetrievalRequest:
     """Coerce various input types to a RetrievalRequest."""
-    return _coerce_request_helper(obj, default_top_k, RetrievalRequest, MemoryRecallRequest)
+    return _coerce_request_helper(
+        obj, default_top_k, RetrievalRequest, MemoryRecallRequest
+    )
 
 
 @router.post("/recall", response_model=MemoryRecallResponse)

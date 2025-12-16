@@ -35,14 +35,24 @@ class TenantSleepState(Base):
 
     __tablename__ = "tenant_sleep_states"
 
-    tenant_id: Mapped[str] = mapped_column(String(255), primary_key=True, nullable=False)
-    current_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    target_state: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
-    ttl: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    tenant_id: Mapped[str] = mapped_column(
+        String(255), primary_key=True, nullable=False
+    )
+    current_state: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="active"
+    )
+    target_state: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="active"
+    )
+    ttl: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     scheduled_wake: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    circuit_breaker_state: Mapped[str] = mapped_column(String(50), nullable=False, default="closed")
+    circuit_breaker_state: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="closed"
+    )
     parameters_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -43,12 +43,16 @@ class MemoryConfig:
 
     # HTTP client tuning knobs
     http_max_connections: int = getattr(settings, "http_max_connections", 64)
-    http_keepalive_connections: int = getattr(settings, "http_keepalive_connections", 32)
+    http_keepalive_connections: int = getattr(
+        settings, "http_keepalive_connections", 32
+    )
     http_retries: int = getattr(settings, "http_retries", 1)
 
     # Misc behavioural flags used by the original client
     memory_fast_ack: bool = bool(getattr(settings, "memory_fast_ack", False))
-    memory_enable_weighting: bool = bool(getattr(settings, "memory_enable_weighting", False))
+    memory_enable_weighting: bool = bool(
+        getattr(settings, "memory_enable_weighting", False)
+    )
 
     # Namespace/tenant – optional but useful for multi‑tenant deployments
     namespace: Optional[str] = getattr(settings, "namespace", None)

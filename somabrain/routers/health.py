@@ -7,11 +7,9 @@ Provides /health, /healthz, /diagnostics, /metrics, /health/memory,
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
-import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from fastapi import APIRouter, Request
 
@@ -37,7 +35,6 @@ router = APIRouter(tags=["health"])
 
 # Helper functions - Extracted to somabrain/routers/health_helpers.py
 from somabrain.routers.health_helpers import (
-    get_runtime as _get_runtime,
     get_app_config as _get_app_config,
     get_mt_memory as _get_mt_memory,
     get_embedder as _get_embedder,
@@ -105,7 +102,9 @@ async def health(request: Request) -> S.HealthResponse:
 
     # External backend requirement flag from settings
     try:
-        resp["external_backends_required"] = getattr(settings, "require_external_backends", None)
+        resp["external_backends_required"] = getattr(
+            settings, "require_external_backends", None
+        )
     except Exception:
         resp["external_backends_required"] = None
 
@@ -138,7 +137,9 @@ async def health(request: Request) -> S.HealthResponse:
     # Memory degradation configuration
     try:
         resp["memory_degrade_queue"] = True
-        resp["memory_degrade_readonly"] = getattr(settings, "memory_degrade_readonly", False)
+        resp["memory_degrade_readonly"] = getattr(
+            settings, "memory_degrade_readonly", False
+        )
         resp["memory_degrade_topic"] = getattr(settings, "memory_degrade_topic", None)
     except Exception:
         resp["memory_degrade_queue"] = None
@@ -233,10 +234,13 @@ async def health(request: Request) -> S.HealthResponse:
     # Degradation manager status (per E1.1-E1.5)
     try:
         from somabrain.infrastructure.degradation import get_degradation_manager
+
         dm = get_degradation_manager()
         degraded_duration = dm.get_degraded_duration(tenant_id)
         resp["degradation_duration_seconds"] = degraded_duration
-        resp["degradation_alert_triggered"] = dm.check_alert(tenant_id) if degraded_duration else False
+        resp["degradation_alert_triggered"] = (
+            dm.check_alert(tenant_id) if degraded_duration else False
+        )
     except Exception:
         resp["degradation_duration_seconds"] = None
         resp["degradation_alert_triggered"] = None
@@ -252,12 +256,16 @@ async def health(request: Request) -> S.HealthResponse:
         with Session() as s:
             pending = (
                 s.query(OutboxEvent)
-                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
                 .count()
             )
             last = (
                 s.query(OutboxEvent)
-                .filter(OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id)
+                .filter(
+                    OutboxEvent.status == "pending", OutboxEvent.tenant_id == tenant_id
+                )
                 .order_by(OutboxEvent.created_at.desc())
                 .first()
             )
@@ -306,7 +314,12 @@ async def health(request: Request) -> S.HealthResponse:
     resp["embedder_ok"] = bool(embedder_ok)
 
     resp["ready"] = bool(
-        memory_ok and not circuit_open and predictor_ok and embedder_ok and kafka_ok and postgres_ok
+        memory_ok
+        and not circuit_open
+        and predictor_ok
+        and embedder_ok
+        and kafka_ok
+        and postgres_ok
     )
 
     # Minimal API flag for diagnostics
@@ -353,7 +366,9 @@ async def diagnostics() -> dict:
         "require_memory": require_memory,
         "memory_endpoint": ep or "",
         "env_memory_endpoint": settings.memory_http_endpoint,
-        "memory_token_present": bool(getattr(getattr(cfg, "http", object()), "token", None)),
+        "memory_token_present": bool(
+            getattr(getattr(cfg, "http", object()), "token", None)
+        ),
         "api_version": int(API_VERSION),
     }
 
@@ -385,7 +400,9 @@ async def health_memory(request: Request) -> Dict[str, Any]:
         "tenant": ctx.tenant_id,
         "circuit_breaker": circuit_state,
         "outbox_pending": pending_count,
-        "memory_service": ("healthy" if not circuit_state["circuit_open"] else "unavailable"),
+        "memory_service": (
+            "healthy" if not circuit_state["circuit_open"] else "unavailable"
+        ),
         "timestamp": time.time(),
     }
 
@@ -449,8 +466,3 @@ async def health_metrics(request: Request) -> Dict[str, Any]:
 
 
 # Health Watchdog - Extracted to somabrain/routers/health_watchdog.py
-from somabrain.routers.health_watchdog import (
-    _health_watchdog_coroutine,
-    start_health_watchdog,
-    stop_health_watchdog,
-)

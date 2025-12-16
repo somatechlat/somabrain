@@ -91,7 +91,11 @@ class AdaptationEngine:
         lr = (
             learning_rate
             if learning_rate is not None
-            else (getattr(settings, "adaptation_learning_rate", 0.05) if settings else 0.05)
+            else (
+                getattr(settings, "adaptation_learning_rate", 0.05)
+                if settings
+                else 0.05
+            )
         )
         self._lr = lr
         self._base_lr = lr
@@ -99,7 +103,9 @@ class AdaptationEngine:
         self._max_history = int(
             max_history
             if max_history is not None
-            else (getattr(settings, "adaptation_max_history", 1000) if settings else 1000)
+            else (
+                getattr(settings, "adaptation_max_history", 1000) if settings else 1000
+            )
         )
         self._constraint_bounds = self._init_constraints(constraints)
         self._constraints = self._build_constraints_dict(self._constraint_bounds)
@@ -129,7 +135,10 @@ class AdaptationEngine:
                 if key in attr_map:
                     constraint_bounds = replace(
                         constraint_bounds,
-                        **{attr_map[key][0]: float(lower), attr_map[key][1]: float(upper)},
+                        **{
+                            attr_map[key][0]: float(lower),
+                            attr_map[key][1]: float(upper),
+                        },
                     )
             return constraint_bounds
         return AdaptationConstraints.from_settings()
@@ -147,7 +156,9 @@ class AdaptationEngine:
         dyn_lr = bool(enable_dynamic_lr)
         if settings is not None:
             try:
-                dyn_lr = dyn_lr or bool(getattr(settings, "learning_rate_dynamic", False))
+                dyn_lr = dyn_lr or bool(
+                    getattr(settings, "learning_rate_dynamic", False)
+                )
             except Exception:
                 pass
         else:
@@ -164,7 +175,9 @@ class AdaptationEngine:
             from somabrain.metrics import tau_gauge
 
             offset = (hash(self._tenant_id) % 100) / 1000.0
-            tau_gauge.labels(tenant_id=self._tenant_id).set(self._retrieval.tau + offset)
+            tau_gauge.labels(tenant_id=self._tenant_id).set(
+                self._retrieval.tau + offset
+            )
         except Exception:
             pass
 
@@ -173,7 +186,9 @@ class AdaptationEngine:
             self._redis
             and self._tenant_id
             and settings
-            and str(getattr(settings, "enable_learning_state_persistence", "")).strip().lower()
+            and str(getattr(settings, "enable_learning_state_persistence", ""))
+            .strip()
+            .lower()
             in {"1", "true", "yes", "on"}
         ):
             self._load_state()
@@ -200,19 +215,23 @@ class AdaptationEngine:
         clear_history: bool = True,
     ) -> None:
         if retrieval_defaults is not None:
-            self._retrieval.alpha, self._retrieval.beta = float(retrieval_defaults.alpha), float(
-                retrieval_defaults.beta
-            )
-            self._retrieval.gamma, self._retrieval.tau = float(retrieval_defaults.gamma), float(
-                retrieval_defaults.tau
-            )
+            self._retrieval.alpha, self._retrieval.beta = float(
+                retrieval_defaults.alpha
+            ), float(retrieval_defaults.beta)
+            self._retrieval.gamma, self._retrieval.tau = float(
+                retrieval_defaults.gamma
+            ), float(retrieval_defaults.tau)
         else:
             try:
                 from somabrain.context.builder import RetrievalWeights as _RW
 
                 rw = _RW()
-                self._retrieval.alpha, self._retrieval.beta = float(rw.alpha), float(rw.beta)
-                self._retrieval.gamma, self._retrieval.tau = float(rw.gamma), float(rw.tau)
+                self._retrieval.alpha, self._retrieval.beta = float(rw.alpha), float(
+                    rw.beta
+                )
+                self._retrieval.gamma, self._retrieval.tau = float(rw.gamma), float(
+                    rw.tau
+                )
             except Exception:
                 (
                     self._retrieval.alpha,
@@ -287,7 +306,9 @@ class AdaptationEngine:
     def alpha(self) -> float:
         return float(self._retrieval.alpha)
 
-    def apply_feedback(self, utility: float | Feedback, reward: Optional[float] = None) -> bool:
+    def apply_feedback(
+        self, utility: float | Feedback, reward: Optional[float] = None
+    ) -> bool:
         if hasattr(utility, "score"):
             utility_val = float(getattr(utility, "score"))
         else:
@@ -311,7 +332,9 @@ class AdaptationEngine:
         return True
 
     def _update_learning_rate(self) -> None:
-        dyn_lr_active = self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
+        dyn_lr_active = (
+            self._enable_dynamic_lr and self._gains == AdaptationGains.from_settings()
+        )
         if dyn_lr_active:
             dopamine = self._get_dopamine_level()
             lr_scale = min(max(0.5 + dopamine, 0.5), 1.2)
@@ -320,15 +343,20 @@ class AdaptationEngine:
             self._lr = self._base_lr
         self._lr_eff = self._lr
 
-    def _apply_weight_updates(self, semantic_signal: float, utility_signal: float) -> None:
+    def _apply_weight_updates(
+        self, semantic_signal: float, utility_signal: float
+    ) -> None:
         self._retrieval.alpha = self._constrain(
-            "alpha", self._retrieval.alpha + self._lr * self._gains.alpha * semantic_signal
+            "alpha",
+            self._retrieval.alpha + self._lr * self._gains.alpha * semantic_signal,
         )
         self._retrieval.gamma = self._constrain(
-            "gamma", self._retrieval.gamma + self._lr * self._gains.gamma * semantic_signal
+            "gamma",
+            self._retrieval.gamma + self._lr * self._gains.gamma * semantic_signal,
         )
         self._utility.lambda_ = self._constrain(
-            "lambda_", self._utility.lambda_ + self._lr * self._gains.lambda_ * utility_signal
+            "lambda_",
+            self._utility.lambda_ + self._lr * self._gains.lambda_ * utility_signal,
         )
         self._utility.mu = self._constrain(
             "mu", self._utility.mu + self._lr * self._gains.mu * utility_signal
@@ -398,7 +426,11 @@ class AdaptationEngine:
                     "gamma": self._retrieval.gamma,
                     "tau": self._retrieval.tau,
                 },
-                {"lambda_": self._utility.lambda_, "mu": self._utility.mu, "nu": self._utility.nu},
+                {
+                    "lambda_": self._utility.lambda_,
+                    "mu": self._utility.mu,
+                    "nu": self._utility.nu,
+                },
             )
         )
 
@@ -410,7 +442,10 @@ class AdaptationEngine:
             prev_retrieval["alpha"],
             prev_retrieval["beta"],
         )
-        self._retrieval.gamma, self._retrieval.tau = prev_retrieval["gamma"], prev_retrieval["tau"]
+        self._retrieval.gamma, self._retrieval.tau = (
+            prev_retrieval["gamma"],
+            prev_retrieval["tau"],
+        )
         self._utility.lambda_, self._utility.mu, self._utility.nu = (
             prev_utility["lambda_"],
             prev_utility["mu"],
@@ -435,7 +470,9 @@ class AdaptationEngine:
                 mu=self._utility.mu,
                 nu=self._utility.nu,
             )
-            _metrics.update_learning_gains(tenant_id=self._tenant_id, **asdict(self._gains))
+            _metrics.update_learning_gains(
+                tenant_id=self._tenant_id, **asdict(self._gains)
+            )
             _metrics.update_learning_bounds(
                 tenant_id=self._tenant_id, **asdict(self._constraint_bounds)
             )
@@ -459,7 +496,11 @@ class AdaptationEngine:
                 "gamma": self._retrieval.gamma,
                 "tau": self._retrieval.tau,
             },
-            {"lambda_": self._utility.lambda_, "mu": self._utility.mu, "nu": self._utility.nu},
+            {
+                "lambda_": self._utility.lambda_,
+                "mu": self._utility.mu,
+                "nu": self._utility.nu,
+            },
             getattr(self, "_feedback_count", 0),
             float(self._lr),
         )
@@ -487,9 +528,9 @@ class AdaptationEngine:
         self._lr = state.get("learning_rate", self._base_lr)
 
     def optimize_hyperparameters(self, search_space: dict, n_trials: int = 10) -> dict:
-        lr_opts, tau_opts = list(search_space.get("learning_rate", [self._base_lr])), list(
-            search_space.get("tau", [self._retrieval.tau])
-        )
+        lr_opts, tau_opts = list(
+            search_space.get("learning_rate", [self._base_lr])
+        ), list(search_space.get("tau", [self._retrieval.tau]))
         return {"learning_rate": float(lr_opts[0]), "tau": float(tau_opts[0])}
 
     def transfer_parameters(self, source_task: str, target_task: str) -> None:
@@ -509,7 +550,9 @@ class AdaptationEngine:
             performance_history = getattr(self, "performance_history", [])
             performance_history.append(dict(metrics))
             self.performance_history = performance_history
-            reward = float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
+            reward = (
+                float(metrics.get("reward", 0.0)) if isinstance(metrics, dict) else 0.0
+            )
             self.apply_feedback(utility=reward, reward=reward)
         except Exception:
             pass
@@ -526,7 +569,9 @@ class AdaptationEngine:
             pass
         try:
             self.apply_feedback(utility=reward, reward=reward)
-            self._retrieval.tau = _clamp(self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0)
+            self._retrieval.tau = _clamp(
+                self._retrieval.tau * (1.0 - 0.05 * error), 0.01, 10.0
+            )
         except Exception:
             pass
 

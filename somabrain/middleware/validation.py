@@ -50,9 +50,7 @@ class CognitiveInputValidator:
 
         max_length = int(settings.validation_max_text_length)
         if len(text) > max_length:
-            raise ValueError(
-                f"{field_name} exceeds maximum length of {max_length}"
-            )
+            raise ValueError(f"{field_name} exceeds maximum length of {max_length}")
 
         if not cls.SAFE_TEXT_PATTERN.match(text):
             # Log potential security issue
@@ -72,14 +70,10 @@ class CognitiveInputValidator:
         max_dim = int(settings.validation_max_embedding_dim)
 
         if not isinstance(dim, int) or dim < min_dim:
-            raise ValueError(
-                f"Embedding dimension must be at least {min_dim}"
-            )
+            raise ValueError(f"Embedding dimension must be at least {min_dim}")
 
         if dim > max_dim:
-            raise ValueError(
-                f"Embedding dimension cannot exceed {max_dim}"
-            )
+            raise ValueError(f"Embedding dimension cannot exceed {max_dim}")
 
         return dim
 

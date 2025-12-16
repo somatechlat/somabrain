@@ -199,7 +199,9 @@ class _CachedEmbedder:
         provider_label: str = "unknown",
     ):
         # Use arc_cache decorator for memoization if cache_size > 0
-        self._embed = arc_cache(max_size=cache_size)(embed_fn) if cache_size > 0 else embed_fn
+        self._embed = (
+            arc_cache(max_size=cache_size)(embed_fn) if cache_size > 0 else embed_fn
+        )
         self._provider = str(provider_label)
 
     def embed(self, text: str) -> np.ndarray:
@@ -256,7 +258,9 @@ def make_embedder(cfg, quantum=None):
             base_dim = t.dim
             base_fn = t.embed
         except Exception:
-            base = TinyDeterministicEmbedder(dim=int(getattr(cfg, "embed_dim", 256) or 256))
+            base = TinyDeterministicEmbedder(
+                dim=int(getattr(cfg, "embed_dim", 256) or 256)
+            )
             base_dim = base.dim
             base_fn = base.embed
     else:

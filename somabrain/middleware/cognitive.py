@@ -65,7 +65,9 @@ class CognitiveMiddleware:
             raise
         except Exception as e:
             processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(e, f"{method} {path}", request_id)
+            error_info = CognitiveErrorHandler.handle_error(
+                e, f"{method} {path}", request_id
+            )
 
             # Send error response
             error_response = JSONResponse(

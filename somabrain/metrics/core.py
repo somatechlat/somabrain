@@ -89,7 +89,9 @@ def _get_existing(name: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def _counter(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+def _counter(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     """Create or retrieve a Counter metric."""
     existing = _get_existing(name)
     if existing is not None:
@@ -111,7 +113,9 @@ def _gauge(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricP
     return _PromGauge(name, documentation, *args, **kwargs)
 
 
-def _histogram(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+def _histogram(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     """Create or retrieve a Histogram metric."""
     existing = _get_existing(name)
     if existing is not None:
@@ -122,7 +126,9 @@ def _histogram(name: str, documentation: str, *args: Any, **kwargs: Any) -> _Met
     return _PromHistogram(name, documentation, *args, **kwargs)
 
 
-def _summary(name: str, documentation: str, *args: Any, **kwargs: Any) -> _MetricProtocol:
+def _summary(
+    name: str, documentation: str, *args: Any, **kwargs: Any
+) -> _MetricProtocol:
     """Create or retrieve a Summary metric."""
     existing = _get_existing(name)
     if existing is not None:

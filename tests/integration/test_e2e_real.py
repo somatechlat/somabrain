@@ -132,7 +132,10 @@ class TestE2EHealth:
             )
 
             # May return 200 or 503 depending on memory service state
-            assert resp.status_code in [200, 503], f"Unexpected status: {resp.status_code}"
+            assert resp.status_code in [
+                200,
+                503,
+            ], f"Unexpected status: {resp.status_code}"
 
 
 # ---------------------------------------------------------------------------
@@ -191,7 +194,9 @@ class TestE2EMemoryFlow:
                 },
             )
 
-            assert recall_resp.status_code == 200, f"Recall failed: {recall_resp.status_code}"
+            assert (
+                recall_resp.status_code == 200
+            ), f"Recall failed: {recall_resp.status_code}"
 
             recall_data = recall_resp.json()
             assert (
@@ -224,7 +229,9 @@ class TestE2EMemoryFlow:
             # If 200, verify response structure
             if resp.status_code == 200:
                 data = resp.json()
-                assert "memory" in data or "wm" in data, "Recall response missing expected fields"
+                assert (
+                    "memory" in data or "wm" in data
+                ), "Recall response missing expected fields"
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +257,9 @@ class TestE2ENeuromodulators:
                 headers=_get_test_headers(),
             )
 
-            assert resp.status_code == 200, f"Get neuromodulators failed: {resp.status_code}"
+            assert (
+                resp.status_code == 200
+            ), f"Get neuromodulators failed: {resp.status_code}"
 
             data = resp.json()
 

@@ -7,7 +7,7 @@ Provides lazy accessors and utility functions for health checks.
 from __future__ import annotations
 
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from common.config.settings import settings
 from somabrain import metrics as M
@@ -19,8 +19,12 @@ def get_runtime():
     import os
     import sys
 
-    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+    _runtime_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     for m in list(sys.modules.values()):
@@ -88,8 +92,12 @@ def milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
             return None
 
     return {
-        "search_latency_p95_seconds": _read(M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id),
-        "ingest_latency_p95_seconds": _read(M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id),
+        "search_latency_p95_seconds": _read(
+            M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id
+        ),
+        "ingest_latency_p95_seconds": _read(
+            M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id
+        ),
         "segment_load": _read(
             M.MILVUS_SEGMENT_LOAD,
             collection=getattr(settings, "milvus_collection", "oak_options"),

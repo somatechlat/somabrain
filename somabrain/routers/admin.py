@@ -13,6 +13,7 @@ from common.config.settings import settings
 from somabrain import metrics as M, schemas as S
 from somabrain.auth import require_admin_auth
 from somabrain.db import outbox as outbox_db
+
 # Journal functions moved to admin_journal.py
 from config.feature_flags import FeatureFlags
 
@@ -41,7 +42,9 @@ def _supervisor() -> ServerProxy:
     try:
         return ServerProxy(_get_supervisor_url(), allow_none=True)
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"supervisor client init failed: {e}")
+        raise HTTPException(
+            status_code=503, detail=f"supervisor client init failed: {e}"
+        )
 
 
 def _admin_guard_dep(request: Request):
@@ -114,7 +117,9 @@ async def service_restart(name: str):
         try:
             s.supervisor.stopProcess(name, False)
         except Exception as stop_exc:
-            logger.debug("Stop before restart failed (expected if not running): %s", stop_exc)
+            logger.debug(
+                "Stop before restart failed (expected if not running): %s", stop_exc
+            )
         res = s.supervisor.startProcess(name, False)
         return {"ok": bool(res), "action": "restart", "service": name}
     except XMLRPCError as e:
@@ -150,7 +155,9 @@ async def admin_list_outbox(
 
     if status.lower().strip() == "failed":
         for ev in events:
-            tenant_label = (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            tenant_label = (
+                (ev.tenant_id or "default") if hasattr(ev, "tenant_id") else "default"
+            )
             try:
                 M.OUTBOX_FAILED_TOTAL.labels(tenant_id=tenant_label).inc()
             except Exception as metric_exc:
@@ -177,9 +184,13 @@ async def admin_replay_outbox(body: S.OutboxReplayRequest):
         raise exc
     if count == 0:
         try:
-            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(len(body.event_ids))
+            M.OUTBOX_REPLAY_TRIGGERED.labels(result="not_found").inc(
+                len(body.event_ids)
+            )
         except Exception as metric_exc:
-            logger.debug("Failed to record outbox_replay_not_found metric: %s", metric_exc)
+            logger.debug(
+                "Failed to record outbox_replay_not_found metric: %s", metric_exc
+            )
         raise HTTPException(status_code=404, detail="No matching events to replay")
     try:
         M.OUTBOX_REPLAY_TRIGGERED.labels(result="success").inc(count)
@@ -277,7 +288,9 @@ async def admin_get_outbox_summary():
 
         tenant_summaries = []
         all_tenants = (
-            set(pending_counts.keys()) | set(failed_counts.keys()) | set(sent_counts.keys())
+            set(pending_counts.keys())
+            | set(failed_counts.keys())
+            | set(sent_counts.keys())
         )
 
         for tenant in sorted(all_tenants):
@@ -304,7 +317,9 @@ async def admin_get_outbox_summary():
         )
 
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to get outbox summary: {exc}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get outbox summary: {exc}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -317,7 +332,9 @@ async def admin_list_quotas(
     request: Request,
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    tenant_filter: Optional[str] = Query(None, description="Filter by tenant ID prefix"),
+    tenant_filter: Optional[str] = Query(
+        None, description="Filter by tenant ID prefix"
+    ),
 ):
     """List quota status for all tenants."""
     from somabrain.quotas import QuotaManager, QuotaConfig
@@ -330,7 +347,9 @@ async def admin_list_quotas(
             all_quotas = await all_quotas
 
         if tenant_filter and isinstance(tenant_filter, str):
-            all_quotas = [q for q in all_quotas if q.tenant_id.startswith(tenant_filter)]
+            all_quotas = [
+                q for q in all_quotas if q.tenant_id.startswith(tenant_filter)
+            ]
 
         total_count = len(all_quotas)
         paginated_quotas = all_quotas[offset : offset + limit]
@@ -481,7 +500,9 @@ async def admin_features_update(
     """Validate and apply an admin feature-flag update."""
     unknown = [f for f in body.disabled if f not in FeatureFlags.KEYS]
     if unknown:
-        raise HTTPException(status_code=400, detail=f"unknown flags: {', '.join(unknown)}")
+        raise HTTPException(
+            status_code=400, detail=f"unknown flags: {', '.join(unknown)}"
+        )
 
     if not FeatureFlags.set_overrides(body.disabled):
         raise HTTPException(status_code=403, detail="update forbidden")
@@ -491,4 +512,3 @@ async def admin_features_update(
 
 # Journal management endpoints - Extracted to somabrain/routers/admin_journal.py
 # Import the journal router for inclusion in the main app
-from somabrain.routers.admin_journal import router as journal_router

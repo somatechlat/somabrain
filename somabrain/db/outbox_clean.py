@@ -67,7 +67,9 @@ def enqueue_event(
     journal.append_event(journal_event)
 
 
-def get_pending_events(limit: int = 100, tenant_id: Optional[str] = None) -> List[OutboxEvent]:
+def get_pending_events(
+    limit: int = 100, tenant_id: Optional[str] = None
+) -> List[OutboxEvent]:
     """
     Fetch a batch of pending events from the outbox.
 
@@ -104,7 +106,9 @@ def get_pending_events_by_tenant_batch(
     with session_factory() as session:
         # First, get all tenants with pending events
         tenant_query = (
-            session.query(OutboxEvent.tenant_id).filter(OutboxEvent.status == "pending").distinct()
+            session.query(OutboxEvent.tenant_id)
+            .filter(OutboxEvent.status == "pending")
+            .distinct()
         )
 
         if max_tenants:
@@ -148,7 +152,9 @@ def get_pending_count(tenant_id: Optional[str] = None) -> int:
     """
     session_factory = get_session_factory()
     with session_factory() as session:
-        q = session.query(func.count(OutboxEvent.id)).filter(OutboxEvent.status == "pending")
+        q = session.query(func.count(OutboxEvent.id)).filter(
+            OutboxEvent.status == "pending"
+        )
         if tenant_id:
             q = q.filter(OutboxEvent.tenant_id == tenant_id)
         count = q.scalar() or 0
@@ -209,7 +215,9 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
         return count
 
 
-def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str = "failed") -> int:
+def mark_tenant_events_for_replay(
+    tenant_id: str, limit: int = 100, status: str = "failed"
+) -> int:
     """
     Mark events for a specific tenant for replay.
 
@@ -293,7 +301,12 @@ def list_tenant_events(
             query = query.filter(OutboxEvent.topic.like(f"%{topic_filter}%"))
 
         # Apply pagination
-        events = query.order_by(OutboxEvent.created_at.desc()).offset(offset).limit(limit).all()
+        events = (
+            query.order_by(OutboxEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
         return events
 
@@ -422,7 +435,9 @@ def replay_journal_events(
         except Exception as e:
             import logging
 
-            logging.getLogger(__name__).warning(f"Failed to mark journal events as processed: {e}")
+            logging.getLogger(__name__).warning(
+                f"Failed to mark journal events as processed: {e}"
+            )
 
     return replayed_count
 

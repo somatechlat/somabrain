@@ -309,7 +309,9 @@ class TestLTMVectorSearch:
                 if score is not None:
                     # Cosine similarity should be in [-1, 1]
                     # But often systems use [0, 1] or distance metrics
-                    assert -1.5 <= float(score) <= 1.5, f"Score {score} out of expected bounds"
+                    assert (
+                        -1.5 <= float(score) <= 1.5
+                    ), f"Score {score} out of expected bounds"
 
 
 # ---------------------------------------------------------------------------

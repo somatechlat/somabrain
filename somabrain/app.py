@@ -436,7 +436,9 @@ if settings is not None:
         if mode_policy:
             BACKEND_ENFORCEMENT = True
         else:
-            BACKEND_ENFORCEMENT = bool(getattr(settings, "require_external_backends", False))
+            BACKEND_ENFORCEMENT = bool(
+                getattr(settings, "require_external_backends", False)
+            )
     except Exception:
         pass
 if not BACKEND_ENFORCEMENT:

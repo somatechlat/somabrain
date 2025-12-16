@@ -75,7 +75,9 @@ class ConfigService:
     async def patch_global(self, patch: Dict[str, Any], *, actor: str) -> ConfigEvent:
         return await self._apply_patch("global", patch, actor, "", "")
 
-    async def patch_tenant(self, tenant: str, patch: Dict[str, Any], *, actor: str) -> ConfigEvent:
+    async def patch_tenant(
+        self, tenant: str, patch: Dict[str, Any], *, actor: str
+    ) -> ConfigEvent:
         if not tenant:
             raise ConfigMergeError("tenant must be provided")
         return await self._apply_patch("tenant", patch, actor, tenant, "")
@@ -108,7 +110,9 @@ class ConfigService:
         if tenant:
             merged = self._deep_merge(merged, self._tenant_layer.get(tenant, {}))
         if tenant and namespace:
-            merged = self._deep_merge(merged, self._namespace_layer.get((tenant, namespace), {}))
+            merged = self._deep_merge(
+                merged, self._namespace_layer.get((tenant, namespace), {})
+            )
         merged.setdefault("tenant", tenant)
         merged.setdefault("namespace", namespace)
         merged["version"] = self._version
@@ -172,7 +176,9 @@ class ConfigService:
             return layer, copy.deepcopy(layer)
         raise ConfigMergeError(f"unknown scope: {scope}")
 
-    def _set_layer(self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]) -> None:
+    def _set_layer(
+        self, scope: str, tenant: str, namespace: str, data: Dict[str, Any]
+    ) -> None:
         if scope == "global":
             self._global_layer = data
         elif scope == "tenant":
@@ -184,7 +190,9 @@ class ConfigService:
     def _deep_merge(base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
         for key, value in patch.items():
             if isinstance(value, dict) and isinstance(base.get(key), dict):
-                base[key] = ConfigService._deep_merge(copy.deepcopy(base.get(key, {})), value)
+                base[key] = ConfigService._deep_merge(
+                    copy.deepcopy(base.get(key, {})), value
+                )
             else:
                 base[key] = copy.deepcopy(value)
         return base

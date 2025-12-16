@@ -20,7 +20,9 @@ try:
         "libs.kafka_cog.avro_schemas"
     )
     try:
-        _sys.modules[__name__ + ".serde"] = importlib.import_module("libs.kafka_cog.serde")
+        _sys.modules[__name__ + ".serde"] = importlib.import_module(
+            "libs.kafka_cog.serde"
+        )
     except Exception:
         pass
 except Exception:

@@ -75,7 +75,9 @@ class Planner:
         self.max_depth = max_depth
         logger.info("Planner created with max_depth=%s", max_depth)
         # Action catalog: name -> (precondition, heuristic cost)
-        self._catalog: Dict[str, Tuple[Optional[Callable[[Dict[str, Any]], bool]], float]] = {
+        self._catalog: Dict[
+            str, Tuple[Optional[Callable[[Dict[str, Any]], bool]], float]
+        ] = {
             "retrieve_memory": (lambda ctx: bool(ctx.get("query_text")), 1.0),
             "store_memory": (lambda ctx: "snapshot" in ctx, 1.5),
             "communicate": (None, 0.5),
@@ -220,7 +222,9 @@ class Planner:
 
         return False
 
-    def _goal_satisfied(self, goal: Any, context: Dict[str, Any], last_step: Step) -> bool:
+    def _goal_satisfied(
+        self, goal: Any, context: Dict[str, Any], last_step: Step
+    ) -> bool:
         """Determine whether the goal is satisfied given current context and last step."""
         # Explicit callable goal
         if callable(goal):
@@ -261,7 +265,9 @@ class Planner:
         entry = self._catalog.get(name)
         return entry[1] if entry else 1.0
 
-    def execute(self, plan: List[Step], executor: Callable[[Step], bool]) -> List[Dict[str, Any]]:
+    def execute(
+        self, plan: List[Step], executor: Callable[[Step], bool]
+    ) -> List[Dict[str, Any]]:
         """Execute a plan using a provided executor callable.
 
         The executor receives a Step and returns True on success, False on failure.

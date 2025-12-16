@@ -121,7 +121,9 @@ async def brain_sleep_policy(request: Request, body: SleepRequest) -> Dict[str, 
         ss.current_state = target_state.value
         ss.target_state = target_state.value
         if body.ttl_seconds is not None:
-            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(seconds=body.ttl_seconds)
+            ttl_dt = datetime.datetime.utcnow() + datetime.timedelta(
+                seconds=body.ttl_seconds
+            )
             ss.ttl = ttl_dt
             ss.scheduled_wake = ttl_dt
         else:
@@ -168,7 +170,9 @@ async def _ttl_watcher_loop(poll_seconds: float = 30.0) -> None:
         except Exception as exc:  # pragma: no cover – defensive logging
             import logging
 
-            logging.getLogger(__name__).error("Error in TTL watcher (policy router): %s", exc)
+            logging.getLogger(__name__).error(
+                "Error in TTL watcher (policy router): %s", exc
+            )
         await asyncio.sleep(poll_seconds)
 
 

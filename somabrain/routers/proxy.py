@@ -89,4 +89,6 @@ async def post_reward_proxy(frame_id: str, body: dict) -> dict:
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=503, detail="Reward producer unavailable (Kafka not ready)")
+        raise HTTPException(
+            status_code=503, detail="Reward producer unavailable (Kafka not ready)"
+        )

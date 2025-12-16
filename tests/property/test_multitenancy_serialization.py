@@ -31,8 +31,12 @@ tenant_id_strategy = st.text(
 )
 
 # Neuromodulator value strategies (within valid ranges)
-dopamine_strategy = st.floats(min_value=0.2, max_value=0.8, allow_nan=False, allow_infinity=False)
-serotonin_strategy = st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False)
+dopamine_strategy = st.floats(
+    min_value=0.2, max_value=0.8, allow_nan=False, allow_infinity=False
+)
+serotonin_strategy = st.floats(
+    min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+)
 noradrenaline_strategy = st.floats(
     min_value=0.0, max_value=0.1, allow_nan=False, allow_infinity=False
 )
@@ -49,13 +53,21 @@ epoch_timestamp_strategy = st.floats(
 )
 
 # Score strategy for RecallHit
-score_strategy = st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False)
+score_strategy = st.floats(
+    min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
+)
 
 # Coordinate strategy
 coordinate_strategy = st.tuples(
-    st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
+    st.floats(
+        min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False
+    ),
+    st.floats(
+        min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False
+    ),
+    st.floats(
+        min_value=-1000.0, max_value=1000.0, allow_nan=False, allow_infinity=False
+    ),
 )
 
 
@@ -209,7 +221,9 @@ class TestTenantIsolation:
         # Verify all states are correct
         for tid, (expected_da, expected_ser) in states.items():
             retrieved = store.get_state(tid)
-            assert abs(retrieved.dopamine - expected_da) < 1e-10, f"Tenant {tid} dopamine mismatch"
+            assert (
+                abs(retrieved.dopamine - expected_da) < 1e-10
+            ), f"Tenant {tid} dopamine mismatch"
             assert (
                 abs(retrieved.serotonin - expected_ser) < 1e-10
             ), f"Tenant {tid} serotonin mismatch"
@@ -317,7 +331,12 @@ class TestSerializationRoundTrip:
             values=st.one_of(
                 st.text(max_size=100),
                 st.integers(min_value=-1000, max_value=1000),
-                st.floats(min_value=-1000, max_value=1000, allow_nan=False, allow_infinity=False),
+                st.floats(
+                    min_value=-1000,
+                    max_value=1000,
+                    allow_nan=False,
+                    allow_infinity=False,
+                ),
                 st.booleans(),
             ),
             min_size=1,
@@ -341,7 +360,9 @@ class TestSerializationRoundTrip:
         serotonin=serotonin_strategy,
     )
     @hyp_settings(max_examples=50, deadline=5000)
-    def test_neuromod_state_json_keys_preserved(self, dopamine: float, serotonin: float) -> None:
+    def test_neuromod_state_json_keys_preserved(
+        self, dopamine: float, serotonin: float
+    ) -> None:
         """Verify all NeuromodState keys are preserved in JSON."""
         original = NeuromodState(
             dopamine=dopamine,
@@ -353,7 +374,13 @@ class TestSerializationRoundTrip:
         as_dict = asdict(original)
 
         # All expected keys should be present
-        expected_keys = {"dopamine", "serotonin", "noradrenaline", "acetylcholine", "timestamp"}
+        expected_keys = {
+            "dopamine",
+            "serotonin",
+            "noradrenaline",
+            "acetylcholine",
+            "timestamp",
+        }
         assert set(as_dict.keys()) == expected_keys
 
 
@@ -374,7 +401,9 @@ class TestTimestampNormalization:
     def test_float_timestamp_passthrough(self, timestamp: float) -> None:
         """Verify float timestamps pass through unchanged."""
         result = coerce_to_epoch_seconds(timestamp)
-        assert abs(result - timestamp) < 1e-10, f"Float timestamp changed: {result} != {timestamp}"
+        assert (
+            abs(result - timestamp) < 1e-10
+        ), f"Float timestamp changed: {result} != {timestamp}"
 
     @given(
         timestamp=st.integers(min_value=0, max_value=2000000000),
@@ -449,7 +478,9 @@ class TestTimestampNormalization:
         """Verify ISO-8601 strings with Z suffix are parsed correctly."""
         dt = datetime(year, month, day, hour, minute, second, tzinfo=timezone.utc)
         # Use Z suffix format
-        iso_str = f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+        iso_str = (
+            f"{year:04d}-{month:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}Z"
+        )
 
         result = coerce_to_epoch_seconds(iso_str)
         expected = dt.timestamp()
@@ -482,7 +513,9 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(dt)
         expected = dt.timestamp()
 
-        assert abs(result - expected) < 1e-6, f"Datetime conversion failed: {result} != {expected}"
+        assert (
+            abs(result - expected) < 1e-6
+        ), f"Datetime conversion failed: {result} != {expected}"
 
     @given(
         year=st.integers(min_value=1970, max_value=2030),
@@ -532,4 +565,6 @@ class TestTimestampNormalization:
         result = coerce_to_epoch_seconds(iso_str)
 
         # Should be close (microsecond precision loss acceptable)
-        assert abs(result - timestamp) < 1.0, f"Round-trip failed: {result} != {timestamp}"
+        assert (
+            abs(result - timestamp) < 1.0
+        ), f"Round-trip failed: {result} != {timestamp}"

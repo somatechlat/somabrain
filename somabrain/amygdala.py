@@ -16,7 +16,12 @@ from typing import Optional
 
 import numpy as np
 
-from .metrics.salience import FD_ENERGY_CAPTURE, FD_PSD_INVARIANT, FD_RESIDUAL, FD_TRACE_ERROR
+from .metrics.salience import (
+    FD_ENERGY_CAPTURE,
+    FD_PSD_INVARIANT,
+    FD_RESIDUAL,
+    FD_TRACE_ERROR,
+)
 from .neuromodulators import NeuromodState
 from .salience import FDSalienceSketch
 
@@ -143,7 +148,9 @@ class AmygdalaSalience:
         """
         # modulate error weight by dopamine
         w_err = max(0.2, min(0.8, neuromod.dopamine))
-        s = (self.cfg.w_novelty * float(novelty)) + (self.cfg.w_error * float(pred_error))
+        s = (self.cfg.w_novelty * float(novelty)) + (
+            self.cfg.w_error * float(pred_error)
+        )
         s += (w_err - self.cfg.w_error) * float(pred_error)
         fd_boost = 0.0
         if self._method == "fd" and self._fd is not None:

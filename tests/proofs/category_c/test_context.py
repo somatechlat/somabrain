@@ -84,12 +84,18 @@ class TestContextAndAttention:
 
         # Context should now be non-zero (superposition of anchor)
         context_norm = np.linalg.norm(ctx.context)
-        assert context_norm > 0, f"Context should be non-zero after admit: norm={context_norm}"
+        assert (
+            context_norm > 0
+        ), f"Context should be non-zero after admit: norm={context_norm}"
 
         # Cleanup should find the anchor
         result = ctx.cleanup(anchor_vec)
-        assert result.best_id == "anchor_1", f"Cleanup should find anchor_1: {result.best_id}"
-        assert result.best_score > 0, f"Cleanup score should be positive: {result.best_score}"
+        assert (
+            result.best_id == "anchor_1"
+        ), f"Cleanup should find anchor_1: {result.best_id}"
+        assert (
+            result.best_score > 0
+        ), f"Cleanup score should be positive: {result.best_score}"
 
     def test_context_decays_over_time(self) -> None:
         """C4.2: Context decays over time.
@@ -192,7 +198,9 @@ class TestContextAndAttention:
             ctx.admit(f"anchor_{i}", vec)
 
         # Verify context is non-zero
-        assert np.linalg.norm(ctx.context) > 0, "Context should be non-zero after admits"
+        assert (
+            np.linalg.norm(ctx.context) > 0
+        ), "Context should be non-zero after admits"
 
         # Create fresh context (simulates clear)
         fresh_ctx = self._create_context(dim=512)
@@ -365,7 +373,9 @@ class TestContextProperties:
         max_anchors = 10
         q_cfg = QuantumConfig(dim=128)
         q = QuantumLayer(q_cfg)
-        cfg = HRRContextConfig(max_anchors=max_anchors, decay_lambda=0.0, min_confidence=0.0)
+        cfg = HRRContextConfig(
+            max_anchors=max_anchors, decay_lambda=0.0, min_confidence=0.0
+        )
         ctx = HRRContext(q, cfg, context_id="test")
 
         # Admit n_anchors
@@ -393,7 +403,9 @@ class TestContextProperties:
 
         q_cfg = QuantumConfig(dim=128)
         q = QuantumLayer(q_cfg)
-        cfg = HRRContextConfig(max_anchors=10, decay_lambda=decay_lambda, min_confidence=0.0)
+        cfg = HRRContextConfig(
+            max_anchors=10, decay_lambda=decay_lambda, min_confidence=0.0
+        )
         ctx = HRRContext(q, cfg, context_id="test")
 
         # Admit an anchor

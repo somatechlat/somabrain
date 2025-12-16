@@ -48,7 +48,9 @@ def unit_vector_strategy(draw: st.DrawFn, dim: int = 1024) -> np.ndarray:
     """Generate unit-normalized random vectors."""
     vec = draw(
         st.lists(
-            st.floats(min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+            st.floats(
+                min_value=-1.0, max_value=1.0, allow_nan=False, allow_infinity=False
+            ),
             min_size=dim,
             max_size=dim,
         )
@@ -171,7 +173,9 @@ class TestHRRMathematicalCorrectness:
 
         # Check similarity
         similarity = cosine_similarity(a, recovered)
-        assert similarity > 0.95, f"Bind/unbind invertibility failed: similarity={similarity:.4f}"
+        assert (
+            similarity > 0.95
+        ), f"Bind/unbind invertibility failed: similarity={similarity:.4f}"
 
     @given(hrr_config_strategy())
     @settings(max_examples=50, deadline=None)
@@ -213,7 +217,9 @@ class TestHRRMathematicalCorrectness:
         # 2. The score is bounded in [-1, 1] (valid cosine similarity)
         best_id, best_score = ql.cleanup(superposed, anchors)
 
-        assert best_id in anchors, f"Superposition cleanup returned invalid anchor: {best_id}"
+        assert (
+            best_id in anchors
+        ), f"Superposition cleanup returned invalid anchor: {best_id}"
         assert (
             -1.0 <= best_score <= 1.0
         ), f"Superposition cleanup score out of bounds: {best_score:.4f}"

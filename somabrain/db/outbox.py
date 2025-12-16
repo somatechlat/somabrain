@@ -14,7 +14,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
@@ -22,7 +21,6 @@ from sqlalchemy import func
 
 from somabrain.db.models.outbox import OutboxEvent
 from somabrain.storage.db import get_session_factory
-from somabrain.metrics import report_outbox_replayed
 from somabrain.journal import get_journal, JournalEvent
 
 logger = logging.getLogger(__name__)
@@ -51,7 +49,9 @@ class OutboxBackpressureError(Exception):
     Per Requirement E2.5: Backpressure when outbox > 10000 entries.
     """
 
-    def __init__(self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD):
+    def __init__(
+        self, pending_count: int, threshold: int = OUTBOX_BACKPRESSURE_THRESHOLD
+    ):
         self.pending_count = pending_count
         self.threshold = threshold
         super().__init__(
@@ -182,7 +182,9 @@ def mark_event_sent(event_id: int, session: Optional[Session] = None) -> bool:
 
     if session is None:
         with session_factory() as session:
-            event = session.query(OutboxEvent).filter(OutboxEvent.id == event_id).first()
+            event = (
+                session.query(OutboxEvent).filter(OutboxEvent.id == event_id).first()
+            )
             if event:
                 event.status = "sent"
                 session.commit()
@@ -217,10 +219,14 @@ def mark_event_failed(
 
     if session is None:
         with session_factory() as session:
-            event = session.query(OutboxEvent).filter(OutboxEvent.id == event_id).first()
+            event = (
+                session.query(OutboxEvent).filter(OutboxEvent.id == event_id).first()
+            )
             if event:
                 event.status = "failed"
-                event.last_error = error[:1000] if error else None  # Truncate long errors
+                event.last_error = (
+                    error[:1000] if error else None
+                )  # Truncate long errors
                 event.retries = (event.retries or 0) + 1
                 session.commit()
                 return True
@@ -324,7 +330,9 @@ def enqueue_event(
     journal.append_event(journal_event)
 
 
-def get_pending_events(limit: int = 100, tenant_id: Optional[str] = None) -> List[OutboxEvent]:
+def get_pending_events(
+    limit: int = 100, tenant_id: Optional[str] = None
+) -> List[OutboxEvent]:
     """
     Fetch a batch of pending events from the outbox.
 
@@ -383,7 +391,9 @@ def list_events_by_status(
         if topic_filter:
             q = q.filter(OutboxEvent.topic.like(f"%{topic_filter}%"))
 
-        events = q.order_by(OutboxEvent.created_at.desc()).offset(offset).limit(limit).all()
+        events = (
+            q.order_by(OutboxEvent.created_at.desc()).offset(offset).limit(limit).all()
+        )
         return events
 
 
@@ -407,7 +417,9 @@ def get_pending_events_by_tenant_batch(
     with session_factory() as session:
         # First, get all tenants with pending events
         tenant_query = (
-            session.query(OutboxEvent.tenant_id).filter(OutboxEvent.status == "pending").distinct()
+            session.query(OutboxEvent.tenant_id)
+            .filter(OutboxEvent.status == "pending")
+            .distinct()
         )
 
         if max_tenants:
@@ -451,7 +463,9 @@ def get_pending_count(tenant_id: Optional[str] = None) -> int:
     """
     session_factory = get_session_factory()
     with session_factory() as session:
-        q = session.query(func.count(OutboxEvent.id)).filter(OutboxEvent.status == "pending")
+        q = session.query(func.count(OutboxEvent.id)).filter(
+            OutboxEvent.status == "pending"
+        )
         if tenant_id:
             q = q.filter(OutboxEvent.tenant_id == tenant_id)
         count = q.scalar() or 0
@@ -475,20 +489,7 @@ def get_pending_counts_by_tenant() -> dict[str, int]:
 
 # Replay functions - Extracted to somabrain/db/outbox_replay.py
 # Re-export for backward compatibility
-from somabrain.db.outbox_replay import (
-    mark_events_for_replay,
-    mark_tenant_events_for_replay,
-    list_tenant_events,
-    get_failed_counts_by_tenant,
-    get_sent_counts_by_tenant,
-)
 
 
 # Journal Integration Functions - Extracted to somabrain/db/outbox_journal.py
 # Re-export for backward compatibility
-from somabrain.db.outbox_journal import (
-    get_journal_events,
-    replay_journal_events,
-    get_journal_stats,
-    cleanup_journal,
-)

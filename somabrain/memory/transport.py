@@ -216,7 +216,9 @@ class MemoryHTTPTransport:
         data: Any = None
         for attempt in range(max_retries + 1):
             try:
-                resp = await self._async_client.post(endpoint, json=body, headers=headers)
+                resp = await self._async_client.post(
+                    endpoint, json=body, headers=headers
+                )
             except Exception:
                 if attempt < max_retries:
                     await asyncio.sleep(0.01 + random.random() * 0.02)
@@ -255,7 +257,10 @@ def create_memory_transport(
     Raises:
         RuntimeError: If memory endpoint is not configured or unreachable.
     """
-    from somabrain.infrastructure import get_memory_http_endpoint, resolve_memory_endpoint
+    from somabrain.infrastructure import (
+        get_memory_http_endpoint,
+        resolve_memory_endpoint,
+    )
     from somabrain.memory.utils import get_tenant_namespace
 
     headers = {}
@@ -277,7 +282,10 @@ def create_memory_transport(
 
     try:
         import httpx
-        limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
+
+        limits = httpx.Limits(
+            max_connections=max_conns, max_keepalive_connections=keepalive
+        )
     except Exception:
         limits = None
 
@@ -311,5 +319,7 @@ def create_memory_transport(
             "MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT."
         )
     if not token_value:
-        logger_instance.warning("Memory HTTP client initialized without token; proceeding without auth.")
+        logger_instance.warning(
+            "Memory HTTP client initialized without token; proceeding without auth."
+        )
     return transport

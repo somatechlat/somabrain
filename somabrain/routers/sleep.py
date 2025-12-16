@@ -45,8 +45,12 @@ def _get_runtime():
     import os
     import sys
 
-    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
+    _runtime_path = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "runtime.py"
+    )
+    _spec = importlib.util.spec_from_file_location(
+        "somabrain.runtime_module", _runtime_path
+    )
     if _spec and _spec.name in sys.modules:
         return sys.modules[_spec.name]
     # Fallback: search loaded modules

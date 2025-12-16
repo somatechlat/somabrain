@@ -160,7 +160,11 @@ async def evaluate_endpoint(
 
     # Enforce payload size/length limits
     validate_evaluate_response(
-        bundle, memories, plan.prompt, bundle.residual_vector, bundle.working_memory_snapshot
+        bundle,
+        memories,
+        plan.prompt,
+        bundle.residual_vector,
+        bundle.working_memory_snapshot,
     )
 
     resp_obj = EvaluateResponse(
@@ -203,7 +207,9 @@ async def feedback_endpoint(
     validate_feedback_metadata(payload.metadata)
 
     # Validate reward and utility
-    reward_val, util_val = validate_feedback_reward_utility(payload.reward, payload.utility)
+    reward_val, util_val = validate_feedback_reward_utility(
+        payload.reward, payload.utility
+    )
 
     adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
     # Capture weights before adaptation
@@ -226,7 +232,9 @@ async def feedback_endpoint(
     if applied:
         adapter_count = getattr(adapter, "_feedback_count", 0)
         # Track the highest observed count from either the adapter or state counter.
-        route_state.feedback_counter = max(route_state.increment_feedback_counter(), adapter_count)
+        route_state.feedback_counter = max(
+            route_state.increment_feedback_counter(), adapter_count
+        )
 
         # Record metrics on successful feedback application
         record_learning_feedback_applied(tenant_id)
@@ -251,7 +259,9 @@ async def feedback_endpoint(
         update_learning_effective_lr(tenant_id, lr_eff)
     else:
         # Feedback rejected - determine reason
-        reason = "bounds" if payload.utility is None or payload.reward is None else "outlier"
+        reason = (
+            "bounds" if payload.utility is None or payload.reward is None else "outlier"
+        )
         record_learning_feedback_rejected(tenant_id, reason)
     # Capture weights after adaptation
     after = {
@@ -270,9 +280,12 @@ async def feedback_endpoint(
     # Compute deltas
     delta = {
         "retrieval": {
-            k: after["retrieval"][k] - before["retrieval"][k] for k in before["retrieval"]
+            k: after["retrieval"][k] - before["retrieval"][k]
+            for k in before["retrieval"]
         },
-        "utility": {k: after["utility"][k] - before["utility"][k] for k in before["utility"]},
+        "utility": {
+            k: after["utility"][k] - before["utility"][k] for k in before["utility"]
+        },
     }
     event_id = _make_event_id(payload.session_id)
     try:
@@ -289,7 +302,9 @@ async def feedback_endpoint(
         )
         tokens = None
         if isinstance(payload.metadata, dict):
-            tokens = payload.metadata.get("tokens") or payload.metadata.get("tokens_used")
+            tokens = payload.metadata.get("tokens") or payload.metadata.get(
+                "tokens_used"
+            )
         if tokens is not None:
             ledger = _get_token_ledger()
             ledger.record(
@@ -298,7 +313,9 @@ async def feedback_endpoint(
                 tokens=float(tokens),
                 tenant_id=tenant_id,
                 model=(
-                    payload.metadata.get("model") if isinstance(payload.metadata, dict) else None
+                    payload.metadata.get("model")
+                    if isinstance(payload.metadata, dict)
+                    else None
                 ),
             )
         audit.publish_event(
@@ -324,7 +341,9 @@ async def feedback_endpoint(
         store = _get_feedback_store()
         store_total = store.total_count()
         adapter_total = getattr(adapter, "_feedback_count", 0)
-        route_state.feedback_counter = max(route_state.feedback_counter, adapter_total, store_total)
+        route_state.feedback_counter = max(
+            route_state.feedback_counter, adapter_total, store_total
+        )
 
     # Record feedback latency
     elapsed = time.perf_counter() - start_time
@@ -395,7 +414,9 @@ async def adaptation_state_endpoint(
     adapter_count = getattr(adapter, "_feedback_count", 0)
     store = _get_feedback_store()
     store_total = int(store.total_count())
-    history_len = max(int(route_state.feedback_counter), int(adapter_count), int(store_total))
+    history_len = max(
+        int(route_state.feedback_counter), int(adapter_count), int(store_total)
+    )
     learning_rate = float(getattr(adapter, "_lr", 0.0))
     return AdaptationStateResponse(
         retrieval=retrieval_state,
@@ -448,7 +469,9 @@ async def adaptation_reset_endpoint(
                     status_code=403, detail="adaptation reset blocked (no mode info)"
                 )
         except Exception:
-            raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
+            raise HTTPException(
+                status_code=403, detail="adaptation reset blocked (no mode info)"
+            )
     builder = get_context_builder()
     planner = get_context_planner()
     tenant_id = await _resolve_tenant_id(payload.tenant_id)
@@ -478,7 +501,9 @@ async def adaptation_reset_endpoint(
 
         g = payload.gains
         adapter.set_gains(
-            AdaptationGains(alpha=g.alpha, gamma=g.gamma, lambda_=g.lambda_, mu=g.mu, nu=g.nu)
+            AdaptationGains(
+                alpha=g.alpha, gamma=g.gamma, lambda_=g.lambda_, mu=g.mu, nu=g.nu
+            )
         )
     if payload.base_lr is not None:
         adapter.set_base_learning_rate(float(payload.base_lr))

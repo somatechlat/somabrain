@@ -161,4 +161,5 @@ class AuthSettingsMixin(BaseSettings):
 def _float_env(name: str, default: float) -> float:
     """Import helper for float env parsing."""
     from common.config.settings.base import _float_env as _fe
+
     return _fe(name, default)

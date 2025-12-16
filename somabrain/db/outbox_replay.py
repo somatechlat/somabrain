@@ -58,13 +58,17 @@ def mark_events_for_replay(limit: int = 100, tenant_id: Optional[str] = None) ->
                 report_outbox_replayed(tenant_label, count)
             except Exception as exc:
                 logger.debug(
-                    "Failed to report outbox replayed for tenant=%s: %s", tenant_label, exc
+                    "Failed to report outbox replayed for tenant=%s: %s",
+                    tenant_label,
+                    exc,
                 )
 
         return count
 
 
-def mark_tenant_events_for_replay(tenant_id: str, limit: int = 100, status: str = "failed") -> int:
+def mark_tenant_events_for_replay(
+    tenant_id: str, limit: int = 100, status: str = "failed"
+) -> int:
     """
     Mark events for a specific tenant for replay.
 
@@ -150,7 +154,12 @@ def list_tenant_events(
             query = query.filter(OutboxEvent.topic.like(f"%{topic_filter}%"))
 
         # Apply pagination
-        events = query.order_by(OutboxEvent.created_at.desc()).offset(offset).limit(limit).all()
+        events = (
+            query.order_by(OutboxEvent.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
 
         return events
 

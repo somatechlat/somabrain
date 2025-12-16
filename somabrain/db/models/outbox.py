@@ -40,4 +40,6 @@ class OutboxEvent(Base):
     last_error = Column(String, nullable=True)
 
     def __repr__(self):
-        return f"<OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')>"
+        return (
+            f"<OutboxEvent(id={self.id}, topic='{self.topic}', status='{self.status}')>"
+        )

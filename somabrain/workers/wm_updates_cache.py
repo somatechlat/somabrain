@@ -39,7 +39,9 @@ except Exception:  # pragma: no cover
 def _bootstrap() -> str:
     url = getattr(settings, "kafka_bootstrap_servers", "")
     if not url:
-        raise ValueError("SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost")
+        raise ValueError(
+            "SOMABRAIN_KAFKA_URL not set; refusing to fall back to localhost"
+        )
     return url.replace("kafka://", "")
 
 
@@ -118,7 +120,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
                 except Exception as parse_exc:
-                    logger.debug("Failed to parse tenant from event evidence: %s", parse_exc)
+                    logger.debug(
+                        "Failed to parse tenant from event evidence: %s", parse_exc
+                    )
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 try:
@@ -129,7 +133,9 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     if ttl_seconds > 0:
                         r.expire(key, ttl_seconds)
                 except Exception as redis_exc:
-                    logger.warning("Failed to cache WM update to Redis key %s: %s", key, redis_exc)
+                    logger.warning(
+                        "Failed to cache WM update to Redis key %s: %s", key, redis_exc
+                    )
             except Exception as outer_exc:
                 # Log and continue processing other messages
                 logger.debug("Failed to process WM update message: %s", outer_exc)

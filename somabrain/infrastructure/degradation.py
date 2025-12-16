@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
+
+if TYPE_CHECKING:
+    from somabrain.infrastructure.circuit_breaker import CircuitBreaker
 
 
 @dataclass
@@ -73,6 +76,7 @@ class DegradationManager:
             except Exception as exc:
                 # Log circuit breaker check failure but continue with local state check
                 import logging
+
                 logging.getLogger(__name__).debug(
                     "Circuit breaker check failed for tenant %s: %s", tenant, exc
                 )
@@ -83,13 +87,14 @@ class DegradationManager:
 
     def _emit_degradation_metric(self, tenant: str, event_type: str) -> None:
         """Emit degradation event metric.
-        
+
         Args:
             tenant: Tenant ID
             event_type: Either 'enter' or 'exit'
         """
         try:
             from somabrain.metrics.integration import SFM_DEGRADATION_EVENTS
+
             SFM_DEGRADATION_EVENTS.labels(tenant=tenant, event_type=event_type).inc()
         except Exception:
             # Metrics are optional; don't fail on metric emission errors
@@ -105,6 +110,7 @@ class DegradationManager:
             self._emit_degradation_metric(tenant, "enter")
             # Log state transition
             import logging
+
             logging.getLogger(__name__).warning(
                 "Tenant %s entered degraded mode", tenant
             )
@@ -128,9 +134,11 @@ class DegradationManager:
             # Log recovery with duration
             duration = time.time() - state.degraded_since
             import logging
+
             logging.getLogger(__name__).info(
                 "Tenant %s recovered from degraded mode (duration: %.2fs)",
-                tenant, duration
+                tenant,
+                duration,
             )
             # Emit metric for exiting degraded mode
             self._emit_degradation_metric(tenant, "exit")
@@ -163,14 +171,9 @@ class DegradationManager:
             state.alert_triggered = True
             # Record metric
             try:
-                from prometheus_client import Counter
+                from somabrain.metrics.integration import record_degradation_event
 
-                DEGRADATION_ALERT = Counter(
-                    "sb_degradation_alert_total",
-                    "Degradation alerts triggered",
-                    ["tenant"],
-                )
-                DEGRADATION_ALERT.labels(tenant=tenant).inc()
+                record_degradation_event(tenant, "alert")
             except Exception:
                 pass
             return True
@@ -202,12 +205,12 @@ class DegradationManager:
 
 def _create_degradation_manager() -> DegradationManager:
     """Factory function for DI container."""
-    # Try to get circuit breaker
+    # Try to get circuit breaker from registry
     circuit_breaker = None
     try:
-        from somabrain.infrastructure.circuit_breaker import get_circuit_breaker
+        from somabrain.infrastructure.cb_registry import get_cb
 
-        circuit_breaker = get_circuit_breaker()
+        circuit_breaker = get_cb()
     except Exception:
         pass
 
@@ -216,7 +219,7 @@ def _create_degradation_manager() -> DegradationManager:
 
 def get_degradation_manager() -> DegradationManager:
     """Get the DegradationManager instance from DI container.
-    
+
     Uses the centralized DI container for singleton management,
     eliminating module-level mutable state per VIBE requirements.
     """

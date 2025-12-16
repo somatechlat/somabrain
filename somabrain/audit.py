@@ -31,7 +31,13 @@ def _schema_path() -> Optional[Path]:
     """Return path to docs audit schema if present (optional)."""
     try:
         here = Path(__file__).resolve().parent.parent
-        sp = here.parent / "docs" / "technical-manual" / "schemas" / "audit_event.schema.json"
+        sp = (
+            here.parent
+            / "docs"
+            / "technical-manual"
+            / "schemas"
+            / "audit_event.schema.json"
+        )
         if sp.exists():
             return sp
     except Exception:
@@ -77,7 +83,9 @@ def publish_event(event: Dict[str, Any], topic: Optional[str] = None) -> bool:
         enqueue_event(topic=topic_str, payload=ev, dedupe_key=ev["event_id"])
         return True
     except Exception:
-        LOGGER.exception("Failed to enqueue audit event to outbox (no alternative path)")
+        LOGGER.exception(
+            "Failed to enqueue audit event to outbox (no alternative path)"
+        )
         return False
 
 
@@ -203,6 +211,9 @@ def _sanitize_event(ev: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     except Exception:
         # If sanitization fails for any reason, fail-safe by returning a shallow masked copy
         try:
-            return {k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v) for k, v in ev.items()}
+            return {
+                k: (_MASK if str(k).lower() in _SENSITIVE_KEYS else v)
+                for k, v in ev.items()
+            }
         except Exception:
             return ev

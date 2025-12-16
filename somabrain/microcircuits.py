@@ -48,12 +48,20 @@ from common.config.settings import settings
 class MCConfig:
     columns: int = field(default_factory=lambda: max(1, int(settings.micro_circuits)))
     per_col_capacity: int = field(
-        default_factory=lambda: max(int(settings.wm_per_col_min_capacity), int(settings.wm_size))
+        default_factory=lambda: max(
+            int(settings.wm_per_col_min_capacity), int(settings.wm_size)
+        )
     )
-    vote_temperature: float = field(default_factory=lambda: float(settings.micro_vote_temperature))
+    vote_temperature: float = field(
+        default_factory=lambda: float(settings.micro_vote_temperature)
+    )
     max_tenants: int = field(default_factory=lambda: int(settings.micro_max_tenants))
-    recency_time_scale: float = field(default_factory=lambda: float(settings.wm_recency_time_scale))
-    recency_max_steps: float = field(default_factory=lambda: float(settings.wm_recency_max_steps))
+    recency_time_scale: float = field(
+        default_factory=lambda: float(settings.wm_recency_time_scale)
+    )
+    recency_max_steps: float = field(
+        default_factory=lambda: float(settings.wm_recency_max_steps)
+    )
 
 
 class MultiColumnWM:
@@ -130,7 +138,9 @@ class MultiColumnWM:
         except Exception as metric_exc:
             logger.debug("Failed to record micro_column_admit metric: %s", metric_exc)
 
-    def recall(self, tenant_id: str, vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
+    def recall(
+        self, tenant_id: str, vec: np.ndarray, top_k: int = 3
+    ) -> List[Tuple[float, dict]]:
         cols = self._ensure(tenant_id)
         per_col: List[List[Tuple[float, dict]]] = []
         bests: List[float] = []
@@ -168,7 +178,9 @@ class MultiColumnWM:
         cols = self._ensure(tenant_id)
         best = 0.0
         for wm in cols:
-            best = max(best, 1.0 - wm.novelty(vec))  # wm.novelty returns 1 - best_cosine
+            best = max(
+                best, 1.0 - wm.novelty(vec)
+            )  # wm.novelty returns 1 - best_cosine
         return max(0.0, 1.0 - best)
 
     def items(self, tenant_id: str, limit: int | None = None) -> List[dict]:

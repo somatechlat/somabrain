@@ -53,9 +53,10 @@ def _get_settings():
 @dataclass
 class DriftConfig:
     """Drift monitor configuration with Settings-backed defaults.
-    
+
     Fields default to None, which triggers Settings lookup in __post_init__.
     """
+
     window: Optional[int] = None
     threshold: Optional[float] = None
 

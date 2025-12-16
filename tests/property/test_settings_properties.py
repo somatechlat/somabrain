@@ -46,7 +46,9 @@ class TestSettingsCommentStripping:
         env_value = f"{value} # {comment}" if comment else value
         with mock.patch.dict(os.environ, {"TEST_VAR": env_value}):
             result = _str_env("TEST_VAR")
-            assert result == value.strip(), f"Expected '{value.strip()}', got '{result}'"
+            assert (
+                result == value.strip()
+            ), f"Expected '{value.strip()}', got '{result}'"
 
     @given(
         value=st.integers(min_value=-1000000, max_value=1000000),
@@ -65,7 +67,9 @@ class TestSettingsCommentStripping:
             assert result == value, f"Expected {value}, got {result}"
 
     @given(
-        value=st.floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False),
+        value=st.floats(
+            min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False
+        ),
         comment=st.text(
             alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "),
             min_size=0,
@@ -82,7 +86,9 @@ class TestSettingsCommentStripping:
             if abs(value) < 1e-9:
                 assert abs(result) < 1e-6, f"Expected ~{value}, got {result}"
             else:
-                assert abs(result - value) / abs(value) < 1e-6, f"Expected {value}, got {result}"
+                assert (
+                    abs(result - value) / abs(value) < 1e-6
+                ), f"Expected {value}, got {result}"
 
 
 class TestSettingsBooleanParsing:
@@ -105,7 +111,20 @@ class TestSettingsBooleanParsing:
 
     @pytest.mark.parametrize(
         "falsy_value",
-        ["0", "false", "no", "off", "FALSE", "False", "NO", "No", "OFF", "Off", "", "random"],
+        [
+            "0",
+            "false",
+            "no",
+            "off",
+            "FALSE",
+            "False",
+            "NO",
+            "No",
+            "OFF",
+            "Off",
+            "",
+            "random",
+        ],
     )
     def test_falsy_values_parse_as_false(self, falsy_value: str) -> None:
         """Non-truthy values parse as False."""
@@ -144,7 +163,9 @@ class TestSettingsBooleanParsing:
         ),
     )
     @hyp_settings(max_examples=50, deadline=5000)
-    def test_bool_with_comment_strips_correctly(self, truthy: str, comment: str) -> None:
+    def test_bool_with_comment_strips_correctly(
+        self, truthy: str, comment: str
+    ) -> None:
         """Boolean values with comments are stripped before parsing."""
         env_value = f"{truthy} # {comment}"
         with mock.patch.dict(os.environ, {"TEST_BOOL": env_value}):

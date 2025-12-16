@@ -138,9 +138,15 @@ def eval_step(
         try:
             PREDICTOR_ALTERNATIVE.inc()
         except Exception as metric_exc:
-            logger.debug("Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc)
-        pred = type("PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0})()
-        logger.exception("Predictor failed, falling back to zero-error recovery path: %s", exc)
+            logger.debug(
+                "Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc
+            )
+        pred = type(
+            "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
+        )()
+        logger.exception(
+            "Predictor failed, falling back to zero-error recovery path: %s", exc
+        )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     base_nm = neuromods.get_state()
@@ -153,7 +159,9 @@ def eval_step(
                 traits = personality_store.get("public")
     except Exception as trait_fetch_exc:
         logger.debug(
-            "Failed to fetch personality traits for tenant=%s: %s", tenant_id, trait_fetch_exc
+            "Failed to fetch personality traits for tenant=%s: %s",
+            tenant_id,
+            trait_fetch_exc,
         )
         traits = None
     nm = personality_store.modulate_neuromods(base_nm, traits) if traits else base_nm
@@ -164,7 +172,9 @@ def eval_step(
             from typing import Any, cast
 
             if hasattr(supervisor, "adjust"):
-                nm, F, mag = cast(Any, supervisor).adjust(nm, float(novelty), float(pred.error))
+                nm, F, mag = cast(Any, supervisor).adjust(
+                    nm, float(novelty), float(pred.error)
+                )
         except Exception as exc:
             logger.exception("Supervisor adjustment failed: %s", exc)
 

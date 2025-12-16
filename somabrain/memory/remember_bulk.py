@@ -49,7 +49,11 @@ def remember_bulk_optimized(
 
     if total_items == 0:
         return BulkStoreResult(
-            succeeded=0, failed=0, coordinates=[], failed_items=[], request_id=rid,
+            succeeded=0,
+            failed=0,
+            coordinates=[],
+            failed_items=[],
+            request_id=rid,
         )
 
     try:
@@ -57,8 +61,12 @@ def remember_bulk_optimized(
     except RuntimeError as exc:
         logger.error("Bulk store failed: SFM unavailable", error=str(exc))
         return BulkStoreResult(
-            succeeded=0, failed=total_items, coordinates=[],
-            failed_items=list(range(total_items)), request_id=rid, error=str(exc),
+            succeeded=0,
+            failed=total_items,
+            coordinates=[],
+            failed_items=list(range(total_items)),
+            request_id=rid,
+            error=str(exc),
         )
 
     chunks = [items_list[i : i + chunk_size] for i in range(0, total_items, chunk_size)]
@@ -70,7 +78,9 @@ def remember_bulk_optimized(
     for chunk_idx, chunk in enumerate(chunks):
         chunk_rid = f"{rid}:chunk{chunk_idx}"
         try:
-            prepared, universes, coords, _, namespace = prepare_bulk_items_fn(cfg, chunk)
+            prepared, universes, coords, _, namespace = prepare_bulk_items_fn(
+                cfg, chunk
+            )
             if not prepared:
                 for i in range(len(chunk)):
                     failed_indices.append(current_index + i)
@@ -84,7 +94,8 @@ def remember_bulk_optimized(
                 headers["X-Universe"] = batch_universe
 
             batch_payload = {
-                "tenant": tenant, "namespace": namespace,
+                "tenant": tenant,
+                "namespace": namespace,
                 "items": [entry["body"] for entry in prepared],
             }
             if batch_universe:
@@ -93,7 +104,9 @@ def remember_bulk_optimized(
             success, status, response = store_bulk_http_sync_fn(batch_payload, headers)
 
             if success and response is not None:
-                chunk_coords = process_bulk_response_fn(response, prepared, coords, chunk_rid)
+                chunk_coords = process_bulk_response_fn(
+                    response, prepared, coords, chunk_rid
+                )
                 all_coords.extend(chunk_coords)
                 succeeded_count += len(chunk)
             elif status in (404, 405):
@@ -132,9 +145,18 @@ def remember_bulk_optimized(
 
     try:
         from prometheus_client import Counter, Histogram
-        BULK_STORE_TOTAL = Counter("sb_bulk_store_total", "Total bulk store operations", ["tenant", "status"])
-        BULK_STORE_ITEMS = Counter("sb_bulk_store_items_total", "Total items in bulk store operations", ["tenant", "status"])
-        BULK_STORE_LATENCY = Histogram("sb_bulk_store_latency_ms", "Bulk store latency in milliseconds", ["tenant"])
+
+        BULK_STORE_TOTAL = Counter(
+            "sb_bulk_store_total", "Total bulk store operations", ["tenant", "status"]
+        )
+        BULK_STORE_ITEMS = Counter(
+            "sb_bulk_store_items_total",
+            "Total items in bulk store operations",
+            ["tenant", "status"],
+        )
+        BULK_STORE_LATENCY = Histogram(
+            "sb_bulk_store_latency_ms", "Bulk store latency in milliseconds", ["tenant"]
+        )
         BULK_STORE_TOTAL.labels(tenant=tenant, status="success").inc()
         BULK_STORE_ITEMS.labels(tenant=tenant, status="succeeded").inc(succeeded_count)
         BULK_STORE_ITEMS.labels(tenant=tenant, status="failed").inc(len(failed_indices))
@@ -142,13 +164,22 @@ def remember_bulk_optimized(
     except Exception:
         pass
 
-    logger.info("Bulk store completed", total=total_items, succeeded=succeeded_count, failed=len(failed_indices))
-
-    return BulkStoreResult(
-        succeeded=succeeded_count, failed=len(failed_indices), coordinates=all_coords,
-        failed_items=failed_indices, request_id=rid, latency_ms=elapsed_ms, success_rate=success_rate,
+    logger.info(
+        "Bulk store completed",
+        total=total_items,
+        succeeded=succeeded_count,
+        failed=len(failed_indices),
     )
 
+    return BulkStoreResult(
+        succeeded=succeeded_count,
+        failed=len(failed_indices),
+        coordinates=all_coords,
+        failed_items=failed_indices,
+        request_id=rid,
+        latency_ms=elapsed_ms,
+        success_rate=success_rate,
+    )
 
 
 def remember_bulk_sync(
@@ -170,7 +201,9 @@ def remember_bulk_sync(
         return []
 
     if not has_transport:
-        raise RuntimeError("MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember).")
+        raise RuntimeError(
+            "MEMORY SERVICE REQUIRED: HTTP memory backend not available (bulk remember)."
+        )
 
     rid = request_id or str(uuid.uuid4())
     headers = {"X-Request-ID": rid}
@@ -178,7 +211,11 @@ def remember_bulk_sync(
     batch_universe = unique_universes[0] if len(unique_universes) == 1 else None
     if batch_universe:
         headers["X-Universe"] = batch_universe
-    batch_payload = {"tenant": tenant, "namespace": namespace, "items": [entry["body"] for entry in prepared]}
+    batch_payload = {
+        "tenant": tenant,
+        "namespace": namespace,
+        "items": [entry["body"] for entry in prepared],
+    }
     if batch_universe:
         batch_payload["universe"] = batch_universe
 
@@ -192,7 +229,9 @@ def remember_bulk_sync(
             single_headers["X-Request-ID"] = f"{rid}:{idx}"
             ok, resp = store_http_sync_fn(entry["body"], single_headers)
             if ok and resp is not None:
-                server_coord = _extract_memory_coord(resp, idempotency_key=single_headers["X-Request-ID"])
+                server_coord = _extract_memory_coord(
+                    resp, idempotency_key=single_headers["X-Request-ID"]
+                )
                 if server_coord:
                     coords[idx] = server_coord
         return coords
@@ -232,7 +271,11 @@ async def aremember_bulk(
     batch_universe = unique_universes[0] if len(unique_universes) == 1 else None
     if batch_universe:
         headers["X-Universe"] = batch_universe
-    batch_payload = {"tenant": tenant, "namespace": namespace, "items": [entry["body"] for entry in prepared]}
+    batch_payload = {
+        "tenant": tenant,
+        "namespace": namespace,
+        "items": [entry["body"] for entry in prepared],
+    }
     if batch_universe:
         batch_payload["universe"] = batch_universe
 
@@ -246,7 +289,9 @@ async def aremember_bulk(
             single_headers["X-Request-ID"] = f"{rid}:{idx}"
             ok, resp = await store_http_async_fn(entry["body"], single_headers)
             if ok and resp is not None:
-                server_coord = _extract_memory_coord(resp, idempotency_key=single_headers["X-Request-ID"])
+                server_coord = _extract_memory_coord(
+                    resp, idempotency_key=single_headers["X-Request-ID"]
+                )
                 if server_coord:
                     coords[idx] = server_coord
         return coords

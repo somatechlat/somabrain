@@ -15,7 +15,9 @@ class CognitiveErrorHandler:
     """Advanced error handling for brain-like cognitive processing."""
 
     @staticmethod
-    def handle_error(error: Exception, context: str = "", request_id: str | None = None) -> dict:
+    def handle_error(
+        error: Exception, context: str = "", request_id: str | None = None
+    ) -> dict:
         """Handle errors with brain-like analysis and recovery suggestions."""
         import traceback
 
@@ -45,7 +47,10 @@ class CognitiveErrorHandler:
                 "Verify SOMABRAIN_MEMORY_HTTP_ENDPOINT",
             ]
         elif "rate" in str(error).lower():
-            error_info["recovery_suggestions"] = ["Implement backoff strategy", "Check rate limits"]
+            error_info["recovery_suggestions"] = [
+                "Implement backoff strategy",
+                "Check rate limits",
+            ]
         else:
             error_info["recovery_suggestions"] = [
                 "Log for analysis",
@@ -72,7 +77,9 @@ class CognitiveMiddleware:
         method = scope.get("method", "")
         start_time = time.time()
 
-        logger.info(f"🧠 Request {request_id}: {method} {path} - Cognitive processing initiated")
+        logger.info(
+            f"🧠 Request {request_id}: {method} {path} - Cognitive processing initiated"
+        )
 
         try:
             await self.app(scope, receive, send)
@@ -85,7 +92,9 @@ class CognitiveMiddleware:
             raise
         except Exception as e:
             processing_time = time.time() - start_time
-            error_info = CognitiveErrorHandler.handle_error(e, f"{method} {path}", request_id)
+            error_info = CognitiveErrorHandler.handle_error(
+                e, f"{method} {path}", request_id
+            )
 
             error_response = JSONResponse(
                 status_code=500,

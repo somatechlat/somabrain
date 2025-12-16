@@ -66,6 +66,7 @@ class Settings(
         """Normalized mode name in {dev, staging, prod}. Unknown maps to prod."""
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().mode.value
         except Exception:
             m = (self.mode or "").strip().lower()
@@ -85,6 +86,7 @@ class Settings(
         """Require real backends across all modes by policy."""
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.require_external_backends
         except Exception:
             return True
@@ -99,6 +101,7 @@ class Settings(
         """Whether OPA evaluation should fail-closed by mode."""
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.opa_fail_closed
         except Exception:
             return self.mode_normalized != "dev"
@@ -108,6 +111,7 @@ class Settings(
         """Recommended root log level by mode."""
         try:
             from somabrain.mode import get_mode_config
+
             return get_mode_config().profile.log_level
         except Exception:
             m = self.mode_normalized
@@ -141,9 +145,16 @@ class Settings(
         try:
             raw = (self.mode or "").strip().lower()
             if raw and raw not in (
-                "dev", "development", "stage", "staging", "prod", "enterprise",
+                "dev",
+                "development",
+                "stage",
+                "staging",
+                "prod",
+                "enterprise",
             ):
-                notes.append(f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'.")
+                notes.append(
+                    f"Unknown SOMABRAIN_MODE='{self.mode}' -> treating as 'prod'."
+                )
         except Exception:
             pass
         return notes
@@ -153,7 +164,7 @@ class Settings(
         key = name.lower()
         for prefix in ("somabrain_", "soma_", "opa_"):
             if key.startswith(prefix):
-                key = key[len(prefix):]
+                key = key[len(prefix) :]
                 break
         key = key.replace("-", "_")
         return key

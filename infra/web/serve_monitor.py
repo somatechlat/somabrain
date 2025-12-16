@@ -28,7 +28,7 @@ class CORSHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         """Handle GET requests with metrics proxy support."""
         parsed = urllib.parse.urlparse(self.path)
-        
+
         # Proxy /metrics requests to the target SomaBrain instance
         if parsed.path == "/metrics":
             qs = urllib.parse.parse_qs(parsed.query)
@@ -45,14 +45,14 @@ class CORSHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self.send_error(502, f"Failed to fetch metrics: {e}")
                 return
-        
+
         # Redirect root to dashboard
         if self.path == "/" or self.path == "":
             self.send_response(302)
             self.send_header("Location", "/dashboard.html")
             self.end_headers()
             return
-        
+
         # Default file serving
         super().do_GET()
 
@@ -73,7 +73,7 @@ def main():
     """Start the dashboard server."""
     webroot = os.path.dirname(os.path.abspath(__file__))
     os.chdir(webroot)
-    
+
     print("=" * 60)
     print("SomaBrain Dashboard Server")
     print("=" * 60)
@@ -86,7 +86,7 @@ def main():
     print("")
     print("Press Ctrl+C to stop")
     print("=" * 60)
-    
+
     with ThreadingHTTPServer(("0.0.0.0", PORT), CORSHandler) as httpd:
         try:
             httpd.serve_forever()

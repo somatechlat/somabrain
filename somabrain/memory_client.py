@@ -18,6 +18,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from .config import Config
 from common.config.settings import settings
+
 # Infrastructure imports moved to transport module
 from somabrain.interfaces.memory import MemoryBackend
 from somabrain.memory.transport import (
@@ -37,12 +38,18 @@ from somabrain.memory.scoring import (
 )
 from somabrain.memory.payload import enrich_payload, prepare_memory_payload
 from somabrain.memory.health import check_memory_health, require_healthy
-from somabrain.memory.hybrid import extract_keywords, hybrid_recall_sync, hybrid_recall_async
+from somabrain.memory.hybrid import (
+    extract_keywords,
+    hybrid_recall_sync,
+    hybrid_recall_async,
+)
 
 
 # logger for diagnostic output during tests
 logger = logging.getLogger(__name__)
-debug_memory_client = bool(getattr(settings, "debug_memory_client", False)) if settings else False
+debug_memory_client = (
+    bool(getattr(settings, "debug_memory_client", False)) if settings else False
+)
 if debug_memory_client and not logger.handlers:
     h = logging.StreamHandler()
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
@@ -57,7 +64,9 @@ class MemoryClient:
     Requires healthy HTTP backend; fails fast if unavailable.
     """
 
-    def __init__(self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None):
+    def __init__(
+        self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None
+    ):
         self.cfg = cfg
         self._scorer = scorer
         self._embedder = embedder
@@ -154,14 +163,20 @@ class MemoryClient:
     def _store_http_sync(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_sync
 
-        return store_http_sync(self._transport, body, headers, self._tenant_namespace()[0])
+        return store_http_sync(
+            self._transport, body, headers, self._tenant_namespace()[0]
+        )
 
     async def _store_http_async(self, body: dict, headers: dict) -> tuple[bool, Any]:
         from somabrain.memory.http_helpers import store_http_async
 
-        return await store_http_async(self._transport, body, headers, self._tenant_namespace()[0])
+        return await store_http_async(
+            self._transport, body, headers, self._tenant_namespace()[0]
+        )
 
-    def _store_bulk_http_sync(self, batch_request: dict, headers: dict) -> tuple[bool, int, Any]:
+    def _store_bulk_http_sync(
+        self, batch_request: dict, headers: dict
+    ) -> tuple[bool, int, Any]:
         from somabrain.memory.http_helpers import store_bulk_http_sync
 
         return store_bulk_http_sync(
@@ -224,13 +239,19 @@ class MemoryClient:
         )
 
     # Recall aggregation aliases
-    def _http_recall_aggregate_sync(self, q: str, k: int, u: str, r: str) -> List[RecallHit]:
+    def _http_recall_aggregate_sync(
+        self, q: str, k: int, u: str, r: str
+    ) -> List[RecallHit]:
         return self._memories_search_sync(q, k, u, r)
 
-    def _http_recall_aggregate_async(self, q: str, k: int, u: str, r: str) -> List[RecallHit]:
+    def _http_recall_aggregate_async(
+        self, q: str, k: int, u: str, r: str
+    ) -> List[RecallHit]:
         return self._memories_search_async(q, k, u, r)
 
-    def _filter_hits_by_keyword(self, hits: List[RecallHit], keyword: str) -> List[RecallHit]:
+    def _filter_hits_by_keyword(
+        self, hits: List[RecallHit], keyword: str
+    ) -> List[RecallHit]:
         from somabrain.memory.recall_ops import filter_hits_by_keyword
 
         return filter_hits_by_keyword(hits, keyword)
@@ -250,10 +271,16 @@ class MemoryClient:
     def _density_factor(self, margin: float | None) -> float:
         return compute_density_factor(margin, self.cfg)
 
-    def _rescore_and_rank_hits(self, hits: List[RecallHit], query: str) -> List[RecallHit]:
-        return rescore_and_rank_hits(hits, query, self.cfg, self._scorer, self._embedder)
+    def _rescore_and_rank_hits(
+        self, hits: List[RecallHit], query: str
+    ) -> List[RecallHit]:
+        return rescore_and_rank_hits(
+            hits, query, self.cfg, self._scorer, self._embedder
+        )
 
-    def _compat_enrich_payload(self, payload: dict, coord_key: str) -> tuple[dict, str, dict]:
+    def _compat_enrich_payload(
+        self, payload: dict, coord_key: str
+    ) -> tuple[dict, str, dict]:
         tenant, namespace = self._tenant_namespace()
         return enrich_payload(payload, coord_key, namespace, tenant=tenant)
 
@@ -267,7 +294,9 @@ class MemoryClient:
     ) -> None:
         from somabrain.memory.http_helpers import record_http_metrics
 
-        record_http_metrics(operation, self._tenant_namespace()[0], success, status, duration)
+        record_http_metrics(
+            operation, self._tenant_namespace()[0], success, status, duration
+        )
 
     def remember(
         self, coord_key: str, payload: dict, request_id: str | None = None
@@ -296,7 +325,9 @@ class MemoryClient:
             return coord
 
         # Check fast-ack mode for sync callers
-        fast_ack = bool(getattr(settings, "memory_fast_ack", False)) if settings else False
+        fast_ack = (
+            bool(getattr(settings, "memory_fast_ack", False)) if settings else False
+        )
         if fast_ack:
             try:
                 asyncio.get_event_loop().run_in_executor(
@@ -319,16 +350,24 @@ class MemoryClient:
                 pass
         return coord
 
-    def _schedule_async_persist(self, coord_key: str, payload: dict, rid: str, loop) -> None:
+    def _schedule_async_persist(
+        self, coord_key: str, payload: dict, rid: str, loop
+    ) -> None:
         """Schedule async or executor-based persistence."""
         try:
             if self._transport is not None and self._transport.async_client is not None:
                 try:
-                    loop.create_task(self._aremember_background(coord_key, payload, rid))
+                    loop.create_task(
+                        self._aremember_background(coord_key, payload, rid)
+                    )
                 except Exception:
-                    loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                    loop.run_in_executor(
+                        None, self._remember_sync_persist, coord_key, payload, rid
+                    )
             else:
-                loop.run_in_executor(None, self._remember_sync_persist, coord_key, payload, rid)
+                loop.run_in_executor(
+                    None, self._remember_sync_persist, coord_key, payload, rid
+                )
         except Exception:
             try:
                 self._remember_sync_persist(coord_key, payload, rid)
@@ -344,7 +383,9 @@ class MemoryClient:
         from somabrain.memory.remember_bulk import remember_bulk_sync
         from somabrain.memory.remember import prepare_bulk_items, process_bulk_response
 
-        has_transport = self._transport is not None and self._transport.client is not None
+        has_transport = (
+            self._transport is not None and self._transport.client is not None
+        )
         return remember_bulk_sync(
             self.cfg,
             items,
@@ -364,7 +405,9 @@ class MemoryClient:
         chunk_size: int = 100,
     ) -> "BulkStoreResult":
         """Optimized bulk store with chunking and partial failure handling."""
-        from somabrain.memory.remember_bulk import remember_bulk_optimized as _remember_bulk_optimized
+        from somabrain.memory.remember_bulk import (
+            remember_bulk_optimized as _remember_bulk_optimized,
+        )
         from somabrain.memory.remember import prepare_bulk_items, process_bulk_response
 
         tenant, _ = self._tenant_namespace()
@@ -386,7 +429,9 @@ class MemoryClient:
         """Async variant of remember for HTTP mode; falls back to thread executor."""
         from somabrain.memory.remember import aremember_single
 
-        has_async = self._transport is not None and self._transport.async_client is not None
+        has_async = (
+            self._transport is not None and self._transport.async_client is not None
+        )
         return await aremember_single(
             self.cfg,
             coord_key,
@@ -408,7 +453,9 @@ class MemoryClient:
         from somabrain.memory.remember_bulk import aremember_bulk as _aremember_bulk
         from somabrain.memory.remember import prepare_bulk_items, process_bulk_response
 
-        has_async = self._transport is not None and self._transport.async_client is not None
+        has_async = (
+            self._transport is not None and self._transport.async_client is not None
+        )
         return await _aremember_bulk(
             self.cfg,
             items,
@@ -473,7 +520,9 @@ class MemoryClient:
 
         rid = request_id or str(uuid.uuid4())
         tenant, _ = self._tenant_namespace()
-        has_async = self._transport is not None and self._transport.async_client is not None
+        has_async = (
+            self._transport is not None and self._transport.async_client is not None
+        )
         return await arecall_with_degradation(
             tenant,
             query,
@@ -558,7 +607,9 @@ class MemoryClient:
         )
 
     # --- Compatibility helper methods ---
-    def coord_for_key(self, key: str, universe: str | None = None) -> Tuple[float, float, float]:
+    def coord_for_key(
+        self, key: str, universe: str | None = None
+    ) -> Tuple[float, float, float]:
         """Return a deterministic coordinate for *key* and optional *universe*."""
         from somabrain.memory.utils import coord_for_key
 
@@ -576,7 +627,9 @@ class MemoryClient:
         """Store a payload dict into the memory backend."""
         from somabrain.memory.utils import store_from_payload
 
-        return store_from_payload(payload, request_id, self._store_http_sync, self.remember)
+        return store_from_payload(
+            payload, request_id, self._store_http_sync, self.remember
+        )
 
     def _remember_sync_persist(
         self, coord_key: str, payload: dict, request_id: str | None = None

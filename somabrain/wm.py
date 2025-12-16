@@ -141,13 +141,23 @@ class WorkingMemory:
         self._scorer = scorer
         self._now: Callable[[], float] = now_fn or time.time
         r_scale = (
-            settings.wm_recency_time_scale if recency_time_scale is None else recency_time_scale
+            settings.wm_recency_time_scale
+            if recency_time_scale is None
+            else recency_time_scale
         )
-        r_cap = settings.wm_recency_max_steps if recency_max_steps is None else recency_max_steps
-        self._recency_scale = self._validate_scale(r_scale, settings.wm_recency_time_scale)
+        r_cap = (
+            settings.wm_recency_max_steps
+            if recency_max_steps is None
+            else recency_max_steps
+        )
+        self._recency_scale = self._validate_scale(
+            r_scale, settings.wm_recency_time_scale
+        )
         self._recency_cap = self._validate_scale(r_cap, settings.wm_recency_max_steps)
         self._default_salience_threshold = float(
-            settings.wm_salience_threshold if salience_threshold is None else salience_threshold
+            settings.wm_salience_threshold
+            if salience_threshold is None
+            else salience_threshold
         )
         # WM Persistence (A1.3): Optional persister for async SFM persistence
         self._persister: Optional["WMPersister"] = persister
@@ -273,7 +283,9 @@ class WorkingMemory:
                 if loop.is_running():
                     asyncio.create_task(self._persister.queue_persist(item))
                 else:
-                    persisted_id = loop.run_until_complete(self._persister.queue_persist(item))
+                    persisted_id = loop.run_until_complete(
+                        self._persister.queue_persist(item)
+                    )
             except RuntimeError:
                 # No event loop - try to create one
                 try:
@@ -387,7 +399,11 @@ class WorkingMemory:
         if self._items:
             recent = self._items[-1]
             recency = max(0.0, 1.0 - cosine_similarity(query_vec, recent.vector))
-        s = self.alpha * float(novelty) + self.beta * float(reward) + self.gamma * float(recency)
+        s = (
+            self.alpha * float(novelty)
+            + self.beta * float(reward)
+            + self.gamma * float(recency)
+        )
         return float(max(0.0, min(1.0, s)))
 
     def admit_if_salient(
@@ -462,7 +478,9 @@ class WorkingMemory:
             # Use adjusted score as salience proxy for promotion check
             if self._promoter is not None:
                 item_id = (
-                    self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{it.tick}"
+                    self._item_ids[idx]
+                    if idx < len(self._item_ids)
+                    else f"wm_{idx}_{it.tick}"
                 )
                 self._check_promotion(item_id, adjusted, it)
 
@@ -587,7 +605,11 @@ class WorkingMemory:
         for idx, item in enumerate(self._items):
             # Compute salience for this item
             salience = self._compute_item_salience(item, now)
-            item_id = self._item_ids[idx] if idx < len(self._item_ids) else f"wm_{idx}_{item.tick}"
+            item_id = (
+                self._item_ids[idx]
+                if idx < len(self._item_ids)
+                else f"wm_{idx}_{item.tick}"
+            )
             self._check_promotion(item_id, salience, item)
 
     def _compute_item_salience(self, item: WMItem, now: float) -> float:

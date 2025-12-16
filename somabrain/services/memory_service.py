@@ -38,8 +38,12 @@ class MemoryService:
         self._cb = get_cb()
         # Enforce production-like degradation defaults: always queue, never silently drop.
         self._degrade_queue = True
-        self._degrade_readonly = bool(getattr(settings, "memory_degrade_readonly", False))
-        self._degrade_topic = getattr(settings, "memory_degrade_topic", "memory.degraded")
+        self._degrade_readonly = bool(
+            getattr(settings, "memory_degrade_readonly", False)
+        )
+        self._degrade_topic = getattr(
+            settings, "memory_degrade_topic", "memory.degraded"
+        )
 
     # ---------------------------------------------------------------------
     # Backend accessor helpers
@@ -187,7 +191,9 @@ class MemoryService:
         client = self.client()
         try:
             if hasattr(client, "arecall_with_scores"):
-                hits = await client.arecall_with_scores(query, top_k=top_k, universe=universe)
+                hits = await client.arecall_with_scores(
+                    query, top_k=top_k, universe=universe
+                )
             else:
                 hits = await client.arecall(query, top_k=top_k, universe=universe)
             self._mark_success()
@@ -366,5 +372,7 @@ class MemoryService:
             import logging
 
             logging.getLogger(__name__).debug(
-                "Failed to update OUTBOX_PENDING_BY_TENANT metric for tenant=%s: %s", tenant, exc
+                "Failed to update OUTBOX_PENDING_BY_TENANT metric for tenant=%s: %s",
+                tenant,
+                exc,
             )

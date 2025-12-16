@@ -8,7 +8,6 @@ from pathlib import Path
 
 import numpy as np
 
-from somabrain.math.similarity import cosine_similarity as cosine
 from somabrain.numerics import irfft_norm
 from somabrain.quantum import HRRConfig, QuantumLayer
 

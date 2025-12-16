@@ -25,14 +25,18 @@ class PersonalityStore:
         with self._lock:
             return self._states.setdefault(t, PersonalityState())  # validated default
 
-    def set(self, state: PersonalityState, tenant: str | None = None) -> PersonalityState:
+    def set(
+        self, state: PersonalityState, tenant: str | None = None
+    ) -> PersonalityState:
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
             # store a copy to avoid external mutation
             self._states[t] = PersonalityState(**state.model_dump())
             return self._states[t]
 
-    def update_traits(self, traits: dict, tenant: str | None = None) -> PersonalityState:
+    def update_traits(
+        self, traits: dict, tenant: str | None = None
+    ) -> PersonalityState:
         """Merge provided traits into the tenant personality."""
         t = tenant or get_tenant_manager().current_tenant()
         with self._lock:
