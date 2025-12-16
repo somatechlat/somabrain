@@ -206,7 +206,8 @@ class BudgetedPredictor:
             raise TimeoutError("predictor timed out")
         if exc is not None:
             raise exc
-        assert result is not None
+        if result is None:
+            raise RuntimeError("predictor returned None result unexpectedly")
         return result
 
     async def apredict_and_compare(

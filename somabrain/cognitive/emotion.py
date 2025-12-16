@@ -24,6 +24,8 @@ import logging
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
+from common.config.settings import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -56,9 +58,11 @@ class EmotionModel:
     vector toward neutral (0, 0, 0).
     """
 
-    def __init__(self, decay_rate: float = 0.01):
+    def __init__(self, decay_rate: float | None = None):
         self.state = EmotionVector()
-        self.decay_rate = max(min(decay_rate, 1.0), 0.0)
+        # Use Settings default if not explicitly provided
+        rate = decay_rate if decay_rate is not None else float(settings.emotion_decay_rate)
+        self.decay_rate = max(min(rate, 1.0), 0.0)
         logger.info("EmotionModel initialised with decay_rate=%s", self.decay_rate)
 
     # ------------------------------------------------------------------

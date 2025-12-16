@@ -7,56 +7,96 @@ Computes acceptance KPIs for segmentation boundaries:
 
 Provides synthetic generation helpers for local CI tests and exposes
 Prometheus metrics for dashboards.
+
+VIBE Compliance:
+    - Uses DI container for metrics cache instead of module-level global state
+    - Lazy initialization via DI container
+    - Thread-safe via DI container
 """
 
 from __future__ import annotations
 
-from typing import List, Tuple, Dict, Iterable
+import logging
 import random
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List, Tuple
 
-try:
-    from somabrain import metrics
-except Exception:  # pragma: no cover
-    metrics = None
-
-
-# Metrics (lazy init on first update)
-_mx_f1 = None
-_mx_false_rate = None
-_mx_latency = None
+logger = logging.getLogger(__name__)
 
 
-def _ensure_metrics() -> None:
-    global _mx_f1, _mx_false_rate, _mx_latency
-    if metrics is None:
-        return
-    if _mx_f1 is None:
+@dataclass
+class SegmentationMetricsCache:
+    """Cache for segmentation metrics.
+
+    VIBE Compliance:
+        - Managed via DI container instead of module-level globals
+        - Lazy initialization of metrics
+    """
+
+    f1_gauge: Any = None
+    false_rate_gauge: Any = None
+    latency_histogram: Any = None
+    initialized: bool = False
+
+
+def _get_metrics_cache() -> SegmentationMetricsCache:
+    """Get metrics cache from DI container."""
+    from somabrain.core.container import container
+
+    if not container.has("segmentation_metrics_cache"):
+        container.register("segmentation_metrics_cache", SegmentationMetricsCache)
+    return container.get("segmentation_metrics_cache")
+
+
+def _ensure_metrics() -> SegmentationMetricsCache:
+    """Ensure metrics are initialized.
+
+    VIBE Compliance:
+        - Uses DI container for cache instead of global state
+        - Lazy initialization
+    """
+    cache = _get_metrics_cache()
+    if cache.initialized:
+        return cache
+
+    try:
+        from somabrain import metrics
+    except Exception:
+        cache.initialized = True
+        return cache
+
+    if cache.f1_gauge is None:
         try:
-            _mx_f1 = metrics.get_gauge(
+            cache.f1_gauge = metrics.get_gauge(
                 "somabrain_segmentation_boundary_f1",
                 "Segmentation boundary F1 score",
                 labelnames=["tenant"],
             )
-        except Exception:
-            _mx_f1 = None
-    if _mx_false_rate is None:
+        except Exception as exc:
+            logger.debug("Failed to create f1_gauge metric: %s", exc)
+
+    if cache.false_rate_gauge is None:
         try:
-            _mx_false_rate = metrics.get_gauge(
+            cache.false_rate_gauge = metrics.get_gauge(
                 "somabrain_segmentation_false_boundary_rate",
                 "Rate of false emitted boundaries (FP / emitted)",
                 labelnames=["tenant"],
             )
-        except Exception:
-            _mx_false_rate = None
-    if _mx_latency is None:
+        except Exception as exc:
+            logger.debug("Failed to create false_rate_gauge metric: %s", exc)
+
+    if cache.latency_histogram is None:
         try:
-            _mx_latency = metrics.get_histogram(
+            cache.latency_histogram = metrics.get_histogram(
                 "somabrain_segmentation_latency_ticks",
                 "Average dwell latency between true changes (ticks)",
                 buckets=(1, 2, 3, 4, 5, 8, 13, 21, 34, 55),
             )
-        except Exception:
-            _mx_latency = None
+        except Exception as exc:
+            logger.debug("Failed to create latency_histogram metric: %s", exc)
+
+    cache.initialized = True
+    return cache
 
 
 def generate_synthetic_sequence(
@@ -143,17 +183,23 @@ def evaluate_boundaries(
 
 
 def update_metrics(tenant: str, f1: float, false_rate: float, mean_latency: float) -> None:
-    _ensure_metrics()
+    """Update segmentation metrics.
+
+    VIBE Compliance:
+        - Uses DI container for metrics cache
+        - Proper error logging instead of silent pass
+    """
+    cache = _ensure_metrics()
     t = (tenant or "public").strip() or "public"
     try:
-        if _mx_f1 is not None:
-            _mx_f1.labels(tenant=t).set(f1)
-        if _mx_false_rate is not None:
-            _mx_false_rate.labels(tenant=t).set(false_rate)
-        if _mx_latency is not None:
-            _mx_latency.observe(max(0.0, mean_latency))
-    except Exception:
-        pass
+        if cache.f1_gauge is not None:
+            cache.f1_gauge.labels(tenant=t).set(f1)
+        if cache.false_rate_gauge is not None:
+            cache.false_rate_gauge.labels(tenant=t).set(false_rate)
+        if cache.latency_histogram is not None:
+            cache.latency_histogram.observe(max(0.0, mean_latency))
+    except Exception as exc:
+        logger.debug("Failed to update segmentation metrics: %s", exc)
 
 
 def evaluate_sequence(

@@ -192,7 +192,8 @@ class MilvusClient:
         coll.load()
 
     def _verify_collection_schema(self) -> None:
-        assert self.collection is not None  # mypy hint
+        if self.collection is None:
+            raise RuntimeError("Cannot verify schema: Milvus collection is not initialized")
         try:
             desc = self.collection.describe()
         except AttributeError:

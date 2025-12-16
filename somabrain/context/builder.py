@@ -7,12 +7,12 @@ structured bundles that the agent can feed into its SLM.
 from __future__ import annotations
 
 import math
-import os
 import time
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional
 
 import numpy as np
+from cachetools import TTLCache
 
 # Unified configuration – use the central Settings instance
 from common.config.settings import settings
@@ -20,6 +20,10 @@ from somabrain.math import cosine_similarity
 from somabrain.memory_client import RecallHit
 from somabrain.memory_pool import MultiTenantMemory
 from somabrain.services.memory_service import MemoryService
+
+# VIBE Compliance: Use TYPE_CHECKING for forward references to avoid circular imports
+if TYPE_CHECKING:
+    from somabrain.runtime.working_memory import WorkingMemoryBuffer
 
 
 @dataclass
@@ -88,7 +92,8 @@ class ContextBuilder:
         self._dup_ratio_threshold = settings.retrieval_dup_ratio_threshold
         # Per-tenant overrides cache (learning.tenants.yaml)
         # Uses somabrain.context.tenant_overrides for loading
-        self._tenant_overrides_cache: Dict[str, Dict] = {}
+        # Bounded TTLCache: max 1000 tenants, 5 minute TTL for config reload
+        self._tenant_overrides_cache: TTLCache[str, Dict] = TTLCache(maxsize=1000, ttl=300)
 
         def _env_float(name: str, current: float) -> float:
             # Use Settings attribute if available; fall back to None.
@@ -465,7 +470,4 @@ class ContextBuilder:
         return float(max(floor, min(1.0, penalty)))
 
 
-try:  # circular import guard
-    from somabrain.runtime.working_memory import WorkingMemoryBuffer
-except Exception:  # pragma: no cover - runtime optional during static analysis
-    WorkingMemoryBuffer = None
+

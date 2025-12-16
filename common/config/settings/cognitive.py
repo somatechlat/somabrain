@@ -61,6 +61,14 @@ class CognitiveSettingsMixin(BaseSettings):
         default_factory=lambda: _float_env("SOMABRAIN_SDR_DENSITY", 0.03),
         description="SDR sparsity density (~3%)",
     )
+    sdr_dim: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SDR_DIM", 16384),
+        description="SDR encoder dimensionality (default 16384)",
+    )
+    sdr_sparsity: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_SDR_SPARSITY", 0.01),
+        description="SDR encoder sparsity (default 1%)",
+    )
 
     # Context configuration
     context_budget_tokens: int = Field(
@@ -158,4 +166,34 @@ class CognitiveSettingsMixin(BaseSettings):
     salience_soft_temperature: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_SALIENCE_SOFT_TEMPERATURE", 0.15),
         description="Soft salience temperature",
+    )
+
+    # Emotion model configuration (from cognitive/emotion.py)
+    emotion_decay_rate: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_EMOTION_DECAY_RATE", 0.01),
+        description="Emotion decay rate toward neutral baseline (0.0-1.0)",
+    )
+
+    # Validation limits (from middleware/validation.py)
+    validation_max_text_length: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_VALIDATION_MAX_TEXT_LENGTH", 10000),
+        description="Maximum text length for cognitive input validation",
+    )
+    validation_max_embedding_dim: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_VALIDATION_MAX_EMBEDDING_DIM", 4096),
+        description="Maximum embedding dimension for validation",
+    )
+    validation_min_embedding_dim: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_VALIDATION_MIN_EMBEDDING_DIM", 64),
+        description="Minimum embedding dimension for validation",
+    )
+
+    # Context planner configuration (from context/planner.py)
+    planner_length_penalty_scale: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE", 1024.0),
+        description="Scale factor for prompt length penalty in planner",
+    )
+    planner_memory_penalty_scale: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE", 10.0),
+        description="Scale factor for memory count penalty in planner",
     )

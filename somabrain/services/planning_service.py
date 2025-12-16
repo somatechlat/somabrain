@@ -1,9 +1,25 @@
+"""Planning Service for SomaBrain.
+
+This module provides planning functions that generate action sequences
+using graph-based algorithms (BFS or Random Walk with Restart).
+
+VIBE Compliance:
+    - Uses metrics interface directly (no lazy imports for circular avoidance)
+    - record_planning_latency imported from metrics.predictor (no circular deps)
+    - All metrics calls are best-effort (silent failure on metrics errors)
+"""
+
 from __future__ import annotations
 
+import logging
+import time
 from typing import List, Optional
 
+from ..metrics.predictor import record_planning_latency
 from ..planner import plan_from_graph as _bfs, plan_from_graph as bfs_plan
 from ..planner_rwr import rwr_plan as _rwr
+
+logger = logging.getLogger(__name__)
 
 
 def make_plan(
@@ -13,12 +29,18 @@ def make_plan(
     rel_types: List[str],
     universe: Optional[str] = None,
 ) -> List[str]:
-    import time
+    """Generate a plan using BFS graph traversal.
 
-    try:
-        from .. import metrics as M  # lazy to avoid import cycles in tests
-    except Exception:
-        M = None
+    Args:
+        task_key: Starting task/node key for planning
+        mem_client: Memory client for graph access
+        max_steps: Maximum number of steps in the plan
+        rel_types: Relationship types to traverse
+        universe: Optional namespace/universe filter
+
+    Returns:
+        List of task keys representing the plan
+    """
     t0 = time.perf_counter()
     try:
         return bfs_plan(
@@ -29,24 +51,30 @@ def make_plan(
             universe=universe,
         )
     finally:
-        if "t0" in locals() and M is not None:
-            try:
-                M.record_planning_latency("bfs", max(0.0, time.perf_counter() - t0))
-            except Exception:
-                pass
+        latency = max(0.0, time.perf_counter() - t0)
+        try:
+            record_planning_latency("bfs", latency)
+        except Exception as exc:
+            logger.debug("Failed to record planning latency metric", exc_info=exc)
 
 
 def make_plan_auto(
     cfg, task_key: str, mem_client, rel_types: List[str], universe: Optional[str] = None
 ) -> List[str]:
+    """Generate a plan using configured backend (BFS or RWR).
+
+    Args:
+        cfg: Configuration object with planner settings
+        task_key: Starting task/node key for planning
+        mem_client: Memory client for graph access
+        rel_types: Relationship types to traverse
+        universe: Optional namespace/universe filter
+
+    Returns:
+        List of task keys representing the plan
+    """
     backend = str(getattr(cfg, "planner_backend", "bfs") or "bfs").lower()
     max_steps = int(getattr(cfg, "plan_max_steps", 5) or 5)
-    import time
-
-    try:
-        from .. import metrics as M
-    except Exception:
-        M = None
     t0 = time.perf_counter()
     try:
         if backend == "rwr":
@@ -66,8 +94,8 @@ def make_plan_auto(
             universe=universe,
         )
     finally:
-        if "t0" in locals() and M is not None:
-            try:
-                M.record_planning_latency(backend, max(0.0, time.perf_counter() - t0))
-            except Exception:
-                pass
+        latency = max(0.0, time.perf_counter() - t0)
+        try:
+            record_planning_latency(backend, latency)
+        except Exception as exc:
+            logger.debug("Failed to record planning latency metric", exc_info=exc)

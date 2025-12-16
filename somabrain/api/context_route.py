@@ -15,11 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from somabrain.api.dependencies.utility_guard import utility_guard
-from somabrain.api.dependencies.auth import (
-    auth_guard,
-    get_allowed_tenants_async,
-    get_default_tenant_async,
-)
+from somabrain.tenant_manager import get_tenant_manager
 from somabrain.api.schemas.context import (
     EvaluateRequest,
     EvaluateResponse,
@@ -33,6 +29,8 @@ from somabrain.api.schemas.context import (
     UtilityWeightsState,
 )
 from somabrain.api.context_state import get_context_route_state
+from somabrain.auth import require_auth
+from somabrain.config import get_config
 from somabrain.api.context_validation import (
     validate_evaluate_response,
     validate_evaluate_response_size,
@@ -78,6 +76,38 @@ _register_flag_gauges()
 router = APIRouter()
 
 
+async def _tenant_auth_guard(request: Request) -> None:
+    """Auth guard using centralized tenant management.
+
+    Validates the request using the config-based auth system.
+    """
+    cfg = get_config()
+    if cfg is not None:
+        require_auth(request, cfg)
+
+
+async def _resolve_tenant_id(tenant_id: Optional[str]) -> str:
+    """Resolve tenant ID using TenantManager with fallback to default."""
+    tenant_manager = await get_tenant_manager()
+    if tenant_id:
+        # Validate tenant exists
+        if await tenant_manager.validate_tenant_access(tenant_id):
+            return tenant_id
+    # Get default tenant
+    default_id = await tenant_manager.get_system_tenant_id("public")
+    if default_id:
+        return default_id
+    # Fallback to sandbox
+    return "sandbox"
+
+
+async def _get_allowed_tenant_ids() -> list[str]:
+    """Get list of allowed tenant IDs from TenantManager."""
+    tenant_manager = await get_tenant_manager()
+    tenants = await tenant_manager.list_tenants()
+    return [t.tenant_id for t in tenants if t.status.value == "active"]
+
+
 def _enforce_feedback_rate_limit(tenant_id: str) -> None:
     """Enforce per-tenant rate limiting for feedback requests."""
     get_context_route_state().enforce_rate_limit(tenant_id)
@@ -105,16 +135,15 @@ async def evaluate_endpoint(
     payload: EvaluateRequest,
     request: Request,
     _guard=Depends(utility_guard),
-    auth=Depends(auth_guard),
+    _auth=Depends(_tenant_auth_guard),
 ):
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = await get_default_tenant_async()
-    tenant_id = payload.tenant_id or default_tenant
+    tenant_id = await _resolve_tenant_id(payload.tenant_id)
     # Ensure the builder knows the tenant for metric attribution
     if hasattr(builder, "set_tenant"):
         builder.set_tenant(tenant_id)
-    allowed = await get_allowed_tenants_async()
+    allowed = await _get_allowed_tenant_ids()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
     try:
@@ -153,18 +182,17 @@ async def feedback_endpoint(
     payload: FeedbackRequest,
     request: Request,
     _guard=Depends(utility_guard),
-    auth=Depends(auth_guard),
+    _auth=Depends(_tenant_auth_guard),
 ):
     start_time = time.perf_counter()
     planner = get_context_planner()
     builder = get_context_builder()
-    default_tenant = await get_default_tenant_async()
-    tenant_id = payload.tenant_id or default_tenant
+    tenant_id = await _resolve_tenant_id(payload.tenant_id)
     _enforce_feedback_rate_limit(tenant_id)
     # Ensure the builder knows the tenant for metric attribution
     if hasattr(builder, "set_tenant"):
         builder.set_tenant(tenant_id)
-    allowed = await get_allowed_tenants_async()
+    allowed = await _get_allowed_tenant_ids()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
 
@@ -313,10 +341,6 @@ def _constitution_checksum() -> Optional[str]:
     return engine.get_checksum()
 
 
-# Backward compatibility: module-level reference (deprecated)
-_adaptation_engines: dict[str, AdaptationEngine] = {}
-
-
 def _get_adaptation(
     builder, planner: ContextPlanner, tenant_id: str = "default"
 ) -> AdaptationEngine:
@@ -340,7 +364,7 @@ def _make_event_id(session_id: str) -> str:
 
 @router.get("/adaptation/state", response_model=AdaptationStateResponse)
 async def adaptation_state_endpoint(
-    request: Request, tenant_id: Optional[str] = None, auth=Depends(auth_guard)
+    request: Request, tenant_id: Optional[str] = None, _auth=Depends(_tenant_auth_guard)
 ):
     """Return current adaptation weights (retrieval + utility) and history length.
 
@@ -349,8 +373,7 @@ async def adaptation_state_endpoint(
     """
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = await get_default_tenant_async()
-    tid = tenant_id or default_tenant
+    tid = await _resolve_tenant_id(tenant_id)
     adapter = _get_adaptation(builder, planner, tenant_id=tid)
     retrieval_state = RetrievalWeightsState(
         alpha=adapter.retrieval_weights.alpha,
@@ -398,7 +421,7 @@ class ResetAdaptationRequest(BaseModel):
 async def adaptation_reset_endpoint(
     payload: ResetAdaptationRequest,
     request: Request,
-    auth=Depends(auth_guard),
+    _auth=Depends(_tenant_auth_guard),
 ):
     """Reset the per-tenant adaptation engine to defaults for clean benchmarks.
 
@@ -428,8 +451,7 @@ async def adaptation_reset_endpoint(
             raise HTTPException(status_code=403, detail="adaptation reset blocked (no mode info)")
     builder = get_context_builder()
     planner = get_context_planner()
-    default_tenant = await get_default_tenant_async()
-    tenant_id = payload.tenant_id or default_tenant
+    tenant_id = await _resolve_tenant_id(payload.tenant_id)
     adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
 
     # Optionally replace constraints/gains/base_lr

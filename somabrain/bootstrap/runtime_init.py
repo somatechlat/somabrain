@@ -110,7 +110,11 @@ def register_singletons(
     cfg: Any,
     enforce: bool = False,
 ) -> None:
-    """Register singletons with the runtime module.
+    """Register singletons with the runtime module and DI container.
+
+    This function registers singletons in two places for backward compatibility:
+    1. The runtime module (legacy pattern, for existing code)
+    2. The DI container (preferred pattern, for new code)
 
     Args:
         _rt: The loaded runtime module.
@@ -124,6 +128,11 @@ def register_singletons(
 
     Raises:
         RuntimeError: If enforce=True and required singletons are missing.
+
+    VIBE Compliance:
+        - Registers singletons in DI container (preferred pattern)
+        - Maintains backward compatibility with runtime module (legacy pattern)
+        - No lazy imports for circular avoidance
     """
     if enforce:
         missing = []
@@ -139,6 +148,7 @@ def register_singletons(
                 "initialize runtime before importing somabrain.app"
             )
 
+    # Register with runtime module (legacy pattern for backward compatibility)
     _rt.set_singletons(
         _embedder=embedder or getattr(_rt, "embedder", None),
         _quantum=quantum,
@@ -147,6 +157,27 @@ def register_singletons(
         _mt_memory=mt_memory or getattr(_rt, "mt_memory", None),
         _cfg=cfg,
     )
+
+    # Register with DI container (preferred pattern for new code)
+    try:
+        from somabrain.core.container import container
+
+        # Register factory functions that return the already-created instances
+        if embedder is not None:
+            container.register("embedder", lambda e=embedder: e)
+        if quantum is not None:
+            container.register("quantum", lambda q=quantum: q)
+        if mt_wm is not None:
+            container.register("mt_wm", lambda w=mt_wm: w)
+        if mc_wm is not None:
+            container.register("mc_wm", lambda w=mc_wm: w)
+        if mt_memory is not None:
+            container.register("mt_memory", lambda m=mt_memory: m)
+        if cfg is not None:
+            container.register("runtime_cfg", lambda c=cfg: c)
+        logger.debug("Registered runtime singletons in DI container")
+    except Exception as exc:
+        logger.warning("Failed to register singletons in DI container: %s", exc)
 
 
 def should_enforce_backends(settings: Any) -> bool:

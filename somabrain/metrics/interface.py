@@ -189,13 +189,27 @@ class PrometheusMetrics:
 
     This wraps the actual prometheus_client metrics and provides the
     MetricsInterface protocol methods.
+
+    Thread Safety:
+        This class is thread-safe. The internal dictionaries (_counters,
+        _gauges, _histograms) are protected by a threading.Lock. However,
+        the actual metric operations (inc, observe, set) delegate to
+        prometheus_client which is itself thread-safe.
+
+        The lock protects:
+        - Metric registry lookups and creation
+        - Internal dictionary modifications
+
+        Note: Individual metric operations are best-effort (exceptions are
+        caught and silently ignored) to prevent metrics failures from
+        affecting application logic.
     """
 
     def __init__(self) -> None:
         self._counters: Dict[str, Any] = {}
         self._gauges: Dict[str, Any] = {}
         self._histograms: Dict[str, Any] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # Protects metric registry access
 
     def inc_counter(
         self,
@@ -279,49 +293,75 @@ class PrometheusMetrics:
             return _NoOpMetric()
 
 
-# Thread-safe singleton for metrics access
-_metrics_instance: Optional[MetricsInterface] = None
-_metrics_lock = threading.Lock()
+# ---------------------------------------------------------------------------
+# DI Container Integration
+# ---------------------------------------------------------------------------
+# VIBE Compliance: Use DI container for singleton management instead of
+# module-level global state. The container provides thread-safe lazy
+# instantiation and explicit lifecycle management.
+
+
+def _create_metrics() -> MetricsInterface:
+    """Factory function for DI container registration.
+
+    Returns PrometheusMetrics if available, NullMetrics otherwise.
+    """
+    try:
+        return PrometheusMetrics()
+    except Exception:
+        return NullMetrics()
 
 
 def get_metrics() -> MetricsInterface:
-    """Get the global metrics instance.
+    """Get the metrics instance from DI container.
 
     Returns PrometheusMetrics if available, NullMetrics otherwise.
-    Thread-safe singleton pattern.
+    Thread-safe via DI container.
 
     Returns:
         MetricsInterface implementation
+
+    VIBE Compliance:
+        - Uses DI container for singleton management
+        - Thread-safe lazy instantiation
+        - No module-level mutable state
     """
-    global _metrics_instance
-    if _metrics_instance is None:
-        with _metrics_lock:
-            if _metrics_instance is None:
-                try:
-                    # Try to create PrometheusMetrics
-                    _metrics_instance = PrometheusMetrics()
-                except Exception:
-                    # Fall back to NullMetrics
-                    _metrics_instance = NullMetrics()
-    return _metrics_instance
+    from somabrain.core.container import container
+
+    if not container.has("metrics"):
+        container.register("metrics", _create_metrics)
+    return container.get("metrics")
 
 
 def set_metrics(metrics: MetricsInterface) -> None:
-    """Set the global metrics instance (for testing).
+    """Set the metrics instance (for testing).
 
     Args:
         metrics: MetricsInterface implementation to use
+
+    VIBE Compliance:
+        - Registers custom instance in DI container
+        - Allows test injection without global state
     """
-    global _metrics_instance
-    with _metrics_lock:
-        _metrics_instance = metrics
+    from somabrain.core.container import container
+
+    container.register("metrics", lambda m=metrics: m)
+    # Force instantiation to replace any existing instance
+    container.get("metrics")
 
 
 def reset_metrics() -> None:
-    """Reset the global metrics instance (for testing)."""
-    global _metrics_instance
-    with _metrics_lock:
-        _metrics_instance = None
+    """Reset the metrics instance (for testing).
+
+    VIBE Compliance:
+        - Explicit lifecycle management via DI container
+        - Clean teardown for test isolation
+    """
+    from somabrain.core.container import container
+
+    if container.has("metrics"):
+        # Re-register with default factory
+        container.register("metrics", _create_metrics)
 
 
 __all__ = [

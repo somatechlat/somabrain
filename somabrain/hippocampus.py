@@ -6,6 +6,11 @@ This module provides:
 - ``Hippocampus``: accepts episodic payloads, persists them via the configured
   MultiTenantMemory client, and can run NREM/REM style consolidation using the
   existing consolidation routines.
+
+VIBE Compliance:
+    - Uses DI container for runtime singletons (no lazy imports from runtime module)
+    - mt_wm and mt_memory are obtained from DI container during initialization
+    - No circular import workarounds
 """
 
 from __future__ import annotations
@@ -17,9 +22,6 @@ from typing import Deque, Dict, Optional
 from somabrain.services.memory_service import MemoryService
 
 from . import consolidation
-
-# The runtime module (somabrain/runtime.py) already wires mt_wm/mt_memory
-# singletons. We import lazily to avoid circular imports during app boot.
 
 
 @dataclass
@@ -45,29 +47,15 @@ class Hippocampus:
     ) -> None:
         self.cfg = cfg
         self._buffers: Dict[str, Deque[dict]] = defaultdict(lambda: deque(maxlen=cfg.buffer_max))
-        # Lazy bind to runtime singletons if not provided
-        # Prefer DI container, fall back to runtime module for backward compatibility
+        # Bind to runtime singletons via DI container if not provided
+        # VIBE Compliance: Use DI container instead of lazy imports from runtime module
         if mt_memory is None or mt_wm is None:
-            # Try DI container first (preferred pattern)
-            try:
-                from somabrain.core.container import container
+            from somabrain.core.container import container
 
-                if container.has("mt_memory") and mt_memory is None:
-                    mt_memory = container.get("mt_memory")
-                if container.has("mt_wm") and mt_wm is None:
-                    mt_wm = container.get("mt_wm")
-            except Exception:
-                pass  # Container not available, fall back to runtime module
-
-            # Fall back to runtime module if still not resolved
-            if mt_memory is None or mt_wm is None:
-                try:
-                    from . import runtime as _rt
-
-                    mt_memory = getattr(_rt, "mt_memory", None) if mt_memory is None else mt_memory
-                    mt_wm = getattr(_rt, "mt_wm", None) if mt_wm is None else mt_wm
-                except Exception:
-                    pass  # Runtime module not available
+            if container.has("mt_memory") and mt_memory is None:
+                mt_memory = container.get("mt_memory")
+            if container.has("mt_wm") and mt_wm is None:
+                mt_wm = container.get("mt_wm")
         self._mt_memory = mt_memory
         self._mt_wm = mt_wm
 

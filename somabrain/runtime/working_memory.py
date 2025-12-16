@@ -1,6 +1,17 @@
 """Redis-backed working memory ring buffer.
 
-Strict mode: requires Redis. Local in-process buffer alternative is removed.
+Fallback Behavior:
+    When `settings.require_external_backends` is True (production mode):
+        - Redis is REQUIRED for working memory operations
+        - Failure to connect to Redis will raise an error
+
+    When `settings.require_external_backends` is False (development mode):
+        - Falls back to in-process deque buffer per session
+        - Data is NOT persisted across restarts
+        - NOT suitable for multi-instance deployments
+
+    The in-process fallback exists ONLY for local development convenience.
+    Production deployments MUST have Redis available.
 """
 
 from __future__ import annotations

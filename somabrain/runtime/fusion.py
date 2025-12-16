@@ -105,13 +105,20 @@ class BHDCFusionLayer:
         return (e - float(mu)) / (float(sigma) + self._epsilon)
 
     def softmax_weights(self, e_norm: np.ndarray) -> np.ndarray:
-        """Compute w = softmax(-alpha * e_norm)."""
+        """Compute w = softmax(-alpha * e_norm).
+
+        Numerical Stability Fallback:
+            When the softmax denominator is near-zero (due to extreme values
+            or numerical underflow), returns uniform weights instead of
+            potentially invalid results. This is a mathematical safeguard,
+            not a service degradation pattern.
+        """
         x = -self._alpha * np.asarray(e_norm, dtype=np.float64)
         # Stable softmax
         x = x - np.max(x)
         ex = np.exp(x)
         s = ex.sum()
         if s <= self._epsilon:
-            # Fallback to uniform if numerical issues occur
+            # Uniform fallback for numerical stability (not service degradation)
             return np.ones_like(ex) / ex.size
         return ex / s

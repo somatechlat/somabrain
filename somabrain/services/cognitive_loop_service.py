@@ -9,20 +9,29 @@ This module provides the core cognitive evaluation step that combines:
 Architecture:
     Uses DI container for state management. The CognitiveLoopState class
     encapsulates the BeliefUpdate publisher and sleep state cache.
+
+VIBE Compliance:
+    - Uses direct imports from metrics.predictor (no lazy imports for circular avoidance)
+    - PREDICTOR_ALTERNATIVE imported at module level (no circular deps)
+    - All metrics calls are best-effort (silent failure on metrics errors)
 """
 
 from __future__ import annotations
 
+import logging
 import time as _t
 from typing import Any, Dict, Optional
 
 import numpy as np
 
 from somabrain.core.container import container
+from somabrain.metrics.predictor import PREDICTOR_ALTERNATIVE
 from somabrain.modes import feature_enabled
 from somabrain.sleep import SleepState, SleepStateManager
 from somabrain.sleep.models import TenantSleepState
 from somabrain.storage.db import get_session_factory
+
+logger = logging.getLogger(__name__)
 
 
 class CognitiveLoopState:
@@ -65,8 +74,6 @@ class CognitiveLoopState:
                 else:
                     state = SleepState.ACTIVE
         except Exception as exc:
-            from common.logging import logger
-
             logger.exception("Failed to retrieve sleep state from DB: %s", exc)
             state = SleepState.ACTIVE
 
@@ -129,16 +136,10 @@ def eval_step(
         pred = predictor.predict_and_compare(wm_vec, wm_vec)
     except Exception as exc:
         try:
-            from .. import metrics as M
-
-            M.PREDICTOR_ALTERNATIVE.inc()
+            PREDICTOR_ALTERNATIVE.inc()
         except Exception as metric_exc:
-            from common.logging import logger
-
             logger.debug("Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc)
         pred = type("PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0})()
-        from common.logging import logger
-
         logger.exception("Predictor failed, falling back to zero-error recovery path: %s", exc)
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
@@ -151,8 +152,6 @@ def eval_step(
             if not traits:
                 traits = personality_store.get("public")
     except Exception as trait_fetch_exc:
-        from common.logging import logger
-
         logger.debug(
             "Failed to fetch personality traits for tenant=%s: %s", tenant_id, trait_fetch_exc
         )
@@ -167,8 +166,6 @@ def eval_step(
             if hasattr(supervisor, "adjust"):
                 nm, F, mag = cast(Any, supervisor).adjust(nm, float(novelty), float(pred.error))
         except Exception as exc:
-            from common.logging import logger
-
             logger.exception("Supervisor adjustment failed: %s", exc)
 
     s = amygdala.score(float(novelty), float(pred.error), nm, wm_vec)
@@ -176,8 +173,6 @@ def eval_step(
         if traits:
             s = 1.0
     except Exception as trait_exc:
-        from common.logging import logger
-
         logger.debug("Failed to apply trait-driven salience uplift: %s", trait_exc)
     store_gate, act_gate = amygdala.gates(s, nm)
 
@@ -206,8 +201,6 @@ def eval_step(
                 latency_ms=latency_ms,
             )
         except Exception as exc:
-            from common.logging import logger
-
             logger.exception("Telemetry publishing failed: %s", exc)
 
     return {

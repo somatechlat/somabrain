@@ -27,8 +27,10 @@ def sinkhorn_log_stabilized(
     tol: convergence tolerance on marginals
     """
     n, m = C.shape
-    assert a.shape == (n,)
-    assert b.shape == (m,)
+    if a.shape != (n,):
+        raise ValueError(f"Source marginal shape {a.shape} does not match cost matrix rows ({n},)")
+    if b.shape != (m,):
+        raise ValueError(f"Target marginal shape {b.shape} does not match cost matrix cols ({m},)")
     # log-domain potentials
     K = -C / eps
     # For stability, work with log-K and use log-sum-exp updates

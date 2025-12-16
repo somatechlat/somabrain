@@ -92,13 +92,25 @@ class MultiColumnWM:
 
     @staticmethod
     def _choose_column(payload: dict, columns: int) -> int:
+        """Route payload to a column using FNV-1a hash.
+
+        Uses FNV-1a (Fowler-Noll-Vo) hash algorithm constants:
+        - FNV_OFFSET_BASIS: 1469598103934665603 (64-bit)
+        - FNV_PRIME: 1099511628211 (64-bit)
+
+        These are mathematical constants from the FNV hash specification,
+        not configuration values.
+        """
         key = str(payload.get("task") or payload.get("fact") or "")
         if not key:
             return 0
-        h = 1469598103934665603
+        # FNV-1a hash constants (64-bit)
+        FNV_OFFSET_BASIS = 1469598103934665603
+        FNV_PRIME = 1099511628211
+        h = FNV_OFFSET_BASIS
         for ch in key.encode("utf-8"):
             h ^= ch
-            h *= 1099511628211
+            h *= FNV_PRIME
             h &= (1 << 64) - 1
         return int(h % max(1, columns))
 

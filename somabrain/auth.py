@@ -2,10 +2,18 @@
 Authentication Module for SomaBrain.
 
 Extends bearer token checks with optional JWT validation.
+
+VIBE Compliance:
+    - Uses DI container for JWT key cache instead of module-level global state
+    - TTL-based cache invalidation for security
+    - Thread-safe via DI container
 """
 
 from __future__ import annotations
 
+import logging
+import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -15,10 +23,56 @@ from jwt.exceptions import PyJWTError
 
 from .config import Config
 
-# Import the canonical settings object directly.
+logger = logging.getLogger(__name__)
 
-_JWT_PUBLIC_CACHE: Optional[str] = None
 _TRUE_VALUES = ("1", "true", "yes", "on")
+
+# Default TTL for JWT key cache (1 hour)
+_JWT_CACHE_TTL_SECONDS = 3600
+
+
+@dataclass
+class JWTKeyCache:
+    """Thread-safe JWT key cache with TTL.
+
+    VIBE Compliance:
+        - Explicit TTL for security (keys can be rotated)
+        - Managed via DI container instead of global state
+    """
+
+    key: Optional[str] = None
+    loaded_at: float = 0.0
+    ttl_seconds: int = _JWT_CACHE_TTL_SECONDS
+
+    def is_valid(self) -> bool:
+        """Check if cached key is still valid."""
+        if self.key is None:
+            return False
+        return (time.time() - self.loaded_at) < self.ttl_seconds
+
+    def set_key(self, key: str) -> None:
+        """Set the cached key with current timestamp."""
+        self.key = key
+        self.loaded_at = time.time()
+
+    def invalidate(self) -> None:
+        """Invalidate the cached key."""
+        self.key = None
+        self.loaded_at = 0.0
+
+
+def _get_jwt_cache() -> JWTKeyCache:
+    """Get JWT key cache from DI container.
+
+    VIBE Compliance:
+        - Uses DI container for singleton management
+        - No module-level mutable state
+    """
+    from somabrain.core.container import container
+
+    if not container.has("jwt_key_cache"):
+        container.register("jwt_key_cache", JWTKeyCache)
+    return container.get("jwt_key_cache")
 
 
 def _auth_disabled() -> bool:
@@ -27,17 +81,42 @@ def _auth_disabled() -> bool:
 
 
 def _get_jwt_key(cfg: Config) -> Optional[str]:
-    global _JWT_PUBLIC_CACHE
+    """Get JWT key with TTL-based caching.
+
+    VIBE Compliance:
+        - Uses DI container for cache instead of global state
+        - TTL-based invalidation for security
+    """
     if cfg.jwt_public_key_path:
-        if _JWT_PUBLIC_CACHE is None:
-            try:
-                _JWT_PUBLIC_CACHE = Path(cfg.jwt_public_key_path).read_text(encoding="utf-8")
-            except Exception:
-                return None
-        return _JWT_PUBLIC_CACHE
+        cache = _get_jwt_cache()
+        if cache.is_valid():
+            return cache.key
+        try:
+            key = Path(cfg.jwt_public_key_path).read_text(encoding="utf-8")
+            cache.set_key(key)
+            return key
+        except Exception as exc:
+            logger.warning("Failed to load JWT public key: %s", exc)
+            return None
     if cfg.jwt_secret:
         return cfg.jwt_secret
     return None
+
+
+def invalidate_jwt_cache() -> None:
+    """Invalidate the JWT key cache.
+
+    Call this when JWT keys are rotated to force reload.
+
+    VIBE Compliance:
+        - Explicit cache invalidation for security
+    """
+    try:
+        cache = _get_jwt_cache()
+        cache.invalidate()
+        logger.info("JWT key cache invalidated")
+    except Exception as exc:
+        logger.warning("Failed to invalidate JWT cache: %s", exc)
 
 
 def _jwt_algorithms(cfg: Config) -> list[str]:

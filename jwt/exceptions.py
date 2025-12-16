@@ -1,4 +1,12 @@
-"""Proxy for jwt.exceptions from the real PyJWT package."""
+"""Proxy for jwt.exceptions from the real PyJWT package.
+
+VIBE Compliance:
+    This module dynamically loads PyJWT's exceptions module from site-packages
+    to avoid using local stubs. See jwt/__init__.py for full rationale.
+
+    The dynamic loading ensures that ``from jwt.exceptions import PyJWTError``
+    works correctly even though this local ``jwt`` package shadows the real one.
+"""
 
 from __future__ import annotations
 

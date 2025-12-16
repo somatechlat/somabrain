@@ -40,10 +40,14 @@ def get_config() -> Config:
     # ``_settings`` is a ``Settings`` (BaseSettings) instance. Converting it to a
     # ``dict`` respects any validation and defaults, then we instantiate ``Config``
     # which inherits from ``Settings`` and therefore retains the same fields.
+    # Pydantic v1/v2 Compatibility:
+    # - Pydantic v1 uses .dict() method
+    # - Pydantic v2 uses .model_dump() method
+    # This is NOT a service fallback, just API compatibility between versions.
     try:
         data = _settings.dict()
     except Exception:
-        # Fallback: use ``model_dump`` for pydantic v2 compatibility.
+        # Pydantic v2 compatibility: use model_dump instead of dict
         data = getattr(_settings, "model_dump", lambda: dict(_settings))()
     return Config(**data)
 

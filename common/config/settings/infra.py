@@ -286,6 +286,30 @@ class InfraSettingsMixin(BaseSettings):
         default=_str_env("SOMABRAIN_JOURNAL_DIR", "/tmp/somabrain_journal")
     )
     journal_replay_interval: int = Field(default=300)
+    journal_max_file_size: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104857600),
+        description="Maximum journal file size in bytes (default 100MB)",
+    )
+    journal_max_files: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_MAX_FILES", 10),
+        description="Maximum number of journal files to retain",
+    )
+    journal_rotation_interval: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", 86400),
+        description="Journal rotation interval in seconds (default 24 hours)",
+    )
+    journal_retention_days: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_JOURNAL_RETENTION_DAYS", 7),
+        description="Number of days to retain journal files",
+    )
+    journal_compression: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_JOURNAL_COMPRESSION", True),
+        description="Enable journal file compression",
+    )
+    journal_sync_writes: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_JOURNAL_SYNC_WRITES", True),
+        description="Enable fsync for journal durability",
+    )
 
     # Test environment
     pytest_current_test: Optional[str] = Field(default=_str_env("PYTEST_CURRENT_TEST"))

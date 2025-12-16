@@ -2,12 +2,16 @@
 
 This module provides validation utilities for text, embedding dimensions,
 and coordinates to ensure safe cognitive operations.
+
+All validation limits are centralized in Settings for consistent configuration.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+
+from common.config.settings import settings
 
 _log = logging.getLogger(__name__)
 _cognitive_log = logging.getLogger("somabrain.cognitive")
@@ -17,26 +21,40 @@ class CognitiveInputValidator:
     """Advanced input validation for brain-like cognitive processing.
 
     Validates text, embedding dimensions, and coordinates for safe cognitive operations.
+    All limits are configurable via Settings (environment variables).
     """
 
     # Brain-safe input patterns
     SAFE_TEXT_PATTERN = re.compile(r"^[a-zA-Z0-9\s\.,!?\'\"()/:_@-]+$")
-    MAX_TEXT_LENGTH = 10000
-    MAX_EMBEDDING_DIM = 4096
-    MIN_EMBEDDING_DIM = 64
 
-    @staticmethod
-    def validate_text_input(text: str, field_name: str = "text") -> str:
+    @property
+    def MAX_TEXT_LENGTH(self) -> int:
+        """Maximum text length from Settings."""
+        return int(settings.validation_max_text_length)
+
+    @property
+    def MAX_EMBEDDING_DIM(self) -> int:
+        """Maximum embedding dimension from Settings."""
+        return int(settings.validation_max_embedding_dim)
+
+    @property
+    def MIN_EMBEDDING_DIM(self) -> int:
+        """Minimum embedding dimension from Settings."""
+        return int(settings.validation_min_embedding_dim)
+
+    @classmethod
+    def validate_text_input(cls, text: str, field_name: str = "text") -> str:
         """Validate text input for cognitive processing."""
         if not text:
             raise ValueError(f"{field_name} cannot be empty")
 
-        if len(text) > CognitiveInputValidator.MAX_TEXT_LENGTH:
+        max_length = int(settings.validation_max_text_length)
+        if len(text) > max_length:
             raise ValueError(
-                f"{field_name} exceeds maximum length of {CognitiveInputValidator.MAX_TEXT_LENGTH}"
+                f"{field_name} exceeds maximum length of {max_length}"
             )
 
-        if not CognitiveInputValidator.SAFE_TEXT_PATTERN.match(text):
+        if not cls.SAFE_TEXT_PATTERN.match(text):
             # Log potential security issue
             _cognitive_log.warning(
                 "Potentially unsafe input detected in %s: %s...",
@@ -47,17 +65,20 @@ class CognitiveInputValidator:
 
         return text.strip()
 
-    @staticmethod
-    def validate_embedding_dim(dim: int) -> int:
+    @classmethod
+    def validate_embedding_dim(cls, dim: int) -> int:
         """Validate embedding dimensions for brain safety."""
-        if not isinstance(dim, int) or dim < CognitiveInputValidator.MIN_EMBEDDING_DIM:
+        min_dim = int(settings.validation_min_embedding_dim)
+        max_dim = int(settings.validation_max_embedding_dim)
+
+        if not isinstance(dim, int) or dim < min_dim:
             raise ValueError(
-                f"Embedding dimension must be at least {CognitiveInputValidator.MIN_EMBEDDING_DIM}"
+                f"Embedding dimension must be at least {min_dim}"
             )
 
-        if dim > CognitiveInputValidator.MAX_EMBEDDING_DIM:
+        if dim > max_dim:
             raise ValueError(
-                f"Embedding dimension cannot exceed {CognitiveInputValidator.MAX_EMBEDDING_DIM}"
+                f"Embedding dimension cannot exceed {max_dim}"
             )
 
         return dim

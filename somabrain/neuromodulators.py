@@ -42,8 +42,17 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List
-from .adaptive.core import AdaptiveParameter, PerformanceMetrics
+
 from common.config.settings import settings
+
+from .adaptive.core import AdaptiveParameter, PerformanceMetrics
+from .metrics.neuromodulator import (
+    NEUROMOD_ACETYLCHOLINE,
+    NEUROMOD_DOPAMINE,
+    NEUROMOD_NORADRENALINE,
+    NEUROMOD_SEROTONIN,
+    NEUROMOD_UPDATE_COUNT,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,13 +124,11 @@ class Neuromodulators:
                 logger.debug("Neuromod subscriber callback failed: %s", cb_exc)
         # Update Prometheus metrics for neuromodulator values and count updates
         try:
-            from . import metrics as _mx
-
-            _mx.NEUROMOD_DOPAMINE.set(s.dopamine)
-            _mx.NEUROMOD_SEROTONIN.set(s.serotonin)
-            _mx.NEUROMOD_NORADRENALINE.set(s.noradrenaline)
-            _mx.NEUROMOD_ACETYLCHOLINE.set(s.acetylcholine)
-            _mx.NEUROMOD_UPDATE_COUNT.inc()
+            NEUROMOD_DOPAMINE.set(s.dopamine)
+            NEUROMOD_SEROTONIN.set(s.serotonin)
+            NEUROMOD_NORADRENALINE.set(s.noradrenaline)
+            NEUROMOD_ACETYLCHOLINE.set(s.acetylcholine)
+            NEUROMOD_UPDATE_COUNT.inc()
         except Exception as metric_exc:
             logger.debug("Failed to update neuromod metrics: %s", metric_exc)
 

@@ -7,10 +7,14 @@ a biologically-inspired approach to representing information with controlled spa
 
 Key Features:
 - Deterministic SDR encoding using random hashing
-- Configurable sparsity and dimensionality
+- Configurable sparsity and dimensionality via Settings
 - Locality-sensitive hashing (LSH) for approximate nearest neighbor search
 - Banding technique for efficient similarity detection
 - Memory-efficient storage of sparse binary vectors
+
+Configuration:
+- SOMABRAIN_SDR_DIM: SDR dimensionality (default 16384)
+- SOMABRAIN_SDR_SPARSITY: Sparsity density (default 0.01)
 
 Classes:
     SDREncoder: Encoder for converting text into sparse distributed representations.
@@ -21,6 +25,8 @@ from __future__ import annotations
 
 import hashlib
 from typing import Dict, List, Set, Tuple
+
+from common.config.settings import settings
 
 
 class SDREncoder:
@@ -42,16 +48,16 @@ class SDREncoder:
         >>> print(f"Active bits: {len(sdr)} out of {encoder.dim}")
     """
 
-    def __init__(self, dim: int = 16384, density: float = 0.01):
+    def __init__(self, dim: int | None = None, density: float | None = None):
         """
         Initialize the SDR encoder with specified parameters.
 
         Args:
-            dim (int, optional): Dimensionality of the SDR space. Defaults to 16384.
-            density (float, optional): Sparsity density (fraction of active bits). Defaults to 0.01.
+            dim (int, optional): Dimensionality of the SDR space. Defaults to settings.sdr_dim.
+            density (float, optional): Sparsity density (fraction of active bits). Defaults to settings.sdr_sparsity.
         """
-        self.dim = int(dim)
-        self.k = max(1, int(self.dim * float(density)))
+        self.dim = int(dim if dim is not None else settings.sdr_dim)
+        self.k = max(1, int(self.dim * float(density if density is not None else settings.sdr_sparsity)))
 
     @staticmethod
     def _tokens(text: str) -> List[str]:
@@ -135,18 +141,18 @@ class LSHIndex:
         >>> candidates = index.query(sdr, limit=10)
     """
 
-    def __init__(self, bands: int = 8, rows: int = 16, dim: int = 16384):
+    def __init__(self, bands: int = 8, rows: int = 16, dim: int | None = None):
         """
         Initialize the LSH index with banding parameters.
 
         Args:
             bands (int, optional): Number of bands for hashing. Defaults to 8.
             rows (int, optional): Number of rows per band. Defaults to 16.
-            dim (int, optional): Dimensionality of SDR space. Defaults to 16384.
+            dim (int, optional): Dimensionality of SDR space. Defaults to settings.sdr_dim.
         """
         self.bands = int(bands)
         self.rows = int(rows)
-        self.dim = int(dim)
+        self.dim = int(dim if dim is not None else settings.sdr_dim)
         self.tables: List[Dict[int, Set[Tuple[float, float, float]]]] = [
             dict() for _ in range(self.bands)
         ]

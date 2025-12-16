@@ -176,7 +176,6 @@ def get_postgres_dsn(default: Optional[str] = None) -> Optional[str]:
     dsn = _first_non_empty(
         _from_settings("postgres_dsn"),
         settings.postgres_dsn,
-        # Use Settings attribute instead of deprecated getenv
         getattr(settings, "database_url", None),
     )
     if dsn:

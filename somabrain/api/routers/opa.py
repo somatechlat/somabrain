@@ -12,6 +12,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from common.config.settings import settings
 import somabrain.opa.policy_manager as policy_manager
 import somabrain.opa.signature as opa_signature
 from somabrain.auth import require_admin_auth
@@ -56,8 +57,7 @@ async def update_policy(request: Request):
         raise HTTPException(status_code=500, detail="Constitution not loaded; cannot build policy")
     # Build policy from constitution
     policy_str = build_policy(constitution)
-    # Sign policy – private key path from env (optional for testing)
-    # Use Settings attribute instead of deprecated getenv
+    # Sign policy – private key path from Settings (optional for testing)
     priv_key_path = getattr(settings, "opa_privkey_path", None)
     # ``sign_policy`` can handle a ``None`` path (e.g., when injected in tests).
     sig = opa_signature.sign_policy(policy_str, priv_key_path)

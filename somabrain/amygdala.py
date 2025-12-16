@@ -1,17 +1,26 @@
 """Amygdala-like salience: compute novelty/error-driven gates.
 
 Scores inputs with neuromod modulation and emits store/act gates (hard/soft).
+
+VIBE Compliance:
+    - Uses direct imports from metrics.salience (no lazy imports for circular avoidance)
+    - FD metrics imported at module level (no circular deps)
+    - All metrics calls are best-effort (silent failure on metrics errors)
 """
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 
+from .metrics.salience import FD_ENERGY_CAPTURE, FD_PSD_INVARIANT, FD_RESIDUAL, FD_TRACE_ERROR
 from .neuromodulators import NeuromodState
 from .salience import FDSalienceSketch
+
+logger = logging.getLogger(__name__)
 
 
 def _get_settings():
@@ -146,16 +155,14 @@ class AmygdalaSalience:
             fd_boost = self.cfg.w_fd * max(0.0, residual_ratio)
             if capture_ratio < self.cfg.fd_energy_floor:
                 fd_boost += self.cfg.w_fd * (self.cfg.fd_energy_floor - capture_ratio)
-            try:  # metrics are optional at import time
-                from . import metrics as M
-
-                M.FD_ENERGY_CAPTURE.set(capture_ratio)
-                M.FD_RESIDUAL.observe(residual_ratio)
+            try:
+                FD_ENERGY_CAPTURE.set(capture_ratio)
+                FD_RESIDUAL.observe(residual_ratio)
                 stats = self._fd.stats()
-                M.FD_TRACE_ERROR.set(stats["trace_norm_error"])
-                M.FD_PSD_INVARIANT.set(1.0 if stats["psd_ok"] else 0.0)
-            except Exception:
-                pass
+                FD_TRACE_ERROR.set(stats["trace_norm_error"])
+                FD_PSD_INVARIANT.set(1.0 if stats["psd_ok"] else 0.0)
+            except Exception as exc:
+                logger.debug("Failed to record FD salience metrics: %s", exc)
         else:
             self._last_fd_residual = 0.0
             self._last_fd_capture = 1.0

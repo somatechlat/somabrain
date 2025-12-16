@@ -25,38 +25,19 @@ class PlanResult:
 
 
 class ContextPlanner:
+    """Context-aware planner using utility-based scoring.
+
+    Configuration via Settings:
+    - SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE: Scale for prompt length penalty (default 1024.0)
+    - SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE: Scale for memory count penalty (default 10.0)
+    """
+
     def __init__(self, utility_weights: UtilityWeights | None = None) -> None:
         self._utility = utility_weights or UtilityWeights()
-        self._length_penalty_scale = 1024.0
-        self._memory_penalty_scale = 10.0
-        # Load configuration from Settings if present
-        self._length_penalty_scale = float(
-            getattr(settings, "planner_length_penalty_scale", self._length_penalty_scale)
-        )
-        self._memory_penalty_scale = float(
-            getattr(settings, "planner_memory_penalty_scale", self._memory_penalty_scale)
-        )
-
-        def _env_float(name: str, current: float) -> float:
-            # ``settings.getenv`` is no longer available. We retrieve the value
-            # via ``getattr`` which returns ``None`` when the attribute does not
-            # exist, mirroring the previous fallback behaviour.
-            value = getattr(settings, name.lower(), None)
-            if value is None:
-                return current
-            try:
-                return float(value)
-            except Exception:
-                return current
-
-        self._length_penalty_scale = _env_float(
-            "SOMABRAIN_PLANNER_LENGTH_PENALTY_SCALE",
-            self._length_penalty_scale,
-        )
-        self._memory_penalty_scale = _env_float(
-            "SOMABRAIN_PLANNER_MEMORY_PENALTY_SCALE",
-            self._memory_penalty_scale,
-        )
+        # Load configuration from centralized Settings
+        self._length_penalty_scale = float(settings.planner_length_penalty_scale)
+        self._memory_penalty_scale = float(settings.planner_memory_penalty_scale)
+        # Ensure positive values
         if self._length_penalty_scale <= 0:
             self._length_penalty_scale = 1024.0
         if self._memory_penalty_scale <= 0:

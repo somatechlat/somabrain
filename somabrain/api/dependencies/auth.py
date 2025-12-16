@@ -69,42 +69,10 @@ def auth_override_disabled() -> None:
     _current_config = None
 
 
-async def auth_guard(request: Request) -> None:
-    """Auth guard with tenant validation.
-
-    Uses centralized tenant management through TenantManager.
-    """
-    if _current_config is None:
-        return
-    require_auth(request, _current_config)
-
-
-async def get_allowed_tenants_async() -> List[str]:
-    """Get list of allowed tenants using centralized tenant management."""
-    try:
-        from somabrain.tenant_manager import get_tenant_manager
-
-        tenant_manager = await get_tenant_manager()
-        tenants = await tenant_manager.list_tenants()
-        return [t.tenant_id for t in tenants if t.status.value == "active"]
-    except Exception:
-        # Fallback to module-level allowed tenants list
-        return list(_allowed_tenants)
-
-
-async def get_default_tenant_async() -> str:
-    """Get default tenant ID using centralized tenant management."""
-    try:
-        from somabrain.tenant_manager import get_tenant_manager
-
-        tenant_manager = await get_tenant_manager()
-
-        # Try to get public tenant
-        public_tenant_id = await tenant_manager.get_system_tenant_id("public")
-        if public_tenant_id:
-            return public_tenant_id
-
-        # Fallback to module-level default tenant
-        return _default_tenant
-    except Exception:
-        return _default_tenant
+# Note: auth_guard, get_allowed_tenants_async, and get_default_tenant_async
+# have been removed. Use TenantManager directly for tenant resolution:
+#
+#   from somabrain.tenant_manager import get_tenant_manager
+#   tenant_manager = await get_tenant_manager()
+#   tenant_id = await tenant_manager.resolve_tenant_from_request(request)
+#   tenants = await tenant_manager.list_tenants()

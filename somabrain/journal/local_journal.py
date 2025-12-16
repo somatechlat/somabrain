@@ -53,10 +53,20 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class JournalConfig:
-    """Configuration for local journal behavior."""
+    """Configuration for local journal behavior.
+
+    All values are loaded from centralized Settings:
+    - SOMABRAIN_JOURNAL_DIR: Journal directory path
+    - SOMABRAIN_JOURNAL_MAX_FILE_SIZE: Max file size in bytes (default 100MB)
+    - SOMABRAIN_JOURNAL_MAX_FILES: Max files to retain (default 10)
+    - SOMABRAIN_JOURNAL_ROTATION_INTERVAL: Rotation interval in seconds (default 24h)
+    - SOMABRAIN_JOURNAL_RETENTION_DAYS: Retention period in days (default 7)
+    - SOMABRAIN_JOURNAL_COMPRESSION: Enable compression (default True)
+    - SOMABRAIN_JOURNAL_SYNC_WRITES: Enable fsync for durability (default True)
+    """
 
     journal_dir: str = "/tmp/somabrain_journal"
-    max_file_size: int = 100 * 1024 * 1024  # 100MB
+    max_file_size: int = 104857600  # 100MB
     max_files: int = 10
     rotation_interval: int = 86400  # 24 hours in seconds
     retention_days: int = 7
@@ -65,41 +75,19 @@ class JournalConfig:
 
     @classmethod
     def from_env(cls) -> JournalConfig:
-        """Create configuration from environment variables safely.
+        """Create configuration from centralized Settings.
 
-        Mirrors the robust helpers used in ``common.config.settings`` –
-        stripping comments and handling conversion errors gracefully.
+        All journal configuration is now managed through the Settings module
+        for consistent environment variable handling.
         """
-
-        # Helper to parse int env vars with comment stripping
-        def _int(name: str, default: int) -> int:
-            # Access Settings attribute directly; fallback to provided default.
-            raw = getattr(settings, name.lower(), str(default))
-            raw = raw.split("#", 1)[0].strip()
-            try:
-                return int(raw)
-            except Exception:
-                return default
-
-        def _bool(name: str, default: bool) -> bool:
-            raw = getattr(settings, name.lower(), None)
-            if raw is None:
-                return default
-            raw = raw.split("#", 1)[0].strip()
-            return raw.lower() in {"1", "true", "yes", "on"}
-
         return cls(
-            journal_dir=(
-                getattr(settings, "journal_dir", None)
-                if hasattr(settings, "journal_dir")
-                else "/tmp/somabrain_journal"
-            ),
-            max_file_size=_int("SOMABRAIN_JOURNAL_MAX_FILE_SIZE", 104_857_600),
-            max_files=_int("SOMABRAIN_JOURNAL_MAX_FILES", 10),
-            rotation_interval=_int("SOMABRAIN_JOURNAL_ROTATION_INTERVAL", 86_400),
-            retention_days=_int("SOMABRAIN_JOURNAL_RETENTION_DAYS", 7),
-            compression=_bool("SOMABRAIN_JOURNAL_COMPRESSION", True),
-            sync_writes=_bool("SOMABRAIN_JOURNAL_SYNC_WRITES", True),
+            journal_dir=str(settings.journal_dir),
+            max_file_size=int(settings.journal_max_file_size),
+            max_files=int(settings.journal_max_files),
+            rotation_interval=int(settings.journal_rotation_interval),
+            retention_days=int(settings.journal_retention_days),
+            compression=bool(settings.journal_compression),
+            sync_writes=bool(settings.journal_sync_writes),
         )
 
 
@@ -136,7 +124,22 @@ class JournalEvent:
 
 
 class LocalJournal:
-    """Local file-based journal implementation."""
+    """Local file-based journal implementation.
+
+    Thread Safety:
+        This class is thread-safe. All public methods acquire an RLock before
+        modifying internal state. The RLock (reentrant lock) allows the same
+        thread to acquire the lock multiple times, which is necessary for
+        methods that call other locked methods internally (e.g., write_event
+        calling _rotate_if_needed).
+
+        The lock protects:
+        - File handle operations (open, write, close, rotate)
+        - File size tracking
+        - Rotation state
+
+        Concurrent writes from multiple threads are serialized through the lock.
+    """
 
     def __init__(self, config: JournalConfig):
         self.config = config
@@ -145,7 +148,7 @@ class LocalJournal:
         self.current_file_handle = None
         self.current_file_size = 0
         self.last_rotation = time.time()
-        self._lock = threading.RLock()
+        self._lock = threading.RLock()  # Reentrant lock for nested method calls
         self._initialized = False
 
         self._initialize()
@@ -430,23 +433,75 @@ class LocalJournal:
             self._initialized = False
 
 
-# Global journal instance
-_journal: Optional[LocalJournal] = None
+# ---------------------------------------------------------------------------
+# DI Container Integration
+# ---------------------------------------------------------------------------
+# VIBE Compliance: Use DI container for singleton management instead of
+# module-level global state. The container provides thread-safe lazy
+# instantiation and explicit lifecycle management.
+
+
+def _create_journal() -> LocalJournal:
+    """Factory function for DI container registration."""
+    config = JournalConfig.from_env()
+    return LocalJournal(config)
 
 
 def get_journal() -> LocalJournal:
-    """Get or create the global journal instance."""
-    global _journal
-    if _journal is None:
-        config = JournalConfig.from_env()
-        _journal = LocalJournal(config)
-    return _journal
+    """Get the journal instance from DI container.
+
+    Returns:
+        LocalJournal: The singleton journal instance.
+
+    VIBE Compliance:
+        - Uses DI container for singleton management
+        - Thread-safe lazy instantiation
+        - No module-level mutable state
+    """
+    from somabrain.core.container import container
+
+    if not container.has("journal"):
+        container.register("journal", _create_journal)
+    return container.get("journal")
 
 
 def init_journal(config: Optional[JournalConfig] = None) -> LocalJournal:
-    """Initialize the global journal with specific configuration."""
-    global _journal
+    """Initialize the journal with specific configuration.
+
+    Args:
+        config: Optional JournalConfig. If None, uses Settings defaults.
+
+    Returns:
+        LocalJournal: The initialized journal instance.
+
+    VIBE Compliance:
+        - Registers custom factory in DI container
+        - Allows configuration override for testing
+    """
+    from somabrain.core.container import container
+
     if config is None:
         config = JournalConfig.from_env()
-    _journal = LocalJournal(config)
-    return _journal
+
+    # Register factory that returns journal with custom config
+    container.register("journal", lambda c=config: LocalJournal(c))
+    return container.get("journal")
+
+
+def reset_journal() -> None:
+    """Reset the journal instance (for testing).
+
+    VIBE Compliance:
+        - Explicit lifecycle management via DI container
+        - Clean teardown for test isolation
+    """
+    from somabrain.core.container import container
+
+    if container.has("journal") and container.is_instantiated("journal"):
+        try:
+            journal = container.get("journal")
+            journal.close()
+        except Exception:
+            pass
+    # Reset will clear the instance but preserve factory
+    container.reset()

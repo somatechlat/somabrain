@@ -40,6 +40,16 @@ def plan_for_tenant(tenant_id: str, max_options: int | None = None) -> List[str]
     -------
     List[str]
         Option identifiers sorted by descending utility, limited to ``max_options``.
+
+    Fallback Behavior:
+        1. First attempts to use CognitiveThread from database for cursor-based
+           option selection. If database is unavailable, falls through.
+        2. Then attempts to use option_manager for utility-ranked options.
+           If option_manager fails (e.g., missing config), returns empty list.
+
+        The empty list fallback is intentional: planning should not block
+        application startup or cause errors when Oak subsystem is not configured.
+        Callers should handle empty results gracefully.
     """
     default_max = getattr(settings, "OAK_PLAN_MAX_OPTIONS", 10)
     limit = max_options if max_options is not None else default_max

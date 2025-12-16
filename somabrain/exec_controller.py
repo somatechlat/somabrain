@@ -30,13 +30,23 @@ Biological Inspiration:
 - Anterior cingulate cortex conflict monitoring
 - Basal ganglia action selection
 - Dopamine system reward prediction and exploration
+
+VIBE Compliance:
+    - Uses direct imports from metrics.executive (no lazy imports for circular avoidance)
+    - EXEC_BANDIT_ARM imported at module level (no circular deps)
+    - All metrics calls are best-effort (silent failure on metrics errors)
 """
 
 from __future__ import annotations
 
+import logging
 from collections import deque
 from dataclasses import dataclass
 from typing import Deque, Dict, Optional, Tuple
+
+from .metrics.executive import EXEC_BANDIT_ARM
+
+logger = logging.getLogger(__name__)
 
 
 def _get_settings():
@@ -181,11 +191,9 @@ class ExecutiveController:
             arm = self.choose_arm(tenant)
             use_graph = bool(arm == 1)
             try:
-                from . import metrics as _mx
-
-                _mx.EXEC_BANDIT_ARM.labels(arm=("explore" if use_graph else "baseline")).inc()
-            except Exception:
-                pass
+                EXEC_BANDIT_ARM.labels(arm=("explore" if use_graph else "baseline")).inc()
+            except Exception as exc:
+                logger.debug("Failed to record EXEC_BANDIT_ARM metric: %s", exc)
         adj_top_k = int(base_top_k + (self.cfg.explore_boost_k if use_graph else 0))
         inhibit_act = False
         inhibit_store = False
