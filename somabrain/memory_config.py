@@ -1,8 +1,3 @@
-from __future__ import annotations
-from common.config.settings import settings
-from dataclasses import dataclass
-from typing import Optional
-
 """Configuration dataclass for the memory client/adapter.
 
 The original code accessed many environment variables directly via the global
@@ -10,6 +5,16 @@ The original code accessed many environment variables directly via the global
 the values that the adapter actually needs via a small ``@dataclass``.  The
 defaults match the historic behaviour of the project.
 """
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from typing import Optional
+
+from common.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
