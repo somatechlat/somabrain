@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
+from somabrain.math.similarity import cosine_similarity
 from somabrain.quantum import HRRConfig, QuantumLayer
 
 
@@ -48,10 +49,7 @@ def run(
                 bound = q.bind(superposed, role)
                 # Unbind and cleanup by selecting best cosine against items
                 est = q.unbind(bound, role)
-                scores = [
-                    float(np.dot(est, it) / (np.linalg.norm(est) * np.linalg.norm(it)))
-                    for it in items
-                ]
+                scores = [cosine_similarity(est, it) for it in items]
                 scores.sort(reverse=True)
                 best = scores[0]
                 second = scores[1] if len(scores) > 1 else best

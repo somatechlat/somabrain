@@ -1,20 +1,8 @@
 """Modular Metrics Package for SomaBrain.
 
-This package provides comprehensive metrics collection and monitoring using
-Prometheus client library. Metrics are organized by domain:
-
-- core.py: Registry, factory functions, HTTP metrics
-- learning.py: Adaptation, tau, entropy, neuromodulator metrics
-- memory_metrics.py: WM, LTM, retrieval, ANN metrics
-- outbox_metrics.py: Outbox and circuit breaker metrics
-- middleware.py: FastAPI integration (endpoint, timing middleware)
-- interface.py: Protocol-based interface for dependency injection
-
-All metrics are re-exported from this module for backward compatibility:
-    from somabrain.metrics import HTTP_COUNT, WM_HITS, ...
-
-For new code, prefer using the interface module to avoid circular imports:
-    from somabrain.metrics.interface import MetricsInterface, get_metrics
+Metrics are organized by domain in submodules. All metrics are re-exported
+from this module for backward compatibility. For new code, prefer using
+the interface module: from somabrain.metrics.interface import get_metrics
 """
 
 from __future__ import annotations

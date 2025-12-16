@@ -6,8 +6,29 @@ client and related components.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
+
+@dataclass
+class BulkStoreResult:
+    """Result of a bulk store operation.
+
+    Per Requirements F1.3-F1.5:
+    - Tracks succeeded/failed counts
+    - Lists coordinates of successfully stored items
+    - Lists indices of failed items for retry
+    - Records latency and success rate metrics
+    """
+
+    succeeded: int
+    failed: int
+    coordinates: List[Tuple[float, float, float]]
+    failed_items: List[int] = field(default_factory=list)
+    request_id: str = ""
+    error: Optional[str] = None
+    latency_ms: float = 0.0
+    success_rate: float = 0.0
 
 
 @dataclass

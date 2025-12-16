@@ -38,11 +38,14 @@ Biological Inspiration:
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Dict, List
 from .adaptive.core import AdaptiveParameter, PerformanceMetrics
 from common.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -108,8 +111,8 @@ class Neuromodulators:
         for cb in self._subs:
             try:
                 cb(s)
-            except Exception:
-                pass
+            except Exception as cb_exc:
+                logger.debug("Neuromod subscriber callback failed: %s", cb_exc)
         # Update Prometheus metrics for neuromodulator values and count updates
         try:
             from . import metrics as _mx
@@ -119,9 +122,8 @@ class Neuromodulators:
             _mx.NEUROMOD_NORADRENALINE.set(s.noradrenaline)
             _mx.NEUROMOD_ACETYLCHOLINE.set(s.acetylcholine)
             _mx.NEUROMOD_UPDATE_COUNT.inc()
-        except Exception:
-            # Metrics optional – ignore failures during state update
-            pass
+        except Exception as metric_exc:
+            logger.debug("Failed to update neuromod metrics: %s", metric_exc)
 
     def subscribe(self, cb: Callable[[NeuromodState], None]) -> None:
         self._subs.append(cb)
@@ -150,8 +152,8 @@ class PerTenantNeuromodulators:
         for cb in self._global._subs:
             try:
                 cb(state)
-            except Exception:
-                pass
+            except Exception as cb_exc:
+                logger.debug("Per-tenant neuromod subscriber callback failed: %s", cb_exc)
 
 
 @dataclass

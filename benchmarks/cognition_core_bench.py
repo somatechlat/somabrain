@@ -129,11 +129,8 @@ def run_quality_bench(
             lam = 1e-1 if k == 1 else 5e-2
             a_t = _tikhonov_naive(s, b_list[0], lam=lam)
 
-            # cosines against original a0
-            def _cos(u, v):
-                return float(
-                    np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
-                )
+            # cosines against original a0 - use canonical implementation
+            from somabrain.math.similarity import cosine_similarity as _cos
 
             w_raw = _cos(a_w, a_list[0])
             t_raw = _cos(a_t, a_list[0])

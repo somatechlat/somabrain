@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
+from somabrain.math.similarity import cosine_similarity as cosine
 from somabrain.numerics import irfft_norm
 from somabrain.quantum import HRRConfig, QuantumLayer
 
@@ -49,9 +50,6 @@ def run_bench(
                 est_robust = q.unbind(bound, b_noisy)
                 est_wiener = q.unbind_wiener(bound, b_noisy)
 
-                def cosine(x, y):
-                    return float(np.dot(x, y) / (np.linalg.norm(x) * np.linalg.norm(y)))
-
                 def mse(x, y):
                     return float(np.mean((x - y) ** 2))
 
@@ -59,9 +57,9 @@ def run_bench(
                     "D": int(D),
                     "seed": int(seed),
                     "exponent": float(e),
-                    "cosine_exact": cosine(a, est_exact),
-                    "cosine_robust": cosine(a, est_robust),
-                    "cosine_wiener": cosine(a, est_wiener),
+                    "cosine_exact": cosine_similarity(a, est_exact),
+                    "cosine_robust": cosine_similarity(a, est_robust),
+                    "cosine_wiener": cosine_similarity(a, est_wiener),
                     "mse_exact": mse(a, est_exact),
                     "mse_robust": mse(a, est_robust),
                     "mse_wiener": mse(a, est_wiener),

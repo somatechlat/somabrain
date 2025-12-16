@@ -87,6 +87,7 @@ class ContextBuilder:
         self._tau_increment_down = settings.retrieval_tau_increment_down
         self._dup_ratio_threshold = settings.retrieval_dup_ratio_threshold
         # Per-tenant overrides cache (learning.tenants.yaml)
+        # Uses somabrain.context.tenant_overrides for loading
         self._tenant_overrides_cache: Dict[str, Dict] = {}
 
         def _env_float(name: str, current: float) -> float:
@@ -392,55 +393,9 @@ class ContextBuilder:
     # ---------------- Tenant overrides helpers ----------------
     def _get_entropy_cap_for_tenant(self, tenant_id: str) -> Optional[float]:
         """Read entropy_cap from SOMABRAIN_LEARNING_TENANTS_FILE or env overrides."""
-        t = tenant_id or "default"
-        ov = self._tenant_overrides_cache.get(t)
-        if ov is None:
-            ov = self._load_tenant_overrides().get(t, {})
-            self._tenant_overrides_cache[t] = ov
-        cap = ov.get("entropy_cap") if isinstance(ov, dict) else None
-        try:
-            return float(cap) if cap is not None else None
-        except Exception:
-            return None
+        from somabrain.context.tenant_overrides import get_entropy_cap_for_tenant
 
-    def _load_tenant_overrides(self) -> Dict[str, Dict]:
-        """Load per-tenant overrides from YAML/JSON or env JSON string."""
-        path = settings.learning_tenants_file
-        overrides: Dict[str, Dict] = {}
-        if path and os.path.exists(path):
-            try:
-                import yaml
-
-                with open(path, "r", encoding="utf-8") as f:
-                    data = yaml.safe_load(f) or {}
-                if isinstance(data, dict):
-                    overrides = {str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)}
-            except Exception:
-                try:
-                    import json as _json
-
-                    with open(path, "r", encoding="utf-8") as f:
-                        data = _json.load(f)
-                    if isinstance(data, dict):
-                        overrides = {
-                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
-                        }
-                except Exception:
-                    overrides = {}
-        if not overrides:
-            raw = settings.learning_tenants_overrides.strip()
-            if raw:
-                try:
-                    import json as _json
-
-                    data = _json.loads(raw)
-                    if isinstance(data, dict):
-                        overrides = {
-                            str(k): (v or {}) for k, v in data.items() if isinstance(v, dict)
-                        }
-                except Exception:
-                    overrides = {}
-        return overrides
+        return get_entropy_cap_for_tenant(tenant_id, self._tenant_overrides_cache)
 
     def _build_prompt(self, query: str, memories: List[MemoryRecord]) -> str:
         context_blocks: List[str] = []

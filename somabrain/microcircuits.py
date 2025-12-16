@@ -29,10 +29,13 @@ Functions:
 
 from __future__ import annotations
 
+import logging
 import math
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -112,8 +115,8 @@ class MultiColumnWM:
         cols[idx].admit(vec, dict(payload), cleanup_overlap=cleanup_overlap)
         try:
             MICRO_COLUMN_ADMIT.labels(column=str(idx)).inc()
-        except Exception:
-            pass
+        except Exception as metric_exc:
+            logger.debug("Failed to record micro_column_admit metric: %s", metric_exc)
 
     def recall(self, tenant_id: str, vec: np.ndarray, top_k: int = 3) -> List[Tuple[float, dict]]:
         cols = self._ensure(tenant_id)
@@ -128,8 +131,8 @@ class MultiColumnWM:
             if bests:
                 best_idx = int(max(range(len(bests)), key=lambda i: bests[i]))
                 MICRO_COLUMN_BEST.labels(column=str(best_idx)).inc()
-        except Exception:
-            pass
+        except Exception as metric_exc:
+            logger.debug("Failed to record micro_column_best metric: %s", metric_exc)
         # softmax weights over best scores
         T = max(settings.wm_vote_softmax_floor, float(self.cfg.vote_temperature))
         xs = [b / T for b in bests]

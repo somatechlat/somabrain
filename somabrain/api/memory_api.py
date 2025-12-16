@@ -9,51 +9,51 @@ Architecture:
     Uses DI container for state management. The RecallSessionStore class
     encapsulates session management with TTL-based expiration, registered
     with the container for explicit lifecycle management.
+
+Module Organization:
+    - models.py: Pydantic request/response models
+    - helpers.py: Helper functions for payload composition and retrieval
+    - session.py: Recall session store management
+    - remember.py: Remember (write) endpoints
+    - recall.py: Core recall implementation
+    - admin.py: Admin endpoints (ANN rebuild, outbox management)
+    - This file: Router setup and recall endpoints using retrieval pipeline
 """
 
 from __future__ import annotations
 
-import copy
 import logging
 import time
-import uuid
 from typing import Any, Dict, List, Optional, Annotated
 
-import numpy as np
 from fastapi import APIRouter, HTTPException, Query, Request, Body
 
 # Import Pydantic models from extracted module
 from somabrain.api.memory.models import (
-    MemorySignalFeedback,
-    MemoryWriteRequest,
-    MemoryWriteResponse,
     MemoryRecallRequest,
     MemoryRecallItem,
     MemoryRecallResponse,
     MemoryMetricsResponse,
-    MemoryBatchWriteRequest,
-    MemoryBatchWriteResult,
-    MemoryBatchWriteResponse,
     MemoryRecallSessionResponse,
-    OutboxEventSummary,
-    OutboxReplayRequest,
-    AnnRebuildRequest,
 )
 
 # Import helper functions from extracted module
 from somabrain.api.memory.helpers import (
-    _get_embedder,
     _get_wm,
     _get_memory_pool,
     _resolve_namespace,
-    _serialize_coord,
-    _compose_memory_payload,
     _map_retrieval_to_memory_items as _map_retrieval_items_helper,
     _coerce_to_retrieval_request as _coerce_request_helper,
 )
 
 # Import session store from extracted module
 from somabrain.api.memory.session import get_recall_session_store
+
+# Import remember endpoints factory
+from somabrain.api.memory.remember import create_remember_endpoints
+
+# Import admin router
+from somabrain.api.memory.admin import router as admin_router
 
 from somabrain.metrics import record_memory_snapshot
 from somabrain.services.memory_service import MemoryService
@@ -68,10 +68,9 @@ from somabrain.runtime.config_runtime import (
 from common.config.settings import settings
 
 # Auth and tenant resolution
-from somabrain.auth import require_auth, require_admin_auth
+from somabrain.auth import require_auth
 from somabrain.schemas import RetrievalRequest
 from somabrain.tenant import get_tenant as get_tenant_async
-from somabrain.db import outbox as outbox_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/memory", tags=["memory"])
@@ -120,284 +119,13 @@ def _prune_sessions() -> None:
     get_recall_session_store().prune()
 
 
-def _store_recall_session(
-    session_id: str,
-    tenant: str,
-    namespace: str,
-    conversation_id: Optional[str],
-    scoring_mode: Optional[str],
-    results: List[MemoryRecallItem],
-) -> None:
-    """Store a recall session with results."""
-    get_recall_session_store().store(
-        session_id=session_id,
-        tenant=tenant,
-        namespace=namespace,
-        conversation_id=conversation_id,
-        scoring_mode=scoring_mode,
-        results=results,
-    )
-
-
 # ============================================================================
-# REMEMBER ENDPOINTS
+# INCLUDE REMEMBER ENDPOINTS FROM EXTRACTED MODULE
 # ============================================================================
 
-
-@router.post("/remember", response_model=MemoryWriteResponse)
-async def remember_memory(payload: MemoryWriteRequest, request: Request) -> MemoryWriteResponse:
-    """Store a memory in both WM and LTM."""
-    await _ensure_config_runtime_started()
-    pool = _get_memory_pool()
-    wm = _get_wm()
-    embedder = _get_embedder()
-    resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
-    memsvc = MemoryService(pool, resolved_ns)
-    memsvc._reset_circuit_if_needed()
-
-    actor = request.headers.get("X-Actor") or "memory-api"
-    stored_payload, signal_data, seed_text = _compose_memory_payload(
-        tenant=payload.tenant,
-        namespace=payload.namespace,
-        key=payload.key,
-        value=payload.value,
-        meta=payload.meta,
-        universe=payload.universe,
-        attachments=payload.attachments,
-        links=payload.links,
-        tags=payload.tags,
-        policy_tags=payload.policy_tags,
-        signals=payload.signals,
-        importance=payload.importance,
-        novelty=payload.novelty,
-        ttl_seconds=payload.ttl_seconds,
-        trace_id=payload.trace_id,
-        actor=actor,
-    )
-
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-    persisted_to_ltm = False
-    coord = None
-    degraded_warnings: List[str] = []
-
-    # Check if circuit is open - if so, queue locally and continue with WM-only
-    circuit_open = memsvc._is_circuit_open()
-
-    if circuit_open:
-        # Queue to local journal for replay when backend recovers
-        memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
-        degraded_warnings.append("memory-backend-unavailable:queued-for-replay")
-    else:
-        try:
-            coord = await memsvc.aremember(payload.key, stored_payload)
-            persisted_to_ltm = True
-        except RuntimeError as exc:
-            # Circuit just opened - queue locally
-            memsvc._queue_degraded("remember", {"key": payload.key, "payload": stored_payload})
-            degraded_warnings.append(f"memory-backend-failed:queued-for-replay:{exc}")
-        except Exception as exc:
-            raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
-
-    coordinate_list = _serialize_coord(coord)
-    if coordinate_list is not None:
-        stored_payload["coordinate"] = coordinate_list
-
-    promoted_to_wm = False
-    warnings: List[str] = []
-    tiered_vector: Optional[np.ndarray] = None
-    try:
-        vec = np.asarray(embedder.embed(seed_text), dtype=np.float32)
-        wm.admit(payload.tenant, vec, stored_payload)
-        promoted_to_wm = True
-        tiered_vector = vec
-    except Exception as exc:
-        warnings.append(f"working-memory-admit-failed:{exc}")
-
-    try:
-        items = len(wm.items(payload.tenant))
-    except Exception:
-        items = 0
-    try:
-        record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-        pass
-
-    signal_feedback = MemorySignalFeedback(
-        importance=signal_data.get("importance"),
-        novelty=signal_data.get("novelty"),
-        ttl_seconds=signal_data.get("ttl_seconds"),
-        reinforcement=signal_data.get("reinforcement"),
-        recall_bias=signal_data.get("recall_bias"),
-        promoted_to_wm=promoted_to_wm,
-        persisted_to_ltm=persisted_to_ltm,
-    )
-
-    anchor_id = payload.key or request_id
-    if tiered_vector is not None:
-        snapshot = copy.deepcopy(stored_payload)
-        _TIERED_REGISTRY.remember(
-            payload.tenant,
-            payload.namespace,
-            anchor_id=anchor_id,
-            key_vector=tiered_vector,
-            value_vector=tiered_vector,
-            payload=snapshot,
-            coordinate=coordinate_list,
-        )
-
-    # Combine degraded warnings with other warnings
-    all_warnings = degraded_warnings + warnings
-
-    return MemoryWriteResponse(
-        ok=True,
-        tenant=payload.tenant,
-        namespace=payload.namespace,
-        coordinate=coordinate_list,
-        promoted_to_wm=promoted_to_wm,
-        persisted_to_ltm=persisted_to_ltm,
-        deduplicated=False,
-        importance=signal_feedback.importance,
-        novelty=signal_feedback.novelty,
-        ttl_applied=signal_feedback.ttl_seconds,
-        trace_id=payload.trace_id,
-        request_id=request_id,
-        warnings=all_warnings,
-        signals=signal_feedback,
-    )
-
-
-@router.post("/remember/batch", response_model=MemoryBatchWriteResponse)
-async def remember_memory_batch(
-    payload: MemoryBatchWriteRequest, request: Request
-) -> MemoryBatchWriteResponse:
-    """Store multiple memories in batch."""
-    await _ensure_config_runtime_started()
-    pool = _get_memory_pool()
-    wm = _get_wm()
-    embedder = _get_embedder()
-    resolved_ns = _resolve_namespace(payload.tenant, payload.namespace)
-    memsvc = MemoryService(pool, resolved_ns)
-    memsvc._reset_circuit_if_needed()
-
-    actor = request.headers.get("X-Actor") or "memory-api"
-    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-    item_contexts: List[Dict[str, Any]] = []
-
-    for item in payload.items:
-        stored_payload, signal_data, seed_text = _compose_memory_payload(
-            tenant=payload.tenant,
-            namespace=payload.namespace,
-            key=item.key,
-            value=item.value,
-            meta=item.meta,
-            universe=item.universe or payload.universe,
-            attachments=item.attachments,
-            links=item.links,
-            tags=item.tags,
-            policy_tags=item.policy_tags,
-            signals=item.signals,
-            importance=item.importance,
-            novelty=item.novelty,
-            ttl_seconds=item.ttl_seconds,
-            trace_id=item.trace_id,
-            actor=actor,
-        )
-        vector = None
-        warnings: List[str] = []
-        try:
-            vector = np.asarray(embedder.embed(seed_text), dtype=np.float32)
-        except Exception as exc:
-            warnings.append(f"working-memory-embed-failed:{exc}")
-        item_contexts.append(
-            {
-                "key": item.key,
-                "payload": stored_payload,
-                "signal_data": signal_data,
-                "seed_text": seed_text,
-                "trace_id": item.trace_id,
-                "vector": vector,
-                "warnings": warnings,
-            }
-        )
-
-    if not item_contexts:
-        return MemoryBatchWriteResponse(
-            ok=True, tenant=payload.tenant, namespace=payload.namespace, results=[]
-        )
-
-    try:
-        coords = await memsvc.aremember_bulk(
-            [(ctx["key"], ctx["payload"]) for ctx in item_contexts], universe=None
-        )
-        persisted_to_ltm = True
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail={"message": str(exc)}) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"store failed: {exc}") from exc
-
-    results: List[MemoryBatchWriteResult] = []
-    for idx, ctx in enumerate(item_contexts):
-        raw_coord = coords[idx] if idx < len(coords) else None
-        coordinate = _serialize_coord(raw_coord)
-        if coordinate is not None:
-            try:
-                ctx["payload"]["coordinate"] = coordinate
-            except Exception:
-                pass
-
-        promoted_to_wm = False
-        if ctx["vector"] is not None:
-            try:
-                wm.admit(payload.tenant, ctx["vector"], ctx["payload"])
-                promoted_to_wm = True
-            except Exception as exc:
-                ctx["warnings"].append(f"working-memory-admit-failed:{exc}")
-            snapshot = copy.deepcopy(ctx["payload"])
-            _TIERED_REGISTRY.remember(
-                payload.tenant,
-                payload.namespace,
-                anchor_id=ctx["key"],
-                key_vector=ctx["vector"],
-                value_vector=ctx["vector"],
-                payload=snapshot,
-                coordinate=coordinate,
-            )
-
-        signal_feedback = MemorySignalFeedback(
-            importance=ctx["signal_data"].get("importance"),
-            novelty=ctx["signal_data"].get("novelty"),
-            ttl_seconds=ctx["signal_data"].get("ttl_seconds"),
-            reinforcement=ctx["signal_data"].get("reinforcement"),
-            recall_bias=ctx["signal_data"].get("recall_bias"),
-            promoted_to_wm=promoted_to_wm,
-            persisted_to_ltm=persisted_to_ltm,
-        )
-        results.append(
-            MemoryBatchWriteResult(
-                key=ctx["key"],
-                coordinate=coordinate,
-                promoted_to_wm=promoted_to_wm,
-                persisted_to_ltm=persisted_to_ltm,
-                deduplicated=False,
-                importance=signal_feedback.importance,
-                novelty=signal_feedback.novelty,
-                ttl_applied=signal_feedback.ttl_seconds,
-                trace_id=ctx["trace_id"],
-                request_id=f"{request_id}:{idx}",
-                warnings=ctx["warnings"],
-                signals=signal_feedback,
-            )
-        )
-
-    try:
-        items = len(wm.items(payload.tenant))
-        record_memory_snapshot(payload.tenant, payload.namespace, items=items)
-    except Exception:
-        pass
-
-    return MemoryBatchWriteResponse(
-        ok=True, tenant=payload.tenant, namespace=payload.namespace, results=results
-    )
+# Create and include remember endpoints with the tiered registry
+_remember_router = create_remember_endpoints(_TIERED_REGISTRY)
+router.include_router(_remember_router)
 
 
 # ============================================================================
@@ -520,7 +248,7 @@ async def get_recall_session(session_id: str) -> MemoryRecallSessionResponse:
 
 
 # ============================================================================
-# METRICS AND ADMIN ENDPOINTS
+# METRICS ENDPOINT
 # ============================================================================
 
 
@@ -555,58 +283,10 @@ async def memory_metrics(
     )
 
 
-@router.post("/admin/rebuild-ann")
-async def rebuild_ann_indexes(payload: AnnRebuildRequest) -> Dict[str, Any]:
-    """Admin: Rebuild ANN indexes."""
-    await _ensure_config_runtime_started()
-    results = _TIERED_REGISTRY.rebuild(payload.tenant, namespace=payload.namespace)
-    return {"ok": True, "results": results}
+# ============================================================================
+# INCLUDE ADMIN ROUTER
+# ============================================================================
 
-
-@router.get("/admin/outbox", response_model=List[OutboxEventSummary])
-async def list_outbox_events(
-    request: Request,
-    status: str = Query("failed", description="Outbox status filter"),
-    tenant: Optional[str] = Query(None, description="Optional tenant filter"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
-) -> List[OutboxEventSummary]:
-    """Admin: List outbox events."""
-    cfg = getattr(request.app.state, "cfg", None)
-    require_admin_auth(request, cfg)
-    try:
-        events = outbox_db.list_events_by_status(
-            status=status, tenant_id=tenant, limit=limit, offset=offset
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    summaries: List[OutboxEventSummary] = []
-    for ev in events:
-        created_ts = ev.created_at.timestamp() if ev.created_at else 0.0
-        summaries.append(
-            OutboxEventSummary(
-                id=int(ev.id),
-                tenant_id=ev.tenant_id,
-                topic=ev.topic,
-                status=ev.status,
-                retries=int(ev.retries or 0),
-                created_at=float(created_ts),
-                dedupe_key=str(ev.dedupe_key),
-                last_error=ev.last_error,
-                payload=ev.payload if isinstance(ev.payload, dict) else {},
-            )
-        )
-    return summaries
-
-
-@router.post("/admin/outbox/replay")
-async def replay_outbox_events(request: Request, payload: OutboxReplayRequest) -> Dict[str, Any]:
-    """Admin: Replay outbox events."""
-    cfg = getattr(request.app.state, "cfg", None)
-    require_admin_auth(request, cfg)
-    try:
-        updated = outbox_db.mark_events_for_replay(payload.ids)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Replay failed: {exc}") from exc
-    return {"ok": True, "updated": int(updated)}
+# Admin endpoints are in a separate module with /admin prefix
+# Combined with main router's /memory prefix = /memory/admin/*
+router.include_router(admin_router)

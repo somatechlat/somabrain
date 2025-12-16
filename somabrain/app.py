@@ -23,9 +23,7 @@ from typing import Any, Optional
 
 # asyncio moved to somabrain/lifecycle/ modules
 # threading and time moved to somabrain/routers/sleep.py
-import importlib
 import logging
-import os
 import sys
 
 # numpy moved to somabrain/bootstrap/singletons.py
@@ -39,12 +37,10 @@ from cachetools import TTLCache
 
 # Additional imports required for application setup (must appear before any non‑import code)
 # UnifiedScorer moved to somabrain/bootstrap/singletons.py
-from somabrain.sdr import LSHIndex, SDREncoder
+from somabrain.sdr import LSHIndex
 
 # _eval_step and MemoryService moved to cognitive router
 
-from somabrain.stats import EWMA
-from somabrain.supervisor import Supervisor, SupervisorConfig
 from somabrain.thalamus import ThalamusRouter
 
 # get_tenant moved to routers
@@ -58,7 +54,6 @@ from somabrain.services.memory_service import MemoryService as _MemSvc
 # The alias is used throughout the file, so keeping it short avoids line‑wraps.
 # metrics (M) moved to somabrain/lifecycle/startup.py
 # consolidation moved to somabrain/routers/sleep.py
-from somabrain.amygdala import AmygdalaSalience, SalienceConfig
 
 # require_admin_auth, require_auth moved to routers
 from somabrain.basal_ganglia import BasalGangliaPolicy
@@ -68,7 +63,6 @@ from common.config.settings import settings
 
 # ruff: noqa: E402  # Suppress import‑order warnings for imports that appear later in the file.
 from common.config.settings import settings as config
-from somabrain.context_hrr import HRRContextConfig
 
 # Oak feature imports - option_manager and plan_for_tenant moved to oak/router.py
 
@@ -123,19 +117,12 @@ async def _attach_opa_engine() -> None:  # pragma: no cover
     app.state.opa_engine = create_opa_engine()
 
 
-from somabrain.controls.drift_monitor import DriftConfig, DriftMonitor
 from somabrain.controls.middleware import ControlsMiddleware
 
 # assess_reality moved to memory router
 # coerce_to_epoch_seconds moved to memory router
 # make_embedder moved to somabrain/bootstrap/singletons.py
 # extract_event_fields moved to memory router
-from somabrain.exec_controller import ExecConfig, ExecutiveController
-from somabrain.hippocampus import ConsolidationConfig, Hippocampus
-from somabrain.memory_pool import MultiTenantMemory
-from somabrain.microcircuits import MCConfig, MultiColumnWM
-from somabrain.mt_context import MultiTenantHRRContext
-from somabrain.mt_wm import MTWMConfig, MultiTenantWM
 
 # outbox_db moved to admin router
 from somabrain.neuromodulators import PerTenantNeuromodulators
@@ -149,8 +136,6 @@ from somabrain.personality import PersonalityStore
 # Prefrontal cortex component removed per VIBE hardening requirements.
 # HRRConfig moved to somabrain/bootstrap/singletons.py
 from somabrain.quantum import QuantumLayer
-from somabrain.quotas import QuotaConfig, QuotaManager
-from somabrain.ratelimit import RateConfig, RateLimiter
 
 # FDSalienceSketch moved to somabrain/bootstrap/singletons.py
 
@@ -536,163 +521,58 @@ fd_sketch = make_fd_sketch(cfg)
 # Create unified scorer
 unified_scorer = make_unified_scorer(cfg, fd_sketch=fd_sketch)
 
-mt_wm = MultiTenantWM(
-    dim=cfg.embed_dim,
-    cfg=MTWMConfig(
-        per_tenant_capacity=max(cfg.wm_per_tenant_capacity, cfg.wm_size),
-        max_tenants=cfg.mtwm_max_tenants,
-        recency_time_scale=cfg.wm_recency_time_scale,
-        recency_max_steps=cfg.wm_recency_max_steps,
-    ),
-    scorer=unified_scorer,
+# Create working memory singletons using bootstrap factory functions
+from somabrain.bootstrap.core_singletons import (
+    create_mt_wm,
+    create_mc_wm,
+    create_mt_ctx,
+    create_quotas,
+    create_rate_limiter,
+    create_amygdala,
+    create_hippocampus,
 )
-mc_wm = MultiColumnWM(
-    dim=cfg.embed_dim,
-    cfg=MCConfig(
-        columns=max(1, int(cfg.micro_circuits)),
-        per_col_capacity=(
-            max(16, int(math.ceil(cfg.wm_size / max(1, int(cfg.micro_circuits)))))
-            if "math" in globals()
-            else max(
-                16,
-                int(
-                    (cfg.wm_size + max(1, int(cfg.micro_circuits)) - 1)
-                    // max(1, int(cfg.micro_circuits))
-                ),
-            )
-        ),
-        vote_temperature=cfg.micro_vote_temperature,
-        max_tenants=cfg.micro_max_tenants,
-        recency_time_scale=cfg.wm_recency_time_scale,
-        recency_max_steps=cfg.wm_recency_max_steps,
-    ),
-    scorer=unified_scorer,
+from somabrain.bootstrap.runtime_init import (
+    load_runtime_module,
+    create_mt_memory,
+    register_singletons,
 )
-# The repository contains both a ``runtime`` package (exposing WorkingMemoryBuffer)
-# and a ``runtime.py`` module that defines the core singleton utilities
-# (embedder, mt_wm, set_singletons, etc.). Importing ``runtime`` would resolve to
-# the package, causing ``AttributeError: module 'somabrain.runtime' has no
-# attribute 'set_singletons'``. To reliably load the module file, we import it via
-# ``importlib.util`` and bind it to ``_rt``.
 
-# Load the ``runtime.py`` file as a distinct module to avoid colliding with the
-# ``somabrain.runtime`` package (which only re‑exports ``WorkingMemoryBuffer``).
-_runtime_path = os.path.join(os.path.dirname(__file__), "runtime.py")
-_spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
-assert _spec and _spec.loader  # sanity check
-# If an initializer already loaded the runtime module into sys.modules, reuse it
-if _spec.name in sys.modules:
-    _rt = sys.modules[_spec.name]
-else:
-    _rt = importlib.util.module_from_spec(_spec)
-    # Register the module in ``sys.modules`` so that the code inside ``runtime.py``
-    # (which accesses ``sys.modules[__name__]``) can find its own entry.
-    sys.modules[_spec.name] = _rt
-    _spec.loader.exec_module(_rt)  # load the module so its globals are available
+mt_wm = create_mt_wm(cfg, unified_scorer)
+mc_wm = create_mc_wm(cfg, unified_scorer)
 
-# Robustness: if the initializer loaded runtime under a different key, try to
-# find any loaded module whose __file__ points to runtime.py and reuse it so
-# set_singletons side-effects are observed.
-if not getattr(_rt, "embedder", None):
-    for m in list(sys.modules.values()):
-        try:
-            mf = getattr(m, "__file__", "") or ""
-            if mf.endswith(os.path.join("somabrain", "runtime.py")):
-                _rt = m
-                break
-        except Exception:
-            continue
+# Load runtime module using bootstrap helper (handles importlib complexity)
+_rt = load_runtime_module()
 
-if not hasattr(_rt, "mt_memory") or _rt.mt_memory is None:
-    mt_memory = MultiTenantMemory(cfg, scorer=unified_scorer, embedder=embedder)
-    _rt.mt_memory = mt_memory
-    # Also patch this module's global for test visibility
-    import sys
+# Create mt_memory using bootstrap helper
+mt_memory = create_mt_memory(cfg, unified_scorer, embedder, _rt)
 
-    mod = sys.modules[__name__]
-    setattr(mod, "mt_memory", _rt.mt_memory)
-else:
-    mt_memory = _rt.mt_memory
-rate_limiter = RateLimiter(RateConfig(rps=cfg.rate_rps, burst=cfg.rate_burst))
+# Create remaining singletons using factory functions
+rate_limiter = create_rate_limiter(cfg)
 _recall_cache: dict[str, TTLCache] = {}
-mt_ctx = (
-    MultiTenantHRRContext(
-        quantum,
-        HRRContextConfig(
-            max_anchors=cfg.hrr_anchors_max,
-            decay_lambda=cfg.hrr_decay_lambda,
-            min_confidence=cfg.hrr_cleanup_min_confidence,
-        ),
-        max_tenants=1000,
-    )
-    if quantum
-    else None
-)
-quotas = QuotaManager(QuotaConfig(daily_writes=cfg.write_daily_limit))
+mt_ctx = create_mt_ctx(cfg, quantum)
+quotas = create_quotas(cfg)
 per_tenant_neuromods = PerTenantNeuromodulators()
-# Alias to match existing variable name used throughout the module
 per_tenant_neuromodulators = per_tenant_neuromods
-# Alias for compatibility with existing code expecting `neuromods`
 neuromods = per_tenant_neuromods
-amygdala = AmygdalaSalience(
-    SalienceConfig(
-        w_novelty=cfg.salience_w_novelty,
-        w_error=cfg.salience_w_error,
-        threshold_store=cfg.salience_threshold_store,
-        threshold_act=cfg.salience_threshold_act,
-        hysteresis=cfg.salience_hysteresis,
-        use_soft=cfg.use_soft_salience,
-        soft_temperature=cfg.use_soft_salience,
-        method=cfg.salience_method,
-        w_fd=cfg.salience_fd_weight,
-        fd_energy_floor=cfg.salience_fd_energy_floor,
-    ),
-    fd_backend=fd_sketch,
-)
+amygdala = create_amygdala(cfg, fd_sketch)
 basal = BasalGangliaPolicy()
 thalamus = ThalamusRouter()
-hippocampus = Hippocampus(ConsolidationConfig())
+hippocampus = create_hippocampus()
 # Prefrontal instance creation removed; the system no longer uses this component.
 
 fnom_memory: Any = None
 fractal_memory: Any = None
 
-# Expose singletons for services that avoid importing this module directly
-# (imported earlier above; duplicate import removed to prevent circular import issues)
-
-# Enforce backend requirements: if critical runtime singletons are missing and enforcement
-# is active, raise an explicit error instead of silently patching in dummies.
-__ENFORCEMENT = BACKEND_ENFORCEMENT
-# During test collection (pytest) the runtime singletons are not yet created.
-# The original enforcement would raise a RuntimeError, preventing tests from
-# running. We therefore disable enforcement when pytest is active. Checking both
-# ``sys.modules`` and the ``PYTEST_CURRENT_TEST`` environment variable covers the
-# import phase and the execution phase.
-if "pytest" in sys.modules or settings.pytest_current_test:
-    __ENFORCEMENT = False
-
-# Strict mode: no test-mode bypass. All required singletons must be present,
-# even during test collection/imports.
-
-missing = []
-if not hasattr(_rt, "embedder") or _rt.embedder is None:
-    missing.append("embedder")
-if not hasattr(_rt, "mt_wm") or _rt.mt_wm is None:
-    missing.append("mt_wm")
-if not hasattr(_rt, "mc_wm") or _rt.mc_wm is None:
-    missing.append("mc_wm")
-if __ENFORCEMENT and missing:
-    raise RuntimeError(
-        f"BACKEND ENFORCEMENT: missing runtime singletons: {', '.join(missing)}; initialize runtime before importing somabrain.app"
-    )
-
-_rt.set_singletons(
-    _embedder=embedder or getattr(_rt, "embedder", None),
-    _quantum=quantum,
-    _mt_wm=mt_wm or getattr(_rt, "mt_wm", None),
-    _mc_wm=mc_wm or getattr(_rt, "mc_wm", None),
-    _mt_memory=mt_memory or getattr(_rt, "mt_memory", None),
-    _cfg=cfg,
+# Register singletons with runtime module using bootstrap helper
+register_singletons(
+    _rt=_rt,
+    embedder=embedder,
+    quantum=quantum,
+    mt_wm=mt_wm,
+    mc_wm=mc_wm,
+    mt_memory=mt_memory,
+    cfg=cfg,
+    enforce=BACKEND_ENFORCEMENT,
 )
 
 
@@ -723,47 +603,28 @@ async def _stop_memory_watchdog() -> None:
 
 # AutoScalingFractalIntelligence and ComplexityDetector extracted to somabrain/brain/
 
+# Create remaining singletons using factory functions
+from somabrain.bootstrap.core_singletons import (
+    create_supervisor,
+    create_exec_controller,
+    create_drift_monitor,
+    create_sdr_encoder,
+    create_ewma_monitors,
+)
+
 personality_store = PersonalityStore()
-supervisor = (
-    Supervisor(SupervisorConfig(gain=cfg.meta_gain, limit=cfg.meta_limit))
-    if cfg.use_meta_brain
-    else None
-)
-exec_ctrl = (
-    ExecutiveController(
-        ExecConfig(
-            window=cfg.exec_window,
-            conflict_threshold=cfg.exec_conflict_threshold,
-            explore_boost_k=cfg.exec_explore_boost_k,
-            use_bandits=bool(getattr(cfg, "exec_use_bandits", False)),
-            bandit_eps=cfg.exec_bandit_eps,
-        )
-    )
-    if cfg.use_exec_controller
-    else None
-)
-# Sleep state and _sleep_loop moved to somabrain/routers/sleep.py
+supervisor = create_supervisor(cfg)
+exec_ctrl = create_exec_controller(cfg)
+# EWMA instances for monitoring using factory function
+_ewma_monitors = create_ewma_monitors()
+_nov_ewma = _ewma_monitors["novelty"]
+_err_ewma = _ewma_monitors["error"]
+_store_rate_ewma = _ewma_monitors["store_rate"]
+_act_rate_ewma = _ewma_monitors["act_rate"]
 
-# _milvus_metrics_for_tenant moved to somabrain/routers/health.py
-
-# EWMA instances for monitoring (still used by other components)
-_nov_ewma = EWMA(alpha=0.05)
-_err_ewma = EWMA(alpha=0.05)
-_store_rate_ewma = EWMA(alpha=0.02)
-_act_rate_ewma = EWMA(alpha=0.02)
-
-# Drift monitor (still used by other components)
-drift_mon = (
-    DriftMonitor(
-        cfg.embed_dim,
-        DriftConfig(window=cfg.drift_window, threshold=cfg.drift_threshold),
-    )
-    if cfg.use_drift_monitor
-    else None
-)
-
-# SDR encoder and index (still used by memory router)
-_sdr_enc = SDREncoder(dim=cfg.sdr_dim, density=cfg.sdr_density) if cfg.use_sdr_prefilter else None
+# Drift monitor and SDR encoder using factory functions
+drift_mon = create_drift_monitor(cfg)
+_sdr_enc = create_sdr_encoder(cfg)
 _sdr_idx: dict[str, LSHIndex] = {}
 
 

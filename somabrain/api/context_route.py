@@ -1,24 +1,19 @@
 """Evaluate/Feedback endpoints for SomaBrain.
 
-Architecture:
-    Uses DI container for state management. The ContextRouteState class
-    encapsulates feedback store, token ledger, adaptation engines, and
-    rate limiting state, registered with the container for explicit
-    lifecycle management.
+Uses DI container for state management. ContextRouteState encapsulates
+feedback store, token ledger, adaptation engines, and rate limiting.
 """
 
 from __future__ import annotations
 
 import time
 import uuid
-import collections
 from dataclasses import asdict
-from typing import Optional, Dict
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from somabrain.core.container import container
 from somabrain.api.dependencies.utility_guard import utility_guard
 from somabrain.api.dependencies.auth import (
     auth_guard,
@@ -37,13 +32,18 @@ from somabrain.api.schemas.context import (
     RetrievalWeightsState,
     UtilityWeightsState,
 )
+from somabrain.api.context_state import get_context_route_state
+from somabrain.api.context_validation import (
+    validate_evaluate_response,
+    validate_evaluate_response_size,
+    validate_feedback_fields,
+    validate_feedback_metadata,
+    validate_feedback_reward_utility,
+)
 from somabrain.context import ContextPlanner
 from somabrain.context.factory import get_context_builder, get_context_planner
 from somabrain import audit
 from somabrain.learning import AdaptationEngine
-from somabrain.storage.feedback import FeedbackStore
-from somabrain.storage.token_ledger import TokenLedger
-from common.config.settings import settings
 from somabrain.metrics import (
     update_learning_retrieval_weights,
     update_learning_utility_weights,
@@ -52,120 +52,10 @@ from somabrain.metrics import (
     record_learning_feedback_latency,
     update_learning_effective_lr,
 )
-import math
 
 # Import central feature flag view and metrics utilities
 from config.feature_flags import FeatureFlags
 from somabrain import metrics as _metrics
-
-
-class ContextRouteState:
-    """Encapsulates context route state for DI container management.
-
-    This class holds:
-    - FeedbackStore (lazy-initialized)
-    - TokenLedger (lazy-initialized)
-    - Per-tenant AdaptationEngine cache
-    - Feedback counter
-    - Rate limiting windows
-
-    Thread Safety:
-        The state uses simple dict operations which are atomic in CPython.
-        For production use with multiple threads, consider adding explicit
-        locking if state consistency is critical.
-    """
-
-    def __init__(self) -> None:
-        self._feedback_store: Optional[FeedbackStore] = None
-        self._token_ledger: Optional[TokenLedger] = None
-        self._adaptation_engines: Dict[str, AdaptationEngine] = {}
-        self._feedback_counter: int = 0
-        self._feedback_rate_window: Dict[str, collections.deque] = collections.defaultdict(
-            collections.deque
-        )
-
-    def get_feedback_store(self) -> FeedbackStore:
-        """Get or create the FeedbackStore instance."""
-        if self._feedback_store is None:
-            self._feedback_store = FeedbackStore()
-        return self._feedback_store
-
-    def get_token_ledger(self) -> TokenLedger:
-        """Get or create the TokenLedger instance."""
-        if self._token_ledger is None:
-            self._token_ledger = TokenLedger()
-        return self._token_ledger
-
-    def get_adaptation_engine(
-        self,
-        builder,
-        planner: ContextPlanner,
-        tenant_id: str = "default",
-    ) -> AdaptationEngine:
-        """Get or create a per-tenant AdaptationEngine instance."""
-        if tenant_id not in self._adaptation_engines:
-            adaptation = AdaptationEngine(
-                retrieval=builder.weights,
-                utility=planner.utility_weights,
-                tenant_id=tenant_id,
-                enable_dynamic_lr=True,
-            )
-            self._adaptation_engines[tenant_id] = adaptation
-        return self._adaptation_engines[tenant_id]
-
-    @property
-    def feedback_counter(self) -> int:
-        """Get the current feedback counter value."""
-        return self._feedback_counter
-
-    @feedback_counter.setter
-    def feedback_counter(self, value: int) -> None:
-        """Set the feedback counter value."""
-        self._feedback_counter = value
-
-    def increment_feedback_counter(self) -> int:
-        """Increment and return the feedback counter."""
-        self._feedback_counter += 1
-        return self._feedback_counter
-
-    def enforce_rate_limit(self, tenant_id: str) -> None:
-        """Enforce per-tenant rate limiting for feedback requests."""
-        limit = getattr(settings, "feedback_rate_limit_per_minute", 0) or 0
-        if limit <= 0:
-            return
-        now = time.time()
-        window = self._feedback_rate_window[tenant_id]
-        # Trim entries older than 60 seconds
-        while window and now - window[0] > 60.0:
-            window.popleft()
-        if len(window) >= limit:
-            raise HTTPException(
-                status_code=429,
-                detail=f"feedback rate exceeded ({limit}/min). Slow down or raise SOMABRAIN_FEEDBACK_RATE_LIMIT_PER_MIN.",
-            )
-        window.append(now)
-
-    def reset(self) -> None:
-        """Reset all state (for testing)."""
-        self._feedback_store = None
-        self._token_ledger = None
-        self._adaptation_engines.clear()
-        self._feedback_counter = 0
-        self._feedback_rate_window.clear()
-
-
-def _create_context_route_state() -> ContextRouteState:
-    """Factory function for DI container registration."""
-    return ContextRouteState()
-
-
-# Register with DI container
-container.register("context_route_state", _create_context_route_state)
-
-
-def get_context_route_state() -> ContextRouteState:
-    """Get the context route state from the DI container."""
-    return container.get("context_route_state")
 
 
 # Register Prometheus gauges for each feature flag so they are exposed via
@@ -237,29 +127,24 @@ async def evaluate_endpoint(
         raise HTTPException(status_code=500, detail=f"context build failed: {exc}")
 
     plan = planner.plan(bundle)
+    memories = [MemoryItem(**m.__dict__) for m in bundle.memories]
+
     # Enforce payload size/length limits
-    if len(bundle.memories) > 20:
-        raise HTTPException(status_code=400, detail="memories exceeds 20 items")
-    if len(bundle.prompt) > 4096:
-        raise HTTPException(status_code=400, detail="prompt length exceeds 4096 characters")
-    if len(bundle.residual_vector) > 2048:
-        raise HTTPException(status_code=400, detail="residual vector exceeds 2048 floats")
-    if len(bundle.working_memory_snapshot) > 10:
-        raise HTTPException(status_code=400, detail="working memory exceeds 10 items")
-    import json
+    validate_evaluate_response(
+        bundle, memories, plan.prompt, bundle.residual_vector, bundle.working_memory_snapshot
+    )
 
     resp_obj = EvaluateResponse(
         query=bundle.query,
         prompt=plan.prompt,
         tenant_id=tenant_id,
-        memories=[MemoryItem(**m.__dict__) for m in bundle.memories],
+        memories=memories,
         weights=bundle.weights,
         residual_vector=bundle.residual_vector,
         working_memory=bundle.working_memory_snapshot,
         constitution_checksum=_constitution_checksum(),
     )
-    if len(json.dumps(resp_obj.dict())) > 128 * 1024:
-        raise HTTPException(status_code=400, detail="response size exceeds 128 KB")
+    validate_evaluate_response_size(resp_obj.dict())
     return resp_obj
 
 
@@ -282,40 +167,15 @@ async def feedback_endpoint(
     allowed = await get_allowed_tenants_async()
     if allowed and tenant_id not in allowed:
         raise HTTPException(status_code=400, detail="unknown tenant")
-    # Enforce payload size/length limits
-    for field in [
-        payload.session_id,
-        payload.query,
-        payload.prompt,
-        payload.response_text,
-    ]:
-        if field and len(field) > 1024:
-            raise HTTPException(status_code=400, detail="input field exceeds 1024 characters")
-    import json
 
-    if payload.metadata is not None:
-        try:
-            encoded_metadata = json.dumps(payload.metadata)
-        except Exception:
-            raise HTTPException(status_code=400, detail="invalid metadata encoding")
-        if len(encoded_metadata) > 8 * 1024:
-            raise HTTPException(status_code=400, detail="metadata exceeds 8 KB")
+    # Enforce payload size/length limits
+    validate_feedback_fields(
+        payload.session_id, payload.query, payload.prompt, payload.response_text
+    )
+    validate_feedback_metadata(payload.metadata)
 
     # Validate reward and utility
-    if payload.reward is None or payload.utility is None:
-        raise HTTPException(status_code=400, detail="reward and utility are required")
-    try:
-        reward_val = float(payload.reward)
-    except Exception:
-        raise HTTPException(status_code=400, detail="reward must be numeric")
-    if not math.isfinite(reward_val) or reward_val < -10_000 or reward_val > 10_000:
-        raise HTTPException(status_code=400, detail="reward out of bounds")
-    try:
-        util_val = float(payload.utility)
-    except Exception:
-        raise HTTPException(status_code=400, detail="utility must be numeric")
-    if not math.isfinite(util_val) or util_val < -10_000 or util_val > 10_000:
-        raise HTTPException(status_code=400, detail="utility out of bounds")
+    reward_val, util_val = validate_feedback_reward_utility(payload.reward, payload.utility)
 
     adapter = _get_adaptation(builder, planner, tenant_id=tenant_id)
     # Capture weights before adaptation

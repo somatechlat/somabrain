@@ -231,3 +231,85 @@ class MemoryHTTPTransport:
             data = _response_json(resp)
             return status < 300, status, data
         return False, status, data
+
+
+def create_memory_transport(
+    cfg: Any,
+    logger_instance: logging.Logger,
+) -> MemoryHTTPTransport:
+    """Create a configured MemoryHTTPTransport instance.
+
+    Per Requirements D1.1-D1.4:
+    - D1.1: Tenant isolation via headers
+    - D1.2: Namespace isolation via headers
+    - D1.3: Always set tenant headers
+    - D1.4: Never leave tenant header empty
+
+    Args:
+        cfg: Configuration object with memory settings.
+        logger_instance: Logger for diagnostic output.
+
+    Returns:
+        Configured MemoryHTTPTransport instance.
+
+    Raises:
+        RuntimeError: If memory endpoint is not configured or unreachable.
+    """
+    from somabrain.infrastructure import get_memory_http_endpoint, resolve_memory_endpoint
+    from somabrain.memory.utils import get_tenant_namespace
+
+    headers = {}
+    token_value = getattr(cfg, "memory_http_token", None)
+    if token_value:
+        headers["Authorization"] = f"Bearer {token_value}"
+        headers["X-API-Key"] = token_value
+
+    # TENANT ISOLATION (D1.3): Always set tenant headers for isolation
+    tenant, namespace = get_tenant_namespace(cfg)
+
+    # CRITICAL: Always set both headers - never leave empty (D1.4)
+    headers["X-Soma-Namespace"] = namespace or "default"
+    headers["X-Soma-Tenant"] = tenant or "default"
+
+    max_conns = _http_setting("http_max_connections", 64)
+    keepalive = _http_setting("http_keepalive_connections", 32)
+    retries = _http_setting("http_retries", 1)
+
+    try:
+        import httpx
+        limits = httpx.Limits(max_connections=max_conns, max_keepalive_connections=keepalive)
+    except Exception:
+        limits = None
+
+    resolved = None
+    try:
+        resolved = resolve_memory_endpoint()
+    except RuntimeError:
+        pass
+
+    cfg_endpoint = str(getattr(cfg, "memory_http_endpoint", "") or "")
+    base_url = (
+        cfg_endpoint.strip()
+        if cfg_endpoint
+        else (resolved.url if resolved else get_memory_http_endpoint() or "")
+    )
+    if not base_url:
+        raise RuntimeError("Memory HTTP endpoint required but not configured")
+    if base_url.endswith("/openapi.json"):
+        base_url = base_url[: -len("/openapi.json")]
+    base_url = base_url.rstrip("/")
+
+    transport = MemoryHTTPTransport(
+        base_url=base_url,
+        headers=headers,
+        limits=limits,
+        retries=retries,
+        logger=logger_instance,
+    )
+    if transport.client is None:
+        raise RuntimeError(
+            "MEMORY SERVICE REQUIRED but not reachable. Set SOMABRAIN_MEMORY_HTTP_ENDPOINT."
+        )
+    if not token_value:
+        logger_instance.warning("Memory HTTP client initialized without token; proceeding without auth.")
+    return transport

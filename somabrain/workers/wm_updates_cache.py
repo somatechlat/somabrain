@@ -117,8 +117,8 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                 try:
                     evd = ev.get("evidence") or {}
                     tenant = str(evd.get("tenant") or "public").strip() or "public"
-                except Exception:
-                    pass
+                except Exception as parse_exc:
+                    logger.debug("Failed to parse tenant from event evidence: %s", parse_exc)
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
                 try:
@@ -128,16 +128,16 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                         r.ltrim(key, 0, max_items - 1)
                     if ttl_seconds > 0:
                         r.expire(key, ttl_seconds)
-                except Exception:
-                    pass
-            except Exception:
-                # swallow and continue
-                pass
+                except Exception as redis_exc:
+                    logger.warning("Failed to cache WM update to Redis key %s: %s", key, redis_exc)
+            except Exception as outer_exc:
+                # Log and continue processing other messages
+                logger.debug("Failed to process WM update message: %s", outer_exc)
     finally:
         try:
             consumer.close()
-        except Exception:
-            pass
+        except Exception as close_exc:
+            logger.debug("Failed to close consumer: %s", close_exc)
 
 
 def main() -> None:  # pragma: no cover

@@ -13,12 +13,15 @@ FastAPI router in ``somabrain.cognitive.thread_router``.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, List, Optional
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, func
 
 from somabrain.storage.db import Base
 from common.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 
 class CognitiveThread(Base):
@@ -69,8 +72,8 @@ class CognitiveThread(Base):
             data = json.loads(self.options_json)
             if isinstance(data, list):
                 return [str(item) for item in data]
-        except Exception:
-            pass
+        except Exception as parse_exc:
+            logger.debug("Failed to parse options_json: %s", parse_exc)
         return []
 
     def set_options(self, options: List[Any]) -> None:
@@ -81,7 +84,8 @@ class CognitiveThread(Base):
         """
         try:
             self.options_json = json.dumps([str(o) for o in options])
-        except Exception:
+        except Exception as json_exc:
+            logger.debug("Failed to serialize options to JSON: %s", json_exc)
             self.options_json = None
 
     def next_option(self) -> Optional[str]:

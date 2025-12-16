@@ -15,71 +15,17 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import uuid
-from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Any, Union
-from enum import Enum
 
 import redis.asyncio as redis
 from redis.exceptions import RedisError
 
+from somabrain.tenant_validation import normalize_tenant_id, validate_tenant_id
+from somabrain.tenant_types import TenantTier, TenantStatus, TenantMetadata
+
 logger = logging.getLogger(__name__)
-
-
-class TenantTier(str, Enum):
-    """Tenant tier classification."""
-
-    SYSTEM = "system"
-    ENTERPRISE = "enterprise"
-    SANDBOX = "sandbox"
-    PUBLIC = "public"
-
-
-class TenantStatus(str, Enum):
-    """Tenant status options."""
-
-    ACTIVE = "active"
-    SUSPENDED = "suspended"
-    DISABLED = "disabled"
-    PENDING = "pending"
-
-
-@dataclass
-class TenantMetadata:
-    """Comprehensive tenant metadata."""
-
-    tenant_id: str
-    display_name: str
-    created_at: datetime
-    status: TenantStatus
-    tier: TenantTier
-    config: Dict[str, Any]
-    is_exempt: bool
-    exempt_reason: Optional[str]
-    last_activity: datetime
-    created_by: Optional[str]
-    expires_at: Optional[datetime] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for serialization."""
-        data = asdict(self)
-        data["status"] = self.status.value
-        data["tier"] = self.tier.value
-        return data
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> TenantMetadata:
-        """Create from dictionary."""
-        data = data.copy()
-        data["status"] = TenantStatus(data["status"])
-        data["tier"] = TenantTier(data["tier"])
-        data["created_at"] = datetime.fromisoformat(data["created_at"])
-        data["last_activity"] = datetime.fromisoformat(data["last_activity"])
-        if data.get("expires_at"):
-            data["expires_at"] = datetime.fromisoformat(data["expires_at"])
-        return cls(**data)
 
 
 class TenantRegistry:
@@ -379,37 +325,11 @@ class TenantRegistry:
 
     def _normalize_tenant_id(self, tenant_id: str) -> str:
         """Normalize tenant ID for consistent comparison."""
-        return tenant_id.strip().lower()
+        return normalize_tenant_id(tenant_id)
 
     def _validate_tenant_id(self, tenant_id: str) -> bool:
         """Validate tenant ID format and security."""
-        if not tenant_id or len(tenant_id) < 3 or len(tenant_id) > 64:
-            return False
-
-        # Check for invalid characters
-        invalid_chars = {
-            "<",
-            ">",
-            '"',
-            "'",
-            "&",
-            ";",
-            "\\",
-            "/",
-            "?",
-            " ",
-            "\t",
-            "\n",
-            "\r",
-        }
-        if any(char in tenant_id for char in invalid_chars):
-            return False
-
-        # Validate format (alphanumeric, underscores, hyphens)
-        if not re.match(r"^[a-zA-Z0-9_-]+$", tenant_id):
-            return False
-
-        return True
+        return validate_tenant_id(tenant_id)
 
     async def _store_tenant_metadata(self, metadata: TenantMetadata) -> None:
         """Store tenant metadata in Redis."""

@@ -37,7 +37,8 @@ def _get_app_config():
         from somabrain import runtime as rt
 
         return getattr(rt, "cfg", settings)
-    except Exception:
+    except Exception as exc:
+        logger.debug("Failed to get runtime config, using settings: %s", exc)
         return settings
 
 
@@ -54,8 +55,8 @@ async def get_neuromodulators(request: Request):
 
     try:
         audit.log_admin_action(request, "neuromodulators_read")
-    except Exception:
-        pass
+    except Exception as audit_exc:
+        logger.debug("Failed to log neuromodulators_read audit: %s", audit_exc)
 
     tenant_ctx = await get_tenant_async(request, cfg.namespace)
     state = _per_tenant_neuromods.get_state(tenant_ctx.tenant_id)
@@ -106,8 +107,8 @@ async def set_neuromodulators(body: S.NeuromodStateModel, request: Request):
                 },
             },
         )
-    except Exception:
-        pass
+    except Exception as audit_exc:
+        logger.debug("Failed to log neuromodulators_set audit: %s", audit_exc)
 
     return S.NeuromodStateModel(
         dopamine=new_state.dopamine,

@@ -212,8 +212,8 @@ class LocalJournal:
         if self.current_file_handle:
             try:
                 self.current_file_handle.close()
-            except Exception:
-                pass
+            except Exception as close_exc:
+                logger.debug("Failed to close journal file handle during rotation: %s", close_exc)
             self.current_file_handle = None
 
         # Create new journal file
@@ -368,8 +368,8 @@ class LocalJournal:
         if self.current_file_handle:
             try:
                 self.current_file_handle.close()
-            except Exception:
-                pass
+            except Exception as close_exc:
+                logger.debug("Failed to close journal file handle during rewrite: %s", close_exc)
             self.current_file_handle = None
 
         # Remove existing journal files
@@ -424,8 +424,8 @@ class LocalJournal:
             if self.current_file_handle:
                 try:
                     self.current_file_handle.close()
-                except Exception:
-                    pass
+                except Exception as close_exc:
+                    logger.debug("Failed to close journal file handle during close: %s", close_exc)
                 self.current_file_handle = None
             self._initialized = False
 

@@ -70,8 +70,12 @@ class DegradationManager:
                 if self._circuit_breaker.is_open(tenant):
                     self._mark_degraded(tenant)
                     return True
-            except Exception:
-                pass
+            except Exception as exc:
+                # Log circuit breaker check failure but continue with local state check
+                import logging
+                logging.getLogger(__name__).debug(
+                    "Circuit breaker check failed for tenant %s: %s", tenant, exc
+                )
 
         # Check local state
         state = self._get_state(tenant)
@@ -110,8 +114,13 @@ class DegradationManager:
                     tenant=tenant,
                     degraded_duration_seconds=duration,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                # Fallback to standard logging if structlog unavailable
+                import logging
+                logging.getLogger(__name__).info(
+                    "Tenant %s recovered from degraded mode (duration: %.2fs). "
+                    "structlog error: %s", tenant, duration, exc
+                )
 
         state.degraded_since = None
         state.alert_triggered = False

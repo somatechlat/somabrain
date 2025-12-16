@@ -345,3 +345,127 @@ def recall_with_graph_boost(
     boosted_hits.sort(key=lambda h: h.score or 0.0, reverse=True)
 
     return boosted_hits
+
+
+def recall_with_degradation(
+    tenant: str,
+    query: str,
+    top_k: int,
+    universe: str,
+    request_id: str,
+    require_healthy_fn: callable,
+    http_recall_fn: callable,
+) -> List[RecallHit]:
+    """Recall memories with degradation handling.
+
+    Per Requirements E1.1-E1.5:
+    - E1.1: Check degradation state before calling SFM
+    - E1.2: When circuit breaker is open, skip SFM call
+    - E1.3: Track degradation state per tenant
+    - E1.4: Return empty results in degraded mode
+    - E1.5: Check if alert should be triggered
+
+    Args:
+        tenant: Tenant identifier.
+        query: Search query string.
+        top_k: Maximum number of results.
+        universe: Universe/scope for search.
+        request_id: Request ID for tracing.
+        require_healthy_fn: Function to check SFM health.
+        http_recall_fn: Function to perform HTTP recall.
+
+    Returns:
+        List of RecallHit objects.
+    """
+    from somabrain.infrastructure.degradation import get_degradation_manager
+
+    degradation_mgr = get_degradation_manager()
+
+    # E1.1: Check degradation state before calling SFM
+    if degradation_mgr.is_degraded(tenant):
+        # E1.5: Check if we should trigger alert
+        degradation_mgr.check_alert(tenant)
+        logger.warning(
+            "SFM degraded mode: returning empty results",
+            tenant=tenant,
+            query_preview=query[:50] if query else "",
+        )
+        return []
+
+    try:
+        require_healthy_fn()
+        results = http_recall_fn(query, top_k, universe, request_id)
+        # SFM call succeeded - mark recovered
+        degradation_mgr.mark_recovered(tenant)
+        return results
+    except RuntimeError as exc:
+        # SFM unavailable - enter degraded mode
+        degradation_mgr.mark_degraded(tenant)
+        logger.warning(
+            "SFM unavailable, entering degraded mode",
+            tenant=tenant,
+            error=str(exc),
+        )
+        return []
+
+
+async def arecall_with_degradation(
+    tenant: str,
+    query: str,
+    top_k: int,
+    universe: str,
+    request_id: str,
+    require_healthy_fn: callable,
+    http_recall_async_fn: callable,
+    sync_fallback_fn: callable,
+    has_async_client: bool,
+) -> List[RecallHit]:
+    """Async recall with degradation handling.
+
+    Per Requirements E1.1-E1.5.
+
+    Args:
+        tenant: Tenant identifier.
+        query: Search query string.
+        top_k: Maximum number of results.
+        universe: Universe/scope for search.
+        request_id: Request ID for tracing.
+        require_healthy_fn: Function to check SFM health.
+        http_recall_async_fn: Async function to perform HTTP recall.
+        sync_fallback_fn: Sync fallback function.
+        has_async_client: Whether async client is available.
+
+    Returns:
+        List of RecallHit objects.
+    """
+    import asyncio
+    from somabrain.infrastructure.degradation import get_degradation_manager
+
+    degradation_mgr = get_degradation_manager()
+
+    if degradation_mgr.is_degraded(tenant):
+        degradation_mgr.check_alert(tenant)
+        logger.warning(
+            "SFM degraded mode (async): returning empty results",
+            tenant=tenant,
+        )
+        return []
+
+    try:
+        if has_async_client:
+            results = await http_recall_async_fn(query, top_k, universe, request_id)
+            degradation_mgr.mark_recovered(tenant)
+            return results
+        # Fallback to sync in executor
+        results = await asyncio.get_event_loop().run_in_executor(
+            None, sync_fallback_fn, query, top_k, universe, request_id
+        )
+        return results
+    except RuntimeError as exc:
+        degradation_mgr.mark_degraded(tenant)
+        logger.warning(
+            "SFM unavailable (async), entering degraded mode",
+            tenant=tenant,
+            error=str(exc),
+        )
+        return []

@@ -128,8 +128,8 @@ class LearnerService:
                 logger.exception("Failed to process next_event message: %s", exc)
                 try:
                     self._dlq.record(event if isinstance(event, dict) else {}, str(exc))
-                except Exception:
-                    pass
+                except Exception as dlq_exc:
+                    logger.warning("Failed to record to DLQ: %s", dlq_exc)
 
     # ---------------------------------------------------------------------
     # Internal helpers used by the test suite

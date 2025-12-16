@@ -35,100 +35,16 @@ _LOG_STATUS_FMT = "status=%s"
 router = APIRouter(tags=["health"])
 
 
-# ---------------------------------------------------------------------------
-# Lazy accessors for app-level singletons to avoid circular imports
-# ---------------------------------------------------------------------------
-
-
-def _get_runtime():
-    """Lazy import of runtime module to access singletons."""
-    import importlib.util
-    import os
-    import sys
-
-    _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtime.py")
-    _spec = importlib.util.spec_from_file_location("somabrain.runtime_module", _runtime_path)
-    if _spec and _spec.name in sys.modules:
-        return sys.modules[_spec.name]
-    # Fallback: search loaded modules
-    for m in list(sys.modules.values()):
-        try:
-            mf = getattr(m, "__file__", "") or ""
-            if mf.endswith(os.path.join("somabrain", "runtime.py")):
-                return m
-        except Exception:
-            continue
-    return None
-
-
-def _get_app_config():
-    """Get the application configuration."""
-    return settings
-
-
-def _get_mt_memory():
-    """Get the multi-tenant memory singleton."""
-    rt = _get_runtime()
-    if rt:
-        return getattr(rt, "mt_memory", None)
-    return None
-
-
-def _get_embedder():
-    """Get the embedder singleton."""
-    rt = _get_runtime()
-    if rt:
-        return getattr(rt, "embedder", None)
-    return None
-
-
-def _get_app_state():
-    """Get the FastAPI app state for OPA engine access."""
-    try:
-        from somabrain.app import app
-
-        return app.state
-    except Exception:
-        return None
-
-
-# ---------------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------------
-
-
-def _ping(url: str) -> bool:
-    """Ping a URL and return True if it responds with 2xx."""
-    # Timeout from settings, not hardcoded
-    ping_timeout = float(getattr(settings, "health_ping_timeout", 0.5) or 0.5)
-    try:
-        with urllib.request.urlopen(url, timeout=ping_timeout) as r:  # noqa: S310
-            return 200 <= getattr(r, "status", 500) < 300
-    except Exception:
-        return False
-
-
-def _milvus_metrics_for_tenant(tenant_id: str) -> Dict[str, Optional[float]]:
-    """Return Milvus telemetry (p95 latencies + segment load) for a tenant."""
-
-    def _read(gauge, **labels) -> Optional[float]:
-        try:
-            child = gauge.labels(**labels)
-            stored = getattr(child, "_value", None)
-            if stored is None:
-                return None
-            return float(stored.get())
-        except Exception:
-            return None
-
-    return {
-        "search_latency_p95_seconds": _read(M.MILVUS_SEARCH_LAT_P95, tenant_id=tenant_id),
-        "ingest_latency_p95_seconds": _read(M.MILVUS_INGEST_LAT_P95, tenant_id=tenant_id),
-        "segment_load": _read(
-            M.MILVUS_SEGMENT_LOAD,
-            collection=getattr(settings, "milvus_collection", "oak_options"),
-        ),
-    }
+# Helper functions - Extracted to somabrain/routers/health_helpers.py
+from somabrain.routers.health_helpers import (
+    get_runtime as _get_runtime,
+    get_app_config as _get_app_config,
+    get_mt_memory as _get_mt_memory,
+    get_embedder as _get_embedder,
+    get_app_state as _get_app_state,
+    ping as _ping,
+    milvus_metrics_for_tenant as _milvus_metrics_for_tenant,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -521,90 +437,9 @@ async def health_metrics(request: Request) -> Dict[str, Any]:
     return {"tenant": tenant, **stats}
 
 
-# ---------------------------------------------------------------------------
-# Health Watchdog Coroutine (for background monitoring)
-# ---------------------------------------------------------------------------
-
-_health_watchdog_task = None
-
-
-async def _health_watchdog_coroutine():
-    """Periodic health checks for per-tenant circuit breakers."""
-    from somabrain.services.memory_service import MemoryService
-
-    cfg = _get_app_config()
-    mt_memory = _get_mt_memory()
-    poll_interval = float(getattr(cfg, "memory_health_poll_interval", 5.0))
-
-    while True:
-        try:
-            # Get all active tenants from memory pool
-            tenants = []
-            if mt_memory:
-                if hasattr(mt_memory, "_pool") and mt_memory._pool:
-                    tenants = list(mt_memory._pool.keys())
-                elif hasattr(mt_memory, "tenants"):
-                    tenants = mt_memory.tenants() or []
-
-            for tenant_namespace in tenants:
-                try:
-                    memsvc = MemoryService(mt_memory, tenant_namespace)
-                    circuit_state = memsvc.get_circuit_state()
-
-                    if circuit_state["circuit_open"]:
-                        health_result = memsvc.health()
-                        healthy = False
-
-                        if isinstance(health_result, dict):
-                            healthy = health_result.get("healthy", False)
-                            if not healthy:
-                                comps = health_result.get("components", {})
-                                mem = comps.get("memory", {})
-                                healthy = mem.get("healthy", False)
-                            if not healthy:
-                                healthy = health_result.get("http", False) or health_result.get(
-                                    "ok", False
-                                )
-
-                        if healthy:
-                            MemoryService.reset_circuit_for_tenant(memsvc.tenant_id)
-                            logger.info(
-                                "%s Circuit breaker RESET | %s | action=reset",
-                                _LOG_PREFIX,
-                                _LOG_TENANT_FMT,
-                                memsvc.tenant_id,
-                            )
-
-                except Exception as e:
-                    logger.error(
-                        "%s Health check FAILED | %s | error=%s",
-                        _LOG_PREFIX,
-                        _LOG_TENANT_FMT,
-                        tenant_namespace,
-                        str(e),
-                    )
-
-        except Exception as e:
-            logger.error(
-                "%s Watchdog ERROR | error=%s",
-                _LOG_PREFIX,
-                str(e),
-            )
-
-        await asyncio.sleep(poll_interval)
-
-
-def start_health_watchdog():
-    """Start the health watchdog background task."""
-    global _health_watchdog_task
-    if _health_watchdog_task is None:
-        _health_watchdog_task = asyncio.create_task(_health_watchdog_coroutine())
-    return _health_watchdog_task
-
-
-def stop_health_watchdog():
-    """Stop the health watchdog background task."""
-    global _health_watchdog_task
-    if _health_watchdog_task is not None:
-        _health_watchdog_task.cancel()
-        _health_watchdog_task = None
+# Health Watchdog - Extracted to somabrain/routers/health_watchdog.py
+from somabrain.routers.health_watchdog import (
+    _health_watchdog_coroutine,
+    start_health_watchdog,
+    stop_health_watchdog,
+)

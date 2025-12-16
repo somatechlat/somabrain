@@ -115,8 +115,10 @@ def unbind_fidelity(dim, dtype, n_pairs=200, strategy="linear"):
             pass
 
         # compare rec to original a
+        from somabrain.math.similarity import cosine_similarity
+
         mse = float(np.mean((a - rec) ** 2))
-        cos = float(np.dot(a, rec) / (np.linalg.norm(a) * np.linalg.norm(rec) + 1e-12))
+        cos = cosine_similarity(a, rec)
         mses.append(mse)
         cosines.append(cos)
     elapsed = time.perf_counter() - start
