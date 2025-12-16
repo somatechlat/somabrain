@@ -208,17 +208,19 @@ class WorkingMemory:
             Payload is deep-copied to prevent external modifications.
         """
         # Handle both signatures: admit(item_id, vector, payload) and admit(vector, payload)
+        # Type ignores are necessary here due to Union type narrowing limitations in Python's
+        # type system when handling overloaded function signatures with runtime isinstance checks.
         if isinstance(item_id_or_vector, str):
             # New signature: admit(item_id, vector, payload)
             item_id = item_id_or_vector
-            vector = vector_or_payload  # type: ignore
+            vector = vector_or_payload  # type: ignore[assignment] - narrowed by isinstance check above
             if payload is None:
                 payload = {}
         else:
             # Legacy signature: admit(vector, payload)
             item_id = f"wm_{self._t + 1}_{time.time()}"
             vector = item_id_or_vector
-            payload = vector_or_payload if isinstance(vector_or_payload, dict) else {}  # type: ignore
+            payload = vector_or_payload if isinstance(vector_or_payload, dict) else {}  # type: ignore[assignment] - Union narrowing
         if vector.shape[-1] != self.dim:
             if vector.shape[-1] < self.dim:
                 pad = np.zeros((self.dim - vector.shape[-1],), dtype=vector.dtype)

@@ -44,19 +44,23 @@ try:
         MilvusException = getattr(_milvus_exceptions, "MilvusException", Exception)
     except Exception:  # pragma: no cover - compatibility shim
         try:
-            from pymilvus.exceptions import MilvusException  # type: ignore
+            # Type ignore: pymilvus API varies across versions; this fallback handles older APIs
+            from pymilvus.exceptions import MilvusException  # type: ignore[import-not-found]
         except Exception:  # Final guard: keep import successful even on API drift
-            MilvusException = Exception  # type: ignore
+            # Type ignore: Exception assignment is intentional fallback for missing pymilvus
+            MilvusException = Exception  # type: ignore[misc]
 
     _PYMILVUS_AVAILABLE = True
 except Exception:  # pragma: no cover - exercised only when pymilvus missing
     _PYMILVUS_AVAILABLE = False
     # Type-only aliases for static checking; constructors are never reached because the
     # client raises when the SDK is unavailable.
-    Collection = CollectionSchema = FieldSchema = DataType = Any  # type: ignore
-    connections = utility = Any  # type: ignore
+    # Type ignores: These are intentional fallback stubs when pymilvus is not installed.
+    # The actual types are only used for static analysis; runtime code guards against usage.
+    Collection = CollectionSchema = FieldSchema = DataType = Any  # type: ignore[misc]
+    connections = utility = Any  # type: ignore[misc]
 
-    class MilvusException(Exception):  # type: ignore
+    class MilvusException(Exception):  # type: ignore[no-redef]
         """Raised when pymilvus is not installed."""
 
 

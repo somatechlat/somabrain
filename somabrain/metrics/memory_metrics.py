@@ -266,8 +266,9 @@ try:
             registry=REGISTRY,
         )
 except Exception:
-    # Fallback: create a no-op metric
-    HTTP_FAILURES = None  # type: ignore
+    # Fallback: create a no-op metric when Prometheus registry has conflicts.
+    # Type ignore: None is intentional fallback; callers must check before use.
+    HTTP_FAILURES = None  # type: ignore[assignment]
 
 CIRCUIT_BREAKER_STATE = Gauge(
     "somabrain_memory_circuit_breaker_state",

@@ -81,17 +81,39 @@ class DegradationManager:
         state = self._get_state(tenant)
         return state.degraded_since is not None
 
+    def _emit_degradation_metric(self, tenant: str, event_type: str) -> None:
+        """Emit degradation event metric.
+        
+        Args:
+            tenant: Tenant ID
+            event_type: Either 'enter' or 'exit'
+        """
+        try:
+            from somabrain.metrics.integration import SFM_DEGRADATION_EVENTS
+            SFM_DEGRADATION_EVENTS.labels(tenant=tenant, event_type=event_type).inc()
+        except Exception:
+            # Metrics are optional; don't fail on metric emission errors
+            pass
+
     def _mark_degraded(self, tenant: str) -> None:
         """Mark tenant as degraded (internal)."""
         state = self._get_state(tenant)
         if state.degraded_since is None:
             state.degraded_since = time.time()
             state.alert_triggered = False
+            # Emit metric for entering degraded mode
+            self._emit_degradation_metric(tenant, "enter")
+            # Log state transition
+            import logging
+            logging.getLogger(__name__).warning(
+                "Tenant %s entered degraded mode", tenant
+            )
 
     def mark_degraded(self, tenant: str) -> None:
         """Explicitly mark tenant as degraded.
 
         Called when SFM operations fail.
+        Per E1.1: When SFM unreachable, SB continues with WM-only (degraded=true).
         """
         self._mark_degraded(tenant)
 
@@ -103,24 +125,15 @@ class DegradationManager:
         """
         state = self._get_state(tenant)
         if state.degraded_since is not None:
-            # Log recovery
+            # Log recovery with duration
             duration = time.time() - state.degraded_since
-            try:
-                from structlog import get_logger
-
-                logger = get_logger()
-                logger.info(
-                    "Tenant recovered from degraded mode",
-                    tenant=tenant,
-                    degraded_duration_seconds=duration,
-                )
-            except Exception as exc:
-                # Fallback to standard logging if structlog unavailable
-                import logging
-                logging.getLogger(__name__).info(
-                    "Tenant %s recovered from degraded mode (duration: %.2fs). "
-                    "structlog error: %s", tenant, duration, exc
-                )
+            import logging
+            logging.getLogger(__name__).info(
+                "Tenant %s recovered from degraded mode (duration: %.2fs)",
+                tenant, duration
+            )
+            # Emit metric for exiting degraded mode
+            self._emit_degradation_metric(tenant, "exit")
 
         state.degraded_since = None
         state.alert_triggered = False
@@ -187,28 +200,36 @@ class DegradationManager:
         return result
 
 
-# Global singleton instance
-_degradation_manager: Optional[DegradationManager] = None
+def _create_degradation_manager() -> DegradationManager:
+    """Factory function for DI container."""
+    # Try to get circuit breaker
+    circuit_breaker = None
+    try:
+        from somabrain.infrastructure.circuit_breaker import get_circuit_breaker
+
+        circuit_breaker = get_circuit_breaker()
+    except Exception:
+        pass
+
+    return DegradationManager(circuit_breaker=circuit_breaker)
 
 
 def get_degradation_manager() -> DegradationManager:
-    """Get the global DegradationManager instance."""
-    global _degradation_manager
-    if _degradation_manager is None:
-        # Try to get circuit breaker
-        circuit_breaker = None
-        try:
-            from somabrain.infrastructure.circuit_breaker import get_circuit_breaker
+    """Get the DegradationManager instance from DI container.
+    
+    Uses the centralized DI container for singleton management,
+    eliminating module-level mutable state per VIBE requirements.
+    """
+    from somabrain.core.container import container
 
-            circuit_breaker = get_circuit_breaker()
-        except Exception:
-            pass
-
-        _degradation_manager = DegradationManager(circuit_breaker=circuit_breaker)
-    return _degradation_manager
+    if not container.has("degradation_manager"):
+        container.register("degradation_manager", _create_degradation_manager)
+    return container.get("degradation_manager")
 
 
 def reset_degradation_manager() -> None:
-    """Reset the global DegradationManager (for testing)."""
-    global _degradation_manager
-    _degradation_manager = None
+    """Reset the DegradationManager (for testing)."""
+    from somabrain.core.container import container
+
+    # Re-register to clear the instance
+    container.register("degradation_manager", _create_degradation_manager)

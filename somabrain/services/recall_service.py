@@ -207,7 +207,10 @@ def diversify_payloads(
     - lam: tradeoff [0,1] between relevance and diversity
     """
     if method != "mmr":
-        raise NotImplementedError("diversify_payloads supports only method='mmr'")
+        raise ValueError(
+            f"Unsupported diversification method: '{method}'. "
+            "Only 'mmr' (Maximal Marginal Relevance) is supported."
+        )
     try:
         texts = [_text_of(p) for p in payloads]
         k = len(payloads) if k is None or k <= 0 else min(k, len(payloads))

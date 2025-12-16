@@ -12,10 +12,13 @@ from sqlalchemy import (
     Index,
 )
 
+# SQLAlchemy JSON type import with fallback for older versions.
+# Type ignores: JSON type location varies across SQLAlchemy versions (1.x vs 2.x).
+# This pattern ensures compatibility while maintaining type safety at runtime.
 try:  # Prefer native JSON/JSONB when SQLAlchemy is available
-    from sqlalchemy import JSON  # type: ignore
+    from sqlalchemy import JSON  # type: ignore[attr-defined]
 except Exception:  # pragma: no cover - compatibility fallback
-    from sqlalchemy.types import Text as JSON  # type: ignore
+    from sqlalchemy.types import Text as JSON  # type: ignore[attr-defined]
 from somabrain.storage.db import Base
 
 

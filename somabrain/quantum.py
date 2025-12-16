@@ -44,14 +44,16 @@ class HRRConfig:
     """Configuration for BHDC hyperdimensional operations.
 
     Defaults are sourced from centralized Settings configuration.
+    Fields default to None, which triggers Settings lookup in __post_init__.
+    After initialization, all required fields are guaranteed to have non-None values.
     """
 
-    dim: int = None  # type: ignore[assignment]
-    seed: int = None  # type: ignore[assignment]
-    dtype: str = None  # type: ignore[assignment]
-    renorm: bool = None  # type: ignore[assignment]
+    dim: Optional[int] = None
+    seed: Optional[int] = None
+    dtype: Optional[str] = None
+    renorm: Optional[bool] = None
     binding_method: str = "bhdc"
-    sparsity: float = None  # type: ignore[assignment]
+    sparsity: Optional[float] = None
     binary_mode: str = "pm_one"
     mix: str = "none"
     roles_unitary: bool = True

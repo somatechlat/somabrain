@@ -61,9 +61,13 @@ def _get_settings():
 
 @dataclass
 class QuotaConfig:
-    daily_writes: int = None  # type: ignore[assignment]
+    """Quota configuration with Settings-backed defaults.
+    
+    Fields default to None, which triggers Settings lookup in __post_init__.
+    """
+    daily_writes: Optional[int] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
         if self.daily_writes is None:
             self.daily_writes = _get_settings().write_daily_limit

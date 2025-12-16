@@ -58,13 +58,18 @@ def _get_settings():
 
 @dataclass
 class ExecConfig:
-    window: int = None  # type: ignore[assignment]
-    conflict_threshold: float = None  # type: ignore[assignment]
+    """Executive controller configuration.
+    
+    Fields default to None, which triggers Settings lookup in __post_init__.
+    After initialization, all fields are guaranteed to have non-None values.
+    """
+    window: Optional[int] = None
+    conflict_threshold: Optional[float] = None
     explore_boost_k: int = 2
     use_bandits: bool = False
-    bandit_eps: float = None  # type: ignore[assignment]
+    bandit_eps: Optional[float] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
         s = _get_settings()
         if self.window is None:

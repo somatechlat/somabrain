@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 from threading import RLock
-from typing import Dict
+from typing import Dict, Optional
 
 __all__ = ["CircuitBreaker"]
 
@@ -43,9 +43,9 @@ class CircuitBreaker:
     def __init__(
         self,
         *,
-        global_failure_threshold: int = None,  # type: ignore[assignment]
-        global_reset_interval: float = None,  # type: ignore[assignment]
-        global_cooldown_interval: float = None,  # type: ignore[assignment]
+        global_failure_threshold: Optional[int] = None,
+        global_reset_interval: Optional[float] = None,
+        global_cooldown_interval: Optional[float] = None,
     ) -> None:
         """Create a circuit‑breaker with optional cooldown interval.
 

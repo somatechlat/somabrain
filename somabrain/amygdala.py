@@ -65,12 +65,12 @@ class SalienceConfig:
     threshold_act: float
     hysteresis: float
     use_soft: bool = False
-    soft_temperature: float = None  # type: ignore[assignment]
+    soft_temperature: Optional[float] = None
     method: str = "dense"
     w_fd: float = 0.0
-    fd_energy_floor: float = None  # type: ignore[assignment]
+    fd_energy_floor: Optional[float] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Apply Settings defaults for None values."""
         if self.soft_temperature is None:
             self.soft_temperature = _get_settings().salience_soft_temperature

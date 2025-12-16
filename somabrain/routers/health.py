@@ -230,6 +230,17 @@ async def health(request: Request) -> S.HealthResponse:
     resp["memory_ok"] = memory_ok
     resp["memory_degraded"] = circuit_open or should_reset
 
+    # Degradation manager status (per E1.1-E1.5)
+    try:
+        from somabrain.infrastructure.degradation import get_degradation_manager
+        dm = get_degradation_manager()
+        degraded_duration = dm.get_degraded_duration(tenant_id)
+        resp["degradation_duration_seconds"] = degraded_duration
+        resp["degradation_alert_triggered"] = dm.check_alert(tenant_id) if degraded_duration else False
+    except Exception:
+        resp["degradation_duration_seconds"] = None
+        resp["degradation_alert_triggered"] = None
+
     # Outbox buffering diagnostics
     try:
         from somabrain.db.models.outbox import OutboxEvent

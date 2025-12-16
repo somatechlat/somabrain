@@ -22,7 +22,11 @@ This plan addresses all VIBE Coding Rules violations identified across the SomaB
 | Phase 9 | ✅ Complete | Caches bounded with TTLCache (tenant_overrides_cache: maxsize=1000, ttl=300) |
 | Phase 10 | ✅ Complete | Thread safety documented for LocalJournal (RLock) and PrometheusMetrics (Lock) |
 | Phase 11 | ✅ Complete | Fallback patterns documented (working_memory, fusion, oak/planner, config) |
-| Phase 12-16 | Pending | JWT cleanup, type safety, NotImplementedError, degradation modes, observability |
+| Phase 12 | ✅ Complete | JWT module cleanup - dynamic loading documented |
+| Phase 13 | ✅ Complete | Type safety - type: ignore comments fixed/documented with Optional types |
+| Phase 14 | ✅ Complete | NotImplementedError replaced with ValueError in recall_service.py |
+| Phase 15 | ✅ Complete | Degradation modes - DI container, metrics emission, health endpoint integration |
+| Phase 16 | In Progress | Observability completeness |
 
 **Infrastructure Status:**
 - SomaBrain API: ✅ Healthy (port 9696)

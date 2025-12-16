@@ -54,9 +54,12 @@ def _memory_pool():
         - Uses centralized Settings for pool configuration
     """
 
+    # Type ignores: These imports are intentionally dynamic to handle circular import
+    # scenarios and runtime module availability. The modules may not exist at static
+    # analysis time but are available at runtime after app initialization.
     runtime_mod = None
     try:
-        from somabrain import runtime as _rt  # type: ignore
+        from somabrain import runtime as _rt  # type: ignore[import-not-found]
 
         runtime_mod = _rt
         pool = getattr(_rt, "mt_memory", None)
@@ -64,7 +67,7 @@ def _memory_pool():
         pool = None
     if pool is None:
         try:
-            import somabrain.app as _app_mod  # type: ignore
+            import somabrain.app as _app_mod  # type: ignore[import-not-found]
 
             pool = getattr(_app_mod, "mt_memory", None)
         except Exception:
