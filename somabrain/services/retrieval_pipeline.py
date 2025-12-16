@@ -34,7 +34,8 @@ _runtime_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "runtim
 _spec = importlib.util.spec_from_file_location(
     "somabrain.runtime_module", _runtime_path
 )
-assert _spec and _spec.loader
+if not _spec or not _spec.loader:
+    raise RuntimeError(f"Failed to load runtime.py module spec from {_runtime_path}")
 if _spec.name in sys.modules:
     _rt = sys.modules[_spec.name]
 else:

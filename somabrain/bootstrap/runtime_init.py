@@ -49,7 +49,10 @@ def load_runtime_module():
     _spec = importlib.util.spec_from_file_location(
         "somabrain.runtime_module", _runtime_path
     )
-    assert _spec and _spec.loader, "Failed to load runtime.py module spec"
+    if not _spec or not _spec.loader:
+        raise RuntimeError(
+            f"Failed to load runtime.py module spec from {_runtime_path}"
+        )
 
     # If an initializer already loaded the runtime module into sys.modules, reuse it
     if _spec.name in sys.modules:
