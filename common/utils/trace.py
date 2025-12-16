@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
+_LOG = logging.getLogger(__name__)
+
 try:  # pragma: no cover - optional dependency guard
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -17,8 +19,6 @@ except Exception as exc:  # pragma: no cover
     _LOG.exception("Failed to import OpenTelemetry modules: %s", exc)
     trace = None
     Tracer = None
-
-_LOG = logging.getLogger(__name__)
 
 
 def configure_tracing(

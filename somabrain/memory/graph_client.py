@@ -10,9 +10,12 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 from opentelemetry import trace
+
+if TYPE_CHECKING:
+    from somabrain.memory.transport import MemoryHTTPTransport
 
 from somabrain.memory.graph_metrics import (
     SB_GRAPH_LINK_TOTAL,
@@ -61,7 +64,7 @@ class GraphClient:
 
     def __init__(
         self,
-        transport: "MemoryHTTPTransport",
+        transport: "MemoryHTTPTransport",  # noqa: F821 - TYPE_CHECKING import
         tenant: str = "default",
         timeout_ms: float = 100.0,
     ):

@@ -25,6 +25,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from common.config.settings import settings
 from somabrain.storage import db as storage_db
 
 try:  # pragma: no cover - redis is optional during unit tests

@@ -47,12 +47,6 @@ async def utility_guard(
     try:
         if settings is not None:
             dev_mode = getattr(settings, "mode_normalized", "prod") == "dev"
-        else:
-
-            dev_mode = _settings.mode.strip().lower() in (
-                "dev",
-                "development",
-            )
     except Exception:
         dev_mode = False
 

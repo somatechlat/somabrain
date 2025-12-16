@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-from common.config.settings import Settings
+from common.config.settings import Settings, settings
 from common.logging import logger
 from somabrain.metrics import (
     LEARNER_EVENTS_CONSUMED,

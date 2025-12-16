@@ -18,6 +18,7 @@ from somabrain.memory.filtering import _filter_payloads_by_keyword
 
 if TYPE_CHECKING:
     from somabrain.memory.transport import MemoryHTTPTransport
+    from somabrain.memory.graph_client import GraphClient
 
 logger = logging.getLogger(__name__)
 

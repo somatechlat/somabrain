@@ -141,7 +141,7 @@ class SuperposedTrace:
         return self._q
 
     def upsert(self, anchor_id: str, key: np.ndarray, value: np.ndarray) -> None:
-        """Bind *key* and *value*, update the state, and store the anchor.
+        r"""Bind *key* and *value*, update the state, and store the anchor.
 
         The binding uses the configured exponential decay:
 
