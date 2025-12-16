@@ -15,9 +15,13 @@ Feature gating is centralized via somabrain.modes.feature_enabled("wm_updates_ca
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Dict, Optional
+
 from somabrain.modes import feature_enabled
 from common.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 # Strict: use confluent-kafka Consumer only
 from confluent_kafka import Consumer as CKConsumer
@@ -125,17 +129,20 @@ def run_forever() -> None:  # pragma: no cover - integration loop
                     )
                 domain = str(ev.get("domain") or "state").strip().lower()
                 key = f"wm:updates:{tenant}:{domain}"
-                try:
-                    # push JSON; trim to max_items; set TTL
-                    r.lpush(key, json.dumps(ev))
-                    if max_items > 0:
-                        r.ltrim(key, 0, max_items - 1)
-                    if ttl_seconds > 0:
-                        r.expire(key, ttl_seconds)
-                except Exception as redis_exc:
-                    logger.warning(
-                        "Failed to cache WM update to Redis key %s: %s", key, redis_exc
-                    )
+                if r is not None:
+                    try:
+                        # push JSON; trim to max_items; set TTL
+                        r.lpush(key, json.dumps(ev))
+                        if max_items > 0:
+                            r.ltrim(key, 0, max_items - 1)
+                        if ttl_seconds > 0:
+                            r.expire(key, ttl_seconds)
+                    except Exception as redis_exc:
+                        logger.warning(
+                            "Failed to cache WM update to Redis key %s: %s",
+                            key,
+                            redis_exc,
+                        )
             except Exception as outer_exc:
                 # Log and continue processing other messages
                 logger.debug("Failed to process WM update message: %s", outer_exc)
