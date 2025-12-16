@@ -38,9 +38,7 @@ def vector_strategy(draw: st.DrawFn, dim: int = 128) -> np.ndarray:
     """Generate random vectors for testing."""
     vec = draw(
         st.lists(
-            st.floats(
-                min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False
-            ),
+            st.floats(min_value=-10.0, max_value=10.0, allow_nan=False, allow_infinity=False),
             min_size=dim,
             max_size=dim,
         )

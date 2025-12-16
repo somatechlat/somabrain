@@ -14,7 +14,6 @@ keeps the test honest without introducing mocks, satisfying VIBE Rule 1.
 
 from __future__ import annotations
 
-import pytest
 
 from somabrain.jobs.milvus_reconciliation import reconcile
 

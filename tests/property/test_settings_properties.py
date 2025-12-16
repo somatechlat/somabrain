@@ -25,8 +25,16 @@ class TestSettingsCommentStripping:
     """
 
     @given(
-        value=st.text(alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789_-"), min_size=1, max_size=50),
-        comment=st.text(alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "), min_size=0, max_size=20),
+        value=st.text(
+            alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789_-"),
+            min_size=1,
+            max_size=50,
+        ),
+        comment=st.text(
+            alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "),
+            min_size=0,
+            max_size=20,
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_str_env_strips_comments(self, value: str, comment: str) -> None:
@@ -42,7 +50,11 @@ class TestSettingsCommentStripping:
 
     @given(
         value=st.integers(min_value=-1000000, max_value=1000000),
-        comment=st.text(alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "), min_size=0, max_size=20),
+        comment=st.text(
+            alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "),
+            min_size=0,
+            max_size=20,
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_int_env_strips_comments(self, value: int, comment: str) -> None:
@@ -54,7 +66,11 @@ class TestSettingsCommentStripping:
 
     @given(
         value=st.floats(min_value=-1e6, max_value=1e6, allow_nan=False, allow_infinity=False),
-        comment=st.text(alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "), min_size=0, max_size=20),
+        comment=st.text(
+            alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "),
+            min_size=0,
+            max_size=20,
+        ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
     def test_float_env_strips_comments(self, value: float, comment: str) -> None:
@@ -121,7 +137,11 @@ class TestSettingsBooleanParsing:
 
     @given(
         truthy=st.sampled_from(["1", "true", "yes", "on"]),
-        comment=st.text(alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "), min_size=1, max_size=20),
+        comment=st.text(
+            alphabet=st.sampled_from("abcdefghijklmnopqrstuvwxyz0123456789 "),
+            min_size=1,
+            max_size=20,
+        ),
     )
     @hyp_settings(max_examples=50, deadline=5000)
     def test_bool_with_comment_strips_correctly(self, truthy: str, comment: str) -> None:

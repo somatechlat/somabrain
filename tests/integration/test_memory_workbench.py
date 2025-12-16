@@ -5,7 +5,6 @@ import httpx
 import pytest
 
 from common.config.settings import settings
-from tests.conftest import http_client
 from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 # Use centralized Settings for test configuration
@@ -20,20 +19,37 @@ def _remember(client: httpx.Client, tenant: str, text: str) -> None:
 
 
 def _recall_texts(client: httpx.Client, tenant: str, query: str, k: int) -> List[str]:
-    r = client.post("/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k})
+    r = client.post(
+        "/memory/recall", headers={"X-Tenant-ID": tenant}, json={"query": query, "top_k": k}
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     results = body.get("results") or body.get("memory") or []
     return [str(item.get("content") or item.get("text") or "") for item in results]
 
 
-@pytest.mark.parametrize("tenant, corpus", [
-    ("workbench-basic", {
-        "alpha solar storage": {"query": "alpha solar storage", "relevant": {"alpha solar storage"}},
-        "beta wind turbine": {"query": "beta wind turbine", "relevant": {"beta wind turbine"}},
-        "gamma battery study": {"query": "gamma battery study", "relevant": {"gamma battery study"}},
-    }),
-])
+@pytest.mark.parametrize(
+    "tenant, corpus",
+    [
+        (
+            "workbench-basic",
+            {
+                "alpha solar storage": {
+                    "query": "alpha solar storage",
+                    "relevant": {"alpha solar storage"},
+                },
+                "beta wind turbine": {
+                    "query": "beta wind turbine",
+                    "relevant": {"beta wind turbine"},
+                },
+                "gamma battery study": {
+                    "query": "gamma battery study",
+                    "relevant": {"gamma battery study"},
+                },
+            },
+        ),
+    ],
+)
 def test_memory_workbench(http_client: httpx.Client, tenant, corpus) -> None:
     client = http_client
     for text in corpus:

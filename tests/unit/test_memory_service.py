@@ -16,7 +16,7 @@ def _backend_available() -> bool:
     try:
         from common.config.settings import settings
         from somabrain.memory_pool import MultiTenantMemory
-        
+
         # Try to create a real backend
         mt_memory = MultiTenantMemory(settings, scorer=None, embedder=None)
         client = mt_memory.for_namespace("test:unit")
@@ -34,10 +34,10 @@ def memory_service():
     """Create a real MemoryService instance or skip if unavailable."""
     if not _backend_available():
         pytest.skip("Memory backend not available for unit tests")
-    
+
     from common.config.settings import settings
     from somabrain.memory_pool import MultiTenantMemory
-    
+
     mt_memory = MultiTenantMemory(settings, scorer=None, embedder=None)
     return MemoryService(mt_memory, "test:unit")
 
@@ -47,10 +47,10 @@ def test_recall_with_scores_returns_results(memory_service: MemoryService) -> No
     """Test that recall_with_scores returns results from real backend."""
     # This test validates the method exists and returns expected structure
     hits = memory_service.recall_with_scores("test query", top_k=2, universe=None)
-    
+
     # Results should be a list (may be empty if no data)
     assert isinstance(hits, list)
-    
+
     # If results exist, verify structure
     for hit in hits:
         assert isinstance(hit, dict)
@@ -62,10 +62,10 @@ def test_recall_with_scores_returns_results(memory_service: MemoryService) -> No
 async def test_arecall_with_scores_returns_results(memory_service: MemoryService) -> None:
     """Test that arecall_with_scores returns results from real backend."""
     hits = await memory_service.arecall_with_scores("test query", top_k=1, universe=None)
-    
+
     # Results should be a list (may be empty if no data)
     assert isinstance(hits, list)
-    
+
     # If results exist, verify structure
     for hit in hits:
         assert isinstance(hit, dict)

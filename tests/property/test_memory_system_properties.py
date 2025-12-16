@@ -13,14 +13,11 @@ For INTEGRATION tests against real Redis/Postgres/Memory Service, see:
 
 from __future__ import annotations
 
-import math
 import numpy as np
-import pytest
-from hypothesis import given, settings as hyp_settings, strategies as st, assume
+from hypothesis import given, settings as hyp_settings, strategies as st
 
 from somabrain.memory.superposed_trace import SuperposedTrace, TraceConfig
-from somabrain.wm import WorkingMemory, WMItem
-from somabrain.quantum import QuantumLayer, HRRConfig
+from somabrain.wm import WorkingMemory
 
 
 # ---------------------------------------------------------------------------
@@ -42,7 +39,6 @@ def random_unit_vector(dim: int, seed: int) -> np.ndarray:
     return vec
 
 
-
 class TestSuperposedTraceDecayFormula:
     """Property 7: SuperposedTrace Decay Formula (UNIT TEST).
 
@@ -59,9 +55,7 @@ class TestSuperposedTraceDecayFormula:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=10000)
-    def test_decay_formula_single_upsert(
-        self, dim: int, eta: float, seed: int
-    ) -> None:
+    def test_decay_formula_single_upsert(self, dim: int, eta: float, seed: int) -> None:
         """Verify decay formula: M_{t+1} = (1-η)M_t + η·bind(Rk, v), normalized."""
         cfg = TraceConfig(dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed)
         trace = SuperposedTrace(cfg)
@@ -90,9 +84,10 @@ class TestSuperposedTraceDecayFormula:
         if expected_norm > 1e-12:
             expected_state = expected_unnorm / expected_norm
             # Verify states match (allowing for numerical precision)
-            cosine_sim = float(np.dot(new_state, expected_state) / (
-                np.linalg.norm(new_state) * np.linalg.norm(expected_state) + 1e-12
-            ))
+            cosine_sim = float(
+                np.dot(new_state, expected_state)
+                / (np.linalg.norm(new_state) * np.linalg.norm(expected_state) + 1e-12)
+            )
             assert cosine_sim > 0.99, (
                 f"State after upsert doesn't match expected decay formula. "
                 f"Cosine similarity: {cosine_sim}"
@@ -104,9 +99,7 @@ class TestSuperposedTraceDecayFormula:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=50, deadline=10000)
-    def test_decay_accumulates_multiple_upserts(
-        self, dim: int, eta: float, seed: int
-    ) -> None:
+    def test_decay_accumulates_multiple_upserts(self, dim: int, eta: float, seed: int) -> None:
         """Verify decay accumulates correctly over multiple upserts."""
         cfg = TraceConfig(dim=dim, eta=eta, rotation_enabled=False, rotation_seed=seed)
         trace = SuperposedTrace(cfg)
@@ -119,9 +112,9 @@ class TestSuperposedTraceDecayFormula:
 
         # State should be unit norm after all upserts
         state_norm = np.linalg.norm(trace.state)
-        assert abs(state_norm - 1.0) < 1e-5 or state_norm < 1e-10, (
-            f"State norm {state_norm} should be ~1.0 or ~0.0"
-        )
+        assert (
+            abs(state_norm - 1.0) < 1e-5 or state_norm < 1e-10
+        ), f"State norm {state_norm} should be ~1.0 or ~0.0"
 
 
 class TestWorkingMemoryRecall:
@@ -140,9 +133,7 @@ class TestWorkingMemoryRecall:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_recall_returns_descending_similarity(
-        self, dim: int, capacity: int, seed: int
-    ) -> None:
+    def test_recall_returns_descending_similarity(self, dim: int, capacity: int, seed: int) -> None:
         """Verify recall returns items in descending similarity order."""
         wm = WorkingMemory(capacity=capacity, dim=dim)
 
@@ -162,9 +153,9 @@ class TestWorkingMemoryRecall:
         # Verify descending order
         scores = [score for score, _ in results]
         for i in range(len(scores) - 1):
-            assert scores[i] >= scores[i + 1], (
-                f"Recall results not in descending order: {scores[i]} < {scores[i+1]}"
-            )
+            assert (
+                scores[i] >= scores[i + 1]
+            ), f"Recall results not in descending order: {scores[i]} < {scores[i+1]}"
 
     @given(
         dim=dim_strategy,

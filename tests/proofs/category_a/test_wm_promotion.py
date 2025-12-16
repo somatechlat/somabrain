@@ -364,6 +364,6 @@ class TestPromotionMetrics:
         assert WM_PROMOTION_TOTAL is not None, "WM_PROMOTION_TOTAL should exist"
         assert WM_PROMOTION_LATENCY is not None, "WM_PROMOTION_LATENCY should exist"
 
-        # Verify metric names
-        assert "sb_wm_promotion_total" in str(WM_PROMOTION_TOTAL)
+        # Verify metric names (Prometheus Counter adds _total suffix automatically)
+        assert "sb_wm_promotion" in str(WM_PROMOTION_TOTAL)
         assert "sb_wm_promotion_latency" in str(WM_PROMOTION_LATENCY)

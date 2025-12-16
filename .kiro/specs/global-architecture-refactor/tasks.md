@@ -520,26 +520,26 @@
     - _Requirements: 9.1_
 
 - [ ] 23. Property-Based Test Suite (16 Properties)
-  - [ ]* 23.1 Write property tests for cosine similarity (Properties 1-4)
+  - [x]* 23.1 Write property tests for cosine similarity (Properties 1-4)
     - **Property 1: Cosine Similarity Symmetry** - cosine(a,b) == cosine(b,a)
     - **Property 2: Cosine Self-Similarity** - cosine(v,v) == 1.0 for non-zero v
     - **Property 3: Cosine Boundedness** - -1.0 <= cosine(a,b) <= 1.0
     - **Property 4: Zero Vector Handling** - cosine(zero, v) == 0.0
     - **Validates: Requirements 11.1, 4.5**
-  - [ ]* 23.2 Write property tests for normalization (Properties 5-7)
+  - [x]* 23.2 Write property tests for normalization (Properties 5-7)
     - **Property 5: Normalization Idempotence** - normalize(normalize(v)) == normalize(v)
     - **Property 6: Normalization Unit Norm** - ||normalize(v)|| == 1.0
     - **Property 7: Normalization Direction Preservation** - cosine(v, normalize(v)) == 1.0
     - **Validates: Requirements 11.3, 4.3**
-  - [ ]* 23.3 Write property tests for HRR operations (Properties 8-9)
+  - [x]* 23.3 Write property tests for HRR operations (Properties 8-9)
     - **Property 8: HRR Bind-Unbind Round-Trip** - cosine(a, unbind(bind(a,b),b)) >= 0.95
     - **Property 9: HRR Unit Norm Preservation** - all outputs have norm 1.0
     - **Validates: Requirements 4.1**
-  - [ ]* 23.4 Write property tests for memory operations (Properties 10-11)
+  - [x]* 23.4 Write property tests for memory operations (Properties 10-11)
     - **Property 10: Serialization Round-Trip** - deserialize(serialize(p)) == p
     - **Property 11: Memory Store-Recall Consistency** - stored items can be recalled
     - **Validates: Requirements 2.1, 2.3, 2.4, 2.5**
-  - [ ]* 23.5 Write property tests for configuration (Properties 12-13)
+  - [x]* 23.5 Write property tests for configuration (Properties 12-13)
     - **Property 12: Configuration Completeness** - all required attributes have valid values
     - **Property 13: Configuration Immutability** - values are consistent across accesses
     - **Validates: Requirements 3.4, 14.3**

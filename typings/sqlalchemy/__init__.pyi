@@ -1,6 +1,6 @@
 # Stub type definitions for the SQLAlchemy library used in this project.
 # Source: https://docs.sqlalchemy.org/en/20/orm/mapping_api.html
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
 
 class Column:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...

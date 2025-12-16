@@ -12,7 +12,6 @@ with no mocks.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 from hypothesis import given, settings as hyp_settings, strategies as st
 
 from somabrain.quantum import QuantumLayer, HRRConfig
@@ -45,7 +44,6 @@ def random_unit_vector(dim: int, seed: int) -> np.ndarray:
     if norm > 1e-10:
         vec = vec / norm
     return vec
-
 
 
 class TestBindSpectralInvariant:
@@ -86,19 +84,17 @@ class TestBindSpectralInvariant:
         # The key spectral invariant for BHDC binding: result is normalized
         # This ensures energy conservation (Parseval's theorem: ||x||^2 = (1/D)||X||^2)
         result_norm = np.linalg.norm(result)
-        assert 0.99 <= result_norm <= 1.01, (
-            f"Bind result norm {result_norm} outside [0.99, 1.01]"
-        )
+        assert 0.99 <= result_norm <= 1.01, f"Bind result norm {result_norm} outside [0.99, 1.01]"
 
         # Verify FFT energy conservation (Parseval's theorem)
         fft_result = np.fft.fft(result)
         fft_energy = np.sum(np.abs(fft_result) ** 2) / dim
-        time_energy = np.sum(result ** 2)
+        time_energy = np.sum(result**2)
 
         # Parseval: sum|X_k|^2 / D = sum|x_n|^2
-        assert abs(fft_energy - time_energy) < 1e-5, (
-            f"Parseval's theorem violated: FFT energy {fft_energy} != time energy {time_energy}"
-        )
+        assert (
+            abs(fft_energy - time_energy) < 1e-5
+        ), f"Parseval's theorem violated: FFT energy {fft_energy} != time energy {time_energy}"
 
 
 class TestUnitaryRoleNorm:
@@ -121,9 +117,7 @@ class TestUnitaryRoleNorm:
         ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_unitary_role_has_unit_norm(
-        self, dim: int, config_seed: int, token: str
-    ) -> None:
+    def test_unitary_role_has_unit_norm(self, dim: int, config_seed: int, token: str) -> None:
         """Verify make_unitary_role produces unit-norm vectors."""
         cfg = HRRConfig(dim=dim, seed=config_seed, dtype="float32", roles_unitary=True)
         ql = QuantumLayer(cfg)
@@ -133,9 +127,7 @@ class TestUnitaryRoleNorm:
 
         # Verify unit norm
         norm = float(np.linalg.norm(role))
-        assert abs(norm - 1.0) < 1e-6, (
-            f"Role norm {norm} deviates from 1.0 by more than 1e-6"
-        )
+        assert abs(norm - 1.0) < 1e-6, f"Role norm {norm} deviates from 1.0 by more than 1e-6"
 
     @given(
         dim=dim_strategy,
@@ -151,10 +143,7 @@ class TestUnitaryRoleNorm:
         for token in tokens:
             role = ql.make_unitary_role(token)
             norm = float(np.linalg.norm(role))
-            assert abs(norm - 1.0) < 1e-6, (
-                f"Role '{token}' norm {norm} deviates from 1.0"
-            )
-
+            assert abs(norm - 1.0) < 1e-6, f"Role '{token}' norm {norm} deviates from 1.0"
 
 
 class TestBindingRoundTrip:
@@ -173,9 +162,7 @@ class TestBindingRoundTrip:
         config_seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_unbind_recovers_original(
-        self, dim: int, seed_a: int, config_seed: int
-    ) -> None:
+    def test_unbind_recovers_original(self, dim: int, seed_a: int, config_seed: int) -> None:
         """Verify unbind(bind(a, b), b) ≈ a with cosine similarity ≥ 0.99."""
         cfg = HRRConfig(dim=dim, seed=config_seed, dtype="float32", renorm=True)
         ql = QuantumLayer(cfg)
@@ -194,9 +181,7 @@ class TestBindingRoundTrip:
         # Compute cosine similarity
         cosine_sim = ql.cosine(a, recovered)
 
-        assert cosine_sim >= 0.99, (
-            f"Round-trip cosine similarity {cosine_sim} < 0.99"
-        )
+        assert cosine_sim >= 0.99, f"Round-trip cosine similarity {cosine_sim} < 0.99"
 
     @given(
         dim=dim_strategy,
@@ -208,9 +193,7 @@ class TestBindingRoundTrip:
         ),
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_unitary_bind_unbind_round_trip(
-        self, dim: int, config_seed: int, token: str
-    ) -> None:
+    def test_unitary_bind_unbind_round_trip(self, dim: int, config_seed: int, token: str) -> None:
         """Verify bind_unitary/unbind_exact_unitary round-trip."""
         cfg = HRRConfig(dim=dim, seed=config_seed, dtype="float32", renorm=True)
         ql = QuantumLayer(cfg)
@@ -225,9 +208,7 @@ class TestBindingRoundTrip:
         # Compute cosine similarity
         cosine_sim = ql.cosine(a, recovered)
 
-        assert cosine_sim >= 0.99, (
-            f"Unitary round-trip cosine similarity {cosine_sim} < 0.99"
-        )
+        assert cosine_sim >= 0.99, f"Unitary round-trip cosine similarity {cosine_sim} < 0.99"
 
 
 class TestTinyFloorFormula:
@@ -256,9 +237,9 @@ class TestTinyFloorFormula:
         tiny_min = 1e-6  # TINY_MIN for float32
         expected = max(expected, tiny_min)
 
-        assert abs(result - expected) < 1e-12, (
-            f"Tiny floor {result} != expected {expected} for dim={dim}"
-        )
+        assert (
+            abs(result - expected) < 1e-12
+        ), f"Tiny floor {result} != expected {expected} for dim={dim}"
 
     @given(
         dim=st.integers(min_value=1, max_value=10000),
@@ -276,9 +257,9 @@ class TestTinyFloorFormula:
         tiny_min = 1e-12  # TINY_MIN for float64
         expected = max(expected, tiny_min)
 
-        assert abs(result - expected) < 1e-18, (
-            f"Tiny floor {result} != expected {expected} for dim={dim}"
-        )
+        assert (
+            abs(result - expected) < 1e-18
+        ), f"Tiny floor {result} != expected {expected} for dim={dim}"
 
     @given(
         dim=st.integers(min_value=1, max_value=10000),
@@ -297,10 +278,7 @@ class TestTinyFloorFormula:
         tiny_min = 1e-6
         expected = max(base, tiny_min)
 
-        assert abs(result - expected) < 1e-10, (
-            f"Scaled tiny floor {result} != expected {expected}"
-        )
-
+        assert abs(result - expected) < 1e-10, f"Scaled tiny floor {result} != expected {expected}"
 
 
 class TestBHDCSparsityCount:
@@ -320,9 +298,7 @@ class TestBHDCSparsityCount:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_random_vector_sparsity_pm_one(
-        self, dim: int, sparsity: float, seed: int
-    ) -> None:
+    def test_random_vector_sparsity_pm_one(self, dim: int, sparsity: float, seed: int) -> None:
         """Verify random_vector has correct sparsity in pm_one mode."""
         encoder = BHDCEncoder(
             dim=dim,
@@ -384,9 +360,7 @@ class TestBHDCSparsityCount:
         seed=seed_strategy,
     )
     @hyp_settings(max_examples=100, deadline=5000)
-    def test_random_vector_sparsity_zero_one(
-        self, dim: int, sparsity: float, seed: int
-    ) -> None:
+    def test_random_vector_sparsity_zero_one(self, dim: int, sparsity: float, seed: int) -> None:
         """Verify random_vector has correct sparsity in zero_one mode."""
         encoder = BHDCEncoder(
             dim=dim,
@@ -432,9 +406,7 @@ class TestBHDCSparsityCount:
         vec1 = encoder.vector_for_key(key)
         vec2 = encoder.vector_for_key(key)
 
-        assert np.allclose(vec1, vec2), (
-            "vector_for_key is not deterministic for the same key"
-        )
+        assert np.allclose(vec1, vec2), "vector_for_key is not deterministic for the same key"
 
     @given(
         dim=dim_strategy,
@@ -455,14 +427,13 @@ class TestBHDCSparsityCount:
         vec2 = encoder.vector_for_key("key_beta")
 
         # Vectors should be different (not identical)
-        assert not np.allclose(vec1, vec2), (
-            "Different keys produced identical vectors"
-        )
+        assert not np.allclose(vec1, vec2), "Different keys produced identical vectors"
 
 
 # ---------------------------------------------------------------------------
 # Additional invariant tests
 # ---------------------------------------------------------------------------
+
 
 class TestNormalizationInvariants:
     """Additional tests for normalization invariants."""
@@ -485,9 +456,7 @@ class TestNormalizationInvariants:
 
         # Verify unit norm
         norm = float(np.linalg.norm(result))
-        assert abs(norm - 1.0) < 1e-5, (
-            f"Superpose result norm {norm} deviates from 1.0"
-        )
+        assert abs(norm - 1.0) < 1e-5, f"Superpose result norm {norm} deviates from 1.0"
 
     @given(
         dim=dim_strategy,
@@ -503,6 +472,4 @@ class TestNormalizationInvariants:
         for text in texts:
             vec = ql.encode_text(text)
             norm = float(np.linalg.norm(vec))
-            assert abs(norm - 1.0) < 1e-5, (
-                f"encode_text('{text}') norm {norm} deviates from 1.0"
-            )
+            assert abs(norm - 1.0) < 1e-5, f"encode_text('{text}') norm {norm} deviates from 1.0"

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 
 import httpx
@@ -84,9 +83,7 @@ def test_latency_slo_basic() -> None:
 
     for i in range(5):
         t0 = time.time()
-        r = client.post(
-            "/memory/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1}
-        )
+        r = client.post("/memory/recall", headers=headers, json={"query": f"slo-{i}", "top_k": 1})
         assert r.status_code == 200, r.text
         recall_lat.append((time.time() - t0) * 1000)
 

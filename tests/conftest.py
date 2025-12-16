@@ -1,6 +1,3 @@
-import time
-from typing import List, Set
-
 import httpx
 import pytest
 
@@ -12,7 +9,6 @@ except Exception:
     pass
 
 from common.config.settings import settings
-from tests.utils.metrics import precision_at_k, recall_at_k, ndcg_at_k
 
 
 # Use centralized Settings for test configuration

@@ -5,7 +5,6 @@ This runner is safe to execute from the repo root with the project venv.
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import numpy as np

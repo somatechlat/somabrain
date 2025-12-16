@@ -4,7 +4,7 @@ Only the symbols accessed by the codebase are defined.  This is sufficient for
 static analysis (Pyright) without pulling the heavy runtime dependency.
 """
 
-from typing import Any, Callable, Generator, Optional
+from typing import Any, Callable, Optional
 
 
 class _Event:

@@ -1,6 +1,6 @@
 # Stub type definitions for the real Milvus Python SDK.
 # Source: https://milvus.io/docs/v2.4.x/sdk_reference/python/Collection.md
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict
 
 class Collection:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...

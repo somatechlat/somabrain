@@ -34,7 +34,6 @@ from somabrain.observability.provider import init_tracing, get_tracer
 
 from somabrain.common.kafka import make_producer, encode, TOPICS
 from somabrain.common.events import build_next_event
-from common.config.settings import settings
 
 try:
     from somabrain import metrics as _metrics

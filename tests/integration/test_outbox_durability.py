@@ -80,4 +80,6 @@ def test_outbox_event_replays_when_memory_available() -> None:
     time.sleep(0.5)
     hits = client.recall(key, top_k=5, universe="real")
     if not hits:
-        pytest.skip("Memory service did not return the stored payload (eventual consistency window)")
+        pytest.skip(
+            "Memory service did not return the stored payload (eventual consistency window)"
+        )

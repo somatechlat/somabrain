@@ -15,11 +15,9 @@ Required environment variables (or use defaults):
 
 from __future__ import annotations
 
-import os
 import pytest
 import httpx
 
-from common.config.settings import settings
 from common.logging import logger
 
 
@@ -27,10 +25,12 @@ from common.logging import logger
 # Infrastructure availability checks
 # ---------------------------------------------------------------------------
 
+
 def _redis_available() -> bool:
     """Check if Redis is reachable on SomaBrain cluster."""
     try:
         import redis
+
         # SomaBrain cluster port is 30100
         for port in [30100]:
             try:
@@ -49,7 +49,7 @@ def _redis_available() -> bool:
 
 def _kafka_available() -> bool:
     """Check if Kafka is reachable on SomaBrain cluster.
-    
+
     Note: Kafka connectivity check is disabled due to kafka-python library
     hanging issues. Tests will be skipped until this is resolved.
     """
@@ -61,6 +61,7 @@ def _postgres_available() -> bool:
     """Check if PostgreSQL is reachable on SomaBrain cluster."""
     try:
         import psycopg2
+
         # SomaBrain cluster port is 30106
         for port in [30106]:
             try:
@@ -105,10 +106,10 @@ def _opa_available() -> bool:
         return False
 
 
-
 # ---------------------------------------------------------------------------
 # Redis Integration Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestRedisIntegration:
@@ -123,6 +124,7 @@ class TestRedisIntegration:
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
+
         r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         result = r.ping()
         assert result is True, "Redis PING should return True"
@@ -133,6 +135,7 @@ class TestRedisIntegration:
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
+
         r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         test_key = "somabrain:test:integration"
         test_value = "test_value_12345"
@@ -154,15 +157,19 @@ class TestRedisIntegration:
             pytest.skip("Redis not reachable; skipping integration test")
 
         import redis
+
         r = redis.Redis(host="localhost", port=30100, socket_timeout=2)
         hash_key = "somabrain:test:adaptation_state"
 
         # HSET multiple fields
-        r.hset(hash_key, mapping={
-            "alpha": "0.5",
-            "beta": "0.3",
-            "tau": "0.1",
-        })
+        r.hset(
+            hash_key,
+            mapping={
+                "alpha": "0.5",
+                "beta": "0.3",
+                "tau": "0.1",
+            },
+        )
 
         # HGETALL
         result = r.hgetall(hash_key)
@@ -178,6 +185,7 @@ class TestRedisIntegration:
 # ---------------------------------------------------------------------------
 # Kafka Integration Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestKafkaIntegration:
@@ -221,6 +229,7 @@ class TestKafkaIntegration:
 # ---------------------------------------------------------------------------
 # PostgreSQL Integration Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestPostgresIntegration:
@@ -278,6 +287,7 @@ class TestPostgresIntegration:
 # ---------------------------------------------------------------------------
 # OPA Integration Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestOPAIntegration:

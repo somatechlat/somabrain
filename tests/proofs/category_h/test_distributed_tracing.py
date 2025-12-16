@@ -101,12 +101,12 @@ class TestTraceContextInjection:
         """
         from somabrain.memory.http_helpers import _start_span, _end_span
 
-        # Start a span
-        span = _start_span("test_operation", {"test_attr": "value"})
+        # Start a span with correct signature: (operation, tenant, endpoint)
+        span = _start_span("test_operation", "test_tenant", "/test/endpoint")
 
         # Span should be returned (may be None if no tracer configured)
-        # End the span
-        _end_span(span, success=True)
+        # End the span with correct signature: (span, success, status_code, error)
+        _end_span(span, success=True, status_code=200)
 
         # If we get here without exception, lifecycle works
 
@@ -144,14 +144,14 @@ class TestTracePropagation:
         # Simulate what http_post_with_retries does
         headers = {"Authorization": "Bearer test"}
 
-        # Start span for operation
-        span = _start_span("sfm_store", {"operation": "store"})
+        # Start span for operation with correct signature: (operation, tenant, endpoint)
+        span = _start_span("sfm_store", "test_tenant", "/memories")
 
         # Inject trace context
         inject_trace_context(headers)
 
-        # End span
-        _end_span(span, success=True)
+        # End span with correct signature: (span, success, status_code, error)
+        _end_span(span, success=True, status_code=200)
 
         # Verify headers dict is valid
         assert isinstance(headers, dict)

@@ -74,18 +74,18 @@ def main():
     webroot = os.path.dirname(os.path.abspath(__file__))
     os.chdir(webroot)
     
-    print(f"=" * 60)
-    print(f"SomaBrain Dashboard Server")
-    print(f"=" * 60)
+    print("=" * 60)
+    print("SomaBrain Dashboard Server")
+    print("=" * 60)
     print(f"Serving from: {webroot}")
-    print(f"")
-    print(f"Available pages:")
+    print("")
+    print("Available pages:")
     print(f"  http://127.0.0.1:{PORT}/dashboard.html  (Unified Dashboard)")
     print(f"  http://127.0.0.1:{PORT}/monitor.html    (Metrics Dashboard)")
     print(f"  http://127.0.0.1:{PORT}/index.html      (Test UI)")
-    print(f"")
-    print(f"Press Ctrl+C to stop")
-    print(f"=" * 60)
+    print("")
+    print("Press Ctrl+C to stop")
+    print("=" * 60)
     
     with ThreadingHTTPServer(("0.0.0.0", PORT), CORSHandler) as httpd:
         try:

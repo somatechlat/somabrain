@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Load config.yaml as the base configuration source
 _CONFIG_YAML: Dict[str, Any] = {}
@@ -41,16 +41,19 @@ def _yaml_get(key: str, default: Any = None) -> Any:
 
 # Pydantic setup
 BaseSettings: Any
+Field: Any
 try:
     import pydantic_settings as _ps
     from pydantic_settings import SettingsConfigDict
-    from pydantic import Field
+    from pydantic import Field as _Field
 
     BaseSettings = _ps.BaseSettings
+    Field = _Field
 except Exception:
-    from pydantic import BaseSettings as _BS, Field
+    from pydantic import BaseSettings as _BS, Field as _Field
 
     BaseSettings = _BS
+    Field = _Field
 
     class SettingsConfigDict(dict):
         pass

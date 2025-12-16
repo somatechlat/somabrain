@@ -5,12 +5,24 @@
 
 These tests verify that all expected API routes are preserved after
 extracting routers from the monolithic app.py file.
+
+NOTE: These tests require live infrastructure (Redis, Milvus) because
+importing somabrain.app initializes connections at module load time.
 """
 
 from __future__ import annotations
 
+import os
+
 import pytest
 from hypothesis import given, settings, strategies as st
+
+
+# Skip all tests in this module if infrastructure is not available
+pytestmark = pytest.mark.skipif(
+    os.environ.get("SOMA_INFRA_AVAILABLE") != "1",
+    reason="Requires live infrastructure (Redis, Milvus) - set SOMA_INFRA_AVAILABLE=1",
+)
 
 
 # ---------------------------------------------------------------------------

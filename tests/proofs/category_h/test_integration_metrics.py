@@ -192,10 +192,10 @@ class TestIntegrationMetrics:
         tenant_id = f"test_promo_{uuid.uuid4().hex[:8]}"
 
         # Record successful promotion
-        record_wm_promotion(tenant=tenant_id, success=True)
+        record_wm_promotion(tenant=tenant_id, status="success")
 
         # Record failed promotion
-        record_wm_promotion(tenant=tenant_id, success=False)
+        record_wm_promotion(tenant=tenant_id, status="error")
 
         # If we get here without exception, counter was incremented
 
@@ -243,13 +243,13 @@ class TestAdditionalMetrics:
         """
         from somabrain.metrics.integration import (
             SFM_BULK_STORE_TOTAL,
-            SFM_BULK_STORE_DURATION,
-            SFM_BULK_STORE_BATCH_SIZE,
+            SFM_BULK_STORE_LATENCY,
+            SFM_BULK_STORE_ITEMS,
         )
 
         assert SFM_BULK_STORE_TOTAL is not None
-        assert SFM_BULK_STORE_DURATION is not None
-        assert SFM_BULK_STORE_BATCH_SIZE is not None
+        assert SFM_BULK_STORE_LATENCY is not None
+        assert SFM_BULK_STORE_ITEMS is not None
 
     def test_hybrid_recall_metrics_exist(self) -> None:
         """Hybrid recall metrics exist.
@@ -259,11 +259,11 @@ class TestAdditionalMetrics:
         """
         from somabrain.metrics.integration import (
             SFM_HYBRID_RECALL_TOTAL,
-            SFM_HYBRID_RECALL_DURATION,
+            SFM_HYBRID_RECALL_LATENCY,
         )
 
         assert SFM_HYBRID_RECALL_TOTAL is not None
-        assert SFM_HYBRID_RECALL_DURATION is not None
+        assert SFM_HYBRID_RECALL_LATENCY is not None
 
     def test_all_metrics_exported(self) -> None:
         """All metrics are exported from metrics module.

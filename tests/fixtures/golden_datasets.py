@@ -21,7 +21,7 @@ import numpy as np
 @dataclass
 class GoldenMemoryItem:
     """Golden test item with known relevance score.
-    
+
     Attributes:
         id: Unique identifier for the item
         content: Text content of the memory
@@ -30,13 +30,14 @@ class GoldenMemoryItem:
         memory_type: Type of memory (episodic, semantic, procedural)
         metadata: Additional metadata for the item
     """
+
     id: str
     content: str
     relevance_score: float
     memory_type: str = "episodic"
     embedding: Optional[np.ndarray] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def __post_init__(self) -> None:
         if self.embedding is None:
             # Generate deterministic embedding from content hash
@@ -46,12 +47,13 @@ class GoldenMemoryItem:
 @dataclass
 class GoldenQuery:
     """Query with expected results and relevance judgments.
-    
+
     Attributes:
         query_text: The query string
         expected_top_k: List of item IDs expected in top-k results
         relevance_judgments: Map of item_id -> relevance score
     """
+
     query_text: str
     expected_top_k: List[str]
     relevance_judgments: Dict[str, float] = field(default_factory=dict)
@@ -60,43 +62,43 @@ class GoldenQuery:
 @dataclass
 class GoldenTestSet:
     """Collection of golden items for quality testing.
-    
+
     Attributes:
         name: Name of the test set
         items: List of golden memory items
         queries: List of queries with expected results
         expected_rankings: Map of query_text -> ordered list of item IDs
     """
+
     name: str
     items: List[GoldenMemoryItem]
     queries: List[GoldenQuery]
     expected_rankings: Dict[str, List[str]] = field(default_factory=dict)
-    
+
     def get_item_by_id(self, item_id: str) -> Optional[GoldenMemoryItem]:
         """Get item by ID."""
         for item in self.items:
             if item.id == item_id:
                 return item
         return None
-    
+
     def get_relevant_items(self, query: GoldenQuery, threshold: float = 0.5) -> List[str]:
         """Get item IDs with relevance above threshold for a query."""
         return [
-            item_id for item_id, score in query.relevance_judgments.items()
-            if score >= threshold
+            item_id for item_id, score in query.relevance_judgments.items() if score >= threshold
         ]
 
 
 def _generate_deterministic_embedding(text: str, dim: int = 1024) -> np.ndarray:
     """Generate a deterministic embedding from text using hash.
-    
+
     This creates reproducible embeddings for testing without requiring
     an actual embedding model. The embeddings are normalized to unit length.
-    
+
     Args:
         text: Input text to embed
         dim: Embedding dimension (default 1024)
-        
+
     Returns:
         Unit-normalized embedding vector
     """
@@ -104,7 +106,7 @@ def _generate_deterministic_embedding(text: str, dim: int = 1024) -> np.ndarray:
     hash_bytes = hashlib.sha256(text.encode("utf-8")).digest()
     seed = int.from_bytes(hash_bytes[:8], byteorder="big")
     rng = np.random.default_rng(seed)
-    
+
     # Generate random vector and normalize
     vec = rng.standard_normal(dim).astype(np.float32)
     norm = np.linalg.norm(vec)
@@ -117,22 +119,23 @@ def _generate_deterministic_embedding(text: str, dim: int = 1024) -> np.ndarray:
 # Golden Test Corpus - 100 Items
 # ---------------------------------------------------------------------------
 
+
 def _create_golden_corpus_100() -> GoldenTestSet:
     """Create a 100-item golden test corpus with known relevance scores.
-    
+
     The corpus covers diverse topics to test retrieval quality:
     - Technology (20 items)
     - Science (20 items)
     - Business (20 items)
     - Health (20 items)
     - General Knowledge (20 items)
-    
+
     Each category has 4 queries with known relevant items.
     """
     items: List[GoldenMemoryItem] = []
     queries: List[GoldenQuery] = []
     expected_rankings: Dict[str, List[str]] = {}
-    
+
     # Technology items (g001-g020)
     tech_items = [
         ("g001", "quantum computing breakthrough enables faster cryptography", 1.0),
@@ -156,17 +159,18 @@ def _create_golden_corpus_100() -> GoldenTestSet:
         ("g019", "version control workflows and Git branching strategies", 0.1),
         ("g020", "agile methodology and scrum framework implementation", 0.05),
     ]
-    
-    for item_id, content, relevance in tech_items:
-        items.append(GoldenMemoryItem(
-            id=item_id,
-            content=content,
-            relevance_score=relevance,
-            memory_type="semantic",
-            metadata={"category": "technology"},
-        ))
 
-    
+    for item_id, content, relevance in tech_items:
+        items.append(
+            GoldenMemoryItem(
+                id=item_id,
+                content=content,
+                relevance_score=relevance,
+                memory_type="semantic",
+                metadata={"category": "technology"},
+            )
+        )
+
     # Science items (g021-g040)
     science_items = [
         ("g021", "climate change impact on global ecosystems and biodiversity", 1.0),
@@ -190,16 +194,18 @@ def _create_golden_corpus_100() -> GoldenTestSet:
         ("g039", "physics of quantum entanglement phenomena", 0.1),
         ("g040", "mathematics advances in number theory", 0.05),
     ]
-    
+
     for item_id, content, relevance in science_items:
-        items.append(GoldenMemoryItem(
-            id=item_id,
-            content=content,
-            relevance_score=relevance,
-            memory_type="semantic",
-            metadata={"category": "science"},
-        ))
-    
+        items.append(
+            GoldenMemoryItem(
+                id=item_id,
+                content=content,
+                relevance_score=relevance,
+                memory_type="semantic",
+                metadata={"category": "science"},
+            )
+        )
+
     # Business items (g041-g060)
     business_items = [
         ("g041", "startup funding strategies and venture capital trends", 1.0),
@@ -223,17 +229,18 @@ def _create_golden_corpus_100() -> GoldenTestSet:
         ("g059", "accounting standards and financial reporting", 0.1),
         ("g060", "organizational change management strategies", 0.05),
     ]
-    
-    for item_id, content, relevance in business_items:
-        items.append(GoldenMemoryItem(
-            id=item_id,
-            content=content,
-            relevance_score=relevance,
-            memory_type="semantic",
-            metadata={"category": "business"},
-        ))
 
-    
+    for item_id, content, relevance in business_items:
+        items.append(
+            GoldenMemoryItem(
+                id=item_id,
+                content=content,
+                relevance_score=relevance,
+                memory_type="semantic",
+                metadata={"category": "business"},
+            )
+        )
+
     # Health items (g061-g080)
     health_items = [
         ("g061", "mental health awareness and psychological well-being", 1.0),
@@ -257,16 +264,18 @@ def _create_golden_corpus_100() -> GoldenTestSet:
         ("g079", "dermatology and skin health management", 0.1),
         ("g080", "alternative medicine and integrative health approaches", 0.05),
     ]
-    
+
     for item_id, content, relevance in health_items:
-        items.append(GoldenMemoryItem(
-            id=item_id,
-            content=content,
-            relevance_score=relevance,
-            memory_type="semantic",
-            metadata={"category": "health"},
-        ))
-    
+        items.append(
+            GoldenMemoryItem(
+                id=item_id,
+                content=content,
+                relevance_score=relevance,
+                memory_type="semantic",
+                metadata={"category": "health"},
+            )
+        )
+
     # General Knowledge items (g081-g100)
     general_items = [
         ("g081", "world history and major historical events timeline", 1.0),
@@ -290,72 +299,87 @@ def _create_golden_corpus_100() -> GoldenTestSet:
         ("g099", "time management and productivity strategies", 0.1),
         ("g100", "personal development and self-improvement", 0.05),
     ]
-    
-    for item_id, content, relevance in general_items:
-        items.append(GoldenMemoryItem(
-            id=item_id,
-            content=content,
-            relevance_score=relevance,
-            memory_type="semantic",
-            metadata={"category": "general"},
-        ))
 
-    
+    for item_id, content, relevance in general_items:
+        items.append(
+            GoldenMemoryItem(
+                id=item_id,
+                content=content,
+                relevance_score=relevance,
+                memory_type="semantic",
+                metadata={"category": "general"},
+            )
+        )
+
     # Create queries with expected results
     # Technology queries
-    queries.append(GoldenQuery(
-        query_text="quantum computing and cryptography",
-        expected_top_k=["g001", "g039", "g002"],
-        relevance_judgments={"g001": 1.0, "g039": 0.6, "g002": 0.4},
-    ))
+    queries.append(
+        GoldenQuery(
+            query_text="quantum computing and cryptography",
+            expected_top_k=["g001", "g039", "g002"],
+            relevance_judgments={"g001": 1.0, "g039": 0.6, "g002": 0.4},
+        )
+    )
     expected_rankings["quantum computing and cryptography"] = ["g001", "g039", "g002"]
-    
-    queries.append(GoldenQuery(
-        query_text="machine learning neural networks",
-        expected_top_k=["g002", "g008", "g005"],
-        relevance_judgments={"g002": 1.0, "g008": 0.8, "g005": 0.5},
-    ))
+
+    queries.append(
+        GoldenQuery(
+            query_text="machine learning neural networks",
+            expected_top_k=["g002", "g008", "g005"],
+            relevance_judgments={"g002": 1.0, "g008": 0.8, "g005": 0.5},
+        )
+    )
     expected_rankings["machine learning neural networks"] = ["g002", "g008", "g005"]
-    
+
     # Science queries
-    queries.append(GoldenQuery(
-        query_text="climate change ecosystems",
-        expected_top_k=["g021", "g031", "g038"],
-        relevance_judgments={"g021": 1.0, "g031": 0.7, "g038": 0.5},
-    ))
+    queries.append(
+        GoldenQuery(
+            query_text="climate change ecosystems",
+            expected_top_k=["g021", "g031", "g038"],
+            relevance_judgments={"g021": 1.0, "g031": 0.7, "g038": 0.5},
+        )
+    )
     expected_rankings["climate change ecosystems"] = ["g021", "g031", "g038"]
-    
-    queries.append(GoldenQuery(
-        query_text="genetic engineering CRISPR",
-        expected_top_k=["g022", "g030", "g034"],
-        relevance_judgments={"g022": 1.0, "g030": 0.5, "g034": 0.4},
-    ))
+
+    queries.append(
+        GoldenQuery(
+            query_text="genetic engineering CRISPR",
+            expected_top_k=["g022", "g030", "g034"],
+            relevance_judgments={"g022": 1.0, "g030": 0.5, "g034": 0.4},
+        )
+    )
     expected_rankings["genetic engineering CRISPR"] = ["g022", "g030", "g034"]
-    
+
     # Business queries
-    queries.append(GoldenQuery(
-        query_text="startup funding venture capital",
-        expected_top_k=["g041", "g058", "g045"],
-        relevance_judgments={"g041": 1.0, "g058": 0.6, "g045": 0.5},
-    ))
+    queries.append(
+        GoldenQuery(
+            query_text="startup funding venture capital",
+            expected_top_k=["g041", "g058", "g045"],
+            relevance_judgments={"g041": 1.0, "g058": 0.6, "g045": 0.5},
+        )
+    )
     expected_rankings["startup funding venture capital"] = ["g041", "g058", "g045"]
-    
+
     # Health queries
-    queries.append(GoldenQuery(
-        query_text="mental health psychological well-being",
-        expected_top_k=["g061", "g088", "g072"],
-        relevance_judgments={"g061": 1.0, "g088": 0.7, "g072": 0.4},
-    ))
+    queries.append(
+        GoldenQuery(
+            query_text="mental health psychological well-being",
+            expected_top_k=["g061", "g088", "g072"],
+            relevance_judgments={"g061": 1.0, "g088": 0.7, "g072": 0.4},
+        )
+    )
     expected_rankings["mental health psychological well-being"] = ["g061", "g088", "g072"]
-    
+
     # General queries
-    queries.append(GoldenQuery(
-        query_text="world history historical events",
-        expected_top_k=["g081", "g093", "g092"],
-        relevance_judgments={"g081": 1.0, "g093": 0.6, "g092": 0.5},
-    ))
+    queries.append(
+        GoldenQuery(
+            query_text="world history historical events",
+            expected_top_k=["g081", "g093", "g092"],
+            relevance_judgments={"g081": 1.0, "g093": 0.6, "g092": 0.5},
+        )
+    )
     expected_rankings["world history historical events"] = ["g081", "g093", "g092"]
-    
+
     return GoldenTestSet(
         name="golden_corpus_100",
         items=items,
@@ -375,7 +399,4 @@ def get_golden_corpus() -> GoldenTestSet:
 
 def get_category_items(category: str) -> List[GoldenMemoryItem]:
     """Get items from a specific category."""
-    return [
-        item for item in GOLDEN_CORPUS_100.items
-        if item.metadata.get("category") == category
-    ]
+    return [item for item in GOLDEN_CORPUS_100.items if item.metadata.get("category") == category]

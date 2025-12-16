@@ -11,10 +11,9 @@ Required: SomaBrain cluster running via docker-compose with all services healthy
 
 from __future__ import annotations
 
-import os
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Dict
 
 import pytest
 import httpx
@@ -44,6 +43,7 @@ TEST_NAMESPACE = "e2e_test"
 # Availability checks
 # ---------------------------------------------------------------------------
 
+
 def _app_available() -> bool:
     """Check if SomaBrain app is reachable."""
     try:
@@ -68,6 +68,7 @@ def _get_test_headers(tenant_id: str = TEST_TENANT_ID) -> Dict[str, str]:
 # E2E Health Tests
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 class TestE2EHealth:
     """E2E tests for health endpoints.
@@ -85,25 +86,25 @@ class TestE2EHealth:
                 f"{SOMABRAIN_APP_URL}/health",
                 headers=_get_test_headers(),
             )
-            
+
             assert resp.status_code == 200, f"Health check failed: {resp.status_code}"
             data = resp.json()
-            
+
             # Verify response structure - actual API uses 'components' not 'backends'
             # and may not have 'status' at top level
-            assert "components" in data or "backends" in data or "healthy" in data, (
-                "Health response missing expected structure"
-            )
-            
+            assert (
+                "components" in data or "backends" in data or "healthy" in data
+            ), "Health response missing expected structure"
+
             # If components present, verify structure
             if "components" in data:
                 components = data["components"]
                 # Memory component should be present
                 if "memory" in components:
                     memory = components["memory"]
-                    assert "healthy" in memory or isinstance(memory, dict), (
-                        "Memory component should have health info"
-                    )
+                    assert "healthy" in memory or isinstance(
+                        memory, dict
+                    ), "Memory component should have health info"
 
     def test_healthz_endpoint_returns_ok(self) -> None:
         """Verify /healthz endpoint returns OK."""
@@ -112,10 +113,10 @@ class TestE2EHealth:
 
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(f"{SOMABRAIN_APP_URL}/healthz")
-            
+
             assert resp.status_code == 200, f"Healthz check failed: {resp.status_code}"
             data = resp.json()
-            
+
             # Should have status field
             assert "status" in data or "ok" in data, "Healthz response missing status"
 
@@ -129,16 +130,15 @@ class TestE2EHealth:
                 f"{SOMABRAIN_APP_URL}/health/memory",
                 headers=_get_test_headers(),
             )
-            
+
             # May return 200 or 503 depending on memory service state
-            assert resp.status_code in [200, 503], (
-                f"Unexpected status: {resp.status_code}"
-            )
+            assert resp.status_code in [200, 503], f"Unexpected status: {resp.status_code}"
 
 
 # ---------------------------------------------------------------------------
 # E2E Memory Flow Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestE2EMemoryFlow:
@@ -168,19 +168,19 @@ class TestE2EMemoryFlow:
                 headers=_get_test_headers(),
                 json={"payload": test_payload},
             )
-            
+
             # Remember may fail if memory service is unavailable
             if remember_resp.status_code != 200:
                 pytest.skip(
                     f"Remember failed (memory service may be unavailable): "
                     f"{remember_resp.status_code}"
                 )
-            
+
             remember_data = remember_resp.json()
-            assert "coord" in remember_data or "coordinate" in remember_data, (
-                "Remember response missing coordinate"
-            )
-            
+            assert (
+                "coord" in remember_data or "coordinate" in remember_data
+            ), "Remember response missing coordinate"
+
             # Step 2: Recall
             recall_resp = client.post(
                 f"{SOMABRAIN_APP_URL}/memory/recall",
@@ -190,15 +190,13 @@ class TestE2EMemoryFlow:
                     "k": 5,
                 },
             )
-            
-            assert recall_resp.status_code == 200, (
-                f"Recall failed: {recall_resp.status_code}"
-            )
-            
+
+            assert recall_resp.status_code == 200, f"Recall failed: {recall_resp.status_code}"
+
             recall_data = recall_resp.json()
-            assert "memory" in recall_data or "wm" in recall_data, (
-                "Recall response missing memory results"
-            )
+            assert (
+                "memory" in recall_data or "wm" in recall_data
+            ), "Recall response missing memory results"
 
     def test_recall_with_empty_query(self) -> None:
         """Verify recall handles empty/minimal queries gracefully."""
@@ -214,24 +212,25 @@ class TestE2EMemoryFlow:
                     "k": 1,
                 },
             )
-            
+
             # May return 200, 500 (if memory service unavailable), or 503
             # The key is that the endpoint responds
-            assert resp.status_code in [200, 500, 503], (
-                f"Unexpected recall status: {resp.status_code}"
-            )
-            
+            assert resp.status_code in [
+                200,
+                500,
+                503,
+            ], f"Unexpected recall status: {resp.status_code}"
+
             # If 200, verify response structure
             if resp.status_code == 200:
                 data = resp.json()
-                assert "memory" in data or "wm" in data, (
-                    "Recall response missing expected fields"
-                )
+                assert "memory" in data or "wm" in data, "Recall response missing expected fields"
 
 
 # ---------------------------------------------------------------------------
 # E2E Neuromodulator Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestE2ENeuromodulators:
@@ -250,19 +249,17 @@ class TestE2ENeuromodulators:
                 f"{SOMABRAIN_APP_URL}/neuromodulators",
                 headers=_get_test_headers(),
             )
-            
-            assert resp.status_code == 200, (
-                f"Get neuromodulators failed: {resp.status_code}"
-            )
-            
+
+            assert resp.status_code == 200, f"Get neuromodulators failed: {resp.status_code}"
+
             data = resp.json()
-            
+
             # Verify neuromodulator fields
             assert "dopamine" in data, "Missing dopamine"
             assert "serotonin" in data, "Missing serotonin"
             assert "noradrenaline" in data, "Missing noradrenaline"
             assert "acetylcholine" in data, "Missing acetylcholine"
-            
+
             # Verify values are in valid ranges
             assert 0.0 <= data["dopamine"] <= 1.0, "Dopamine out of range"
             assert 0.0 <= data["serotonin"] <= 1.0, "Serotonin out of range"
@@ -273,6 +270,7 @@ class TestE2ENeuromodulators:
 # ---------------------------------------------------------------------------
 # E2E Authentication Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestE2EAuthentication:
@@ -293,13 +291,18 @@ class TestE2EAuthentication:
                 json={"query": "test", "k": 1},
                 # No tenant headers
             )
-            
+
             # Should either require auth (401/403), use default tenant (200),
             # return validation error (422), or internal error (500) if
             # backend services are unavailable
-            assert resp.status_code in [200, 401, 403, 422, 500, 503], (
-                f"Unexpected status: {resp.status_code}"
-            )
+            assert resp.status_code in [
+                200,
+                401,
+                403,
+                422,
+                500,
+                503,
+            ], f"Unexpected status: {resp.status_code}"
 
     def test_tenant_header_isolation(self) -> None:
         """Verify different tenant headers create isolated contexts."""
@@ -315,21 +318,21 @@ class TestE2EAuthentication:
                 f"{SOMABRAIN_APP_URL}/neuromodulators",
                 headers=_get_test_headers(tenant_a),
             )
-            
+
             # Get neuromodulators for tenant B
             resp_b = client.get(
                 f"{SOMABRAIN_APP_URL}/neuromodulators",
                 headers=_get_test_headers(tenant_b),
             )
-            
+
             # Both should succeed
             assert resp_a.status_code == 200
             assert resp_b.status_code == 200
-            
+
             # Both should return valid neuromodulator states
             data_a = resp_a.json()
             data_b = resp_b.json()
-            
+
             assert "dopamine" in data_a
             assert "dopamine" in data_b
 
@@ -337,6 +340,7 @@ class TestE2EAuthentication:
 # ---------------------------------------------------------------------------
 # E2E Metrics Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestE2EMetrics:
@@ -352,21 +356,22 @@ class TestE2EMetrics:
 
         with httpx.Client(timeout=10.0) as client:
             resp = client.get(f"{SOMABRAIN_APP_URL}/metrics")
-            
+
             assert resp.status_code == 200, f"Metrics failed: {resp.status_code}"
-            
+
             # Prometheus format should contain metric names
             content = resp.text
-            
+
             # Should contain some standard metrics
-            assert "# HELP" in content or "# TYPE" in content or "_total" in content, (
-                "Metrics response doesn't look like Prometheus format"
-            )
+            assert (
+                "# HELP" in content or "# TYPE" in content or "_total" in content
+            ), "Metrics response doesn't look like Prometheus format"
 
 
 # ---------------------------------------------------------------------------
 # E2E Diagnostics Tests
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestE2EDiagnostics:
@@ -382,9 +387,9 @@ class TestE2EDiagnostics:
                 f"{SOMABRAIN_APP_URL}/diagnostics",
                 headers=_get_test_headers(),
             )
-            
+
             # Diagnostics may require admin auth
             if resp.status_code == 401 or resp.status_code == 403:
                 pytest.skip("Diagnostics requires admin auth")
-            
+
             assert resp.status_code == 200, f"Diagnostics failed: {resp.status_code}"

@@ -9,7 +9,7 @@ References:
 * ``confluent_kafka`` package on PyPI.
 """
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Tuple
 
 # -------------------------------------------------------------------
 # Exceptions
