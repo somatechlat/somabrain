@@ -29,6 +29,13 @@ import numpy as np
 from common.config.settings import settings
 
 from somabrain.math import cosine_similarity, normalize_vector
+from somabrain.wm_salience import (
+    compute_salience,
+    compute_novelty,
+    compute_item_salience,
+)
+from somabrain.wm_eviction import find_lowest_salience_idx, evict_item, find_duplicate
+from somabrain.wm_promotion import check_promotion
 
 
 if TYPE_CHECKING:  # pragma: no cover - type checking only
@@ -304,35 +311,14 @@ class WorkingMemory:
     def _find_duplicate(self, item_id: str, vector: np.ndarray) -> Optional[int]:
         """Find an existing item that is a duplicate of the given vector.
 
-        Per Requirement B1.4: Items with cosine similarity > 0.95 are considered duplicates.
-        Also checks for exact item_id match.
-
-        Args:
-            item_id: Unique identifier to check for exact match.
-            vector: Normalized vector to check for similarity match.
-
-        Returns:
-            Index of duplicate item if found, None otherwise.
+        Delegates to wm_eviction module for the actual duplicate detection.
         """
-        # First check for exact item_id match
-        for idx, existing in enumerate(self._items):
-            if existing.item_id and existing.item_id == item_id:
-                return idx
-
-        # Then check for high similarity (cosine > threshold)
-        for idx, existing in enumerate(self._items):
-            sim = cosine_similarity(vector, existing.vector)
-            if sim > self._duplicate_threshold:
-                return idx
-
-        return None
+        return find_duplicate(self._items, item_id, vector, self._duplicate_threshold)
 
     def _evict_lowest_salience(self) -> None:
         """Evict the item with the lowest salience score.
 
-        Salience is computed as a combination of:
-        - Novelty: How different the item is from other items in WM
-        - Recency: How recently the item was admitted (based on tick/time)
+        Delegates to wm_eviction module for the actual eviction logic.
 
         Per Requirement B1.1: WHEN WM reaches capacity THEN the system SHALL
         evict the item with lowest salience score.
@@ -341,70 +327,19 @@ class WorkingMemory:
             return
 
         now = self._now()
-        min_salience = float("inf")
-        min_idx = 0
-
-        for idx, item in enumerate(self._items):
-            # Compute novelty for this item relative to other items
-            # (how unique is this item compared to the rest of WM)
-            novelty = 1.0
-            for other_idx, other in enumerate(self._items):
-                if other_idx != idx:
-                    sim = cosine_similarity(item.vector, other.vector)
-                    novelty = min(novelty, max(0.0, 1.0 - sim))
-
-            # Compute recency based on time since admission
-            # More recent items have higher recency scores
-            age = max(0.0, now - item.admitted_at)
-            recency_decay = math.exp(-age / self._recency_scale) if age > 0 else 1.0
-            recency = float(recency_decay)
-
-            # Compute salience: alpha * novelty + gamma * recency
-            # (beta * reward is not available at eviction time, so we use 0)
-            salience = self.alpha * novelty + self.gamma * recency
-
-            if salience < min_salience:
-                min_salience = salience
-                min_idx = idx
-
-        # WM Persistence (A1.4): Mark evicted item in SFM (not delete)
-        if self._persister is not None and min_idx < len(self._item_ids):
-            item_id = self._item_ids[min_idx]
-            if item_id:
-                try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        asyncio.create_task(self._persister.mark_evicted(item_id))
-                    else:
-                        loop.run_until_complete(self._persister.mark_evicted(item_id))
-                except RuntimeError:
-                    try:
-                        asyncio.run(self._persister.mark_evicted(item_id))
-                    except Exception:
-                        pass  # Eviction marking is best-effort
-                except Exception:
-                    pass  # Eviction marking is best-effort
-            del self._item_ids[min_idx]
-
-        # Remove the item with lowest salience
-        del self._items[min_idx]
+        min_idx = find_lowest_salience_idx(
+            self._items, self.alpha, self.gamma, now, self._recency_scale
+        )
+        evict_item(self._items, self._item_ids, min_idx, self._persister)
 
     def salience(self, query_vec: np.ndarray, reward: float = 0.0) -> float:
         """Compute salience = alpha·novelty + beta·reward + gamma·recency.
 
-        Recency proxy: 1.0 for empty WM, else 1 - best cosine vs most recent item.
+        Delegates to wm_salience module for the actual computation.
         """
-        novelty = self.novelty(query_vec)
-        recency = 1.0
-        if self._items:
-            recent = self._items[-1]
-            recency = max(0.0, 1.0 - cosine_similarity(query_vec, recent.vector))
-        s = (
-            self.alpha * float(novelty)
-            + self.beta * float(reward)
-            + self.gamma * float(recency)
+        return compute_salience(
+            query_vec, self._items, self.alpha, self.beta, self.gamma, reward
         )
-        return float(max(0.0, min(1.0, s)))
 
     def admit_if_salient(
         self,
@@ -490,65 +425,20 @@ class WorkingMemory:
     def _check_promotion(self, item_id: str, salience: float, item: WMItem) -> None:
         """Check if item should be promoted to LTM.
 
+        Delegates to wm_promotion module for the actual promotion check.
+
         Per Requirement A2.1: Items with salience >= 0.85 for 3+ consecutive
         ticks are promoted to LTM.
-
-        Args:
-            item_id: Unique identifier for the WM item.
-            salience: Current salience score (0.0-1.0).
-            item: The WMItem to potentially promote.
         """
         if self._promoter is None:
             return
-
-        try:
-            # Schedule async promotion check without blocking recall
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(
-                    self._promoter.check_and_promote(
-                        item_id=item_id,
-                        salience=salience,
-                        tick=self._t,
-                        vector=item.vector.tolist(),
-                        payload=item.payload,
-                    )
-                )
-            else:
-                # No running loop - run synchronously
-                loop.run_until_complete(
-                    self._promoter.check_and_promote(
-                        item_id=item_id,
-                        salience=salience,
-                        tick=self._t,
-                        vector=item.vector.tolist(),
-                        payload=item.payload,
-                    )
-                )
-        except RuntimeError:
-            # No event loop available - try asyncio.run
-            try:
-                asyncio.run(
-                    self._promoter.check_and_promote(
-                        item_id=item_id,
-                        salience=salience,
-                        tick=self._t,
-                        vector=item.vector.tolist(),
-                        payload=item.payload,
-                    )
-                )
-            except Exception:
-                pass  # Promotion is best-effort, don't block recall
-        except Exception:
-            pass  # Promotion is best-effort, don't block recall
+        check_promotion(self._promoter, item_id, salience, self._t, item)
 
     def novelty(self, query_vec: np.ndarray) -> float:
         """
         Calculate novelty score for a query vector relative to working memory contents.
 
-        Novelty is defined as 1.0 minus the highest cosine similarity to any existing
-        item in working memory. A score of 1.0 indicates complete novelty (no similar
-        items), while 0.0 indicates the query is identical to an existing item.
+        Delegates to wm_salience module for the actual computation.
 
         Args:
             query_vec (np.ndarray): Query vector to evaluate for novelty.
@@ -556,18 +446,8 @@ class WorkingMemory:
         Returns:
             float: Novelty score between 0.0 (not novel) and 1.0 (completely novel).
                    Returns 1.0 if working memory is empty.
-
-        Example:
-            >>> score = wm.novelty(new_vector)
-            >>> if score > 0.8:
-            ...     print("Highly novel information detected!")
         """
-        if not self._items:
-            return 1.0
-        best = 0.0
-        for it in self._items:
-            best = max(best, cosine_similarity(query_vec, it.vector))
-        return max(0.0, 1.0 - best)
+        return compute_novelty(query_vec, self._items)
 
     def _recency_steps(self, now: float, admitted_at: float) -> float:
         age = max(0.0, float(now) - float(admitted_at))
@@ -615,32 +495,12 @@ class WorkingMemory:
     def _compute_item_salience(self, item: WMItem, now: float) -> float:
         """Compute salience score for a single WM item.
 
-        Salience combines novelty and recency per the salience formula:
-        salience = alpha * novelty + gamma * recency
+        Delegates to wm_salience module for the actual computation.
 
         Per Requirement B1.3: Uses the item's stored recency value which
         decays exponentially over time via decay_recency().
-
-        Args:
-            item: The WMItem to compute salience for.
-            now: Current timestamp.
-
-        Returns:
-            Salience score between 0.0 and 1.0.
         """
-        # Compute novelty: how different is this item from others
-        novelty = 1.0
-        for other in self._items:
-            if other is not item:
-                sim = cosine_similarity(item.vector, other.vector)
-                novelty = min(novelty, max(0.0, 1.0 - sim))
-
-        # B1.3: Use stored recency value (decays exponentially via decay_recency())
-        recency = float(item.recency)
-
-        # Combine: alpha * novelty + gamma * recency
-        salience = self.alpha * novelty + self.gamma * recency
-        return float(max(0.0, min(1.0, salience)))
+        return compute_item_salience(item, self._items, self.alpha, self.gamma)
 
     def decay_recency(self, elapsed_seconds: float | None = None) -> None:
         """Apply exponential decay to all items' recency scores.

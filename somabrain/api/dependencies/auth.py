@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import List, Optional
 
 
-
 # Legacy Config model replaced by unified Settings
 from common.config.settings import Settings as Config
 

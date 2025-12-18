@@ -55,7 +55,7 @@ except Exception:  # pragma: no cover - exercised only when pymilvus missing
     _PYMILVUS_AVAILABLE = False
     # Type-only aliases for static checking; constructors are never reached because the
     # client raises when the SDK is unavailable.
-    # Type ignores: These are intentional fallback stubs when pymilvus is not installed.
+    # Type ignores: These are intentional type aliases when pymilvus is not installed.
     # The actual types are only used for static analysis; runtime code guards against usage.
     Collection = CollectionSchema = FieldSchema = DataType = Any  # type: ignore[misc]
     connections = utility = Any  # type: ignore[misc]

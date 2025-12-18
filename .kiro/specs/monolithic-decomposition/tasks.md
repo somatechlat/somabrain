@@ -176,9 +176,11 @@
     - memory_client.py reduced from 1482 to 1409 lines
     - Total reduction: 1954 → 1409 lines (28% reduction)
     - _Requirements: 2.3_
-  - [ ] 20.4 Create `somabrain/memory/client.py` (DEFERRED)
-    - Move `MemoryClient` class
-    - Update imports to use extracted modules
+  - [x] 20.4 Decompose `somabrain/memory_client.py` ✅
+    - MemoryClient class remains in memory_client.py (668 lines, 70% reduction)
+    - All helper modules extracted to somabrain/memory/:
+      - transport.py, normalization.py, scoring.py, payload.py
+      - health.py, hybrid.py, recall_ops.py, remember.py, remember_bulk.py
     - _Requirements: 2.3_
 
 - [x] 21. Checkpoint - Ensure all tests pass
