@@ -1,6 +1,18 @@
 from hypothesis import settings as _hypothesis_settings
 import os
 
+# Set local test infrastructure ports BEFORE loading .env or settings
+# These use host-mapped ports from docker-compose
+# Clear URL settings to force use of host/port settings
+os.environ["SOMABRAIN_REDIS_URL"] = ""
+os.environ["REDIS_URL"] = ""
+os.environ.setdefault("SOMABRAIN_REDIS_HOST", "127.0.0.1")
+os.environ.setdefault("SOMABRAIN_REDIS_PORT", "30100")
+os.environ.setdefault("SOMABRAIN_MILVUS_HOST", "127.0.0.1")
+os.environ.setdefault("SOMABRAIN_MILVUS_PORT", "30119")
+os.environ.setdefault("MILVUS_HOST", "127.0.0.1")
+os.environ.setdefault("MILVUS_PORT", "30119")
+
 try:
     from dotenv import load_dotenv
 

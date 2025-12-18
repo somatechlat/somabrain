@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from common.config.settings import settings
 from somabrain.auth import require_admin_auth
-from somabrain.db.outbox import (
+from somabrain.db.outbox_journal import (
     get_journal_events,
     replay_journal_events,
     get_journal_stats,
