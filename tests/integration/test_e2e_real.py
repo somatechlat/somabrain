@@ -200,7 +200,7 @@ class TestE2EMemoryFlow:
 
             recall_data = recall_resp.json()
             assert (
-                "memory" in recall_data or "wm" in recall_data
+                "results" in recall_data or "wm_hits" in recall_data or "ltm_hits" in recall_data
             ), "Recall response missing memory results"
 
     def test_recall_with_empty_query(self) -> None:
@@ -230,7 +230,7 @@ class TestE2EMemoryFlow:
             if resp.status_code == 200:
                 data = resp.json()
                 assert (
-                    "memory" in data or "wm" in data
+                    "results" in data or "wm_hits" in data or "ltm_hits" in data
                 ), "Recall response missing expected fields"
 
 

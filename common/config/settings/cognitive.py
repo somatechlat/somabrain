@@ -204,3 +204,71 @@ class CognitiveSettingsMixin(BaseSettings):
         ),
         description="Scale factor for memory count penalty in planner",
     )
+
+    # ---------------------------------------------------------------------------
+    # Unified Planning Kernel Settings (Requirements 5.1-5.11)
+    # ---------------------------------------------------------------------------
+
+    # Planning kernel enable flags
+    use_planner: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_PLANNER", False),
+        description="Enable unified planning kernel",
+    )
+    use_focus_state: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_USE_FOCUS_STATE", True),
+        description="Enable FocusState for working memory tracking",
+    )
+
+    # Planning configuration
+    plan_max_steps: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLAN_MAX_STEPS", 5),
+        description="Maximum planning steps to return",
+    )
+    planner_backend: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_PLANNER_BACKEND", "bfs") or "bfs",
+        description="Planning backend: 'bfs' or 'rwr'",
+    )
+    plan_time_budget_ms: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLAN_TIME_BUDGET_MS", 50),
+        description="Time budget for planning in milliseconds",
+    )
+    plan_max_options: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLAN_MAX_OPTIONS", 10),
+        description="Maximum options to consider during planning",
+    )
+    plan_rel_types: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_PLAN_REL_TYPES", "") or "",
+        description="Comma-separated list of relation types to follow (empty = all)",
+    )
+
+    # RWR (Random Walk with Restart) planner configuration
+    planner_rwr_steps: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_STEPS", 20),
+        description="Number of RWR power iterations",
+    )
+    planner_rwr_restart: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_PLANNER_RWR_RESTART", 0.15),
+        description="RWR restart probability",
+    )
+    planner_rwr_max_nodes: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_PLANNER_RWR_MAX_NODES", 100),
+        description="Maximum nodes in RWR local subgraph",
+    )
+
+    # FocusState configuration
+    focus_decay_gamma: float = Field(
+        default_factory=lambda: _float_env("SOMABRAIN_FOCUS_DECAY_GAMMA", 0.90),
+        description="Exponential decay factor for focus state",
+    )
+    focus_persist: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_FOCUS_PERSIST", False),
+        description="Persist focus snapshots to memory",
+    )
+    focus_links: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_FOCUS_LINKS", False),
+        description="Create graph links between focus snapshots",
+    )
+    focus_admit_top_n: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_FOCUS_ADMIT_TOP_N", 4),
+        description="Number of top recall hits to admit into focus",
+    )

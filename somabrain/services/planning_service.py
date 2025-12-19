@@ -81,8 +81,8 @@ def make_plan_auto(
             return _rwr(
                 task_key,
                 mem_client,
-                steps=int(getattr(cfg, "rwr_steps", 20) or 20),
-                restart=float(getattr(cfg, "rwr_restart", 0.15) or 0.15),
+                steps=int(getattr(cfg, "planner_rwr_steps", 20) or 20),
+                restart=float(getattr(cfg, "planner_rwr_restart", 0.15) or 0.15),
                 universe=universe,
                 max_items=max_steps,
             )

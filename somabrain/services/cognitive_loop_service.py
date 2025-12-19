@@ -108,8 +108,26 @@ def eval_step(
     supervisor: Optional[object],
     amygdala,
     tenant_id: str,
+    previous_focus_vec: Optional[np.ndarray] = None,
 ) -> Dict[str, Any]:
-    """Evaluate one /act step: predictor, neuromod modulation, salience, gates."""
+    """Evaluate one /act step: predictor, neuromod modulation, salience, gates.
+
+    Args:
+        novelty: Novelty score for current input
+        wm_vec: Current working memory vector (focus)
+        cfg: Configuration object
+        predictor: Predictor for error computation
+        neuromods: Neuromodulator state
+        personality_store: Personality trait store
+        supervisor: Optional supervisor for adjustment
+        amygdala: Amygdala for salience scoring
+        tenant_id: Tenant identifier
+        previous_focus_vec: Previous focus vector for prediction comparison
+            (FIX: was comparing wm_vec to itself, now compares previous to current)
+
+    Returns:
+        Dict with pred_error, salience, gates, etc.
+    """
     loop_state = get_cognitive_loop_state()
 
     sleep_state = loop_state.get_sleep_state(tenant_id)
@@ -132,21 +150,38 @@ def eval_step(
         }
 
     t0 = _t.perf_counter()
-    try:
-        pred = predictor.predict_and_compare(wm_vec, wm_vec)
-    except Exception as exc:
+    result_extras: Dict[str, Any] = {}
+
+    # FIX: Compare previous_focus_vec to current wm_vec (NOT wm_vec to itself!)
+    # Requirements: 3.1, 3.2, 3.3, 3.4
+    if previous_focus_vec is None:
+        # First step in session - no previous focus (Requirement 3.2)
         try:
-            PREDICTOR_ALTERNATIVE.inc()
-        except Exception as metric_exc:
-            logger.debug(
-                "Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc
-            )
+            from somabrain.metrics.planning import PREDICT_COMPARE_MISSING_PREV
+            PREDICT_COMPARE_MISSING_PREV.inc()
+        except Exception:
+            pass
         pred = type(
             "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
         )()
-        logger.exception(
-            "Predictor failed, falling back to zero-error recovery path: %s", exc
-        )
+        result_extras["no_prev_focus"] = True
+    else:
+        try:
+            # Compare previous focus to current focus (Requirement 3.1, 3.3)
+            pred = predictor.predict_and_compare(previous_focus_vec, wm_vec)
+        except Exception as exc:
+            try:
+                PREDICTOR_ALTERNATIVE.inc()
+            except Exception as metric_exc:
+                logger.debug(
+                    "Failed to increment PREDICTOR_ALTERNATIVE metric: %s", metric_exc
+                )
+            pred = type(
+                "PR", (), {"predicted_vec": wm_vec, "actual_vec": wm_vec, "error": 0.0}
+            )()
+            logger.exception(
+                "Predictor failed, falling back to zero-error recovery path: %s", exc
+            )
     pred_latency = max(0.0, _t.perf_counter() - t0)
 
     base_nm = neuromods.get_state()
@@ -213,7 +248,7 @@ def eval_step(
         except Exception as exc:
             logger.exception("Telemetry publishing failed: %s", exc)
 
-    return {
+    result = {
         "pred_error": float(pred.error),
         "pred_latency": float(pred_latency),
         "neuromod": nm,
@@ -225,3 +260,5 @@ def eval_step(
         "sleep_state": sleep_state.value,
         "eta": eta,
     }
+    result.update(result_extras)
+    return result
