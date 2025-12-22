@@ -225,6 +225,12 @@ class LearningSettingsMixin(BaseSettings):
     enable_sleep_system: bool = Field(
         default_factory=lambda: _bool_env("SOMABRAIN_ENABLE_SLEEP", True)
     )
+    consolidation_enabled: bool = Field(
+        default_factory=lambda: _bool_env("SOMABRAIN_CONSOLIDATION_ENABLED", True)
+    )
+    sleep_interval_seconds: int = Field(
+        default_factory=lambda: _int_env("SOMABRAIN_SLEEP_INTERVAL_SECONDS", 3600)
+    )
     sleep_k0: int = Field(default_factory=lambda: _int_env("SOMABRAIN_SLEEP_K0", 100))
     sleep_t0: float = Field(
         default_factory=lambda: _float_env("SOMABRAIN_SLEEP_T0", 10.0)

@@ -19,7 +19,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request
 
-from somabrain.api.dependencies.auth import require_auth
+from somabrain.auth import require_auth
 from somabrain import metrics as M
 from somabrain.app import cfg
 from somabrain.tenant import get_tenant as get_tenant_async

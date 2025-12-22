@@ -19,7 +19,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 import logging
 
-from somabrain.api.dependencies.auth import require_auth
+from somabrain.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M
 from common.config.settings import settings
@@ -132,7 +132,7 @@ async def brain_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 )
                 session.add(ss)
                 session.commit()
-            current_state = SleepState(ss.current_state.upper())
+            current_state = SleepState(ss.current_state.lower())
             # CB-driven override
             current_state = map_cb_to_sleep(cb, tenant_id, current_state)
             if not manager.can_transition(current_state, target_state):

@@ -185,7 +185,7 @@ async def init_health_watchdog(
         health_watchdog_task_holder: Dict to store the watchdog task reference
         cfg: Configuration object with memory_health_poll_interval
     """
-    from somabrain.routers.health import _health_watchdog_coroutine
+    from somabrain.routers.health_watchdog import _health_watchdog_coroutine
 
     if getattr(cfg, "memory_health_poll_interval", 0) > 0:
         task = asyncio.create_task(_health_watchdog_coroutine())

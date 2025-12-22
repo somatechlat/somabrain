@@ -8,13 +8,18 @@ target sleep states, optional TTL for auto‑wake, and additional parameters.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import String, DateTime, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from somabrain.storage.db import Base
+
+
+def _utcnow() -> datetime:
+    """Return current UTC datetime with timezone info."""
+    return datetime.now(timezone.utc)
 
 
 class TenantSleepState(Base):
@@ -56,6 +61,7 @@ class TenantSleepState(Base):
     parameters_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        default=_utcnow,
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,

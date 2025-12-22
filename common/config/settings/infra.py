@@ -273,6 +273,12 @@ class InfraSettingsMixin(BaseSettings):
         or "cog.segments"
     )
 
+    # Audit topic for audit events
+    audit_topic: str = Field(
+        default_factory=lambda: _str_env("SOMABRAIN_AUDIT_TOPIC", "soma.audit")
+        or "soma.audit"
+    )
+
     # Outbox configuration
     outbox_batch_size: int = Field(default=100)
     outbox_max_delay: float = Field(default=5.0)

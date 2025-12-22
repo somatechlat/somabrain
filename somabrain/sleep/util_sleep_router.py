@@ -27,7 +27,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, HTTPException, Request
 import asyncio
 import logging
-from somabrain.api.dependencies.auth import require_auth
+from somabrain.auth import require_auth
 from somabrain.app import cfg
 from somabrain import metrics as M
 from common.config.settings import settings
@@ -137,7 +137,7 @@ async def util_sleep(request: Request, body: SleepRequest) -> Dict[str, Any]:
                 )
                 session.add(ss)
                 session.commit()
-            current_state = SleepState(ss.current_state.upper())
+            current_state = SleepState(ss.current_state.lower())
             # Validate TTL against the configured maximum.
             if (
                 body.ttl_seconds is not None

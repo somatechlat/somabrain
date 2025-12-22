@@ -461,8 +461,8 @@ services:
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       # Memory weighting is controlled by runtime config overrides (local only)
       SOMABRAIN_DEFAULT_TENANT: "${SOMABRAIN_DEFAULT_TENANT:-sandbox}"
-      # Mode: default to dev (full-local semantics) for local development parity
-      SOMABRAIN_MODE: "full-local"
+      # Mode: default to dev for local development parity
+      SOMABRAIN_MODE: "${SOMABRAIN_MODE:-dev}"
       # Milvus configuration for vector operations
       MILVUS_HOST: "somabrain_milvus"
       MILVUS_PORT: "19530"
