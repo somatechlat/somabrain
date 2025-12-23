@@ -168,7 +168,8 @@ def remember_sync_persist(
 
     # E2.3: If not stored, outbox entry remains "pending" for retry
     if not stored:
-        raise RuntimeError("Memory service unavailable (remember persist failed)")
+        msg = f"Memory service unavailable (remember persist failed). Details: {response_payload}"
+        raise RuntimeError(msg)
     return server_coord
 
 
@@ -202,27 +203,14 @@ async def aremember_background(
     # Compute stable coordinate for outbox recording
     sc = _stable_coord(f"{uni}::{coord_key}")
 
+    # VIBE FIX: Construct correct MemoryStoreRequest schema matching sync persist
     body: dict[str, Any] = {
-        "tenant": tenant,
-        "namespace": ns,
-        "key": coord_key,
-        "value": enriched,
-        "universe": uni,
-        "trace_id": payload.get("trace_id") if isinstance(payload, dict) else None,
+        "coord": f"{sc[0]},{sc[1]},{sc[2]}",
+        "payload": dict(enriched),
+        "memory_type": str(
+            payload.get("memory_type") or payload.get("type") or "episodic"
+        ),
     }
-    for optional_key in (
-        "meta",
-        "ttl_seconds",
-        "tags",
-        "policy_tags",
-        "attachments",
-        "links",
-        "signals",
-        "importance",
-        "novelty",
-    ):
-        if isinstance(payload, dict) and optional_key in payload:
-            body[optional_key] = payload.get(optional_key)
 
     # E2.1: Record to outbox before SFM call
     outbox_event_id = _record_to_outbox(sc, enriched, tenant, rid)
@@ -240,6 +228,11 @@ async def aremember_background(
             # E2.2: Mark outbox event as sent on success
             if outbox_event_id is not None:
                 _mark_outbox_sent(outbox_event_id)
+        elif not ok:
+            logger.error(
+                "Background memory persist schema/logic failure",
+                extra={"status": "failed", "response": response_data, "rid": rid},
+            )
     except Exception:
         # E2.3: Outbox entry remains "pending" for retry
         logger.exception("Background memory persist failed")

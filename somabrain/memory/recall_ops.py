@@ -163,15 +163,18 @@ def memories_search_sync(
     headers = {"X-Request-ID": request_id}
     universe_value = str(universe or "real")
     query_text = str(query or "")
+    # VIBE FIX: Align with MemorySearchRequest schema (universe/tenant in filters)
     body = {
         "query": query_text,
         "top_k": max(int(top_k), 1),
-        "universe": universe_value,
+        "filters": {
+            "universe": universe_value,
+        }
     }
 
-    # Include tenant in request body for server-side filtering
+    # Include tenant in filters
     if tenant:
-        body["tenant"] = str(tenant)
+        body["filters"]["tenant"] = str(tenant)
 
     success, status, data = http_post_fn(
         "/memories/search", body, headers, operation="recall"
@@ -224,15 +227,18 @@ async def memories_search_async(
     headers = {"X-Request-ID": request_id}
     universe_value = str(universe or "real")
     query_text = str(query or "")
+    # VIBE FIX: Align with MemorySearchRequest schema (Async)
     body = {
         "query": query_text,
         "top_k": max(int(top_k), 1),
-        "universe": universe_value,
+        "filters": {
+            "universe": universe_value,
+        }
     }
 
-    # Include tenant in request body for server-side filtering
+    # Include tenant in filters
     if tenant:
-        body["tenant"] = str(tenant)
+        body["filters"]["tenant"] = str(tenant)
 
     success, status, data = await http_post_fn(
         "/memories/search", body, headers, operation="recall"

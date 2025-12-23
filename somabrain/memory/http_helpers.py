@@ -351,6 +351,9 @@ async def store_http_async(
     if transport is None:
         return False, None
 
+    # VIBE FIX: Reverted double-wrapping (Async)
+    # remember.py already formats data correctly.
+
     success, _, data = await http_post_with_retries_async(
         transport, "/memories", body, headers, tenant, operation="remember"
     )

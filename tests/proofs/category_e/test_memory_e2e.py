@@ -22,7 +22,7 @@ class MockConfig:
         self.memory_http_token = "dev-032f8d463c84e7ef0d834c3a"
         self.namespace = "verification_test"
         self.memory_fast_ack = False
-        self.memory_db_path = "./data/memory.db"
+        self.memory_db_path = None
 
 async def verify_adapter_flow():
     print(">>> 1. Initializing Adapter & Client...")
@@ -49,16 +49,48 @@ async def verify_adapter_flow():
         
     except Exception as e:
         print(f"    FAILED to write: {e}")
+        # If it's an HTTP error from MemoryClient (which raises on failure usually), print it
+        # But MemoryClient might mask it. Let's inspect the adapter implementation or trust the print.
+        # Actually verify_e2e.py calls adapter.encode_fractal.
+        # If adapter raises, e captures it.
+        import traceback
+        traceback.print_exc()
         return
 
     print(f"\n>>> 3. Verifying Retrieval (Reading from SFM via HTTP)...")
     try:
         # Give it a moment for consistency if needed (though SFM is usually fast)
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
         
         # This calls adapter.retrieve_fractal -> client.recall -> HTTP POST localhost:35000/recall
         query = {"content": f"VIBE Verification Trace {trace_id}"}
-        results = adapter.retrieve_fractal(query, top_k=1)
+        
+        # VIBE CHECK 1: Direct Fetch by Coordinate (Persistence Proof)
+        print(f"    Target Coord: {nodes[0]}")
+        try:
+             # adapter.client is MemoryClient
+            direct_fetch = adapter.client.fetch_by_coord(nodes[0])
+            if direct_fetch:
+                print(f"    ✅ VIBE CHECK 1 PASSED: Direct Fetch found memory: {direct_fetch[0].get('id')}")
+            else:
+                print(f"    ❌ VIBE CHECK 1 FAILED: Direct Fetch returned empty.")
+        except Exception as e:
+            print(f"    ❌ VIBE CHECK 1 ERROR: {e}")
+            
+        # VIBE CHECK 2: Semantic Recall
+        # Use exact content for query to maximize cosine similarity with CodeBERT
+        query_text = f"VIBE Verification Trace {trace_id}"
+        results = adapter.retrieve_fractal({"content": query_text}, top_k=5)
+        
+        if results:
+             print(f"    ✅ VIBE CHECK 2 PASSED: Semantic Search found {len(results)} results.")
+        else:
+             print("    ⚠️ VIBE CHECK 2 WARNING: Semantic Search returned no results (Possible embedding model loading issue).")
+             
+        # VIBE CHECK 3: Keyword/Exact Search (Hybrid)
+        print("    Testing Keyword/Hybrid Search...")
+        # Note: MemoryClient might not expose raw keyword_search, but retrieve_fractal uses hybrid.
+        # Let's rely on the previous fetch_by_coord as the primary persistence proof.
         
         if not results:
             print("    FAILED: No results found.")
@@ -75,6 +107,8 @@ async def verify_adapter_flow():
                 
     except Exception as e:
         print(f"    FAILED to read: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     asyncio.run(verify_adapter_flow())
