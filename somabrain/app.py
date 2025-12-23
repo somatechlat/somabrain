@@ -562,8 +562,26 @@ thalamus = ThalamusRouter()
 hippocampus = create_hippocampus()
 # Prefrontal instance creation removed; the system no longer uses this component.
 
-fnom_memory: Any = None
-fractal_memory: Any = None
+# VIBE-compliant Persistent Memory Initialization
+from somabrain.bootstrap.core_singletons import create_fractal_memory, create_fnom_memory
+
+try:
+    logger.info("Initializing Persistent Fractal Memory...")
+    fractal_memory = create_fractal_memory(cfg)
+    logger.info("Initializing Persistent FNOM...")
+    fnom_memory = create_fnom_memory(cfg, embedder)
+except Exception as e:
+    # Fail fast if critical persistent memory cannot be initialized (Rule #4)
+    logger.critical(f"FATAL: Failed to initialize persistent memory: {e}", exc_info=True)
+    if BACKEND_ENFORCEMENT:
+        raise RuntimeError(f"Critical Memory Failure: {e}") from e
+    # In strictly local dev without enforcement, we might proceed, but better to fail explicitly per user request
+    raise RuntimeError(f"VIBE Violation: Brain requires persistent memory. {e}") from e
+
+# Ensure they are not None before passing to UnifiedBrainCore
+if fractal_memory is None or fnom_memory is None:
+     raise RuntimeError("System Failure: Persistent memory components are None.")
+
 
 # Register singletons with runtime module using bootstrap helper
 register_singletons(
@@ -582,10 +600,16 @@ register_singletons(
 from somabrain.brain import UnifiedBrainCore
 
 # Initialize Unified Brain Core (PHASE 2 OPTIMIZATION)
-unified_brain = None  # default when demos disabled
+unified_brain = None  # must be initialized
 if fnom_memory is not None and fractal_memory is not None:
     # Use the neuromodulators singleton alias defined earlier (neuromods)
     unified_brain = UnifiedBrainCore(fractal_memory, fnom_memory, neuromods)
+
+# STRICT VIBE ENFORCEMENT (Rule #1: No Bullshit)
+# The Brain must be available. If it failed to initialize, the system is invalid.
+if unified_brain is None:
+    raise RuntimeError("VIBE Violation: UnifiedBrainCore failed to initialize. Persistent memory (FNOM/Fractal) required.")
+
 
 # Memory service facade and watchdog
 memory_service = _MemSvc(mt_memory, cfg.namespace)

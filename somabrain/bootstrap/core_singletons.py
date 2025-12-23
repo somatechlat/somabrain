@@ -282,3 +282,73 @@ def create_unified_brain(fnom_memory: Any, fractal_memory: Any, neuromods: Any):
     from somabrain.brain import UnifiedBrainCore
 
     return UnifiedBrainCore(fractal_memory, fnom_memory, neuromods)
+
+
+# ---------------------------------------------------------------------------
+# Fractal Memory & FNOM Factories (Persistent)
+# ---------------------------------------------------------------------------
+
+
+def create_fractal_memory(cfg):
+    """Create the Fractal Memory interface (VIBE: Single Point of Access).
+
+    Instead of creating a second direct DB connection (which violates the
+    'Single Point of Access' rule and duplicates logic), this factory
+    returns an adapter that routes all operations through the centralized
+    MemoryClient (via HTTP to the specific Memory Service).
+
+    Args:
+        cfg: Application configuration.
+
+    Returns:
+        FractalClientAdapter: VIBE-compliant interface to the memory system.
+    """
+    from somabrain.brain.adapters import FractalClientAdapter
+    # We need a memory client instance. 
+    # In strictly layered architecture, we might create a dedicated one here
+    # or access the global one. For bootstrap, we instantiate a client.
+    from somabrain.memory_client import MemoryClient
+    
+    # Instantiate client configured for the specific namespace if needed, 
+    # or standard config.
+    client = MemoryClient(cfg)
+    
+    return FractalClientAdapter(client)
+
+
+
+def create_fnom_memory(cfg, embedder):
+    """Create the PersistentFNOM instance.
+
+    Args:
+        cfg: Application configuration object.
+        embedder: Embedding model instance for retrieval.
+
+    Returns:
+        PersistentFNOM: The persistent FNOM instance.
+    """
+    from somabrain.brain.fnom import PersistentFNOM
+    from somafractalmemory.implementations.postgres_kv import PostgresKeyValueStore
+    from somafractalmemory.implementations.milvus_vector import MilvusVectorStore
+    
+    # Reuse valid connection parameters for shared persistence layer
+    # Segregate data via explicit namespacing
+    kv_store = PostgresKeyValueStore(
+        dsn=getattr(cfg, "database_url", "postgresql://vibe:vibe@localhost/somabrain"),
+        table_name="fnom_kv" # Use separate table or implicit segregation via keys
+    )
+    
+    # Use separate collection or partition for FNOM if possible, or share
+    vector_store = MilvusVectorStore(
+        host=getattr(cfg, "milvus_host", "localhost"),
+        port=getattr(cfg, "milvus_port", "19530"),
+        collection_name="soma_fnom_memory"
+    )
+
+    return PersistentFNOM(
+        kv_store=kv_store,
+        vector_store=vector_store,
+        namespace="fnom",
+        embedder=embedder
+    )
+
