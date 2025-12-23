@@ -4,7 +4,7 @@ import uuid
 import sys
 
 # Configure environment for Host-to-Docker connectivity
-os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = "http://localhost:35000"  # SFM API
+os.environ["SOMABRAIN_MEMORY_HTTP_ENDPOINT"] = "http://localhost:9595"  # SFM API (Updated from docker ps)
 os.environ["SOMABRAIN_REDIS_URL"] = "redis://localhost:30100/0"         # SomaBrain Redis
 os.environ["SOMABRAIN_POSTGRES_DSN"] = "postgresql://soma:soma@localhost:30106/somabrain"
 # Disable other strict checks that might block simple script execution if services aren't perfect yet
@@ -18,8 +18,8 @@ from somabrain.memory_client import MemoryClient
 
 class MockConfig:
     def __init__(self):
-        self.memory_http_endpoint = "http://localhost:35000"
-        self.memory_http_token = "dev-token"
+        self.memory_http_endpoint = "http://localhost:9595"
+        self.memory_http_token = "dev-032f8d463c84e7ef0d834c3a"
         self.namespace = "verification_test"
         self.memory_fast_ack = False
         self.memory_db_path = "./data/memory.db"
