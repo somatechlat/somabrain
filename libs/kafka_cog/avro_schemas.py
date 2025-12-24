@@ -55,6 +55,9 @@ def load_all() -> Dict[str, Dict[str, Any]]:
         "reward_event",
         "next_event",
         "config_update",
+        # Oak option events – added for ROAMDP integration
+        "option_created",
+        "option_updated",
     ]
     out: Dict[str, Dict[str, Any]] = {}
     for name in required:

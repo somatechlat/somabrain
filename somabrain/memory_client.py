@@ -65,9 +65,17 @@ class MemoryClient:
     """
 
     def __init__(
-        self, cfg: Config, scorer: Optional[Any] = None, embedder: Optional[Any] = None
+        self,
+        cfg: Optional[Config] = None,
+        scorer: Optional[Any] = None,
+        embedder: Optional[Any] = None,
     ):
-        self.cfg = cfg
+        # ``cfg`` was previously mandatory, causing instantiation failures in
+        # contexts (e.g., the Oak option manager) that relied on the default
+        # configuration singleton.  Making it optional restores backward
+        # compatibility while preserving the ability to inject a custom Config
+        # for advanced use‑cases.
+        self.cfg = cfg if cfg is not None else settings  # type: ignore[assignment]
         self._scorer = scorer
         self._embedder = embedder
         self._mode = "http"
