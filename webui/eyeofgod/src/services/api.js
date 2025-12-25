@@ -166,10 +166,11 @@ export const auditApi = {
 /**
  * Platform Stats API
  * 📊 SRE: Platform metrics
+ * NOTE: Dashboard router mounted at /admin/dashboard/
  */
 export const statsApi = {
-    dashboard: () => request('/admin/stats/dashboard'),
-    revenue: () => request('/admin/stats/revenue'),
+    dashboard: () => request('/admin/dashboard/stats'),
+    revenue: () => request('/admin/dashboard/stats/revenue'),
     memory: () => request('/admin/stats/memory'),
 };
 
