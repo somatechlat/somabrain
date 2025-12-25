@@ -7,14 +7,14 @@
 import { LitElement, html, css } from 'lit';
 
 export class EogDashboard extends LitElement {
-    static properties = {
-        stats: { type: Object },
-        services: { type: Array },
-        activity: { type: Array },
-        loading: { type: Boolean },
-    };
+  static properties = {
+    stats: { type: Object },
+    services: { type: Array },
+    activity: { type: Array },
+    loading: { type: Boolean },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -228,38 +228,58 @@ export class EogDashboard extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.loading = false;
-        this.stats = {
-            mrr: '$24,500',
-            mrrChange: '+5%',
-            tenants: 127,
-            tenantsChange: '+3',
-            users: 1892,
-            apiCalls: '2.4M',
-            health: '100%',
-        };
-        this.services = [
-            { name: 'SomaBrain', port: ':9696', status: 'up' },
-            { name: 'FractalMemory', port: ':9595', status: 'up' },
-            { name: 'PostgreSQL', port: ':5432', status: 'up' },
-            { name: 'Redis', port: ':6379', status: 'up' },
-            { name: 'Milvus', port: ':19530', status: 'up' },
-            { name: 'Keycloak', port: ':8080', status: 'up' },
-            { name: 'Kafka', port: ':9092', status: 'up' },
-            { name: 'Lago', port: ':3000', status: 'up' },
-        ];
-        this.activity = [
-            { time: '14:45', text: 'Tenant created: Acme Corp' },
-            { time: '14:30', text: 'Subscription upgrade: Beta Inc' },
-            { time: '14:15', text: 'API key rotated: Gamma LLC' },
-            { time: '14:00', text: 'Invoice paid: Delta Co' },
-        ];
-    }
+  constructor() {
+    super();
+    this.loading = false;
+    this.stats = {};
+    this.services = [];
+    this.activity = [];
+    this.error = null;
+  }
 
-    render() {
-        return html`
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadDashboard();
+  }
+
+  async _loadDashboard() {
+    this.loading = true;
+    try {
+      // Load from real APIs
+      const [statsResult, healthResult, activityResult] = await Promise.allSettled([
+        import('../services/api.js').then(m => m.statsApi.dashboard()),
+        import('../services/api.js').then(m => m.healthApi.full()),
+        import('../services/api.js').then(m => m.auditApi.list({ limit: 5 }))
+      ]);
+
+      if (statsResult.status === 'fulfilled') {
+        this.stats = statsResult.value || {};
+      }
+      if (healthResult.status === 'fulfilled') {
+        const health = healthResult.value;
+        this.services = (health.services || []).map(s => ({
+          name: s.name,
+          port: s.port || '',
+          status: s.status === 'healthy' ? 'up' : s.status === 'degraded' ? 'degraded' : 'down'
+        }));
+      }
+      if (activityResult.status === 'fulfilled') {
+        const logs = activityResult.value?.logs || activityResult.value || [];
+        this.activity = logs.slice(0, 5).map(log => ({
+          time: new Date(log.timestamp || log.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+          text: log.action || log.message || 'Activity'
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard:', err);
+      this.error = err.message;
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  render() {
+    return html`
       <div class="dashboard-grid">
         <!-- KPI Cards -->
         <div class="kpi-row">
@@ -341,12 +361,12 @@ export class EogDashboard extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 
-    _createTenant() {
-        window.history.pushState({}, '', '/platform/tenants/new');
-        window.dispatchEvent(new PopStateEvent('popstate'));
-    }
+  _createTenant() {
+    window.history.pushState({}, '', '/platform/tenants/new');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 }
 
 customElements.define('eog-dashboard', EogDashboard);

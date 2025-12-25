@@ -177,18 +177,30 @@ export class EogSettings extends LitElement {
 
   constructor() {
     super();
-    this.settings = {
-      platformName: 'SomaBrain',
-      supportEmail: 'support@somabrain.ai',
-      maintenanceMode: false,
-      allowSignups: true,
-      requireEmailVerification: true,
-      sessionTimeoutMinutes: 60,
-      maxLoginAttempts: 5,
-      auditRetentionDays: 90,
-    };
+    this.settings = {};
     this.isLoading = false;
     this.isSaving = false;
+    this.error = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadSettings();
+  }
+
+  async _loadSettings() {
+    this.isLoading = true;
+    this.error = null;
+    try {
+      const result = await settingsApi.get();
+      this.settings = result.settings || result || {};
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+      this.error = err.message;
+      this.settings = {};
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   _updateSetting(field, value) {
@@ -198,12 +210,12 @@ export class EogSettings extends LitElement {
   async _handleSave() {
     this.isSaving = true;
     try {
-      // TODO: Implement API save
-      console.log('Saving settings:', this.settings);
-      await new Promise(r => setTimeout(r, 500)); // Simulate
-      alert('Settings saved successfully');
+      await settingsApi.update(this.settings);
+      // Show success feedback
+      this.requestUpdate();
     } catch (err) {
-      alert('Failed to save settings');
+      console.error('Failed to save settings:', err);
+      alert(`Failed to save settings: ${err.message}`);
     } finally {
       this.isSaving = false;
     }
