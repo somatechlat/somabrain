@@ -174,25 +174,26 @@ export const statsApi = {
 };
 
 /**
- * OAuth Providers API
- * 🔐 Security: Identity provider management
+ * OAuth Providers API (Identity Providers)
+ * 🔐 Security: Identity provider management  
  */
 export const oauthApi = {
-    list: () => request('/oauth/providers'),
-    get: (id) => request(`/oauth/providers/${id}`),
-    create: (data) => request('/oauth/providers', {
+    list: () => request('/identity-providers/'),
+    get: (id) => request(`/identity-providers/${id}`),
+    create: (data) => request('/identity-providers/', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
-    update: (id, data) => request(`/oauth/providers/${id}`, {
+    update: (id, data) => request(`/identity-providers/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
     }),
-    delete: (id) => request(`/oauth/providers/${id}`, {
+    delete: (id) => request(`/identity-providers/${id}`, {
         method: 'DELETE',
     }),
-    test: (id) => request(`/oauth/providers/${id}/test`, {
+    test: (data) => request('/identity-providers/test', {
         method: 'POST',
+        body: JSON.stringify(data),
     }),
 };
 
@@ -227,13 +228,17 @@ export const usersApi = {
  * 🧠 Memory system operations
  */
 export const memoryApi = {
-    stats: () => request('/admin/memory/stats'),
+    stats: () => request('/memory/admin/stats'),
     nodes: (params = {}) => {
         const query = new URLSearchParams(params).toString();
-        return request(`/admin/memory/nodes${query ? `?${query}` : ''}`);
+        return request(`/memory/admin/nodes${query ? `?${query}` : ''}`);
     },
-    getNode: (id) => request(`/admin/memory/nodes/${id}`),
-    graph: (nodeId, depth = 2) => request(`/admin/memory/nodes/${nodeId}/graph?depth=${depth}`),
+    getNode: (id) => request(`/memory/admin/nodes/${id}`),
+    graph: (nodeId, depth = 2) => request(`/memory/admin/nodes/${nodeId}/graph?depth=${depth}`),
+    rebuildAnn: (data) => request('/memory/admin/rebuild-ann', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
 };
 
 /**
@@ -253,9 +258,14 @@ export const settingsApi = {
  * ✨ Feature flags management
  */
 export const featuresApi = {
-    list: () => request('/admin/features'),
-    update: (code, data) => request(`/admin/features/${code}`, {
+    list: () => request('/features/'),
+    get: (key) => request(`/features/${key}`),
+    update: (key, data) => request(`/features/${key}`, {
         method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
+    create: (data) => request('/features/', {
+        method: 'POST',
         body: JSON.stringify(data),
     }),
 };
