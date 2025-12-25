@@ -22,6 +22,12 @@ import time
 from typing import Any, Dict, Optional
 import logging
 
+# Django setup MUST be called before importing any Django models
+# This is required for standalone workers outside of manage.py
+import django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "somabrain.settings")
+django.setup()
+
 from django.db import transaction
 
 from somabrain.db.outbox import (
