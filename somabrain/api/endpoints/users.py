@@ -516,8 +516,14 @@ def invite_user(
                 assigned_by_id=request.user_id,
             )
     
-    # TODO: Send invitation email
-    # email_service.send_invitation(data.email, tenant, data.message)
+    # Send invitation email using Django's native email service
+    from somabrain.saas.email_service import send_invitation_email
+    email_sent = send_invitation_email(
+        to_email=data.email,
+        tenant_name=tenant.name,
+        inviter_name=getattr(request, 'user_display_name', None),
+        custom_message=getattr(data, 'message', None),
+    )
     
     # Audit log
     AuditLog.log(
@@ -527,7 +533,7 @@ def invite_user(
         actor_id=str(request.user_id),
         actor_type=ActorType.ADMIN,
         tenant=tenant,
-        details={"email": data.email, "roles": data.roles},
+        details={"email": data.email, "roles": data.roles, "email_sent": email_sent},
     )
     
     return {
