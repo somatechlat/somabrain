@@ -736,3 +736,25 @@ LAGO_WEBHOOK_SECRET = env('LAGO_WEBHOOK_SECRET', default='')
 SOMAFRACTALMEMORY_URL = env('SOMAFRACTALMEMORY_URL', default='http://localhost:9595')
 SOMAFRACTALMEMORY_API_TOKEN = env('SOMAFRACTALMEMORY_API_TOKEN', default='')
 
+# =============================================================================
+# DJANGO EMAIL SETTINGS
+# =============================================================================
+# Backend: Use 'console' for development, 'smtp' for production
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+
+# SMTP Configuration (for production)
+EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+
+# Default sender
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='SomaBrain <noreply@somabrain.ai>')
+SERVER_EMAIL = env('SERVER_EMAIL', default='server@somabrain.ai')
+
+# Email subject prefix (for admin emails)
+EMAIL_SUBJECT_PREFIX = '[SomaBrain] '
+
+
