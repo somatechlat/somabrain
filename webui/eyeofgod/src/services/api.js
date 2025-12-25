@@ -142,28 +142,122 @@ export const invoicesApi = {
 
 /**
  * Health API
+ * 🚨 SRE: Complete infrastructure visibility
  */
 export const healthApi = {
-    check: () => request('/health'),
-    services: () => request('/admin/services/health'),
+    simple: () => request('/health/simple'),
+    full: () => request('/health/full'),
+    services: () => request('/health/full'),
+    infrastructure: () => request('/health/infrastructure'),
+    database: () => request('/health/database'),
 };
 
 /**
  * Audit API
+ * 🔒 Security: Complete action visibility
  */
 export const auditApi = {
     list: (params = {}) => {
         const query = new URLSearchParams(params).toString();
-        return request(`/admin/audit${query ? `?${query}` : ''}`);
+        return request(`/audit/${query ? `?${query}` : ''}`);
     },
 };
 
 /**
  * Platform Stats API
+ * 📊 SRE: Platform metrics
  */
 export const statsApi = {
     dashboard: () => request('/admin/stats/dashboard'),
     revenue: () => request('/admin/stats/revenue'),
+    memory: () => request('/admin/stats/memory'),
+};
+
+/**
+ * OAuth Providers API
+ * 🔐 Security: Identity provider management
+ */
+export const oauthApi = {
+    list: () => request('/oauth/providers'),
+    get: (id) => request(`/oauth/providers/${id}`),
+    create: (data) => request('/oauth/providers', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
+    update: (id, data) => request(`/oauth/providers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
+    delete: (id) => request(`/oauth/providers/${id}`, {
+        method: 'DELETE',
+    }),
+    test: (id) => request(`/oauth/providers/${id}/test`, {
+        method: 'POST',
+    }),
+};
+
+/**
+ * Users API
+ * 👥 Platform and tenant user management
+ */
+export const usersApi = {
+    list: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/admin/users${query ? `?${query}` : ''}`);
+    },
+    get: (id) => request(`/admin/users/${id}`),
+    create: (data) => request('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
+    update: (id, data) => request(`/admin/users/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
+    disable: (id) => request(`/admin/users/${id}/disable`, {
+        method: 'POST',
+    }),
+    enable: (id) => request(`/admin/users/${id}/enable`, {
+        method: 'POST',
+    }),
+};
+
+/**
+ * Memory API
+ * 🧠 Memory system operations
+ */
+export const memoryApi = {
+    stats: () => request('/admin/memory/stats'),
+    nodes: (params = {}) => {
+        const query = new URLSearchParams(params).toString();
+        return request(`/admin/memory/nodes${query ? `?${query}` : ''}`);
+    },
+    getNode: (id) => request(`/admin/memory/nodes/${id}`),
+    graph: (nodeId, depth = 2) => request(`/admin/memory/nodes/${nodeId}/graph?depth=${depth}`),
+};
+
+/**
+ * Settings API
+ * ⚙️ Platform configuration
+ */
+export const settingsApi = {
+    get: () => request('/admin/settings'),
+    update: (data) => request('/admin/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
+};
+
+/**
+ * Features API
+ * ✨ Feature flags management
+ */
+export const featuresApi = {
+    list: () => request('/admin/features'),
+    update: (code, data) => request(`/admin/features/${code}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    }),
 };
 
 /**
@@ -199,7 +293,11 @@ export default {
     invoices: invoicesApi,
     health: healthApi,
     audit: auditApi,
-    audit: auditApi,
     stats: statsApi,
     roles: rolesApi,
+    oauth: oauthApi,
+    users: usersApi,
+    memory: memoryApi,
+    settings: settingsApi,
+    features: featuresApi,
 };

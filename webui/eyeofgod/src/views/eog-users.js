@@ -3,7 +3,7 @@
  * Route: /platform/users
  * 
  * Manage platform and tenant users.
- * Consumes /api/users/ endpoint.
+ * Consumes /api/admin/users endpoint.
  * 
  * VIBE PERSONAS:
  * - Security: Role-based access display
@@ -12,16 +12,17 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { usersApi } from '../services/api.js';
 
 export class EogUsers extends LitElement {
-    static properties = {
-        users: { type: Array },
-        isLoading: { type: Boolean },
-        searchQuery: { type: String },
-        roleFilter: { type: String },
-    };
+  static properties = {
+    users: { type: Array },
+    isLoading: { type: Boolean },
+    searchQuery: { type: String },
+    roleFilter: { type: String },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -191,39 +192,70 @@ export class EogUsers extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        // Mock data until API is connected
-        this.users = [
-            { id: '1', email: 'admin@somabrain.ai', display_name: 'Platform Admin', role: 'super-admin', is_active: true, tenant: null },
-            { id: '2', email: 'john@acme.com', display_name: 'John Doe', role: 'tenant-admin', is_active: true, tenant: { slug: 'acme' } },
-            { id: '3', email: 'jane@acme.com', display_name: 'Jane Smith', role: 'tenant-user', is_active: true, tenant: { slug: 'acme' } },
-            { id: '4', email: 'api@example.com', display_name: 'API Service', role: 'api-access', is_active: true, tenant: { slug: 'example' } },
-        ];
-        this.isLoading = false;
-        this.searchQuery = '';
-        this.roleFilter = '';
-    }
+  constructor() {
+    super();
+    this.users = [];
+    this.isLoading = false;
+    this.searchQuery = '';
+    this.roleFilter = '';
+    this.error = null;
+  }
 
-    get filteredUsers() {
-        let users = this.users;
-        if (this.searchQuery) {
-            const q = this.searchQuery.toLowerCase();
-            users = users.filter(u => u.email.toLowerCase().includes(q) || u.display_name?.toLowerCase().includes(q));
-        }
-        if (this.roleFilter) {
-            users = users.filter(u => u.role === this.roleFilter);
-        }
-        return users;
-    }
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadUsers();
+  }
 
-    _getInitials(name) {
-        if (!name) return '?';
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  async _loadUsers() {
+    this.isLoading = true;
+    this.error = null;
+    try {
+      const params = {};
+      if (this.roleFilter) params.role = this.roleFilter;
+      const result = await usersApi.list(params);
+      this.users = result.users || result || [];
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      this.error = err.message;
+      this.users = [];
+    } finally {
+      this.isLoading = false;
     }
+  }
 
-    render() {
-        return html`
+  async _toggleUserStatus(user) {
+    try {
+      if (user.is_active) {
+        await usersApi.disable(user.id);
+      } else {
+        await usersApi.enable(user.id);
+      }
+      this._loadUsers();
+    } catch (err) {
+      console.error('Failed to toggle user status:', err);
+      alert(`Failed to ${user.is_active ? 'disable' : 'enable'} user`);
+    }
+  }
+
+  get filteredUsers() {
+    let users = this.users;
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      users = users.filter(u => u.email.toLowerCase().includes(q) || u.display_name?.toLowerCase().includes(q));
+    }
+    if (this.roleFilter) {
+      users = users.filter(u => u.role === this.roleFilter);
+    }
+    return users;
+  }
+
+  _getInitials(name) {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  render() {
+    return html`
       <div class="view">
         <div class="header">
           <h1>Users</h1>
@@ -281,7 +313,7 @@ export class EogUsers extends LitElement {
                   <td>
                     <div class="actions">
                       <button class="action-btn">Edit</button>
-                      <button class="action-btn">${user.is_active ? 'Disable' : 'Enable'}</button>
+                      <button class="action-btn" @click=${() => this._toggleUserStatus(user)}>${user.is_active ? 'Disable' : 'Enable'}</button>
                     </div>
                   </td>
                 </tr>
@@ -291,7 +323,7 @@ export class EogUsers extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-users', EogUsers);
