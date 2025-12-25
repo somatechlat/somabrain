@@ -9,7 +9,7 @@ Features:
 - 8 predefined roles + custom role builder
 - Permission matrix (role → actions)
 - @require_permission decorator
-- SpiceDB interface for future ReBAC
+- Django-native authorization (NO SpiceDB)
 
 ALL 10 PERSONAS:
 - 🔒 Security: Fine-grained access control, no privilege escalation
@@ -494,75 +494,6 @@ def require_permission(*permissions: str, require_all: bool = True):
         return wrapper
     return decorator
 
-
-# =============================================================================
-# SPICEDB INTEGRATION INTERFACE (Future ReBAC)
-# =============================================================================
-
-class SpiceDBClient:
-    """
-    Interface for SpiceDB relationship-based access control.
-    
-    SpiceDB uses Zanzibar-inspired relationship tuples:
-        (subject, relation, object)
-        e.g., (user:123, admin, tenant:456)
-    
-    This is a stub interface - implement when SpiceDB is deployed.
-    
-    ALL 10 PERSONAS - Future-proofing for ReBAC.
-    """
-    
-    def __init__(self, endpoint: str = None, token: str = None):
-        self.endpoint = endpoint
-        self.token = token
-        self._connected = False
-    
-    async def check_permission(
-        self,
-        subject: str,      # e.g., "user:123"
-        relation: str,     # e.g., "admin"
-        object_ref: str,   # e.g., "tenant:456"
-    ) -> bool:
-        """
-        Check if subject has relation to object.
-        
-        Returns:
-            True if permission exists, False otherwise
-        """
-        # Stub implementation - always returns True for now
-        # TODO: Implement actual SpiceDB gRPC call
-        logger.debug(f"SpiceDB check: {subject} {relation} {object_ref}")
-        return True
-    
-    async def write_relationship(
-        self,
-        subject: str,
-        relation: str,
-        object_ref: str,
-    ) -> bool:
-        """
-        Create a relationship tuple.
-        """
-        # Stub implementation
-        logger.debug(f"SpiceDB write: {subject} {relation} {object_ref}")
-        return True
-    
-    async def delete_relationship(
-        self,
-        subject: str,
-        relation: str,
-        object_ref: str,
-    ) -> bool:
-        """
-        Remove a relationship tuple.
-        """
-        # Stub implementation
-        logger.debug(f"SpiceDB delete: {subject} {relation} {object_ref}")
-        return True
-
-
-# Default client instance
-spicedb = SpiceDBClient()
 
 
 # =============================================================================
