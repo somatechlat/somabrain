@@ -1,0 +1,15 @@
+apiVersion: v2
+name: somabrain
+description: Helm chart for deploying the SomaBrain stack (API, services, and observability).
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://github.com/somatechlat/somabrain
+sources:
+  - https://github.com/somatechlat/somabrain
+maintainers:
+  - name: SomaBrain Team
+    email: team@somabrain.org
+
+# The following duplicated block was an accidental copy‑paste and broke YAML parsing.
+# It has been removed to produce a valid Chart.yaml.

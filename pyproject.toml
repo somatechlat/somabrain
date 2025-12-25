@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "somabrain"
+version = "0.2.0"
+description = "SomaBrain — cognitive layer with WM, salience, HRR, planner, controls, and observability"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "SomaBrain Contributors" }]
+keywords = ["agents", "cognition", "HRR", "Django", "memory", "observability"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Framework :: Django",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  # Core Django Stack (VIBE COMPLIANT - Pure Django)
+  "django>=4.2",
+  "django-ninja>=1.0",
+  "dj-database-url>=2.1.0",
+  "django-environ>=0.12.0",
+  
+  # Data & Compute
+  "numpy>=1.24",
+  "cachetools>=5.3",
+  "psutil>=5.9",
+  
+  # Database
+  "psycopg[binary]>=3.1",
+  "psycopg2-binary>=2.9",
+  
+  # Infrastructure
+  "redis>=4.6",
+  "kafka-python>=2.0",
+  "grpcio>=1.75",
+  
+  # Security
+  "cryptography>=41",
+  "PyJWT[crypto]>=2.9",
+  
+  # Config
+  "PyYAML>=6.0",
+  
+  # HTTP Client (for Lago, external APIs)
+  "httpx>=0.24",
+  "requests>=2.31",
+  "prometheus-client>=0.17",
+
+  # OpenTelemetry (observability)
+  "opentelemetry-api==1.37.0",
+  "opentelemetry-sdk==1.37.0",
+  "opentelemetry-exporter-otlp==1.37.0",
+  
+  # Vector store
+  "pymilvus>=2.4",
+  
+  # Optional
+  "hvac>=2.0",
+  "fastavro>=1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-django",
+  "pytest-asyncio",
+  "black",
+  "ruff",
+  "mypy",
+]
+
+[project.scripts]
+somabrain-server = "somabrain.cli:run_server"
+
+[tool.setuptools]
+packages = { find = { where = ["."], include = ["somabrain*"], exclude = ["tests*"] } }
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+skip-string-normalization = false
+
+[tool.isort]
+profile = "black"
+line_length = 88
+combine_as_imports = true
+known_first_party = ["somabrain"]
+default_section = "THIRDPARTY"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+exclude = [
+  "tests",
+  "benchmarks",
+  "scripts",
+  "examples",
+  "docs",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = [
+  "E501",
+  "E402",
+  "E702",
+  "I001",
+  "F401",
+  "F811",
+  "F841",
+]

@@ -1,0 +1,91 @@
+name: integrator-smoke
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      zookeeper:
+        image: confluentinc/cp-zookeeper:7.5.0
+        ports:
+          - 2181:2181
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+      kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    env:
+      SOMABRAIN_KAFKA_URL: localhost:9092
+      SOMABRAIN_REDIS_URL: redis://localhost:6379/0
+      SOMABRAIN_TOPIC_STATE_UPDATES: cog.state.updates
+      SOMABRAIN_TOPIC_AGENT_UPDATES: cog.agent.updates
+      SOMABRAIN_TOPIC_ACTION_UPDATES: cog.action.updates
+      SOMABRAIN_TOPIC_GLOBAL_FRAME: cog.global.frame
+      SOMABRAIN_INTEGRATOR_TEMPERATURE: 0.5
+      ENABLE_COG_THREADS: 1
+      SOMABRAIN_SEGMENT_HEALTH_ENABLE: 0
+      PYTHONPATH: .
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest confluent-kafka redis requests fastavro
+      - name: Create Kafka topics
+        run: |
+          docker exec $(docker ps --filter ancestor=confluentinc/cp-kafka:7.5.0 --format '{{.ID}}') \
+            kafka-topics --create --if-not-exists --topic cog.state.updates --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+          docker exec $(docker ps --filter ancestor=confluentinc/cp-kafka:7.5.0 --format '{{.ID}}') \
+            kafka-topics --create --if-not-exists --topic cog.agent.updates --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+          docker exec $(docker ps --filter ancestor=confluentinc/cp-kafka:7.5.0 --format '{{.ID}}') \
+            kafka-topics --create --if-not-exists --topic cog.action.updates --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+          docker exec $(docker ps --filter ancestor=confluentinc/cp-kafka:7.5.0 --format '{{.ID}}') \
+            kafka-topics --create --if-not-exists --topic cog.global.frame --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1
+      - name: Run integrator softmax/redis smoke
+        run: |
+          python - <<'PY'
+          import json, time, threading
+          from confluent_kafka import Producer
+          import redis
+          from somabrain.services.integrator_hub_triplet import IntegratorHub
+
+          # bring up integrator (no health thread)
+          rcli = redis.Redis(host='localhost', port=6379, db=0)
+          hub = IntegratorHub(start_health=False)
+          t = threading.Thread(target=hub.run, daemon=True)
+          t.start()
+
+          prod = Producer({'bootstrap.servers': 'localhost:9092'})
+          rec = {"domain": "state", "error_metric": 0.05, "ts": "now"}
+          prod.produce('cog.state.updates', json.dumps(rec).encode())
+          prod.flush()
+
+          timeout = time.time() + 10
+          found = False
+          while time.time() < timeout and not found:
+              time.sleep(1)
+              keys = rcli.keys('globalframe:*')
+              if keys:
+                  found = True
+          assert found, "No globalframe cached in Redis"
+          PY

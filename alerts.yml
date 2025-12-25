@@ -1,0 +1,333 @@
+groups:
+  - name: somabrain_alerts
+    rules:
+      - alert: HighAvgRequestLatency
+        expr: (rate(somabrain_http_latency_seconds_sum[5m]) / rate(somabrain_http_latency_seconds_count[5m])) * 1000 > 500
+        for: 3m
+        labels:
+          severity: page
+        annotations:
+          summary: "High average request latency"
+          description: "Average request latency > 500 ms for 3m"
+
+      # Retrieval empty rate sustained high (ratio of empty responses to requests)
+      - alert: RetrievalEmptyRateHigh
+        expr: (sum by (namespace) (increase(somabrain_retrieval_empty_total[5m]))
+              / clamp_min(sum by (namespace) (increase(somabrain_retrieval_requests[5m])), 1)) > 0.30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High retrieval empty rate"
+          description: "Empty retrieval ratio > 30% over 5m for namespace {{ $labels.namespace }} (value: {{ $value }}). Investigate retriever health or indexing coverage."
+
+      - alert: RetrievalEmptyRateCritical
+        expr: (sum by (namespace) (increase(somabrain_retrieval_empty_total[5m]))
+              / clamp_min(sum by (namespace) (increase(somabrain_retrieval_requests[5m])), 1)) > 0.50
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Retrieval empty rate very high"
+          description: "Empty retrieval ratio > 50% over 5m for namespace {{ $labels.namespace }} (value: {{ $value }}). Likely systemic outage."
+
+      # Retrieval p95 latency elevated (end-to-end pipeline latency)
+      - alert: RetrievalLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le)) > 0.40
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Retrieval p95 latency high"
+          description: "Retrieval pipeline p95 latency > 400ms over 10m (value: {{ $value }}s). Check ANN, fusion, or persistence backpressure."
+
+      - alert: RetrievalLatencyP95Critical
+        expr: histogram_quantile(0.95, sum(rate(somabrain_retrieval_latency_seconds_bucket[5m])) by (le)) > 0.80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Retrieval p95 latency very high"
+          description: "Retrieval pipeline p95 latency > 800ms over 5m (value: {{ $value }}s). Immediate investigation required."
+
+      - alert: WMUtilizationHigh
+        expr: somabrain_wm_utilization > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Working memory utilization high"
+          description: "WM utilization exceeds 85% for 5 minutes"
+
+      - alert: OutboxPendingHigh
+        expr: max_over_time(memory_outbox_pending[10m]) > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog high"
+          description: "memory_outbox_pending exceeds 50 messages for tenant {{ $labels.tenant_id }} over 10m (value: {{ $value }}). Investigate tenant pipelines or replay stuck events."
+
+      - alert: OutboxPendingCritical
+        expr: max_over_time(memory_outbox_pending[5m]) > 100
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Outbox backlog critical"
+          description: "memory_outbox_pending exceeds 100 messages for tenant {{ $labels.tenant_id }} over 5m (value: {{ $value }}). Immediate intervention required (admin replay / CLI tail)."
+
+      - alert: MemoryCircuitStuckOpen
+        expr: avg_over_time(memory_circuit_state[5m]) >= 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Memory circuit breaker open"
+          description: "Circuit breaker open >=90% of the last 5m for tenant {{ $labels.tenant_id }}. Investigate memory service availability and infra readiness."
+
+      - alert: MemoryCircuitCritical
+        expr: avg_over_time(memory_circuit_state[2m]) >= 0.99
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "CRITICAL: Memory circuit breaker locked open"
+          description: "Circuit breaker open >=99% for 2m for tenant {{ $labels.tenant_id }}. Requests will fail fast until memory service recovers."
+
+      - alert: FeatureToggleSpike
+        expr: increase(somabrain_feature_flag_toggle_total{action="applied"}[15m]) > 3
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Multiple feature toggles applied"
+          description: "More than 3 feature flags toggled in 15m (value: {{ $value }}). Verify canary rollout plan."
+
+      # Journal fallback removed: drop journal vs admits alert
+
+      - alert: QuotaDenies
+        expr: sum(rate(somabrain_quota_denied_total[1m])) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Quota denies detected"
+          description: "Quota denied requests occurring"
+
+      - alert: SupervisorAdjustmentSpike
+        expr: increase(somabrain_controller_changes_total[10m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Parameter supervisor adjusting frequently"
+          description: "Controller changes for {{ $labels.parameter }} exceeded 3 adjustments in 10m (value: {{ $value }}). Investigate metric drift."
+
+      - alert: AnnRebuildDurationHigh
+        expr: (sum by (tenant, namespace) (increase(somabrain_ann_rebuild_seconds_sum[15m])) / clamp_min(sum by (tenant, namespace) (increase(somabrain_ann_rebuild_seconds_count[15m])), 1)) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ANN rebuild duration high"
+          description: "Average ANN rebuild time for tenant {{ $labels.tenant }} namespace {{ $labels.namespace }} exceeded 2s over 15m (value: {{ $value }}s)."
+
+      - alert: AnnRebuildBurst
+        expr: sum by (tenant, namespace, backend) (increase(somabrain_ann_rebuild_total[10m])) > 5
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "ANN rebuilds occurring frequently"
+          description: "ANN rebuild count for tenant {{ $labels.tenant }} namespace {{ $labels.namespace }} backend {{ $labels.backend }} exceeded 5 in 10m (value: {{ $value }}). Review rebuild scheduling."
+
+      # API 5xx error rate per-tenant > 5% over 10m
+      - alert: SomabrainErrorRateHigh
+        expr: sum by (tenant) (rate(somabrain_http_requests_total{status=~"5.."}[5m]))
+              /
+              sum by (tenant) (rate(somabrain_http_requests_total[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High 5xx error rate for tenant {{ $labels.tenant }}"
+          description: "5xx rate > 5% over 10m for tenant {{ $labels.tenant }}"
+
+      # Integrator global frames absent
+      - alert: CogGlobalFrameAbsent
+        expr: sum(rate(somabrain_integrator_frames_total[5m])) == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No GlobalFrame messages observed"
+          description: "cog.global.frame has no publishes for 5 minutes."
+
+      # Consistency kappa sustained low (requires integrator metric somabrain_kappa)
+      - alert: ConsistencyKappaLow
+        expr: avg_over_time(somabrain_integrator_kappa[10m]) < 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consistency kappa low"
+          description: "Average κ below 0.2 over 10m (value: {{ $value }}). Investigate predictor alignment and fusion weights."
+
+      # OPA veto ratio sustained above 10%
+      - alert: OpaVetoRatioElevated
+        expr: somabrain_integrator_opa_veto_ratio > 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OPA veto ratio elevated"
+          description: "OPA denies exceed 10% of decisions over 10m (value: {{ $value }}). Review policy or input drift."
+
+      # Planning latency p99 above 40ms
+      - alert: PlanningLatencyP99High
+        expr: somabrain_planning_latency_p99 > 0.040
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Planning p99 latency high"
+          description: "Planning latency p99 above 40ms for 10m (value: {{ $value }}s). Investigate graph or retrieval pressure."
+
+      # Fusion Alpha Error sustained high (>0.1 signed deviation from target)
+      - alert: FusionAlphaErrorHigh
+        expr: avg_over_time(somabrain_integrator_alpha_error[10m]) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusion alpha error high"
+          description: "Adaptive alpha error > 0.10 over 10m (value: {{ $value }}). Investigate regret target or normalization stability."
+
+      # Regret EWMA above 0.08 indicates degraded policy feedback quality
+      - alert: LearningRegretEwmaHigh
+        expr: somabrain_learning_regret_ewma > 0.08
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Learning regret EWMA high"
+          description: "EWMA regret above 0.08 for 15m (value: {{ $value }}). Consider rollback or parameter tuning."
+
+      # Drift detection alerts from service counters
+      - alert: FusionDriftDetected
+        expr: increase(somabrain_drift_events_total[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fusion drift detected"
+          description: "Entropy/regret breach for {{ $labels.domain }} {{ $labels.tenant }}; normalization auto-disable may trigger. Events: {{ $value }}"
+
+      - alert: NormalizationAutoDisabled
+        expr: increase(somabrain_integrator_norm_disabled_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fusion normalization auto-disabled"
+          description: "Integrator disabled normalization due to drift for tenant(s). Investigate entropy/regret trends and rollback rationale."
+
+      # Calibration Drift: ECE sustained above threshold (0.15) per domain/tenant
+      - alert: CalibrationDrift
+        expr: avg_over_time(somabrain_calibration_ece[15m]) > 0.15
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Calibration drift"
+          description: "ECE above 0.15 over 15m for {{ $labels.domain }} {{ $labels.tenant }} (value: {{ $value }}). Consider temperature recalibration."
+
+      # Fusion Weight Instability: Stddev of candidate weights above 0.25 in last 10m
+      - alert: FusionWeightInstability
+        expr: (max_over_time(somabrain_integrator_candidate_weight[10m]) - min_over_time(somabrain_integrator_candidate_weight[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Fusion weight instability"
+          description: "Spread of candidate fusion weights > 0.5 over 10m for {{ $labels.tenant }} domain {{ $labels.domain }}."
+
+      # Segmentation Flood: boundaries too frequent (>8 in 5m)
+      - alert: SegmentationFlood
+        expr: increase(somabrain_segments_emitted_total[5m]) > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation flood"
+          description: ">8 segment boundaries emitted in 5m for {{ $labels.domain }} {{ $labels.evidence }}. Investigate volatility or threshold tuning."
+
+      # Segmentation Drought: no boundaries for prolonged period (30m dwell histogram inactivity)
+      - alert: SegmentationDrought
+        expr: increase(somabrain_segments_emitted_total[30m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation drought"
+          description: "No segment boundaries for 30m on any domain; verify segmentation service health and input stream continuity."
+
+      # Segmentation Acceptance: F1 below 0.90 over 15m (requires evaluator metrics)
+      - alert: SegmentationBoundaryF1Low
+        expr: avg_over_time(somabrain_segmentation_boundary_f1[15m]) < 0.90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation boundary F1 low"
+          description: "Boundary F1 < 0.90 over 15m for tenant {{ $labels.tenant }} (value: {{ $value }})."
+
+      # Segmentation Acceptance: false boundary rate above 5% over 15m
+      - alert: SegmentationFalseBoundaryRateHigh
+        expr: avg_over_time(somabrain_segmentation_false_boundary_rate[15m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Segmentation false boundary rate high"
+          description: "False boundary rate > 5% over 15m for tenant {{ $labels.tenant }} (value: {{ $value }})."
+
+      # Segmentation Acceptance: dwell latency above 2 ticks on average over 15m
+      - alert: SegmentationLatencyHigh
+        expr: (rate(somabrain_segmentation_latency_ticks_sum[15m]) / clamp_min(rate(somabrain_segmentation_latency_ticks_count[15m]), 1)) > 2
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Segmentation dwell latency high"
+          description: "Average dwell latency between true changes > 2 ticks over 15m (value: {{ $value }})."
+
+      # HMM segmentation volatility sustained high
+      - alert: SegmentationVolatileHigh
+        expr: (sum by (tenant, domain) (rate(somabrain_seg_p_volatile_sum[10m])) / clamp_min(sum by (tenant, domain) (rate(somabrain_seg_p_volatile_count[10m])), 1)) > 0.6
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "High VOLATILE state probability"
+          description: "Posterior VOLATILE probability sustained high for {{ $labels.tenant }} {{ $labels.domain }}."
+
+      # Kafka consumer lag (requires kafka_exporter)
+      - alert: KafkaConsumerLagHigh
+        expr: max by (consumergroup) (kafka_consumergroup_lag) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high"
+          description: "One or more consumer groups have lag above 1000."
+
+      - alert: KafkaConsumerLagCritical
+        expr: max by (consumergroup) (kafka_consumergroup_lag) > 5000
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka consumer lag critical"
+          description: "One or more consumer groups have lag above 5000."

@@ -1,0 +1,37 @@
+{{- /*
+Create OPA policy ConfigMaps when provided via values.
+This integrates with kube-mgmt by labeling ConfigMaps as policy bundles.
+Usage (values):
+opa:
+  enabled: true
+  policies:
+    leader_policy: |
+      package soma.policy
+      default allow = false
+      allow {
+        input.stream == "STATE"
+      }
+*/ -}}
+{{- if and .Values.opa.enabled .Values.opa.policies }}
+{{- range $name, $policy := .Values.opa.policies }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "soma-infra.fullname" $ }}-opa-{{ $name | replace "." "-" | replace "_" "-" | lower }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    openpolicyagent.org/policy: rego
+    app.kubernetes.io/name: {{ include "soma-infra.name" $ }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    helm.sh/hook-weight: "0"
+    helm.sh/resource-policy: keep
+    # kube-mgmt will sync rego from ConfigMaps with this label
+    openpolicyagent.org/policy-status: "ready"
+data:
+  {{ $name }}.rego: |
+{{ $policy | indent 4 }}
+---
+{{- end }}
+{{- end }}

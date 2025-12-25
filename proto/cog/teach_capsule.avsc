@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "TeachCapsule",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "capsule_id", "type": "string" },
+    { "name": "frame_id", "type": "string" },
+    { "name": "ts", "type": "string" },
+    { "name": "prompt", "type": "string" },
+    { "name": "answer", "type": "string" },
+    { "name": "rationale", "type": "string" },
+    { "name": "evidence", "type": "string" }
+  ]
+}

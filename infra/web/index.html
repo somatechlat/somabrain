@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SomaBrain Test UI</title>
+  <style>
+    body { font-family: sans-serif; margin: 2em; }
+    button { margin: 0.5em; padding: 0.5em 1em; }
+    #output { margin-top: 1em; white-space: pre-wrap; background: #f8f8f8; padding: 1em; border-radius: 6px; }
+    input, textarea { margin: 0.5em 0; width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>SomaBrain Test UI</h1>
+  <label>API Base URL (e.g. http://localhost:9696): <input id="apiUrl" value="http://localhost:9696"></label>
+  <hr>
+  <h2>Save Memory</h2>
+  <textarea id="memoryText" rows="2" placeholder="Memory text..."></textarea>
+  <button onclick="saveMemory()">Save Memory</button>
+  <h2>Recall Memory</h2>
+  <input id="recallQuery" placeholder="Query text...">
+  <button onclick="recallMemory()">Recall Memory</button>
+  <div id="output"></div>
+  <script>
+    function apiBase() {
+      return document.getElementById('apiUrl').value.replace(/\/$/, '');
+    }
+    function saveMemory() {
+      const text = document.getElementById('memoryText').value;
+      fetch(apiBase() + '/remember', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coord: null, payload: { task: text, importance: 1, memory_type: 'episodic' } })
+      })
+      .then(r => r.json())
+      .then(data => showOutput('Saved: ' + JSON.stringify(data)))
+      .catch(e => showOutput('Error: ' + e));
+    }
+    function recallMemory() {
+      const query = document.getElementById('recallQuery').value;
+      fetch(apiBase() + '/recall', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query, top_k: 3 })
+      })
+      .then(r => r.json())
+      .then(data => showOutput('Recall: ' + JSON.stringify(data, null, 2)))
+      .catch(e => showOutput('Error: ' + e));
+    }
+    function showOutput(msg) {
+      document.getElementById('output').textContent = msg;
+    }
+  </script>
+</body>
+</html>

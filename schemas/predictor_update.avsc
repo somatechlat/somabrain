@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "PredictorUpdate",
+  "namespace": "cog",
+  "fields": [
+    {"name": "tenant", "type": "string"},
+    {"name": "domain", "type": "string"},
+    {"name": "predictor_type", "type": "string"},
+    {"name": "error_metric", "type": "double"},
+    {"name": "prediction_latency_ms", "type": "double"},
+    {"name": "model_version", "type": "string"},
+    {"name": "vector_dim", "type": "int"},
+    {"name": "confidence", "type": "double"},
+    {"name": "ts", "type": "string"}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "SegmentBoundary",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "tenant", "type": "string" },
+    { "name": "domain", "type": "string" },
+    { "name": "boundary_ts", "type": "string" },
+    { "name": "dwell_ms", "type": "int" },
+    { "name": "evidence", "type": "string" }
+  ]
+}

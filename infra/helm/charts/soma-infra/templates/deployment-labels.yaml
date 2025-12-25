@@ -1,0 +1,3 @@
+{{- define "soma-infra.deploymentLabels" -}}
+configHash: "{{ .Values.configHash | default "" }}"
+{{- end -}}

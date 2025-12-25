@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "OptionCreated",
+  "namespace": "somabrain.oak",
+  "fields": [
+    {"name": "option_id", "type": "string"},
+    {"name": "tenant_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "payload", "type": "bytes"}
+  ]
+}

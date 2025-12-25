@@ -1,0 +1,78 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: somabrain-memory-service
+    url: {{ env "SOMABRAIN_MEMORY_UPSTREAM" | default "http://somabrain-memory.default.svc.cluster.local:8080" }}
+    routes:
+      - name: somabrain-memory-route
+        paths:
+          - /memory
+        strip_path: false
+        methods: ["GET", "POST"]
+        request_buffering: false
+        response_buffering: false
+        plugins:
+          - name: jwt
+            config:
+              key_claim_name: iss
+              claims_to_verify:
+                - exp
+              header_names:
+                - Authorization
+              secret_is_base64: false
+              run_on_preflight: true
+          - name: request-validator
+            config:
+              version: draft7
+              body_schema:
+                - content_type: application/json
+                  schema:
+                    type: object
+                    required: [tenant, namespace]
+                    properties:
+                      tenant:
+                        type: string
+                        minLength: 1
+                      namespace:
+                        type: string
+                        minLength: 1
+                    additionalProperties: true
+          - name: rate-limiting
+            config:
+              policy: redis
+              redis_host: {{ env "SOMABRAIN_REDIS_HOST" | default "redis.svc.cluster.local" }}
+              redis_port: {{ env "SOMABRAIN_REDIS_PORT" | default "6379" }}
+              minute: {{ env "SOMABRAIN_RATE_LIMIT_PER_MIN" | default "3000" }}
+              limit_by: consumer
+          - name: request-transformer
+            config:
+              add:
+                headers:
+                  - X-Gateway-Route:memory-edge
+                  - X-Requested-Tenant:$(jwt_claim_sub)
+                  - X-Tenant-Id:$(jwt_claim_tenant)
+              remove:
+                headers:
+                  - X-Anonymous-Consumer
+          - name: prometheus
+          - name: file-log
+            config:
+              path: {{ env "SOMABRAIN_GATEWAY_LOG_PATH" | default "/var/log/kong/memory-edge.log" }}
+              reopen: true
+          - name: http-log
+            config:
+              http_endpoint: {{ env "SOMABRAIN_GATEWAY_AUDIT_ENDPOINT" | default "http://audit.default.svc.cluster.local:9000/logs" }}
+              method: POST
+              timeout: 1000
+              keepalive: 60000
+              headers:
+                Tenant: "$(jwt_claim_tenant)"
+                Route: "memory"
+
+plugins:
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true

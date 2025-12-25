@@ -1,0 +1,59 @@
+name: publish
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce no stubs (fail fast)
+        run: bash scripts/ci/forbid_stubs.sh
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+            # Service-oriented tags (same image, convenient for helm overrides)
+            type=raw,value=integrator-latest
+            type=raw,value=segmentation-latest
+            type=raw,value=predictor-state-latest
+            type=raw,value=predictor-agent-latest
+            type=raw,value=predictor-action-latest
+            type=raw,value=integrator-{{version}}
+            type=raw,value=segmentation-{{version}}
+            type=raw,value=predictor-state-{{version}}
+            type=raw,value=predictor-agent-{{version}}
+            type=raw,value=predictor-action-{{version}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

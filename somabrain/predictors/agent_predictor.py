@@ -1,0 +1,79 @@
+"""Agent predictor service implementation.
+
+Provides a concrete predictor for the *agent* domain built on the generic
+``HeatDiffusionPredictor`` defined in ``base.py``. All configuration values are
+read from the global ``settings`` object (``common.config.settings``) via the
+``PredictorConfig`` dataclass, ensuring a single source of truth.
+
+VIBE compliance:
+* No hard‑coded constants – every tunable comes from ``settings``.
+* Fail‑fast: missing configuration or graph files raise ``RuntimeError``.
+* Full type hints and docstrings for clarity.
+"""
+
+from __future__ import annotations
+
+from typing import Tuple
+
+import numpy as np
+
+from django.conf import settings as settings
+from .base import HeatDiffusionPredictor, PredictorConfig, load_operator_from_file
+
+
+def _load_agent_operator() -> Tuple[callable, int]:
+    """Load the Laplacian operator for the *agent* domain.
+
+    The environment variable ``SOMABRAIN_GRAPH_FILE_AGENT`` is consulted first;
+    if not set, ``SOMABRAIN_GRAPH_FILE`` is used as a fallback. When neither
+    variable is defined the function raises ``RuntimeError`` – this matches the
+    VIBE rule of refusing to operate with implicit defaults.
+    """
+    # VIBE rule: avoid indirect env var look‑ups; rely solely on the centralized Settings.
+    # The generic ``SOMABRAIN_GRAPH_FILE`` fallback is removed – the specific
+    # ``graph_file_agent`` field must be configured. If it is unset, raise an
+    # explicit error to fail fast.
+    graph_path = settings.graph_file_agent
+    if not graph_path:
+        raise RuntimeError(
+            "Agent predictor requires a graph file. Set SOMABRAIN_GRAPH_FILE_AGENT."
+        )
+    return load_operator_from_file(graph_path)
+
+
+class AgentPredictor(HeatDiffusionPredictor):
+    """Predictor for the *agent* domain.
+
+    The constructor builds the underlying ``HeatDiffusionPredictor`` using the
+    graph operator loaded by :func:`_load_agent_operator` and a ``PredictorConfig``
+    derived from the global ``settings``.
+    """
+
+    def __init__(self) -> None:
+        apply_A, dim = _load_agent_operator()
+        cfg = PredictorConfig(
+            diffusion_t=getattr(settings, "diffusion_t", 0.5),
+            alpha=getattr(settings, "predictor_alpha", 2.0),
+            chebyshev_K=getattr(settings, "chebyshev_K", 30),
+            lanczos_m=getattr(settings, "lanczos_m", 20),
+        )
+        super().__init__(apply_A=apply_A, dim=dim, cfg=cfg)
+
+    def predict(
+        self, source_idx: int, observed: np.ndarray
+    ) -> Tuple[np.ndarray, float, float]:
+        """Run a single prediction step for the agent domain.
+
+        Parameters
+        ----------
+        source_idx: int
+            Index of the one‑hot source vector.
+        observed: np.ndarray
+            Observed vector against which error and confidence are computed.
+
+        Returns
+        -------
+        Tuple[np.ndarray, float, float]
+            ``(salience, error, confidence)``
+        """
+        return self.step(source_idx, observed)

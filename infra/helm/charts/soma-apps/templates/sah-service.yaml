@@ -1,0 +1,18 @@
+{{- if .Values.sah.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "sah") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sah") | indent 4 }}
+spec:
+  type: {{ .Values.sah.service.type }}
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sah") | indent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.sah.service.port }}
+      targetPort: {{ .Values.sah.service.targetPort | default .Values.sah.containerPort }}
+{{- end }}

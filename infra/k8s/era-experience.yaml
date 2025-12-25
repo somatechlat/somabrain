@@ -1,0 +1,120 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-reward-producer
+  namespace: somabrain
+  labels:
+    app: somabrain-reward-producer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-reward-producer
+  template:
+    metadata:
+      labels:
+        app: somabrain-reward-producer
+    spec:
+      containers:
+        - name: reward-producer
+          image: somabrain:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "somabrain.services.reward_producer"]
+          ports:
+            - containerPort: 8083
+              name: http
+          envFrom:
+            - configMapRef:
+                name: somabrain-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-reward-producer
+  namespace: somabrain
+  labels:
+    app: somabrain-reward-producer
+spec:
+  selector:
+    app: somabrain-reward-producer
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-learner-online
+  namespace: somabrain
+  labels:
+    app: somabrain-learner-online
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-learner-online
+  template:
+    metadata:
+      labels:
+        app: somabrain-learner-online
+    spec:
+      containers:
+        - name: learner-online
+          image: somabrain:latest
+          imagePullPolicy: Never
+          command: ["python", "-m", "somabrain.services.learner_online"]
+          ports:
+            - containerPort: 8084
+              name: http
+          env:
+            - name: ENABLE_COG_THREADS
+              value: "1"
+          envFrom:
+            - configMapRef:
+                name: somabrain-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-learner-online
+  namespace: somabrain
+  labels:
+    app: somabrain-learner-online
+spec:
+  selector:
+    app: somabrain-learner-online
+  ports:
+    - name: http
+      port: 8084
+      targetPort: http
+  type: ClusterIP

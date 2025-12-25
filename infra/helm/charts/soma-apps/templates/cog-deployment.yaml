@@ -1,0 +1,60 @@
+{{- if .Values.cog.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "cog") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 4 }}
+spec:
+  replicas: {{ .Values.cog.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 8 }}
+    spec:
+      {{- if .Values.securityContext.pod.enabled }}
+      securityContext:
+{{ include "soma-apps.podSecurityContext" . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: cog
+          image: "{{ .Values.cog.image.repository }}:{{ .Values.cog.image.tag }}"
+          imagePullPolicy: {{ .Values.cog.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          command:
+            - /usr/bin/supervisord
+            - -c
+            - /app/ops/supervisor/supervisord.conf
+          ports:
+            - name: integrator
+              containerPort: {{ .Values.cog.healthPorts.integrator | default 8091 }}
+            - name: segmentation
+              containerPort: {{ .Values.cog.healthPorts.segmentation | default 8092 }}
+            - name: pred-state
+              containerPort: {{ .Values.cog.healthPorts.predictorState | default 8093 }}
+            - name: pred-agent
+              containerPort: {{ .Values.cog.healthPorts.predictorAgent | default 8094 }}
+            - name: pred-action
+              containerPort: {{ .Values.cog.healthPorts.predictorAction | default 8095 }}
+            - name: orchestrator
+              containerPort: {{ .Values.cog.healthPorts.orchestrator | default 8096 }}
+          {{- if .Values.securityContext.container.enabled }}
+          securityContext:
+{{ include "soma-apps.containerSecurityContext" . | indent 12 }}
+          {{- end }}
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.cog.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+          resources:
+{{ toYaml .Values.cog.resources | indent 12 }}
+{{- end }}

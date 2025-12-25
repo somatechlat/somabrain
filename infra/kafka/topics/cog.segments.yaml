@@ -1,0 +1,13 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: cog.segments
+  labels:
+    strimzi.io/cluster: soma
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 2592000000 # 30 days
+    cleanup.policy: delete
+    min.insync.replicas: 1

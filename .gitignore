@@ -1,0 +1,170 @@
+# =============================================================================
+# GITIGNORE - SomaBrain
+# =============================================================================
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.venv-test/
+virtualenv/
+
+# --- Secrets & Credentials ---
+.env
+.env.*
+*.env
+!.env.example
+!.env.template
+.env.bak
+.env.new
+.env.old
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+.secrets/
+*.secret
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+.ssh/
+.gnupg/
+*.gpg
+service-account*.json
+keyfile*.json
+jwt/*.pem
+jwt/*.key
+
+# --- Python Bytecode & Caches ---
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.hypothesis/
+.cache/
+.ruff_cache/
+.tox/
+
+# --- Coverage Reports ---
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+pytest.xml
+junit.xml
+test-results/
+
+# --- Build & Packaging ---
+build/
+dist/
+*.egg-info/
+somabrain.egg-info/
+pip-wheel-metadata/
+wheels/
+eggs/
+*.egg
+*.whl
+
+# --- Logs ---
+*.log
+logs/
+audit_log.jsonl
+*.log.*
+
+# --- OS Cruft ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# --- IDE/Editor ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-*
+.history/
+*.code-workspace
+
+# --- Local DBs / Vector Indices ---
+qdrant.db/
+*_qdrant/
+*.index
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.mdb
+*.ldb
+redis/
+
+# --- Docker ---
+docker-compose.override.yml
+docker-compose.local.yml
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Generated Docs/Site ---
+site/
+openapi.json
+
+# --- Node/JS ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- Kiro/Agent ---
+.kiro/
+
+# --- ML Models (large files) ---
+*.pth
+*.pt
+*.bin
+*.model
+*.onnx
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+
+# --- Archives ---
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.gz
+*.xz
+*.bz2
+*.rar
+
+# --- uv lock file ---
+uv.lock
+
+# --- Pyright batch files ---
+pyright_batch_*.json
+
+# --- Misc Generated ---
+README_MINIMAL.md
+tmp/
+temp/
+.tmp/
+resolved.yml
+violations.md

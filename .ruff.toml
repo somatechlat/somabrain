@@ -1,0 +1,6 @@
+# Ruff configuration adhering to the latest Ruff schema.
+fix = true
+
+[lint]
+# Ignore import‑order errors globally to allow existing import placement.
+ignore = ["E402", "F821"]

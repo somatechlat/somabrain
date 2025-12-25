@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "BeliefUpdate",
+  "namespace": "soma.cognition",
+  "fields": [
+    {
+      "name": "domain",
+      "type": {
+        "type": "enum",
+        "name": "Domain",
+        "symbols": ["state", "agent", "action"]
+      }
+    },
+    { "name": "ts", "type": "string" },
+    { "name": "delta_error", "type": "float" },
+    { "name": "confidence", "type": "float" },
+    { "name": "evidence", "type": {"type": "map", "values": "string"} },
+    { "name": "posterior", "type": {"type": "map", "values": "string"} },
+    { "name": "model_ver", "type": "string" },
+    { "name": "latency_ms", "type": "int" }
+  ]
+}

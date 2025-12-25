@@ -1,0 +1,34 @@
+Shared infra chart for SomaBrain
+
+The chart now bundles production-ready manifests for the shared services that
+back the Soma stack: Auth, OPA, Kafka (Bitnami), Redis (Bitnami), Etcd
+(Bitnami), Vault (Hashicorp) and the kube-prometheus-stack (Prometheus +
+Alertmanager). Deploy it **once per cluster** and point all application services at
+the resulting in-cluster DNS names.
+
+Quick install:
+  helm dependency update infra/helm/charts/soma-infra
+  helm upgrade --install soma-infra infra/helm/charts/soma-infra -n soma --create-namespace
+
+Check status:
+  kubectl get pods -n soma
+
+Deployment notes:
+- Configure `configHash` in values to force rolling updates when config changes.
+- Override `values-staging.yaml` / `values-prod.yaml` for environment-specific sizing.
+- All third-party components are sourced from upstream Helm repositories; run
+  `helm dependency update` whenever you bump versions.
+
+Local‑dev and strict‑mode testing
+--------------------------------
+
+Use the `localDev` toggle (see `values-dev.yaml`) to enable a slim subset of
+services when iterating with kind/k3d. This avoids tearing down the production
+config while still exercising the real dependencies (no stubs or mocks). Keep
+`localDev` disabled in CI and production environments.
+
+Notes:
+- `configHash` is useful when you change config values and want Helm to
+  perform a rolling update of deployments to pick up the change.
+- Always commit updates to `values-dev.yaml`, `values-staging.yaml` and
+  `values-prod.yaml` alongside code so GitOps reconciles the cluster state.
