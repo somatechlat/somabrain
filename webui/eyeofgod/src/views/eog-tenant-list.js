@@ -8,15 +8,15 @@
 import { LitElement, html, css } from 'lit';
 
 export class EogTenantList extends LitElement {
-    static properties = {
-        tenants: { type: Array },
-        loading: { type: Boolean },
-        searchQuery: { type: String },
-        statusFilter: { type: String },
-        tierFilter: { type: String },
-    };
+  static properties = {
+    tenants: { type: Array },
+    loading: { type: Boolean },
+    searchQuery: { type: String },
+    statusFilter: { type: String },
+    tierFilter: { type: String },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -247,26 +247,47 @@ export class EogTenantList extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.loading = false;
-        this.searchQuery = '';
-        this.statusFilter = 'all';
-        this.tierFilter = 'all';
-        this.tenants = [
-            { id: 'acme-corp', name: 'Acme Corp', tier: 'pro', status: 'active', users: 12, created: 'Jan 15, 2024' },
-            { id: 'beta-inc', name: 'Beta Inc', tier: 'starter', status: 'active', users: 5, created: 'Feb 20, 2024' },
-            { id: 'gamma-llc', name: 'Gamma LLC', tier: 'free', status: 'trial', users: 2, created: 'Dec 20, 2024' },
-            { id: 'delta-co', name: 'Delta Co', tier: 'pro', status: 'suspended', users: 8, created: 'Mar 10, 2024' },
-            { id: 'epsilon-ai', name: 'Epsilon AI', tier: 'enterprise', status: 'active', users: 45, created: 'Nov 05, 2024' },
-            { id: 'zeta-tech', name: 'Zeta Tech', tier: 'starter', status: 'active', users: 7, created: 'Dec 01, 2024' },
-        ];
+  constructor() {
+    super();
+    this.loading = false;
+    this.searchQuery = '';
+    this.statusFilter = 'all';
+    this.tierFilter = 'all';
+    this.tenants = [];
+    this.error = null;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadTenants();
+  }
+
+  async _loadTenants() {
+    this.loading = true;
+    try {
+      const { tenantsApi } = await import('../services/api.js');
+      const result = await tenantsApi.list();
+      this.tenants = (result.tenants || result || []).map(t => ({
+        id: t.slug || t.id,
+        name: t.name,
+        tier: t.subscription?.tier_slug || t.tier || 'free',
+        status: t.status || (t.is_active ? 'active' : 'suspended'),
+        users: t.user_count || t.users || 0,
+        created: t.created_at ? new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+      }));
+    } catch (err) {
+      console.error('Failed to load tenants:', err);
+      this.error = err.message;
+      this.tenants = [];
+    } finally {
+      this.loading = false;
     }
+  }
 
-    render() {
-        const filtered = this._filterTenants();
+  render() {
+    const filtered = this._filterTenants();
 
-        return html`
+    return html`
       <div class="header">
         <div class="header-left">
           <div class="search-box">
@@ -348,36 +369,36 @@ export class EogTenantList extends LitElement {
         <span>Showing ${filtered.length} of ${this.tenants.length} tenants</span>
       </div>
     `;
-    }
+  }
 
-    _filterTenants() {
-        return this.tenants.filter(t => {
-            const matchesSearch = t.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
-                t.id.toLowerCase().includes(this.searchQuery.toLowerCase());
-            const matchesStatus = this.statusFilter === 'all' || t.status === this.statusFilter;
-            const matchesTier = this.tierFilter === 'all' || t.tier === this.tierFilter;
-            return matchesSearch && matchesStatus && matchesTier;
-        });
-    }
+  _filterTenants() {
+    return this.tenants.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+        t.id.toLowerCase().includes(this.searchQuery.toLowerCase());
+      const matchesStatus = this.statusFilter === 'all' || t.status === this.statusFilter;
+      const matchesTier = this.tierFilter === 'all' || t.tier === this.tierFilter;
+      return matchesSearch && matchesStatus && matchesTier;
+    });
+  }
 
-    _getTierIcon(tier) {
-        const icons = { free: '🆓', starter: '🚀', pro: '⭐', enterprise: '🏢' };
-        return icons[tier] || '';
-    }
+  _getTierIcon(tier) {
+    const icons = { free: '🆓', starter: '🚀', pro: '⭐', enterprise: '🏢' };
+    return icons[tier] || '';
+  }
 
-    _createTenant() {
-        window.history.pushState({}, '', '/platform/tenants/new');
-        window.dispatchEvent(new PopStateEvent('popstate'));
-    }
+  _createTenant() {
+    window.history.pushState({}, '', '/platform/tenants/new');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 
-    _viewTenant(id) {
-        window.history.pushState({}, '', `/platform/tenants/${id}`);
-        window.dispatchEvent(new PopStateEvent('popstate'));
-    }
+  _viewTenant(id) {
+    window.history.pushState({}, '', `/platform/tenants/${id}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 
-    _viewUsers(id) {
-        console.log('View users for:', id);
-    }
+  _viewUsers(id) {
+    console.log('View users for:', id);
+  }
 }
 
 customElements.define('eog-tenant-list', EogTenantList);
