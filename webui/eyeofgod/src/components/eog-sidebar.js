@@ -8,12 +8,12 @@
 import { LitElement, html, css } from 'lit';
 
 export class EogSidebar extends LitElement {
-    static properties = {
-        currentRoute: { type: String },
-        collapsed: { type: Boolean },
-    };
+  static properties = {
+    currentRoute: { type: String },
+    collapsed: { type: Boolean },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
       width: 260px;
@@ -126,14 +126,14 @@ export class EogSidebar extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.currentRoute = '/platform';
-        this.collapsed = false;
-    }
+  constructor() {
+    super();
+    this.currentRoute = '/platform';
+    this.collapsed = false;
+  }
 
-    render() {
-        return html`
+  render() {
+    return html`
       <div class="sidebar-header">
         <div class="logo">
           <div class="logo-icon">🔱</div>
@@ -181,6 +181,20 @@ export class EogSidebar extends LitElement {
       </div>
       
       <div class="nav-section">
+        <div class="nav-section-title">${!this.collapsed ? 'Subscriptions' : ''}</div>
+        <div class="nav-item ${this._isActive('/platform/subscriptions') ? 'active' : ''}"
+             @click=${() => this._navigate('/platform/subscriptions')}>
+          <span class="nav-icon">📦</span>
+          ${!this.collapsed ? html`<span>Tiers</span>` : ''}
+        </div>
+        <div class="nav-item ${this._isActive('/platform/features') ? 'active' : ''}"
+             @click=${() => this._navigate('/platform/features')}>
+          <span class="nav-icon">✨</span>
+          ${!this.collapsed ? html`<span>Features</span>` : ''}
+        </div>
+      </div>
+      
+      <div class="nav-section">
         <div class="nav-section-title">${!this.collapsed ? 'Billing' : ''}</div>
         <div class="nav-item ${this._isActive('/platform/billing') ? 'active' : ''}"
              @click=${() => this._navigate('/platform/billing')}>
@@ -216,10 +230,20 @@ export class EogSidebar extends LitElement {
           <span class="nav-icon">👥</span>
           ${!this.collapsed ? html`<span>Users</span>` : ''}
         </div>
+        <div class="nav-item ${this._isActive('/platform/permissions') ? 'active' : ''}"
+             @click=${() => this._navigate('/platform/permissions')}>
+          <span class="nav-icon">🛡️</span>
+          ${!this.collapsed ? html`<span>Permissions</span>` : ''}
+        </div>
         <div class="nav-item ${this._isActive('/platform/settings') ? 'active' : ''}"
              @click=${() => this._navigate('/platform/settings')}>
           <span class="nav-icon">⚙️</span>
           ${!this.collapsed ? html`<span>Settings</span>` : ''}
+        </div>
+        <div class="nav-item ${this._isActive('/platform/oauth') ? 'active' : ''}"
+             @click=${() => this._navigate('/platform/oauth')}>
+          <span class="nav-icon">🔑</span>
+          ${!this.collapsed ? html`<span>OAuth</span>` : ''}
         </div>
       </div>
       
@@ -229,29 +253,29 @@ export class EogSidebar extends LitElement {
         </button>
       </div>
     `;
-    }
+  }
 
-    _isActive(path) {
-        if (path === '/platform' && this.currentRoute === '/platform') {
-            return true;
-        }
-        if (path !== '/platform' && this.currentRoute.startsWith(path)) {
-            return true;
-        }
-        return false;
+  _isActive(path) {
+    if (path === '/platform' && this.currentRoute === '/platform') {
+      return true;
     }
+    if (path !== '/platform' && this.currentRoute.startsWith(path)) {
+      return true;
+    }
+    return false;
+  }
 
-    _navigate(path) {
-        this.dispatchEvent(new CustomEvent('navigate', {
-            detail: { path },
-            bubbles: true,
-            composed: true
-        }));
-    }
+  _navigate(path) {
+    this.dispatchEvent(new CustomEvent('navigate', {
+      detail: { path },
+      bubbles: true,
+      composed: true
+    }));
+  }
 
-    _toggleCollapse() {
-        this.collapsed = !this.collapsed;
-    }
+  _toggleCollapse() {
+    this.collapsed = !this.collapsed;
+  }
 }
 
 customElements.define('eog-sidebar', EogSidebar);

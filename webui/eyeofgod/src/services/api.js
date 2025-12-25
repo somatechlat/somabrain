@@ -69,8 +69,16 @@ export const tenantsApi = {
  * Subscription Tiers API
  */
 export const tiersApi = {
-    list: () => request('/admin/tiers'),
-    get: (id) => request(`/admin/tiers/${id}`),
+    list: () => request('/saas/tiers'),
+    get: (id) => request(`/saas/tiers/${id}`),
+    create: (data) => request('/saas/tiers', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    update: (id, data) => request(`/saas/tiers/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+    }),
 };
 
 /**
@@ -158,6 +166,30 @@ export const statsApi = {
     revenue: () => request('/admin/stats/revenue'),
 };
 
+/**
+ * Roles & Permissions API
+ */
+export const rolesApi = {
+    list: () => request('/roles/'),
+    get: (id) => request(`/roles/${id}`),
+    create: (data) => request('/roles/', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    update: (id, data) => request(`/roles/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+    }),
+    delete: (id) => request(`/roles/${id}`, {
+        method: 'DELETE'
+    }),
+    getMatrix: (roleId) => request(`/roles/${roleId}/matrix`),
+    updateMatrix: (roleId, matrix) => request(`/roles/${roleId}/matrix`, {
+        method: 'POST',
+        body: JSON.stringify(matrix)
+    }),
+};
+
 export default {
     tenants: tenantsApi,
     tiers: tiersApi,
@@ -167,5 +199,7 @@ export default {
     invoices: invoicesApi,
     health: healthApi,
     audit: auditApi,
+    audit: auditApi,
     stats: statsApi,
+    roles: rolesApi,
 };
