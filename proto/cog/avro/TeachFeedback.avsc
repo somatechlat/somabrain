@@ -1,0 +1,17 @@
+{
+  "type": "record",
+  "name": "TeachFeedback",
+  "namespace": "cog",
+  "aliases": ["soma.cognition.TeachFeedback"],
+  "fields": [
+    {"name":"tenant","type":"string"},
+    {"name":"capsule_ts_ms","type":"long"},
+    {"name":"r_user_feedback","type":"float","default":0.0},
+    {"name":"clarity","type":"float","default":0.0},
+    {"name":"helpfulness","type":"float","default":0.0},
+    {"name":"followup_success","type":"float","default":0.0},
+    {"name":"source","type":{"type":"enum","name":"TeachFeedbackSource","symbols":["human","auto","mixed"]},"default":"auto"},
+    {"name":"timestamp_ms","type":"long"},
+    {"name":"notes","type":["null","string"],"default":null}
+  ]
+}

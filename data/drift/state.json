@@ -1,0 +1,38 @@
+entries:
+  action:t1:
+    baseline_initialized: false
+    entropy_baseline: 0.0
+    last_drift_time: 0.0
+    regret_baseline: 0.0
+  action:t2:
+    baseline_initialized: false
+    entropy_baseline: 0.0
+    last_drift_time: 0.0
+    regret_baseline: 0.0
+  agent:t1:
+    baseline_initialized: false
+    entropy_baseline: 0.0
+    last_drift_time: 0.0
+    regret_baseline: 0.0
+  agent:t2:
+    baseline_initialized: false
+    entropy_baseline: 0.0
+    last_drift_time: 0.0
+    regret_baseline: 0.0
+  state:acpt:
+    baseline_initialized: false
+    entropy_baseline: 0.0
+    last_drift_time: 1762856291.590297
+    regret_baseline: 0.0
+  state:t1:
+    baseline_initialized: true
+    entropy_baseline: 0.8188965199305898
+    last_drift_time: 1763662247.048886
+    regret_baseline: 0.5571062139793308
+  state:t2:
+    baseline_initialized: true
+    entropy_baseline: 0.8188965499011107
+    last_drift_time: 1763662247.102489
+    regret_baseline: 0.5571179639163646
+updated: '2025-11-20T18:10:47.106355+00:00'
+version: 1

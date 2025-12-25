@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "PredictorUpdate",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "tenant", "type": "string" },
+    { "name": "domain", "type": "string" },
+    { "name": "predictor_type", "type": "string" },
+    { "name": "error_metric", "type": "float" },
+    { "name": "prediction_latency_ms", "type": "float" },
+    { "name": "model_version", "type": "string", "default": "1.0" },
+    { "name": "vector_dim", "type": "int" },
+    { "name": "confidence", "type": "float", "default": 0.0 },
+    { "name": "ts", "type": "string" }
+  ]
+}

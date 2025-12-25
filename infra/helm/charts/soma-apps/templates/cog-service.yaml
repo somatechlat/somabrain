@@ -1,0 +1,51 @@
+{{- if .Values.cog.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "cog") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 4 }}
+spec:
+  type: {{ ternary "NodePort" "ClusterIP" .Values.expose.healthNodePorts }}
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "cog") | indent 4 }}
+  ports:
+    - name: integrator
+      port: {{ .Values.cog.healthPorts.integrator | default 8091 }}
+      targetPort: integrator
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.integratorNodePort }}
+      {{- end }}
+    - name: segmentation
+      port: {{ .Values.cog.healthPorts.segmentation | default 8092 }}
+      targetPort: segmentation
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.segmentationNodePort }}
+      {{- end }}
+    - name: pred-state
+      port: {{ .Values.cog.healthPorts.predictorState | default 8093 }}
+      targetPort: pred-state
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.predictorStateNodePort }}
+      {{- end }}
+    - name: pred-agent
+      port: {{ .Values.cog.healthPorts.predictorAgent | default 8094 }}
+      targetPort: pred-agent
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.predictorAgentNodePort }}
+      {{- end }}
+    - name: pred-action
+      port: {{ .Values.cog.healthPorts.predictorAction | default 8095 }}
+      targetPort: pred-action
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.predictorActionNodePort }}
+      {{- end }}
+    - name: orchestrator
+      port: {{ .Values.cog.healthPorts.orchestrator | default 8096 }}
+      targetPort: orchestrator
+      {{- if .Values.expose.healthNodePorts }}
+      nodePort: {{ .Values.ports.orchestratorNodePort }}
+      {{- end }}
+{{- end }}

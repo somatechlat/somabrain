@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "name": "SegmentEvent",
+  "namespace": "com.soma.brain",
+  "fields": [
+    {"name": "segment_id", "type": "string"},
+    {"name": "timestamp", "type": "long"},
+    {"name": "state", "type": {"type": "enum", "name": "SegmentState", "symbols": ["STABLE","VOLATILE"]}}
+  ]
+}

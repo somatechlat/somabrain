@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "TeachFeedback",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "feedback_id", "type": "string" },
+    { "name": "capsule_id", "type": "string" },
+    { "name": "frame_id", "type": "string" },
+    { "name": "ts", "type": "string" },
+    { "name": "rating", "type": "int" },
+    { "name": "comment", "type": "string" }
+  ]
+}

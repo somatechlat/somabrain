@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "ConfigUpdate",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "learning_rate", "type": "float" },
+    { "name": "exploration_temp", "type": "float" },
+    { "name": "lambda_state", "type": ["null", "float"], "default": null },
+    { "name": "lambda_agent", "type": ["null", "float"], "default": null },
+    { "name": "lambda_action", "type": ["null", "float"], "default": null },
+    { "name": "gamma_state", "type": ["null", "float"], "default": null },
+    { "name": "gamma_agent", "type": ["null", "float"], "default": null },
+    { "name": "gamma_action", "type": ["null", "float"], "default": null },
+    { "name": "ts", "type": "string" }
+  ]
+}

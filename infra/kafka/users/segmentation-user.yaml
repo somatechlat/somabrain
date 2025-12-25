@@ -1,0 +1,44 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: segmentation
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read global frame or updates
+      - resource:
+          type: topic
+          name: cog.global.frame
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: cog.state.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: cog.agent.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: cog.action.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: group
+          name: segmentation-*
+          patternType: prefix
+        operation: Read
+      # Write segments
+      - resource:
+          type: topic
+          name: cog.segments
+          patternType: literal
+        operation: Write

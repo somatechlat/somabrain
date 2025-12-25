@@ -1,0 +1,22 @@
+replicaCount: 1
+
+image:
+  repository: milvusdb/milvus
+  tag: v2.4.0
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 19530
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "1Gi"
+  requests:
+    cpu: "250m"
+    memory: "512Mi"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

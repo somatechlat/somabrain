@@ -1,0 +1,59 @@
+name: Benchmarks Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'benchmarks/**'
+      - 'somabrain/**'
+      - 'pyproject.toml'
+      - '.github/workflows/benchmarks-smoke.yml'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  numerics-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+      - name: Run cognition core bench (no plots)
+        env:
+          MPLBACKEND: Agg
+        run: |
+          PYTHONPATH=. python benchmarks/cognition_core_bench.py --dim 8192 --dtype float32
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cognition-core-bench
+          path: |
+            benchmarks/cognition_quality.csv
+            benchmarks/cognition_latency.csv
+            benchmarks/cognition_provenance.json
+
+  http-harness-optional:
+    if: ${{ vars.BENCH_API_BASE != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -e .
+      - name: HTTP bench against provided API (optional)
+        env:
+          API_BASE: ${{ vars.BENCH_API_BASE }}
+        run: |
+          python benchmarks/http_bench.py --url "${API_BASE}/health" --concurrency 8 --requests 100 || true

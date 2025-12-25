@@ -1,0 +1,488 @@
+# ============================================
+# SOMABRAIN KUBERNETES DEPLOYMENT
+# Complete cluster deployment with all services
+# Port range: 20020-20027 (NodePort)
+# ============================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: somabrain
+  labels:
+    name: somabrain
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: somabrain-redis
+  namespace: somabrain
+spec:
+  serviceName: somabrain-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-redis
+  template:
+    metadata:
+      labels:
+        app: somabrain-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7.2-alpine
+        ports:
+        - containerPort: 6379
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-redis
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-redis
+  ports:
+  - name: redis
+    port: 20021
+    targetPort: 6379
+  type: LoadBalancer
+
+---
+# Kafka Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: somabrain-kafka
+  namespace: somabrain
+spec:
+  serviceName: somabrain-kafka
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-kafka
+  template:
+    metadata:
+      labels:
+        app: somabrain-kafka
+    spec:
+      containers:
+      - name: kafka
+        image: apache/kafka:3.7.0
+        ports:
+        - containerPort: 9092
+        - containerPort: 9093
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka
+  volumeClaimTemplates:
+  - metadata:
+      name: kafka-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-kafka
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-kafka
+  ports:
+  - name: kafka
+    port: 20022
+    targetPort: 9092
+  type: LoadBalancer
+
+---
+# OPA Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: somabrain-opa
+  namespace: somabrain
+spec:
+  serviceName: somabrain-opa
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-opa
+  template:
+    metadata:
+      labels:
+        app: somabrain-opa
+    spec:
+      containers:
+      - name: opa
+        image: openpolicyagent/opa:0.48.0-debug
+        args: ["run", "--server", "--addr=0.0.0.0:8181"]
+        ports:
+        - containerPort: 8181
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: opa-data
+          mountPath: /var/lib/opa
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8181
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: opa-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-opa
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-opa
+  ports:
+  - name: opa
+    port: 20024
+    targetPort: 8181
+  type: LoadBalancer
+
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: somabrain-postgres
+  namespace: somabrain
+spec:
+  serviceName: somabrain-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-postgres
+  template:
+    metadata:
+      labels:
+        app: somabrain-postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: somabrain-config
+              key: POSTGRES_DB
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: somabrain-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: somabrain-secrets
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - soma
+            - -d
+            - somabrain
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - soma
+            - -d
+            - somabrain
+          initialDelaySeconds: 5
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 20Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-postgres
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-postgres
+  ports:
+  - name: postgres
+    port: 20026
+    targetPort: 5432
+  type: LoadBalancer
+
+---
+# Prometheus Deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: somabrain-prometheus
+  namespace: somabrain
+spec:
+  serviceName: somabrain-prometheus
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-prometheus
+  template:
+    metadata:
+      labels:
+        app: somabrain-prometheus
+    spec:
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.49.0
+        ports:
+        - containerPort: 9090
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: prometheus-data
+          mountPath: /prometheus
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-prometheus
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-prometheus
+  ports:
+  - name: prometheus
+    port: 20025
+    targetPort: 9090
+  type: LoadBalancer
+
+---
+# SomaBrain API Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-app
+  namespace: somabrain
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: somabrain-app
+  template:
+    metadata:
+      labels:
+        app: somabrain-app
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:15-alpine
+        command:
+        - sh
+        - -c
+        - |
+          until pg_isready -h somabrain-postgres -U soma -d somabrain; do
+            echo "Waiting for postgres..."
+            sleep 2
+          done
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: somabrain-secrets
+              key: POSTGRES_USER
+      containers:
+      - name: somabrain
+        image: somabrain:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 9696
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        - secretRef:
+            name: somabrain-secrets
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9696
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9696
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-app
+  namespace: somabrain
+spec:
+  selector:
+    app: somabrain-app
+  ports:
+  - name: http
+    port: 20020
+    targetPort: 9696
+  type: LoadBalancer
+
+---
+# Outbox Publisher Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-outbox-publisher
+  namespace: somabrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-outbox-publisher
+  template:
+    metadata:
+      labels:
+        app: somabrain-outbox-publisher
+    spec:
+      containers:
+      - name: outbox-publisher
+        image: somabrain:latest
+        imagePullPolicy: Never
+        command: ["python", "-m", "somabrain.workers.outbox_publisher"]
+        envFrom:
+        - configMapRef:
+            name: somabrain-config
+        - secretRef:
+            name: somabrain-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

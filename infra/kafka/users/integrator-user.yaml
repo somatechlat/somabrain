@@ -1,0 +1,39 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: integrator
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      # Read predictor updates
+      - resource:
+          type: topic
+          name: cog.state.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: cog.agent.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: topic
+          name: cog.action.updates
+          patternType: literal
+        operation: Read
+      - resource:
+          type: group
+          name: integrator-*
+          patternType: prefix
+        operation: Read
+      # Write global frame
+      - resource:
+          type: topic
+          name: cog.global.frame
+          patternType: literal
+        operation: Write

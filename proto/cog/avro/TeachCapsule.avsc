@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "TeachCapsule",
+  "namespace": "cog",
+  "aliases": ["soma.cognition.TeachCapsule"],
+  "fields": [
+    {"name":"tenant","type":"string"},
+    {"name":"frame_ts_ms","type":"long"},
+    {"name":"capsule_ts_ms","type":"long"},
+    {"name":"goal","type":"string"},
+    {"name":"reasoning","type":"string"},
+    {"name":"delta_state","type":"string"},
+    {"name":"expected_outcome","type":"string"},
+    {"name":"confidence","type":"float","default":0.0},
+    {"name":"episode_id","type":["null","string"],"default":null},
+    {"name":"metadata","type":{"type":"map","values":"string"},"default":{}}
+  ]
+}

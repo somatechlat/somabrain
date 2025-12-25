@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "RewardEvent",
+  "namespace": "cog",
+  "aliases": ["soma.cognition.RewardEvent"],
+  "fields": [
+    {"name":"tenant","type":"string","default":""},
+    {"name":"frame_ts_ms","type":"long","default":0},
+    {"name":"frame_id","type":"string","default":""},
+    {"name":"r_task","type":"float","default":0.0},
+    {"name":"r_user","type":"float","default":0.0},
+    {"name":"r_latency","type":"float","default":0.0},
+    {"name":"r_contradiction","type":"float","default":0.0},
+    {"name":"r_cost","type":"float","default":0.0},
+    {"name":"total","type":"float"},
+    {"name":"r_safety","type":"float","default":0.0},
+    {"name":"ts","type":"string","default":""}
+  ]
+}

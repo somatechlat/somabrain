@@ -1,0 +1,40 @@
+## Development overrides for local iteration
+
+# Turn on localDev helper which enables dev annotations and quick iteration
+localDev: true
+
+# Override mode for dev environment
+envCommon:
+  SOMABRAIN_MODE: "dev"
+
+# Components to bring up in a lightweight local/dev cluster
+auth:
+  enabled: false
+
+opa:
+  enabled: true
+  policies:
+    sample_integrator: |
+      package soma.policy.integrator
+      default allow = true
+      # Optionally override leader to 'state' if confidence is too low
+      allow := true
+      leader := input.candidate.leader
+      new_leader = l {
+        some l
+        weights := input.candidate.weights
+        not weights[leader] >= 0.2
+        l := "state"
+      }
+
+redis:
+  enabled: true
+
+kube-prometheus-stack:
+  enabled: false
+
+# Example configHash for forcing rolling updates during dev iterations
+configHash: "dev"
+
+# Notes: Use `helm upgrade --install soma-infra ./infra/helm/charts/soma-infra -f infra/helm/charts/soma-infra/values-dev.yaml`
+#+ to apply dev overrides when testing in a local k8s cluster (minikube / kind).

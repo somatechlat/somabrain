@@ -1,0 +1,104 @@
+# Simple SomaBrain deployment using proper Docker image
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain
+  namespace: somabrain-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain
+  template:
+    metadata:
+      labels:
+        app: somabrain
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:15.7-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - >-
+              until pg_isready -h postgres.somabrain-prod.svc.cluster.local -U "$POSTGRES_USER" -d "$POSTGRES_DB"; do echo "waiting for postgres"; sleep 2; done
+          envFrom:
+            - secretRef:
+                name: somabrain-postgres
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+      securityContext:
+        runAsNonRoot: false
+        fsGroup: 1000
+      containers:
+        - name: somabrain
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            runAsUser: 1000
+            runAsGroup: 1000
+          image: somabrain:production
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9696
+          envFrom:
+            - configMapRef:
+                name: somabrain-env
+            - secretRef:
+                name: somabrain-secrets
+            - secretRef:
+                name: somabrain-postgres
+          volumeMounts:
+            - name: outbox-vol
+              mountPath: /app/data/somabrain
+            - name: jwt-pub
+              mountPath: /secrets
+              readOnly: true
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9696
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+      volumes:
+        - name: outbox-vol
+          persistentVolumeClaim:
+            claimName: somabrain-outbox-pvc
+        - name: jwt-pub
+          secret:
+            secretName: somabrain-secrets
+            items:
+              - key: jwt_public_key.pem
+                path: jwt_pub.pem

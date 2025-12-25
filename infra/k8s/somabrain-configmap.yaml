@@ -1,0 +1,180 @@
+# ============================================
+# SOMABRAIN KUBERNETES CONFIGMAP
+# Centralized Configuration for All Services
+# ============================================
+# WARNING: DEVELOPMENT CREDENTIALS - CHANGE IN PRODUCTION!
+# All passwords, secrets, and tokens MUST be changed before production deployment
+# ============================================
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: somabrain-config
+  namespace: somabrain
+  labels:
+    app: somabrain
+  annotations:
+    description: "Centralized configuration for SomaBrain cluster"
+    warning: "DEVELOPMENT CREDENTIALS - CHANGE ALL SECRETS IN PRODUCTION"
+data:
+  # --- API Configuration ---
+  SOMABRAIN_HOST: "0.0.0.0"
+  SOMABRAIN_PORT: "9696"
+  SOMABRAIN_WORKERS: "2"
+  
+  # --- Service Ports (LoadBalancer range 20020+) ---
+  K8S_API_PORT: "20020"
+  K8S_REDIS_PORT: "20021"
+  K8S_KAFKA_PORT: "20022"
+  K8S_KAFKA_EXPORTER_PORT: "20023"
+  K8S_OPA_PORT: "20024"
+  K8S_PROMETHEUS_PORT: "20025"
+  K8S_POSTGRES_PORT: "20026"
+  K8S_POSTGRES_EXPORTER_PORT: "20027"
+  
+  # --- Internal Service Ports ---
+  REDIS_PORT: "6379"
+  KAFKA_PORT: "9092"
+  OPA_PORT: "8181"
+  PROMETHEUS_PORT: "9090"
+  POSTGRES_PORT: "5432"
+  
+  # --- Service URLs (Internal Cluster DNS) ---
+  SOMABRAIN_REDIS_URL: "redis://somabrain-redis.somabrain.svc.cluster.local:6379/0"
+  SOMABRAIN_KAFKA_URL: "kafka://somabrain-kafka.somabrain.svc.cluster.local:9092"
+  SOMABRAIN_OPA_URL: "http://somabrain-opa.somabrain.svc.cluster.local:8181"
+  SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_dev_pass@somabrain-postgres.somabrain.svc.cluster.local:5432/somabrain"
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+  
+  # --- External Access URLs (LoadBalancer) ---
+  K8S_SOMABRAIN_API_URL: "http://localhost:20020"
+  K8S_SOMABRAIN_REDIS_URL: "redis://localhost:20021/0"
+  K8S_SOMABRAIN_KAFKA_URL: "kafka://localhost:20022"
+  K8S_SOMABRAIN_OPA_URL: "http://localhost:20024"
+  K8S_SOMABRAIN_PROMETHEUS_URL: "http://localhost:20025"
+  K8S_SOMABRAIN_POSTGRES_DSN: "postgresql://soma:soma_dev_pass@localhost:20026/somabrain"
+  
+  # --- Redis Configuration ---
+  REDIS_HOST: "somabrain-redis.somabrain.svc.cluster.local"
+  SOMABRAIN_REDIS_HOST: "somabrain-redis.somabrain.svc.cluster.local"
+  SOMABRAIN_REDIS_PORT: "6379"
+  SOMABRAIN_REDIS_DB: "0"
+  REDIS_URL: "redis://somabrain-redis.somabrain.svc.cluster.local:6379/0"
+  
+  # --- Kafka Configuration ---
+  KAFKA_HOST: "somabrain-kafka.somabrain.svc.cluster.local"
+  SOMABRAIN_KAFKA_HOST: "somabrain-kafka.somabrain.svc.cluster.local"
+  SOMABRAIN_KAFKA_PORT: "9092"
+  KAFKA_BOOTSTRAP_SERVERS: "somabrain-kafka.somabrain.svc.cluster.local:9092"
+  SOMABRAIN_KAFKA_BOOTSTRAP: "somabrain-kafka.somabrain.svc.cluster.local:9092"
+  KAFKA_URL: "kafka://somabrain-kafka.somabrain.svc.cluster.local:9092"
+  KAFKA_CFG_NODE_ID: "1"
+  KAFKA_CFG_PROCESS_ROLES: "broker,controller"
+  KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@somabrain-kafka:9093"
+  KAFKA_CFG_LISTENERS: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+  KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://somabrain-kafka:9092"
+  KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+  KAFKA_CFG_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+  KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+  KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
+  KAFKA_CFG_NUM_PARTITIONS: "2"
+  KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
+  KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+  KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+  KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+  KAFKA_CFG_LOG_DIRS: "/var/lib/kafka/data"
+  KAFKA_CFG_LOG_RETENTION_MS: "604800000"
+  KAFKA_CFG_LOG_SEGMENT_BYTES: "52428800"
+  KAFKA_CFG_LOG_RETENTION_BYTES: "536870912"
+  KAFKA_CFG_COMPRESSION_TYPE: "snappy"
+  KAFKA_HEAP_OPTS: "-Xmx384m -Xms256m"
+  KAFKA_CLUSTER_ID: "79LccNO-Qe6G6YgqP1Zrew"
+  
+  # --- OPA Configuration ---
+  OPA_HOST: "somabrain-opa.somabrain.svc.cluster.local"
+  SOMABRAIN_OPA_HOST: "somabrain-opa.somabrain.svc.cluster.local"
+  SOMABRAIN_OPA_PORT: "8181"
+  OPA_URL: "http://somabrain-opa.somabrain.svc.cluster.local:8181"
+  SOMABRAIN_OPA_SCHEME: "http"
+  
+  # --- PostgreSQL Configuration ---
+  # WARNING: DEVELOPMENT CREDENTIALS - CHANGE IN PRODUCTION!
+  POSTGRES_HOST: "somabrain-postgres.somabrain.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "somabrain"
+  
+  # --- Memory Service Configuration ---
+  SOMABRAIN_MEMORY_HTTP_HOST: "host.docker.internal"
+  SOMABRAIN_MEMORY_HTTP_PORT: "9595"
+  SOMABRAIN_MEMORY_HTTP_SCHEME: "http"
+  SOMABRAIN_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+  MEMORY_SERVICE_URL: "http://host.docker.internal:9595"
+  
+  # --- SomaBrain Feature Flags ---
+  SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "1"
+  SOMABRAIN_FORCE_FULL_STACK: "1"
+  SOMABRAIN_REQUIRE_MEMORY: "1"
+  SOMABRAIN_PREDICTOR_PROVIDER: "mahal"
+  SOMABRAIN_MEMORY_ENABLE_WEIGHTING: "1"
+  SOMABRAIN_MEMORY_PHASE_PRIORS: "bootstrap:1.05,general:1.0,specialized:1.03"
+  SOMABRAIN_MEMORY_QUALITY_EXP: "1.0"
+  SOMABRAIN_DEFAULT_TENANT: "sandbox"
+  SOMABRAIN_MODE: "enterprise"
+  
+  # --- Outbox Publisher Configuration ---
+  SOMABRAIN_OUTBOX_BATCH_SIZE: "100"
+  SOMABRAIN_OUTBOX_MAX_DELAY: "5.0"
+  
+  # --- Resource Limits ---
+  REDIS_MEMORY_LIMIT: "256Mi"
+  REDIS_MEMORY_REQUEST: "128Mi"
+  REDIS_CPU_LIMIT: "500m"
+  REDIS_CPU_REQUEST: "100m"
+  
+  KAFKA_MEMORY_LIMIT: "1Gi"
+  KAFKA_MEMORY_REQUEST: "512Mi"
+  KAFKA_CPU_LIMIT: "1000m"
+  KAFKA_CPU_REQUEST: "500m"
+  
+  OPA_MEMORY_LIMIT: "256Mi"
+  OPA_MEMORY_REQUEST: "128Mi"
+  OPA_CPU_LIMIT: "500m"
+  OPA_CPU_REQUEST: "100m"
+  
+  POSTGRES_MEMORY_LIMIT: "512Mi"
+  POSTGRES_MEMORY_REQUEST: "256Mi"
+  POSTGRES_CPU_LIMIT: "1000m"
+  POSTGRES_CPU_REQUEST: "250m"
+  
+  SOMABRAIN_MEMORY_LIMIT: "1Gi"
+  SOMABRAIN_MEMORY_REQUEST: "512Mi"
+  SOMABRAIN_CPU_LIMIT: "2000m"
+  SOMABRAIN_CPU_REQUEST: "500m"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: somabrain-secrets
+  namespace: somabrain
+  labels:
+    app: somabrain
+  annotations:
+    description: "Sensitive credentials for SomaBrain"
+    warning: "DEVELOPMENT CREDENTIALS - CHANGE ALL VALUES IN PRODUCTION!"
+type: Opaque
+stringData:
+  # WARNING: DEVELOPMENT CREDENTIALS ONLY - CHANGE IN PRODUCTION!
+  # These are placeholder development credentials
+  # MUST be replaced with secure values before production deployment
+  
+  POSTGRES_USER: "soma"
+  POSTGRES_PASSWORD: "soma_dev_pass_CHANGE_IN_PRODUCTION"
+  
+  SOMABRAIN_MEMORY_HTTP_TOKEN: "dev-token-CHANGE_IN_PRODUCTION"
+  
+  # JWT Configuration (if needed)
+  SOMABRAIN_JWT_SECRET: "dev-jwt-secret-CHANGE_IN_PRODUCTION"
+  
+  # API Token (if needed)
+  SOMABRAIN_API_TOKEN: "dev-api-token-CHANGE_IN_PRODUCTION"

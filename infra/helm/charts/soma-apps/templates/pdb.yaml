@@ -1,0 +1,26 @@
+{{- if .Values.podDisruptionBudget.enabled }}
+{{- $root := . -}}
+{{- $targets := list (dict "k" "integrator" "v" .Values.integrator.enabled)
+                        (dict "k" "segmentation" "v" .Values.segmentation.enabled)
+                        (dict "k" "orchestrator" "v" .Values.orchestrator.enabled)
+                        (dict "k" "pred-state" "v" .Values.predictorState.enabled)
+                        (dict "k" "pred-agent" "v" .Values.predictorAgent.enabled)
+                        (dict "k" "pred-action" "v" .Values.predictorAction.enabled) -}}
+{{- range $t := $targets }}
+{{- if $t.v }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" $t.k) }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" $t.k) | indent 4 }}
+spec:
+  minAvailable: {{ $root.Values.podDisruptionBudget.minAvailable | default 1 }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" $t.k) | indent 6 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

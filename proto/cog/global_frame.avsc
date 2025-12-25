@@ -1,0 +1,26 @@
+{
+  "type": "record",
+  "name": "GlobalFrame",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "ts", "type": "string" },
+    { "name": "leader", "type": "string" },
+    { "name": "weights", "type": {"type": "map", "values": "float"} },
+    { "name": "frame", "type": {"type": "map", "values": "string"} },
+    { "name": "rationale", "type": "string" },
+    { "name": "leader_election", "type": {
+      "type": "record",
+      "name": "LeaderElection",
+      "fields": [
+        { "name": "instance_id", "type": "string" },
+        { "name": "election_time", "type": "string" },
+        { "name": "leader_tenure_seconds", "type": "double" },
+        { "name": "min_dwell_ms", "type": "int" },
+        { "name": "entropy_cap", "type": "double" },
+        { "name": "current_entropy", "type": "double" },
+        { "name": "dwell_satisfied", "type": "boolean" },
+        { "name": "transition_allowed", "type": "boolean" }
+      ]
+    }}
+  ]
+}

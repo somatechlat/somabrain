@@ -1,0 +1,175 @@
+# =============================================================================
+# DOCKERIGNORE - SomaBrain
+# Excludes files not needed in Docker image to reduce build time and image size
+# =============================================================================
+
+# --- VCS & CI ---
+.git/
+.github/
+.gitignore
+.gitattributes
+.gitmodules
+.pre-commit-config.yaml
+.pre-commit/
+.ci/
+
+# --- Secrets & Credentials (NEVER include in image) ---
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+.secrets/
+*.secret
+id_rsa*
+id_ed25519*
+.ssh/
+.gnupg/
+*.gpg
+service-account*.json
+keyfile*.json
+jwt/
+
+# --- Virtual Environments ---
+.venv/
+venv/
+.venv-test/
+virtualenv/
+.python-version
+
+# --- Python Caches & Bytecode ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.pyright/
+.ruff_cache/
+.tox/
+.hypothesis/
+.cache/
+
+# --- Tests (not needed in production image) ---
+tests/
+test_*.py
+*_test.py
+conftest.py
+pytest.ini
+mypy.ini
+.coverage
+coverage.xml
+htmlcov/
+junit.xml
+test-results/
+benchmarks/
+
+# --- Build & Packaging ---
+build/
+dist/
+*.egg-info/
+somabrain.egg-info/
+pip-wheel-metadata/
+wheels/
+eggs/
+*.egg
+
+# --- Documentation (not needed in image) ---
+docs/
+site/
+*.md
+!README.md
+
+# --- IDE/Editor ---
+.idea/
+.vscode/
+.history/
+*.swp
+*.swo
+*.sublime-*
+
+# --- OS Cruft ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+.tmp/
+tmp/
+
+# --- Local DBs / Indices ---
+qdrant.db/
+*_qdrant/
+*.index
+*.sqlite*
+*.db
+*.db-journal
+redis/
+data/
+
+# --- Node/JS ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-lock.yaml
+webui/
+
+# --- Notebooks ---
+*.ipynb
+notebooks/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- ML Models (large files) ---
+*.pth
+*.pt
+*.bin
+*.model
+*.onnx
+*.h5
+*.pkl
+
+# --- Archives ---
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.gz
+*.xz
+*.bz2
+
+# --- Docker Compose extras ---
+docker-compose.override.yml
+docker-compose.local.yml
+compose.*.yaml
+compose.*.yml
+
+# --- Helm/Charts (not needed in app image) ---
+charts/
+infra/
+
+# --- Kiro/Agent ---
+.kiro/
+
+# --- CI Artifacts ---
+artifacts/
+reports/
+JUnit.xml
+
+# --- Misc ---
+uv.lock
+pyright_batch_*.json
+resolved.yml
+violations.md
+alertmanager.yml
+alerts.yml
+Makefile.prod
+ruff_strict.toml
+pyrightconfig.json
+debug_settings.py

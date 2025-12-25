@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "FusionDriftEvent",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "tenant", "type": "string" },
+    { "name": "domain", "type": "string" },
+    { "name": "entropy", "type": "float" },
+    { "name": "regret", "type": "float" },
+    { "name": "alpha", "type": ["null", "float"], "default": null },
+    { "name": "action", "type": ["null", "string"], "default": null },
+    { "name": "ts", "type": "string" }
+  ]
+}

@@ -1,0 +1,134 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: somabrain-kafka
+  namespace: somabrain-prod
+spec:
+  selector:
+    app: somabrain-kafka
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+  clusterIP: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: somabrain-kafka
+  namespace: somabrain-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: somabrain-kafka
+  template:
+    metadata:
+      labels:
+        app: somabrain-kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.7.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_CFG_NODE_ID
+              value: "1"
+            - name: KAFKA_CFG_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
+              value: "1@localhost:9093"
+            - name: KAFKA_CFG_LISTENERS
+              value: "PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+            - name: KAFKA_CFG_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://somabrain-kafka:9092"
+            - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+              value: "false"
+            - name: KAFKA_CFG_NUM_PARTITIONS
+              value: "1"
+            - name: KAFKA_CFG_DEFAULT_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_CFG_LOG_DIRS
+              value: "/var/lib/kafka/data"
+            - name: KAFKA_CFG_LOG_RETENTION_MS
+              value: "86400000"
+            - name: KAFKA_CFG_LOG_SEGMENT_BYTES
+              value: "1073741824"
+            - name: KAFKA_CFG_LOG_RETENTION_BYTES
+              value: "-1"
+            - name: KAFKA_CFG_COMPRESSION_TYPE
+              value: "lz4"
+            - name: KAFKA_CLUSTER_ID
+              value: "ZyxClu5terID0000000001"
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              CONFIG_PATH=/tmp/kafka-server.properties
+              cp /opt/kafka/config/kraft/server.properties "$CONFIG_PATH"
+              {
+                echo "process.roles=$KAFKA_CFG_PROCESS_ROLES"
+                echo "node.id=$KAFKA_CFG_NODE_ID"
+                echo "broker.id=$KAFKA_CFG_NODE_ID"
+                echo "controller.listener.names=$KAFKA_CFG_CONTROLLER_LISTENER_NAMES"
+                echo "controller.quorum.voters=$KAFKA_CFG_CONTROLLER_QUORUM_VOTERS"
+                echo "listeners=$KAFKA_CFG_LISTENERS"
+                echo "advertised.listeners=$KAFKA_CFG_ADVERTISED_LISTENERS"
+                echo "listener.security.protocol.map=$KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP"
+                echo "inter.broker.listener.name=$KAFKA_CFG_INTER_BROKER_LISTENER_NAME"
+                echo "log.dirs=$KAFKA_CFG_LOG_DIRS"
+                echo "auto.create.topics.enable=$KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE"
+                echo "num.partitions=$KAFKA_CFG_NUM_PARTITIONS"
+                echo "default.replication.factor=$KAFKA_CFG_DEFAULT_REPLICATION_FACTOR"
+                echo "offsets.topic.replication.factor=$KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR"
+                echo "transaction.state.log.replication.factor=$KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR"
+                echo "transaction.state.log.min.isr=$KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR"
+                echo "compression.type=$KAFKA_CFG_COMPRESSION_TYPE"
+                echo "log.retention.ms=$KAFKA_CFG_LOG_RETENTION_MS"
+                echo "log.segment.bytes=$KAFKA_CFG_LOG_SEGMENT_BYTES"
+                echo "log.retention.bytes=$KAFKA_CFG_LOG_RETENTION_BYTES"
+              } >> "$CONFIG_PATH"
+              if [ ! -f /var/lib/kafka/data/meta.properties ]; then
+                /opt/kafka/bin/kafka-storage.sh format --ignore-formatted --cluster-id "$KAFKA_CLUSTER_ID" --config "$CONFIG_PATH"
+              fi
+              exec /opt/kafka/bin/kafka-server-start.sh "$CONFIG_PATH"
+          readinessProbe:
+            exec:
+              command: ["bash","-c","/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["bash","-c","/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/kafka/data
+      volumes:
+        - name: data
+          emptyDir: {}

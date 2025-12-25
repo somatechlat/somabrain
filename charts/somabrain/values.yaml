@@ -1,0 +1,70 @@
+# Default values for somabrain Helm chart
+
+image:
+  repository: somabrain
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 9696
+
+resources:
+  redis:
+    limits:
+      memory: "1Gi"
+    requests:
+      memory: "512Mi"
+  kafka:
+    limits:
+      memory: "2Gi"
+    requests:
+      memory: "1Gi"
+  opa:
+    limits:
+      memory: "128Mi"
+    requests:
+      memory: "64Mi"
+  postgres:
+    limits:
+      memory: "512Mi"
+    requests:
+      memory: "256Mi"
+  prometheus:
+    limits:
+      memory: "512Mi"
+    requests:
+      memory: "256Mi"
+  jaeger:
+    limits:
+      memory: "256Mi"
+    requests:
+      memory: "128Mi"
+  milvus:
+    limits:
+      memory: "4Gi"
+    requests:
+      memory: "2Gi"
+  app:
+    limits:
+      memory: "2Gi"
+    requests:
+      memory: "1Gi"
+  cog:
+    limits:
+      memory: "3Gi"
+    requests:
+      memory: "2Gi"
+  outboxPublisher:
+    limits:
+      memory: "256Mi"
+    requests:
+      memory: "128Mi"
+
+env:
+  SOMABRAIN_HOST: "0.0.0.0"
+  SOMABRAIN_PORT: "9696"
+  SOMABRAIN_MODE: "full-local"
+  SOMABRAIN_MEMORY_HTTP_ENDPOINT: "http://host.docker.internal:9595"
+
+secretName: somabrain-secrets

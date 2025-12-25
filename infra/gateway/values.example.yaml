@@ -1,0 +1,7 @@
+# Example environment variables for decK templating
+SOMABRAIN_MEMORY_UPSTREAM: "http://somabrain-memory.default.svc.cluster.local:8080"
+SOMABRAIN_CONFIG_UPSTREAM: "http://somabrain-config.default.svc.cluster.local:8080"
+SOMABRAIN_REDIS_HOST: "redis.svc.cluster.local"
+SOMABRAIN_REDIS_PORT: "6379"
+SOMABRAIN_RATE_LIMIT_PER_MIN: "3000"
+SOMABRAIN_GATEWAY_LOG_PATH: "/var/log/kong/somabrain-edge.log"

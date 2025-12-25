@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "BeliefUpdateSoma",
+  "namespace": "com.soma.brain",
+  "fields": [
+    {"name": "stream", "type": {"type": "enum", "name": "Stream", "symbols": ["STATE","AGENT","ACTION"]}},
+    {"name": "timestamp", "type": "long"},
+    {"name": "delta_error", "type": "double"},
+    {"name": "info_gain", "type": ["null", "double"], "default": null},
+    {"name": "metadata", "type": {"type": "map", "values": "string"}, "default": {}}
+  ]
+}

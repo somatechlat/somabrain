@@ -1,0 +1,18 @@
+{{- if .Values.sa01.enabled }}
+{{- $root := . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "sa01") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sa01") | indent 4 }}
+spec:
+  type: {{ .Values.sa01.service.type }}
+  selector:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sa01") | indent 4 }}
+  ports:
+    - name: grpc
+      port: {{ .Values.sa01.service.port }}
+      targetPort: {{ .Values.sa01.service.targetPort | default .Values.sa01.containerPort }}
+{{- end }}

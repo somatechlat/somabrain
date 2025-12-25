@@ -1,0 +1,36 @@
+# Per-tenant adaptation overrides
+# Specify tau decay rates and entropy caps.
+# Missing tenants inherit global env defaults.
+# Units:
+#   tau_decay_rate: multiplicative decay applied each successful feedback (tau *= 1 - rate)
+#   entropy_cap: maximum Shannon entropy over normalized (alpha, beta, gamma, tau) vector
+#
+# Example:
+# sandbox: conservative decay, moderate cap
+# demo: faster decay, tighter entropy cap
+
+sandbox:
+  tau_decay_rate: 0.02
+  entropy_cap: 1.25
+  # HMM segmentation parameters
+  hazard_lambda: 0.02  # P(STABLE->TRANSITION) per observation
+  hazard_vol_mult: 3.0  # volatility multiplier for TRANSITION state
+  min_samples: 20  # warmup samples before HMM decisions
+  min_gap_ms: 1000  # minimum gap between boundaries
+
+# Production tenants with aggressive HMM
+production:
+  tau_decay_rate: 0.01
+  entropy_cap: 1.1
+  hazard_lambda: 0.01
+  hazard_vol_mult: 2.5
+  min_samples: 50
+  min_gap_ms: 2000
+
+demo:
+  tau_decay_rate: 0.05
+  entropy_cap: 1.0
+  hazard_lambda: 0.03
+  hazard_vol_mult: 3.5
+  min_samples: 15
+  min_gap_ms: 500

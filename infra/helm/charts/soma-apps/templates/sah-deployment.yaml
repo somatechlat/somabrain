@@ -1,0 +1,56 @@
+{{- if .Values.sah.enabled }}
+{{- $root := . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "soma-apps.componentName" (dict "root" $root "component" "sah") }}
+  namespace: {{ $root.Values.global.namespace }}
+  labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sah") | indent 4 }}
+spec:
+  replicas: {{ .Values.sah.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sah") | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "soma-apps.labels" (dict "root" $root "component" "sah") | indent 8 }}
+    spec:
+      {{- if .Values.securityContext.pod.enabled }}
+      securityContext:
+{{ include "soma-apps.podSecurityContext" . | indent 8 }}
+      {{- end }}
+      containers:
+        - name: sah
+          image: "{{ .Values.sah.image.repository }}:{{ .Values.sah.image.tag }}"
+          imagePullPolicy: {{ .Values.sah.image.pullPolicy | default $root.Values.global.imagePullPolicy }}
+          ports:
+            - containerPort: {{ .Values.sah.containerPort }}
+              name: http
+          {{- if .Values.securityContext.container.enabled }}
+          securityContext:
+{{ include "soma-apps.containerSecurityContext" . | indent 12 }}
+          {{- end }}
+          env:
+{{- range $key, $value := $root.Values.envCommon }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+{{- range $key, $value := .Values.sah.env }}
+            - name: {{ $key }}
+              value: "{{ $value }}"
+{{- end }}
+          readinessProbe:
+            httpGet:
+              path: /api/healthz
+              port: {{ .Values.sah.containerPort }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/healthz
+              port: {{ .Values.sah.containerPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 20
+{{- end }}

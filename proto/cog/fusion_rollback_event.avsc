@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "FusionRollbackEvent",
+  "namespace": "soma.cognition",
+  "fields": [
+    { "name": "tenant", "type": "string" },
+    { "name": "domain", "type": "string" },
+    { "name": "trigger", "type": "string" },
+    { "name": "action", "type": "string" },
+    { "name": "ts", "type": "string" }
+  ]
+}

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SomaBrain Dashboard</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+    
+    /* Navigation */
+    .nav { background: #16213e; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; border-bottom: 2px solid #0f3460; }
+    .nav h1 { color: #e94560; font-size: 1.5rem; }
+    .nav-links { display: flex; gap: 1rem; }
+    .nav-links button { background: transparent; border: 1px solid #0f3460; color: #eee; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+    .nav-links button:hover, .nav-links button.active { background: #0f3460; border-color: #e94560; }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+    .nav-right select { background: #0f3460; color: #eee; border: 1px solid #e94560; padding: 0.5rem; border-radius: 4px; }
+    .status-indicator { display: flex; align-items: center; gap: 0.5rem; }
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .status-dot.healthy { background: #4ade80; }
+    .status-dot.unhealthy { background: #ef4444; }
+    .status-dot.unknown { background: #fbbf24; }
+    
+    /* Main Content */
+    .main { padding: 2rem; }
+    .page { display: none; }
+    .page.active { display: block; }
+    
+    /* Cards */
+    .card { background: #16213e; border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #0f3460; }
+    .card h2 { color: #e94560; margin-bottom: 1rem; font-size: 1.2rem; }
+    .card h3 { color: #eee; margin-bottom: 0.5rem; font-size: 1rem; }
+    
+    /* Grid layouts */
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+    
+    /* Stats */
+    .stat-card { background: #0f3460; padding: 1rem; border-radius: 6px; text-align: center; }
+    .stat-value { font-size: 2rem; font-weight: bold; color: #e94560; }
+    .stat-label { font-size: 0.85rem; color: #aaa; margin-top: 0.25rem; }
+    
+    /* Forms */
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; color: #aaa; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 0.75rem; background: #0f3460; border: 1px solid #16213e; color: #eee; border-radius: 4px; }
+    .form-group textarea { min-height: 100px; resize: vertical; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: #e94560; color: #fff; }
+    .btn-primary:hover { background: #d63850; }
+    .btn-secondary { background: #0f3460; color: #eee; border: 1px solid #e94560; }
+    .btn-secondary:hover { background: #16213e; }
+    
+    /* Output */
+    .output { background: #0a0a15; padding: 1rem; border-radius: 4px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; max-height: 400px; overflow-y: auto; border: 1px solid #0f3460; }
+    .output.success { border-color: #4ade80; }
+    .output.error { border-color: #ef4444; }
+    
+    /* Charts */
+    .chart-container { min-height: 250px; }
+    .chart-container svg { width: 100%; height: 250px; }
+    
+    /* Tooltip */
+    .d3-tooltip { position: absolute; padding: 8px 12px; background: rgba(0,0,0,0.9); color: #fff; border-radius: 4px; pointer-events: none; opacity: 0; font-size: 0.85rem; z-index: 1000; }
+    
+    /* Health details */
+    .health-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; }
+    .health-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #0f3460; border-radius: 4px; }
+    .health-item .label { flex: 1; }
+    .health-item .value { font-weight: bold; }
+    .health-item .value.ok { color: #4ade80; }
+    .health-item .value.fail { color: #ef4444; }
+    
+    /* Memory results */
+    .memory-result { background: #0f3460; padding: 1rem; border-radius: 4px; margin-bottom: 0.5rem; }
+    .memory-result .score { color: #e94560; font-weight: bold; }
+    .memory-result .content { margin-top: 0.5rem; color: #ccc; }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <h1>🧠 SomaBrain</h1>
+    <div class="nav-links">
+      <button class="active" data-page="overview">Overview</button>
+      <button data-page="memory">Memory</button>
+      <button data-page="metrics">Metrics</button>
+      <button data-page="debug">Debug</button>
+    </div>
+    <div class="nav-right">
+      <select id="serverSelect">
+        <option value="http://localhost:9696">Local (9696)</option>
+        <option value="http://localhost:9595">Memory API (9595)</option>
+      </select>
+      <div class="status-indicator">
+        <span class="status-dot unknown" id="statusDot"></span>
+        <span id="statusText">Checking...</span>
+      </div>
+      <button class="btn btn-secondary" onclick="refreshAll()">↻ Refresh</button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- Overview Page -->
+    <div id="page-overview" class="page active">
+      <div class="grid-4" id="statsGrid">
+        <div class="stat-card"><div class="stat-value" id="stat-memory-ok">-</div><div class="stat-label">Memory Status</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-wm-items">-</div><div class="stat-label">WM Items</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-circuit">-</div><div class="stat-label">Circuit State</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-predictor">-</div><div class="stat-label">Predictor</div></div>
+      </div>
+      
+      <div class="grid-2">
+        <div class="card">
+          <h2>System Health</h2>
+          <div class="health-grid" id="healthGrid"></div>
+        </div>
+        <div class="card">
+          <h2>Components</h2>
+          <div class="health-grid" id="componentsGrid"></div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <h2>Raw Health Response</h2>
+        <div class="output" id="healthOutput">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Memory Page -->
+    <div id="page-memory" class="page">
+      <div class="grid-2">
+        <div class="card">
+          <h2>💾 Save Memory</h2>
+          <div class="form-group">
+            <label>Tenant</label>
+            <input type="text" id="saveTenant" value="test-tenant" />
+          </div>
+          <div class="form-group">
+            <label>Namespace</label>
+            <input type="text" id="saveNamespace" value="default" />
+          </div>
+          <div class="form-group">
+            <label>Key (optional)</label>
+            <input type="text" id="saveKey" placeholder="auto-generated if empty" />
+          </div>
+          <div class="form-group">
+            <label>Memory Content</label>
+            <textarea id="saveContent" placeholder="Enter memory content..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="saveMemory()">Save Memory</button>
+          <div class="output" id="saveOutput" style="margin-top: 1rem;"></div>
+        </div>
+        
+        <div class="card">
+          <h2>🔍 Recall Memory</h2>
+          <div class="form-group">
+            <label>Query</label>
+            <input type="text" id="recallQuery" placeholder="Search query..." />
+          </div>
+          <div class="form-group">
+            <label>Top K</label>
+            <input type="number" id="recallTopK" value="5" min="1" max="50" />
+          </div>
+          <button class="btn btn-primary" onclick="recallMemory()">Recall</button>
+          <div id="recallResults" style="margin-top: 1rem;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metrics Page -->
+    <div id="page-metrics" class="page">
+      <div class="grid-2">
+        <div class="card">
+          <h2>HTTP Requests</h2>
+          <div class="chart-container" id="chartRequests"></div>
+        </div>
+        <div class="card">
+          <h2>Latency Distribution</h2>
+          <div class="chart-container" id="chartLatency"></div>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h2>WM Utilization</h2>
+          <div class="chart-container" id="chartWmGauge"></div>
+        </div>
+        <div class="card">
+          <h2>Request Rate (Time Series)</h2>
+          <div class="chart-container" id="chartTimeSeries"></div>
+        </div>
+        <div class="card">
+          <h2>Memory Operations</h2>
+          <div class="chart-container" id="chartMemOps"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Debug Page -->
+    <div id="page-debug" class="page">
+      <div class="card">
+        <h2>🔧 API Tester</h2>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Method</label>
+            <select id="debugMethod">
+              <option value="GET">GET</option>
+              <option value="POST" selected>POST</option>
+              <option value="PUT">PUT</option>
+              <option value="DELETE">DELETE</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Endpoint</label>
+            <input type="text" id="debugEndpoint" value="/health" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Request Body (JSON)</label>
+          <textarea id="debugBody" placeholder='{"key": "value"}'></textarea>
+        </div>
+        <div class="form-group">
+          <label>Headers (JSON)</label>
+          <textarea id="debugHeaders" style="min-height: 60px;">{"Content-Type": "application/json", "X-Tenant-ID": "test-tenant"}</textarea>
+        </div>
+        <button class="btn btn-primary" onclick="sendDebugRequest()">Send Request</button>
+        <div class="output" id="debugOutput" style="margin-top: 1rem;"></div>
+      </div>
+      
+      <div class="card">
+        <h2>Quick Actions</h2>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" onclick="quickAction('/health')">Health Check</button>
+          <button class="btn btn-secondary" onclick="quickAction('/metrics')">Get Metrics</button>
+          <button class="btn btn-secondary" onclick="quickAction('/memory/metrics?tenant=test-tenant&namespace=default')">Memory Metrics</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Tooltip -->
+  <div class="d3-tooltip" id="tooltip"></div>
+
+  <script>
+
+    // State
+    let currentHealth = null;
+    const requestHistory = [];
+    const timestamps = [];
+    const maxPoints = 30;
+
+    // Navigation
+    document.querySelectorAll('.nav-links button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('page-' + btn.dataset.page).classList.add('active');
+      });
+    });
+
+    // API helpers
+    function getApiBase() {
+      return document.getElementById('serverSelect').value;
+    }
+
+    async function apiCall(endpoint, options = {}) {
+      const url = getApiBase() + endpoint;
+      try {
+        const resp = await fetch(url, {
+          ...options,
+          headers: { 'Content-Type': 'application/json', ...options.headers }
+        });
+        return await resp.json();
+      } catch (e) {
+        throw new Error(`API Error: ${e.message}`);
+      }
+    }
+
+    // Health check
+    async function checkHealth() {
+      const dot = document.getElementById('statusDot');
+      const text = document.getElementById('statusText');
+      try {
+        const health = await apiCall('/health');
+        currentHealth = health;
+        if (health.ok && health.ready) {
+          dot.className = 'status-dot healthy';
+          text.textContent = 'Healthy';
+        } else if (health.ok) {
+          dot.className = 'status-dot unknown';
+          text.textContent = 'Degraded';
+        } else {
+          dot.className = 'status-dot unhealthy';
+          text.textContent = 'Unhealthy';
+        }
+        updateOverview(health);
+        document.getElementById('healthOutput').textContent = JSON.stringify(health, null, 2);
+      } catch (e) {
+        dot.className = 'status-dot unhealthy';
+        text.textContent = 'Offline';
+        document.getElementById('healthOutput').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    function updateOverview(health) {
+      // Stats
+      document.getElementById('stat-memory-ok').textContent = health.memory_ok ? '✓ OK' : '✗ Down';
+      document.getElementById('stat-memory-ok').style.color = health.memory_ok ? '#4ade80' : '#ef4444';
+      document.getElementById('stat-wm-items').textContent = health.memory_items || 0;
+      document.getElementById('stat-circuit').textContent = health.memory_circuit_open ? 'OPEN' : 'CLOSED';
+      document.getElementById('stat-circuit').style.color = health.memory_circuit_open ? '#ef4444' : '#4ade80';
+      document.getElementById('stat-predictor').textContent = health.predictor_ok ? '✓ OK' : '✗ Down';
+      document.getElementById('stat-predictor').style.color = health.predictor_ok ? '#4ade80' : '#ef4444';
+
+      // Health grid
+      const healthGrid = document.getElementById('healthGrid');
+      healthGrid.innerHTML = '';
+      const healthItems = [
+        ['Memory', health.memory_ok],
+        ['Embedder', health.embedder_ok],
+        ['Predictor', health.predictor_ok],
+        ['OPA', health.opa_ok],
+        ['Kafka', health.kafka_ok],
+        ['Postgres', health.postgres_ok],
+        ['Metrics', health.metrics_ready],
+        ['Retrieval', health.retrieval_ready]
+      ];
+      healthItems.forEach(([label, ok]) => {
+        healthGrid.innerHTML += `<div class="health-item"><span class="label">${label}</span><span class="value ${ok ? 'ok' : 'fail'}">${ok ? '✓' : '✗'}</span></div>`;
+      });
+
+      // Components grid
+      const compGrid = document.getElementById('componentsGrid');
+      compGrid.innerHTML = '';
+      if (health.components) {
+        Object.entries(health.components).forEach(([key, val]) => {
+          if (typeof val === 'object' && val !== null) {
+            compGrid.innerHTML += `<div class="health-item"><span class="label">${key}</span><span class="value">${val.healthy !== undefined ? (val.healthy ? '✓' : '✗') : '...'}</span></div>`;
+          } else {
+            compGrid.innerHTML += `<div class="health-item"><span class="label">${key}</span><span class="value">${val}</span></div>`;
+          }
+        });
+      }
+    }
+
+    // Memory operations
+    async function saveMemory() {
+      const output = document.getElementById('saveOutput');
+      output.className = 'output';
+      output.textContent = 'Saving...';
+      try {
+        const data = {
+          tenant: document.getElementById('saveTenant').value,
+          namespace: document.getElementById('saveNamespace').value,
+          key: document.getElementById('saveKey').value || undefined,
+          value: {
+            task: document.getElementById('saveContent').value,
+            memory_type: 'episodic'
+          }
+        };
+        const result = await apiCall('/memory/remember', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'X-Tenant-ID': data.tenant }
+        });
+        output.className = 'output success';
+        output.textContent = JSON.stringify(result, null, 2);
+      } catch (e) {
+        output.className = 'output error';
+        output.textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function recallMemory() {
+      const results = document.getElementById('recallResults');
+      results.innerHTML = '<div class="output">Searching...</div>';
+      try {
+        const data = {
+          query: document.getElementById('recallQuery').value,
+          top_k: parseInt(document.getElementById('recallTopK').value)
+        };
+        const result = await apiCall('/memory/recall', {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'X-Tenant-ID': 'test-tenant' }
+        });
+        if (result.results && result.results.length > 0) {
+          results.innerHTML = result.results.map((r, i) => `
+            <div class="memory-result">
+              <span class="score">#${i+1} Score: ${(r.score || 0).toFixed(3)}</span>
+              <div class="content">${JSON.stringify(r.payload || r, null, 2)}</div>
+            </div>
+          `).join('');
+        } else {
+          results.innerHTML = '<div class="output">No results found</div>';
+        }
+      } catch (e) {
+        results.innerHTML = `<div class="output error">Error: ${e.message}</div>`;
+      }
+    }
+
+    // Debug
+    async function sendDebugRequest() {
+      const output = document.getElementById('debugOutput');
+      output.className = 'output';
+      output.textContent = 'Sending...';
+      try {
+        const method = document.getElementById('debugMethod').value;
+        const endpoint = document.getElementById('debugEndpoint').value;
+        const body = document.getElementById('debugBody').value;
+        const headers = JSON.parse(document.getElementById('debugHeaders').value || '{}');
+        
+        const options = { method, headers };
+        if (body && method !== 'GET') {
+          options.body = body;
+        }
+        
+        const result = await apiCall(endpoint, options);
+        output.className = 'output success';
+        output.textContent = JSON.stringify(result, null, 2);
+      } catch (e) {
+        output.className = 'output error';
+        output.textContent = 'Error: ' + e.message;
+      }
+    }
+
+    async function quickAction(endpoint) {
+      document.getElementById('debugEndpoint').value = endpoint;
+      document.getElementById('debugMethod').value = 'GET';
+      document.getElementById('debugBody').value = '';
+      await sendDebugRequest();
+    }
+
+    // Charts
+    const tooltip = d3.select('#tooltip');
+
+    function renderBarChart(containerId, data, title, color = '#e94560') {
+      const container = d3.select(containerId);
+      container.selectAll('*').remove();
+      if (!data || Object.keys(data).length === 0) {
+        container.append('div').style('color', '#666').style('text-align', 'center').style('padding', '2rem').text('No data');
+        return;
+      }
+      const items = Object.entries(data).map(([k, v]) => ({ label: k.substring(0, 20), value: v }));
+      const width = container.node().clientWidth || 400;
+      const height = 220;
+      const margin = { top: 20, right: 20, bottom: 60, left: 50 };
+      
+      const svg = container.append('svg').attr('viewBox', `0 0 ${width} ${height}`);
+      const x = d3.scaleBand().domain(items.map(d => d.label)).range([margin.left, width - margin.right]).padding(0.2);
+      const y = d3.scaleLinear().domain([0, d3.max(items, d => d.value) * 1.1 || 1]).range([height - margin.bottom, margin.top]);
+      
+      svg.selectAll('rect').data(items).join('rect')
+        .attr('x', d => x(d.label)).attr('y', d => y(d.value))
+        .attr('width', x.bandwidth()).attr('height', d => y(0) - y(d.value))
+        .attr('fill', color)
+        .on('mouseover', (e, d) => tooltip.style('opacity', 1).html(`<b>${d.label}</b>: ${d.value}`).style('left', e.pageX + 10 + 'px').style('top', e.pageY - 20 + 'px'))
+        .on('mouseout', () => tooltip.style('opacity', 0));
+      
+      svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x)).selectAll('text').attr('transform', 'rotate(-45)').style('text-anchor', 'end').style('fill', '#aaa');
+      svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5)).selectAll('text').style('fill', '#aaa');
+    }
+
+    function renderGauge(containerId, value, label) {
+      const container = d3.select(containerId);
+      container.selectAll('*').remove();
+      const size = 180;
+      const svg = container.append('svg').attr('viewBox', `0 0 ${size} ${size}`);
+      const arc = d3.arc().innerRadius(60).outerRadius(80).startAngle(-Math.PI / 2);
+      const g = svg.append('g').attr('transform', `translate(${size/2},${size/2})`);
+      g.append('path').datum({ endAngle: Math.PI / 2 }).attr('fill', '#0f3460').attr('d', arc);
+      g.append('path').datum({ endAngle: -Math.PI / 2 + (value || 0) * Math.PI }).attr('fill', '#e94560').attr('d', arc);
+      g.append('text').attr('text-anchor', 'middle').attr('dy', '0.35em').attr('fill', '#eee').attr('font-size', '24px').text(((value || 0) * 100).toFixed(1) + '%');
+      svg.append('text').attr('x', size/2).attr('y', size - 10).attr('text-anchor', 'middle').attr('fill', '#aaa').attr('font-size', '12px').text(label);
+    }
+
+    async function updateMetrics() {
+      try {
+        const resp = await fetch(getApiBase() + '/metrics');
+        const text = await resp.text();
+        
+        // Parse metrics
+        const parseMetric = (name) => {
+          const result = {};
+          const regex = new RegExp(`^${name}{([^}]*)}\\s+([\\d.]+)`, 'gm');
+          let m;
+          while ((m = regex.exec(text)) !== null) {
+            result[m[1]] = parseFloat(m[2]);
+          }
+          return result;
+        };
+        
+        const requests = parseMetric('somabrain_http_requests_total');
+        const latency = parseMetric('somabrain_http_latency_seconds');
+        const wmUtil = parseMetric('somabrain_wm_utilization');
+        
+        renderBarChart('#chartRequests', requests, 'HTTP Requests');
+        renderBarChart('#chartLatency', Object.fromEntries(Object.entries(latency).map(([k,v]) => [k, v*1000])), 'Latency (ms)', '#fbbf24');
+        renderGauge('#chartWmGauge', Object.values(wmUtil)[0] || 0, 'WM Utilization');
+        
+        // Time series
+        const reqVal = Object.values(requests).reduce((a,b) => a+b, 0);
+        if (requestHistory.length >= maxPoints) { requestHistory.shift(); timestamps.shift(); }
+        requestHistory.push(reqVal);
+        timestamps.push(new Date());
+        
+        // Simple line chart
+        const container = d3.select('#chartTimeSeries');
+        container.selectAll('*').remove();
+        if (requestHistory.length > 1) {
+          const width = container.node().clientWidth || 300;
+          const height = 200;
+          const margin = { top: 20, right: 20, bottom: 30, left: 50 };
+          const svg = container.append('svg').attr('viewBox', `0 0 ${width} ${height}`);
+          const x = d3.scaleTime().domain(d3.extent(timestamps)).range([margin.left, width - margin.right]);
+          const y = d3.scaleLinear().domain([0, d3.max(requestHistory) * 1.1 || 1]).range([height - margin.bottom, margin.top]);
+          const line = d3.line().x((d, i) => x(timestamps[i])).y(d => y(d));
+          svg.append('path').datum(requestHistory).attr('fill', 'none').attr('stroke', '#e94560').attr('stroke-width', 2).attr('d', line);
+          svg.append('g').attr('transform', `translate(0,${height - margin.bottom})`).call(d3.axisBottom(x).ticks(5)).selectAll('text').style('fill', '#aaa');
+          svg.append('g').attr('transform', `translate(${margin.left},0)`).call(d3.axisLeft(y).ticks(5)).selectAll('text').style('fill', '#aaa');
+        }
+      } catch (e) {
+        console.error('Metrics error:', e);
+      }
+    }
+
+    // Refresh all
+    async function refreshAll() {
+      await checkHealth();
+      await updateMetrics();
+    }
+
+    // Init
+    refreshAll();
+    setInterval(refreshAll, 30000);
+  </script>
+</body>
+</html>

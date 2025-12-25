@@ -1,0 +1,104 @@
+# Default values for soma-infra
+# These can be overridden by values-dev.yaml / values-staging.yaml / values-prod.yaml
+
+auth:
+  enabled: true
+  image:
+    repository: ghcr.io/somatech/auth
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8080
+  env: {}
+  resources: {}
+
+opa:
+  enabled: true
+  replicaCount: 1
+  service:
+    type: ClusterIP
+    port: 8181
+  extraArgs:
+    - "--server"
+    - "--addr=0.0.0.0:8181"
+  # Optional: inline Rego policies to load via kube-mgmt.
+  # Provide a map of name -> rego contents in your values override (e.g., values-dev.yaml)
+  # Example:
+  # policies:
+  #   leader_policy: |
+  #     package soma.policy
+  #     default allow = true
+  policies: {}
+
+kafka:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: false
+
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+
+etcd:
+  enabled: true
+  replicaCount: 3
+  auth:
+    rbac:
+      create: false
+  persistence:
+    enabled: false
+
+vault:
+  enabled: true
+  server:
+    standalone:
+      enabled: true
+      config: |
+        ui = true
+        listener "tcp" {
+          address     = "0.0.0.0:8200"
+          tls_disable = 1
+        }
+        storage "file" {
+          path = "/vault/data"
+        }
+  injector:
+    enabled: true
+
+kube-prometheus-stack:
+  enabled: true
+  prometheus:
+    prometheusSpec:
+      retention: 15d
+
+# Dashboard tooling intentionally excluded from this repository.
+
+# Global
+fullnameOverride: "soma-infra"
+namespaceOverride: "soma"
+configHash: ""
+
+# Local development helper – when true, the chart will emit additional
+# annotations/labels useful for rapid iteration (e.g., `helm.sh/hook-delete-policy`
+# to force a reinstall on every `helm upgrade`).  This flag is **optional** and
+# defaults to `false` for production deployments.  Set it via a values
+# override (`-f values-dev.yaml`) when you want to spin up a lightweight local
+# stack for strict‑real testing.
+localDev: false
+
+# Local developer helpers (no-op unless you set them in a values override)
+# Example: set `configHash` to a short git hash to force rolling updates when
+# config changes: `configHash: "$(git rev-parse --short HEAD)"`.
+#
+# You can also selectively enable/disable components during local iteration
+# by overriding `redis.enabled`, `opa.enabled`, `kafka.enabled`, etc.
+# These are only documented here as convenience; the defaults above are the
+# canonical settings for a full-stack deployment.
