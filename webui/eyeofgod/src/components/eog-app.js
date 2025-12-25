@@ -18,6 +18,7 @@ import '../views/eog-tenant-detail.js';
 import '../views/eog-permissions.js';
 import '../views/eog-subscriptions.js';
 import '../views/eog-tier-builder.js';
+import '../views/eog-tier-builder-enhanced.js';
 import '../views/eog-feature-config.js';
 import '../views/eog-billing.js';
 import '../views/eog-service-health.js';
@@ -28,6 +29,20 @@ import '../views/eog-oauth-config.js';
 import '../views/eog-memory-overview.js';
 import '../views/eog-memory-browse.js';
 import '../views/eog-memory-graph.js';
+// New screens
+import '../views/eog-login.js';
+import '../views/eog-metrics.js';
+import '../views/eog-sso-config.js';
+import '../views/eog-role-editor.js';
+import '../views/eog-invoice-list.js';
+import '../views/eog-invoice-detail.js';
+import '../views/eog-platform-config.js';
+import '../views/eog-auth-callback.js';
+import '../views/eog-working-memory.js';
+import '../views/eog-memory-store.js';
+// Reusable UI components
+import './ui/eog-data-table.js';
+import './ui/eog-settings-panel.js';
 
 export class EogApp extends LitElement {
   static properties = {
@@ -75,22 +90,34 @@ export class EogApp extends LitElement {
 
     router.setRoutes([
       { path: '/', redirect: '/platform' },
+      { path: '/login', component: 'eog-login' },
+      { path: '/auth/callback', component: 'eog-auth-callback' },
       { path: '/platform', component: 'eog-dashboard' },
       { path: '/platform/tenants', component: 'eog-tenant-list' },
       { path: '/platform/tenants/new', component: 'eog-tenant-create' },
       { path: '/platform/tenants/:id', component: 'eog-tenant-detail' },
       { path: '/platform/permissions', component: 'eog-permissions' },
+      { path: '/platform/roles', component: 'eog-role-editor' },
+      { path: '/platform/roles/:id', component: 'eog-role-editor' },
+      { path: '/platform/config', component: 'eog-platform-config' },
       { path: '/platform/subscriptions', component: 'eog-subscriptions' },
       { path: '/platform/subscriptions/new', component: 'eog-tier-builder' },
       { path: '/platform/subscriptions/:id', component: 'eog-tier-builder' },
+      { path: '/platform/tiers', component: 'eog-tier-builder-enhanced' },
       { path: '/platform/features', component: 'eog-feature-config' },
       { path: '/platform/billing', component: 'eog-billing' },
+      { path: '/platform/billing/invoices', component: 'eog-invoice-list' },
+      { path: '/platform/billing/invoices/:id', component: 'eog-invoice-detail' },
       { path: '/platform/services', component: 'eog-service-health' },
+      { path: '/platform/metrics', component: 'eog-metrics' },
       { path: '/platform/audit', component: 'eog-audit-logs' },
       { path: '/platform/settings', component: 'eog-settings' },
       { path: '/platform/users', component: 'eog-users' },
       { path: '/platform/oauth', component: 'eog-oauth-config' },
+      { path: '/platform/sso', component: 'eog-sso-config' },
       { path: '/platform/memory', component: 'eog-memory-overview' },
+      { path: '/platform/memory/store', component: 'eog-memory-store' },
+      { path: '/platform/memory/working', component: 'eog-working-memory' },
       { path: '/platform/memory/browse', component: 'eog-memory-browse' },
       { path: '/platform/memory/graph', component: 'eog-memory-graph' },
       { path: '(.*)', redirect: '/platform' },

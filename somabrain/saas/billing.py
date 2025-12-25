@@ -432,6 +432,93 @@ class LagoClient:
             return None
     
     # -------------------------------------------------------------------------
+    # ANALYTICS (REAL REVENUE DATA)
+    # -------------------------------------------------------------------------
+    
+    def get_mrr_analytics(self, currency: str = "USD") -> Optional[dict]:
+        """
+        Fetch MRR analytics from Lago.
+        
+        According to Lago API docs (doc.getlago.com):
+        GET /api/v1/analytics/mrr
+        
+        Returns:
+            MRR data including current MRR and breakdown by category
+            (new, expansion, contraction, churn)
+            
+        VIBE: REAL data from REAL server. No mocks.
+        """
+        try:
+            response = self._get_client().get(
+                "/api/v1/analytics/mrr",
+                params={"currency": currency},
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            
+            logger.warning(f"Lago MRR analytics failed: {response.status_code}")
+            return None
+            
+        except Exception as e:
+            logger.exception(f"Lago MRR analytics error: {e}")
+            return None
+    
+    def get_revenue_summary(self) -> dict:
+        """
+        Get revenue summary combining Lago analytics with subscription counts.
+        
+        Returns dict with:
+        - mrr: float (Monthly Recurring Revenue from Lago)
+        - arr: float (MRR * 12)
+        - mrr_growth: float (percentage change)
+        - active_subs: int (from Lago subscriptions)
+        - by_currency: dict (MRR breakdown by currency)
+        
+        VIBE: ALL data from Lago API, no ORM fallbacks for billing data.
+        """
+        result = {
+            "mrr": 0.0,
+            "arr": 0.0,
+            "mrr_growth": 0.0,
+            "active_subs": 0,
+            "by_currency": {},
+        }
+        
+        # Fetch MRR from Lago analytics
+        mrr_data = self.get_mrr_analytics()
+        if mrr_data and "mrrs" in mrr_data:
+            mrrs = mrr_data.get("mrrs", [])
+            if mrrs:
+                # Get latest MRR entry
+                latest = mrrs[-1] if mrrs else {}
+                result["mrr"] = float(latest.get("amount_cents", 0)) / 100
+                result["arr"] = result["mrr"] * 12
+                result["by_currency"] = {latest.get("currency", "USD"): result["mrr"]}
+                
+                # Calculate growth if we have previous month
+                if len(mrrs) >= 2:
+                    prev_mrr = float(mrrs[-2].get("amount_cents", 0)) / 100
+                    if prev_mrr > 0:
+                        result["mrr_growth"] = round(
+                            ((result["mrr"] - prev_mrr) / prev_mrr) * 100, 1
+                        )
+        
+        # Get subscription count from Lago
+        try:
+            response = self._get_client().get(
+                "/api/v1/subscriptions",
+                params={"status[]": "active"},
+            )
+            if response.status_code == 200:
+                subs = response.json().get("subscriptions", [])
+                result["active_subs"] = len(subs)
+        except Exception:
+            pass
+        
+        return result
+    
+    # -------------------------------------------------------------------------
     # HEALTH CHECK
     # -------------------------------------------------------------------------
     
