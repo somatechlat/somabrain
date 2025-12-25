@@ -597,6 +597,8 @@ services:
       - somabrain_net
     command: [ "python", "-m", "somabrain.workers.outbox_publisher" ]
     environment:
+      # Django settings MUST be first - required for all Django workers
+      DJANGO_SETTINGS_MODULE: "somabrain.settings"
       SOMABRAIN_PREDICTOR_PROVIDER: "${SOMABRAIN_PREDICTOR_PROVIDER:-mahal}"
       SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS: "${SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS:-1}"
       SOMABRAIN_FORCE_FULL_STACK: "${SOMABRAIN_FORCE_FULL_STACK:-1}"
@@ -751,6 +753,8 @@ services:
     networks:
       - somabrain_net
     environment:
+      # Django settings MUST be first - required for all Django workers
+      DJANGO_SETTINGS_MODULE: "somabrain.settings"
       SOMABRAIN_KAFKA_URL: "${SOMABRAIN_KAFKA_URL}"
       # Propagate the global memory cap to the integrator service.
       SOMABRAIN_MEMORY_MAX: "${SOMABRAIN_MEMORY_MAX:-10GB}"
