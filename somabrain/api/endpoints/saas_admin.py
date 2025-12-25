@@ -123,6 +123,41 @@ class APIKeyCreatedSchema(Schema):
     scopes: list
 
 
+# --- Subscription Tier Schemas ---
+
+class SubscriptionTierCreateSchema(Schema):
+    """Create subscription tier request."""
+    name: str
+    slug: str
+    price_monthly: float
+    price_yearly: Optional[float] = 0.0
+    features: Optional[dict] = {}
+    api_calls_limit: Optional[int] = 1000
+    memory_ops_limit: Optional[int] = 500
+    storage_limit_mb: Optional[int] = 100
+    is_active: bool = True
+
+
+class SubscriptionTierUpdateSchema(Schema):
+    """Update subscription tier request."""
+    name: Optional[str] = None
+    price_monthly: Optional[float] = None
+    features: Optional[dict] = None
+    api_calls_limit: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class SubscriptionTierResponseSchema(Schema):
+    """Subscription tier details."""
+    id: UUID
+    name: str
+    slug: str
+    price_monthly: float
+    features: dict
+    is_active: bool
+    created_at: datetime
+
+
 # --- Subscription Schemas ---
 
 class SubscriptionResponseSchema(Schema):
@@ -555,23 +590,100 @@ def change_subscription(request, tenant_id: UUID, data: SubscriptionChangeSchema
 # SUBSCRIPTION TIER ENDPOINTS (Public)
 # =============================================================================
 
-@router.get("/tiers", response=List[dict])
+# =============================================================================
+# SUBSCRIPTION TIER ENDPOINTS (Mixed Access)
+# =============================================================================
+
+@router.get("/tiers", response=List[SubscriptionTierResponseSchema])
 def list_tiers(request):
     """List available subscription tiers (public)."""
     tiers = SubscriptionTier.objects.filter(is_active=True).order_by("display_order")
-    
     return [
         {
-            "slug": t.slug,
+            "id": t.id,
             "name": t.name,
+            "slug": t.slug,
             "price_monthly": float(t.price_monthly),
-            "price_yearly": float(t.price_yearly),
-            "api_calls_limit": t.api_calls_limit,
-            "memory_ops_limit": t.memory_ops_limit,
             "features": t.features,
+            "is_active": t.is_active,
+            "created_at": t.created_at,
         }
         for t in tiers
     ]
+
+
+@router.post("/tiers", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@require_scope("admin:billing")
+def create_tier(request, data: SubscriptionTierCreateSchema):
+    """Create a new subscription tier."""
+    if SubscriptionTier.objects.filter(slug=data.slug).exists():
+        raise HttpError(400, f"Tier slug already exists: {data.slug}")
+
+    tier = SubscriptionTier.objects.create(
+        name=data.name,
+        slug=data.slug,
+        price_monthly=data.price_monthly,
+        price_yearly=data.price_yearly or 0,
+        features=data.features or {},
+        api_calls_limit=data.api_calls_limit or 1000,
+        memory_ops_limit=data.memory_ops_limit or 500,
+        storage_limit_mb=data.storage_limit_mb or 100,
+        is_active=data.is_active,
+    )
+    
+    log_api_action(request, "tier.created", "tier", tier.id, details={"slug": tier.slug})
+    
+    return {
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
+    }
+
+
+@router.get("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@require_scope("admin:billing")
+def get_tier(request, tier_id: UUID):
+    """Get subscription tier details."""
+    tier = get_object_or_404(SubscriptionTier, id=tier_id)
+    return {
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
+    }
+
+
+@router.patch("/tiers/{tier_id}", response=SubscriptionTierResponseSchema, auth=APIKeyAuth())
+@require_scope("admin:billing")
+def update_tier(request, tier_id: UUID, data: SubscriptionTierUpdateSchema):
+    """Update subscription tier."""
+    tier = get_object_or_404(SubscriptionTier, id=tier_id)
+    
+    if data.name: tier.name = data.name
+    if data.price_monthly is not None: tier.price_monthly = data.price_monthly
+    if data.features is not None: tier.features = data.features
+    if data.api_calls_limit is not None: tier.api_calls_limit = data.api_calls_limit
+    if data.is_active is not None: tier.is_active = data.is_active
+    
+    tier.save()
+    log_api_action(request, "tier.updated", "tier", tier.id)
+    
+    return {
+        "id": tier.id,
+        "name": tier.name,
+        "slug": tier.slug,
+        "price_monthly": float(tier.price_monthly),
+        "features": tier.features,
+        "is_active": tier.is_active,
+        "created_at": tier.created_at,
+    }
 
 
 # =============================================================================
