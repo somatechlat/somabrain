@@ -79,7 +79,7 @@ export class EogApp extends LitElement {
       { path: '/platform/tenants', component: 'eog-tenant-list' },
       { path: '/platform/tenants/new', component: 'eog-tenant-create' },
       { path: '/platform/tenants/:id', component: 'eog-tenant-detail' },
-      { path: '/platform/permissions', component: 'saas-permission-browser' },
+      { path: '/platform/permissions', component: 'eog-permissions' },
       { path: '/platform/subscriptions', component: 'eog-subscriptions' },
       { path: '/platform/subscriptions/new', component: 'eog-tier-builder' },
       { path: '/platform/subscriptions/:id', component: 'eog-tier-builder' },
