@@ -11,15 +11,16 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { settingsApi } from '../services/api.js';
 
 export class EogSettings extends LitElement {
-    static properties = {
-        settings: { type: Object },
-        isLoading: { type: Boolean },
-        isSaving: { type: Boolean },
-    };
+  static properties = {
+    settings: { type: Object },
+    isLoading: { type: Boolean },
+    isSaving: { type: Boolean },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
       max-width: 800px;
@@ -174,42 +175,42 @@ export class EogSettings extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.settings = {
-            platformName: 'SomaBrain',
-            supportEmail: 'support@somabrain.ai',
-            maintenanceMode: false,
-            allowSignups: true,
-            requireEmailVerification: true,
-            sessionTimeoutMinutes: 60,
-            maxLoginAttempts: 5,
-            auditRetentionDays: 90,
-        };
-        this.isLoading = false;
-        this.isSaving = false;
-    }
+  constructor() {
+    super();
+    this.settings = {
+      platformName: 'SomaBrain',
+      supportEmail: 'support@somabrain.ai',
+      maintenanceMode: false,
+      allowSignups: true,
+      requireEmailVerification: true,
+      sessionTimeoutMinutes: 60,
+      maxLoginAttempts: 5,
+      auditRetentionDays: 90,
+    };
+    this.isLoading = false;
+    this.isSaving = false;
+  }
 
-    _updateSetting(field, value) {
-        this.settings = { ...this.settings, [field]: value };
-    }
+  _updateSetting(field, value) {
+    this.settings = { ...this.settings, [field]: value };
+  }
 
-    async _handleSave() {
-        this.isSaving = true;
-        try {
-            // TODO: Implement API save
-            console.log('Saving settings:', this.settings);
-            await new Promise(r => setTimeout(r, 500)); // Simulate
-            alert('Settings saved successfully');
-        } catch (err) {
-            alert('Failed to save settings');
-        } finally {
-            this.isSaving = false;
-        }
+  async _handleSave() {
+    this.isSaving = true;
+    try {
+      // TODO: Implement API save
+      console.log('Saving settings:', this.settings);
+      await new Promise(r => setTimeout(r, 500)); // Simulate
+      alert('Settings saved successfully');
+    } catch (err) {
+      alert('Failed to save settings');
+    } finally {
+      this.isSaving = false;
     }
+  }
 
-    render() {
-        return html`
+  render() {
+    return html`
       <h1>Platform Settings</h1>
 
       <div class="card">
@@ -288,7 +289,7 @@ export class EogSettings extends LitElement {
         </button>
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-settings', EogSettings);

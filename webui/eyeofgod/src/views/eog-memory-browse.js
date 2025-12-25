@@ -11,17 +11,18 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { memoryApi } from '../services/api.js';
 
 export class EogMemoryBrowse extends LitElement {
-    static properties = {
-        nodes: { type: Array },
-        isLoading: { type: Boolean },
-        searchQuery: { type: String },
-        selectedTenant: { type: String },
-        expandedNode: { type: String },
-    };
+  static properties = {
+    nodes: { type: Array },
+    isLoading: { type: Boolean },
+    searchQuery: { type: String },
+    selectedTenant: { type: String },
+    expandedNode: { type: String },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -127,39 +128,56 @@ export class EogMemoryBrowse extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        // Mock data
-        this.nodes = [
-            { id: 'n_a1b2c3', type: 'concept', label: 'Machine Learning', tenant: 'acme', created_at: '2024-12-20', edges: 45 },
-            { id: 'n_d4e5f6', type: 'entity', label: 'TensorFlow', tenant: 'acme', created_at: '2024-12-19', edges: 32 },
-            { id: 'n_g7h8i9', type: 'action', label: 'Train Model', tenant: 'techstart', created_at: '2024-12-18', edges: 12 },
-            { id: 'n_j0k1l2', type: 'concept', label: 'Neural Networks', tenant: 'dataflow', created_at: '2024-12-17', edges: 67 },
-        ];
-        this.isLoading = false;
-        this.searchQuery = '';
-        this.selectedTenant = '';
-        this.expandedNode = null;
-    }
+  constructor() {
+    super();
+    this.nodes = [];
+    this.isLoading = false;
+    this.searchQuery = '';
+    this.selectedTenant = '';
+    this.expandedNode = null;
+    this.error = null;
+  }
 
-    get filteredNodes() {
-        let nodes = this.nodes;
-        if (this.searchQuery) {
-            const q = this.searchQuery.toLowerCase();
-            nodes = nodes.filter(n => n.label.toLowerCase().includes(q) || n.id.includes(q));
-        }
-        if (this.selectedTenant) {
-            nodes = nodes.filter(n => n.tenant === this.selectedTenant);
-        }
-        return nodes;
-    }
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadNodes();
+  }
 
-    _toggleExpand(nodeId) {
-        this.expandedNode = this.expandedNode === nodeId ? null : nodeId;
+  async _loadNodes() {
+    this.isLoading = true;
+    try {
+      const params = {};
+      if (this.selectedTenant) params.tenant = this.selectedTenant;
+      if (this.searchQuery) params.q = this.searchQuery;
+      const result = await memoryApi.nodes(params);
+      this.nodes = result.nodes || result || [];
+    } catch (err) {
+      console.error('Failed to load memory nodes:', err);
+      this.error = err.message;
+      this.nodes = [];
+    } finally {
+      this.isLoading = false;
     }
+  }
 
-    render() {
-        return html`
+  get filteredNodes() {
+    let nodes = this.nodes;
+    if (this.searchQuery) {
+      const q = this.searchQuery.toLowerCase();
+      nodes = nodes.filter(n => n.label?.toLowerCase().includes(q) || n.id?.includes(q));
+    }
+    if (this.selectedTenant) {
+      nodes = nodes.filter(n => n.tenant === this.selectedTenant);
+    }
+    return nodes;
+  }
+
+  _toggleExpand(nodeId) {
+    this.expandedNode = this.expandedNode === nodeId ? null : nodeId;
+  }
+
+  render() {
+    return html`
       <div class="header">
         <h1>Memory Browser</h1>
       </div>
@@ -214,7 +232,7 @@ export class EogMemoryBrowse extends LitElement {
         </table>
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-memory-browse', EogMemoryBrowse);

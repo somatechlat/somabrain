@@ -15,13 +15,13 @@ import { LitElement, html, css } from 'lit';
 import { oauthApi } from '../services/api.js';
 
 export class EogOauthConfig extends LitElement {
-    static properties = {
-        providers: { type: Array },
-        isLoading: { type: Boolean },
-        selectedProvider: { type: Object },
-    };
+  static properties = {
+    providers: { type: Array },
+    isLoading: { type: Boolean },
+    selectedProvider: { type: Object },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -147,71 +147,76 @@ export class EogOauthConfig extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        // Mock providers until API connected
-        this.providers = [
-            {
-                id: '1',
-                name: 'Google OAuth',
-                provider_type: 'google',
-                client_id: '123456789.apps.googleusercontent.com',
-                is_enabled: true,
-                is_default: true,
-                tenant: null,
-            },
-            {
-                id: '2',
-                name: 'GitHub OAuth',
-                provider_type: 'github',
-                client_id: 'Iv1.abcdef123456',
-                is_enabled: true,
-                is_default: false,
-                tenant: null,
-            },
-            {
-                id: '3',
-                name: 'Keycloak (Enterprise)',
-                provider_type: 'keycloak',
-                client_id: 'somabrain-client',
-                is_enabled: false,
-                is_default: false,
-                tenant: null,
-            },
-        ];
-        this.isLoading = false;
-        this.selectedProvider = null;
-    }
+  constructor() {
+    super();
+    this.providers = [];
+    this.isLoading = false;
+    this.selectedProvider = null;
+    this.error = null;
+  }
 
-    _getProviderIcon(type) {
-        const icons = {
-            google: '🔵',
-            github: '⚫',
-            facebook: '🔷',
-            keycloak: '🔐',
-            oidc: '🔑',
-        };
-        return icons[type] || '🔗';
-    }
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadProviders();
+  }
 
-    _getProviderLabel(type) {
-        const labels = {
-            google: 'Google OAuth',
-            github: 'GitHub OAuth',
-            facebook: 'Facebook OAuth',
-            keycloak: 'Keycloak',
-            oidc: 'OpenID Connect',
-        };
-        return labels[type] || type;
+  async _loadProviders() {
+    this.isLoading = true;
+    try {
+      const result = await oauthApi.list();
+      this.providers = result.providers || result || [];
+    } catch (err) {
+      console.error('Failed to load OAuth providers:', err);
+      this.error = err.message;
+      this.providers = [];
+    } finally {
+      this.isLoading = false;
     }
+  }
 
-    async _testProvider(provider) {
-        alert(`Testing ${provider.name}...`);
-        // TODO: Implement API test
+  async _toggleProvider(provider) {
+    try {
+      await oauthApi.update(provider.id, { is_enabled: !provider.is_enabled });
+      this._loadProviders();
+    } catch (err) {
+      console.error('Failed to toggle provider:', err);
+      alert('Failed to update provider');
     }
+  }
 
-    render() {
-        return html`
+  _getProviderIcon(type) {
+    const icons = {
+      google: '🔵',
+      github: '⚫',
+      facebook: '🔷',
+      keycloak: '🔐',
+      oidc: '🔑',
+    };
+    return icons[type] || '🔗';
+  }
+
+  _getProviderLabel(type) {
+    const labels = {
+      google: 'Google OAuth',
+      github: 'GitHub OAuth',
+      facebook: 'Facebook OAuth',
+      keycloak: 'Keycloak',
+      oidc: 'OpenID Connect',
+    };
+    return labels[type] || type;
+  }
+
+  async _testProvider(provider) {
+    try {
+      await oauthApi.test(provider.id);
+      alert(`${provider.name} connection successful!`);
+    } catch (err) {
+      alert(`Test failed: ${err.message}`);
+    }
+  }
+
+  render() {
+    return html`
       <div class="view">
         <div class="header">
           <h1>OAuth Providers</h1>
@@ -250,14 +255,14 @@ export class EogOauthConfig extends LitElement {
               <div class="provider-actions">
                 <button class="btn" @click=${() => this._testProvider(provider)}>Test</button>
                 <button class="btn">Edit</button>
-                <button class="btn">${provider.is_enabled ? 'Disable' : 'Enable'}</button>
+                <button class="btn" @click=${() => this._toggleProvider(provider)}>${provider.is_enabled ? 'Disable' : 'Enable'}</button>
               </div>
             </div>
           `)}
         </div>
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-oauth-config', EogOauthConfig);

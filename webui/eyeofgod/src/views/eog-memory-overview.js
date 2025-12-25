@@ -12,14 +12,15 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import { memoryApi, statsApi } from '../services/api.js';
 
 export class EogMemoryOverview extends LitElement {
-    static properties = {
-        stats: { type: Object },
-        isLoading: { type: Boolean },
-    };
+  static properties = {
+    stats: { type: Object },
+    isLoading: { type: Boolean },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: block;
     }
@@ -121,26 +122,47 @@ export class EogMemoryOverview extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        // Mock data
-        this.stats = {
-            totalNodes: 145230,
-            totalEdges: 892140,
-            totalTenants: 24,
-            avgQueryTime: 42,
-            topTenants: [
-                { name: 'Acme Corp', slug: 'acme', nodes: 45000, usage: 0.75 },
-                { name: 'TechStart', slug: 'techstart', nodes: 32000, usage: 0.52 },
-                { name: 'DataFlow', slug: 'dataflow', nodes: 28000, usage: 0.45 },
-                { name: 'AI Labs', slug: 'ailabs', nodes: 21000, usage: 0.34 },
-            ]
-        };
-        this.isLoading = false;
-    }
+  constructor() {
+    super();
+    this.stats = {
+      totalNodes: 0,
+      totalEdges: 0,
+      totalTenants: 0,
+      avgQueryTime: 0,
+      topTenants: [],
+      storage: { milvus: 0, postgres: 0, redis: 0 }
+    };
+    this.isLoading = false;
+    this.error = null;
+  }
 
-    render() {
-        return html`
+  connectedCallback() {
+    super.connectedCallback();
+    this._loadStats();
+  }
+
+  async _loadStats() {
+    this.isLoading = true;
+    try {
+      const result = await memoryApi.stats();
+      this.stats = {
+        totalNodes: result.total_nodes || result.totalNodes || 0,
+        totalEdges: result.total_edges || result.totalEdges || 0,
+        totalTenants: result.total_tenants || result.totalTenants || 0,
+        avgQueryTime: result.avg_query_time_ms || result.avgQueryTime || 0,
+        topTenants: result.top_tenants || result.topTenants || [],
+        storage: result.storage || { milvus: 0, postgres: 0, redis: 0 }
+      };
+    } catch (err) {
+      console.error('Failed to load memory stats:', err);
+      this.error = err.message;
+    } finally {
+      this.isLoading = false;
+    }
+  }
+
+  render() {
+    return html`
       <h1>Memory Overview</h1>
 
       <div class="stats-grid">
@@ -199,7 +221,7 @@ export class EogMemoryOverview extends LitElement {
         </div>
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-memory-overview', EogMemoryOverview);
