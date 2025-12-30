@@ -713,7 +713,7 @@ LOGGING = {
 GOOGLE_OAUTH_CLIENT_ID = env('GOOGLE_OAUTH_CLIENT_ID', default='')
 GOOGLE_OAUTH_CLIENT_SECRET = env('GOOGLE_OAUTH_CLIENT_SECRET', default='')
 GOOGLE_OAUTH_PROJECT_ID = env('GOOGLE_OAUTH_PROJECT_ID', default='')
-GOOGLE_OAUTH_REDIRECT_URI = env('GOOGLE_OAUTH_REDIRECT_URI', default='http://localhost:5173/auth/callback')
+GOOGLE_OAUTH_REDIRECT_URI = env('GOOGLE_OAUTH_REDIRECT_URI', default='http://localhost:30173/auth/callback')
 
 # =============================================================================
 # KEYCLOAK SETTINGS (SSO)

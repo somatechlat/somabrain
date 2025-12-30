@@ -1,0 +1,56 @@
+# Traefik Dynamic Configuration - Routes for all services
+# Production-like routing with TLS
+
+tls:
+  certificates:
+    - certFile: /certs/localhost.crt
+      keyFile: /certs/localhost.key
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /certs/localhost.crt
+        keyFile: /certs/localhost.key
+
+http:
+  routers:
+    # Keycloak Router - matches /realms and /admin paths
+    keycloak:
+      rule: "PathPrefix(`/realms`) || PathPrefix(`/admin`) || PathPrefix(`/auth`)"
+      entryPoints:
+        - websecure
+      service: keycloak
+      priority: 100
+      tls: {}
+
+    # SomaBrain API Router
+    api:
+      rule: "Host(`api.localhost`) || (Host(`localhost`) && PathPrefix(`/api`))"
+      entryPoints:
+        - websecure
+      service: somabrain-api
+      tls: {}
+
+    # Eye of God Frontend Router
+    frontend:
+      rule: "Host(`app.localhost`) || Host(`localhost`)"
+      entryPoints:
+        - websecure
+      service: frontend
+      priority: 1
+      tls: {}
+
+  services:
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:65006"
+
+    somabrain-api:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:9696"
+
+    frontend:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:30173"
