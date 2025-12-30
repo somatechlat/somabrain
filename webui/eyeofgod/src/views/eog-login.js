@@ -12,14 +12,14 @@
 import { LitElement, html, css } from 'lit';
 
 export class EogLogin extends LitElement {
-    static properties = {
-        loading: { type: Boolean },
-        error: { type: String },
-        email: { type: String },
-        password: { type: String },
-    };
+  static properties = {
+    loading: { type: Boolean },
+    error: { type: String },
+    email: { type: String },
+    password: { type: String },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: flex;
       min-height: 100vh;
@@ -225,16 +225,16 @@ export class EogLogin extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.loading = false;
-        this.error = '';
-        this.email = '';
-        this.password = '';
-    }
+  constructor() {
+    super();
+    this.loading = false;
+    this.error = '';
+    this.email = '';
+    this.password = '';
+  }
 
-    render() {
-        return html`
+  render() {
+    return html`
       <div class="login-container">
         <div class="login-card">
           <div class="logo">
@@ -311,75 +311,75 @@ export class EogLogin extends LitElement {
         </div>
       </div>
     `;
+  }
+
+  async _handleLogin(e) {
+    e.preventDefault();
+    this.loading = true;
+    this.error = '';
+
+    try {
+      // Real API call to Django backend
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: this.email,
+          password: this.password,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Invalid credentials');
+      }
+
+      const data = await response.json();
+
+      // Store token securely (localStorage for API consistency)
+      localStorage.setItem('auth_token', data.access_token);
+
+      // Navigate to dashboard
+      window.location.href = '/platform';
+    } catch (error) {
+      this.error = error.message;
+    } finally {
+      this.loading = false;
     }
+  }
 
-    async _handleLogin(e) {
-        e.preventDefault();
-        this.loading = true;
-        this.error = '';
+  _handleGoogleLogin() {
+    // Redirect to Keycloak Google IDP
+    const keycloakUrl = 'http://localhost:65006';
+    const realm = 'somabrain';
+    const clientId = 'eye-of-god-admin';
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
 
-        try {
-            // Real API call to Django backend
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: this.email,
-                    password: this.password,
-                }),
-            });
+    const authUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${redirectUri}&` +
+      `response_type=code&` +
+      `scope=openid%20email%20profile&` +
+      `kc_idp_hint=google`;
 
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.detail || 'Invalid credentials');
-            }
+    window.location.href = authUrl;
+  }
 
-            const data = await response.json();
+  _handleSsoLogin() {
+    // Redirect to Keycloak login
+    const keycloakUrl = 'http://localhost:65006';
+    const realm = 'somabrain';
+    const clientId = 'eye-of-god-admin';
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
 
-            // Store token securely (sessionStorage for security)
-            sessionStorage.setItem('auth_token', data.access_token);
+    const authUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${redirectUri}&` +
+      `response_type=code&` +
+      `scope=openid%20email%20profile`;
 
-            // Navigate to dashboard
-            window.location.href = '/platform';
-        } catch (error) {
-            this.error = error.message;
-        } finally {
-            this.loading = false;
-        }
-    }
-
-    _handleGoogleLogin() {
-        // Redirect to Keycloak Google IDP
-        const keycloakUrl = 'http://localhost:65006';
-        const realm = 'somabrain';
-        const clientId = 'eye-of-god-admin';
-        const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
-
-        const authUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +
-            `client_id=${clientId}&` +
-            `redirect_uri=${redirectUri}&` +
-            `response_type=code&` +
-            `scope=openid%20email%20profile&` +
-            `kc_idp_hint=google`;
-
-        window.location.href = authUrl;
-    }
-
-    _handleSsoLogin() {
-        // Redirect to Keycloak login
-        const keycloakUrl = 'http://localhost:65006';
-        const realm = 'somabrain';
-        const clientId = 'eye-of-god-admin';
-        const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
-
-        const authUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/auth?` +
-            `client_id=${clientId}&` +
-            `redirect_uri=${redirectUri}&` +
-            `response_type=code&` +
-            `scope=openid%20email%20profile`;
-
-        window.location.href = authUrl;
-    }
+    window.location.href = authUrl;
+  }
 }
 
 customElements.define('eog-login', EogLogin);

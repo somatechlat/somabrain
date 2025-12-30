@@ -38,6 +38,10 @@ def _safe_add_router(api_instance, prefix, router, **kwargs):
 from somabrain.api.endpoints.saas_admin import router as saas_admin_router
 _safe_add_router(api, "/saas/", saas_admin_router, tags=["SaaS Admin"])
 
+# Auth Router - Login, OAuth callback, session management
+from somabrain.api.endpoints.auth import router as auth_router
+_safe_add_router(api, "/auth/", auth_router, tags=["Authentication"])
+
 # Health Router
 from somabrain.api.endpoints.health import router as health_router
 _safe_add_router(api, "/health/", health_router, tags=["Health"])

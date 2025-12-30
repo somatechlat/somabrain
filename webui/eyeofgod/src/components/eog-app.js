@@ -130,6 +130,14 @@ export class EogApp extends LitElement {
   }
 
   render() {
+    // Check if we're on a full-page route (no sidebar/header)
+    const fullPageRoutes = ['/login', '/auth/callback'];
+    const isFullPage = fullPageRoutes.some(route => window.location.pathname.startsWith(route));
+
+    if (isFullPage) {
+      return html`<div id="outlet"></div>`;
+    }
+
     return html`
       <div class="app-container">
         <eog-sidebar 

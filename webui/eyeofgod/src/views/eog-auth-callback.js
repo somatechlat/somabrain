@@ -10,12 +10,12 @@
 import { LitElement, html, css } from 'lit';
 
 export class EogAuthCallback extends LitElement {
-    static properties = {
-        status: { type: String },
-        error: { type: String },
-    };
+  static properties = {
+    status: { type: String },
+    error: { type: String },
+  };
 
-    static styles = css`
+  static styles = css`
     :host {
       display: flex;
       min-height: 100vh;
@@ -90,79 +90,79 @@ export class EogAuthCallback extends LitElement {
     }
   `;
 
-    constructor() {
-        super();
-        this.status = 'processing';
-        this.error = '';
+  constructor() {
+    super();
+    this.status = 'processing';
+    this.error = '';
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this._processCallback();
+  }
+
+  async _processCallback() {
+    try {
+      // Get auth code from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+
+      if (error) {
+        throw new Error(urlParams.get('error_description') || error);
+      }
+
+      if (!code) {
+        throw new Error('No authorization code received');
+      }
+
+      this.status = 'exchanging';
+
+      // Exchange code for tokens via Django backend
+      const response = await fetch('/api/auth/callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          state,
+          redirect_uri: window.location.origin + '/auth/callback',
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.detail || 'Token exchange failed');
+      }
+
+      const data = await response.json();
+
+      // Store tokens securely (localStorage for API consistency)
+      localStorage.setItem('auth_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+
+      // Store user info
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
+
+      this.status = 'success';
+
+      // Redirect to dashboard after brief delay
+      setTimeout(() => {
+        window.location.href = '/platform';
+      }, 1500);
+
+    } catch (error) {
+      this.status = 'error';
+      this.error = error.message;
     }
+  }
 
-    connectedCallback() {
-        super.connectedCallback();
-        this._processCallback();
-    }
-
-    async _processCallback() {
-        try {
-            // Get auth code from URL
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
-
-            if (error) {
-                throw new Error(urlParams.get('error_description') || error);
-            }
-
-            if (!code) {
-                throw new Error('No authorization code received');
-            }
-
-            this.status = 'exchanging';
-
-            // Exchange code for tokens via Django backend
-            const response = await fetch('/api/auth/callback', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code,
-                    state,
-                    redirect_uri: window.location.origin + '/auth/callback',
-                }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.detail || 'Token exchange failed');
-            }
-
-            const data = await response.json();
-
-            // Store tokens securely
-            sessionStorage.setItem('auth_token', data.access_token);
-            if (data.refresh_token) {
-                sessionStorage.setItem('refresh_token', data.refresh_token);
-            }
-
-            // Store user info
-            if (data.user) {
-                sessionStorage.setItem('user', JSON.stringify(data.user));
-            }
-
-            this.status = 'success';
-
-            // Redirect to dashboard after brief delay
-            setTimeout(() => {
-                window.location.href = '/platform';
-            }, 1500);
-
-        } catch (error) {
-            this.status = 'error';
-            this.error = error.message;
-        }
-    }
-
-    render() {
-        return html`
+  render() {
+    return html`
       <div class="callback-card">
         ${this.status === 'processing' ? html`
           <div class="spinner"></div>
@@ -194,7 +194,7 @@ export class EogAuthCallback extends LitElement {
         ` : ''}
       </div>
     `;
-    }
+  }
 }
 
 customElements.define('eog-auth-callback', EogAuthCallback);

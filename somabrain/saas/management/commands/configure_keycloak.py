@@ -331,7 +331,7 @@ class Command(BaseCommand):
         # Get admin token
         token_url = f"{keycloak_url}/realms/master/protocol/openid-connect/token"
         try:
-            with httpx.Client(timeout=30) as client:
+            with httpx.Client(timeout=30, verify=False) as client:  # verify=False for self-signed certs
                 # Authenticate
                 self.stdout.write("  • Authenticating...")
                 response = client.post(token_url, data={

@@ -1,0 +1,47 @@
+# Shared Infrastructure - HTTPS Reverse Proxy
+# Production-like Traefik setup for all SomaBrain modules
+#
+# Usage: docker compose -f infra/shared/docker-compose.shared.yml up -d
+#
+# ALL 10 PERSONAS - VIBE Coding Rules:
+# - 🔒 Security: TLS termination, secure headers
+# - 🏛️ Architect: Clean separation of concerns
+# - 🛠️ DevOps: Production-like infrastructure
+
+name: somabrain-shared
+
+services:
+  shared_traefik:
+    image: traefik:v3.0
+    container_name: shared_traefik
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    ports:
+      - "55080:80" # HTTP (managed range)
+      - "55443:443" # HTTPS (managed range)
+      - "55088:8080" # Dashboard (managed range)
+    networks:
+      - shared_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - ./certs:/certs:ro
+    healthcheck:
+      test: [ "CMD", "traefik", "healthcheck" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+
+networks:
+  shared_net:
+    driver: bridge
+    name: somabrain_shared_net

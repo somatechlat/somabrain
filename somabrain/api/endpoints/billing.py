@@ -51,11 +51,26 @@ class SubscriptionTierOut(Schema):
     name: str
     slug: str
     description: Optional[str]
-    monthly_price: Decimal
-    annual_price: Optional[Decimal]
+    monthly_price: Decimal = None
+    annual_price: Decimal = None
     features: dict
     is_active: bool
     lago_plan_code: Optional[str]
+    
+    @staticmethod
+    def resolve_monthly_price(obj):
+        """Map model price_monthly → schema monthly_price."""
+        return obj.price_monthly
+    
+    @staticmethod
+    def resolve_annual_price(obj):
+        """Map model price_yearly → schema annual_price."""
+        return obj.price_yearly
+    
+    @staticmethod
+    def resolve_lago_plan_code(obj):
+        """Lago plan code is the tier slug."""
+        return obj.slug
 
 
 class SubscriptionOut(Schema):
@@ -153,7 +168,7 @@ def list_subscription_tiers(request):
     """
     return list(
         SubscriptionTier.objects.filter(is_active=True)
-        .order_by("monthly_price")
+        .order_by("price_monthly")
     )
 
 

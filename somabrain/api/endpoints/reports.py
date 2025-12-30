@@ -327,7 +327,7 @@ def get_platform_report(
     # Revenue estimate (from subscriptions)
     subscriptions = Subscription.objects.filter(status="active").select_related("tier")
     revenue = sum(
-        float(s.tier.monthly_price) if s.tier and s.tier.monthly_price else 0 
+        float(s.tier.price_monthly) if s.tier and s.tier.price_monthly else 0 
         for s in subscriptions
     )
     
