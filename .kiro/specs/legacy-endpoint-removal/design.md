@@ -227,7 +227,7 @@ Using **Hypothesis** library:
 ### Phase 7: Update Documentation
 1. Update README.md
 2. Update testing-guidelines.md
-3. Update benchmarks/README.md
+3. Update docs/benchmarks/README.md
 
 ### Phase 8: Final Verification
 1. Run full test suite

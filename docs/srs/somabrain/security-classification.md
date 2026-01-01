@@ -14,17 +14,17 @@ This document defines security classifications for SomaBrain documentation accor
 
 ### PUBLIC Documents
 
-- All files in `docs/user-manual/`
-- All files in `docs/technical-manual/` (except security/)
-- All files in `docs/development-manual/`
-- All files in `docs/onboarding-manual/`
+- All files in `docs/user/`
+- All files in `docs/technical/` (except security/)
+- All files in `docs/development/`
+- All files in `docs/onboarding/`
 - `README.md`
 - `ROADMAP_*.md`
 
 ### INTERNAL Documents
 
-- `docs/technical-manual/security/` (operational security procedures)
-- `docs/operational/` (deployment checklists, runbooks)
+- `docs/technical/security/` (operational security procedures)
+- `docs/operations/` (deployment checklists, runbooks)
 
 ### CONFIDENTIAL Documents
 

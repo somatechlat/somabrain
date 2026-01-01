@@ -33,10 +33,10 @@ FORBIDDEN_ROOT_FILES = [
 # Required documentation structure
 REQUIRED_DOCS = [
     "docs/README.md",
-    "docs/user-manual/index.md",
-    "docs/technical-manual/index.md",
-    "docs/development-manual/index.md",
-    "docs/onboarding-manual/index.md",
+    "docs/user/index.md",
+    "docs/technical/index.md",
+    "docs/development/index.md",
+    "docs/onboarding/index.md",
 ]
 
 # Forbidden documentation paths (removed in cleanup)
@@ -47,17 +47,17 @@ FORBIDDEN_DOCS = [
     "docs/cog-threads",
     "docs/RFCs",
     "docs/source",
-    "docs/development-manual/architecture-decisions",
-    "docs/development-manual/dual-cluster.md",
-    "docs/development-manual/dual-stack.md",
-    "docs/development-manual/era-of-experience.md",
-    "docs/development-manual/learning-loop.md",
-    "docs/onboarding-manual/checklists",
-    "docs/onboarding-manual/environment-setup.md",
-    "docs/onboarding-manual/resources",
-    "docs/technical-manual/security/compliance-and-proofs.md",
-    "docs/technical-manual/security/data-classification.md",
-    "docs/technical-manual/security/strict-mode.md",
+    "docs/development/architecture-decisions",
+    "docs/development/dual-cluster.md",
+    "docs/development/dual-stack.md",
+    "docs/development/era-of-experience.md",
+    "docs/development/learning-loop.md",
+    "docs/onboarding/checklists",
+    "docs/onboarding/environment-setup.md",
+    "docs/onboarding/resources",
+    "docs/technical/security/compliance-and-proofs.md",
+    "docs/technical/security/data-classification.md",
+    "docs/technical/security/strict-mode.md",
     "docs/monitoring/alertmanager-playbooks.md",
 ]
 

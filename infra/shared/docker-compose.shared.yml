@@ -21,7 +21,7 @@ services:
           memory: 128M
         reservations:
           memory: 64M
-    ports:
+    ports:  
       - "55080:80" # HTTP (managed range)
       - "55443:443" # HTTPS (managed range)
       - "55088:8080" # Dashboard (managed range)

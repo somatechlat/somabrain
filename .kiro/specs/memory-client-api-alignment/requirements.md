@@ -106,10 +106,10 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 | `README.md:~124` | Documents `POST /recall` - should be `/recall` |
 | `README.md:~125` | Documents `POST /recall/stream` - endpoint doesn't exist |
 | `README.md:~143` | Documents `POST /graph/links` - calls dead methods |
-| `docs/development-manual/api-reference.md:~43` | Documents `POST /graph/links` |
-| `docs/development-manual/testing-guidelines.md:~293` | Uses `/remember` |
-| `docs/development-manual/testing-guidelines.md:~309` | Uses `/recall` |
-| `benchmarks/README.md:~9,41` | References `/recall` |
+| `docs/development/api-reference.md:~43` | Documents `POST /graph/links` |
+| `docs/development/testing-guidelines.md:~293` | Uses `/remember` |
+| `docs/development/testing-guidelines.md:~309` | Uses `/recall` |
+| `docs/benchmarks/README.md:~9,41` | References `/recall` |
 
 ---
 
@@ -187,10 +187,10 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 3. WHEN `README.md` references `/remember/batch` THEN the system SHALL remove that reference
 4. WHEN `README.md` references `/recall/stream` THEN the system SHALL remove that reference
 5. WHEN `README.md` references `/graph/links` THEN the system SHALL remove that reference
-6. WHEN `docs/development-manual/api-reference.md` references `/graph/links` THEN the system SHALL remove that reference
-7. WHEN `docs/development-manual/testing-guidelines.md` references `/remember` THEN the system SHALL update to `/remember`
-8. WHEN `docs/development-manual/testing-guidelines.md` references `/recall` THEN the system SHALL update to `/recall`
-9. WHEN `benchmarks/README.md` references `/recall` THEN the system SHALL update to `/recall`
+6. WHEN `docs/development/api-reference.md` references `/graph/links` THEN the system SHALL remove that reference
+7. WHEN `docs/development/testing-guidelines.md` references `/remember` THEN the system SHALL update to `/remember`
+8. WHEN `docs/development/testing-guidelines.md` references `/recall` THEN the system SHALL update to `/recall`
+9. WHEN `docs/benchmarks/README.md` references `/recall` THEN the system SHALL update to `/recall`
 
 ### Requirement 7: Preserve Working Utility Methods
 
@@ -253,9 +253,9 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 | File | Changes Needed |
 |------|----------------|
 | `README.md` | Update endpoint references |
-| `docs/development-manual/api-reference.md` | Remove `/graph/links` |
-| `docs/development-manual/testing-guidelines.md` | Update endpoint references |
-| `benchmarks/README.md` | Update endpoint references |
+| `docs/development/api-reference.md` | Remove `/graph/links` |
+| `docs/development/testing-guidelines.md` | Update endpoint references |
+| `docs/benchmarks/README.md` | Update endpoint references |
 
 ---
 
@@ -358,9 +358,9 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 | File | Changes Needed |
 |------|----------------|
 | `README.md` | Update endpoint references |
-| `docs/development-manual/api-reference.md` | Remove `/graph/links` |
-| `docs/development-manual/testing-guidelines.md` | Update endpoint references |
-| `benchmarks/README.md` | Update endpoint references |
+| `docs/development/api-reference.md` | Remove `/graph/links` |
+| `docs/development/testing-guidelines.md` | Update endpoint references |
+| `docs/benchmarks/README.md` | Update endpoint references |
 
 ### New Requirements: Recall Testing Workbench
 
@@ -369,7 +369,7 @@ The following methods were removed from `somabrain/memory_client.py` but are sti
 - **Req 8.3** Multi-tenant isolation test SHALL prove tenant A recalls never include tenant B payloads and that metrics are tenant-labeled.
 - **Req 8.4** Performance SLO test SHALL fail if p95 `/remember` > 300 ms or p95 `/recall` > 400 ms in the dev stack.
 - **Req 8.5** Workbench SHALL fail fast with clear messaging when required env vars (memory URL/token, Postgres DSN) are missing; no silent skips.
-- **Req 8.6** Documentation update SHALL describe datasets, env vars, commands, and SLO targets in `docs/development-manual/testing-guidelines.md`.
+- **Req 8.6** Documentation update SHALL describe datasets, env vars, commands, and SLO targets in `docs/development/testing-guidelines.md`.
 
 ### Requirement 11: Milvus Must Be Mandatory and Verified
 

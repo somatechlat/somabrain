@@ -470,7 +470,7 @@ services:
       SUPERVISOR_HTTP_PASS: "${SUPERVISOR_HTTP_PASS:-soma}"
       # Adaptive knobs are controlled by runtime config overrides (local only)
       SOMABRAIN_LEARNING_TENANTS_FILE: "${SOMABRAIN_LEARNING_TENANTS_FILE:-/app/config/learning.tenants.yaml}"
-      # Disable Kafka readiness check for local dev (scripts/kafka_smoke_test.py not included)
+      # Disable Kafka readiness check for local dev (tests/smoke/kafka_smoke_test.py not included)
     ports:
       - "${SOMABRAIN_HOST_PORT:-30101}:${SOMABRAIN_PORT:-9696}"
     healthcheck:

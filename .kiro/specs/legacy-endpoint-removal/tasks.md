@@ -226,11 +226,11 @@
     - Change `/remember` to `/memory/remember`
     - Change `/recall` to `/memory/recall`
     - _Requirements: 7.1, 7.2_
-  - [x] 26.2 Update `docs/development-manual/testing-guidelines.md`
+  - [x] 26.2 Update `docs/development/testing-guidelines.md`
     - Updated `/remember` to `/memory/remember`
     - Updated `/recall` to `/memory/recall`
     - _Requirements: 7.3_
-  - [x] 26.3 Update `benchmarks/README.md`
+  - [x] 26.3 Update `docs/benchmarks/README.md`
     - Update all endpoint references
     - _Requirements: 7.4_
 

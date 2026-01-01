@@ -36,7 +36,7 @@ fi
 if [ "$REQUIRE_KAFKA" = "1" ] && [ -n "$KAFKA_BROKER" ]; then
   for i in 1 2 3 4 5 6; do
     echo "Attempt $i: checking Kafka broker..."
-    python3 scripts/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
+    python3 tests/smoke/kafka_smoke_test.py --bootstrap-server "$KAFKA_BROKER" --timeout 5 && KAFKA_OK=1 && break || true
     sleep 2
   done
 else

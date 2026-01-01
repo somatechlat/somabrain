@@ -30,7 +30,7 @@ def _schema_path() -> Optional[Path]:
         sp = (
             here.parent
             / "docs"
-            / "technical-manual"
+            / "technical"
             / "schemas"
             / "audit_event.schema.json"
         )

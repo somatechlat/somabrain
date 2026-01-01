@@ -9,6 +9,7 @@
 
 | Document | Description |
 |----------|-------------|
+| [Overview](./overview.md) | High-level product and runtime overview |
 | [Master SRS](./srs/SOMABRAIN_SAAS_SRS.md) | High-level requirements |
 | [User Journeys](./srs/user-journey-screens.md) | 12 use cases, 41 screens |
 | [API Key Auth](./srs/api-key-authentication.md) | Authentication layer |
@@ -64,12 +65,20 @@
 ```
 docs/
 ├── README.md                    # This file
+├── overview.md                  # Product overview
 ├── srs/                         # Requirements (13 docs)
 │   ├── flows/                   # User journeys (10 docs)
 │   └── ...
 ├── api/                         # API documentation
 ├── architecture/                # Architecture docs
-└── deployment/                  # Deployment guides
+├── deployment/                  # Deployment guides
+├── development/                 # Contributor and dev manuals
+├── technical/                   # Technical manual
+├── user/                        # User manual
+├── onboarding/                  # Onboarding (incl. agents)
+├── operations/                  # Operational guides + runbooks
+├── governance/                  # VIBE rules and violations
+└── reference/                   # Glossary + changelog
 ```
 
 ---

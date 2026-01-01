@@ -119,8 +119,8 @@ The goal is HARD DELETE - no legacy code, no mentions, as if it never existed.
 
 1. WHEN `README.md` references `/remember` THEN the system SHALL update to `/memory/remember`
 2. WHEN `README.md` references `/recall` THEN the system SHALL update to `/memory/recall`
-3. WHEN `docs/development-manual/testing-guidelines.md` references legacy endpoints THEN the system SHALL update to canonical endpoints
-4. WHEN `benchmarks/README.md` references legacy endpoints THEN the system SHALL update to canonical endpoints
+3. WHEN `docs/development/testing-guidelines.md` references legacy endpoints THEN the system SHALL update to canonical endpoints
+4. WHEN `docs/benchmarks/README.md` references legacy endpoints THEN the system SHALL update to canonical endpoints
 
 ### Requirement 8: Remove Fake/Mock/Stub Classes
 
@@ -314,7 +314,7 @@ The goal is HARD DELETE - no legacy code, no mentions, as if it never existed.
 |------|---------|--------|
 | `somabrain/app.py` | "Test environment bypass" comment | REMOVE - no test bypasses in production |
 | `somabrain/app.py` | "test-mode bypass" comment | REMOVE |
-| `somabrain/testing/test_targets.py` | `bypass_lock_checks` field | EVALUATE - may be needed for CI |
+| `tests/support/test_targets.py` | `bypass_lock_checks` field | EVALUATE - may be needed for CI |
 
 ## Files Summary
 
@@ -385,8 +385,8 @@ The goal is HARD DELETE - no legacy code, no mentions, as if it never existed.
 | File | Changes Needed |
 |------|----------------|
 | `README.md` | Update endpoint references |
-| `docs/development-manual/testing-guidelines.md` | Update endpoint references |
-| `benchmarks/README.md` | Update endpoint references |
+| `docs/development/testing-guidelines.md` | Update endpoint references |
+| `docs/benchmarks/README.md` | Update endpoint references |
 
 ## Sweep Status
 
