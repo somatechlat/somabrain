@@ -201,7 +201,7 @@ This specification covers:
 |---------|-----------|-------------------|
 | `np.linalg.norm` normalization | 25+ locations | `somabrain/math/normalize.py` |
 | Vector normalization | `app.py`, `wm.py`, `agent_memory.py`, `seed.py`, `embeddings.py`, `schemas.py` | `somabrain/math/normalize.py` |
-| Cosine similarity | `benchmarks/nulling_bench.py:52`, `benchmarks/nulling_test.py:34`, `benchmarks/run_stress.py:56` | `somabrain/math/similarity.py` |
+| Cosine similarity | `benchmarks/nulling_bench.py:52`, `tests/benchmarks/nulling_test.py:34`, `benchmarks/run_stress.py:56` | `somabrain/math/similarity.py` |
 
 #### 2.1.13 TEST FILE VIOLATIONS
 

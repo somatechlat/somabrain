@@ -245,7 +245,7 @@ PHASE 1: INFRA ──► PHASE 2: SFM ──► PHASE 3: SB ──► PHASE 4: A
 - [ ] 2.2.1 Update `somafractalmemory/README.md`
   - Add SomaStack integration section
   - Update architecture diagram
-- [ ] 2.2.2 Update `somafractalmemory/docs/technical-manual/deployment-docker.md`
+- [ ] 2.2.2 Update `somafractalmemory/docs/technical/deployment-docker.md`
   - Add somastack mode instructions
 - **Requirements**: 26.4
 
@@ -283,9 +283,9 @@ PHASE 1: INFRA ──► PHASE 2: SFM ──► PHASE 3: SB ──► PHASE 4: A
 - [ ] 3.2.1 Update `somabrain/README.md`
   - Add SomaStack integration section
   - Update topology diagram
-- [ ] 3.2.2 Update `somabrain/docs/technical-manual/architecture.md`
+- [ ] 3.2.2 Update `somabrain/docs/technical/architecture.md`
   - Add SomaStack architecture diagram
-- [ ] 3.2.3 Update `somabrain/docs/technical-manual/deployment.md`
+- [ ] 3.2.3 Update `somabrain/docs/technical/deployment.md`
   - Add somastack mode instructions
 - **Requirements**: 26.4
 
@@ -398,10 +398,10 @@ PHASE 1: INFRA ──► PHASE 2: SFM ──► PHASE 3: SB ──► PHASE 4: A
 - [ ] 4.3.1 Update `somaAgent01/README.md`
   - Add SomaStack integration section
   - Document cognitive integration
-- [ ] 4.3.2 Update `somaAgent01/docs/technical-manual/architecture.md`
+- [ ] 4.3.2 Update `somaAgent01/docs/technical/architecture.md`
   - Add SomaStack diagram
   - Document SomaBrain integration flow
-- [ ] 4.3.3 Update `somaAgent01/docs/technical-manual/deployment.md`
+- [ ] 4.3.3 Update `somaAgent01/docs/technical/deployment.md`
   - Add somastack mode instructions
 - **Requirements**: 26.4
 
@@ -450,7 +450,7 @@ PHASE 1: INFRA ──► PHASE 2: SFM ──► PHASE 3: SB ──► PHASE 4: A
 - [ ] 5.2.1 Rewrite `agentVoiceBox/README.md`
   - Complete rewrite for voice agent functionality
   - Add SomaStack integration section
-- [ ] 5.2.2 Create `agentVoiceBox/docs/technical-manual/architecture.md`
+- [ ] 5.2.2 Create `agentVoiceBox/docs/technical/architecture.md`
   - Voice pipeline architecture
   - STT/TTS provider abstraction
 - **Requirements**: 26.4

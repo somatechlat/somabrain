@@ -78,7 +78,7 @@ COPY manage.py /app/manage.py
 # Pure Django startup - NO FastAPI/uvicorn per VIBE rules
 # Django uses manage.py runserver (dev) or gunicorn (prod)
 # Kafka smoke test is required by docker-entrypoint.sh for health checks
-COPY scripts/kafka_smoke_test.py /app/scripts/kafka_smoke_test.py
+COPY tests/smoke/kafka_smoke_test.py /app/tests/smoke/kafka_smoke_test.py
 # Runtime initialization script for setting up singletons before app start
 COPY scripts/initialize_runtime.py /app/scripts/initialize_runtime.py
 

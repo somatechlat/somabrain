@@ -135,7 +135,7 @@ All major tasks completed. Remaining items are optional property-based tests.
     - _Requirements: 11.1_
   - [x] 4.9 Remove duplicates from benchmarks ✅
     - Updated `benchmarks/nulling_bench.py` to use canonical `cosine_similarity`
-    - Updated `benchmarks/nulling_test.py` to use canonical `cosine_similarity`
+    - Updated `tests/benchmarks/nulling_test.py` to use canonical `cosine_similarity`
     - Updated `benchmarks/run_stress.py` to use canonical `cosine_similarity`
     - _Requirements: 11.1, 11.2_
   - [x] 4.10 Update `somabrain/scoring.py` ✅

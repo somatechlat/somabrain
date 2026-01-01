@@ -227,7 +227,7 @@ When removing dead code, the following error handling approach applies:
 - Outbox durability scenario using forced backend failure and replay.
 
 **Documentation**
-- Add a “Testing Workbench” section to `docs/development-manual/testing-guidelines.md` detailing env vars (memory URL/token, Postgres DSN), datasets, commands, and SLO thresholds.
+- Add a “Testing Workbench” section to `docs/development/testing-guidelines.md` detailing env vars (memory URL/token, Postgres DSN), datasets, commands, and SLO thresholds.
    - Return empty results rather than crashing
    - Document the limitation in the code
 

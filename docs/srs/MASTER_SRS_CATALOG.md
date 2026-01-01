@@ -245,7 +245,7 @@
 
 ## 5. Non-SRS Documentation (Reference)
 
-### 5.1 Operational Docs (docs/operational/)
+### 5.1 Operational Docs (docs/operations/)
 
 | Document | Purpose |
 |----------|---------|
@@ -255,7 +255,7 @@
 | `learner-and-planner.md` | AI components |
 | `playbooks/*.md` (5 files) | Runbooks |
 
-### 5.2 User Manual (docs/user-manual/)
+### 5.2 User Manual (docs/user/)
 
 | Document | Purpose |
 |----------|---------|
@@ -264,7 +264,7 @@
 | `features/*.md` (8 files) | Feature docs |
 | `faq.md` | FAQ |
 
-### 5.3 Technical Manual (docs/technical-manual/)
+### 5.3 Technical Manual (docs/technical/)
 
 | Directory | Files | Purpose |
 |-----------|-------|---------|

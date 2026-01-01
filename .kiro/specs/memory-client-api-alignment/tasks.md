@@ -133,14 +133,14 @@
     - Remove `/recall/stream` reference
     - Remove `/graph/links` reference
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
-  - [x] 15.2 Update `docs/development-manual/api-reference.md`
+  - [x] 15.2 Update `docs/development/api-reference.md`
     - Remove `/graph/links` documentation
     - _Requirements: 6.6_
-  - [x] 15.3 Update `docs/development-manual/testing-guidelines.md`
+  - [x] 15.3 Update `docs/development/testing-guidelines.md`
     - Change `/remember` to `/remember`
     - Change `/recall` to `/recall`
     - _Requirements: 6.7, 6.8_
-  - [x] 15.4 Update `benchmarks/README.md`
+  - [x] 15.4 Update `docs/benchmarks/README.md`
     - Change `/recall` to `/recall`
     - _Requirements: 6.9_
 
@@ -170,7 +170,7 @@
     - Tenant A recalls never return Tenant B payloads; metrics labeled per tenant
   - [x] 18.5 Add outbox durability test
     - Force memory 5xx, ensure events queue, replay drains pending to 0, no dupes
-  - [x] 18.6 Document workbench in `docs/development-manual/testing-guidelines.md`
+  - [x] 18.6 Document workbench in `docs/development/testing-guidelines.md`
     - Env vars, datasets, expected SLOs, how to run locally/CI
 
  - [x] 19. Milvus Hardening (no fallbacks, full exploitation)

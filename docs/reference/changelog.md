@@ -1,0 +1,391 @@
+## 2025-11-06 — Full-Power Recall Defaults
+
+- Default retrieval behavior now enables the strongest recall and learning path:
+  - retrievers: `vector, wm, graph, lexical`
+  - rerank: `auto` (HRR → MMR → cosine based on availability)
+  - persist: `true` (records recall sessions and `retrieved_with` links)
+- Safe rollback and tuning via environment variables:
+  - `SOMABRAIN_RECALL_FULL_POWER=1|0` (default 1)
+  - `SOMABRAIN_RECALL_SIMPLE_DEFAULTS=1` forces conservative mode
+  - `SOMABRAIN_RECALL_DEFAULT_RERANK=auto|mmr|hrr|cosine`
+  - `SOMABRAIN_RECALL_DEFAULT_PERSIST=1|0`
+  - `SOMABRAIN_RECALL_DEFAULT_RETRIEVERS=vector,wm,graph,lexical`
+- The unified retrieval pipeline remains authoritative; exact pinning, rank fusion, reranking, and session learning are unchanged aside from defaults.
+
+## V3.0.3-EXTRA-MILE
+
+- Unified recall under POST `/recall` backed by the retrieval pipeline (vector, WM, lexical, graph, fusion, rerank).
+  - Input: accepts either a JSON string or an object (legacy MemoryRecallRequest + fields id/key/coord/mode/rerank/retrievers).
+  - Output: remains MemoryRecallResponse for compatibility; adds non-breaking extras internally (session, metrics).
+- Legacy retrieval router endpoints fully removed from the public API.
+- Docs and runbooks updated to prefer `/recall` for all retrieval operations.
+
+# SomaBrain Changelog
+
+**Purpose**: Chronological record of all changes, improvements, and fixes in SomaBrain releases.
+
+**Audience**: Developers, operators, and users tracking version changes and compatibility.
+
+**Prerequisites**: Understanding of semantic versioning (MAJOR.MINOR.PATCH).
+
+---
+
+## Version History
+
+All notable changes to SomaBrain are documented in this file. This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+### Format Legend
+- 🚀 **Added** - New features and capabilities
+- 🔧 **Changed** - Changes in existing functionality
+- 🐛 **Fixed** - Bug fixes and error corrections
+- 🔒 **Security** - Security vulnerability fixes
+- ⚠️ **Deprecated** - Soon-to-be removed features
+- 💥 **Removed** - Removed features
+- 📚 **Documentation** - Documentation improvements
+
+---
+
+## [v3.2.0] - 2025-11-12 - Phase 3: Complete Implementation
+
+### 🚀 Added
+- **Phase 3: Memory Client Architecture Overhaul**
+  - **Database-backed Outbox**: Replacement with SQLAlchemy `enqueue_event()`
+  - **Per-tenant Circuit Breakers**: AsyncCircuitBreaker implementation
+  - **HTTP-first Architecture**: Removal of local/redis modes
+  - **Tenant Isolation**: `X-Soma-Tenant` headers on all operations
+  - **Idempotency Keys**: Reliable retries via `X-Idempotency-Key`
+  - **Health Watchdog**: Tenant-aware monitoring coroutine
+  - **Prometheus Metrics**: Per-tenant gauges for circuit breakers and outbox
+
+### 🔧 Changed
+- **MemoryClient Refactored**: Overhaul from legacy to new architecture
+  - **HTTP Initialization**: Single `_init_http()` method
+  - **Outbox Integration**: Direct `enqueue_event()` calls
+  - **Circuit Breaker Pattern**: Per-tenant `AsyncCircuitBreaker`
+  - **Configuration**: Direct environment variables, no fallbacks
+  - **Authentication**: Mandatory token via `SOMABRAIN_MEMORY_HTTP_TOKEN`
+
+### 💥 Removed
+- Legacy file-based outbox, local mode, Redis mode, shared settings, backward compatibility
+
+### 📚 Documentation
+- Updated migration guide and architecture docs (ROAMDP references removed)
+
+---
+
+## [v3.1.0] - 2025-11-11 - Phase 3: Live Deployment & HMM Segmentation
+
+### 🚀 Added
+- **Phase 3 HMM Segmentation**: Hazard-based change point detection with deduplication
+  - `HazardSegmenter` with exponential decay hazard function
+  - `CPDSegmenter` for CPD-based boundary detection
+  - Min-gap deduplication to prevent boundary spam
+  - Metrics: `segmentation_boundaries_per_hour`, `segmentation_duplicate_ratio`
+- **Live Docker Deployment**: Full-stack containerized deployment
+  - Multi-stage Dockerfile with production optimizations
+  - Complete Docker Compose stack with all dependencies
+  - Health checks and Prometheus metrics integration
+  - Memory service integration via `host.docker.internal:9595`
+- **Leader Election**: Redis-based leader election for integrator hub
+  - Redis locks for distributed coordination
+  - Metrics: `leader_tenure_seconds`, `leader_elections_total`
+- **Avro Schema Enforcement**: Strict no-JSON fallback policy
+  - CI checks for Avro schema compatibility
+  - Runtime validation ensuring Avro-only data flow
+- **Outbox Publisher**: Kafka-based event publishing for reliability
+  - At-least-once delivery guarantee
+  - Automatic retry and failure handling
+
+### 🔧 Changed
+- **Integrator Hub**: Enhanced with leader election and metrics
+- **Deployment Strategy**: Full Docker Compose with external memory service
+- **Memory Backend**: HTTP-first with Redis/Kafka backing stores
+- **Monitoring**: Comprehensive Prometheus metrics for all components
+
+### 📚 Documentation
+- Updated deployment guide for Docker Compose live deployment
+- Added Phase 3 completion checklist
+- Documented segmentation HMM algorithms and tuning parameters
+- Created production deployment runbook
+
+### 💥 Removed
+- Legacy JSON fallback modes - strict Avro enforcement
+- Local stub implementations - requires real external services
+
+## [Unreleased]
+
+### 🚀 Added
+- Complete documentation restructure following 4-manual standard
+- CI Avro schema compatibility checker for `proto/cog/avro` to prevent breaking changes
+- E2E smoke for teach→reward (`scripts/e2e_teach_feedback_smoke.py")
+
+### 🔧 Changed
+- Default best-mode settings enabled in Helm and Compose:
+  - `SOMABRAIN_STRICT_REAL=1` to enforce real backends
+  - `SOMA_HEAT_METHOD=lanczos` for diffusion-based salience
+  - `SOMABRAIN_ENABLE_TEACH_FEEDBACK=1` to map TeachFeedback→r_user RewardEvent
+
+### ⚠️ Deprecated
+- Helm template placeholders for components consolidated into the mono "cog" container are marked deprecated and inert:
+  - predictor-{state,agent,action} deployments/services
+  - integrator, orchestrator, segmentation deployments/services
+  These files contain only comments and will be removed in the next minor release.
+## V3.0.3 — Diffusion-backed Predictors and Integrator Normalization
+
+- New: `somabrain/predictors/base.py` with `PredictorBase` and `HeatDiffusionPredictor`
+- Refactor: `services/predictor-{state,agent,action}/main.py` now compute delta_error via diffusion and confidence = exp(-alpha·error)
+- Config: `SOMA_HEAT_METHOD`, `SOMABRAIN_DIFFUSION_T`, `SOMABRAIN_CONF_ALPHA`, `SOMABRAIN_CHEB_K`, `SOMABRAIN_LANCZOS_M`, `SOMABRAIN_PREDICTOR_DIM`
+- Integrator: Optional confidence normalization from `delta_error` via `SOMABRAIN_INTEGRATOR_ENFORCE_CONF` and `SOMABRAIN_INTEGRATOR_ALPHA`
+- Metrics: `somabrain_predictor_error{domain}`, `somabrain_integrator_leader_total{leader}`
+- Tests: `tests/predictors/test_heat_diffusion_predictor.py` (Chebyshev/Lanczos vs. exact expm; monotonic confidence)
+- Docs: New `docs/technical/predictors.md`; updated `karpathy-architecture.md` and `architecture.md`
+ - Production wiring: optional JSON graph files via `SOMABRAIN_GRAPH_FILE[_STATE|_AGENT|_ACTION]` with loader `load_operator_from_file()`; services now use `build_predictor_from_env()`
+ - Benchmarks: Added `benchmarks/diffusion_predictor_bench.py`, Makefile target `bench-diffusion`, and docs at `docs/technical/benchmarks_diffusion.md`
+
+- Comprehensive onboarding guide for new developers and agent coders
+- Automated backup and recovery procedures
+- Production-ready Kubernetes Helm charts
+- Performance benchmarking suite with canonical test cases
+ - Kafka teach feedback pipeline:
+   - New Avro contracts: `teach_feedback.avsc`, `teach_capsule.avsc`
+   - Processor service: `somabrain.services.teach_feedback_processor`
+   - Topic: `cog.teach.feedback` → maps `rating` to `r_user` and publishes `RewardEvent`
+   - Smoke script: `scripts/e2e_teach_feedback_smoke.py`
+
+### 🔧 Changed
+- Improved metrics bridge architecture for better package compatibility
+- Enhanced strict-mode validation with clearer error messages
+- Optimized memory client connection pooling for higher throughput
+
+### 📚 Documentation
+- Created User Manual with installation and feature guides
+- Created Technical Manual with deployment and operational procedures
+- Created Development Manual with coding standards and contribution process
+- Created Onboarding Manual for new team members and contractors
+- Added comprehensive runbooks for all major system components
+ - Documented teach feedback pipeline in Technical Manual and User Manual
+
+### 💥 Removed
+- Legacy environment variants and overlays removed:
+  - Dropped support for `.env.local` and other per-variant env files. Use a single canonical `.env`.
+  - Deleted `docker-compose.9999.yml` and other overlay compose files. Single `docker-compose.yml` is the source of truth.
+
+---
+
+## [v0.1.0] - 2025-10-15
+
+### 🚀 Added
+- **Core Cognitive Memory Platform**: Complete hyperdimensional memory system
+  - Binary hyperdimensional computing (BHDC) for semantic encoding
+  - Density matrix tracking for memory relationship modeling
+  - Multi-tenant working memory with isolated namespaces
+  - Unified scoring combining cosine similarity, frequency-directions, and recency
+- **Production FastAPI Service**: RESTful API with comprehensive endpoints
+  - `POST /remember` - Store memories with semantic encoding and metadata
+  - `POST /recall` - Retrieve memories using semantic similarity search
+  - `POST /plan` - Generate reasoning plans based on stored knowledge
+  - `GET /health` - Comprehensive health check aggregating all dependencies
+  - `GET /metrics` - Prometheus metrics export for observability
+- **Mathematical Correctness Framework**: Property testing and invariant validation
+  - Density matrix trace normalization (abs(trace(ρ) - 1) < 1e-4)
+  - Positive semi-definite (PSD) spectrum maintenance via eigenvalue clipping
+  - BHDC binding/unbinding roundtrip accuracy validation
+  - Scorer component weight bounds enforcement
+- **Strict Real Mode**: Production-grade execution enforcement
+  - `SOMABRAIN_REQUIRE_EXTERNAL_BACKENDS=1` disables all stub/mock code paths
+  - Runtime audit system detecting and preventing stub usage
+  - Comprehensive environment validation requiring real backing services
+- **Multi-Service Architecture**: Containerized deployment with Docker Compose
+  - Redis for high-performance working memory and caching
+  - PostgreSQL for persistent metadata and audit log storage
+  - Kafka for event streaming and audit trail (optional)
+  - OPA policy engine for authorization and governance
+  - Prometheus metrics collection and monitoring
+
+### 🔧 Changed
+- **Memory Client Architecture**: HTTP-first design with circuit breaker pattern
+  - Write mirroring to ensure consistency across memory tiers
+  - Configurable timeouts and retry policies for resilience
+  - Outbox pattern for reliable event publishing
+- **Configuration System**: Environment-based configuration with validation
+  - Centralized settings through `common.config.Settings`
+  - Support for `.env.local` files for local development
+  - Dynamic port assignment for conflict-free local setup
+
+### 🐛 Fixed
+- **Metrics Package Conflicts**: Resolved import conflicts between stub and real metrics modules
+  - Created bridge package (`somabrain/metrics/__init__.py`) for compatibility
+  - Removed lightweight stub metrics that shadowed production implementation
+  - Fixed `external_metrics_ready` and `metrics_endpoint` attribute errors in health checks
+
+### 🔒 Security
+- **JWT Authentication**: Configurable token-based authentication with OPA integration
+- **Rate Limiting**: Per-tenant and global rate limits with burst handling
+- **Audit Logging**: Comprehensive structured logging of all memory operations
+- **Secrets Management**: Environment-based secret injection with validation
+
+### 📚 Documentation
+- **Architecture Documentation**: Complete system design with component interaction diagrams
+- **API Documentation**: Interactive OpenAPI/Swagger documentation
+- **Development Guide**: Local setup, coding standards, and contribution workflow
+- **Operations Guide**: Deployment procedures, monitoring setup, and runbooks
+- **Mathematical Documentation**: BHDC algorithms, density matrix operations, and invariants
+
+### Infrastructure
+- **Docker Support**: Multi-stage Dockerfile for production-ready container images
+- **Docker Compose**: Complete local development stack with service orchestration
+- **Kubernetes Ready**: Helm chart preparation for cloud-native deployment
+- **CI/CD Pipeline**: Automated testing, linting, and quality gates
+- **Monitoring Stack**: Prometheus metrics and alerting rules
+
+### Launch Snapshot
+
+```bash
+docker run --rm \
+  -p 8000:9696 \
+  -e SOMABRAIN_DISABLE_AUTH=true \
+  ghcr.io/somatechlat/somabrain:latest
+```
+
+- Health: `curl -s http://localhost:9696/health`
+- OpenAPI: `http://localhost:9696/docs`
+- Metrics: `http://localhost:9696/metrics`
+
+**Endpoints**: `/remember`, `/recall`, `/link`, `/docs`, `/metrics`
+
+**Security**: Token auth via `Authorization: Bearer <token>` (set `SOMABRAIN_API_TOKEN` to enable). Tenancy via `X-Tenant-ID`. For demos you may keep `SOMABRAIN_DISABLE_AUTH=true`; enable auth for real deployments.
+
+**Observability**:
+
+```bash
+docker compose -f docker-compose.observability.yml up
+```
+
+- Prometheus UI: `http://localhost:9090`
+
+**Known Limits**:
+- Bounded working memory; tune dimensions through environment variables.
+- Apply rate/size limits at the edge proxy for public deployments.
+
+---
+
+## [v0.0.1] - 2024-12-01 (Initial Research Release)
+
+### 🚀 Added
+- **Mathematical Foundations**: Core hyperdimensional computing algorithms
+  - BHDC binding and unbinding operations
+  - Permutation-based role generation for deterministic encoding
+  - Frequency-directions salience sketching for diversity-aware recall
+- **Proof of Concept API**: Basic FastAPI service demonstrating core concepts
+- **Property Testing Framework**: Mathematical invariant validation using hypothesis
+- **Basic Memory Operations**: Simple store/retrieve functionality for validation
+
+### 📚 Documentation
+- **Research Documentation**: Mathematical foundations and algorithm descriptions
+- **Proof of Concept**: Demonstration of core hyperdimensional computing principles
+
+---
+
+## Migration Guides
+
+### Upgrading from v0.0.x to v0.1.0
+
+This is a major release with breaking changes. Follow this migration guide:
+
+#### Configuration Changes
+```bash
+# Old environment variables (deprecated)
+SOMABRAIN_REDIS_HOST=localhost
+SOMABRAIN_REDIS_PORT=6379
+
+# New configuration format
+SOMABRAIN_REDIS_URL=redis://localhost:6379/0
+```
+
+#### API Changes
+```python
+# Old API (v0.0.x)
+response = requests.post('/store', json={'text': 'content'})
+
+# New API (v0.1.0)
+response = requests.post('/remember', json={
+    'content': 'content',
+    'metadata': {'category': 'example'}
+})
+```
+
+#### Docker Compose Updates
+```bash
+# Update docker-compose.yml to v0.1.0 format
+curl -sSL https://raw.githubusercontent.com/somatechlat/somabrain/v0.1.0/docker-compose.yml -o docker-compose.yml
+
+# Migrate data (if preserving existing memories)
+./scripts/migrate-v0-to-v1.sh
+```
+
+---
+
+## Release Process
+
+### Semantic Versioning Policy
+- **MAJOR** (x.0.0): Breaking API changes, major architectural changes
+- **MINOR** (0.x.0): New features, backward-compatible improvements
+- **PATCH** (0.0.x): Bug fixes, security patches, documentation updates
+
+### Release Criteria
+Before any release, these requirements must be met:
+- [ ] All property tests pass validating mathematical invariants
+- [ ] Integration tests pass in strict real mode
+- [ ] Performance benchmarks meet or exceed previous version
+- [ ] Security scan passes with no critical vulnerabilities
+- [ ] Documentation updated for all changes
+- [ ] Migration guide provided for breaking changes
+- [ ] Changelog updated with all changes categorized
+
+### Support Policy
+- **Current Major Version**: Full support with bug fixes and security patches
+- **Previous Major Version**: Security patches only for 12 months
+- **Older Versions**: End of life, upgrade recommended
+
+---
+
+## Breaking Changes Policy
+
+SomaBrain follows these principles for breaking changes:
+
+### Major Version Changes (1.0.0 → 2.0.0)
+- API endpoint changes or removal
+- Configuration format changes
+- Mathematical algorithm changes affecting results
+- Database schema changes requiring migration
+
+### Minor Version Changes (1.0.0 → 1.1.0)
+- New optional API parameters
+- New configuration options with sensible defaults
+- Performance improvements without result changes
+- New features that don't affect existing functionality
+
+### Patch Version Changes (1.0.0 → 1.0.1)
+- Bug fixes that don't change expected behavior
+- Security vulnerability fixes
+- Documentation corrections
+- Performance optimizations without behavioral changes
+
+### Deprecation Process
+1. **Announce**: Feature marked as deprecated in changelog and documentation
+2. **Warning Period**: Minimum 6 months with deprecation warnings in logs
+3. **Removal**: Feature removed in next major version with migration guide
+
+---
+
+**Verification**: Check version compatibility and review breaking changes before upgrading.
+
+**Common Errors**:
+- Version mismatch → Verify client library and server versions are compatible
+- Configuration errors → Review migration guide for configuration format changes
+- API integration failures → Check API changelog for endpoint or parameter changes
+
+**References**:
+- [Semantic Versioning Specification](https://semver.org/) for versioning policy understanding
+- [Migration Guides](#migration-guides) for upgrade procedures
+- [API Documentation](development/api-reference.md) for current API specification

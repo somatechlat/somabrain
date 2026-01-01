@@ -1018,7 +1018,7 @@ def create_memory_system(...):
 
 **Overall Score: 7.5/10**
 
-The architecture has been evaluated against the VIBE CODING RULES defined in both `somabrain/VIBE_CODING_RULES.md` and `somafractalmemory/VIBE_CODING_RULES.md`.
+The architecture has been evaluated against the VIBE CODING RULES defined in both `somabrain/docs/development/VIBE_CODING_RULES.md` and `somafractalmemory/docs/development/VIBE_CODING_RULES.md`.
 
 ### J2: Identified Violations
 
@@ -1515,8 +1515,8 @@ All 33 requirements across 14 categories now have corresponding design sections 
 - Design Patterns Analysis: `somabrain/.kiro/specs/deep-memory-integration/DESIGN_PATTERNS.md`
 - Architecture Analysis: `somabrain/.kiro/specs/deep-memory-integration/ARCHITECTURE_ANALYSIS.md`
 - Implementation Tasks: `somabrain/.kiro/specs/deep-memory-integration/tasks.md`
-- VIBE Rules (SB): `somabrain/VIBE_CODING_RULES.md`
-- VIBE Rules (SFM): `somafractalmemory/VIBE_CODING_RULES.md`
+- VIBE Rules (SB): `somabrain/docs/development/VIBE_CODING_RULES.md`
+- VIBE Rules (SFM): `somafractalmemory/docs/development/VIBE_CODING_RULES.md`
 
 ---
 
