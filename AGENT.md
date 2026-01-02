@@ -103,6 +103,35 @@ From `somabrain/settings.py`:
 
 ---
 
+## SomaStack Hierarchy
+
+```
+SomaStack/
+├── shared/             # Port 49000-49099 (Keycloak, etc.)
+├── SomaFractalMemory/  # Port 21000-21099
+├── SomaBrain/          # Port 30000-30199 ← THIS REPO
+└── SomaAgent01/        # Port 20000-20199
+```
+
+---
+
+## Development with Tilt
+
+```bash
+# Start infrastructure
+colima start
+minikube start
+
+# Deploy SomaStack (includes SomaBrain)
+cd somaAgent01
+tilt up --port 10351
+
+# SomaStack Tilt Dashboard
+open http://localhost:10351
+```
+
+---
+
 ## Testing Notes
 
 - Tests require real infrastructure; no mocks in integration suites.

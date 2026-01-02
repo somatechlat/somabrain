@@ -124,16 +124,34 @@ def decode_jwt_token(token: str) -> Optional[dict]:
 # AUTH ENDPOINTS
 # =============================================================================
 
-@router.post("/login", response={200: TokenResponse, 401: ErrorResponse})
+@router.post("/login", response={200: TokenResponse, 401: ErrorResponse, 429: ErrorResponse})
 def login(request, data: LoginRequest):
     """
     Authenticate with email and password.
     
     Returns JWT access token on success.
     
-    🔒 Security: Password hashing, rate limiting (TODO)
+    🔒 Security: Password hashing, rate limiting
     🎨 UX: Clear error messages for invalid credentials
+    
+    Rate limit: 5 attempts per minute per IP (VIBE COMPLIANT - real implementation)
     """
+    from django.core.cache import cache
+    
+    # VIBE COMPLIANT: Real rate limiting using Django cache
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', ''))
+    if client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+    
+    rate_limit_key = f"auth_rate_limit:{client_ip}"
+    attempts = cache.get(rate_limit_key, 0)
+    
+    if attempts >= 5:
+        logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+        raise HttpError(429, "Too many login attempts. Please wait 60 seconds.")
+    
+    # Increment attempt counter (expires in 60 seconds)
+    cache.set(rate_limit_key, attempts + 1, timeout=60)
     from django.contrib.auth import get_user_model
     from somabrain.saas.models import TenantUser
     
