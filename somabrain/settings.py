@@ -58,7 +58,8 @@ MIDDLEWARE = [
     'somabrain.controls.security_middleware.SecurityMiddleware',
     'somabrain.controls.cognitive_middleware.CognitiveMiddleware',
     'somabrain.controls.django_middleware.ControlsMiddleware',
-    'somabrain.controls.opa_middleware.OpaMiddleware',
+    # OPA middleware disabled for local development (no OPA server needed)
+    # 'somabrain.controls.opa_middleware.OpaMiddleware',
 ]
 
 ROOT_URLCONF = 'somabrain.urls'
