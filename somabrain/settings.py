@@ -209,11 +209,9 @@ MILVUS_LATENCY_WINDOW = env.int('MILVUS_LATENCY_WINDOW', default=50)
 SOMABRAIN_OPA_HOST = env.str('SOMABRAIN_OPA_HOST', default=env.str('OPA_HOST', default=None))
 SOMABRAIN_OPA_PORT = env.int('SOMABRAIN_OPA_PORT', default=env.int('OPA_PORT', default=0))
 SOMABRAIN_OPA_SCHEME = env.str('SOMABRAIN_OPA_SCHEME', default=env.str('OPA_SCHEME', default='http'))
-SOMABRAIN_OPA_URL = env.str('SOMABRAIN_OPA_URL', default='http://opa:8181')
-SOMABRAIN_OPA_TIMEOUT = env.float('SOMABRAIN_OPA_TIMEOUT', default=2.0)
-OPA_BUNDLE_PATH = env.str('OPA_BUNDLE_PATH', default='./opa')
+SOMABRAIN_OPA_URL = env.str('SOMABRAIN_OPA_URL', default='http://localhost:20181')
 SOMABRAIN_OPA_ALLOW_ON_ERROR = env.bool('SOMABRAIN_OPA_ALLOW_ON_ERROR', default=False)
-SOMABRAIN_OPA_POLICY_KEY = env.str('SOMABRAIN_OPA_POLICY_KEY', default='soma:opa:policy')
+SOMABRAIN_OPA_POLICY_KEY = env.str('SOMABRAIN_OPA_POLICY_KEY', default='soma/policy/integrator/allow')
 SOMABRAIN_OPA_POLICY_SIG_KEY = env.str('SOMABRAIN_OPA_POLICY_SIG_KEY', default='soma:opa:policy:sig')
 
 # Circuit breaker
