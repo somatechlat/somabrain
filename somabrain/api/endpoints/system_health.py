@@ -215,7 +215,7 @@ def check_opa() -> Dict[str, Any]:
     import httpx
     
     def _check():
-        opa_url = getattr(settings, "OPA_URL", "http://somabrain_opa:8181")
+        opa_url = getattr(settings, "SOMABRAIN_OPA_URL", "http://localhost:20181")
         
         with httpx.Client(timeout=5) as client:
             response = client.get(f"{opa_url}/health")
