@@ -43,7 +43,7 @@ class ServiceRegistry:
         name="somafractalmemory",
         env_var="SOMABRAIN_MEMORY_HTTP_ENDPOINT",
         description="Memory system",
-        default_port=9101,
+        default_port=10101,
         required=True,
         health_check="/health",
     )
