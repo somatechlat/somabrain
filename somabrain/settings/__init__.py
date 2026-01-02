@@ -1,13 +1,22 @@
 """Environment-based settings loader."""
+
 import os
+from pathlib import Path
 
-ENVIRONMENT = os.environ.get('DJANGO_ENV', 'development')
+# Load .env file before importing any settings
+from dotenv import load_dotenv
 
-if ENVIRONMENT == 'production':
+# somabrain/settings/__init__.py -> somabrain/settings -> somabrain -> PROJECT_ROOT
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+ENVIRONMENT = os.environ.get("DJANGO_ENV", "development")
+
+if ENVIRONMENT == "production":
     from .production import *  # noqa
-elif ENVIRONMENT == 'staging':
+elif ENVIRONMENT == "staging":
     from .staging import *  # noqa
 else:
     from .development import *  # noqa
 
-__all__ = ['ENVIRONMENT']
+__all__ = ["ENVIRONMENT"]
