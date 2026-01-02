@@ -55,8 +55,11 @@ __pycache__/
 .hypothesis/
 .cache/
 
-# --- Tests (not needed in production image) ---
-tests/
+# --- Tests (not needed in production image EXCEPT smoke tests for health checks) ---
+tests/*
+!tests/smoke/
+tests/smoke/*
+!tests/smoke/kafka_smoke_test.py
 test_*.py
 *_test.py
 conftest.py
