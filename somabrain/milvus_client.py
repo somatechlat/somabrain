@@ -194,9 +194,9 @@ class MilvusClient:
         coll.create_index(
             field_name="embedding",
             index_params={
-                "index_type": "BIN_IVF_FLAT",
-                "metric_type": "HAMMING",
-                "params": {"nlist": 128},
+                "index_type": "HNSW",
+                "metric_type": "L2",
+                "params": {"M": 8, "efConstruction": 200},
             },
         )
         coll.load()

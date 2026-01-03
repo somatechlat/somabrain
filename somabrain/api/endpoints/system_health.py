@@ -403,7 +403,7 @@ def check_cognitive_service() -> Dict[str, Any]:
     """Check internal cognitive service status."""
     def _check():
         # Check if cognitive middleware is loaded
-        from somabrain.oak.planner import PlanSuggestionPlanner
+        from somabrain.oak.planner import plan_for_tenant
         from somabrain.oak.option_manager import OptionManager
         
         return {

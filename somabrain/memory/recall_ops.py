@@ -397,8 +397,7 @@ def recall_with_degradation(
         degradation_mgr.check_alert(tenant)
         logger.warning(
             "SFM degraded mode: returning empty results",
-            tenant=tenant,
-            query_preview=query[:50] if query else "",
+            extra={"tenant": tenant, "query_preview": query[:50] if query else ""},
         )
         return []
 
@@ -413,8 +412,7 @@ def recall_with_degradation(
         degradation_mgr.mark_degraded(tenant)
         logger.warning(
             "SFM unavailable, entering degraded mode",
-            tenant=tenant,
-            error=str(exc),
+            extra={"tenant": tenant, "error": str(exc)},
         )
         return []
 
@@ -457,7 +455,7 @@ async def arecall_with_degradation(
         degradation_mgr.check_alert(tenant)
         logger.warning(
             "SFM degraded mode (async): returning empty results",
-            tenant=tenant,
+            extra={"tenant": tenant},
         )
         return []
 
@@ -475,7 +473,6 @@ async def arecall_with_degradation(
         degradation_mgr.mark_degraded(tenant)
         logger.warning(
             "SFM unavailable (async), entering degraded mode",
-            tenant=tenant,
-            error=str(exc),
+            extra={"tenant": tenant, "error": str(exc)},
         )
         return []

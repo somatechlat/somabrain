@@ -191,9 +191,8 @@ def health_view(request):
             return {"healthy": r.status_code == 200}
     health["internal_services"]["soma_fractal_memory"] = timed_check("SomaFractalMemory", check_sfm)
     
-    # Cognitive
     def check_cognitive():
-        from somabrain.oak.planner import PlanSuggestionPlanner
+        from somabrain.oak.planner import plan_for_tenant
         from somabrain.oak.option_manager import OptionManager
         return {"planner_loaded": True, "option_manager_loaded": True}
     health["internal_services"]["cognitive"] = timed_check("Cognitive", check_cognitive)

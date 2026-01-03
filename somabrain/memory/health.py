@@ -32,7 +32,7 @@ def check_memory_health(
     - Returns structured component status (kv_store, vector_store, graph_store)
     - Reports degraded (not failed) when any component unhealthy
     - Lists specific unhealthy components
-    - Uses 2-second timeout for health check
+    - Users 5-second timeout for health check
 
     Args:
         transport: HTTP transport for SFM communication.
@@ -53,8 +53,8 @@ def check_memory_health(
         }
 
     try:
-        # E3.4: 2-second timeout for health check
-        r = transport.client.get("/health", timeout=2.0)
+        # E3.4: 5-second timeout for health check
+        r = transport.client.get("/health", timeout=5.0)
         status_code = int(getattr(r, "status_code", 0) or 0)
 
         if status_code != 200:
@@ -80,10 +80,17 @@ def check_memory_health(
                 "graph_store": False,
             }
 
-        # E3.1: Extract component status
-        kv = bool(data.get("kv_store"))
-        vec = bool(data.get("vector_store"))
-        graph = bool(data.get("graph_store"))
+        # E3.1: Extract component status (Compatible with new Services List schema)
+        if "services" in data and isinstance(data["services"], list):
+            services_map = {s["name"]: s["healthy"] for s in data["services"]}
+            kv = services_map.get("redis", False)
+            vec = services_map.get("milvus", False)
+            graph = services_map.get("postgresql", False)
+        else:
+            # Fallback to backend schema if flattened
+            kv = bool(data.get("kv_store"))
+            vec = bool(data.get("vector_store"))
+            graph = bool(data.get("graph_store"))
 
         # E3.2, E3.5: Determine degraded status and list unhealthy components
         degraded_components = []
