@@ -17,7 +17,7 @@
 
 **The mathematical foundation of machine consciousness**
 
-[Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [API](#-api-reference) · [Documentation](#-documentation)
+[Website](https://www.somatech.dev) · [Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [API](#-api-reference) · [Documentation](#-documentation)
 
 </div>
 
