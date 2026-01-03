@@ -411,9 +411,7 @@ SomaBrain synthesizes cutting-edge research from cognitive science and AI:
 
 ## 📜 License
 
-Copyright © 2024-2026 **SomaTech LAT**. All rights reserved.
-
-This software is proprietary and confidential.
+Licensed under the [Apache License, Version 2.0](LICENSE)
 
 ---
 
