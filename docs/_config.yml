@@ -1,0 +1,39 @@
+title: SomaBrain Documentation
+description: Hyperdimensional Cognitive Memory System for Autonomous AI Agents
+baseurl: ""
+url: "https://somatechlat.github.io/somabrain"
+
+# Theme
+remote_theme: pages-themes/minimal@v0.2.0
+
+# Plugins for GitHub Pages
+plugins:
+  - jekyll-remote-theme
+  - jekyll-seo-tag
+
+# Markdown processing
+markdown: kramdown
+kramdown:
+  math_engine: mathjax
+  syntax_highlighter: rouge
+  input: GFM
+
+# MathJax configuration
+mathjax:
+  enabled: true
+
+# Default layout
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Exclude files
+exclude:
+  - .git
+  - .github
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
