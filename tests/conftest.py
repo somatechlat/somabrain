@@ -11,31 +11,39 @@ except Exception:
     pass
 
 from django.conf import settings
+import django
+django.setup()
 
 
-# Use centralized Settings for test configuration
-MEM_URL = settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
-MEM_TOKEN = settings.SOMABRAIN_MEMORY_HTTP_TOKEN
-API_URL = settings.SOMABRAIN_API_URL or "http://localhost:9696"
+
+# Use centralized Settings for test configuration (Lazy Loaded)
+def get_mem_url():
+    return settings.SOMABRAIN_MEMORY_HTTP_ENDPOINT or "http://localhost:9595"
+
+def get_mem_token():
+    return settings.SOMABRAIN_MEMORY_HTTP_TOKEN
+
+def get_api_url():
+    return settings.SOMABRAIN_API_URL or "http://localhost:9696"
 
 
 def _memory_available() -> bool:
+    mem_url = get_mem_url()
+    mem_token = get_mem_token()
     try:
-        headers = {"Authorization": f"Bearer {MEM_TOKEN}"} if MEM_TOKEN else {}
-        url = MEM_URL.rstrip("/")
-        try:
-            r = httpx.get(f"{url}/health", timeout=2.0, headers=headers)
-        except Exception:
-            # Fallback to localhost if host.docker.internal is unreachable.
-            r = httpx.get("http://localhost:9595/health", timeout=2.0, headers=headers)
+        headers = {"Authorization": f"Bearer {mem_token}"} if mem_token else {}
+        url = mem_url.rstrip("/")
+        # print(f"DEBUG: Checking Memory Health at {url}/health")
+        r = httpx.get(f"{url}/health", timeout=2.0, headers=headers)
         return r.status_code < 500
-    except Exception:
+    except Exception as e:
+        print(f"WARNING: Memory Check Failed at {mem_url}: {e}")
         return False
 
 
 def _api_available() -> bool:
     try:
-        base = API_URL or "http://localhost:9696"
+        base = get_api_url()
         r = httpx.get(f"{base.rstrip('/')}/health", timeout=2.0)
         if r.status_code < 500:
             return True
@@ -47,13 +55,20 @@ def _api_available() -> bool:
 
 @pytest.fixture(scope="session")
 def http_client() -> httpx.Client:
-    if not MEM_TOKEN:
-        pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests")
+    mem_token = get_mem_token()
+    if not mem_token:
+        # pytest.skip("SOMABRAIN_MEMORY_HTTP_TOKEN must be set for workbench tests") 
+        # Making this optional for now to allow partial testing
+        pass
+    
     if not _memory_available():
-        pytest.skip("Memory service not reachable for workbench tests")
+        # Warn but don't fail immediately, allows viewing output
+        print("WARNING: Memory service not reachable.")
+        
     if not _api_available():
-        pytest.skip("Somabrain API not reachable for workbench tests")
-    base = API_URL
+         print("WARNING: Somabrain API not reachable.")
+
+    base = get_api_url()
     try:
         httpx.get(f"{base.rstrip('/')}/health", timeout=1.0)
     except Exception:
