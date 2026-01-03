@@ -50,6 +50,8 @@ At the heart of SomaBrain lies a mathematically elegant memory update mechanism 
 
 This enables high-capacity associative memory with constant-time $O(1)$ retrieval.
 
+📖 **[Read the full Mathematical Foundations →](docs/technical/mathematical-foundations.md)**
+
 ---
 
 ## ✨ Features
