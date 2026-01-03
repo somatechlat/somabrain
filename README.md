@@ -29,7 +29,9 @@ At the heart of SomaBrain lies a mathematically elegant memory update mechanism 
 
 <div align="center">
 
-### $$\Large \mathbf{m}_t = (1 - \eta)\mathbf{m}_{t-1} + \eta\mathbf{b}_t$$
+```math
+\LARGE \mathbf{m}_t = (1 - \eta)\mathbf{m}_{t-1} + \eta\mathbf{b}_t
+```
 
 </div>
 
@@ -40,7 +42,13 @@ At the heart of SomaBrain lies a mathematically elegant memory update mechanism 
 | $\eta$ | **Plasticity Gain** | Controls update strength (learning rate) |
 | $(1-\eta)$ | **Decay Factor** | Exponential forgetting mechanism |
 
-This formulation enables **approximate orthogonality** $\mathbb{E}[\mathbf{x} \cdot \mathbf{y}] \approx 0$ in hypervector space $(N \gg 1)$, providing high-capacity associative memory with constant-time retrieval.
+**Key Properties:**
+
+```math
+\mathbb{E}[\mathbf{x} \cdot \mathbf{y}] \approx 0 \quad \text{(approximate orthogonality in } \mathbb{R}^N, N \gg 1\text{)}
+```
+
+This enables high-capacity associative memory with constant-time $O(1)$ retrieval.
 
 ---
 
