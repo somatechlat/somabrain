@@ -15,7 +15,7 @@
 
 <br/>
 
-**The mathematical foundation of machine consciousness**
+**Persistent memory for AI agents that need to remember**
 
 [Website](https://www.somatech.dev) · [Features](#-features) · [Architecture](#-architecture) · [Quick Start](#-quick-start) · [API](#-api-reference) · [Documentation](#-documentation)
 
@@ -40,7 +40,7 @@ At the heart of SomaBrain lies a mathematically elegant memory update mechanism 
 | $\eta$ | **Plasticity Gain** | Controls update strength (learning rate) |
 | $(1-\eta)$ | **Decay Factor** | Exponential forgetting mechanism |
 
-This formulation enables **approximate orthogonality** $\mathbb{E}[\mathbf{x} \cdot \mathbf{y}] \approx 0$ in hypervector space $(N \gg 1)$, achieving near-infinite associative memory capacity while maintaining constant-time retrieval.
+This formulation enables **approximate orthogonality** $\mathbb{E}[\mathbf{x} \cdot \mathbf{y}] \approx 0$ in hypervector space $(N \gg 1)$, providing high-capacity associative memory with constant-time retrieval.
 
 ---
 
